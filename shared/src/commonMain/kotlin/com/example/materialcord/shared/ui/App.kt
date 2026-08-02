@@ -6,6 +6,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Surface
 import androidx.compose.material3.MaterialTheme
 import coil3.ImageLoader
@@ -26,7 +27,8 @@ fun App() {
     MaterialcordTheme {
         Surface(
             modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.surfaceContainer
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 0.dp
         ) {
             MainScreen()
         }

@@ -9,7 +9,28 @@ data class User(
     val username: String,
     val discriminator: String,
     val avatar: String? = null,
-    val global_name: String? = null
+    val global_name: String? = null,
+    val accent_color: Int? = null,
+    val banner: String? = null,
+    val pronouns: String? = null,
+    val bio: String? = null
+)
+
+@Serializable
+data class UserProfile(
+    val user: User,
+    val user_profile: UserProfileMetadata? = null,
+    val guild_member: Member? = null,
+    val guild_member_profile: UserProfileMetadata? = null
+)
+
+@Serializable
+data class UserProfileMetadata(
+    val bio: String? = null,
+    val accent_color: Int? = null,
+    val banner: String? = null,
+    val theme_colors: List<Int>? = null,
+    val pronouns: String? = null
 )
 
 @Serializable
@@ -36,7 +57,9 @@ data class Message(
     val edited_timestamp: String? = null,
     val tts: Boolean = false,
     val mention_everyone: Boolean = false,
-    val attachments: List<Attachment> = emptyList()
+    val attachments: List<Attachment> = emptyList(),
+    val member: Member? = null,
+    val guild_id: String? = null
 )
 
 @Serializable
@@ -71,7 +94,22 @@ data class Guild(
     val banner: String? = null,
     val owner: Boolean? = null,
     val permissions: String? = null,
-    val features: List<String>? = null
+    val features: List<String>? = null,
+    val roles: List<Role> = emptyList()
+)
+
+@Serializable
+data class Role(
+    val id: String,
+    val name: String,
+    val color: Int,
+    val hoist: Boolean,
+    val position: Int,
+    val permissions: String,
+    val managed: Boolean,
+    val mentionable: Boolean,
+    val icon: String? = null,
+    val unicode_emoji: String? = null
 )
 
 @Serializable
@@ -108,8 +146,8 @@ data class Member(
     val user: User? = null,
     val nick: String? = null,
     val avatar: String? = null,
-    val roles: List<String>,
-    val joined_at: String,
+    val roles: List<String> = emptyList(),
+    val joined_at: String = "",
     val premium_since: String? = null,
     val deaf: Boolean = false,
     val mute: Boolean = false,
@@ -117,6 +155,46 @@ data class Member(
     val pending: Boolean? = null,
     val permissions: String? = null,
     val communication_disabled_until: String? = null
+)
+
+@Serializable
+data class GuildSubscription(
+    val guild_id: String,
+    val typing: Boolean = true,
+    val threads: Boolean = true,
+    val activities: Boolean = true,
+    val members: List<String> = emptyList(),
+    val channels: Map<String, List<List<Int>>> = emptyMap()
+)
+
+@Serializable
+data class MemberListUpdate(
+    val guild_id: String,
+    val id: String,
+    val ops: List<MemberListOp>,
+    val member_count: Int? = null,
+    val online_count: Int? = null
+)
+
+@Serializable
+data class MemberListOp(
+    val op: String,
+    val range: List<Int>? = null,
+    val items: List<MemberListListItem>? = null,
+    val index: Int? = null,
+    val item: MemberListListItem? = null
+)
+
+@Serializable
+data class MemberListListItem(
+    val member: Member? = null,
+    val group: MemberListGroup? = null
+)
+
+@Serializable
+data class MemberListGroup(
+    val id: String,
+    val count: Int? = null
 )
 
 @Serializable

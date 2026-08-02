@@ -203,6 +203,23 @@ class DiscordClient(
             emptyList()
         }
     }
+
+    suspend fun getUserProfile(userId: String, guildId: String? = null): UserProfile? {
+        if (token == null) return null
+        return try {
+            val url = if (guildId != null) {
+                "$apiBase/users/$userId/profile?guild_id=$guildId"
+            } else {
+                "$apiBase/users/$userId/profile"
+            }
+            httpClient.get(url) {
+                header(HttpHeaders.Authorization, token!!)
+            }.body()
+        } catch (e: Exception) {
+            println("Error fetching user profile: ${e.message}")
+            null
+        }
+    }
 }
 
 fun createHttpClient() = HttpClient {

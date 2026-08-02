@@ -13,6 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.Json
 
 class ChatState(
@@ -27,12 +28,14 @@ class ChatState(
     val channels = mutableStateListOf<Channel>()
     val privateChannels = mutableStateListOf<Channel>()
     val forumThreads = mutableStateListOf<Channel>()
-    val members = mutableStateListOf<Member>()
+    val memberListItems = mutableStateListOf<MemberListListItem?>()
     
     var currentUser by mutableStateOf<User?>(null)
     var selectedGuild by mutableStateOf<Guild?>(null)
     var selectedChannel by mutableStateOf<Channel?>(null)
     var selectedThread by mutableStateOf<Channel?>(null)
+    var selectedUser by mutableStateOf<User?>(null)
+    var selectedProfile by mutableStateOf<UserProfile?>(null)
     
     var userSettings by mutableStateOf<UserSettings?>(null)
     
@@ -111,6 +114,78 @@ class ChatState(
                             }
                         }
                     }
+                    "GUILD_MEMBER_LIST_UPDATE" -> {
+                        payload.d?.let { data ->
+                            try {
+                                val update = json.decodeFromJsonElement<MemberListUpdate>(data)
+                                if (update.guild_id == selectedGuild?.id) {
+                                    handleMemberListUpdate(update)
+                                }
+                            } catch (e: Exception) {
+                                println("Error decoding GUILD_MEMBER_LIST_UPDATE: ${e.message}")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun handleMemberListUpdate(update: MemberListUpdate) {
+        // Bulk resize if needed to reduce multiple list updates
+        update.member_count?.let { count ->
+            if (memberListItems.size != count) {
+                if (count > memberListItems.size) {
+                    val placeholders = List(count - memberListItems.size) { null }
+                    memberListItems.addAll(placeholders)
+                } else {
+                    repeat(memberListItems.size - count) {
+                        memberListItems.removeAt(memberListItems.size - 1)
+                    }
+                }
+            }
+        }
+
+        for (op in update.ops) {
+            when (op.op) {
+                "SYNC" -> {
+                    val range = op.range ?: continue
+                    val start = range[0]
+                    val items = op.items ?: emptyList()
+                    for (i in items.indices) {
+                        val index = start + i
+                        if (index < memberListItems.size) {
+                            memberListItems[index] = items[i]
+                        }
+                    }
+                }
+                "INSERT" -> {
+                    val index = op.index ?: return
+                    val item = op.item ?: return
+                    memberListItems.add(index.coerceIn(0, memberListItems.size), item)
+                }
+                "UPDATE" -> {
+                    val index = op.index ?: return
+                    val item = op.item ?: return
+                    if (index < memberListItems.size) {
+                        memberListItems[index] = item
+                    }
+                }
+                "DELETE" -> {
+                    val index = op.index ?: return
+                    if (index < memberListItems.size) {
+                        memberListItems.removeAt(index)
+                    }
+                }
+                "INVALIDATE" -> {
+                    val range = op.range ?: continue
+                    val start = range[0]
+                    val end = range[1]
+                    for (i in start..end) {
+                        if (i < memberListItems.size) {
+                            memberListItems[i] = null
+                        }
+                    }
                 }
             }
         }
@@ -170,14 +245,11 @@ class ChatState(
         channels.clear()
         messages.clear()
         forumThreads.clear()
-        members.clear()
+        memberListItems.clear()
         
         scope.launch {
             val guildChannels = discordClient.getGuildChannels(guild.id)
             channels.addAll(guildChannels.filter { it.type == 0 || it.type == 5 || it.type == 4 || it.type == 15 }.sortedBy { it.position })
-            
-            val guildMembers = discordClient.getGuildMembers(guild.id)
-            members.addAll(guildMembers)
         }
     }
 
@@ -197,6 +269,16 @@ class ChatState(
                 val channelMessages = discordClient.getChannelMessages(channel.id)
                 messages.addAll(channelMessages)
             }
+            
+            // Subscribe to member list
+            val guildId = channel.guild_id ?: selectedGuild?.id
+            if (guildId != null) {
+                val subscription = GuildSubscription(
+                    guild_id = guildId,
+                    channels = mapOf(channel.id to listOf(listOf(0, 99)))
+                )
+                gatewayManager.sendPayload(GatewayPayload(op = 14, d = json.encodeToJsonElement(subscription)))
+            }
         }
     }
 
@@ -214,6 +296,14 @@ class ChatState(
         val channelId = selectedChannel?.id ?: return
         scope.launch {
             discordClient.sendMessage(channelId, content)
+        }
+    }
+
+    fun showProfile(userId: String) {
+        selectedProfile = null
+        scope.launch {
+            val profile = discordClient.getUserProfile(userId, selectedGuild?.id)
+            selectedProfile = profile
         }
     }
 }

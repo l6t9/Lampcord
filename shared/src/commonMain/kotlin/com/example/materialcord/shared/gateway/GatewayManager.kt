@@ -98,7 +98,8 @@ class GatewayManager(
         sendPayload(payload)
     }
 
-    private suspend fun sendPayload(payload: GatewayPayload) {
-        session?.send(json.encodeToString(payload))
+    suspend fun sendPayload(payload: GatewayPayload) {
+        val jsonString = json.encodeToString(payload)
+        session?.send(jsonString)
     }
 }
