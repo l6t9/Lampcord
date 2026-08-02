@@ -1,6 +1,7 @@
 package com.example.materialcord.shared.gateway
 
 import com.example.materialcord.shared.model.*
+import com.example.materialcord.shared.utils.getPlatformName
 import io.ktor.client.*
 import io.ktor.client.plugins.websocket.*
 import io.ktor.websocket.*
@@ -87,7 +88,7 @@ class GatewayManager(
         val identify = Identify(
             token = token,
             properties = IdentifyProperties(
-                os = "linux", // Hardcoded for now
+                os = getPlatformName(),
                 browser = "Materialcord",
                 device = "Materialcord"
             ),

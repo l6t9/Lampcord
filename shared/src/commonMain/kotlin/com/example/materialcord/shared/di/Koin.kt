@@ -15,7 +15,7 @@ val appModule = module {
         } 
     }
     single { createHttpClient() }
-    single { DiscordClient(get()) }
+    single { DiscordClient(get(), get()) }
     single { GatewayManager(get(), get()) }
     single { ChatState(get(), get(), get()) }
 }

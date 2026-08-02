@@ -57,6 +57,9 @@ kotlin {
             api(libs.koin.core)
             implementation(libs.koin.compose)
             
+            implementation(libs.multiplatform.settings)
+            implementation(libs.multiplatform.settings.no.arg)
+            
             implementation(libs.materialKolor)
             
             implementation(libs.coil.compose)

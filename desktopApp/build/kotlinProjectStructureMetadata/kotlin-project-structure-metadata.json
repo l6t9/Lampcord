@@ -4,13 +4,13 @@
     "isPublishedAsRoot": "true",
     "variants": [
       {
-        "name": "desktopApiElements",
+        "name": "jvmApiElements",
         "sourceSet": [
           "commonMain"
         ]
       },
       {
-        "name": "desktopRuntimeElements",
+        "name": "jvmRuntimeElements",
         "sourceSet": [
           "commonMain"
         ]
