@@ -1,0 +1,1 @@
+/home/lampu/.konan/kotlin-native-prebuilt-linux-x86_64-2.4.20-Beta2/klib/commonized/2.4.20-Beta2

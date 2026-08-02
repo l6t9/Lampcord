@@ -1,0 +1,383 @@
+{
+  "projectStructure": {
+    "formatVersion": "0.3.3",
+    "isPublishedAsRoot": "true",
+    "variants": [
+      {
+        "name": "androidNativeArm32ApiElements",
+        "sourceSet": [
+          "androidNativeMain",
+          "tzfileMain",
+          "nativeMain",
+          "commonMain"
+        ]
+      },
+      {
+        "name": "androidNativeArm64ApiElements",
+        "sourceSet": [
+          "androidNativeMain",
+          "tzfileMain",
+          "nativeMain",
+          "commonMain"
+        ]
+      },
+      {
+        "name": "androidNativeX64ApiElements",
+        "sourceSet": [
+          "androidNativeMain",
+          "tzfileMain",
+          "nativeMain",
+          "commonMain"
+        ]
+      },
+      {
+        "name": "androidNativeX86ApiElements",
+        "sourceSet": [
+          "androidNativeMain",
+          "tzfileMain",
+          "nativeMain",
+          "commonMain"
+        ]
+      },
+      {
+        "name": "iosArm64ApiElements",
+        "sourceSet": [
+          "darwinDevicesMain",
+          "darwinMain",
+          "tzdbOnFilesystemMain",
+          "tzfileMain",
+          "nativeMain",
+          "commonMain"
+        ]
+      },
+      {
+        "name": "iosSimulatorArm64ApiElements",
+        "sourceSet": [
+          "darwinSimulatorMain",
+          "darwinMain",
+          "tzdbOnFilesystemMain",
+          "tzfileMain",
+          "nativeMain",
+          "commonMain"
+        ]
+      },
+      {
+        "name": "iosX64ApiElements",
+        "sourceSet": [
+          "darwinSimulatorMain",
+          "darwinMain",
+          "tzdbOnFilesystemMain",
+          "tzfileMain",
+          "nativeMain",
+          "commonMain"
+        ]
+      },
+      {
+        "name": "jsApiElements",
+        "sourceSet": [
+          "commonJsMain",
+          "commonMain"
+        ]
+      },
+      {
+        "name": "jsRuntimeElements",
+        "sourceSet": [
+          "commonJsMain",
+          "commonMain"
+        ]
+      },
+      {
+        "name": "jvmApiElements",
+        "sourceSet": [
+          "commonMain"
+        ]
+      },
+      {
+        "name": "jvmRuntimeElements",
+        "sourceSet": [
+          "commonMain"
+        ]
+      },
+      {
+        "name": "linuxArm32HfpApiElements",
+        "sourceSet": [
+          "linuxMain",
+          "tzdbOnFilesystemMain",
+          "tzfileMain",
+          "nativeMain",
+          "commonMain"
+        ]
+      },
+      {
+        "name": "linuxArm64ApiElements",
+        "sourceSet": [
+          "linuxMain",
+          "tzdbOnFilesystemMain",
+          "tzfileMain",
+          "nativeMain",
+          "commonMain"
+        ]
+      },
+      {
+        "name": "linuxX64ApiElements",
+        "sourceSet": [
+          "linuxMain",
+          "tzdbOnFilesystemMain",
+          "tzfileMain",
+          "nativeMain",
+          "commonMain"
+        ]
+      },
+      {
+        "name": "macosArm64ApiElements",
+        "sourceSet": [
+          "darwinDevicesMain",
+          "darwinMain",
+          "tzdbOnFilesystemMain",
+          "tzfileMain",
+          "nativeMain",
+          "commonMain"
+        ]
+      },
+      {
+        "name": "macosX64ApiElements",
+        "sourceSet": [
+          "darwinDevicesMain",
+          "darwinMain",
+          "tzdbOnFilesystemMain",
+          "tzfileMain",
+          "nativeMain",
+          "commonMain"
+        ]
+      },
+      {
+        "name": "mingwX64ApiElements",
+        "sourceSet": [
+          "nativeMain",
+          "commonMain"
+        ]
+      },
+      {
+        "name": "tvosArm64ApiElements",
+        "sourceSet": [
+          "darwinDevicesMain",
+          "darwinMain",
+          "tzdbOnFilesystemMain",
+          "tzfileMain",
+          "nativeMain",
+          "commonMain"
+        ]
+      },
+      {
+        "name": "tvosSimulatorArm64ApiElements",
+        "sourceSet": [
+          "darwinSimulatorMain",
+          "darwinMain",
+          "tzdbOnFilesystemMain",
+          "tzfileMain",
+          "nativeMain",
+          "commonMain"
+        ]
+      },
+      {
+        "name": "tvosX64ApiElements",
+        "sourceSet": [
+          "darwinDevicesMain",
+          "darwinMain",
+          "tzdbOnFilesystemMain",
+          "tzfileMain",
+          "nativeMain",
+          "commonMain"
+        ]
+      },
+      {
+        "name": "wasmJsApiElements",
+        "sourceSet": [
+          "commonJsMain",
+          "commonMain"
+        ]
+      },
+      {
+        "name": "wasmJsRuntimeElements",
+        "sourceSet": [
+          "commonJsMain",
+          "commonMain"
+        ]
+      },
+      {
+        "name": "watchosArm32ApiElements",
+        "sourceSet": [
+          "darwinDevicesMain",
+          "darwinMain",
+          "tzdbOnFilesystemMain",
+          "tzfileMain",
+          "nativeMain",
+          "commonMain"
+        ]
+      },
+      {
+        "name": "watchosArm64ApiElements",
+        "sourceSet": [
+          "darwinDevicesMain",
+          "darwinMain",
+          "tzdbOnFilesystemMain",
+          "tzfileMain",
+          "nativeMain",
+          "commonMain"
+        ]
+      },
+      {
+        "name": "watchosDeviceArm64ApiElements",
+        "sourceSet": [
+          "darwinDevicesMain",
+          "darwinMain",
+          "tzdbOnFilesystemMain",
+          "tzfileMain",
+          "nativeMain",
+          "commonMain"
+        ]
+      },
+      {
+        "name": "watchosSimulatorArm64ApiElements",
+        "sourceSet": [
+          "darwinSimulatorMain",
+          "darwinMain",
+          "tzdbOnFilesystemMain",
+          "tzfileMain",
+          "nativeMain",
+          "commonMain"
+        ]
+      },
+      {
+        "name": "watchosX64ApiElements",
+        "sourceSet": [
+          "darwinDevicesMain",
+          "darwinMain",
+          "tzdbOnFilesystemMain",
+          "tzfileMain",
+          "nativeMain",
+          "commonMain"
+        ]
+      }
+    ],
+    "sourceSets": [
+      {
+        "name": "androidNativeMain",
+        "dependsOn": [
+          "tzfileMain"
+        ],
+        "moduleDependency": [
+          "org.jetbrains.kotlinx:kotlinx-serialization-core",
+          "org.jetbrains.kotlin:kotlin-stdlib"
+        ],
+        "sourceSetCInteropMetadataDirectory": "androidNativeMain-cinterop",
+        "binaryLayout": "klib"
+      },
+      {
+        "name": "commonJsMain",
+        "dependsOn": [
+          "commonMain"
+        ],
+        "moduleDependency": [
+          "org.jetbrains.kotlinx:kotlinx-serialization-core"
+        ],
+        "binaryLayout": "klib"
+      },
+      {
+        "name": "commonMain",
+        "dependsOn": [],
+        "moduleDependency": [
+          "org.jetbrains.kotlin:kotlin-stdlib"
+        ],
+        "binaryLayout": "klib"
+      },
+      {
+        "name": "darwinDevicesMain",
+        "dependsOn": [
+          "darwinMain"
+        ],
+        "moduleDependency": [
+          "org.jetbrains.kotlinx:kotlinx-serialization-core",
+          "org.jetbrains.kotlin:kotlin-stdlib"
+        ],
+        "sourceSetCInteropMetadataDirectory": "darwinDevicesMain-cinterop",
+        "binaryLayout": "klib",
+        "hostSpecific": "true"
+      },
+      {
+        "name": "darwinMain",
+        "dependsOn": [
+          "tzdbOnFilesystemMain"
+        ],
+        "moduleDependency": [
+          "org.jetbrains.kotlinx:kotlinx-serialization-core",
+          "org.jetbrains.kotlin:kotlin-stdlib"
+        ],
+        "sourceSetCInteropMetadataDirectory": "darwinMain-cinterop",
+        "binaryLayout": "klib",
+        "hostSpecific": "true"
+      },
+      {
+        "name": "darwinSimulatorMain",
+        "dependsOn": [
+          "darwinMain"
+        ],
+        "moduleDependency": [
+          "org.jetbrains.kotlinx:kotlinx-serialization-core",
+          "org.jetbrains.kotlin:kotlin-stdlib"
+        ],
+        "sourceSetCInteropMetadataDirectory": "darwinSimulatorMain-cinterop",
+        "binaryLayout": "klib",
+        "hostSpecific": "true"
+      },
+      {
+        "name": "linuxMain",
+        "dependsOn": [
+          "tzdbOnFilesystemMain"
+        ],
+        "moduleDependency": [
+          "org.jetbrains.kotlinx:kotlinx-serialization-core",
+          "org.jetbrains.kotlin:kotlin-stdlib"
+        ],
+        "sourceSetCInteropMetadataDirectory": "linuxMain-cinterop",
+        "binaryLayout": "klib"
+      },
+      {
+        "name": "nativeMain",
+        "dependsOn": [
+          "commonMain"
+        ],
+        "moduleDependency": [
+          "org.jetbrains.kotlin:kotlin-stdlib",
+          "org.jetbrains.kotlinx:kotlinx-serialization-core"
+        ],
+        "sourceSetCInteropMetadataDirectory": "nativeMain-cinterop",
+        "binaryLayout": "klib"
+      },
+      {
+        "name": "tzdbOnFilesystemMain",
+        "dependsOn": [
+          "tzfileMain"
+        ],
+        "moduleDependency": [
+          "org.jetbrains.kotlinx:kotlinx-serialization-core",
+          "org.jetbrains.kotlin:kotlin-stdlib"
+        ],
+        "sourceSetCInteropMetadataDirectory": "tzdbOnFilesystemMain-cinterop",
+        "binaryLayout": "klib"
+      },
+      {
+        "name": "tzfileMain",
+        "dependsOn": [
+          "nativeMain"
+        ],
+        "moduleDependency": [
+          "org.jetbrains.kotlinx:kotlinx-serialization-core",
+          "org.jetbrains.kotlin:kotlin-stdlib"
+        ],
+        "sourceSetCInteropMetadataDirectory": "tzfileMain-cinterop",
+        "binaryLayout": "klib"
+      }
+    ]
+  }
+}
