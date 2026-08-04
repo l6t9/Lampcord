@@ -214,10 +214,12 @@ class ChatState(
                                 op.items?.forEach { it.member?.let { m -> m.user?.let { u -> 
                                     userStore.cacheMember(update.guild_id, u.id, m)
                                     userStore.cacheUser(u)
+                                    m.presence?.let { p -> presenceStore.handlePresenceUpdate(p) }
                                 } } }
                                 op.item?.member?.let { m -> m.user?.let { u -> 
                                     userStore.cacheMember(update.guild_id, u.id, m)
                                     userStore.cacheUser(u)
+                                    m.presence?.let { p -> presenceStore.handlePresenceUpdate(p) }
                                 } }
                             }
                         }
@@ -581,7 +583,7 @@ class ChatState(
         scope.launch { selectedProfile = discordClient.getUserProfile(userId, selectedGuild?.id) }
     }
 
-    fun getUserStatus(userId: String) = presenceStore.getUserStatus(userId, userSettings?.status)
+    fun getUserStatus(userId: String) = presenceStore.getUserStatus(userId, currentUser?.id, userSettings?.status)
     fun updateStatus(status: String) = scope.launch { if (presenceStore.updateStatus(status)) userSettings = userSettings?.copy(status = status) }
     fun updateCustomStatus(text: String?) = scope.launch { if (presenceStore.updateCustomStatus(text)) userSettings = userSettings?.copy(custom_status = me.lampu.lampcord.shared.model.CustomStatus(text = text)) }
 

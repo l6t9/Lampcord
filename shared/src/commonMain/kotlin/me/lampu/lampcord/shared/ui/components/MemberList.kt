@@ -161,8 +161,9 @@ fun MemberItem(member: Member, chatState: ChatState) {
     var itemPosition by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
     var isHovered by remember { mutableStateOf(false) }
 
+    val status = chatState.getUserStatus(user.id)
     val isListening = member.presence?.activities?.any { it.type == 2 } == true
-    val isOffline = (member.presence?.status == "offline" || member.presence == null) && !isListening
+    val isOffline = (status == "offline" || status == "invisible") && !isListening
 
     ContextMenu(
         items = contextMenuItems,

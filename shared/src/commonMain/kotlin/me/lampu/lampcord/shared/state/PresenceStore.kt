@@ -11,8 +11,9 @@ class PresenceStore(private val discordClient: DiscordClient) {
         presences[update.user.id] = update
     }
 
-    fun getUserStatus(userId: String, currentUserStatus: String?): String {
-        return presences[userId]?.status ?: currentUserStatus ?: "offline"
+    fun getUserStatus(userId: String, currentUserId: String?, currentUserStatus: String?): String {
+        if (userId == currentUserId) return currentUserStatus ?: "online"
+        return presences[userId]?.status ?: "offline"
     }
 
     suspend fun updateStatus(status: String): Boolean {

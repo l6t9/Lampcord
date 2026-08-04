@@ -59,7 +59,7 @@ fun StatusIndicator(
                 // Hollow ring for offline
                 Box(
                     modifier = Modifier
-                        .fillMaxSize(0.45f)
+                        .fillMaxSize(0.6f)
                         .background(backgroundColor, CircleShape)
                 )
             }

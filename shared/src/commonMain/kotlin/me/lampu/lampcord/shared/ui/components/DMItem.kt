@@ -6,6 +6,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.Channel
@@ -22,6 +23,9 @@ fun DMItem(channel: Channel, chatState: ChatState) {
     }
     val name = recipient?.let { it.global_name ?: it.username } ?: "Unnamed DM"
 
+    val status = recipient?.let { chatState.getUserStatus(it.id) } ?: "offline"
+    val isOffline = status == "offline" || status == "invisible"
+
     val contextMenuItems = remember(channel, chatState.userSettings) {
         val items = mutableListOf(
             ContextMenuItem("Mark as Read", Icons.Filled.Check) { /* TODO */ },
@@ -36,7 +40,13 @@ fun DMItem(channel: Channel, chatState: ChatState) {
     
     ContextMenu(items = contextMenuItems) {
         Surface(
-            modifier = Modifier.fillMaxWidth().height(48.dp).padding(horizontal = 8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp)
+                .padding(horizontal = 8.dp)
+                .graphicsLayer {
+                    alpha = if (isOffline) 0.6f else 1f
+                },
             onClick = { chatState.selectChannel(channel) },
             color = if (isSelected) 
                 MaterialTheme.colorScheme.surfaceVariant 
