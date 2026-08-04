@@ -23,7 +23,7 @@ kotlin {
 
 compose.desktop {
    application {
-       mainClass = "com.example.lampcord.MainKt"
+       mainClass = "me.lampu.lampcord.MainKt"
        nativeDistributions {
            targetFormats(org.jetbrains.compose.desktop.application.dsl.TargetFormat.Dmg, org.jetbrains.compose.desktop.application.dsl.TargetFormat.Msi, org.jetbrains.compose.desktop.application.dsl.TargetFormat.Deb)
            packageName = "Lampcord"

@@ -18,7 +18,7 @@ kotlin {
     }
 
     android {
-        namespace = "com.example.lampcord.shared"
+        namespace = "me.lampu.lampcord.shared"
         compileSdk = 37
         minSdk = 24
     }

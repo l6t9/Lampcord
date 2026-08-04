@@ -53,7 +53,7 @@ except ImportError:  # pragma: no cover
     sys.exit("This script needs fonttools. Install it with: pip install fonttools")
 
 ROOT = Path(__file__).resolve().parent.parent
-ICON_DIR = ROOT / "shared/src/commonMain/kotlin/com/example/lampcord/shared/ui/icons"
+ICON_DIR = ROOT / "shared/src/commonMain/kotlin/me.lampu.lampcord/shared/ui/icons"
 FONT_DIR = Path(__file__).resolve().parent / ".fonts"
 
 REPO = "https://github.com/google/material-design-icons/raw/master/variablefont"
@@ -246,7 +246,7 @@ def write_file(style: str, entries: dict[str, str]) -> None:
     lines = [
         '@file:Suppress("ktlint:standard:max-line-length")',
         "",
-        "package com.example.lampcord.shared.ui.icons",
+        "package me.lampu.lampcord.shared.ui.icons",
         "",
         "import androidx.compose.ui.graphics.vector.ImageVector",
         "",
