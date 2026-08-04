@@ -606,7 +606,7 @@ class ChatState(
         replyingTo = null
         pendingFiles.clear()
     }
-
+    
     fun forwardMessage(destinationChannel: Channel, message: Message) {
         val user = currentUser ?: return
         messageStore.sendMessage(

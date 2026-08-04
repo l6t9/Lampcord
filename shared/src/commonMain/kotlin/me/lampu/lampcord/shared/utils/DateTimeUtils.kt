@@ -128,4 +128,20 @@ object DateTimeUtils {
             else -> "$month $day, $year $timeShort"
         }
     }
+        fun getCurrentTime(): String {
+                val now = Clock.System.now()
+                val timeZone = TimeZone.currentSystemDefault()
+                val localDateTime = now.toLocalDateTime(timeZone)
+                val nowDate = now.toLocalDateTime(timeZone).date
+    
+                val hour = localDateTime.hour
+                val minute = localDateTime.minute.toString().padStart(2, '0')
+                val amPm = if (hour >= 12) "PM" else "AM"
+                val displayHour = when {
+                        hour == 0 -> 12
+                        hour > 12 -> hour - 12
+                        else -> hour
+                }
+                return ("$displayHour:$minute $amPm")
+        }
 }

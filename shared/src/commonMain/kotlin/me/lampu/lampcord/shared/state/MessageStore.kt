@@ -6,6 +6,7 @@ import me.lampu.lampcord.shared.model.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlin.random.Random
+import me.lampu.lampcord.shared.utils.DateTimeUtils
 
 class MessageStore(
     private val discordClient: DiscordClient,
@@ -57,7 +58,7 @@ class MessageStore(
     fun handleMessageDelete(id: String) {
         messages.removeAll { it.id == id }
     }
-
+    
     fun sendMessage(
         channelId: String,
         content: String,
@@ -76,11 +77,7 @@ class MessageStore(
             channel_id = channelId,
             author = currentUser,
             content = content,
-            timestamp = MessageTimestamp(
-                timestamp = nowMillis.toString(),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-            ),
+            timestamp = DateTimeUtils.getCurrentTime(),
             nonce = nonce,
             isPending = true,
             guild_id = guildId
@@ -90,41 +87,6 @@ class MessageStore(
         messageTasks.add(MessageTask(nonce, channelId, content, replyTo, files, forwardFrom))
 
         startQueueProcessing()
-    }
-
-    @OptIn(ExperimentalMaterial3Api::class)
-    @Composable
-    private fun MessageTimestamp(timestamp: String, style: androidx.compose.ui.text.TextStyle, color: Color) {
-        val fullDate = remember(timestamp) { DateTimeUtils.formatFullDate(timestamp) }
-        val displayDate = remember(timestamp) { DateTimeUtils.formatTimestamp(timestamp) }
-
-        TooltipBox(
-            positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
-                positioning = TooltipAnchorPosition.Above
-            ),
-            tooltip = {
-                RichTooltip(
-                    caretShape = TooltipDefaults.caretShape()
-                ) {
-                    val parts = fullDate.split(" at ")
-                    if (parts.size == 2) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(parts[0])
-                            Text(parts[1])
-                        }
-                    } else {
-                        Text(fullDate)
-                    }
-                }
-            },
-            state = rememberTooltipState()
-        ) {
-            Text(
-                text = displayDate,
-                style = style,
-                color = color
-            )
-        }
     }
 
     private fun startQueueProcessing() {
