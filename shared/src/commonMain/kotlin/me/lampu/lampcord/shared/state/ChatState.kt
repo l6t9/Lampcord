@@ -159,8 +159,10 @@ class ChatState(
                                 if (guildStore.allGuildChannels[guild.id] == null) {
                                     try {
                                         val gChannels = discordClient.getGuildChannels(guild.id)
-                                        guildStore.allGuildChannels[guild.id] = gChannels.filter { it.type in listOf(0, 5, 4, 15) }.sortedBy { it.position }
-                                        kotlinx.coroutines.delay(100) // Avoid spamming
+                                        if (gChannels.isNotEmpty()) {
+                                            guildStore.allGuildChannels[guild.id] = gChannels.filter { it.type in listOf(0, 5, 4, 15) }.sortedBy { it.position }
+                                        }
+                                        kotlinx.coroutines.delay(500) // Increase delay to avoid rate limits
                                     } catch (e: Exception) { }
                                 }
                             }
@@ -502,10 +504,12 @@ class ChatState(
         guildLoadingJob = scope.launch {
             subscribeToGuild(guild.id)
             val guildChannels = discordClient.getGuildChannels(guild.id)
-            val filtered = guildChannels.filter { it.type in listOf(0, 5, 4, 15) }.sortedBy { it.position }
-            guildStore.allGuildChannels[guild.id] = filtered
-            channels.clear()
-            channels.addAll(filtered)
+            if (guildChannels.isNotEmpty()) {
+                val filtered = guildChannels.filter { it.type in listOf(0, 5, 4, 15) }.sortedBy { it.position }
+                guildStore.allGuildChannels[guild.id] = filtered
+                channels.clear()
+                channels.addAll(filtered)
+            }
             val lastChannelId = Settings.shared.getLastChannel(guild.id)
             val channelToSelect = if (lastChannelId != null) channels.find { it.id == lastChannelId } else channels.firstOrNull { it.type in listOf(0, 5, 15) }
             channelToSelect?.let { selectChannel(it) }

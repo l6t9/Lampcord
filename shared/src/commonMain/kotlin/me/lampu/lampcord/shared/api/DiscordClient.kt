@@ -203,9 +203,17 @@ class DiscordClient(
     suspend fun getGuildChannels(guildId: String): List<Channel> {
         if (token == null) return emptyList()
         return try {
-            httpClient.get("$apiBase/guilds/$guildId/channels") {
+            val response = httpClient.get("$apiBase/guilds/$guildId/channels") {
                 header(HttpHeaders.Authorization, token!!)
-            }.body()
+            }
+            if (response.status.isSuccess()) {
+                response.body()
+            } else {
+                if (response.status.value == 429) {
+                    println("Rate limited while fetching channels for guild $guildId")
+                }
+                emptyList()
+            }
         } catch (e: Exception) {
             println("Error fetching channels: ${e.message}")
             emptyList()
@@ -215,13 +223,14 @@ class DiscordClient(
     suspend fun getChannelMessages(channelId: String, limit: Int = 50, before: String? = null): List<Message> {
         if (token == null) return emptyList()
         return try {
-            httpClient.get("$apiBase/channels/$channelId/messages") {
+            val response = httpClient.get("$apiBase/channels/$channelId/messages") {
                 header(HttpHeaders.Authorization, token!!)
                 parameter("limit", limit)
                 if (before != null) {
                     parameter("before", before)
                 }
-            }.body()
+            }
+            if (response.status.isSuccess()) response.body() else emptyList()
         } catch (e: Exception) {
             println("Error fetching messages: ${e.message}")
             emptyList()
@@ -284,9 +293,10 @@ class DiscordClient(
             } else {
                 "$apiBase/users/$userId/profile"
             }
-            httpClient.get(url) {
+            val response = httpClient.get(url) {
                 header(HttpHeaders.Authorization, token!!)
-            }.body()
+            }
+            if (response.status.isSuccess()) response.body() else null
         } catch (e: Exception) {
             println("Error fetching user profile: ${e.message}")
             null
@@ -324,9 +334,10 @@ class DiscordClient(
     suspend fun getRelationships(): List<Relationship> {
         if (token == null) return emptyList()
         return try {
-            httpClient.get("$apiBase/users/@me/relationships") {
+            val response = httpClient.get("$apiBase/users/@me/relationships") {
                 header(HttpHeaders.Authorization, token!!)
-            }.body()
+            }
+            if (response.status.isSuccess()) response.body() else emptyList()
         } catch (e: Exception) {
             println("Error fetching relationships: ${e.message}")
             emptyList()
