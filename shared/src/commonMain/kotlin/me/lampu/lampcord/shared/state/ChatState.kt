@@ -162,7 +162,7 @@ class ChatState(
                                         if (gChannels.isNotEmpty()) {
                                             guildStore.allGuildChannels[guild.id] = gChannels.filter { it.type in listOf(0, 5, 4, 15) }.sortedBy { it.position }
                                         }
-                                        kotlinx.coroutines.delay(500) // Increase delay to avoid rate limits
+                                        kotlinx.coroutines.delay(100) // Reverted delay
                                     } catch (e: Exception) { }
                                 }
                             }
