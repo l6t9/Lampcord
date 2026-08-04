@@ -27,7 +27,7 @@ fun ForwardedMessage(message: Message, chatState: ChatState) {
     
     Column(
         modifier = Modifier
-            .padding(start = 4.dp, top = 4.dp, bottom = 4.dp)
+            .padding(start = 4.dp, top = 4.dp)
             .drawBehind {
                 drawLine(
                     color = Color.Gray.copy(alpha = 0.3f),
@@ -58,7 +58,7 @@ fun ForwardedMessage(message: Message, chatState: ChatState) {
             )
         }
         
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(2.dp))
         
         // Content
         DiscordMarkdownText(
@@ -70,8 +70,6 @@ fun ForwardedMessage(message: Message, chatState: ChatState) {
         if (msg.attachments.isNotEmpty() || msg.embeds.isNotEmpty() || !msg.sticker_items.isNullOrEmpty() || !msg.components.isNullOrEmpty()) {
             MessageAttachments(msg.attachments, msg.embeds, msg.sticker_items, components = msg.components, chatState = chatState)
         }
-
-        Spacer(Modifier.height(8.dp))
 
         // Footer / Source Link
         val reference = message.message_reference
@@ -105,7 +103,7 @@ fun ForwardedMessage(message: Message, chatState: ChatState) {
                 shape = RoundedCornerShape(4.dp)
             ) {
                 Row(
-                    modifier = Modifier.padding(vertical = 2.dp),
+                    modifier = Modifier.padding(vertical = 0.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (guild != null) {
