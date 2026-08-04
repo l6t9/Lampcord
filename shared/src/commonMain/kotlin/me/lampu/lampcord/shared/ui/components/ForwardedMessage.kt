@@ -31,23 +31,25 @@ fun ForwardedMessage(message: Message, chatState: ChatState) {
             .drawBehind {
                 drawLine(
                     color = Color.Gray.copy(alpha = 0.3f),
-                    start = androidx.compose.ui.geometry.Offset(2.dp.toPx(), 0f),
-                    end = androidx.compose.ui.geometry.Offset(2.dp.toPx(), size.height),
-                    strokeWidth = 2.dp.toPx(),
+                    start = androidx.compose.ui.geometry.Offset(2.dp.toPx(), 4.dp.toPx()),
+                    end = androidx.compose.ui.geometry.Offset(2.dp.toPx(), size.height - 4.dp.toPx()),
+                    strokeWidth = 4.dp.toPx(),
                     cap = StrokeCap.Round
                 )
             }
             .padding(start = 16.dp)
     ) {
         // Header
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
             Icon(
                 imageVector = Icons.Filled.Forward,
                 contentDescription = null,
                 modifier = Modifier.size(12.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
             )
-            Spacer(Modifier.width(6.dp))
             Text(
                 text = "Forwarded",
                 style = MaterialTheme.typography.labelSmall.copy(
@@ -57,8 +59,6 @@ fun ForwardedMessage(message: Message, chatState: ChatState) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
             )
         }
-        
-        Spacer(Modifier.height(2.dp))
         
         // Content
         DiscordMarkdownText(
@@ -104,7 +104,8 @@ fun ForwardedMessage(message: Message, chatState: ChatState) {
             ) {
                 Row(
                     modifier = Modifier.padding(vertical = 0.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     if (guild != null) {
                         val iconUrl = guild.icon?.let {
@@ -124,8 +125,6 @@ fun ForwardedMessage(message: Message, chatState: ChatState) {
                             }
                         }
                         
-                        Spacer(Modifier.width(6.dp))
-                        
                         Text(
                             text = guild.name ?: "Unknown Server",
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
@@ -139,7 +138,6 @@ fun ForwardedMessage(message: Message, chatState: ChatState) {
                             modifier = Modifier.size(14.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                         )
-                        Spacer(Modifier.width(6.dp))
                         Text(
                             text = "Direct Message",
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
@@ -164,7 +162,6 @@ fun ForwardedMessage(message: Message, chatState: ChatState) {
                     )
                     
                     if (canLink) {
-                        Spacer(Modifier.width(2.dp))
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                             contentDescription = null,
