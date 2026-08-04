@@ -581,7 +581,7 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
                         MessageBody(message, chatState)
 
                         message.message_snapshots?.firstOrNull()?.let { snapshot ->
-                            ForwardedMessage(snapshot, chatState)
+                            ForwardedMessage(message, chatState)
                         }
 
                         ReactionsView(message, chatState)
