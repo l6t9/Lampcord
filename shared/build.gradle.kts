@@ -18,7 +18,7 @@ kotlin {
     }
 
     android {
-        namespace = "com.example.materialcord.shared"
+        namespace = "com.example.lampcord.shared"
         compileSdk = 37
         minSdk = 24
     }
@@ -70,12 +70,15 @@ kotlin {
             dependencies {
                 implementation(libs.androidx.appcompat)
                 implementation(libs.androidx.activity.compose)
+                implementation(libs.androidx.media3.exoplayer)
+                implementation(libs.androidx.media3.ui)
             }
         }
         
         getByName("desktopMain") {
             dependencies {
                 implementation(compose.desktop.currentOs)
+                implementation(libs.vlcj)
             }
         }
     }

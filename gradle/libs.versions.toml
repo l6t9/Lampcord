@@ -16,8 +16,11 @@ kotlinx-coroutines = "1.11.0"
 kotlinx-datetime = "0.8.0"
 koin = "4.2.2"
 coil = "3.5.0"
+media3 = "1.5.1"
 materialKolor = "5.0.0"
 multiplatformSettings = "1.3.0"
+jna = "5.16.0"
+vlcj = "4.8.2"
 
 [libraries]
 multiplatform-settings = { module = "com.russhwolf:multiplatform-settings", version.ref = "multiplatformSettings" }
@@ -55,6 +58,10 @@ koin-android = { module = "io.insert-koin:koin-android", version.ref = "koin" }
 
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
 coil-network-ktor = { module = "io.coil-kt.coil3:coil-network-ktor3", version.ref = "coil" }
+androidx-media3-exoplayer = { group = "androidx.media3", name = "media3-exoplayer", version.ref = "media3" }
+androidx-media3-ui = { group = "androidx.media3", name = "media3-ui", version.ref = "media3" }
+jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
+vlcj = { module = "uk.co.caprica:vlcj", version.ref = "vlcj" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

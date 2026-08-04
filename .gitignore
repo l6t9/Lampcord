@@ -1,15 +1,13 @@
 *.iml
 .gradle
 /local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
+/.idea/
 .DS_Store
-/build
+build/
+**/build/
 /captures
 .externalNativeBuild
 .cxx
-local.properties
+
+# Downloaded Material Symbols fonts (fetched by scripts/generate_material_symbols.py)
+/scripts/.fonts

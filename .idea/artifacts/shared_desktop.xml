@@ -2,7 +2,7 @@
   <artifact type="jar" name="shared-desktop">
     <output-path>$PROJECT_DIR$/shared/build/libs</output-path>
     <root id="archive" name="shared-desktop.jar">
-      <element id="module-output" name="Materialcord.shared.desktopMain" />
+      <element id="module-output" name="Lampcord.shared.desktopMain" />
     </root>
   </artifact>
 </component>

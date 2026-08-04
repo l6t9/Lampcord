@@ -1,0 +1,456 @@
+package com.example.lampcord.shared.ui.components
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.*
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.Placeholder
+import androidx.compose.ui.text.PlaceholderVerticalAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.lampcord.shared.state.ChatState
+import androidx.compose.foundation.text.InlineTextContent
+import androidx.compose.foundation.text.appendInlineContent
+import com.example.lampcord.shared.model.toTwemojiUrl
+import com.example.lampcord.shared.utils.EmojiIndex
+import com.example.lampcord.shared.utils.DateTimeUtils
+
+@Composable
+fun DiscordMarkdownText(
+    content: String,
+    modifier: Modifier = Modifier,
+    style: TextStyle = MaterialTheme.typography.bodyLarge,
+    color: Color = Color.Unspecified,
+    chatState: ChatState? = null
+) {
+    var revealedSpoilers by remember { mutableStateOf(setOf<Int>()) }
+    val primaryColor = MaterialTheme.colorScheme.primary
+    
+    val fontSize = style.fontSize.takeIf { it.isSp } ?: 16.sp
+    val emojiSize = (fontSize.value * 1.4f).sp
+    
+    val processedContent = remember(content) {
+        content.split('\n').joinToString("\n") { line ->
+            val leadingSpaces = line.takeWhile { it == ' ' }.length
+            if (leadingSpaces > 0 && line.trim().isNotEmpty()) {
+                "\u00A0".repeat(leadingSpaces) + line.substring(leadingSpaces)
+            } else {
+                line
+            }
+        }
+    }
+
+    val annotatedString = remember(processedContent, chatState, revealedSpoilers, primaryColor) {
+        buildAnnotatedString {
+            appendDiscordMarkdown(processedContent, chatState, revealedSpoilers, primaryColor) { index ->
+                revealedSpoilers = revealedSpoilers + index
+            }
+        }
+    }
+
+    val inlineContent = remember(annotatedString, emojiSize) {
+        val map = mutableMapOf<String, InlineTextContent>()
+        annotatedString.getStringAnnotations("EMOJI", 0, annotatedString.length).forEach { annotation ->
+            val parts = annotation.item.split(":")
+            val id = parts[0]
+            val animated = parts[1] == "a"
+            val name = parts[2]
+            val url = "https://cdn.discordapp.com/emojis/$id.webp?size=44&animated=$animated"
+            
+            map[annotation.item] = InlineTextContent(
+                Placeholder(emojiSize, emojiSize, PlaceholderVerticalAlign.Center)
+            ) {
+                AsyncImage(
+                    model = url,
+                    contentDescription = name,
+                    modifier = Modifier.fillMaxSize(),
+                    filterQuality = FilterQuality.Medium,
+                    showPlaceholder = false
+                )
+            }
+        }
+        annotatedString.getStringAnnotations("UNICODE_EMOJI", 0, annotatedString.length).forEach { annotation ->
+            val emoji = annotation.item
+            val url = emoji.toTwemojiUrl()
+            val key = "UNICODE_EMOJI:$emoji:${annotation.start}"
+            map[key] = InlineTextContent(
+                Placeholder(emojiSize, emojiSize, PlaceholderVerticalAlign.Center)
+            ) {
+                var loadFailed by remember { mutableStateOf(false) }
+                
+                Box(contentAlignment = Alignment.Center) {
+                    if (!loadFailed && url.isNotEmpty()) {
+                        AsyncImage(
+                            model = url,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            filterQuality = FilterQuality.Medium,
+                            showPlaceholder = false,
+                            onState = { state ->
+                                if (state is coil3.compose.AsyncImagePainter.State.Error) {
+                                    loadFailed = true
+                                }
+                            }
+                        )
+                    }
+                    if (loadFailed || url.isEmpty()) {
+                        Text(text = emoji, fontSize = 17.sp)
+                    }
+                }
+            }
+        }
+        map
+    }
+
+    Text(
+        text = annotatedString,
+        modifier = modifier,
+        style = style.copy(color = if (color != Color.Unspecified) color else LocalContentColor.current),
+        inlineContent = inlineContent
+    )
+}
+
+private fun AnnotatedString.Builder.appendDiscordMarkdown(
+    content: String,
+    chatState: ChatState?,
+    revealedSpoilers: Set<Int>,
+    primaryColor: Color,
+    onSpoilerClick: (Int) -> Unit
+) {
+    val patterns = listOf(
+        // Code blocks
+        Regex("""```(\w*)\n?([\s\S]*?)\n?```""") to "CODE_BLOCK",
+        // Block quotes (Multi-line)
+        Regex("""^>>> ([\s\S]*)$""", RegexOption.MULTILINE) to "BLOCKQUOTE_MULTI",
+        // Block quotes (Single-line)
+        Regex("""^> (.*)$""", RegexOption.MULTILINE) to "BLOCKQUOTE",
+        // Headers
+        Regex("""^### (.*)$""", RegexOption.MULTILINE) to "H3",
+        Regex("""^## (.*)$""", RegexOption.MULTILINE) to "H2",
+        Regex("""^# (.*)$""", RegexOption.MULTILINE) to "H1",
+        // Bullets
+        Regex("""^[*\-]\s+(.*)$""", RegexOption.MULTILINE) to "BULLET",
+        // Subtext
+        Regex("""^-# (.*)$""", RegexOption.MULTILINE) to "SUBTEXT",
+        // Spoilers
+        Regex("""\|\|([\s\S]+?)\|\|""") to "SPOILER",
+        // Suppressed links
+        Regex("""<(https?://[^>]+)>""") to "URL_SUPPRESSED",
+        // Masked links
+        Regex("""\[([^\]]+)\]\((https?://[^\s\)]+)\)""") to "MASKED_LINK",
+        // Auto links
+        Regex("""(https?://[^\s\)>]+)""") to "URL",
+        // Bold
+        Regex("""\*\*([^*]+)\*\*""") to "BOLD",
+        // Underline
+        Regex("""__([^_]+)__""") to "UNDERLINE",
+        // Italic
+        Regex("""\*([^*]+)\*""") to "ITALIC",
+        Regex("""_([^_]+)_""") to "ITALIC",
+        // Strikethrough
+        Regex("""~~([^~]+)~~""") to "STRIKE",
+        // Inline code
+        Regex("""`([^`]+)`""") to "CODE",
+        // Custom Emojis
+        Regex("""<(a?):(\w+):(\d+)>""") to "EMOJI",
+        // Timestamps
+        Regex("""<t:(-?\d+)(?::([tTdDfFR]))?>""") to "TIMESTAMP",
+        // Mentions
+        Regex("""<@!?(\d+)>""") to "MENTION",
+        Regex("""<#(\d+)>""") to "CHANNEL",
+        Regex("""<@&(\d+)>""") to "ROLE",
+        // Slash Commands
+        Regex("""</([\w\- ]+):(\d+)>""") to "SLASH_COMMAND",
+        Regex("""@(everyone)""") to "EVERYONE",
+        Regex("""@(here)""") to "HERE"
+    )
+
+    val allMatches = mutableListOf<Triple<IntRange, MatchResult?, String>>()
+    patterns.forEach { (regex, tag) ->
+        regex.findAll(content).forEach { match ->
+            allMatches.add(Triple(match.range, match, tag))
+        }
+    }
+    
+    // Add Unicode Emojis using EmojiIndex manual scan
+    var scanIdx = 0
+    while (scanIdx < content.length) {
+        val found = EmojiIndex.findEmojiInString(content, scanIdx)
+        if (found != null) {
+            val (emoji, len) = found
+            allMatches.add(Triple(scanIdx until (scanIdx + len), null, "UNICODE_EMOJI"))
+            scanIdx += len
+        } else {
+            scanIdx++
+        }
+    }
+    
+    val sortedMatches = allMatches.sortedWith(compareBy({ it.first.first }, { -it.first.last }))
+    
+    var lastIndex = 0
+    var i = 0
+    while (i < sortedMatches.size) {
+        val (range, match, tag) = sortedMatches[i]
+        
+        if (range.first < lastIndex) {
+            i++
+            continue
+        }
+        
+        if (range.first > lastIndex) {
+            append(content.substring(lastIndex, range.first))
+        }
+        
+        when (tag) {
+            "UNICODE_EMOJI" -> {
+                val emoji = content.substring(range)
+                val key = "UNICODE_EMOJI:$emoji:${range.first}"
+                pushStringAnnotation("UNICODE_EMOJI", emoji)
+                appendInlineContent(key, emoji)
+                pop()
+            }
+            "H1" -> withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontSize = 24.sp)) { 
+                appendDiscordMarkdown(match!!.groupValues[1], chatState, revealedSpoilers, primaryColor, onSpoilerClick) 
+            }
+            "H2" -> withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontSize = 20.sp)) { 
+                appendDiscordMarkdown(match!!.groupValues[1], chatState, revealedSpoilers, primaryColor, onSpoilerClick) 
+            }
+            "H3" -> withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontSize = 18.sp)) { 
+                appendDiscordMarkdown(match!!.groupValues[1], chatState, revealedSpoilers, primaryColor, onSpoilerClick) 
+            }
+            "BLOCKQUOTE", "BLOCKQUOTE_MULTI" -> {
+                withStyle(style = SpanStyle(color = Color.Gray, background = Color.Gray.copy(alpha = 0.1f))) {
+                    append("▎")
+                    appendDiscordMarkdown(match!!.groupValues[1], chatState, revealedSpoilers, primaryColor, onSpoilerClick)
+                }
+            }
+            "SUBTEXT" -> withStyle(SpanStyle(fontSize = 12.sp, color = Color.Gray)) { 
+                appendDiscordMarkdown(match!!.groupValues[1], chatState, revealedSpoilers, primaryColor, onSpoilerClick) 
+            }
+            "BULLET" -> {
+                append("  • ")
+                appendDiscordMarkdown(match!!.groupValues[1], chatState, revealedSpoilers, primaryColor, onSpoilerClick)
+            }
+            "SPOILER" -> {
+                val spoilerText = match!!.groupValues[1]
+                val index = range.first
+                val isRevealed = revealedSpoilers.contains(index)
+                if (isRevealed) {
+                    withStyle(style = SpanStyle(background = Color.Gray.copy(alpha = 0.2f))) {
+                        appendDiscordMarkdown(spoilerText, chatState, revealedSpoilers, primaryColor, onSpoilerClick)
+                    }
+                } else {
+                    val link = LinkAnnotation.Clickable(
+                        tag = "SPOILER",
+                        linkInteractionListener = { onSpoilerClick(index) }
+                    )
+                    withStyle(style = SpanStyle(color = Color.Transparent, background = Color.DarkGray)) {
+                        pushLink(link)
+                        append(spoilerText)
+                        pop()
+                    }
+                }
+            }
+            "MASKED_LINK" -> {
+                val text = match!!.groupValues[1]
+                val url = match.groupValues[2]
+                val link = LinkAnnotation.Url(url)
+                withStyle(style = SpanStyle(color = Color(0xFF00A8FC), textDecoration = TextDecoration.Underline)) {
+                    pushLink(link)
+                    appendDiscordMarkdown(text, chatState, revealedSpoilers, primaryColor, onSpoilerClick)
+                    pop()
+                }
+            }
+            "URL", "URL_SUPPRESSED" -> {
+                val url = if (tag == "URL_SUPPRESSED") match!!.groupValues[1] else match!!.groupValues[0]
+                val link = LinkAnnotation.Url(url)
+                withStyle(style = SpanStyle(color = Color(0xFF00A8FC), textDecoration = TextDecoration.Underline)) {
+                    pushLink(link)
+                    append(url)
+                    pop()
+                }
+            }
+            "BOLD" -> withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) { 
+                appendDiscordMarkdown(match!!.groupValues[1], chatState, revealedSpoilers, primaryColor, onSpoilerClick) 
+            }
+            "UNDERLINE" -> withStyle(style = SpanStyle(textDecoration = TextDecoration.Underline)) { 
+                appendDiscordMarkdown(match!!.groupValues[1], chatState, revealedSpoilers, primaryColor, onSpoilerClick) 
+            }
+            "ITALIC" -> withStyle(style = SpanStyle(fontStyle = FontStyle.Italic)) { 
+                appendDiscordMarkdown(match!!.groupValues[1], chatState, revealedSpoilers, primaryColor, onSpoilerClick) 
+            }
+            "STRIKE" -> withStyle(style = SpanStyle(textDecoration = TextDecoration.LineThrough)) { 
+                appendDiscordMarkdown(match!!.groupValues[1], chatState, revealedSpoilers, primaryColor, onSpoilerClick)
+            }
+            "CODE_BLOCK" -> {
+                val language = match!!.groupValues[1].lowercase().let { languageAliases[it] ?: it }
+                val code = match.groupValues[2]
+                withStyle(style = SpanStyle(
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 13.sp,
+                    background = Color.Black.copy(alpha = 0.3f)
+                )) {
+                    append("\n")
+                    appendCodeWithHighlighting(code, language)
+                    append("\n")
+                }
+            }
+            "CODE" -> withStyle(style = SpanStyle(fontFamily = FontFamily.Monospace, background = Color.LightGray.copy(alpha = 0.2f))) { 
+                append(match!!.groupValues[1]) 
+            }
+            "EMOJI" -> {
+                val animated = match!!.groupValues[1] == "a"
+                val name = match.groupValues[2]
+                val id = match.groupValues[3]
+                val key = "$id:${if (animated) "a" else "p"}:$name"
+                pushStringAnnotation("EMOJI", key)
+                appendInlineContent(key, "<$name>")
+                pop()
+            }
+            "TIMESTAMP" -> {
+                val epoch = match!!.groupValues[1].toLongOrNull() ?: 0L
+                val format = match.groupValues[2].ifEmpty { "f" }
+                val formatted = DateTimeUtils.formatDiscordTimestamp(epoch, format)
+                withStyle(SpanStyle(background = Color.Gray.copy(alpha = 0.1f))) {
+                    append(formatted)
+                }
+            }
+            "SLASH_COMMAND" -> {
+                val name = match!!.groupValues[1]
+                val mentionColor = primaryColor
+                val mentionBg = mentionColor.copy(alpha = 0.1f)
+                withStyle(style = SpanStyle(color = mentionColor, fontWeight = FontWeight.Medium, background = mentionBg)) {
+                    append("/$name")
+                }
+            }
+            "MENTION", "CHANNEL", "ROLE", "EVERYONE", "HERE" -> {
+                val id = if (tag == "EVERYONE" || tag == "HERE") "" else match!!.groupValues[1]
+                var name = id
+                var prefix = "@"
+                val mentionColor = primaryColor
+                val mentionBg = mentionColor.copy(alpha = 0.1f)
+                
+                when(tag) {
+                    "MENTION" -> {
+                        val member = chatState?.getMember(chatState.selectedGuild?.id ?: "", id)
+                        name = member?.nick ?: chatState?.userStore?.getUser(id)?.let { it.global_name ?: it.username } ?: id
+                    }
+                    "CHANNEL" -> {
+                        prefix = "#"
+                        name = chatState?.channels?.find { it.id == id }?.name ?: id
+                    }
+                    "ROLE" -> {
+                        val role = chatState?.selectedGuild?.roles?.find { it.id == id }
+                        name = role?.name ?: id
+                    }
+                    "EVERYONE" -> name = "everyone"
+                    "HERE" -> name = "here"
+                }
+                
+                val link = if (tag == "MENTION" && chatState != null) {
+                    LinkAnnotation.Clickable(
+                        tag = "MENTION",
+                        linkInteractionListener = { chatState.showProfile(id) }
+                    )
+                } else null
+
+                withStyle(style = SpanStyle(color = mentionColor, fontWeight = FontWeight.Medium, background = mentionBg)) {
+                    if (link != null) {
+                        pushLink(link)
+                        append("$prefix$name")
+                        pop()
+                    } else {
+                        append("$prefix$name")
+                    }
+                }
+            }
+        }
+        
+        lastIndex = range.last + 1
+        i++
+    }
+    
+    if (lastIndex < content.length) {
+        append(content.substring(lastIndex))
+    }
+}
+
+private val languageAliases = mapOf(
+    "cs" to "csharp",
+    "ps" to "powershell",
+    "py" to "python",
+    "ml" to "ocaml",
+    "md" to "markdown",
+    "xl" to "excel-formula",
+    "kt" to "kotlin",
+    "js" to "javascript",
+    "ts" to "typescript",
+)
+
+private fun AnnotatedString.Builder.appendCodeWithHighlighting(code: String, language: String) {
+    val keywordColor = Color(0xFFF47067)
+    val stringColor = Color(0xFF96D0FF)
+    val commentColor = Color(0xFF8B949E)
+    val numberColor = Color(0xFFD2A8FF)
+    val functionColor = Color(0xFFD2A8FF)
+    
+    val keywords = setOf(
+        "val", "var", "fun", "class", "object", "if", "else", "when", "return", "import", "package", 
+        "private", "public", "protected", "override", "suspend", "interface", "typealias", "it", "this", 
+        "true", "false", "null", "let", "struct", "enum", "extension", "guard", "guard", "func", "throws", 
+        "try", "catch", "async", "await", "for", "while", "do", "break", "continue", "in", "as", "is"
+    )
+    
+    val regex = Regex("""(//.*|/\*[\s\S]*?\*/)|(".*?"|'.*?')|(\b\d+\b)|(\b\w+\b\()|(\b\w+\b)""")
+    
+    val matches = regex.findAll(code)
+    var lastMatchEnd = 0
+    
+    for (match in matches) {
+        if (match.range.first > lastMatchEnd) {
+            append(code.substring(lastMatchEnd, match.range.first))
+        }
+        
+        val group1 = match.groups[1] // comment
+        val group2 = match.groups[2] // string
+        val group3 = match.groups[3] // number
+        val group4 = match.groups[4] // function
+        val group5 = match.groups[5] // identifier/keyword
+        
+        when {
+            group1 != null -> withStyle(SpanStyle(color = commentColor)) { append(match.value) }
+            group2 != null -> withStyle(SpanStyle(color = stringColor)) { append(match.value) }
+            group3 != null -> withStyle(SpanStyle(color = numberColor)) { append(match.value) }
+            group4 != null -> {
+                val funcName = match.value.dropLast(1)
+                withStyle(SpanStyle(color = functionColor)) { append(funcName) }
+                append("(")
+            }
+            group5 != null -> {
+                if (keywords.contains(group5.value)) {
+                    withStyle(SpanStyle(color = keywordColor)) { append(match.value) }
+                } else {
+                    append(match.value)
+                }
+            }
+            else -> append(match.value)
+        }
+        
+        lastMatchEnd = match.range.last + 1
+    }
+    
+    if (lastMatchEnd < code.length) {
+        append(code.substring(lastMatchEnd))
+    }
+}

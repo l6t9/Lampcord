@@ -1,6 +1,6 @@
 @file:OptIn(org.jetbrains.compose.resources.InternalResourceApi::class)
 
-package materialcord.shared.generated.resources
+package lampcord.shared.generated.resources
 
 import kotlin.OptIn
 import kotlin.String

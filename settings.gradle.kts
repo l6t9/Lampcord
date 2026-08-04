@@ -31,7 +31,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Materialcord"
+rootProject.name = "lampcord"
 include(":androidApp")
 include(":shared")
 include(":desktopApp")

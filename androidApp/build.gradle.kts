@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.materialcord"
+    namespace = "com.example.lampcord"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.example.materialcord"
+        applicationId = "com.example.lampcord"
         minSdk = 24
         targetSdk = 37
         versionCode = 1

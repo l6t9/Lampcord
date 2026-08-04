@@ -2,7 +2,7 @@
   <artifact type="jar" name="desktopApp-desktop">
     <output-path>$PROJECT_DIR$/desktopApp/build/libs</output-path>
     <root id="archive" name="desktopApp-desktop.jar">
-      <element id="module-output" name="Materialcord.desktopApp.desktopMain" />
+      <element id="module-output" name="Lampcord.desktopApp.desktopMain" />
     </root>
   </artifact>
 </component>

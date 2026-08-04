@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.Materialcord" parent="Theme.Material3.DayNight.NoActionBar">
+    <style name="Theme.Lampcord" parent="Theme.Material3.DayNight.NoActionBar">
         <!-- Status bar color. -->
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">false</item>

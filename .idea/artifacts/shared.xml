@@ -2,7 +2,7 @@
   <artifact type="jar" name="shared">
     <output-path>$PROJECT_DIR$/shared/build/libs</output-path>
     <root id="archive" name="shared.jar">
-      <element id="module-output" name="Materialcord.shared.androidMain" />
+      <element id="module-output" name="Lampcord.shared.androidMain" />
     </root>
   </artifact>
 </component>
