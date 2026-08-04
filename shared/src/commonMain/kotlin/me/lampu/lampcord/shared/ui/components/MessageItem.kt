@@ -389,13 +389,7 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
     
     val alpha by animateFloatAsState(if (message.isPending) 0.5f else 1f)
 
-    val isInline = remember(message, priorMessage) {
-        priorMessage != null &&
-        priorMessage.author.id == message.author.id &&
-        message.referenced_message == null &&
-        message.type == 0 && 
-        priorMessage.type != 7
-    }
+    val isInline = priorMessage != null
 
     Box(
         modifier = Modifier
