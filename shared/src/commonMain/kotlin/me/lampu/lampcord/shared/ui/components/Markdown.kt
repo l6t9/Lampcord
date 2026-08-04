@@ -38,7 +38,32 @@ fun DiscordMarkdownText(
     val primaryColor = MaterialTheme.colorScheme.primary
     
     val fontSize = style.fontSize.takeIf { it.isSp } ?: 16.sp
-    val emojiSize = (fontSize.value * 1.4f).sp
+    
+    val isJumbo = remember(content) {
+        val trimmed = content.trim()
+        if (trimmed.isEmpty()) return@remember false
+        val customEmojiRegex = Regex("""<(a?):(\w+):(\d+)>""")
+        var temp = trimmed
+        var count = 0
+        customEmojiRegex.findAll(trimmed).forEach { 
+            count++
+            temp = temp.replace(it.value, "")
+        }
+        var scanIdx = 0
+        while (scanIdx < temp.length) {
+            val found = EmojiIndex.findEmojiInString(temp, scanIdx)
+            if (found != null) {
+                count++
+                scanIdx += found.second
+            } else {
+                if (!temp[scanIdx].isWhitespace()) return@remember false
+                scanIdx++
+            }
+        }
+        count in 1..30
+    }
+
+    val emojiSize = if (isJumbo) (fontSize.value * 2.8f).sp else (fontSize.value * 1.4f).sp
     
     val processedContent = remember(content) {
         content.split('\n').joinToString("\n") { line ->
@@ -105,7 +130,7 @@ fun DiscordMarkdownText(
                         )
                     }
                     if (loadFailed || url.isEmpty()) {
-                        Text(text = emoji, fontSize = 17.sp)
+                        Text(text = emoji, fontSize = if (isJumbo) 34.sp else 17.sp)
                     }
                 }
             }

@@ -120,9 +120,7 @@ fun MobileBaseplate(chatState: ChatState) {
                         }
                     }
                     1 -> {
-                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text("Notifications coming soon", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
+                        NotificationList(chatState = chatState)
                     }
                     2 -> {
                         SettingsScreen(chatState = chatState, onDismiss = { selectedTab = 0 })

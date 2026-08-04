@@ -57,16 +57,20 @@ fun AppearanceSettings(chatState: ChatState) {
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        var animateAvatars by remember { mutableStateOf(true) }
+        val devMode = chatState.userSettings?.developer_mode ?: false
         Row(
-            modifier = Modifier.fillMaxWidth().clickable { animateAvatars = !animateAvatars },
+            modifier = Modifier.fillMaxWidth().clickable { 
+                chatState.userSettings = chatState.userSettings?.copy(developer_mode = !devMode)
+            },
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("Animate Avatars", style = MaterialTheme.typography.bodyLarge)
-                Text("Play animated avatars when hovering over a user.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Developer Mode", style = MaterialTheme.typography.bodyLarge)
+                Text("Exposes ID copying and other advanced debug tools.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            ExpressiveSwitch(checked = animateAvatars, onCheckedChange = { animateAvatars = it })
+            ExpressiveSwitch(checked = devMode, onCheckedChange = { 
+                chatState.userSettings = chatState.userSettings?.copy(developer_mode = it)
+            })
         }
     }
 }

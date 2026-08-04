@@ -587,6 +587,26 @@ class ChatState(
     fun updateStatus(status: String) = scope.launch { if (presenceStore.updateStatus(status)) userSettings = userSettings?.copy(status = status) }
     fun updateCustomStatus(text: String?) = scope.launch { if (presenceStore.updateCustomStatus(text)) userSettings = userSettings?.copy(custom_status = me.lampu.lampcord.shared.model.CustomStatus(text = text)) }
 
+    fun leaveGuild(guildId: String) = scope.launch {
+        if (discordClient.leaveGuild(guildId)) {
+            guildStore.guilds.removeAll { it.id == guildId }
+            if (selectedGuild?.id == guildId) {
+                selectHome()
+            }
+        }
+    }
+
+    fun markGuildAsRead(guildId: String) = scope.launch {
+        val channelIds = channels.filter { it.guild_id == guildId }.map { it.id }
+        if (discordClient.ackBulk(channelIds)) {
+            channelIds.forEach { id ->
+                readStateStore.readStates[id]?.let {
+                    readStateStore.readStates[id] = it.copy(mention_count = 0)
+                }
+            }
+        }
+    }
+
     fun getMember(guildId: String, userId: String) = userStore.getMember(guildId, userId)
     fun removeReaction(channelId: String, messageId: String, emoji: String) = scope.launch { discordClient.removeReaction(channelId, messageId, emoji) }
     fun addReaction(channelId: String, messageId: String, emoji: String) = scope.launch { discordClient.addReaction(channelId, messageId, emoji) }

@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.Channel
 import me.lampu.lampcord.shared.state.ChatState
 import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.utils.setClipboardText
 
 @Composable
 fun GuildChannelList(chatState: ChatState) {
@@ -30,6 +31,7 @@ fun GuildChannelList(chatState: ChatState) {
     }
     val scrollState = rememberLazyListState()
     var isHovered by remember { mutableStateOf(false) }
+    var menuExpanded by remember { mutableStateOf(false) }
 
     val alpha by remember(bannerUrl) {
         derivedStateOf {
@@ -144,7 +146,7 @@ fun GuildChannelList(chatState: ChatState) {
             color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = alpha),
             shadowElevation = 0.dp,
             tonalElevation = 0.dp,
-            onClick = { /* TODO: Guild Menu */ },
+            onClick = { menuExpanded = true },
             shape = if (alpha > 0.99f) RoundedCornerShape(0.dp) else RoundedCornerShape(topStart = 16.dp)
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
@@ -186,11 +188,54 @@ fun GuildChannelList(chatState: ChatState) {
                         modifier = Modifier.weight(1f)
                     )
                     Icon(
-                        imageVector = Icons.Filled.KeyboardArrowDown,
+                        imageVector = if (menuExpanded) Icons.Filled.Close else Icons.Filled.KeyboardArrowDown,
                         contentDescription = "Menu",
                         modifier = Modifier.size(16.dp),
                         tint = contentColor
                     )
+                }
+
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false },
+                    modifier = Modifier.width(220.dp)
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Mark As Read") },
+                        onClick = { 
+                            guild?.let { chatState.markGuildAsRead(it.id) }
+                            menuExpanded = false 
+                        },
+                        leadingIcon = { Icon(Icons.Filled.Check, null, modifier = Modifier.size(18.dp)) }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Server Profile") },
+                        onClick = { 
+                            chatState.currentUser?.let { chatState.showProfile(it.id) }
+                            menuExpanded = false 
+                        },
+                        leadingIcon = { Icon(Icons.Filled.AccountCircle, null, modifier = Modifier.size(18.dp)) }
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                    DropdownMenuItem(
+                        text = { Text("Leave Server", color = Color.Red) },
+                        onClick = { 
+                            guild?.let { chatState.leaveGuild(it.id) }
+                            menuExpanded = false 
+                        },
+                        leadingIcon = { Icon(Icons.Filled.Logout, null, tint = Color.Red, modifier = Modifier.size(18.dp)) }
+                    )
+                    if (chatState.userSettings?.developer_mode == true) {
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                        DropdownMenuItem(
+                            text = { Text("Copy ID") },
+                            onClick = { 
+                                guild?.let { setClipboardText(it.id) }
+                                menuExpanded = false 
+                            },
+                            leadingIcon = { Icon(Icons.Filled.Dns, null, modifier = Modifier.size(18.dp)) }
+                        )
+                    }
                 }
             }
         }

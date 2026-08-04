@@ -399,6 +399,37 @@ class DiscordClient(
         }
     }
 
+    suspend fun ackBulk(channelIds: List<String>): Boolean {
+        if (token == null) return false
+        return try {
+            val response = httpClient.post("$apiBase/read-states/ack-bulk") {
+                header(HttpHeaders.Authorization, token!!)
+                contentType(ContentType.Application.Json)
+                setBody(buildJsonObject {
+                    put("read_states", buildJsonArray {
+                        channelIds.forEach { id ->
+                            add(buildJsonObject { put("channel_id", id); put("message_id", "99999999999999999999") }) // Hack to mark all as read
+                        }
+                    })
+                })
+            }
+            response.status.isSuccess()
+        } catch (e: Exception) { false }
+    }
+
+    suspend fun leaveGuild(guildId: String): Boolean {
+        if (token == null) return false
+        return try {
+            val response = httpClient.delete("$apiBase/users/@me/guilds/$guildId") {
+                header(HttpHeaders.Authorization, token!!)
+            }
+            response.status.isSuccess()
+        } catch (e: Exception) {
+            println("Error leaving guild: ${e.message}")
+            false
+        }
+    }
+
     suspend fun updateUserSettings(settings: UserSettings): Boolean {
         if (token == null) return false
         return try {
