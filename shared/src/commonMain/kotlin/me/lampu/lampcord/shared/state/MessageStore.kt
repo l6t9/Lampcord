@@ -14,7 +14,7 @@ class MessageStore(
     val messages = mutableStateListOf<Message>()
     private val messageTasks = mutableStateListOf<MessageTask>()
     private var isProcessingQueue = false
-    
+
     var isLoadingHistory by mutableStateOf(false)
     var hasMoreHistory by mutableStateOf(true)
 
@@ -69,29 +69,68 @@ class MessageStore(
     ) {
         val nowMillis = me.lampu.lampcord.shared.utils.getCurrentTimeMillis()
         val nonce = "${nowMillis}${Random.nextInt(1000, 9999)}"
-        
+
         // Optimistic UI
         val pendingMessage = Message(
             id = nonce,
             channel_id = channelId,
             author = currentUser,
             content = content,
-            timestamp = nowMillis.toString(),
+            timestamp = MessageTimestamp(
+                timestamp = nowMillis.toString(),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+            ),
             nonce = nonce,
             isPending = true,
             guild_id = guildId
         )
-        
+
         messages.add(0, pendingMessage)
         messageTasks.add(MessageTask(nonce, channelId, content, replyTo, files, forwardFrom))
-        
+
         startQueueProcessing()
+    }
+
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    private fun MessageTimestamp(timestamp: String, style: androidx.compose.ui.text.TextStyle, color: Color) {
+        val fullDate = remember(timestamp) { DateTimeUtils.formatFullDate(timestamp) }
+        val displayDate = remember(timestamp) { DateTimeUtils.formatTimestamp(timestamp) }
+
+        TooltipBox(
+            positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+                positioning = TooltipAnchorPosition.Above
+            ),
+            tooltip = {
+                RichTooltip(
+                    caretShape = TooltipDefaults.caretShape()
+                ) {
+                    val parts = fullDate.split(" at ")
+                    if (parts.size == 2) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(parts[0])
+                            Text(parts[1])
+                        }
+                    } else {
+                        Text(fullDate)
+                    }
+                }
+            },
+            state = rememberTooltipState()
+        ) {
+            Text(
+                text = displayDate,
+                style = style,
+                color = color
+            )
+        }
     }
 
     private fun startQueueProcessing() {
         if (isProcessingQueue || messageTasks.isEmpty()) return
         isProcessingQueue = true
-        
+
         scope.launch {
             while (messageTasks.isNotEmpty()) {
                 val task = messageTasks.first()
@@ -103,7 +142,7 @@ class MessageStore(
                     task.files,
                     task.nonce
                 )
-                
+
                 if (success) {
                     messageTasks.removeAt(0)
                 } else {
@@ -144,3 +183,4 @@ private data class MessageTask(
     val files: List<Pair<String, ByteArray>>,
     val forwardFrom: Message? = null
 )
+
