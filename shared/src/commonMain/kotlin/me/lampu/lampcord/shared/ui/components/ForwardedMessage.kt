@@ -73,20 +73,19 @@ fun ForwardedMessage(message: Message, chatState: ChatState) {
 
         Spacer(Modifier.height(8.dp))
 
-        // Footer / Link
-        val author = msg.author
-        if (author != null) {
-            val reference = message.message_reference
-            val canLink = reference?.channel_id != null
+        // Footer / Source Link
+        val reference = message.message_reference
+        if (reference != null) {
+            val guildId = reference.guild_id
+            val channelId = reference.channel_id
+            val canLink = channelId != null
+            
+            val guild = guildId?.let { id -> chatState.guilds.find { it.id == id } }
             
             Surface(
                 onClick = {
                     if (canLink) {
-                        val guildId = reference?.guild_id
-                        val channelId = reference?.channel_id!!
-                        
                         if (guildId != null) {
-                            val guild = chatState.guilds.find { it.id == guildId }
                             if (guild != null) {
                                 chatState.selectGuild(guild)
                                 val targetChannel = chatState.guildStore.allGuildChannels[guildId]?.find { it.id == channelId }
@@ -109,27 +108,46 @@ fun ForwardedMessage(message: Message, chatState: ChatState) {
                     modifier = Modifier.padding(vertical = 2.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val avatarUrl = author.avatar?.let {
-                        "https://cdn.discordapp.com/avatars/${author.id}/$it.png?size=48"
-                    }
-                    
-                    if (avatarUrl != null) {
-                        AsyncImage(
-                            model = avatarUrl,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp).clip(RoundedCornerShape(4.dp))
+                    if (guild != null) {
+                        val iconUrl = guild.icon?.let {
+                            "https://cdn.discordapp.com/icons/${guild.id}/$it.png?size=48"
+                        }
+                        if (iconUrl != null) {
+                            AsyncImage(
+                                model = iconUrl,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp).clip(RoundedCornerShape(4.dp))
+                            )
+                        } else {
+                            Surface(modifier = Modifier.size(16.dp), shape = RoundedCornerShape(4.dp), color = MaterialTheme.colorScheme.primaryContainer) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(guild.name?.take(1) ?: "", style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp))
+                                }
+                            }
+                        }
+                        
+                        Spacer(Modifier.width(6.dp))
+                        
+                        Text(
+                            text = guild.name ?: "Unknown Server",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     } else {
-                        Surface(modifier = Modifier.size(16.dp), shape = RoundedCornerShape(4.dp), color = MaterialTheme.colorScheme.primaryContainer) {}
+                        // Fallback to "Direct Message" or similar if it's not a guild
+                        Icon(
+                            imageVector = Icons.Outlined.AlternateEmail,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = "Direct Message",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
-                    
-                    Spacer(Modifier.width(6.dp))
-                    
-                    Text(
-                        text = author.global_name ?: author.username,
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                     
                     Text(
                         text = " • ",
@@ -148,6 +166,7 @@ fun ForwardedMessage(message: Message, chatState: ChatState) {
                     )
                     
                     if (canLink) {
+                        Spacer(Modifier.width(2.dp))
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                             contentDescription = null,
