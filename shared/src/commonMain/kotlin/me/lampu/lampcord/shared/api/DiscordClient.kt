@@ -141,11 +141,23 @@ class DiscordClient(
         channelId: String, 
         content: String, 
         replyTo: String? = null,
+        forwardFrom: Message? = null,
         files: List<Pair<String, ByteArray>> = emptyList(),
         nonce: String? = null
     ): Boolean {
         if (token == null) return false
         
+        val messageReference = when {
+            replyTo != null -> MessageReference(message_id = replyTo)
+            forwardFrom != null -> MessageReference(
+                type = 1,
+                message_id = forwardFrom.id,
+                channel_id = forwardFrom.channel_id,
+                guild_id = forwardFrom.guild_id
+            )
+            else -> null
+        }
+
         return try {
             if (files.isEmpty()) {
                 val response = httpClient.post("$apiBase/channels/$channelId/messages") {
@@ -155,7 +167,7 @@ class DiscordClient(
                     
                     val request = MessageRequest(
                         content = content,
-                        message_reference = replyTo?.let { MessageReference(message_id = it) },
+                        message_reference = messageReference,
                         nonce = nonce
                     )
                     setBody(request)
@@ -169,7 +181,7 @@ class DiscordClient(
                         formData {
                             append("payload_json", json.encodeToString(MessageRequest(
                                 content = content,
-                                message_reference = replyTo?.let { MessageReference(message_id = it) },
+                                message_reference = messageReference,
                                 nonce = nonce
                             )))
                             files.forEachIndexed { index, (name, bytes) ->

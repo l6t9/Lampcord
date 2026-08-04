@@ -73,6 +73,7 @@ class ChatState(
     var profilePosition by mutableStateOf<Offset?>(null)
     var replyingTo by mutableStateOf<Message?>(null)
     var editingMessage by mutableStateOf<Message?>(null)
+    var forwardingMessage by mutableStateOf<Message?>(null)
     var isSettingsVisible by mutableStateOf(false)
     var isQuickSwitcherVisible by mutableStateOf(false)
     val pendingFiles = mutableStateListOf<Pair<String, ByteArray>>()
@@ -574,6 +575,20 @@ class ChatState(
         pendingFiles.clear()
     }
 
+    fun forwardMessage(destinationChannel: Channel, message: Message) {
+        val user = currentUser ?: return
+        messageStore.sendMessage(
+            destinationChannel.id, 
+            "", 
+            user, 
+            null, 
+            emptyList(), 
+            destinationChannel.guild_id,
+            forwardFrom = message
+        )
+        forwardingMessage = null
+    }
+
     fun retryMessage(message: Message) = messageStore.retryMessage(message)
     fun deletePendingMessage(message: Message) = messageStore.deletePendingMessage(message)
 
@@ -598,6 +613,17 @@ class ChatState(
 
     fun markGuildAsRead(guildId: String) = scope.launch {
         val channelIds = channels.filter { it.guild_id == guildId }.map { it.id }
+        if (discordClient.ackBulk(channelIds)) {
+            channelIds.forEach { id ->
+                readStateStore.readStates[id]?.let {
+                    readStateStore.readStates[id] = it.copy(mention_count = 0)
+                }
+            }
+        }
+    }
+
+    fun markCategoryAsRead(categoryId: String) = scope.launch {
+        val channelIds = channels.filter { it.parent_id == categoryId }.map { it.id }
         if (discordClient.ackBulk(channelIds)) {
             channelIds.forEach { id ->
                 readStateStore.readStates[id]?.let {

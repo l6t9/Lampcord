@@ -64,7 +64,8 @@ class MessageStore(
         currentUser: User,
         replyTo: String?,
         files: List<Pair<String, ByteArray>>,
-        guildId: String?
+        guildId: String?,
+        forwardFrom: Message? = null
     ) {
         val nowMillis = me.lampu.lampcord.shared.utils.getCurrentTimeMillis()
         val nonce = "${nowMillis}${Random.nextInt(1000, 9999)}"
@@ -82,7 +83,7 @@ class MessageStore(
         )
         
         messages.add(0, pendingMessage)
-        messageTasks.add(MessageTask(nonce, channelId, content, replyTo, files))
+        messageTasks.add(MessageTask(nonce, channelId, content, replyTo, files, forwardFrom))
         
         startQueueProcessing()
     }
@@ -98,6 +99,7 @@ class MessageStore(
                     task.channelId,
                     task.content,
                     task.replyTo,
+                    task.forwardFrom,
                     task.files,
                     task.nonce
                 )
@@ -139,5 +141,6 @@ private data class MessageTask(
     val channelId: String,
     val content: String,
     val replyTo: String?,
-    val files: List<Pair<String, ByteArray>>
+    val files: List<Pair<String, ByteArray>>,
+    val forwardFrom: Message? = null
 )

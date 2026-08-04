@@ -100,26 +100,41 @@ fun GuildChannelList(chatState: ChatState) {
                     
                     items(categories, key = { it.id }) { category ->
                         var collapsed by remember { mutableStateOf(false) }
+                        
+                        val categoryContextMenuItems = remember(category, chatState.userSettings) {
+                            val items = mutableListOf(
+                                ContextMenuItem("Mark As Read", Icons.Filled.Check) {
+                                    chatState.markCategoryAsRead(category.id)
+                                }
+                            )
+                            if (chatState.userSettings?.developer_mode == true) {
+                                items.add(ContextMenuItem("Copy ID", Icons.Filled.Dns) { setClipboardText(category.id) })
+                            }
+                            items
+                        }
+
                         Column(Modifier.animateItem()) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { collapsed = !collapsed }
-                                    .padding(horizontal = 16.dp, vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = category.name ?: "Category",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Icon(
-                                    imageVector = if (collapsed) Icons.Filled.ChevronRight else Icons.Filled.KeyboardArrowDown,
-                                    contentDescription = if (collapsed) "Expand" else "Collapse",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(16.dp)
-                                )
+                            ContextMenu(items = categoryContextMenuItems) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { collapsed = !collapsed }
+                                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = category.name ?: "Category",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Icon(
+                                        imageVector = if (collapsed) Icons.Filled.ChevronRight else Icons.Filled.KeyboardArrowDown,
+                                        contentDescription = if (collapsed) "Expand" else "Collapse",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
                             }
                             if (!collapsed) {
                                 val categoryChannels = channels.filter { it.parent_id == category.id }.sortedBy { it.position ?: 0 }

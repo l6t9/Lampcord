@@ -349,8 +349,9 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
         
         val isMe = message.author.id == chatState.currentUser?.id
         val items = mutableListOf(
+            ContextMenuItem("Add Reaction", Icons.Filled.AddReaction) { showReactionPicker = true },
             ContextMenuItem("Reply", Icons.Rounded.Reply) { chatState.replyingTo = message },
-            ContextMenuItem("Forward", Icons.Filled.Forward) { /* TODO */ },
+            ContextMenuItem("Forward", Icons.Filled.Forward) { chatState.forwardingMessage = message },
             ContextMenuItem("Copy Text", Icons.Filled.ContentCopy) { setClipboardText(message.content) },
             ContextMenuItem("Copy Link", Icons.Filled.Link) {
                 val guildId = message.guild_id ?: chatState.selectedGuild?.id ?: "@me"
@@ -600,9 +601,9 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
             
             val actions = remember(message, isMe) {
                 val list = mutableListOf(
-                    Triple(Icons.Rounded.Reply, "Reply", { chatState.replyingTo = message }),
                     Triple(Icons.Filled.AddReaction, "Add Reaction", { showReactionPicker = true }),
-                    Triple(Icons.Filled.Forward, "Forward", { /* TODO */ })
+                    Triple(Icons.Rounded.Reply, "Reply", { chatState.replyingTo = message }),
+                    Triple(Icons.Filled.Forward, "Forward", { chatState.forwardingMessage = message })
                 )
                 if (isMe) {
                     list.add(Triple(Icons.Filled.Edit, "Edit", { chatState.editingMessage = message }))

@@ -32,6 +32,14 @@ fun MainScreen(
             } else {
                 DesktopBaseplate(chatState)
             }
+
+            chatState.forwardingMessage?.let { message ->
+                ForwardDialog(
+                    message = message,
+                    chatState = chatState,
+                    onDismiss = { chatState.forwardingMessage = null }
+                )
+            }
         }
     }
 }
