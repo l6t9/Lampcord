@@ -40,8 +40,7 @@ fun MemberList(chatState: ChatState) {
         scrollState.scrollToItem(0)
     }
 
-    // Replicating Paicord scrolling range logic: always keep the first 100 rows subscribed,
-    // plus up to two 100-row blocks around the current scroll position, debounced via LaunchedEffect.
+    // Scrolling range logic: keep current and surrounding blocks subscribed.
     val firstVisible = scrollState.firstVisibleItemIndex
     val rowCount = chatState.memberListRowCount
     val ranges = remember(firstVisible, rowCount) {

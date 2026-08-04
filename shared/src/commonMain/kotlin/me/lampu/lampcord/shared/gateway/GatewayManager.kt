@@ -33,9 +33,7 @@ class GatewayManager(
         disconnect()
         connectionJob = CoroutineScope(Dispatchers.Default).launch {
             try {
-                // Gateway v9: both Paicord and d.py-self connect with v9 for user accounts;
-                // Discord's v10 gateway silently disables features (incl. member list subscriptions)
-                // for user accounts that don't declare capabilities in IDENTIFY.
+                // Gateway v9
                 client.webSocket("wss://gateway.discord.gg/?v=9&encoding=json") {
                     session = this
                     
@@ -111,7 +109,6 @@ class GatewayManager(
             while (isActive) {
                 sendUpdateTimeSpent()
                 delay(30.minutes)
-                // Cycle client heartbeat session ID every 30 mins like Paicord
                 clientHeartbeatSessionId = randomUUID()
             }
         }
@@ -123,8 +120,6 @@ class GatewayManager(
     }
 
     private suspend fun sendHeartbeat() {
-        // Paicord uses Op 40 (QOS_HEARTBEAT) instead of Op 1 for pings
-        // when established, which seems to help with member list stability.
         val payload = GatewayPayload(
             op = 40, 
             d = buildJsonObject {
@@ -195,13 +190,6 @@ class GatewayManager(
                 client_app_state = if (isMobile) "active" else "focused",
                 client_heartbeat_session_id = clientHeartbeatSessionId
             ),
-            // Byte-identical to Paicord's working user-account IDENTIFY:
-            // token + properties + capabilities. No `intents` (bot-only field,
-            // users receive all events regardless) and no `compress`.
-            //
-            // Mirrors Paicord's UserGatewayManager defaults EXCEPT userSettingsProto:
-            // lazyUserNotes(0) | nonChannelReadStates(7) | authTokenRefresh(8) |
-            // debounceMessageReactions(13) = 8577
             capabilities = 8577
         )
         val payload = GatewayPayload(op = 2, d = json.encodeToJsonElement(identify))

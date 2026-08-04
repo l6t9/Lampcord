@@ -26,10 +26,6 @@ import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 
-/**
- * A high-quality AsyncImage wrapper for Lampcord that matches Paicord's image rendering.
- * Uses exact precision, crossfade, and high-quality filtering.
- */
 @Composable
 fun AsyncImage(
     model: Any?,

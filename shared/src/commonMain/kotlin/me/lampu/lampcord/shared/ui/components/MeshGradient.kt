@@ -15,10 +15,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import kotlin.math.max
 
-/**
- * A Mesh Gradient-like background component for Lampcord.
- * Uses rotating radial gradients and blur to mimic Paicord's MeshGradient.
- */
 @Composable
 fun MeshGradientBackground(
     modifier: Modifier = Modifier,

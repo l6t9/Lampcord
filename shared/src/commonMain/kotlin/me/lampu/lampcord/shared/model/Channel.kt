@@ -48,8 +48,6 @@ data class ThreadListResponse(
     val has_more: Boolean? = null
 )
 
-// Gateway THREAD_LIST_SYNC event. `channel_ids` is null when the payload covers
-// every channel in the guild (threads:true guild subscription, mirrors Paicord).
 @Serializable
 data class ThreadListSync(
     val guild_id: String,

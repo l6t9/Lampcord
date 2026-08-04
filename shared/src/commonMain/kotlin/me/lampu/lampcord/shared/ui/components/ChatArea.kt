@@ -71,7 +71,7 @@ fun ChatArea(
                 val message = chatState.messages[index]
                 val priorMessage = chatState.messages.getOrNull(index + 1)
                 
-                // Grouping logic: 7 minutes like Discord/Paicord
+                // Grouping logic
                 val isInline = remember(message, priorMessage) {
                     if (priorMessage == null) return@remember false
                     if (priorMessage.author.id != message.author.id) return@remember false

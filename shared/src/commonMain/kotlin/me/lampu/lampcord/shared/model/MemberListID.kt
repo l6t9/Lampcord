@@ -3,9 +3,7 @@ package me.lampu.lampcord.shared.model
 // Discord's VIEW_CHANNEL permission bit (a.k.a. read_messages).
 private const val VIEW_CHANNEL = 1L shl 10
 
-// Byte-for-byte port of d.py-self's murmurhash32 (discord/utils.py L1671-1725),
-// which is itself a modification of pymmh3. Verified against 12 d.py-self
-// generated test vectors; returns the unsigned 32-bit hash as a Long.
+// Port of murmurhash32.
 fun murmurhash32(key: String, seed: Int = 0): Long {
     val keyBytes = key.encodeToByteArray()
     val length = keyBytes.size
@@ -60,10 +58,6 @@ private fun hasPermission(bits: String?, flag: Long): Boolean {
     return (value and flag) == flag
 }
 
-// Mirrors Paicord's DiscordChannel.getMemberListID / d.py-self's member_list_id.
-// IMPORTANT: the everyone-check replicates Discord's "flawed" implementation on
-// purpose (it only checks the default role's *own* permissions, not the effective
-// permissions) — changing it would compute IDs the gateway doesn't use.
 fun Channel.memberListId(guild: Guild): String {
     val everyoneRole = guild.roles.firstOrNull { it.id == guild.id }
     val everyoneCanView = everyoneRole != null && hasPermission(everyoneRole.permissions, VIEW_CHANNEL)

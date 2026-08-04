@@ -48,9 +48,6 @@ data class ReadyPayload(
     val session_id: String,
     val resume_gateway_url: String,
     val read_state: List<ReadState>? = null,
-    // With the userSettingsProto capability (bit 9, used by Paicord/d.py-self), READY's
-    // user_settings arrives as a base64 protobuf string, not a JSON object. Keep it raw
-    // and decode defensively in ChatState so READY itself never fails to parse.
     val user_settings: JsonElement? = null
 )
 
