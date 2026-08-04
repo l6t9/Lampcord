@@ -14,6 +14,8 @@ class GuildStore {
     var selectedChannel by mutableStateOf<Channel?>(null)
     var selectedThread by mutableStateOf<Channel?>(null)
 
+    val allGuildChannels = mutableStateMapOf<String, List<Channel>>()
+
     fun handleGuildCreate(guild: Guild) {
         val index = guilds.indexOfFirst { it.id == guild.id }
         if (index == -1) {

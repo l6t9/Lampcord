@@ -39,10 +39,9 @@ fun QuickSwitcher(
                 val guildMatches = chatState.guilds.filter { it.name?.lowercase()?.contains(q) == true }
                     .map { SwitcherResult.GuildResult(it) }
                 
-                // This only searches channels of the CURRENT guild. 
-                // A better implementation would search ALL cached channels.
-                val channelMatches = chatState.channels.filter { it.name?.lowercase()?.contains(q) == true }
-                    .map { SwitcherResult.ChannelResult(it, chatState.selectedGuild) }
+                val channelMatches = chatState.guildStore.allGuildChannels.values.flatten()
+                    .filter { it.name?.lowercase()?.contains(q) == true }
+                    .map { SwitcherResult.ChannelResult(it, chatState.guilds.find { g -> g.id == it.guild_id }) }
                 
                 guildMatches + channelMatches
             }

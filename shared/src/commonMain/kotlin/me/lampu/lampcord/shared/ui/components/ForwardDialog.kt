@@ -26,12 +26,12 @@ fun ForwardDialog(
 ) {
     var query by remember { mutableStateOf("") }
     
-    val results by remember(query, chatState.guilds) {
+    val results by remember(query, chatState.guilds, chatState.guildStore.allGuildChannels) {
         derivedStateOf {
             val q = query.lowercase()
             val allChannels = chatState.guilds.flatMap { guild -> 
-                (guild.channels ?: emptyList()).filter { it.type in listOf(0, 5) }
-                    .map { it to guild }
+                val channels = chatState.guildStore.allGuildChannels[guild.id] ?: emptyList()
+                channels.filter { it.type in listOf(0, 5) }.map { it to guild }
             } + chatState.privateChannels.map { it to null }
 
             if (q.isBlank()) {

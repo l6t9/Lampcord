@@ -151,6 +151,19 @@ class ChatState(
                         
                         applyGuildOrdering()
                         
+                        // Background fetch all channels for forwarding/switcher cache
+                        scope.launch {
+                            ready.guilds.forEach { guild ->
+                                if (guildStore.allGuildChannels[guild.id] == null) {
+                                    try {
+                                        val gChannels = discordClient.getGuildChannels(guild.id)
+                                        guildStore.allGuildChannels[guild.id] = gChannels.filter { it.type in listOf(0, 5, 4, 15) }.sortedBy { it.position }
+                                        kotlinx.coroutines.delay(100) // Avoid spamming
+                                    } catch (e: Exception) { }
+                                }
+                            }
+                        }
+
                         if (selectedGuild == null && selectedChannel == null) {
                             selectHome()
                         }
@@ -487,8 +500,10 @@ class ChatState(
         guildLoadingJob = scope.launch {
             subscribeToGuild(guild.id)
             val guildChannels = discordClient.getGuildChannels(guild.id)
+            val filtered = guildChannels.filter { it.type in listOf(0, 5, 4, 15) }.sortedBy { it.position }
+            guildStore.allGuildChannels[guild.id] = filtered
             channels.clear()
-            channels.addAll(guildChannels.filter { it.type in listOf(0, 5, 4, 15) }.sortedBy { it.position })
+            channels.addAll(filtered)
             val lastChannelId = Settings.shared.getLastChannel(guild.id)
             val channelToSelect = if (lastChannelId != null) channels.find { it.id == lastChannelId } else channels.firstOrNull { it.type in listOf(0, 5, 15) }
             channelToSelect?.let { selectChannel(it) }
