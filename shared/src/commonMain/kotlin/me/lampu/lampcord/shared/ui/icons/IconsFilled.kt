@@ -258,6 +258,13 @@ object IconsFilled {
         )
     }
 
+    val Forward: ImageVector by lazy {
+        materialSymbol(
+            name = "Filled.Forward",
+            pathData = "M640-280L583-336L767-520L583-704L640-760L880-520ZM80-200V-360Q80-443 138.5-501.5Q197-560 280-560H527L383-704L440-760L680-520L440-280L383-336L527-480H280Q230-480 195-445Q160-410 160-360V-200Z",
+        )
+    }
+
     val Fullscreen: ImageVector by lazy {
         materialSymbol(
             name = "Filled.Fullscreen",

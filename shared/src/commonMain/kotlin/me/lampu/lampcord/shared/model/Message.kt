@@ -49,6 +49,7 @@ data class MessageSnapshot(
 
 @Serializable
 data class SnapshotMessage(
+    val author: User? = null,
     val content: String = "",
     val timestamp: String = "",
     val edited_timestamp: String? = null,

@@ -350,6 +350,7 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
         val isMe = message.author.id == chatState.currentUser?.id
         val items = mutableListOf(
             ContextMenuItem("Reply", Icons.Rounded.Reply) { chatState.replyingTo = message },
+            ContextMenuItem("Forward", Icons.Filled.Forward) { /* TODO */ },
             ContextMenuItem("Copy Text", Icons.Filled.ContentCopy) { setClipboardText(message.content) },
             ContextMenuItem("Copy Link", Icons.Filled.Link) {
                 val guildId = message.guild_id ?: chatState.selectedGuild?.id ?: "@me"
@@ -595,27 +596,32 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
         }
 
         if (isHovered || showReactionPicker) {
-            Box(modifier = Modifier.matchParentSize()) {
-                val isMe = message.author.id == chatState.currentUser?.id
-                
-                val actions = remember(message, isMe) {
-                    val list = mutableListOf(
-                        Triple(Icons.Rounded.Reply, "Reply", { chatState.replyingTo = message }),
-                        Triple(Icons.Filled.AddReaction, "Add Reaction", { showReactionPicker = true })
-                    )
-                    if (isMe) {
-                        list.add(Triple(Icons.Filled.Edit, "Edit", { chatState.editingMessage = message }))
-                    }
-                    list.add(Triple(Icons.Filled.MoreHoriz, "More", { /* TODO */ }))
-                    list
+            val isMe = message.author.id == chatState.currentUser?.id
+            
+            val actions = remember(message, isMe) {
+                val list = mutableListOf(
+                    Triple(Icons.Rounded.Reply, "Reply", { chatState.replyingTo = message }),
+                    Triple(Icons.Filled.AddReaction, "Add Reaction", { showReactionPicker = true }),
+                    Triple(Icons.Filled.Forward, "Forward", { /* TODO */ })
+                )
+                if (isMe) {
+                    list.add(Triple(Icons.Filled.Edit, "Edit", { chatState.editingMessage = message }))
                 }
+                list.add(Triple(Icons.Filled.MoreHoriz, "More", { /* TODO */ }))
+                list
+            }
 
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .padding(end = 16.dp)
+            ) {
                 ButtonGroup(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(end = 16.dp)
                         .offset(y = (-12).dp)
                         .height(32.dp)
+                        .widthIn(min = 120.dp) // Ensure it doesn't squish
                         .animateContentSize(animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f)),
                     overflowIndicator = { menuState -> ButtonGroupDefaults.OverflowIndicator(menuState) },
                     horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
