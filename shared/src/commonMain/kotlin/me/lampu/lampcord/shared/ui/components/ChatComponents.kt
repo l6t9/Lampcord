@@ -364,6 +364,7 @@ fun ChatInputBar(
 
                 var showEmojiPicker by remember { mutableStateOf(false) }
                 var emojiSearchQuery by remember { mutableStateOf<String?>(null) }
+                var commandSearchQuery by remember { mutableStateOf<String?>(null) }
 
                 BasicTextField(
                     value = messageText,
@@ -375,6 +376,12 @@ fun ChatInputBar(
                                 emojiSearchQuery = lastWord.substring(1)
                             } else {
                                 emojiSearchQuery = null
+                            }
+                            
+                            if (it.startsWith('/') && !it.contains(' ')) {
+                                commandSearchQuery = it.substring(1)
+                            } else {
+                                commandSearchQuery = null
                             }
                         }
                     },
@@ -403,13 +410,22 @@ fun ChatInputBar(
                                             return@onPreviewKeyEvent true
                                         }
                                 }
-                                if (event.key == Key.Enter && !event.isShiftPressed) {
-                                    if (messageText.isNotBlank() || chatState.pendingFiles.isNotEmpty()) {
-                                        chatState.sendMessage(messageText)
-                                        messageText = ""
-                                        return@onPreviewKeyEvent true
-                                    }
-                                }
+                    if (event.key == Key.Enter && !event.isShiftPressed) {
+                        if (messageText.startsWith('/') && !messageText.contains(' ')) {
+                            val cmdName = messageText.substring(1).trim()
+                            val command = chatState.availableCommands.find { it.name == cmdName }
+                            if (command != null) {
+                                chatState.sendInteraction(command)
+                                messageText = ""
+                                return@onPreviewKeyEvent true
+                            }
+                        }
+                        if (messageText.isNotBlank() || chatState.pendingFiles.isNotEmpty()) {
+                            chatState.sendMessage(messageText)
+                            messageText = ""
+                            return@onPreviewKeyEvent true
+                        }
+                    }
                             }
                             false
                         },
@@ -506,6 +522,24 @@ fun ChatInputBar(
                                     }
                                 }
                             }
+                        }
+                    }
+                }
+                
+                if (commandSearchQuery != null) {
+                    androidx.compose.ui.window.Popup(
+                        alignment = Alignment.BottomStart,
+                        offset = IntOffset(60, (-340).dp.value.toInt()),
+                        onDismissRequest = { commandSearchQuery = null }
+                    ) {
+                        CommandPicker(chatState, commandSearchQuery!!) { command ->
+                            if (command.options.isNullOrEmpty()) {
+                                chatState.sendInteraction(command)
+                                messageText = ""
+                            } else {
+                                messageText = "/${command.name} "
+                            }
+                            commandSearchQuery = null
                         }
                     }
                 }

@@ -26,7 +26,7 @@ class GatewayManager(
     private var heartbeatJob: Job? = null
     private var timeSpentJob: Job? = null
     private var lastSequence: Int? = null
-    private var sessionId: String? = null
+    var sessionId: String? = null
     private var clientHeartbeatSessionId = randomUUID()
 
     fun connect(token: String) {

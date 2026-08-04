@@ -14,11 +14,10 @@ import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.utils.Permission
 import me.lampu.lampcord.shared.utils.PermissionHelper
 import me.lampu.lampcord.shared.utils.getCurrentTimeMillis
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch
 import kotlinx.serialization.json.*
+import kotlin.random.Random
 
 class ChatState(
     private val gatewayManager: GatewayManager,
@@ -39,6 +38,9 @@ class ChatState(
     var isConnecting by mutableStateOf(false)
 
     val typingUsers = mutableStateMapOf<String, MutableMap<String, Long>>()
+
+    val availableCommands = mutableStateListOf<ApplicationCommand>()
+    val availableApplications = mutableStateListOf<Application>()
 
     // UI exposed state (delegating to stores where appropriate)
     val messages get() = messageStore.messages
@@ -507,6 +509,17 @@ class ChatState(
             val lastChannelId = Settings.shared.getLastChannel(guild.id)
             val channelToSelect = if (lastChannelId != null) channels.find { it.id == lastChannelId } else channels.firstOrNull { it.type in listOf(0, 5, 15) }
             channelToSelect?.let { selectChannel(it) }
+            
+            // Fetch commands
+            try {
+                val index = discordClient.getCommandIndex(guild.id)
+                availableCommands.clear()
+                availableApplications.clear()
+                index?.let {
+                    availableCommands.addAll(it.application_commands)
+                    availableApplications.addAll(it.applications)
+                }
+            } catch (e: Exception) { }
         }
     }
 
@@ -649,6 +662,30 @@ class ChatState(
     }
 
     fun getMember(guildId: String, userId: String) = userStore.getMember(guildId, userId)
+
+    fun sendInteraction(command: ApplicationCommand) {
+        val guildId = selectedGuild?.id ?: return
+        val channelId = (selectedThread ?: selectedChannel)?.id ?: return
+        val sessionId = gatewayManager.sessionId ?: return
+        
+        scope.launch {
+            val request = InteractionRequest(
+                type = 2,
+                application_id = command.application_id,
+                guild_id = guildId,
+                channel_id = channelId,
+                session_id = sessionId,
+                data = InteractionData(
+                    id = command.id,
+                    name = command.name,
+                    version = command.version
+                ),
+                nonce = "${getCurrentTimeMillis()}${Random.nextInt(1000, 9999)}"
+            )
+            discordClient.sendInteraction(request)
+        }
+    }
+
     fun removeReaction(channelId: String, messageId: String, emoji: String) = scope.launch { discordClient.removeReaction(channelId, messageId, emoji) }
     fun addReaction(channelId: String, messageId: String, emoji: String) = scope.launch { discordClient.addReaction(channelId, messageId, emoji) }
 

@@ -119,7 +119,7 @@ private fun ForwardResultItem(channel: Channel, guild: me.lampu.lampcord.shared.
             verticalAlignment = Alignment.CenterVertically
         ) {
             val icon = if (guild != null) {
-                Icons.Filled.Tag
+                if (channel.type == 5) Icons.Filled.Campaign else Icons.Filled.Tag
             } else {
                 Icons.Filled.Person
             }

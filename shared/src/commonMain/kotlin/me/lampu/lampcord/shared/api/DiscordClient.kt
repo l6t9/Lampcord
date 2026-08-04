@@ -442,6 +442,34 @@ class DiscordClient(
         }
     }
 
+    suspend fun getCommandIndex(guildId: String): ApplicationCommandIndex? {
+        if (token == null) return null
+        return try {
+            val response = httpClient.get("$apiBase/guilds/$guildId/application-command-index") {
+                header(HttpHeaders.Authorization, token!!)
+            }
+            if (response.status.isSuccess()) response.body() else null
+        } catch (e: Exception) {
+            println("Error getting command index: ${e.message}")
+            null
+        }
+    }
+
+    suspend fun sendInteraction(request: InteractionRequest): Boolean {
+        if (token == null) return false
+        return try {
+            val response = httpClient.post("$apiBase/interactions") {
+                header(HttpHeaders.Authorization, token!!)
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+            response.status.isSuccess()
+        } catch (e: Exception) {
+            println("Error sending interaction: ${e.message}")
+            false
+        }
+    }
+
     suspend fun updateUserSettings(settings: UserSettings): Boolean {
         if (token == null) return false
         return try {
