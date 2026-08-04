@@ -12,6 +12,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.input.key.*
@@ -210,6 +212,7 @@ fun ChatInputBar(
             mutableStateOf(chatState.draftMessages[channel.id] ?: "") 
         }
         var showFilePicker by remember { mutableStateOf(false) }
+        val focusRequester = remember { FocusRequester() }
 
         // Update draft whenever text changes
         LaunchedEffect(messageText) {
@@ -230,12 +233,14 @@ fun ChatInputBar(
                 messageText = it.content
                 chatState.pendingFiles.clear()
                 chatState.replyingTo = null
+                focusRequester.requestFocus()
             }
         }
 
         LaunchedEffect(chatState.replyingTo) {
             chatState.replyingTo?.let {
                 chatState.editingMessage = null
+                focusRequester.requestFocus()
             }
         }
 
@@ -389,6 +394,7 @@ fun ChatInputBar(
                         .weight(1f)
                         .padding(horizontal = 4.dp)
                         .height(40.dp)
+                        .focusRequester(focusRequester)
                         .onPreviewKeyEvent { event ->
                             if (!canSend) return@onPreviewKeyEvent false
                             if (event.type == KeyEventType.KeyDown) {

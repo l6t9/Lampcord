@@ -20,6 +20,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.Embed
 import me.lampu.lampcord.shared.model.EmbedVideo
+import me.lampu.lampcord.shared.state.ChatState
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.DiscordMarkdownText
 import me.lampu.lampcord.shared.ui.components.VideoPlayer
@@ -32,7 +33,7 @@ fun GifvView(video: EmbedVideo, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun EmbedView(embed: Embed) {
+fun EmbedView(embed: Embed, chatState: ChatState? = null) {
     if (embed.type == "gifv" && embed.video != null) {
         GifvView(
             video = embed.video,
@@ -81,7 +82,11 @@ fun EmbedView(embed: Embed) {
                     embed.thumbnail?.let { thumb ->
                         if (embed.image == null) {
                             Box(modifier = Modifier.padding(start = 8.dp).size(72.dp).clip(RoundedCornerShape(6.dp))) {
-                                AttachmentImage(media = thumb, isMosaic = true)
+                                AttachmentImage(
+                                    media = thumb,
+                                    isMosaic = true,
+                                    onClick = { chatState?.openAttachmentViewer(listOf(thumb), 0) }
+                                )
                             }
                         }
                     }
@@ -102,7 +107,10 @@ fun EmbedView(embed: Embed) {
                     Spacer(Modifier.height(8.dp))
                 }
                 embed.image?.let { image ->
-                    AttachmentImage(media = image)
+                    AttachmentImage(
+                        media = image,
+                        onClick = { chatState?.openAttachmentViewer(listOf(image), 0) }
+                    )
                     Spacer(Modifier.height(8.dp))
                 }
                 embed.footer?.let { footer ->

@@ -20,6 +20,7 @@ fun MobileBaseplate(chatState: ChatState) {
     val selectedThread = chatState.selectedThread
     val activeChannel = selectedThread ?: selectedChannel
     
+    Box(Modifier.fillMaxSize()) {
     Scaffold(
         bottomBar = {
             if (activeChannel == null) {
@@ -127,6 +128,17 @@ fun MobileBaseplate(chatState: ChatState) {
                     }
                 }
             }
+        }
+    }
+
+        // Attachment Viewer Overlay (fullscreen, like Paicord's attachmentViewer())
+        if (chatState.isAttachmentViewerVisible) {
+            AttachmentViewer(
+                items = chatState.attachmentViewerItems,
+                selectedIndex = chatState.attachmentViewerIndex,
+                onIndexChange = { chatState.attachmentViewerIndex = it },
+                onDismiss = { chatState.closeAttachmentViewer() }
+            )
         }
     }
 }

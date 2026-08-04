@@ -79,6 +79,24 @@ class ChatState(
     var isSettingsVisible by mutableStateOf(false)
     var isQuickSwitcherVisible by mutableStateOf(false)
     val pendingFiles = mutableStateListOf<Pair<String, ByteArray>>()
+
+    // Attachment viewer (matches Paicord's attachmentViewerAttachments/Index/Visible)
+    var isAttachmentViewerVisible by mutableStateOf(false)
+    var attachmentViewerItems by mutableStateOf<List<DiscordMedia>>(emptyList())
+    var attachmentViewerIndex by mutableStateOf(0)
+
+    fun openAttachmentViewer(items: List<DiscordMedia>, index: Int) {
+        if (items.isEmpty()) return
+        attachmentViewerItems = items
+        attachmentViewerIndex = index.coerceIn(0, items.lastIndex)
+        isAttachmentViewerVisible = true
+    }
+
+    fun closeAttachmentViewer() {
+        isAttachmentViewerVisible = false
+        attachmentViewerItems = emptyList()
+        attachmentViewerIndex = 0
+    }
     
     private var currentToken: String? = null
     private var currentFingerprint: String? = null
@@ -162,7 +180,8 @@ class ChatState(
                                         if (gChannels.isNotEmpty()) {
                                             guildStore.allGuildChannels[guild.id] = gChannels.filter { it.type in listOf(0, 5, 4, 15) }.sortedBy { it.position }
                                         }
-                                        kotlinx.coroutines.delay(100) // Reverted delay
+                                        // Background caching must be slow to avoid 429s on user accounts
+                                        kotlinx.coroutines.delay(2000)
                                     } catch (e: Exception) { }
                                 }
                             }
@@ -619,6 +638,19 @@ class ChatState(
             forwardFrom = message
         )
         forwardingMessage = null
+
+        if (destinationChannel.guild_id != null) {
+            val guild = guilds.find { it.id == destinationChannel.guild_id }
+            if (guild != null) {
+                if (selectedGuild?.id != guild.id) {
+                    selectGuild(guild)
+                }
+                selectChannel(destinationChannel)
+            }
+        } else {
+            selectHome()
+            selectChannel(destinationChannel)
+        }
     }
 
     fun retryMessage(message: Message) = messageStore.retryMessage(message)

@@ -38,15 +38,22 @@ fun MessageAttachments(
     val images = attachments.filter { it.content_type?.startsWith("image/") == true }
     val videos = attachments.filter { it.content_type?.startsWith("video/") == true }
     val otherFiles = attachments.filter { it.content_type?.startsWith("image/") != true && it.content_type?.startsWith("video/") != true }
+    // Viewable items mirror Paicord's viewableAttachments: images first, then videos
+    val viewableItems: List<DiscordMedia> = images + videos
     
     if (images.isNotEmpty()) {
-        MessageMosaic(images)
+        MessageMosaic(images, onOpenItem = { imageIndex ->
+            chatState.openAttachmentViewer(viewableItems, imageIndex)
+        })
     }
     
     if (videos.isNotEmpty()) {
         Spacer(modifier = Modifier.height(8.dp))
-        videos.forEach { video ->
-            VideoAttachment(video)
+        videos.forEachIndexed { videoIndex, video ->
+            VideoAttachment(
+                video = video,
+                onClick = { chatState.openAttachmentViewer(viewableItems, images.size + videoIndex) }
+            )
             Spacer(modifier = Modifier.height(4.dp))
         }
     }
@@ -67,7 +74,7 @@ fun MessageAttachments(
     }
 
     embeds.forEach { embed ->
-        EmbedView(embed)
+        EmbedView(embed, chatState)
     }
 
     components?.let {

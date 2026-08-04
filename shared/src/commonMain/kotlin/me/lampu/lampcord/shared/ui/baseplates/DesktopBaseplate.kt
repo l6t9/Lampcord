@@ -307,5 +307,15 @@ fun DesktopBaseplate(chatState: ChatState) {
                 onDismiss = { chatState.isQuickSwitcherVisible = false }
             )
         }
+
+        // Attachment Viewer Overlay (fullscreen, like Paicord's attachmentViewer())
+        if (chatState.isAttachmentViewerVisible) {
+            AttachmentViewer(
+                items = chatState.attachmentViewerItems,
+                selectedIndex = chatState.attachmentViewerIndex,
+                onIndexChange = { chatState.attachmentViewerIndex = it },
+                onDismiss = { chatState.closeAttachmentViewer() }
+            )
+        }
     }
 }

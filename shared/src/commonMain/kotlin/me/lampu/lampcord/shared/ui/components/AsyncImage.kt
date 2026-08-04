@@ -59,8 +59,9 @@ fun AsyncImage(
     
     val state by painter.state.collectAsState()
     val transitionAlpha by animateFloatAsState(
-        targetValue = if (state is AsyncImagePainter.State.Success) 1f else 0f,
-        animationSpec = spring(stiffness = Spring.StiffnessLow)
+        targetValue = if (state is AsyncImagePainter.State.Success) alpha else 0f,
+        animationSpec = tween(durationMillis = 200, easing = LinearOutSlowInEasing),
+        label = "imageFade"
     )
 
     Box(

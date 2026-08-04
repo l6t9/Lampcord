@@ -1,0 +1,314 @@
+package me.lampu.lampcord.shared.ui.components
+
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.unit.dp
+import me.lampu.lampcord.shared.model.Attachment
+import me.lampu.lampcord.shared.model.DiscordMedia
+import me.lampu.lampcord.shared.model.EmbedImage
+import me.lampu.lampcord.shared.model.EmbedVideo
+import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.utils.setClipboardText
+
+/**
+ * Fullscreen attachment viewer, mirroring Paicord's AttachmentViewer:
+ * zoomable images, inline video playback, keyboard/button navigation,
+ * a thumbnail carousel and copy/close controls.
+ */
+@Composable
+fun AttachmentViewer(
+    items: List<DiscordMedia>,
+    selectedIndex: Int,
+    onIndexChange: (Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    if (items.isEmpty()) return
+    val index = selectedIndex.coerceIn(0, items.lastIndex)
+    val item = items[index]
+
+    var showControls by remember { mutableStateOf(true) }
+    val focusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) { focusRequester.requestFocus() }
+    LaunchedEffect(index) { showControls = true }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            .focusRequester(focusRequester)
+            .focusable()
+            .onPreviewKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown) {
+                    when (event.key) {
+                        Key.Escape -> {
+                            onDismiss()
+                            true
+                        }
+                        Key.DirectionLeft -> {
+                            if (index > 0) onIndexChange(index - 1)
+                            true
+                        }
+                        Key.DirectionRight -> {
+                            if (index < items.lastIndex) onIndexChange(index + 1)
+                            true
+                        }
+                        else -> false
+                    }
+                } else {
+                    false
+                }
+            }
+    ) {
+        // Main content
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            when {
+                item.isVideo() -> {
+                    VideoPlayer(
+                        url = item.url ?: item.proxy_url ?: "",
+                        modifier = Modifier
+                            .fillMaxWidth(0.95f)
+                            .aspectRatio((item.aspectRatio ?: (16f / 9f)).coerceIn(0.3f, 4f))
+                    )
+                }
+                item.isImage() -> {
+                    ZoomableImageView(
+                        url = item.proxy_url ?: item.url ?: "",
+                        modifier = Modifier.fillMaxSize(),
+                        onSingleTap = { showControls = !showControls }
+                    )
+                }
+                else -> {
+                    Text(
+                        text = (item as? Attachment)?.filename ?: "Unsupported attachment type",
+                        color = Color.White
+                    )
+                }
+            }
+        }
+
+        // Top-right controls
+        AnimatedVisibility(
+            visible = showControls,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.TopEnd).padding(16.dp)
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ViewerRoundButton(onClick = {
+                    setClipboardText(item.url ?: item.proxy_url ?: "")
+                }) {
+                    Icon(Icons.Filled.ContentCopy, "Copy URL", tint = Color.White, modifier = Modifier.size(20.dp))
+                }
+                ViewerRoundButton(onClick = onDismiss) {
+                    Icon(Icons.Filled.Close, "Close", tint = Color.White, modifier = Modifier.size(20.dp))
+                }
+            }
+        }
+
+        // Side navigation
+        if (items.size > 1) {
+            AnimatedVisibility(
+                visible = showControls,
+                enter = fadeIn(),
+                exit = fadeOut(),
+                modifier = Modifier.align(Alignment.CenterStart).padding(start = 16.dp)
+            ) {
+                ViewerRoundButton(onClick = { if (index > 0) onIndexChange(index - 1) }, enabled = index > 0) {
+                    Icon(Icons.Filled.ChevronLeft, "Previous", tint = Color.White, modifier = Modifier.size(28.dp))
+                }
+            }
+            AnimatedVisibility(
+                visible = showControls,
+                enter = fadeIn(),
+                exit = fadeOut(),
+                modifier = Modifier.align(Alignment.CenterEnd).padding(end = 16.dp)
+            ) {
+                ViewerRoundButton(
+                    onClick = { if (index < items.lastIndex) onIndexChange(index + 1) },
+                    enabled = index < items.lastIndex
+                ) {
+                    Icon(Icons.Filled.ChevronRight, "Next", tint = Color.White, modifier = Modifier.size(28.dp))
+                }
+            }
+        }
+
+        // Bottom thumbnail carousel
+        if (items.size > 1) {
+            AnimatedVisibility(
+                visible = showControls,
+                enter = fadeIn(),
+                exit = fadeOut(),
+                modifier = Modifier.align(Alignment.BottomCenter)
+            ) {
+                AttachmentCarousel(items = items, selectedIndex = index, onSelect = onIndexChange)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ViewerRoundButton(
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+    content: @Composable () -> Unit
+) {
+    Surface(
+        shape = CircleShape,
+        color = Color.Black.copy(alpha = 0.6f),
+        modifier = Modifier.size(44.dp)
+    ) {
+        IconButton(onClick = onClick, enabled = enabled) {
+            content()
+        }
+    }
+}
+
+/** Zoomable (pinch / mouse wheel / double-tap) pan-able image, like Paicord's ZoomableImageView. */
+@Composable
+private fun ZoomableImageView(
+    url: String,
+    modifier: Modifier = Modifier,
+    onSingleTap: (() -> Unit)? = null
+) {
+    var scale by remember(url) { mutableFloatStateOf(1f) }
+    var offset by remember(url) { mutableStateOf(Offset.Zero) }
+
+    Box(
+        modifier = modifier
+            .clipToBounds()
+            .pointerInput(url) {
+                detectTransformGestures { _, pan, zoom, _ ->
+                    val newScale = (scale * zoom).coerceIn(1f, 8f)
+                    // Keep the focal point stable when zooming
+                    if (newScale != scale) {
+                        offset = offset * (newScale / scale)
+                    }
+                    offset += pan
+                    scale = newScale
+                }
+            }
+            .pointerInput(url) {
+                detectTapGestures(
+                    onDoubleTap = {
+                        if (scale > 1f) {
+                            scale = 1f
+                            offset = Offset.Zero
+                        } else {
+                            scale = 3f
+                            offset = Offset.Zero
+                        }
+                    },
+                    onTap = { onSingleTap?.invoke() }
+                )
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        AsyncImage(
+            model = url,
+            contentDescription = null,
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                    translationX = offset.x
+                    translationY = offset.y
+                },
+            contentScale = ContentScale.Fit
+        )
+    }
+}
+
+@Composable
+private fun AttachmentCarousel(
+    items: List<DiscordMedia>,
+    selectedIndex: Int,
+    onSelect: (Int) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(vertical = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+    ) {
+        items.forEachIndexed { index, media ->
+            val thumbUrl = media.thumbnailUrl(isPoster = true)
+            Box(
+                modifier = Modifier
+                    .size(57.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(Color.White.copy(alpha = 0.1f))
+                    .border(
+                        width = 2.dp,
+                        color = if (index == selectedIndex) Color.White else Color.Transparent,
+                        shape = RoundedCornerShape(4.dp)
+                    )
+                    .clickable { onSelect(index) }
+            ) {
+                if (thumbUrl != null) {
+                    AsyncImage(
+                        model = thumbUrl,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                        showPlaceholder = false
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun DiscordMedia.isImage(): Boolean = when (this) {
+    is Attachment -> content_type?.startsWith("image/") == true
+    is EmbedImage -> true
+    else -> false
+}
+
+private fun DiscordMedia.isVideo(): Boolean = when (this) {
+    is Attachment -> content_type?.startsWith("video/") == true
+    is EmbedVideo -> true
+    else -> false
+}
+
+/** Same URL logic as Paicord: raw proxy URL for images, format=png for video posters. */
+private fun DiscordMedia.thumbnailUrl(isPoster: Boolean): String? {
+    val url = proxy_url ?: url ?: return null
+    if (!isPoster || !isVideo()) return url
+    return if (url.contains("format=")) url else "$url${if (url.contains("?")) "&" else "?"}format=png"
+}
