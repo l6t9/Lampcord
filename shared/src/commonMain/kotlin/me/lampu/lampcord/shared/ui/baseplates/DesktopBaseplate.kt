@@ -86,6 +86,8 @@ fun DesktopBaseplate(chatState: ChatState) {
                                 ChatInputBar(activeChannel, chatState)
                             }
                         }
+                    } else if (chatState.isFriendsSelected) {
+                        FriendsList(chatState)
                     } else {
                         ChatUnselectedPlaceholder(chatState)
                     }

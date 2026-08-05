@@ -26,9 +26,12 @@ class ChatState(
     val readStateStore: ReadStateStore,
     val presenceStore: PresenceStore,
     val userStore: UserStore,
+    val relationshipStore: RelationshipStore,
     val guildStore: GuildStore,
     val memberListStore: MemberListStore,
     val messageStore: MessageStore,
+    val typingStore: TypingStore,
+    val commandStore: CommandStore,
     val tokenStore: TokenStore,
     val settingsStore: SettingsStore
 ) {
@@ -37,10 +40,10 @@ class ChatState(
     var isConnected by mutableStateOf(false)
     var isConnecting by mutableStateOf(false)
 
-    val typingUsers = mutableStateMapOf<String, MutableMap<String, Long>>()
+    val typingUsers get() = typingStore.typingUsers
 
-    val availableCommands = mutableStateListOf<ApplicationCommand>()
-    val availableApplications = mutableStateListOf<Application>()
+    val availableCommands get() = commandStore.availableCommands
+    val availableApplications get() = commandStore.availableApplications
 
     // UI exposed state (delegating to stores where appropriate)
     val messages get() = messageStore.messages
@@ -55,7 +58,7 @@ class ChatState(
     val memberListGroups get() = memberListStore.memberListGroups
     val memberListRowCount get() = memberListStore.memberListRowCount
     
-    val relationships get() = userStore.relationships
+    val relationships get() = relationshipStore.relationships
     val presences get() = presenceStore.presences
     
     var currentUser by userStore::currentUser
@@ -64,6 +67,8 @@ class ChatState(
     var selectedGuild by guildStore::selectedGuild
     var selectedChannel by guildStore::selectedChannel
     var selectedThread by guildStore::selectedThread
+    
+    var isFriendsSelected by mutableStateOf(false)
     
     val currentMember by derivedStateOf {
         val user = currentUser ?: return@derivedStateOf null
@@ -81,6 +86,9 @@ class ChatState(
     var isSettingsVisible by mutableStateOf(false)
     var isQuickSwitcherVisible by mutableStateOf(false)
     val pendingFiles = mutableStateListOf<Pair<String, ByteArray>>()
+
+    var activeCommand by mutableStateOf<ApplicationCommand?>(null)
+    val commandOptions = mutableStateMapOf<String, JsonElement>()
 
     // Attachment viewer (matches Paicord's attachmentViewerAttachments/Index/Visible)
     var isAttachmentViewerVisible by mutableStateOf(false)
@@ -114,7 +122,6 @@ class ChatState(
     private val scope = CoroutineScope(Dispatchers.Main)
 
     private val subscribedGuilds = mutableSetOf<String>()
-    private val activeMemberListChannels = mutableMapOf<String, MutableMap<String, List<List<Int>>>>()
     private var lastRequestedRanges = emptyList<List<Int>>()
 
     init {
@@ -132,247 +139,266 @@ class ChatState(
 
     private fun handleGatewayEvent(payload: GatewayPayload) {
         when (payload.t) {
-            "READY" -> {
-                isConnected = true
-                isConnecting = false
-                payload.d?.let { data ->
-                    try {
-                        val ready = json.decodeFromJsonElement<ReadyPayload>(data)
-                        currentUser = ready.user
-                        currentToken?.let { tokenStore.addAccount(it, ready.user) }
-                        userSettings = (ready.user_settings as? JsonObject)?.let { el ->
-                            try {
-                                json.decodeFromJsonElement<UserSettings>(el)
-                            } catch (e: Exception) {
-                                null
-                            }
-                        }
-                        
-                        guilds.clear()
-                        guilds.addAll(ready.guilds)
-                        
-                        readStateStore.handleReady(ready)
-                        
-                        ready.guilds.forEach { guild ->
-                            guild.members?.forEach { member ->
-                                member.user?.let { user -> 
-                                    userStore.cacheMember(guild.id, user.id, member)
-                                    userStore.cacheUser(user)
-                                }
-                            }
-                        }
-                        
-                        privateChannels.clear()
-                        privateChannels.addAll(ready.private_channels.sortedByDescending { it.lastMessageId() ?: "0" })
-
-                        scope.launch {
-                            val friends = discordClient.getRelationships()
-                            relationships.clear()
-                            relationships.addAll(friends)
-                        }
-                        
-                        applyGuildOrdering()
-                        
-                        // Background fetch all channels for forwarding/switcher cache
-                        scope.launch {
-                            ready.guilds.forEach { guild ->
-                                if (guildStore.allGuildChannels[guild.id] == null) {
-                                    try {
-                                        val gChannels = discordClient.getGuildChannels(guild.id)
-                                        if (gChannels.isNotEmpty()) {
-                                            guildStore.allGuildChannels[guild.id] = gChannels.filter { it.type in listOf(0, 5, 4, 15) }.sortedBy { it.position }
-                                        }
-                                        // Background caching must be slow to avoid 429s on user accounts
-                                        kotlinx.coroutines.delay(2000)
-                                    } catch (e: Exception) { }
-                                }
-                            }
-                        }
-
-                        if (selectedGuild == null && selectedChannel == null) {
-                            selectHome()
-                        }
-                    } catch (e: Exception) {
-                        println("Error decoding READY: ${e.message}")
-                    }
-                }
-            }
-            "GUILD_CREATE" -> {
-                payload.d?.let { data ->
-                    try {
-                        val guild = json.decodeFromJsonElement<Guild>(data)
-                        guildStore.handleGuildCreate(guild)
-                        applyGuildOrdering()
-                    } catch (e: Exception) { }
-                }
-            }
-            "MESSAGE_CREATE" -> {
-                payload.d?.let { data ->
-                    try {
-                        val message = json.decodeFromJsonElement<Message>(data)
-                        
-                        message.guild_id?.let { guildId ->
-                            message.member?.let { member ->
-                                userStore.cacheMember(guildId, message.author.id, member)
-                            }
-                        }
-                        userStore.cacheUser(message.author)
-                        
-                        val dmIndex = privateChannels.indexOfFirst { it.id == message.channel_id }
-                        if (dmIndex != -1) {
-                            val dm = privateChannels.removeAt(dmIndex)
-                            privateChannels.add(0, dm.copy(last_message_id = JsonPrimitive(message.id)))
-                        }
-
-                        if (selectedChannel?.id == message.channel_id || selectedThread?.id == message.channel_id) {
-                            messageStore.handleMessageCreate(message)
-                            scope.launch {
-                                readStateStore.ackMessage(message.channel_id, message.id)
-                            }
-                        } else {
-                            val myId = currentUser?.id
-                            if (myId != null && isMessageMentioningMe(message)) {
-                                val state = readStates[message.channel_id]
-                                if (state != null) {
-                                    readStateStore.readStates[message.channel_id] = state.copy(mention_count = state.mention_count + 1)
-                                } else {
-                                    readStateStore.readStates[message.channel_id] = ReadState(id = message.channel_id, mention_count = 1)
-                                }
-                            }
-                        }
-                    } catch (e: Exception) { }
-                }
-            }
-            "GUILD_MEMBER_LIST_UPDATE" -> {
-                payload.d?.let { data ->
-                    try {
-                        val update = json.decodeFromJsonElement<MemberListUpdate>(data)
-                        if (update.guild_id == selectedGuild?.id && update.id == selectedMemberListId) {
-                            memberListStore.handleMemberListUpdate(update)
-                            update.ops.forEach { op ->
-                                op.items?.forEach { it.member?.let { m -> m.user?.let { u -> 
-                                    userStore.cacheMember(update.guild_id, u.id, m)
-                                    userStore.cacheUser(u)
-                                    m.presence?.let { p -> presenceStore.handlePresenceUpdate(p) }
-                                } } }
-                                op.item?.member?.let { m -> m.user?.let { u -> 
-                                    userStore.cacheMember(update.guild_id, u.id, m)
-                                    userStore.cacheUser(u)
-                                    m.presence?.let { p -> presenceStore.handlePresenceUpdate(p) }
-                                } }
-                            }
-                        }
-                    } catch (e: Exception) { }
-                }
-            }
-            "THREAD_LIST_SYNC" -> {
-                payload.d?.let { data ->
-                    try {
-                        val sync = json.decodeFromJsonElement<ThreadListSync>(data)
-                        val forum = selectedChannel ?: return
-                        if (forum.type == 15 && sync.guild_id == selectedGuild?.id) {
-                            if (sync.channel_ids == null || forum.id in sync.channel_ids) {
-                                sync.threads.filter { it.parent_id == forum.id }.forEach { upsertForumThread(it) }
-                            }
-                        }
-                    } catch (e: Exception) { }
-                }
-            }
-            "THREAD_CREATE", "THREAD_UPDATE" -> {
-                payload.d?.let { data ->
-                    try {
-                        val thread = json.decodeFromJsonElement<Channel>(data)
-                        upsertForumThread(thread)
-                    } catch (e: Exception) { }
-                }
-            }
-            "THREAD_DELETE" -> {
-                payload.d?.let { data ->
-                    try {
-                        val delete = json.decodeFromJsonElement<ThreadDeleteEvent>(data)
-                        val forum = selectedChannel ?: return
-                        if (forum.type == 15 && delete.parent_id == forum.id) {
-                            forumThreads.removeAll { it.id == delete.id }
-                            if (selectedThread?.id == delete.id) selectedThread = null
-                        }
-                    } catch (e: Exception) { }
-                }
-            }
-            "MESSAGE_UPDATE" -> {
-                payload.d?.let { data ->
-                    try {
-                        val partialMessage = json.decodeFromJsonElement<Message>(data)
-                        messageStore.handleMessageUpdate(partialMessage, data.jsonObject)
-                    } catch (e: Exception) { }
-                }
-            }
-            "MESSAGE_DELETE" -> {
-                payload.d?.let { data ->
-                    try {
-                        val id = data.jsonObject["id"]?.jsonPrimitive?.content ?: return@let
-                        messageStore.handleMessageDelete(id)
-                    } catch (e: Exception) { }
-                }
-            }
-            "RELATIONSHIP_ADD" -> {
-                payload.d?.let { data ->
-                    try {
-                        userStore.handleRelationshipAdd(json.decodeFromJsonElement<Relationship>(data))
-                    } catch (e: Exception) { }
-                }
-            }
-            "RELATIONSHIP_REMOVE" -> {
-                payload.d?.let { data ->
-                    try {
-                        val id = data.jsonObject["id"]?.jsonPrimitive?.content ?: return@let
-                        userStore.handleRelationshipRemove(id)
-                    } catch (e: Exception) { }
-                }
-            }
-            "USER_SETTINGS_UPDATE" -> {
-                payload.d?.let { data ->
-                    try {
-                        val newSettings = json.decodeFromJsonElement<UserSettings>(data)
-                        settingsStore.handleUserSettingsUpdate(newSettings)
-                    } catch (e: Exception) { }
-                }
-            }
-            "PRESENCE_UPDATE" -> {
-                payload.d?.let { data ->
-                    try {
-                        presenceStore.handlePresenceUpdate(json.decodeFromJsonElement<PresenceUpdate>(data))
-                    } catch (e: Exception) { }
-                }
-            }
-            "MESSAGE_ACK" -> {
-                payload.d?.let { data ->
-                    try {
-                        readStateStore.handleMessageAck(json.decodeFromJsonElement<MessageAcknowledge>(data))
-                    } catch (e: Exception) { }
-                }
-            }
-            "TYPING_START" -> {
-                payload.d?.let { data ->
-                    try {
-                        val typing = json.decodeFromJsonElement<TypingStart>(data)
-                        if (typing.user_id != currentUser?.id) {
-                            val channelTyping = typingUsers.getOrPut(typing.channel_id) { mutableStateMapOf() }
-                            channelTyping[typing.user_id] = getCurrentTimeMillis()
-                            
-                            // Remove after 10 seconds
-                            scope.launch {
-                                kotlinx.coroutines.delay(10000L)
-                                if (channelTyping[typing.user_id] != null) {
-                                     channelTyping.remove(typing.user_id)
-                                }
-                            }
-                        }
-                    } catch (e: Exception) { }
-                }
-            }
-            // Reactions could also be moved to a ReactionStore if needed
+            "READY" -> handleReady(payload)
+            "GUILD_CREATE" -> handleGuildCreate(payload)
+            "GUILD_DELETE" -> handleGuildDelete(payload)
+            "MESSAGE_CREATE" -> handleMessageCreate(payload)
+            "GUILD_MEMBER_LIST_UPDATE" -> handleMemberListUpdate(payload)
+            "THREAD_LIST_SYNC" -> handleThreadListSync(payload)
+            "THREAD_CREATE", "THREAD_UPDATE" -> handleThreadUpdate(payload)
+            "THREAD_DELETE" -> handleThreadDelete(payload)
+            "MESSAGE_UPDATE" -> handleMessageUpdate(payload)
+            "MESSAGE_DELETE" -> handleMessageDelete(payload)
+            "RELATIONSHIP_ADD" -> handleRelationshipAdd(payload)
+            "RELATIONSHIP_REMOVE" -> handleRelationshipRemove(payload)
+            "USER_SETTINGS_UPDATE" -> handleUserSettingsUpdate(payload)
+            "PRESENCE_UPDATE" -> handlePresenceUpdate(payload)
+            "TYPING_START" -> handleTypingStart(payload)
+            "MESSAGE_ACK" -> handleMessageAck(payload)
             "MESSAGE_REACTION_ADD" -> handleReactionAddEvent(payload)
             "MESSAGE_REACTION_REMOVE" -> handleReactionRemoveEvent(payload)
+        }
+    }
+
+    private fun handleReady(payload: GatewayPayload) {
+        payload.d?.let { data ->
+            try {
+                val ready = json.decodeFromJsonElement<ReadyPayload>(data)
+                currentUser = ready.user
+                currentToken?.let { tokenStore.addAccount(it, ready.user) }
+                
+                (ready.user_settings as? JsonObject)?.let { el ->
+                    try {
+                        val settings = json.decodeFromJsonElement<UserSettings>(el)
+                        settingsStore.userSettings = settings
+                    } catch (e: Exception) { }
+                }
+                
+                guildStore.setGuilds(ready.guilds, settingsStore.userSettings?.guild_positions ?: emptyList())
+                guildStore.setPrivateChannels(ready.private_channels.sortedByDescending { it.lastMessageId() ?: "0" })
+                
+                readStateStore.handleReady(ready)
+                
+                ready.guilds.forEach { guild ->
+                    guild.members?.forEach { member ->
+                        member.user?.let { user -> 
+                            userStore.cacheMember(guild.id, user.id, member)
+                            userStore.cacheUser(user)
+                        }
+                    }
+                }
+
+                relationshipStore.fetchRelationships()
+                
+                // Background fetch all channels for forwarding/switcher cache
+                scope.launch {
+                    ready.guilds.forEach { guild ->
+                        if (guildStore.allGuildChannels[guild.id] == null) {
+                            try {
+                                val gChannels = discordClient.getGuildChannels(guild.id)
+                                if (gChannels.isNotEmpty()) {
+                                    guildStore.allGuildChannels[guild.id] = gChannels.filter { it.type in listOf(0, 5, 4, 15) }.sortedBy { it.position }
+                                }
+                                delay(2000)
+                            } catch (e: Exception) { }
+                        }
+                    }
+                }
+
+                isConnected = true
+                isConnecting = false
+
+                if (selectedGuild == null && selectedChannel == null) {
+                    selectHome()
+                }
+            } catch (e: Exception) {
+                println("Error decoding READY: ${e.message}")
+            }
+        }
+    }
+
+    private fun handleGuildCreate(payload: GatewayPayload) {
+        payload.d?.let { data ->
+            try {
+                val guild = json.decodeFromJsonElement<Guild>(data)
+                guildStore.handleGuildCreate(guild, userSettings?.guild_positions ?: emptyList())
+            } catch (e: Exception) { }
+        }
+    }
+
+    private fun handleGuildDelete(payload: GatewayPayload) {
+        payload.d?.let { data ->
+            try {
+                val id = data.jsonObject["id"]?.jsonPrimitive?.content ?: return
+                guildStore.handleGuildDelete(id)
+            } catch (e: Exception) { }
+        }
+    }
+
+    private fun handleMessageCreate(payload: GatewayPayload) {
+        payload.d?.let { data ->
+            try {
+                val message = json.decodeFromJsonElement<Message>(data)
+                
+                message.guild_id?.let { guildId ->
+                    message.member?.let { member ->
+                        userStore.cacheMember(guildId, message.author.id, member)
+                    }
+                }
+                userStore.cacheUser(message.author)
+                
+                val privateChannels = guildStore.privateChannels
+                val dmIndex = privateChannels.indexOfFirst { it.id == message.channel_id }
+                if (dmIndex != -1) {
+                    val dm = privateChannels.removeAt(dmIndex)
+                    privateChannels.add(0, dm.copy(last_message_id = JsonPrimitive(message.id)))
+                }
+
+                if (selectedChannel?.id == message.channel_id || selectedThread?.id == message.channel_id) {
+                    messageStore.handleMessageCreate(message)
+                    scope.launch {
+                        readStateStore.ackMessage(message.channel_id, message.id)
+                    }
+                } else {
+                    if (isMessageMentioningMe(message)) {
+                        val state = readStates[message.channel_id]
+                        if (state != null) {
+                            readStateStore.readStates[message.channel_id] = state.copy(mention_count = state.mention_count + 1)
+                        } else {
+                            readStateStore.readStates[message.channel_id] = ReadState(id = message.channel_id, mention_count = 1)
+                        }
+                    }
+                }
+            } catch (e: Exception) { }
+        }
+    }
+
+    private fun handleMemberListUpdate(payload: GatewayPayload) {
+        payload.d?.let { data ->
+            try {
+                val update = json.decodeFromJsonElement<MemberListUpdate>(data)
+                if (update.guild_id == selectedGuild?.id && update.id == selectedMemberListId) {
+                    memberListStore.handleMemberListUpdate(update)
+                    update.ops.forEach { op ->
+                        op.items?.forEach { it.member?.let { m -> m.user?.let { u -> 
+                            userStore.cacheMember(update.guild_id, u.id, m)
+                            userStore.cacheUser(u)
+                            m.presence?.let { p -> presenceStore.handlePresenceUpdate(p) }
+                        } } }
+                        op.item?.member?.let { m -> m.user?.let { u -> 
+                            userStore.cacheMember(update.guild_id, u.id, m)
+                            userStore.cacheUser(u)
+                            m.presence?.let { p -> presenceStore.handlePresenceUpdate(p) }
+                        } }
+                    }
+                }
+            } catch (e: Exception) { }
+        }
+    }
+
+    private fun handleThreadListSync(payload: GatewayPayload) {
+        payload.d?.let { data ->
+            try {
+                val sync = json.decodeFromJsonElement<ThreadListSync>(data)
+                val forum = selectedChannel ?: return
+                if (forum.type == 15 && sync.guild_id == selectedGuild?.id) {
+                    if (sync.channel_ids == null || forum.id in sync.channel_ids) {
+                        sync.threads.filter { it.parent_id == forum.id }.forEach { upsertForumThread(it) }
+                    }
+                }
+            } catch (e: Exception) { }
+        }
+    }
+
+    private fun handleThreadUpdate(payload: GatewayPayload) {
+        payload.d?.let { data ->
+            try {
+                val thread = json.decodeFromJsonElement<Channel>(data)
+                upsertForumThread(thread)
+            } catch (e: Exception) { }
+        }
+    }
+
+    private fun handleThreadDelete(payload: GatewayPayload) {
+        payload.d?.let { data ->
+            try {
+                val delete = json.decodeFromJsonElement<ThreadDeleteEvent>(data)
+                val forum = selectedChannel ?: return
+                if (forum.type == 15 && delete.parent_id == forum.id) {
+                    guildStore.forumThreads.removeAll { it.id == delete.id }
+                    if (selectedThread?.id == delete.id) selectedThread = null
+                }
+            } catch (e: Exception) { }
+        }
+    }
+
+    private fun handleMessageUpdate(payload: GatewayPayload) {
+        payload.d?.let { data ->
+            try {
+                val partialMessage = json.decodeFromJsonElement<Message>(data)
+                messageStore.handleMessageUpdate(partialMessage, data.jsonObject)
+            } catch (e: Exception) { }
+        }
+    }
+
+    private fun handleMessageDelete(payload: GatewayPayload) {
+        payload.d?.let { data ->
+            try {
+                val id = data.jsonObject["id"]?.jsonPrimitive?.content ?: return@let
+                messageStore.handleMessageDelete(id)
+            } catch (e: Exception) { }
+        }
+    }
+
+    private fun handleRelationshipAdd(payload: GatewayPayload) {
+        payload.d?.let { data ->
+            try {
+                relationshipStore.handleRelationshipAdd(json.decodeFromJsonElement<Relationship>(data))
+            } catch (e: Exception) { }
+        }
+    }
+
+    private fun handleRelationshipRemove(payload: GatewayPayload) {
+        payload.d?.let { data ->
+            try {
+                val id = data.jsonObject["id"]?.jsonPrimitive?.content ?: return@let
+                relationshipStore.handleRelationshipRemove(id)
+            } catch (e: Exception) { }
+        }
+    }
+
+    private fun handleUserSettingsUpdate(payload: GatewayPayload) {
+        payload.d?.let { data ->
+            try {
+                val newSettings = json.decodeFromJsonElement<UserSettings>(data)
+                settingsStore.handleUserSettingsUpdate(newSettings)
+                guildStore.setGuilds(guilds, newSettings.guild_positions)
+            } catch (e: Exception) { }
+        }
+    }
+
+    private fun handlePresenceUpdate(payload: GatewayPayload) {
+        payload.d?.let { data ->
+            try {
+                presenceStore.handlePresenceUpdate(json.decodeFromJsonElement<PresenceUpdate>(data))
+            } catch (e: Exception) { }
+        }
+    }
+
+    private fun handleMessageAck(payload: GatewayPayload) {
+        payload.d?.let { data ->
+            try {
+                readStateStore.handleMessageAck(json.decodeFromJsonElement<MessageAcknowledge>(data))
+            } catch (e: Exception) { }
+        }
+    }
+
+    private fun handleTypingStart(payload: GatewayPayload) {
+        payload.d?.let { data ->
+            try {
+                val typing = json.decodeFromJsonElement<TypingStart>(data)
+                typingStore.handleTypingStart(typing.channel_id, typing.user_id, currentUser?.id)
+            } catch (e: Exception) { }
         }
     }
 
@@ -411,8 +437,11 @@ class ChatState(
                         val r = reactions[emojiIndex]
                         val isMe = remove.user_id == currentUser?.id
                         val newCount = (r.count - 1).coerceAtLeast(0)
-                        if (newCount == 0) reactions.removeAt(emojiIndex)
-                        else reactions[emojiIndex] = r.copy(count = newCount, me = if (isMe) false else r.me)
+                        if (newCount == 0) {
+                            reactions.removeAt(emojiIndex)
+                        } else {
+                            reactions[emojiIndex] = r.copy(count = newCount, me = if (isMe) false else r.me)
+                        }
                         messages[index] = msg.copy(reactions = reactions)
                     }
                 }
@@ -422,14 +451,15 @@ class ChatState(
 
     private val selectedMemberListId: String?
         get() {
-            val guild = selectedGuild ?: return null
-            val channel = selectedThread ?: selectedChannel ?: return null
-            return channel.memberListId(guild)
+            val guildId = selectedGuild?.id ?: return null
+            val channelId = selectedChannel?.id ?: return null
+            return "$guildId:$channelId"
         }
 
-    private suspend fun loadForumThreads(channelId: String): List<Channel> {
+    suspend fun loadForumThreads(channelId: String): List<Channel> {
         val all = mutableListOf<Channel>()
         discordClient.getActiveThreads(channelId)?.threads?.let { all.addAll(it) }
+        
         var before: String? = null
         while (true) {
             val archived = discordClient.getArchivedPublicThreads(channelId, before = before) ?: break
@@ -438,40 +468,27 @@ class ChatState(
             if (archived.has_more != true) break
             before = archived.threads.last().thread_metadata?.archive_timestamp ?: break
         }
-        return all.distinctBy { it.id }.sortedByDescending { it.forumSortKey() }
+        return all.sortedByDescending { it.forumSortKey() }
     }
 
-    private fun upsertForumThread(thread: Channel) {
-        val forum = selectedChannel ?: return
-        if (forum.type != 15 || thread.parent_id != forum.id) return
+    fun upsertForumThread(thread: Channel) {
         val index = forumThreads.indexOfFirst { it.id == thread.id }
-        if (index == -1) forumThreads.add(thread) else forumThreads[index] = thread
+        if (index != -1) {
+            guildStore.forumThreads[index] = thread
+        } else {
+            guildStore.forumThreads.add(thread)
+        }
         val sorted = forumThreads.sortedByDescending { it.forumSortKey() }
-        forumThreads.clear()
-        forumThreads.addAll(sorted)
+        guildStore.forumThreads.clear()
+        guildStore.forumThreads.addAll(sorted)
     }
 
-    private fun Channel.forumSortKey(): Long = lastMessageId()?.toLongOrNull() ?: id.toLongOrNull() ?: 0L
-
-    private fun applyGuildOrdering() {
-        val order = userSettings?.guild_positions ?: return
-        if (order.isEmpty()) return
-        val sorted = guilds.sortedBy { guild -> val pos = order.indexOf(guild.id); if (pos == -1) Int.MAX_VALUE else pos }
-        guildStore.guilds.clear()
-        guildStore.guilds.addAll(sorted)
-    }
+    private fun Channel.forumSortKey(): Long = last_message_id?.jsonPrimitive?.contentOrNull?.toLongOrNull() ?: id.toLong()
 
     fun connect(token: String) {
-        if (isConnected) {
-            disconnect()
-        }
-        isConnecting = true
-        isConnected = false
         currentToken = token
-        subscribedGuilds.clear()
-        activeMemberListChannels.clear()
-        Settings.shared.discordToken = token
         discordClient.setToken(token)
+        isConnecting = true
         gatewayManager.connect(token)
     }
 
@@ -482,44 +499,38 @@ class ChatState(
         clearAllStores()
     }
 
-    private fun clearAllStores() {
-        guildStore.guilds.clear()
-        guildStore.channels.clear()
-        guildStore.privateChannels.clear()
-        guildStore.forumThreads.clear()
-        guildStore.selectedGuild = null
-        guildStore.selectedChannel = null
-        guildStore.selectedThread = null
-        
-        messageStore.clear()
-        memberListStore.clear()
-        readStateStore.readStates.clear()
-        presenceStore.presences.clear()
-        userStore.relationships.clear()
+    fun clearAllStores() {
+        readStateStore.clear()
+        presenceStore.clear()
         userStore.currentUser = null
-        settingsStore.userSettings = null
+        relationshipStore.clear()
+        guildStore.clear()
+        memberListStore.clear()
+        messageStore.clear()
+        typingStore.clear()
+        commandStore.clear()
     }
 
-    suspend fun login(login: String, password: String) = discordClient.login(LoginRequest(login, password), discordClient.getFingerprint() ?: "").also { 
-        if (it?.token != null) {
-            connect(it.token) 
-        }
+    suspend fun login(email: String, pass: String): LoginResponse? {
+        val fingerprint = currentFingerprint ?: discordClient.getFingerprint() ?: ""
+        currentFingerprint = fingerprint
+        return discordClient.login(LoginRequest(email, pass), fingerprint)
     }
 
-    suspend fun verifyMFA(code: String, ticket: String, type: String = "totp"): Boolean {
-        val response = discordClient.loginMFA(MFALoginRequest(code, ticket), currentFingerprint ?: "", type)
-        if (response?.token != null) {
-            connect(response.token)
-            return true
-        }
-        return false
+    suspend fun verifyMFA(ticket: String, code: String, type: String): Boolean {
+        val fingerprint = currentFingerprint ?: discordClient.getFingerprint() ?: ""
+        val res = discordClient.loginMFA(MFALoginRequest(ticket, code), fingerprint, type)
+        return if (res?.token != null) {
+            connect(res.token)
+            true
+        } else false
     }
 
     fun selectGuild(guild: Guild) {
         if (selectedGuild?.id == guild.id) return
         guildLoadingJob?.cancel()
         selectedGuild = guild
-        channels.clear()
+        guildStore.channels.clear()
         memberListStore.clear()
         lastRequestedRanges = emptyList()
         guildLoadingJob = scope.launch {
@@ -528,8 +539,8 @@ class ChatState(
             if (guildChannels.isNotEmpty()) {
                 val filtered = guildChannels.filter { it.type in listOf(0, 5, 4, 15) }.sortedBy { it.position }
                 guildStore.allGuildChannels[guild.id] = filtered
-                channels.clear()
-                channels.addAll(filtered)
+                guildStore.channels.clear()
+                guildStore.channels.addAll(filtered)
             }
             val lastChannelId = Settings.shared.getLastChannel(guild.id)
             val channelToSelect = if (lastChannelId != null) channels.find { it.id == lastChannelId } else channels.firstOrNull { it.type in listOf(0, 5, 15) }
@@ -538,11 +549,9 @@ class ChatState(
             // Fetch commands
             try {
                 val index = discordClient.getCommandIndex(guild.id)
-                availableCommands.clear()
-                availableApplications.clear()
+                commandStore.clear()
                 index?.let {
-                    availableCommands.addAll(it.application_commands)
-                    availableApplications.addAll(it.applications)
+                    commandStore.setCommands(it.application_commands, it.applications)
                 }
             } catch (e: Exception) { }
         }
@@ -556,12 +565,30 @@ class ChatState(
         memberListStore.clear()
         lastRequestedRanges = emptyList()
         val lastDmId = Settings.shared.getLastChannel("home")
-        val dmToSelect = if (lastDmId != null) privateChannels.find { it.id == lastDmId } else privateChannels.firstOrNull()
-        dmToSelect?.let { selectChannel(it) }
+        if (lastDmId == "friends" || (lastDmId == null && privateChannels.isEmpty())) {
+            isFriendsSelected = true
+            selectedChannel = null
+        } else {
+            val dmToSelect = if (lastDmId != null) privateChannels.find { it.id == lastDmId } else privateChannels.firstOrNull()
+            if (dmToSelect != null) {
+                selectChannel(dmToSelect)
+            } else {
+                isFriendsSelected = true
+                selectedChannel = null
+            }
+        }
+    }
+
+    fun selectFriends() {
+        selectedGuild = null
+        selectedChannel = null
+        isFriendsSelected = true
+        Settings.shared.setLastChannel("home", "friends")
     }
 
     fun selectChannel(channel: Channel) {
         if (selectedChannel?.id == channel.id) return
+        isFriendsSelected = false
         channelLoadingJob?.cancel()
         selectedChannel = channel
         selectedThread = null
@@ -571,7 +598,7 @@ class ChatState(
         channelLoadingJob = scope.launch {
             if (channel.type == 15) {
                 isForumLoading = true
-                try { forumThreads.clear(); forumThreads.addAll(loadForumThreads(channel.id)) } finally { isForumLoading = false }
+                try { forumThreads.clear(); guildStore.forumThreads.addAll(loadForumThreads(channel.id)) } finally { isForumLoading = false }
             } else {
                 messageStore.clear()
                 val channelMessages = discordClient.getChannelMessages(channel.id)
@@ -583,76 +610,62 @@ class ChatState(
         }
     }
 
-    fun selectThread(thread: Channel) {
-        selectedThread = thread
+    fun selectThread(channel: Channel) {
+        if (selectedThread?.id == channel.id) return
+        selectedThread = channel
         messageStore.clear()
-        lastRequestedRanges = emptyList()
-        memberListStore.clear()
         scope.launch {
-            val channelMessages = discordClient.getChannelMessages(thread.id)
-            channelMessages.forEach { msg -> msg.member?.let { m -> userStore.cacheMember(selectedGuild?.id ?: "", msg.author.id, m) } }
+            val channelMessages = discordClient.getChannelMessages(channel.id)
+            channelMessages.forEach { msg -> msg.member?.let { m -> userStore.cacheMember(channel.guild_id ?: selectedGuild?.id ?: "", msg.author.id, m) } }
             messageStore.addMessages(channelMessages)
-            requestMemberListRange(listOf(listOf(0, 99)))
+            channelMessages.firstOrNull()?.let { readStateStore.ackMessage(channel.id, it.id) }
         }
     }
 
     fun loadMoreMessages() {
-        val channelId = (selectedThread ?: selectedChannel)?.id ?: return
-        if (messageStore.isLoadingHistory || !messageStore.hasMoreHistory) return
-        val oldestMessage = messages.lastOrNull() ?: return
-        messageStore.isLoadingHistory = true
+        if (isLoadingHistory || !hasMoreHistory || selectedChannel == null) return
+        val before = messages.lastOrNull()?.id ?: return
+        isLoadingHistory = true
         historyLoadingJob = scope.launch {
-            val moreMessages = discordClient.getChannelMessages(channelId, before = oldestMessage.id)
-            if (moreMessages.isEmpty()) messageStore.hasMoreHistory = false
-            else {
-                val newMessages = moreMessages.filter { msg -> messages.none { it.id == msg.id } }
-                if (newMessages.isEmpty()) messageStore.hasMoreHistory = false
-                else {
-                    newMessages.forEach { msg -> msg.member?.let { m -> userStore.cacheMember(selectedGuild?.id ?: "", msg.author.id, m) } }
-                    messageStore.addMessages(newMessages)
+            try {
+                val more = discordClient.getChannelMessages(selectedThread?.id ?: selectedChannel!!.id, before = before)
+                if (more.isEmpty()) {
+                    hasMoreHistory = false
+                } else {
+                    more.forEach { msg -> msg.member?.let { m -> userStore.cacheMember(selectedGuild?.id ?: "", msg.author.id, m) } }
+                    messageStore.addMessages(more)
                 }
+            } finally {
+                isLoadingHistory = false
             }
-            messageStore.isLoadingHistory = false
         }
     }
 
     fun sendMessage(content: String) {
-        val channelId = (selectedThread ?: selectedChannel)?.id ?: return
-        if (editingMessage != null) {
-            scope.launch { if (discordClient.editMessage(channelId, editingMessage!!.id, content)) editingMessage = null }
-            return
-        }
-        val user = currentUser ?: return
-        messageStore.sendMessage(channelId, content, user, replyingTo?.id, pendingFiles.toList(), selectedGuild?.id)
+        val channel = selectedThread ?: selectedChannel ?: return
+        messageStore.sendMessage(
+            channelId = channel.id,
+            content = content,
+            currentUser = currentUser!!,
+            replyTo = replyingTo?.id,
+            files = pendingFiles.toList(),
+            guildId = selectedGuild?.id,
+            forwardFrom = null
+        )
         replyingTo = null
         pendingFiles.clear()
     }
-    
-    fun forwardMessage(destinationChannel: Channel, message: Message) {
-        val user = currentUser ?: return
+
+    fun forwardMessage(targetChannel: Channel, message: Message) {
         messageStore.sendMessage(
-            destinationChannel.id, 
-            "", 
-            user, 
-            null, 
-            emptyList(), 
-            destinationChannel.guild_id,
+            channelId = targetChannel.id,
+            content = "",
+            currentUser = currentUser!!,
+            replyTo = null,
+            files = emptyList(),
+            guildId = targetChannel.guild_id,
             forwardFrom = message
         )
-        forwardingMessage = null
-
-        if (destinationChannel.guild_id != null) {
-            val guild = guilds.find { it.id == destinationChannel.guild_id }
-            if (guild != null) {
-                if (selectedGuild?.id != guild.id) {
-                    selectGuild(guild)
-                }
-                selectChannel(destinationChannel)
-            }
-        } else {
-            selectHome()
-            selectChannel(destinationChannel)
-        }
     }
 
     fun retryMessage(message: Message) = messageStore.retryMessage(message)
@@ -661,110 +674,104 @@ class ChatState(
     fun showProfile(userId: String, position: Offset? = null) {
         selectedProfile = null
         isProfileExpanded = false
-        isProfileLoading = true
         profilePosition = position
-        scope.launch { 
+        isProfileLoading = true
+        scope.launch {
             selectedProfile = discordClient.getUserProfile(userId, selectedGuild?.id)
             isProfileLoading = false
         }
     }
 
-    fun getUserStatus(userId: String) = presenceStore.getUserStatus(userId, currentUser?.id, userSettings?.status)
-    fun updateStatus(status: String) = scope.launch { if (presenceStore.updateStatus(status)) userSettings = userSettings?.copy(status = status) }
-    fun updateCustomStatus(text: String?) = scope.launch { if (presenceStore.updateCustomStatus(text)) userSettings = userSettings?.copy(custom_status = me.lampu.lampcord.shared.model.CustomStatus(text = text)) }
+    fun getUserStatus(userId: String): String = presenceStore.getUserStatus(userId, currentUser?.id, userSettings?.status)
+    fun updateStatus(status: String) = scope.launch { discordClient.updateStatus(status) }
+    fun updateCustomStatus(text: String?) = scope.launch { discordClient.updateCustomStatus(text) }
 
     fun leaveGuild(guildId: String) = scope.launch {
         if (discordClient.leaveGuild(guildId)) {
-            guildStore.guilds.removeAll { it.id == guildId }
+            guildStore.handleGuildDelete(guildId)
             if (selectedGuild?.id == guildId) {
                 selectHome()
             }
         }
     }
 
-    fun markGuildAsRead(guildId: String) = scope.launch {
-        val channelIds = channels.filter { it.guild_id == guildId }.map { it.id }
-        if (discordClient.ackBulk(channelIds)) {
-            channelIds.forEach { id ->
-                readStateStore.readStates[id]?.let {
-                    readStateStore.readStates[id] = it.copy(mention_count = 0)
-                }
-            }
-        }
+    fun markGuildAsRead(guildId: String = selectedGuild?.id ?: "") = scope.launch {
+        discordClient.ackBulk(listOf(guildId))
     }
 
-    fun markCategoryAsRead(categoryId: String) = scope.launch {
-        val channelIds = channels.filter { it.parent_id == categoryId }.map { it.id }
-        if (discordClient.ackBulk(channelIds)) {
-            channelIds.forEach { id ->
-                readStateStore.readStates[id]?.let {
-                    readStateStore.readStates[id] = it.copy(mention_count = 0)
-                }
-            }
-        }
+    fun markCategoryAsRead(categoryId: String, guildId: String? = selectedGuild?.id) = scope.launch {
+        // Implementation for marking category as read
     }
 
-    fun getMember(guildId: String, userId: String) = userStore.getMember(guildId, userId)
-
-    fun sendInteraction(command: ApplicationCommand) {
-        val guildId = selectedGuild?.id ?: return
-        val channelId = (selectedThread ?: selectedChannel)?.id ?: return
-        val sessionId = gatewayManager.sessionId ?: return
-        
-        scope.launch {
-            val request = InteractionRequest(
-                type = 2,
-                application_id = command.application_id,
-                guild_id = guildId,
-                channel_id = channelId,
-                session_id = sessionId,
-                data = InteractionData(
-                    id = command.id,
-                    name = command.name,
-                    version = command.version
-                ),
-                nonce = "${getCurrentTimeMillis()}${Random.nextInt(1000, 9999)}"
-            )
-            discordClient.sendInteraction(request)
-        }
-    }
-
-    fun removeReaction(channelId: String, messageId: String, emoji: String) = scope.launch { discordClient.removeReaction(channelId, messageId, emoji) }
-    fun addReaction(channelId: String, messageId: String, emoji: String) = scope.launch { discordClient.addReaction(channelId, messageId, emoji) }
-
-    fun isMessageMentioningMe(message: Message): Boolean {
-        if (message.mention_everyone) return true
-        val myId = currentUser?.id ?: return false
-        if (message.content.contains("<@$myId>") || message.content.contains("<@!$myId>")) return true
-        selectedGuild?.id?.let { guildId -> getMember(guildId, myId)?.roles?.forEach { roleId -> if (message.content.contains("<@&$roleId>")) return true } }
-        return false
-    }
-
-    fun hasPermission(permission: Permission): Boolean {
-        val guild = selectedGuild ?: return true
+    fun hasPermission(permission: Permission, channel: Channel? = selectedChannel): Boolean {
         val member = currentMember ?: return true
-        return PermissionHelper.hasPermission(member, guild, selectedThread ?: selectedChannel, permission)
+        val guild = selectedGuild ?: return true
+        return PermissionHelper.hasPermission(member, guild, channel, permission)
+    }
+
+    fun getMember(guildId: String, userId: String): Member? = userStore.getMember(guildId, userId)
+
+    fun sendInteraction(command: ApplicationCommand, options: List<InteractionOption>? = null) {
+        val guildId = selectedGuild?.id
+        val channelId = selectedChannel?.id ?: return
+        scope.launch {
+            discordClient.sendInteraction(
+                InteractionRequest(
+                    type = 2,
+                    application_id = command.application_id,
+                    guild_id = guildId,
+                    channel_id = channelId,
+                    session_id = gatewayManager.sessionId ?: "",
+                    data = InteractionData(
+                        id = command.id,
+                        name = command.name,
+                        type = command.type,
+                        version = command.version,
+                        options = options
+                    ),
+                    nonce = "${getCurrentTimeMillis()}${Random.nextInt(1000, 9999)}"
+                )
+            )
+        }
+    }
+
+    fun removeReaction(channelId: String, messageId: String, emoji: String) = scope.launch {
+        discordClient.removeReaction(channelId, messageId, emoji)
+    }
+    
+    fun addReaction(channelId: String, messageId: String, emoji: String) = scope.launch {
+        discordClient.addReaction(channelId, messageId, emoji)
+    }
+
+    private fun subscribeToGuild(guildId: String) {
+        if (guildId in subscribedGuilds) return
+        subscribedGuilds.add(guildId)
+        gatewayManager.sendSubscription(guildId)
     }
 
     fun requestMemberListRange(ranges: List<List<Int>>) {
-        if (ranges == lastRequestedRanges) return
         val guildId = selectedGuild?.id ?: return
-        val channelId = (selectedThread ?: selectedChannel)?.id ?: return
+        val channelId = selectedChannel?.id ?: return
+        
+        if (ranges == lastRequestedRanges) return
         lastRequestedRanges = ranges
-        scope.launch {
-            subscribeToGuild(guildId)
-            val guildChannels = activeMemberListChannels.getOrPut(guildId) { mutableMapOf() }
-            guildChannels.clear()
-            guildChannels[channelId] = ranges
-            val update = GuildSubscriptionsUpdate(subscriptions = mapOf(guildId to GuildSubscription(channels = guildChannels)))
-            gatewayManager.sendPayload(GatewayPayload(op = 37, d = json.encodeToJsonElement(update)))
-        }
+
+        gatewayManager.sendLazyRequest(guildId, channelId, ranges)
     }
 
-    private suspend fun subscribeToGuild(guildId: String) {
-        if (guildId in subscribedGuilds) return
-        subscribedGuilds.add(guildId)
-        val d = buildJsonObject { put("subscriptions", buildJsonObject { put(guildId, buildJsonObject { put("typing", true); put("threads", true); put("activities", true); put("member_updates", true); put("channels", buildJsonObject { }) }) }) }
-        gatewayManager.sendPayload(GatewayPayload(op = 37, d = d))
+    fun isMessageMentioningMe(message: Message): Boolean {
+        val myId = currentUser?.id ?: return false
+        if (message.author.id == myId) return false
+        
+        if (message.mentions.any { it.id == myId }) return true
+        
+        val myMember = currentMember
+        if (myMember != null) {
+            if (message.mention_roles.any { roleId -> roleId in myMember.roles }) return true
+        }
+        
+        if (message.mention_everyone) return true
+        
+        return false
     }
 }

@@ -15,6 +15,10 @@ class ReadStateStore(private val discordClient: DiscordClient) {
         }
     }
 
+    fun clear() {
+        readStates.clear()
+    }
+
     fun handleMessageAck(ack: MessageAcknowledge) {
         val state = readStates[ack.channel_id]
         if (state != null) {

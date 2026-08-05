@@ -6,7 +6,6 @@ import me.lampu.lampcord.shared.model.*
 
 class UserStore {
     var currentUser by mutableStateOf<User?>(null)
-    val relationships = mutableStateListOf<Relationship>()
     
     // User Cache: userId -> User
     private val userCache = mutableStateMapOf<String, User>()
@@ -37,14 +36,5 @@ class UserStore {
 
     fun getMember(guildId: String, userId: String): Member? {
         return memberCache[guildId]?.get(userId)
-    }
-
-    fun handleRelationshipAdd(rel: Relationship) {
-        relationships.removeAll { it.id == rel.id }
-        relationships.add(rel)
-    }
-
-    fun handleRelationshipRemove(id: String) {
-        relationships.removeAll { it.id == id }
     }
 }

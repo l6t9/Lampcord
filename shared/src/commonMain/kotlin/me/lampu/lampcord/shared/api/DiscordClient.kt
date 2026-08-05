@@ -346,6 +346,34 @@ class DiscordClient(
         }
     }
 
+    suspend fun addRelationship(userId: String, type: Int): Boolean {
+        if (token == null) return false
+        return try {
+            val response = httpClient.put("$apiBase/users/@me/relationships/$userId") {
+                header(HttpHeaders.Authorization, token!!)
+                contentType(ContentType.Application.Json)
+                setBody(buildJsonObject { put("type", type) })
+            }
+            response.status.isSuccess()
+        } catch (e: Exception) {
+            println("Error adding relationship: ${e.message}")
+            false
+        }
+    }
+
+    suspend fun deleteRelationship(userId: String): Boolean {
+        if (token == null) return false
+        return try {
+            val response = httpClient.delete("$apiBase/users/@me/relationships/$userId") {
+                header(HttpHeaders.Authorization, token!!)
+            }
+            response.status.isSuccess()
+        } catch (e: Exception) {
+            println("Error deleting relationship: ${e.message}")
+            false
+        }
+    }
+
     suspend fun addReaction(channelId: String, messageId: String, emoji: String): Boolean {
         if (token == null) return false
         return try {

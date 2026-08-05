@@ -20,12 +20,16 @@ import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import me.lampu.lampcord.shared.utils.ThumbHash
 import coil3.compose.AsyncImagePainter
 import coil3.compose.LocalPlatformContext
 import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
 
+@OptIn(ExperimentalEncodingApi::class)
 @Composable
 fun AsyncImage(
     model: Any?,
@@ -39,7 +43,8 @@ fun AsyncImage(
     colorFilter: ColorFilter? = null,
     filterQuality: FilterQuality = FilterQuality.High,
     shape: Shape? = null,
-    showPlaceholder: Boolean = true
+    showPlaceholder: Boolean = true,
+    placeholderHash: String? = null
 ) {
     val context = LocalPlatformContext.current
     
@@ -64,12 +69,27 @@ fun AsyncImage(
         label = "imageFade"
     )
 
+    val thumbColor = remember(placeholderHash) {
+        if (placeholderHash == null) return@remember null
+        try {
+            val bytes = Base64.decode(placeholderHash)
+            val rgba = ThumbHash.thumbHashToRGBA(bytes)
+            androidx.compose.ui.graphics.Color(rgba.r, rgba.g, rgba.b, rgba.a)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     Box(
         modifier = modifier.then(if (shape != null) Modifier.clip(shape) else Modifier),
         contentAlignment = Alignment.Center
     ) {
         if (showPlaceholder && state is AsyncImagePainter.State.Loading) {
-            ImageLoadingPlaceholder(Modifier.fillMaxSize())
+            if (thumbColor != null) {
+                Box(Modifier.fillMaxSize().background(thumbColor))
+            } else {
+                ImageLoadingPlaceholder(Modifier.fillMaxSize())
+            }
         }
 
         Image(

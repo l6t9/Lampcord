@@ -12,6 +12,8 @@ data class Message(
     val edited_timestamp: String? = null,
     val tts: Boolean = false,
     val mention_everyone: Boolean = false,
+    val mentions: List<User> = emptyList(),
+    val mention_roles: List<String> = emptyList(),
     val attachments: List<Attachment> = emptyList(),
     val embeds: List<Embed> = emptyList(),
     val reactions: List<MessageReaction>? = null,

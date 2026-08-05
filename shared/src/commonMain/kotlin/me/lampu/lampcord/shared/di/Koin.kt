@@ -26,16 +26,19 @@ val appModule = module {
     single { ReadStateStore(get()) }
     single { PresenceStore(get()) }
     single { UserStore() }
+    single { RelationshipStore(get(), CoroutineScope(Dispatchers.Main)) }
     single { GuildStore() }
     single { MemberListStore() }
     single { MessageStore(get(), CoroutineScope(Dispatchers.Main)) }
+    single { TypingStore(CoroutineScope(Dispatchers.Main)) }
+    single { CommandStore() }
     single { TokenStore(get()) }
     single { SettingsStore(get()) }
 
     single { 
         ChatState(
             get(), get(), get(), 
-            get(), get(), get(), get(), get(), get(), get(), get()
+            get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()
         ) 
     }
 }

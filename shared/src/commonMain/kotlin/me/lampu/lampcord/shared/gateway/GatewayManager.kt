@@ -28,6 +28,8 @@ class GatewayManager(
     private var lastSequence: Int? = null
     var sessionId: String? = null
     private var clientHeartbeatSessionId = randomUUID()
+    
+    private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     fun connect(token: String) {
         disconnect()
@@ -199,5 +201,41 @@ class GatewayManager(
     suspend fun sendPayload(payload: GatewayPayload) {
         val jsonString = json.encodeToString(payload)
         session?.send(jsonString)
+    }
+
+    fun sendSubscription(guildId: String) {
+        val payload = GatewayPayload(
+            op = 14,
+            d = buildJsonObject {
+                put("guild_id", guildId)
+                put("typing", true)
+                put("threads", true)
+                put("activities", true)
+            }
+        )
+        scope.launch { sendPayload(payload) }
+    }
+
+    fun sendLazyRequest(guildId: String, channelId: String, ranges: List<List<Int>>) {
+        val payload = GatewayPayload(
+            op = 14,
+            d = buildJsonObject {
+                put("guild_id", guildId)
+                put("typing", true)
+                put("threads", true)
+                put("activities", true)
+                put("channels", buildJsonObject {
+                    put(channelId, buildJsonArray {
+                        ranges.forEach { range ->
+                            add(buildJsonArray {
+                                add(range[0])
+                                add(range[1])
+                            })
+                        }
+                    })
+                })
+            }
+        )
+        scope.launch { sendPayload(payload) }
     }
 }

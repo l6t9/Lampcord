@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import me.lampu.lampcord.shared.model.toTwemojiUrl
+import me.lampu.lampcord.shared.model.InteractionOption
 import me.lampu.lampcord.shared.state.ChatState
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.FilePicker
@@ -246,6 +247,10 @@ fun ChatInputBar(
 
         Column {
             TypingIndicator(chatState, channel.id)
+
+            if (chatState.activeCommand != null) {
+                CommandParameterUI(chatState)
+            }
 
             if (chatState.replyingTo != null || chatState.editingMessage != null) {
                 Surface(
@@ -543,7 +548,9 @@ fun ChatInputBar(
                                 chatState.sendInteraction(command)
                                 messageText = ""
                             } else {
-                                messageText = "/${command.name} "
+                                chatState.activeCommand = command
+                                chatState.commandOptions.clear()
+                                messageText = ""
                             }
                             commandSearchQuery = null
                         }
@@ -551,7 +558,7 @@ fun ChatInputBar(
                 }
                 
                 AnimatedVisibility(
-                    visible = messageText.isNotBlank() || chatState.pendingFiles.isNotEmpty(),
+                    visible = messageText.isNotBlank() || chatState.pendingFiles.isNotEmpty() || chatState.activeCommand != null,
                     enter = fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) + 
                             expandHorizontally(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) +
                             scaleIn(initialScale = 0.8f, animationSpec = spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMediumLow)),
@@ -563,7 +570,17 @@ fun ChatInputBar(
                         Spacer(modifier = Modifier.width(4.dp))
                         IconButton(
                             onClick = {
-                                chatState.sendMessage(messageText)
+                                if (chatState.activeCommand != null) {
+                                    val interactionOptions = chatState.commandOptions.map { (name, value) ->
+                                        val optionType = chatState.activeCommand!!.options!!.find { it.name == name }?.type ?: 3
+                                        InteractionOption(type = optionType, name = name, value = value)
+                                    }
+                                    chatState.sendInteraction(chatState.activeCommand!!, interactionOptions)
+                                    chatState.activeCommand = null
+                                    chatState.commandOptions.clear()
+                                } else {
+                                    chatState.sendMessage(messageText)
+                                }
                                 messageText = ""
                             },
                             colors = IconButtonDefaults.filledIconButtonColors(

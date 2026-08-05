@@ -118,7 +118,8 @@ fun AttachmentImage(
             model = displayUrl,
             contentDescription = null,
             modifier = modifier.fillMaxSize().then(clickModifier),
-            contentScale = ContentScale.Crop
+            contentScale = ContentScale.Crop,
+            placeholderHash = media.placeholder
         )
     } else {
         val maxWidth = 500.dp
@@ -143,7 +144,8 @@ fun AttachmentImage(
                 model = displayUrl,
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Fit
+                contentScale = ContentScale.Fit,
+                placeholderHash = media.placeholder
             )
         }
     }

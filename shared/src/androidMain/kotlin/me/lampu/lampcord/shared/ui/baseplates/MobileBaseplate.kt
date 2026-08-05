@@ -102,6 +102,8 @@ actual fun MobileBaseplate(chatState: ChatState) {
                                     }
                                     ChatInputBar(activeChannel, chatState)
                                 }
+                            } else if (chatState.isFriendsSelected) {
+                                FriendsList(chatState)
                             } else {
                                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {

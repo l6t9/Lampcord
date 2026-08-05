@@ -107,6 +107,7 @@ fun AttachmentViewer(
                 item.isImage() -> {
                     ZoomableImageView(
                         url = item.proxy_url ?: item.url ?: "",
+                        placeholderHash = item.placeholder,
                         modifier = Modifier.fillMaxSize(),
                         onSingleTap = { showControls = !showControls }
                     )
@@ -201,6 +202,7 @@ private fun ViewerRoundButton(
 @Composable
 private fun ZoomableImageView(
     url: String,
+    placeholderHash: String? = null,
     modifier: Modifier = Modifier,
     onSingleTap: (() -> Unit)? = null
 ) {
@@ -240,6 +242,7 @@ private fun ZoomableImageView(
         AsyncImage(
             model = url,
             contentDescription = null,
+            placeholderHash = placeholderHash,
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {
@@ -286,7 +289,8 @@ private fun AttachmentCarousel(
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop,
-                        showPlaceholder = false
+                        showPlaceholder = false,
+                        placeholderHash = media.placeholder
                     )
                 }
             }
