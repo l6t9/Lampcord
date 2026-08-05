@@ -262,7 +262,7 @@ fun SystemMessage(message: Message, chatState: ChatState) {
         }
 
         if (message.type == 7) {
-            Box(modifier = Modifier.width(40.dp), contentAlignment = Alignment.Center) {
+            Box(modifier = Modifier.width(44.dp), contentAlignment = Alignment.Center) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
@@ -270,8 +270,23 @@ fun SystemMessage(message: Message, chatState: ChatState) {
                     tint = iconTint
                 )
             }
-            
+
             Spacer(modifier = Modifier.width(12.dp))
+            
+            val randomMessages = listOf("pizzaPre", "slid", "everyoneWelcomePre", "showedUp", "hopped")
+            val selectedMessage = randomMessages[message.id.toString().takeLast(1).toInt() % randomMessage.size]
+            if (selectedMessage.contains("Pre")) {
+		Text(
+			text = when (selectedMessage) {
+				"pizzaPre" -> "Welcome,"
+				"everyoneWelcomePre" -> "Everyone welcome"
+				else -> " "
+	    		} as String,
+			style = MaterialTheme.typography.bodyMedium,
+			color = MaterialTheme.colorScheme.onSurface
+		)
+		Spacer(modifier = Modifier.width(4.dp))
+            }
             
             var profilePosition by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
             Text(
@@ -283,10 +298,17 @@ fun SystemMessage(message: Message, chatState: ChatState) {
                     .clickable { chatState.showProfile(message.author.id, profilePosition) }
             )
             
-            Spacer(modifier = Modifier.width(4.dp))
+            //Spacer(modifier = Modifier.width(4.dp)) Disabled for dots and commas
             
             Text(
-                text = "just slid into the server.",
+                text = when (selectedMessage) {
+			"pizzaPre" -> ". We hope you brought pizza."
+			"everyoneWelcomePre" -> "!"
+			"slid" -> " just slid into the server!"
+			"showedUp" -> " just showed up!"
+			"hopped" -> " hopped into the server."
+			else -> " just slid into the server!"
+                } as String,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface
             )
