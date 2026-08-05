@@ -24,7 +24,16 @@ data class UserProfile(
     val guild_member: Member? = null,
     val guild_member_profile: UserProfileMetadata? = null,
     val badges: List<ProfileBadge> = emptyList(),
-    val guild_badges: List<ProfileBadge> = emptyList()
+    val guild_badges: List<ProfileBadge> = emptyList(),
+    val connected_accounts: List<ConnectedAccount> = emptyList()
+)
+
+@Serializable
+data class ConnectedAccount(
+    val id: String,
+    val name: String,
+    val type: String,
+    val verified: Boolean = false
 )
 
 @Serializable

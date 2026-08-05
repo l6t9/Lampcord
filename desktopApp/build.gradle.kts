@@ -15,7 +15,7 @@ kotlin {
                implementation(compose.desktop.currentOs)
                implementation(libs.ktor.client.cio)
                implementation(libs.kotlinx.coroutines.swing)
-               implementation("net.java.dev.jna:jna:5.16.0")
+               implementation(libs.jna)
            }
        }
    }
@@ -24,6 +24,9 @@ kotlin {
 compose.desktop {
    application {
        mainClass = "me.lampu.lampcord.MainKt"
+       jvmArgs += listOf(
+           "-Dsun.java2d.uiScale.enabled=true"
+       )
        nativeDistributions {
            targetFormats(org.jetbrains.compose.desktop.application.dsl.TargetFormat.Dmg, org.jetbrains.compose.desktop.application.dsl.TargetFormat.Msi, org.jetbrains.compose.desktop.application.dsl.TargetFormat.Deb)
            packageName = "Lampcord"

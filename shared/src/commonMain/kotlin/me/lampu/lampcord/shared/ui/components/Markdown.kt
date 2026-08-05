@@ -291,7 +291,7 @@ private fun AnnotatedString.Builder.appendDiscordMarkdown(
                 val text = match!!.groupValues[1]
                 val url = match.groupValues[2]
                 val link = LinkAnnotation.Url(url)
-                withStyle(style = SpanStyle(color = Color(0xFF00A8FC), textDecoration = TextDecoration.Underline)) {
+                withStyle(style = SpanStyle(color = primaryColor, textDecoration = TextDecoration.Underline)) {
                     pushLink(link)
                     appendDiscordMarkdown(text, chatState, revealedSpoilers, primaryColor, onSpoilerClick)
                     pop()
@@ -300,7 +300,7 @@ private fun AnnotatedString.Builder.appendDiscordMarkdown(
             "URL", "URL_SUPPRESSED" -> {
                 val url = if (tag == "URL_SUPPRESSED") match!!.groupValues[1] else match!!.groupValues[0]
                 val link = LinkAnnotation.Url(url)
-                withStyle(style = SpanStyle(color = Color(0xFF00A8FC), textDecoration = TextDecoration.Underline)) {
+                withStyle(style = SpanStyle(color = primaryColor, textDecoration = TextDecoration.Underline)) {
                     pushLink(link)
                     append(url)
                     pop()

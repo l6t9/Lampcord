@@ -65,7 +65,7 @@ fun EmbedView(embed: Embed, chatState: ChatState? = null) {
                             Spacer(Modifier.height(8.dp))
                         }
                         embed.title?.let { title ->
-                            val titleText = buildAnnotatedString { withStyle(SpanStyle(color = Color(0xFF00A8FC), fontWeight = FontWeight.Bold)) { append(title) } }
+                            val titleText = buildAnnotatedString { withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)) { append(title) } }
                             if (embed.url != null) {
                                 val uriHandler = LocalUriHandler.current
                                 Text(text = titleText, style = MaterialTheme.typography.titleMedium, modifier = Modifier.clickable { uriHandler.openUri(embed.url) })

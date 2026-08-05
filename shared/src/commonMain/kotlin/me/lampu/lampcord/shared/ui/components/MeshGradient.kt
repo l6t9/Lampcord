@@ -19,10 +19,10 @@ import kotlin.math.max
 fun MeshGradientBackground(
     modifier: Modifier = Modifier,
     colors: List<Color> = listOf(
-        Color(0xFF5865F2), // Blurple
-        Color(0xFF3A3EAC), // Darker Blurple
-        Color(0xFF282C54), // Indigo
-        Color(0xFF1E193B)  // Midnight
+        MaterialTheme.colorScheme.primary,
+        MaterialTheme.colorScheme.secondary,
+        MaterialTheme.colorScheme.tertiary,
+        MaterialTheme.colorScheme.surfaceContainerHigh
     )
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "MeshGradient")

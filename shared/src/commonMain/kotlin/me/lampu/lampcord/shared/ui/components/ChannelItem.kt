@@ -46,13 +46,13 @@ fun ChannelItem(channel: Channel, chatState: ChatState) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(38.dp),
+                .height(44.dp),
             contentAlignment = Alignment.CenterStart
         ) {
             if (isUnread && !isSelected) {
                 Box(
                     modifier = Modifier
-                        .size(width = 4.dp, height = 8.dp)
+                        .size(width = 4.dp, height = 12.dp)
                         .clip(RoundedCornerShape(topEnd = 4.dp, bottomEnd = 4.dp))
                         .background(MaterialTheme.colorScheme.onSurface)
                 )
@@ -61,16 +61,16 @@ fun ChannelItem(channel: Channel, chatState: ChatState) {
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(34.dp)
+                    .height(40.dp)
                     .padding(horizontal = 8.dp),
                 onClick = { chatState.selectChannel(channel) },
                 color = if (isSelected) 
                     MaterialTheme.colorScheme.surfaceVariant 
                 else Color.Transparent,
-                shape = RoundedCornerShape(8.dp)
+                shape = RoundedCornerShape(12.dp)
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 8.dp),
+                    modifier = Modifier.padding(horizontal = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     val contentColor = if (isSelected || isUnread) 
@@ -81,7 +81,7 @@ fun ChannelItem(channel: Channel, chatState: ChatState) {
                         Icon(
                             imageVector = Icons.Outlined.Forum,
                             contentDescription = null,
-                            modifier = Modifier.size(16.dp),
+                            modifier = Modifier.size(20.dp),
                             tint = contentColor
                         )
                     } else if (channel.type == 2) {
@@ -89,21 +89,20 @@ fun ChannelItem(channel: Channel, chatState: ChatState) {
                             text = "V",
                             style = MaterialTheme.typography.bodyLarge,
                             color = contentColor,
-                            modifier = Modifier.width(16.dp)
+                            modifier = Modifier.width(20.dp)
                         )
                     } else {
                         Icon(
                             imageVector = Icons.Filled.Tag,
                             contentDescription = null,
-                            modifier = Modifier.size(16.dp),
+                            modifier = Modifier.size(20.dp),
                             tint = contentColor
                         )
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
                     Text(
                         text = channel.name ?: "unnamed",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Normal,
+                        style = MaterialTheme.typography.bodyLarge,
                         color = contentColor,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -114,9 +113,9 @@ fun ChannelItem(channel: Channel, chatState: ChatState) {
                         Surface(
                             color = MaterialTheme.colorScheme.error,
                             shape = CircleShape,
-                            modifier = Modifier.height(16.dp).widthIn(min = 16.dp)
+                            modifier = Modifier.height(20.dp).widthIn(min = 20.dp)
                         ) {
-                            Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 4.dp)) {
+                            Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 6.dp)) {
                                 Text(
                                     text = mentionCount.toString(),
                                     style = MaterialTheme.typography.labelSmall,
@@ -129,5 +128,28 @@ fun ChannelItem(channel: Channel, chatState: ChatState) {
                 }
             }
         }
+    }
+}
+
+@Composable
+fun ChannelSkeleton() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(34.dp)
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        ShimmerBox(
+            modifier = Modifier.size(16.dp),
+            shape = RoundedCornerShape(4.dp)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        ShimmerBox(
+            modifier = Modifier
+                .width(120.dp)
+                .height(12.dp),
+            shape = RoundedCornerShape(6.dp)
+        )
     }
 }

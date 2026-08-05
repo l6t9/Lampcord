@@ -10,6 +10,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import me.lampu.lampcord.shared.ui.theme.*
 
 @Composable
 fun StatusIndicator(
@@ -21,10 +22,10 @@ fun StatusIndicator(
     backgroundColor: Color = Color.Black
 ) {
     val statusColor = when (status) {
-        "online" -> Color(0xFF23A559)
-        "idle" -> Color(0xFFF0B232)
-        "dnd" -> Color(0xFFF23F43)
-        else -> Color(0xFF80848E)
+        "online" -> DiscordGreen
+        "idle" -> DiscordYellow
+        "dnd" -> DiscordRed
+        else -> DiscordGray
     }
 
     Box(

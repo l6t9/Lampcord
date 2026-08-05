@@ -1,4 +1,4 @@
-package me.lampu.lampcord.shared.ui.components
+package me.lampu.lampcord.shared.ui.components.guilds
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.AnimatedVisibility
@@ -31,6 +31,7 @@ import me.lampu.lampcord.shared.model.Guild
 import me.lampu.lampcord.shared.model.GuildFolder
 import me.lampu.lampcord.shared.state.ChatState
 import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.ui.components.AsyncImage
 
 @Composable
 fun FolderPreviewGrid(folder: GuildFolder, chatState: ChatState) {
@@ -101,11 +102,11 @@ fun PreviewIcon(guild: Guild) {
 @Composable
 fun GuildFolderItem(folder: GuildFolder, chatState: ChatState) {
     var expanded by remember { mutableStateOf(false) }
-    val folderColor = folder.color?.let { Color(it.toLong() or 0xFF000000L) } ?: Color(0xFF5865F2)
+    val folderColor = folder.color?.let { Color(it.toLong() or 0xFF000000L) } ?: MaterialTheme.colorScheme.primary
     
     val isAnyChildSelected = folder.guild_ids.any { it == chatState.selectedGuild?.id }
 
-    val surfaceColor = MaterialTheme.colorScheme.surface
+    val surfaceColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
     val expansionProgress by animateFloatAsState(targetValue = if (expanded) 1f else 0f)
 
     Column(
@@ -114,13 +115,13 @@ fun GuildFolderItem(folder: GuildFolder, chatState: ChatState) {
             .fillMaxWidth()
             .drawBehind {
                 if (expansionProgress > 0f) {
-                    val wellWidth = 56.dp.toPx()
+                    val wellWidth = 48.dp.toPx()
                     val x = (size.width - wellWidth) / 2
                     drawRoundRect(
                         color = surfaceColor,
                         topLeft = Offset(x, 0f),
                         size = Size(wellWidth, size.height * expansionProgress),
-                        cornerRadius = CornerRadius(16.dp.toPx())
+                        cornerRadius = CornerRadius(12.dp.toPx())
                     )
                 }
             }
@@ -151,7 +152,7 @@ fun GuildFolderItem(folder: GuildFolder, chatState: ChatState) {
                 modifier = Modifier
                     .size(48.dp)
                     .clip(RoundedCornerShape(folderCornerRadius))
-                    .background(folderBgColor)
+                    .background(if (expanded) folderColor.copy(alpha = 0.1f) else folderBgColor)
                     .clickable { expanded = !expanded },
                 contentAlignment = Alignment.Center
             ) {

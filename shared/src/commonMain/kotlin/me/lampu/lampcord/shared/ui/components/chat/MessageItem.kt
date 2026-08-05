@@ -1,11 +1,10 @@
 @file:OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3ExpressiveApi::class)
 
-package me.lampu.lampcord.shared.ui.components
+package me.lampu.lampcord.shared.ui.components.chat
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -36,318 +35,10 @@ import me.lampu.lampcord.shared.state.ChatState
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.setClipboardText
 import me.lampu.lampcord.shared.utils.DateTimeUtils
+import me.lampu.lampcord.shared.ui.theme.*
+import me.lampu.lampcord.shared.ui.components.*
 import me.lampu.lampcord.shared.ui.components.messagebody.MessageBody
 import me.lampu.lampcord.shared.ui.components.messagebody.ReactionsView
-
-@Composable
-fun InteractionHeader(interaction: me.lampu.lampcord.shared.model.MessageInteraction) {
-    Row(
-        modifier = Modifier
-            .padding(start = 8.dp, bottom = 4.dp)
-            .height(24.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        androidx.compose.foundation.Canvas(
-            modifier = Modifier
-                .width(36.dp) 
-                .fillMaxHeight()
-        ) {
-            val cornerRadius = 8.dp.toPx()
-            val gutterX = 20.dp.toPx()
-            val targetY = size.height / 2f
-            
-            val path = androidx.compose.ui.graphics.Path().apply {
-                moveTo(gutterX, size.height + 8.dp.toPx()) 
-                lineTo(gutterX, targetY + cornerRadius)
-                quadraticTo(
-                    gutterX, targetY,
-                    gutterX + cornerRadius, targetY
-                )
-                lineTo(size.width, targetY)
-            }
-
-            drawPath(
-                path = path,
-                color = Color(0xFF4E5058),
-                style = androidx.compose.ui.graphics.drawscope.Stroke(
-                    width = 1.5.dp.toPx(),
-                    cap = androidx.compose.ui.graphics.StrokeCap.Round
-                )
-            )
-        }
-
-        Spacer(modifier = Modifier.width(4.dp))
-
-        val avatarUrl = interaction.user.avatar?.let {
-            "https://cdn.discordapp.com/avatars/${interaction.user.id}/$it.png?size=48"
-        }
-
-        if (avatarUrl != null) {
-            AsyncImage(
-                model = avatarUrl,
-                contentDescription = null,
-                modifier = Modifier.size(16.dp).clip(CircleShape),
-                filterQuality = FilterQuality.Medium
-            )
-        } else {
-            Surface(modifier = Modifier.size(16.dp), shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {}
-        }
-
-        Spacer(modifier = Modifier.width(4.dp))
-
-        Text(
-            text = interaction.user.global_name ?: interaction.user.username,
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-        )
-
-        Spacer(modifier = Modifier.width(4.dp))
-        
-        Text(
-            text = "used",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-        )
-
-        Spacer(modifier = Modifier.width(4.dp))
-
-        Text(
-            text = "/${interaction.name}",
-            style = MaterialTheme.typography.labelSmall,
-            color = Color(0xFF00A8FC),
-            fontWeight = FontWeight.Bold
-        )
-    }
-}
-
-@Composable
-fun ReplyBar(referencedMessage: Message, chatState: ChatState) {
-    Row(
-        modifier = Modifier
-            .padding(start = 8.dp, bottom = 4.dp)
-            .height(24.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        androidx.compose.foundation.Canvas(
-            modifier = Modifier
-                .width(36.dp) 
-                .fillMaxHeight()
-        ) {
-            val cornerRadius = 8.dp.toPx()
-            val gutterX = 20.dp.toPx()
-            val targetY = size.height / 2f
-            
-            val path = androidx.compose.ui.graphics.Path().apply {
-                moveTo(gutterX, size.height + 8.dp.toPx()) 
-                lineTo(gutterX, targetY + cornerRadius)
-                quadraticTo(
-                    gutterX, targetY,
-                    gutterX + cornerRadius, targetY
-                )
-                lineTo(size.width, targetY)
-            }
-
-            drawPath(
-                path = path,
-                color = Color(0xFF4E5058),
-                style = androidx.compose.ui.graphics.drawscope.Stroke(
-                    width = 1.5.dp.toPx(),
-                    cap = androidx.compose.ui.graphics.StrokeCap.Round
-                )
-            )
-        }
-
-        Spacer(modifier = Modifier.width(4.dp))
-
-        val avatarUrl = referencedMessage.member?.avatar?.let {
-            "https://cdn.discordapp.com/guilds/${referencedMessage.guild_id ?: chatState.selectedGuild?.id}/users/${referencedMessage.author.id}/avatars/$it.png?size=48"
-        } ?: referencedMessage.author.avatar?.let {
-            "https://cdn.discordapp.com/avatars/${referencedMessage.author.id}/$it.png?size=48"
-        }
-
-        if (avatarUrl != null) {
-            AsyncImage(
-                model = avatarUrl,
-                contentDescription = null,
-                modifier = Modifier.size(16.dp).clip(CircleShape),
-                filterQuality = FilterQuality.Medium
-            )
-        } else {
-            Surface(modifier = Modifier.size(16.dp), shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {}
-        }
-
-        Spacer(modifier = Modifier.width(4.dp))
-
-        val roleColor by remember(referencedMessage, chatState.selectedGuild) {
-            derivedStateOf {
-                val guild = chatState.selectedGuild ?: return@derivedStateOf Color.White
-                val member = referencedMessage.member ?: chatState.getMember(guild.id, referencedMessage.author.id) ?: return@derivedStateOf Color.White
-                val memberRoles = member.roles.mapNotNull { roleId -> guild.roles.find { it.id == roleId } }
-                val highestRole = memberRoles.maxByOrNull { it.position }
-                if (highestRole != null && highestRole.color != 0) Color(highestRole.color or 0xFF000000.toInt()) else Color.White
-            }
-        }
-
-        Text(
-            text = referencedMessage.author.global_name ?: referencedMessage.author.username,
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Bold,
-            color = roleColor.copy(alpha = 0.8f)
-        )
-
-        Spacer(modifier = Modifier.width(4.dp))
-
-        Text(
-            text = referencedMessage.content,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-            maxLines = 1,
-            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun MessageTimestamp(timestamp: String, style: androidx.compose.ui.text.TextStyle, color: Color) {
-    val fullDate = remember(timestamp) { DateTimeUtils.formatFullDate(timestamp) }
-    val displayDate = remember(timestamp) { DateTimeUtils.formatTimestamp(timestamp) }
-    
-    TooltipBox(
-        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
-            positioning = TooltipAnchorPosition.Above
-        ),
-        tooltip = {
-            RichTooltip(
-                caretShape = TooltipDefaults.caretShape()
-            ) {
-                val parts = fullDate.split(" at ")
-                if (parts.size == 2) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(parts[0])
-                        Text(parts[1])
-                    }
-                } else {
-                    Text(fullDate)
-            }
-        }
-        },
-        state = rememberTooltipState()
-    ) {
-        Text(
-            text = displayDate,
-            style = style,
-            color = color
-        )
-    }
-}
-
-@Composable
-fun SystemMessage(message: Message, chatState: ChatState) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp, horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        val (icon, iconTint, text) = when (message.type) {
-            1 -> Triple(Icons.Filled.PersonAdd, Color(0xFF23A559), "${message.author.username} added a recipient.")
-            2 -> Triple(Icons.Filled.PersonRemove, Color(0xFFF23F43), "${message.author.username} removed a recipient.")
-            6 -> Triple(Icons.Filled.PushPin, MaterialTheme.colorScheme.primary, "${message.author.username} pinned a message to this channel.")
-            7 -> Triple(Icons.AutoMirrored.Filled.ArrowForward, Color(0xFF23A559), "${message.author.global_name ?: message.author.username} joined the server.")
-            8, 9, 10, 11 -> Triple(Icons.Filled.RocketLaunch, Color(0xFFFF73FA), "${message.author.global_name ?: message.author.username} just boosted the server!")
-            18 -> Triple(Icons.Filled.Tag, MaterialTheme.colorScheme.primary, "${message.author.global_name ?: message.author.username} started a thread.")
-            else -> Triple(Icons.Filled.Info, MaterialTheme.colorScheme.onSurfaceVariant, "System message (Type ${message.type})")
-        }
-
-        if (message.type == 7) {
-            Box(modifier = Modifier.width(44.dp), contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                    tint = iconTint
-                )
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-            
-            val randomMessages = listOf("pizzaPre", "slid", "everyoneWelcomePre", "showedUp", "hopped")
-            val selectedMessage = randomMessages[message.id.toString().takeLast(1).toInt() % (randomMessages.size - 1)]
-            if (selectedMessage.contains("Pre")) {
-		Text(
-			text = when (selectedMessage) {
-				"pizzaPre" -> "Welcome,"
-				"everyoneWelcomePre" -> "Everyone welcome"
-				else -> " "
-	    		} as String,
-			style = MaterialTheme.typography.bodyMedium,
-			color = MaterialTheme.colorScheme.onSurface
-		)
-		Spacer(modifier = Modifier.width(4.dp))
-            }
-            
-            var profilePosition by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
-            Text(
-                text = message.author.global_name ?: message.author.username,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier
-                    .onGloballyPositioned { profilePosition = it.positionInRoot() }
-                    .clickable { chatState.showProfile(message.author.id, profilePosition) }
-            )
-            
-            //Spacer(modifier = Modifier.width(4.dp)) Disabled for dots and commas
-            
-            Text(
-                text = when (selectedMessage) {
-			"pizzaPre" -> ". We hope you brought pizza."
-			"everyoneWelcomePre" -> "!"
-			"slid" -> " just slid into the server!"
-			"showedUp" -> " just showed up!"
-			"hopped" -> " hopped into the server."
-			else -> " just slid into the server!"
-                } as String,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            
-            Spacer(modifier = Modifier.width(8.dp))
-            
-            MessageTimestamp(
-                timestamp = message.timestamp,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-            )
-        } else {
-            Box(modifier = Modifier.width(40.dp), contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                    tint = iconTint
-                )
-            }
-            
-            Spacer(modifier = Modifier.width(12.dp))
-            
-            Text(
-                text = text,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            
-            Spacer(modifier = Modifier.width(8.dp))
-            
-            MessageTimestamp(
-                timestamp = message.timestamp,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-            )
-        }
-    }
-}
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -429,30 +120,14 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
             }
             .background(
                 color = when {
-                    isMentioned -> MaterialTheme.colorScheme.primary.copy(alpha = 0.05f)
+                    isMentioned -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)
                     isHovered || showReactionPicker -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.12f)
                     message.sendError != null -> MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
                     else -> Color.Transparent
                 }
             )
             .alpha(alpha)
-            .padding(top = if (isInline) 0.dp else 12.dp)
     ) {
-        if (showReactionPicker) {
-            Popup(
-                alignment = Alignment.TopEnd,
-                offset = IntOffset(0, (-500).dp.value.toInt()), // Simple offset for now
-                onDismissRequest = { showReactionPicker = false },
-                properties = PopupProperties(focusable = true)
-            ) {
-                EmojiPicker(chatState) { emoji ->
-                    val emojiStr = if (emoji.id != null) "${emoji.name}:${emoji.id}" else emoji.name ?: ""
-                    chatState.addReaction(message.channel_id, message.id, emojiStr)
-                    showReactionPicker = false
-                }
-            }
-        }
-
         if (isMentioned) {
             val mentionBarColor = MaterialTheme.colorScheme.primary
             Spacer(
@@ -466,12 +141,27 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
                     }
             )
         }
+
+        if (showReactionPicker) {
+            Popup(
+                alignment = Alignment.TopEnd,
+                offset = IntOffset(0, (-500).dp.value.toInt()), 
+                onDismissRequest = { showReactionPicker = false },
+                properties = PopupProperties(focusable = true)
+            ) {
+                EmojiPicker(chatState) { emoji ->
+                    val emojiStr = if (emoji.id != null) "${emoji.name}:${emoji.id}" else emoji.name ?: ""
+                    chatState.addReaction(message.channel_id, message.id, emojiStr)
+                    showReactionPicker = false
+                }
+            }
+        }
         
         ContextMenu(
             items = contextMenuItems,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 2.dp, horizontal = 12.dp)
+                .padding(horizontal = 8.dp, vertical = if (isInline) 1.5.dp else 8.dp)
         ) {
             Column(modifier = Modifier.fillMaxWidth()) {
                 if (message.referenced_message != null) {
@@ -497,20 +187,20 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
                                 .size(40.dp)
                                 .onGloballyPositioned { avatarPosition = it.positionInRoot() },
                             onClick = { chatState.showProfile(message.author.id, avatarPosition) },
-                            shape = MaterialTheme.shapes.extraLarge,
+                            shape = CircleShape,
                             color = Color.Transparent
                         ) {
                             if (avatarUrl != null) {
                                 AsyncImage(
                                     model = avatarUrl,
                                     contentDescription = "Avatar",
-                                    modifier = Modifier.fillMaxSize().clip(MaterialTheme.shapes.extraLarge),
+                                    modifier = Modifier.fillMaxSize().clip(CircleShape),
                                     filterQuality = FilterQuality.Medium
                                 )
                             } else {
                                 Surface(
                                     modifier = Modifier.fillMaxSize(),
-                                    shape = MaterialTheme.shapes.extraLarge,
+                                    shape = CircleShape,
                                     color = MaterialTheme.colorScheme.primaryContainer
                                 ) {
                                     Box(contentAlignment = Alignment.Center) {
@@ -539,7 +229,7 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
                     
                     val displayColor = if (roleColor == Color.Unspecified) MaterialTheme.colorScheme.onSurface else roleColor
 
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
                     
                     Column {
                         if (!isInline) {
@@ -564,7 +254,7 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
                         
                         DiscordMarkdownText(
                             content = message.content,
-                            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp, lineHeight = 20.sp),
+                            style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface,
                             chatState = chatState
                         )

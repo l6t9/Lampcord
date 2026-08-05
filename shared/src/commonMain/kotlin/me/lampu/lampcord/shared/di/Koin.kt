@@ -1,6 +1,7 @@
 package me.lampu.lampcord.shared.di
 
 import me.lampu.lampcord.shared.api.DiscordClient
+import me.lampu.lampcord.shared.api.RemoteAuthClient
 import me.lampu.lampcord.shared.api.createHttpClient
 import me.lampu.lampcord.shared.gateway.GatewayManager
 import me.lampu.lampcord.shared.state.*
@@ -20,6 +21,7 @@ val appModule = module {
     single { createHttpClient() }
     single { DiscordClient(get(), get()) }
     single { GatewayManager(get(), get()) }
+    single { RemoteAuthClient(get(), get()) }
     
     single { ReadStateStore(get()) }
     single { PresenceStore(get()) }

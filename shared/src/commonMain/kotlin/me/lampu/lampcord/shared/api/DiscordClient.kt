@@ -12,6 +12,7 @@ import me.lampu.lampcord.shared.utils.getPlatformName
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.plugins.websocket.*
 import io.ktor.client.plugins.cookies.*
+import io.ktor.client.engine.cio.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.util.*
 import kotlin.io.encoding.Base64
@@ -295,6 +296,7 @@ class DiscordClient(
             }
             val response = httpClient.get(url) {
                 header(HttpHeaders.Authorization, token!!)
+                header("X-Super-Properties", getSuperProperties())
             }
             if (response.status.isSuccess()) response.body() else null
         } catch (e: Exception) {
@@ -497,7 +499,7 @@ class DiscordClient(
     }
 }
 
-fun createHttpClient() = HttpClient {
+fun createHttpClient() = HttpClient(CIO) {
     install(HttpCookies)
     install(ContentNegotiation) {
         json(Json {

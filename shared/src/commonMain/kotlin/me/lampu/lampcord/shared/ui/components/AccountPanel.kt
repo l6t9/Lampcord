@@ -21,6 +21,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.state.ChatState
+import me.lampu.lampcord.shared.ui.theme.*
 import me.lampu.lampcord.shared.ui.icons.Icons
 
 @Composable
@@ -238,7 +239,7 @@ fun AccountPanel(chatState: ChatState) {
                 
                 DropdownMenuItem(
                     text = { Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(10.dp).background(Color(0xFF23A559), CircleShape))
+                        Box(Modifier.size(10.dp).background(DiscordGreen, CircleShape))
                         Spacer(Modifier.width(8.dp))
                         Text("Online")
                     }},
@@ -249,7 +250,7 @@ fun AccountPanel(chatState: ChatState) {
                 )
                 DropdownMenuItem(
                     text = { Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(10.dp).background(Color(0xFFF0B232), CircleShape))
+                        Box(Modifier.size(10.dp).background(DiscordYellow, CircleShape))
                         Spacer(Modifier.width(8.dp))
                         Text("Idle")
                     }},
@@ -260,7 +261,7 @@ fun AccountPanel(chatState: ChatState) {
                 )
                 DropdownMenuItem(
                     text = { Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(10.dp).background(Color(0xFFF23F43), CircleShape))
+                        Box(Modifier.size(10.dp).background(DiscordRed, CircleShape))
                         Spacer(Modifier.width(8.dp))
                         Text("Do Not Disturb")
                     }},
@@ -271,7 +272,7 @@ fun AccountPanel(chatState: ChatState) {
                 )
                 DropdownMenuItem(
                     text = { Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(10.dp).background(Color(0xFF80848E), CircleShape))
+                        Box(Modifier.size(10.dp).background(DiscordGray, CircleShape))
                         Spacer(Modifier.width(8.dp))
                         Text("Invisible")
                     }},

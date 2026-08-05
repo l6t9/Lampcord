@@ -1,4 +1,4 @@
-package me.lampu.lampcord.shared.ui.components
+package me.lampu.lampcord.shared.ui.components.guilds
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -16,10 +16,17 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.Channel
 import me.lampu.lampcord.shared.state.ChatState
+import me.lampu.lampcord.shared.ui.components.ChannelItem
+import me.lampu.lampcord.shared.ui.components.ChannelSkeleton
+import me.lampu.lampcord.shared.ui.components.ContextMenu
+import me.lampu.lampcord.shared.ui.components.ContextMenuItem
+import me.lampu.lampcord.shared.ui.components.VerticalScrollbar
+import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.setClipboardText
 
@@ -58,9 +65,9 @@ fun GuildChannelList(chatState: ChatState) {
     ) {
         Surface(
             modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            color = MaterialTheme.colorScheme.surface,
             shape = RoundedCornerShape(topStart = 16.dp),
-            tonalElevation = 0.dp
+            tonalElevation = 1.dp
         ) {
             val channels = chatState.channels
             val categories = channels.filter { it.type == 4 }.sortedBy { it.position ?: 0 }
@@ -99,51 +106,8 @@ fun GuildChannelList(chatState: ChatState) {
                     }
                     
                     items(categories, key = { it.id }) { category ->
-                        var collapsed by remember { mutableStateOf(false) }
-                        
-                        val categoryContextMenuItems = remember(category, chatState.userSettings) {
-                            val items = mutableListOf(
-                                ContextMenuItem("Mark As Read", Icons.Filled.Check) {
-                                    chatState.markCategoryAsRead(category.id)
-                                }
-                            )
-                            if (chatState.userSettings?.developer_mode == true) {
-                                items.add(ContextMenuItem("Copy ID", Icons.Filled.Dns) { setClipboardText(category.id) })
-                            }
-                            items
-                        }
-
-                        Column(Modifier.animateItem()) {
-                            ContextMenu(items = categoryContextMenuItems) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable { collapsed = !collapsed }
-                                        .padding(horizontal = 16.dp, vertical = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = category.name ?: "Category",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Icon(
-                                        imageVector = if (collapsed) Icons.Filled.ChevronRight else Icons.Filled.KeyboardArrowDown,
-                                        contentDescription = if (collapsed) "Expand" else "Collapse",
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
-                            }
-                            if (!collapsed) {
-                                val categoryChannels = channels.filter { it.parent_id == category.id }.sortedBy { it.position ?: 0 }
-                                Column {
-                                    categoryChannels.forEach { channel ->
-                                        ChannelItem(channel, chatState)
-                                    }
-                                }
-                            }
+                        Box(Modifier.animateItem()) {
+                            GuildCategoryItem(category, channels, chatState)
                         }
                     }
                 }
@@ -158,7 +122,7 @@ fun GuildChannelList(chatState: ChatState) {
 
         Surface(
             modifier = Modifier.fillMaxWidth().height(48.dp),
-            color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = alpha),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = alpha),
             shadowElevation = 0.dp,
             tonalElevation = 0.dp,
             onClick = { menuExpanded = true },
@@ -257,25 +221,3 @@ fun GuildChannelList(chatState: ChatState) {
     }
 }
 
-@Composable
-fun ChannelSkeleton() {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(34.dp)
-            .padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        ShimmerBox(
-            modifier = Modifier.size(16.dp),
-            shape = RoundedCornerShape(4.dp)
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        ShimmerBox(
-            modifier = Modifier
-                .width(120.dp)
-                .height(12.dp),
-            shape = RoundedCornerShape(6.dp)
-        )
-    }
-}

@@ -115,7 +115,7 @@ fun ChannelHeader(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth().height(48.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer,
+        color = MaterialTheme.colorScheme.surface,
         shadowElevation = 0.dp,
         tonalElevation = 0.dp
     ) {
@@ -440,7 +440,7 @@ fun ChatInputBar(
                     decorationBox = { innerTextField: @Composable () -> Unit ->
                         Surface(
                             shape = RoundedCornerShape(20.dp),
-                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            color = MaterialTheme.colorScheme.surface,
                             modifier = Modifier.fillMaxSize()
                         ) {
                             Row(

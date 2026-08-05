@@ -3,6 +3,7 @@ package me.lampu.lampcord.shared.ui.baseplates
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -12,6 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.*
@@ -20,16 +22,17 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.state.ChatState
 import me.lampu.lampcord.shared.ui.components.*
+import me.lampu.lampcord.shared.ui.components.profiles.UserProfileDialog
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.SettingsScreen
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DesktopBaseplate(chatState: ChatState) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .background(MaterialTheme.colorScheme.surface)
             .onPreviewKeyEvent { event ->
                 if (event.type == KeyEventType.KeyDown) {
                     if (event.isCtrlPressed && event.key == Key.K) {
@@ -40,275 +43,94 @@ fun DesktopBaseplate(chatState: ChatState) {
                 false
             }
     ) {
-        Row(modifier = Modifier.fillMaxSize()) {
-            // Sidebar (Guilds Rail)
-            val railScrollState = rememberLazyListState()
-            var isRailHovered by remember { mutableStateOf(false) }
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Sidebar(chatState, Modifier.width(318.dp))
+
+            // Main Content Area (Chat)
+            val selectedChannel = chatState.selectedChannel
+            val selectedThread = chatState.selectedThread
+            val activeChannel = selectedThread ?: selectedChannel
 
             Column(
                 modifier = Modifier
-                    .width(80.dp)
-                    .fillMaxHeight()
-                    .background(MaterialTheme.colorScheme.surfaceContainer)
-                    .padding(top = 32.dp) // Space for persistent top bar overlay
-                    .padding(vertical = 12.dp)
-                    .pointerInput(Unit) {
-                        awaitPointerEventScope {
-                            while (true) {
-                                val event = awaitPointerEvent()
-                                when (event.type) {
-                                    PointerEventType.Enter -> isRailHovered = true
-                                    PointerEventType.Exit -> isRailHovered = false
-                                }
-                            }
-                        }
-                    },
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                    .weight(1f)
+                    .fillMaxHeight(),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                // Discord Logo / Home / DMs
-                val isHomeSelected = chatState.selectedGuild == null
-                val homeCornerRadius by animateDpAsState(
-                    targetValue = if (isHomeSelected) 12.dp else 16.dp,
-                    animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f)
-                )
-                val homeColor by animateColorAsState(
-                    targetValue = if (isHomeSelected) Color(0xFF5865F2) else MaterialTheme.colorScheme.surfaceVariant,
-                    animationSpec = spring(stiffness = 400f)
-                )
-                val homeIndicatorHeight by animateDpAsState(
-                    targetValue = if (isHomeSelected) 40.dp else 0.dp,
-                    animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f)
-                )
-
-                Box(
-                    modifier = Modifier.fillMaxWidth().height(48.dp),
-                    contentAlignment = Alignment.Center
+                Surface(
+                    modifier = Modifier.weight(1f),
+                    shape = MaterialTheme.shapes.large,
+                    tonalElevation = 2.dp
                 ) {
-                    // Left side indicator
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.CenterStart)
-                            .width(4.dp)
-                            .height(homeIndicatorHeight)
-                            .clip(RoundedCornerShape(topEnd = 4.dp, bottomEnd = 4.dp))
-                            .background(MaterialTheme.colorScheme.onSurface)
-                    )
-
-                    Surface(
-                        modifier = Modifier.size(48.dp),
-                        onClick = { chatState.selectHome() },
-                        shape = RoundedCornerShape(homeCornerRadius),
-                        color = homeColor,
-                        shadowElevation = 0.dp,
-                        tonalElevation = 0.dp,
-                        border = null
-                    ) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Brand.Discord,
-                                contentDescription = "Home",
-                                tint = if (isHomeSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(28.dp)
-                            )
-                        }
-                    }
-                }
-
-                HorizontalDivider(modifier = Modifier.width(32.dp), color = MaterialTheme.colorScheme.outlineVariant)
-
-                // Guild list with folders
-                Box(modifier = Modifier.weight(1f)) {
-                    LazyColumn(
-                        state = railScrollState,
-                        modifier = Modifier.fillMaxSize(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        contentPadding = PaddingValues(bottom = 68.dp) // Match AccountPanel height
-                    ) {
-                        val folders = chatState.userSettings?.guild_folders ?: emptyList()
-                        
-                        if (folders.isEmpty()) {
-                            items(chatState.guilds) { guild ->
-                                GuildIcon(
-                                    guild = guild,
-                                    isSelected = chatState.selectedGuild?.id == guild.id,
-                                    chatState = chatState,
-                                    onClick = { chatState.selectGuild(guild) }
-                                )
-                            }
-                        } else {
-                            items(folders) { folder ->
-                                if (folder.id == null && folder.guild_ids.size == 1) {
-                                    val guild = chatState.guilds.find { it.id == folder.guild_ids.first() }
-                                    if (guild != null) {
-                                        GuildIcon(
-                                            guild = guild,
-                                            isSelected = chatState.selectedGuild?.id == guild.id,
-                                            chatState = chatState,
-                                            onClick = { chatState.selectGuild(guild) }
-                                        )
-                                    }
+                    if (activeChannel != null) {
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            ChannelHeader(activeChannel, chatState)
+                            
+                            Box(modifier = Modifier.weight(1f)) {
+                                if (activeChannel.type == 15 && selectedThread == null) {
+                                    ForumPostList(chatState)
                                 } else {
-                                    GuildFolderItem(folder, chatState)
+                                    ChatArea(
+                                        modifier = Modifier.fillMaxSize(),
+                                        chatState = chatState
+                                    )
                                 }
                             }
+                            
+                            if (activeChannel.type != 15) {
+                                ChatInputBar(activeChannel, chatState)
+                            }
                         }
+                    } else {
+                        ChatUnselectedPlaceholder(chatState)
                     }
-
-                    VerticalScrollbar(
-                        state = railScrollState,
-                        modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
-                        isVisible = isRailHovered
-                    )
                 }
             }
 
-            // The rest of the app content area
-            Row(modifier = Modifier.weight(1f).fillMaxHeight().padding(top = 32.dp)) {
-                // Sidebar (Channels or DMs)
-                Box(
+            // Member List (End Panel)
+            if (activeChannel?.guild_id != null && activeChannel.type != 15) {
+                Column(
                     modifier = Modifier
                         .width(240.dp)
-                        .fillMaxHeight()
-                        .background(MaterialTheme.colorScheme.surfaceContainer) // Parent sidebar background
+                        .fillMaxHeight(),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    AnimatedContent(
-                        targetState = chatState.selectedGuild != null,
-                        transitionSpec = {
-                            fadeIn() togetherWith fadeOut()
-                        },
-                        label = "SidebarTransition"
-                    ) { isGuild ->
-                        if (isGuild) {
-                            GuildChannelList(chatState)
-                        } else {
-                            DMList(chatState)
-                        }
+                    Surface(
+                        modifier = Modifier.weight(1f),
+                        shape = MaterialTheme.shapes.medium,
+                        tonalElevation = 1.dp
+                    ) {
+                        MemberList(chatState)
                     }
-                }
-
-                // Main View (Chat + Header + Member List)
-                val selectedChannel = chatState.selectedChannel
-                val selectedThread = chatState.selectedThread
-                val selectedGuild = chatState.selectedGuild
-                val activeChannel = selectedThread ?: selectedChannel
-
-                Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                    AnimatedContent(
-                        targetState = activeChannel,
-                        transitionSpec = {
-                            fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) togetherWith 
-                            fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow))
-                        },
-                        modifier = Modifier.fillMaxSize(),
-                        label = "MainViewTransition"
-                    ) { targetChannel ->
-                        if (targetChannel != null) {
-                            Column(modifier = Modifier.fillMaxSize()) {
-                                ChannelHeader(targetChannel, chatState)
-
-                                Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
-                                    // Chat Area & Input Bar
-                                    Column(
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .fillMaxHeight()
-                                            .background(MaterialTheme.colorScheme.surface)
-                                    ) {
-                                        Box(modifier = Modifier.weight(1f)) {
-                                            if (targetChannel.type == 15 && selectedThread == null) {
-                                                ForumPostList(chatState)
-                                            } else {
-                                                ChatArea(
-                                                    modifier = Modifier.fillMaxSize(),
-                                                    chatState = chatState
-                                                )
-                                            }
-                                        }
-
-                                        val isForumChannel = targetChannel.type == 15
-                                        if (!isForumChannel) {
-                                            ChatInputBar(targetChannel, chatState)
-                                        }
-                                    }
-
-                                    // Member List
-                                    val hasMemberList = targetChannel.guild_id != null && targetChannel.type != 15
-                                    if (hasMemberList) {
-                                        Box(
-                                            modifier = Modifier
-                                                .width(240.dp)
-                                                .fillMaxHeight()
-                                                .background(MaterialTheme.colorScheme.surfaceContainer)
-                                        ) {
-                                            MemberList(chatState)
-                                        }
-                                    }
-                                }
-                            }
-                        } else {
-                            Box(modifier = Modifier.fillMaxSize()) {
-                                if (selectedGuild == null) {
-                                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                        Text("Select a friend to start chatting", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    }
-                                } else {
-                                    // While loading guild channels
-                                    ChatSkeleton()
-                                }
-                            }
-                        }
+                    
+                    // HomeNavButtons equivalent
+                    Row(
+                        modifier = Modifier.height(60.dp).fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        NavButton(Icons.Filled.Group) { /* Friends */ }
+                        NavButton(Icons.Filled.Search) { /* Search */ }
+                        NavButton(Icons.Outlined.AlternateEmail) { /* Mentions */ }
                     }
                 }
             }
+        }
+
+        // Settings / Overlays
+        if (chatState.isSettingsVisible) {
+            SettingsScreen(chatState, onDismiss = { chatState.isSettingsVisible = false })
         }
         
-        // Integrated Top Bar Overlay (covers full width including server list)
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(32.dp)
-                .background(MaterialTheme.colorScheme.surfaceContainer)
-        ) {
-            Box(contentAlignment = Alignment.CenterEnd, modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
-                // Global actions could go here (Help, Inbox, etc)
-            }
-        }
-
-        // Account Panel overlays at the bottom START (overlaps both sidebars)
-        Box(modifier = Modifier.align(Alignment.BottomStart).width(320.dp)) {
-            AccountPanel(chatState)
-        }
-
-        // User Profile Dialog
-        chatState.selectedProfile?.let { profile ->
-            UserProfileDialog(
-                profile = profile,
-                chatState = chatState,
-                onDismiss = { chatState.selectedProfile = null }
-            )
-        }
-
-        // Settings Screen Overlay
-        if (chatState.isSettingsVisible) {
-            SettingsScreen(
-                chatState = chatState,
-                onDismiss = { chatState.isSettingsVisible = false }
-            )
-        }
-
         if (chatState.isQuickSwitcherVisible) {
-            QuickSwitcher(
-                chatState = chatState,
-                onDismiss = { chatState.isQuickSwitcherVisible = false }
-            )
+            QuickSwitcher(chatState, onDismiss = { chatState.isQuickSwitcherVisible = false })
         }
 
-        // Attachment Viewer Overlay (fullscreen, like Paicord's attachmentViewer())
+        // Attachment Viewer Overlay
         if (chatState.isAttachmentViewerVisible) {
             AttachmentViewer(
                 items = chatState.attachmentViewerItems,
@@ -316,6 +138,29 @@ fun DesktopBaseplate(chatState: ChatState) {
                 onIndexChange = { chatState.attachmentViewerIndex = it },
                 onDismiss = { chatState.closeAttachmentViewer() }
             )
+        }
+
+        // User Profile Dialog
+        if (chatState.isProfileLoading || chatState.selectedProfile != null) {
+            UserProfileDialog(
+                profile = chatState.selectedProfile,
+                chatState = chatState,
+                onDismiss = { 
+                    chatState.selectedProfile = null
+                    chatState.isProfileLoading = false
+                }
+            )
+        }
+    }
+}
+
+@Composable
+fun ChatUnselectedPlaceholder(chatState: ChatState) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        if (chatState.selectedGuild == null) {
+            Text("Select a friend to start chatting", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        } else {
+            ChatSkeleton()
         }
     }
 }

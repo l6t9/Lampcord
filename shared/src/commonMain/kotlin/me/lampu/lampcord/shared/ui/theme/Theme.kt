@@ -1,107 +1,110 @@
 package me.lampu.lampcord.shared.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.MaterialExpressiveTheme
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MotionScheme
-import androidx.compose.material3.Shapes
-import androidx.compose.material3.Typography
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.materialkolor.DynamicMaterialTheme
 import com.materialkolor.PaletteStyle
-import com.materialkolor.dynamiccolor.ColorSpec
 
-val LampcordShapes = Shapes(
-    extraSmall = RoundedCornerShape(16.dp),
-    small = RoundedCornerShape(20.dp),
-    medium = RoundedCornerShape(24.dp),
-    large = RoundedCornerShape(28.dp),
-    extraLarge = RoundedCornerShape(32.dp),
+private val LightColors = lightColorScheme(
+    primary = ColorLightPrimary,
+    onPrimary = ColorLightOnPrimary,
+    primaryContainer = ColorLightPrimaryContainer,
+    onPrimaryContainer = ColorLightOnPrimaryContainer,
+    secondary = ColorLightSecondary,
+    onSecondary = ColorLightOnSecondary,
+    secondaryContainer = ColorLightSecondaryContainer,
+    onSecondaryContainer = ColorLightOnSecondaryContainer,
+    tertiary = ColorLightTertiary,
+    onTertiary = ColorLightOnTertiary,
+    tertiaryContainer = ColorLightTertiaryContainer,
+    onTertiaryContainer = ColorLightOnTertiaryContainer,
+    error = ColorLightError,
+    errorContainer = ColorLightErrorContainer,
+    onError = ColorLightOnError,
+    onErrorContainer = ColorLightOnErrorContainer,
+    background = ColorLightBackground,
+    onBackground = ColorLightOnBackground,
+    surface = ColorLightSurface,
+    onSurface = ColorLightOnSurface,
+    surfaceVariant = ColorLightSurfaceVariant,
+    onSurfaceVariant = ColorLightOnSurfaceVariant,
+    outline = ColorLightOutline,
+    inverseOnSurface = ColorLightInverseOnSurface,
+    inverseSurface = ColorLightInverseSurface,
+    inversePrimary = ColorLightInversePrimary,
+    surfaceTint = ColorLightSurfaceTint,
+    outlineVariant = ColorLightOutlineVariant,
+    scrim = ColorLightScrim,
 )
 
-val LampcordTypography = Typography(
-    displayLarge = TextStyle(
-        fontWeight = FontWeight.Bold,
-        fontSize = 57.sp,
-        lineHeight = 64.sp,
-        letterSpacing = (-0.25).sp,
-    ),
-    displayMedium = TextStyle(
-        fontWeight = FontWeight.Bold,
-        fontSize = 45.sp,
-        lineHeight = 52.sp,
-        letterSpacing = 0.sp,
-    ),
-    displaySmall = TextStyle(
-        fontWeight = FontWeight.Bold,
-        fontSize = 36.sp,
-        lineHeight = 44.sp,
-        letterSpacing = 0.sp,
-    ),
-    headlineLarge = TextStyle(
-        fontWeight = FontWeight.Bold,
-        fontSize = 32.sp,
-        lineHeight = 40.sp,
-        letterSpacing = 0.sp,
-    ),
-    headlineMedium = TextStyle(
-        fontWeight = FontWeight.Bold,
-        fontSize = 28.sp,
-        lineHeight = 36.sp,
-        letterSpacing = 0.sp,
-    ),
-    headlineSmall = TextStyle(
-        fontWeight = FontWeight.Bold,
-        fontSize = 24.sp,
-        lineHeight = 32.sp,
-        letterSpacing = 0.sp,
-    ),
-    titleLarge = TextStyle(
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 22.sp,
-        lineHeight = 28.sp,
-        letterSpacing = 0.sp,
-    ),
-    titleMedium = TextStyle(
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 16.sp,
-        lineHeight = 24.sp,
-        letterSpacing = 0.15.sp,
-    ),
-    titleSmall = TextStyle(
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 14.sp,
-        lineHeight = 20.sp,
-        letterSpacing = 0.1.sp,
-    ),
+private val DarkColors = darkColorScheme(
+    primary = ColorDarkPrimary,
+    onPrimary = ColorDarkOnPrimary,
+    primaryContainer = ColorDarkPrimaryContainer,
+    onPrimaryContainer = ColorDarkOnPrimaryContainer,
+    secondary = ColorDarkSecondary,
+    onSecondary = ColorDarkOnSecondary,
+    secondaryContainer = ColorDarkSecondaryContainer,
+    onSecondaryContainer = ColorDarkOnSecondaryContainer,
+    tertiary = ColorDarkTertiary,
+    onTertiary = ColorDarkOnTertiary,
+    tertiaryContainer = ColorDarkTertiaryContainer,
+    onTertiaryContainer = ColorDarkOnTertiaryContainer,
+    error = ColorDarkError,
+    errorContainer = ColorDarkErrorContainer,
+    onError = ColorDarkOnError,
+    onErrorContainer = ColorDarkOnErrorContainer,
+    background = ColorDarkBackground,
+    onBackground = ColorDarkOnBackground,
+    surface = ColorDarkSurface,
+    onSurface = ColorDarkOnSurface,
+    surfaceVariant = ColorDarkSurfaceVariant,
+    onSurfaceVariant = ColorDarkOnSurfaceVariant,
+    outline = ColorDarkOutline,
+    inverseOnSurface = ColorDarkInverseOnSurface,
+    inverseSurface = ColorDarkInverseSurface,
+    inversePrimary = ColorDarkInversePrimary,
+    surfaceTint = ColorDarkSurfaceTint,
+    outlineVariant = ColorDarkOutlineVariant,
+    scrim = ColorDarkScrim,
 )
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+val LampcordShapes = Shapes()
+
 @Composable
 fun LampcordTheme(
-    seedColor: Color = Color(0xFF5865F2), // Discord Blurple
+    seedColor: Color? = null,
     useDarkTheme: Boolean = isSystemInDarkTheme(),
+    useDynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
-    DynamicMaterialTheme(
-        primary = seedColor,
-        isDark = useDarkTheme,
-        style = PaletteStyle.TonalSpot,
-        specVersion = ColorSpec.SpecVersion.SPEC_2025,
-        animate = true,
-    ) {
-        MaterialExpressiveTheme(
-            colorScheme = MaterialTheme.colorScheme,
-            typography = LampcordTypography,
+    val dynamicSeed = rememberDynamicSeedColor()
+    
+    // If useDynamicColor is true and we have a seed, use DynamicMaterialTheme (from materialkolor)
+    // Otherwise use standard MaterialTheme with OpenCord's fixed colors.
+    val finalSeedColor = seedColor ?: dynamicSeed
+
+    if (useDynamicColor && finalSeedColor != null) {
+        DynamicMaterialTheme(
+            primary = finalSeedColor,
+            isDark = useDarkTheme,
+            style = PaletteStyle.TonalSpot,
+            animate = true,
+        ) {
+            MaterialTheme(
+                typography = Typography,
+                shapes = LampcordShapes,
+                content = content
+            )
+        }
+    } else {
+        val colorScheme = if (useDarkTheme) DarkColors else LightColors
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = Typography,
             shapes = LampcordShapes,
-            motionScheme = MotionScheme.expressive(),
             content = content
         )
     }

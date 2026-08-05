@@ -12,7 +12,12 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.CircleShape
 import me.lampu.lampcord.shared.state.ChatState
+import me.lampu.lampcord.shared.api.RemoteAuthClient
+import me.lampu.lampcord.shared.api.RemoteAuthState
 import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
 import me.lampu.lampcord.shared.ui.components.MeshGradientBackground
 import kotlinx.coroutines.launch
@@ -22,6 +27,7 @@ import org.koin.compose.koinInject
 @Composable
 fun LoginScreen(
     chatState: ChatState = koinInject(),
+    remoteAuthClient: RemoteAuthClient = koinInject(),
     onLoginSuccess: () -> Unit
 ) {
     var login by remember { mutableStateOf("") }
@@ -33,6 +39,25 @@ fun LoginScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     
     val scope = rememberCoroutineScope()
+    val remoteAuthState by remoteAuthClient.state.collectAsState()
+
+    LaunchedEffect(remoteAuthState) {
+        val state = remoteAuthState
+        if (state is RemoteAuthState.Finished) {
+            chatState.connect(state.token)
+            onLoginSuccess()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        remoteAuthClient.start()
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            remoteAuthClient.stop()
+        }
+    }
 
     fun performLogin() {
         scope.launch {
@@ -207,6 +232,79 @@ fun LoginScreen(
                         modifier = Modifier.padding(top = 8.dp)
                     ) {
                         Text("Back to Login")
+                    }
+                }
+
+                if (mfaTicket == null) {
+                    Spacer(modifier = Modifier.height(32.dp))
+                    
+                    HorizontalDivider(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+                    
+                    Spacer(modifier = Modifier.height(32.dp))
+                    
+                    Text(
+                        text = "Or scan this QR code to log in instantly",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Surface(
+                        modifier = Modifier.size(200.dp),
+                        shape = MaterialTheme.shapes.large,
+                        color = Color.White,
+                        tonalElevation = 2.dp
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            when (val state = remoteAuthState) {
+                                is RemoteAuthState.QRReady -> {
+                                    val qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${state.url}"
+                                    me.lampu.lampcord.shared.ui.components.AsyncImage(
+                                        model = qrUrl,
+                                        contentDescription = "QR Code",
+                                        modifier = Modifier.fillMaxSize().padding(12.dp)
+                                    )
+                                }
+                                is RemoteAuthState.UserScanned -> {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        val avatarUrl = state.user.avatar?.let {
+                                            "https://cdn.discordapp.com/avatars/${state.user.id}/$it.png?size=128"
+                                        }
+                                        if (avatarUrl != null) {
+                                            me.lampu.lampcord.shared.ui.components.AsyncImage(
+                                                model = avatarUrl,
+                                                contentDescription = "Avatar",
+                                                modifier = Modifier.size(64.dp).clip(CircleShape)
+                                            )
+                                        }
+                                        Spacer(Modifier.height(8.dp))
+                                        Text(state.user.global_name ?: state.user.username, style = MaterialTheme.typography.titleSmall, color = Color.Black)
+                                        Text("Approve on your phone", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                                    }
+                                }
+                                is RemoteAuthState.Connecting -> {
+                                    CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                                }
+                                is RemoteAuthState.Error -> {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        modifier = Modifier.padding(16.dp)
+                                    ) {
+                                        Text("Error", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelLarge)
+                                        TextButton(onClick = { scope.launch { remoteAuthClient.start() } }) {
+                                            Text("Retry")
+                                        }
+                                    }
+                                }
+                                else -> {
+                                    CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                                }
+                            }
+                        }
                     }
                 }
             }

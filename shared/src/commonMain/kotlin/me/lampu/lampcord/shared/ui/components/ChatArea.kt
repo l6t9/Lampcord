@@ -13,6 +13,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.*
 import me.lampu.lampcord.shared.state.ChatState
+import me.lampu.lampcord.shared.ui.components.chat.MessageItem
 import me.lampu.lampcord.shared.utils.DateTimeUtils
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime

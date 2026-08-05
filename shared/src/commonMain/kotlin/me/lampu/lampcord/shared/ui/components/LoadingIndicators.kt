@@ -1,8 +1,6 @@
 package me.lampu.lampcord.shared.ui.components
 
-import androidx.compose.material3.ContainedLoadingIndicator as MaterialContainedLoadingIndicator
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.LoadingIndicatorDefaults
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -19,7 +17,7 @@ fun ContainedLoadingIndicator(
     containerColor: Color = LoadingIndicatorDefaults.containedContainerColor,
     indicatorColor: Color = LoadingIndicatorDefaults.containedIndicatorColor,
 ) {
-    MaterialContainedLoadingIndicator(
+    androidx.compose.material3.ContainedLoadingIndicator(
         modifier = modifier,
         containerColor = containerColor,
         indicatorColor = indicatorColor,
@@ -34,10 +32,38 @@ fun ContainedLoadingIndicator(
     containerColor: Color = LoadingIndicatorDefaults.containedContainerColor,
     indicatorColor: Color = LoadingIndicatorDefaults.containedIndicatorColor,
 ) {
-    MaterialContainedLoadingIndicator(
+    androidx.compose.material3.ContainedLoadingIndicator(
         progress = progress,
         modifier = modifier,
         containerColor = containerColor,
         indicatorColor = indicatorColor,
+    )
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun WavyLoadingIndicator(
+    modifier: Modifier = Modifier,
+    color: Color = WavyProgressIndicatorDefaults.indicatorColor,
+    trackColor: Color = WavyProgressIndicatorDefaults.trackColor,
+) {
+    LinearWavyProgressIndicator(
+        modifier = modifier,
+        color = color,
+        trackColor = trackColor
+    )
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun CircularWavyLoadingIndicator(
+    modifier: Modifier = Modifier,
+    color: Color = WavyProgressIndicatorDefaults.indicatorColor,
+    trackColor: Color = WavyProgressIndicatorDefaults.trackColor,
+) {
+    CircularWavyProgressIndicator(
+        modifier = modifier,
+        color = color,
+        trackColor = trackColor
     )
 }

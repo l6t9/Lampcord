@@ -26,6 +26,10 @@ fun DMItem(channel: Channel, chatState: ChatState) {
     val status = recipient?.let { chatState.getUserStatus(it.id) } ?: "offline"
     val isOffline = status == "offline" || status == "invisible"
 
+    val isUnread by remember(channel, chatState.readStates[channel.id]) {
+        derivedStateOf { chatState.isUnread(channel) }
+    }
+
     val contextMenuItems = remember(channel, chatState.userSettings) {
         val items = mutableListOf(
             ContextMenuItem("Mark as Read", Icons.Filled.Check) { /* TODO */ },
@@ -87,7 +91,7 @@ fun DMItem(channel: Channel, chatState: ChatState) {
                 Text(
                     text = name,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = if (isSelected) 
+                    color = if (isSelected || isUnread)
                         MaterialTheme.colorScheme.onSurface 
                     else MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,

@@ -21,7 +21,7 @@ fun App() {
     LampcordTheme {
         Surface(
             modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.surfaceContainer,
+            color = MaterialTheme.colorScheme.surface,
             tonalElevation = 0.dp
         ) {
             MainScreen()

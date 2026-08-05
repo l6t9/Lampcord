@@ -72,6 +72,8 @@ class ChatState(
 
     var selectedUser by mutableStateOf<User?>(null)
     var selectedProfile by mutableStateOf<UserProfile?>(null)
+    var isProfileExpanded by mutableStateOf(false)
+    var isProfileLoading by mutableStateOf(false)
     var profilePosition by mutableStateOf<Offset?>(null)
     var replyingTo by mutableStateOf<Message?>(null)
     var editingMessage by mutableStateOf<Message?>(null)
@@ -658,8 +660,13 @@ class ChatState(
 
     fun showProfile(userId: String, position: Offset? = null) {
         selectedProfile = null
+        isProfileExpanded = false
+        isProfileLoading = true
         profilePosition = position
-        scope.launch { selectedProfile = discordClient.getUserProfile(userId, selectedGuild?.id) }
+        scope.launch { 
+            selectedProfile = discordClient.getUserProfile(userId, selectedGuild?.id)
+            isProfileLoading = false
+        }
     }
 
     fun getUserStatus(userId: String) = presenceStore.getUserStatus(userId, currentUser?.id, userSettings?.status)

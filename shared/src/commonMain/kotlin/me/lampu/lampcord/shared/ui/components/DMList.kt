@@ -23,7 +23,7 @@ fun DMList(chatState: ChatState) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .background(MaterialTheme.colorScheme.surface)
             .pointerInput(Unit) {
                 awaitPointerEventScope {
                     while (true) {
@@ -38,7 +38,7 @@ fun DMList(chatState: ChatState) {
     ) {
         Surface(
             modifier = Modifier.fillMaxWidth().height(48.dp),
-            color = MaterialTheme.colorScheme.surfaceContainer,
+            color = MaterialTheme.colorScheme.surface,
             shadowElevation = 0.dp,
             tonalElevation = 0.dp
         ) {
@@ -56,9 +56,9 @@ fun DMList(chatState: ChatState) {
         
         Surface(
             modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            color = MaterialTheme.colorScheme.surface,
             shape = RoundedCornerShape(topStart = 16.dp),
-            tonalElevation = 0.dp
+            tonalElevation = 1.dp
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 LazyColumn(
