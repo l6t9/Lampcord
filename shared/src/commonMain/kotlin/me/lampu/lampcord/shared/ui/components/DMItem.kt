@@ -6,7 +6,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.Channel
@@ -24,7 +23,6 @@ fun DMItem(channel: Channel, chatState: ChatState) {
     val name = recipient?.let { it.global_name ?: it.username } ?: "Unnamed DM"
 
     val status = recipient?.let { chatState.getUserStatus(it.id) } ?: "offline"
-    val isOffline = status == "offline" || status == "invisible"
 
     val isUnread by remember(channel, chatState.readStates[channel.id]) {
         derivedStateOf { chatState.isUnread(channel) }
@@ -47,10 +45,7 @@ fun DMItem(channel: Channel, chatState: ChatState) {
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp)
-                .padding(horizontal = 8.dp)
-                .graphicsLayer {
-                    alpha = if (isOffline) 0.6f else 1f
-                },
+                .padding(horizontal = 8.dp),
             onClick = { chatState.selectChannel(channel) },
             color = if (isSelected) 
                 MaterialTheme.colorScheme.surfaceVariant 
@@ -62,30 +57,12 @@ fun DMItem(channel: Channel, chatState: ChatState) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(modifier = Modifier.size(32.dp)) {
-                    Surface(
-                        modifier = Modifier.fillMaxSize(),
-                        shape = androidx.compose.foundation.shape.CircleShape,
-                        color = MaterialTheme.colorScheme.secondaryContainer
-                    ) {
-                        if (avatarUrl != null) {
-                            AsyncImage(model = avatarUrl, contentDescription = name, modifier = Modifier.fillMaxSize())
-                        } else {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(name.take(1).uppercase(), style = MaterialTheme.typography.labelMedium)
-                            }
-                        }
-                    }
-                    
-                    if (recipient != null) {
-                        val bgColor = if (isSelected) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surfaceContainerLow
-                        StatusIndicator(
-                            status = chatState.getUserStatus(recipient.id),
-                            size = 14.dp,
-                            modifier = Modifier.align(Alignment.BottomEnd).offset(x = 2.dp, y = 2.dp),
-                            borderColor = bgColor,
-                            backgroundColor = bgColor
-                        )
-                    }
+                    AvatarWithDecoration(
+                        avatarUrl = avatarUrl,
+                        decorationData = recipient?.avatar_decoration_data ?: recipient?.collectibles?.avatar_decoration,
+                        size = 32.dp,
+                        status = status
+                    )
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(

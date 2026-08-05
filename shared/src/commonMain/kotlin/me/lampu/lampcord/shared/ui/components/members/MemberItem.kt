@@ -13,17 +13,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.Member
 import me.lampu.lampcord.shared.state.ChatState
-import me.lampu.lampcord.shared.ui.components.AsyncImage
-import me.lampu.lampcord.shared.ui.components.ContextMenu
-import me.lampu.lampcord.shared.ui.components.ContextMenuItem
-import me.lampu.lampcord.shared.ui.components.StatusIndicator
-import me.lampu.lampcord.shared.ui.components.UserActivity
+import me.lampu.lampcord.shared.ui.components.*
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.setClipboardText
 
@@ -66,6 +63,8 @@ fun MemberItem(member: Member, chatState: ChatState) {
     val isListening = member.presence?.activities?.any { it.type == 2 } == true
     val isOffline = (status == "offline" || status == "invisible") && !isListening
 
+    val nameplate = member.collectibles?.nameplate ?: user.collectibles?.nameplate
+
     ContextMenu(
         items = contextMenuItems,
         modifier = Modifier
@@ -94,53 +93,55 @@ fun MemberItem(member: Member, chatState: ChatState) {
             color = Color.Transparent,
             shape = RoundedCornerShape(8.dp)
         ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(modifier = Modifier.size(32.dp)) {
-                    Surface(
+            Box(modifier = Modifier.fillMaxSize()) {
+                if (nameplate != null) {
+                    val decoUrl = "https://cdn.discordapp.com/assets/collectibles/${nameplate.asset}img.png?passthrough=true"
+                    AsyncImage(
+                        model = decoUrl,
+                        contentDescription = null,
                         modifier = Modifier.fillMaxSize(),
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.secondaryContainer
-                    ) {
-                        if (avatarUrl != null) {
-                            AsyncImage(model = avatarUrl, contentDescription = user.username, modifier = Modifier.fillMaxSize())
-                        } else {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(user.username.take(1).uppercase(), style = MaterialTheme.typography.labelMedium)
-                            }
-                        }
-                    }
-                    
-                    val status = chatState.getUserStatus(user.id)
-                    
-                    StatusIndicator(
-                        status = status,
-                        size = 14.dp,
-                        modifier = Modifier.align(Alignment.BottomEnd).offset(x = 2.dp, y = 2.dp),
-                        borderColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                        backgroundColor = MaterialTheme.colorScheme.surfaceContainerLow
+                        contentScale = ContentScale.Crop,
+                        alpha = 0.4f
                     )
                 }
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Text(
-                        text = member.nick ?: user.global_name ?: user.username,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (roleColor != Color.Unspecified) roleColor else MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    
-                    val activities = member.presence?.activities ?: emptyList()
-                    val customStatus = activities.find { it.type == 4 }
-                    val otherActivity = activities.find { it.type != 4 }
-                    
-                    if (customStatus != null) {
-                        UserActivity(customStatus, compact = true)
-                    } else if (otherActivity != null) {
-                        UserActivity(otherActivity, compact = true)
+
+                Row(
+                    modifier = Modifier.padding(horizontal = 8.dp).fillMaxSize(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(modifier = Modifier.size(32.dp)) {
+                        AvatarWithDecoration(
+                            avatarUrl = avatarUrl,
+                            decorationData = member.avatar_decoration_data ?: user.avatar_decoration_data,
+                            size = 32.dp,
+                            status = chatState.getUserStatus(user.id)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = member.nick ?: user.global_name ?: user.username,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (roleColor != Color.Unspecified) roleColor else MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            user.primary_guild?.let {
+                                Spacer(Modifier.width(4.dp))
+                                ClanTagView(it)
+                            }
+                        }
+                        
+                        val activities = member.presence?.activities ?: emptyList()
+                        val customStatus = activities.find { it.type == 4 }
+                        val otherActivity = activities.find { it.type != 4 }
+                        
+                        if (customStatus != null) {
+                            UserActivity(customStatus, compact = true)
+                        } else if (otherActivity != null) {
+                            UserActivity(otherActivity, compact = true)
+                        }
                     }
                 }
             }

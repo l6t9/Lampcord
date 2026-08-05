@@ -115,8 +115,12 @@ fun DesktopBaseplate(chatState: ChatState) {
                         modifier = Modifier.height(60.dp).fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        NavButton(Icons.Filled.Group) { /* Friends */ }
-                        NavButton(Icons.Filled.Search) { /* Search */ }
+                        NavButton(Icons.Filled.Group) { 
+                            chatState.selectedGuild = null
+                            chatState.selectedChannel = null
+                            chatState.isFriendsSelected = true
+                        }
+                        NavButton(Icons.Filled.Search) { chatState.isQuickSwitcherVisible = true }
                         NavButton(Icons.Outlined.AlternateEmail) { /* Mentions */ }
                     }
                 }

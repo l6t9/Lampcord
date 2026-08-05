@@ -55,7 +55,20 @@ fun AccountPanel(chatState: ChatState) {
         color = MaterialTheme.colorScheme.surfaceContainer,
         tonalElevation = 4.dp
     ) {
-        Box {
+        val nameplate = chatState.currentMember?.collectibles?.nameplate ?: user.collectibles?.nameplate
+        
+        Box(modifier = Modifier.fillMaxSize()) {
+            if (nameplate != null) {
+                val decoUrl = "https://cdn.discordapp.com/assets/collectibles/${nameplate.asset}img.png?passthrough=true"
+                AsyncImage(
+                    model = decoUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                    alpha = 0.4f
+                )
+            }
+
             Row(
                 modifier = Modifier
                     .fillMaxSize()
@@ -70,37 +83,14 @@ fun AccountPanel(chatState: ChatState) {
                     "https://cdn.discordapp.com/avatars/${user.id}/$it.png?size=160"
                 }
 
-                Box(modifier = Modifier.size(38.dp)) {
-                    Surface(
-                        modifier = Modifier.fillMaxSize(),
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.primaryContainer
-                    ) {
-                        if (avatarUrl != null) {
-                            AsyncImage(
-                                model = avatarUrl, 
-                                contentDescription = null, 
-                                modifier = Modifier.fillMaxSize(),
-                                filterQuality = FilterQuality.Medium
-                            )
-                        } else {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(user.username.take(1).uppercase(), style = MaterialTheme.typography.titleSmall)
-                            }
-                        }
-                    }
-                    
-                    // Status Indicator
-                val status = chatState.userSettings?.status ?: "online"
-                StatusIndicator(
-                    status = status,
-                    size = 14.dp,
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .offset(x = 1.dp, y = 1.dp),
-                    borderColor = MaterialTheme.colorScheme.surfaceContainer,
-                    backgroundColor = MaterialTheme.colorScheme.surfaceContainer
-                )
+                Box(modifier = Modifier.size(32.dp)) {
+                    val status = chatState.userSettings?.status ?: "online"
+                    AvatarWithDecoration(
+                        avatarUrl = avatarUrl,
+                        decorationData = member?.avatar_decoration_data ?: user.avatar_decoration_data ?: member?.collectibles?.avatar_decoration ?: user.collectibles?.avatar_decoration,
+                        size = 32.dp,
+                        status = status
+                    )
                 }
                 
                 Spacer(modifier = Modifier.width(10.dp))
@@ -233,6 +223,15 @@ fun AccountPanel(chatState: ChatState) {
                         showAccountPicker = true
                     },
                     leadingIcon = { Icon(Icons.Filled.Groups, null) }
+                )
+
+                DropdownMenuItem(
+                    text = { Text("Settings") },
+                    onClick = {
+                        showStatusMenu = false
+                        chatState.isSettingsVisible = true
+                    },
+                    leadingIcon = { Icon(Icons.Filled.Settings, null) }
                 )
                 
                 HorizontalDivider()

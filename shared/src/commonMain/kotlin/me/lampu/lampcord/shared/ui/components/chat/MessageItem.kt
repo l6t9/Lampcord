@@ -182,36 +182,24 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
 
                         var avatarPosition by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
 
-                        Surface(
+                        Box(
                             modifier = Modifier
                                 .size(40.dp)
-                                .onGloballyPositioned { avatarPosition = it.positionInRoot() },
-                            onClick = { chatState.showProfile(message.author.id, avatarPosition) },
-                            shape = CircleShape,
-                            color = Color.Transparent
+                                .onGloballyPositioned { avatarPosition = it.positionInRoot() }
                         ) {
-                            if (avatarUrl != null) {
-                                AsyncImage(
-                                    model = avatarUrl,
-                                    contentDescription = "Avatar",
-                                    modifier = Modifier.fillMaxSize().clip(CircleShape),
-                                    filterQuality = FilterQuality.Medium
-                                )
-                            } else {
-                                Surface(
-                                    modifier = Modifier.fillMaxSize(),
-                                    shape = CircleShape,
-                                    color = MaterialTheme.colorScheme.primaryContainer
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Text(
-                                            message.author.username.take(1).uppercase(),
-                                            style = MaterialTheme.typography.titleMedium,
-                                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                                        )
-                                    }
-                                }
-                            }
+                            AvatarWithDecoration(
+                                avatarUrl = avatarUrl,
+                                decorationData = message.member?.avatar_decoration_data ?: message.author.avatar_decoration_data ?: message.member?.collectibles?.avatar_decoration ?: message.author.collectibles?.avatar_decoration,
+                                size = 40.dp
+                            )
+                            // Clickable overlay - circular hit area to match the avatar circle
+                            Box(
+                                modifier = Modifier
+                                    .size(34.dp)
+                                    .align(Alignment.Center)
+                                    .clip(CircleShape)
+                                    .clickable { chatState.showProfile(message.author.id, avatarPosition) }
+                            )
                         }
                     } else {
                         Spacer(modifier = Modifier.width(40.dp))

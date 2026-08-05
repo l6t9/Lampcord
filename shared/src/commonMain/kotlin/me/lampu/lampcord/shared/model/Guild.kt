@@ -47,7 +47,9 @@ data class Member(
     val pending: Boolean? = null,
     val permissions: String? = null,
     val communication_disabled_until: String? = null,
-    val presence: PresenceUpdate? = null
+    val presence: PresenceUpdate? = null,
+    val avatar_decoration_data: AvatarDecorationData? = null,
+    val collectibles: Collectibles? = null
 )
 
 @Serializable

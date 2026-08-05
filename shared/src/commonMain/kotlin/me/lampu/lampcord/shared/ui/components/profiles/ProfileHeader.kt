@@ -1,10 +1,10 @@
 package me.lampu.lampcord.shared.ui.components.profiles
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.layout.ContentScale
 import me.lampu.lampcord.shared.model.UserProfile
 import me.lampu.lampcord.shared.state.ChatState
 import me.lampu.lampcord.shared.ui.components.*
@@ -44,35 +45,12 @@ fun ProfileHeader(
                 .background(theme.cutoutColor, CircleShape)
                 .padding(if (isExpanded) 8.dp else 6.dp)
         ) {
-            Surface(
-                modifier = Modifier.fillMaxSize(),
-                shape = CircleShape,
-                color = Color.DarkGray,
-                onClick = { onExpand?.invoke() },
-                enabled = !isExpanded
-            ) {
-                if (avatarUrl != null) {
-                    AsyncImage(
-                        model = avatarUrl,
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        filterQuality = FilterQuality.Medium
-                    )
-                } else {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(user.username.take(1).uppercase(), style = if (isExpanded) MaterialTheme.typography.displaySmall else MaterialTheme.typography.headlineLarge)
-                    }
-                }
-            }
-            val status = chatState.getUserStatus(user.id)
-            StatusIndicator(
-                status = status,
-                size = if (isExpanded) 30.dp else 24.dp,
-                modifier = Modifier
-                    .align(Alignment.BottomEnd),
-                borderColor = theme.cutoutColor,
-                borderWidth = if (isExpanded) 5.dp else 4.dp,
-                backgroundColor = theme.cutoutColor
+            AvatarWithDecoration(
+                avatarUrl = avatarUrl,
+                decorationData = profile.guild_member?.avatar_decoration_data ?: user.avatar_decoration_data,
+                size = if (isExpanded) 104.dp else 82.dp,
+                status = chatState.getUserStatus(user.id),
+                modifier = Modifier.clickable(enabled = !isExpanded) { onExpand?.invoke() }
             )
         }
 

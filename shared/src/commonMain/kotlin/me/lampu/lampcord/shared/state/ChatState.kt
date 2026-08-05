@@ -451,9 +451,9 @@ class ChatState(
 
     private val selectedMemberListId: String?
         get() {
-            val guildId = selectedGuild?.id ?: return null
-            val channelId = selectedChannel?.id ?: return null
-            return "$guildId:$channelId"
+            val guild = selectedGuild ?: return null
+            val channel = selectedChannel ?: return null
+            return channel.memberListId(guild)
         }
 
     suspend fun loadForumThreads(channelId: String): List<Channel> {

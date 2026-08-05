@@ -68,6 +68,7 @@ fun SettingsScreen(
                                 "Account" -> AccountSettings(chatState)
                                 "Profiles" -> ProfileSettings(chatState)
                                 "Appearance" -> AppearanceSettings(chatState)
+                                "Accessibility" -> AccessibilitySettings(chatState)
                                 else -> Text("Coming soon")
                             }
                         }
@@ -129,6 +130,7 @@ fun SettingsScreen(
                                 "Account" -> AccountSettings(chatState)
                                 "Profiles" -> ProfileSettings(chatState)
                                 "Appearance" -> AppearanceSettings(chatState)
+                                "Accessibility" -> AccessibilitySettings(chatState)
                                 else -> {
                                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                         Text("Feature coming soon", color = MaterialTheme.colorScheme.onSurfaceVariant)

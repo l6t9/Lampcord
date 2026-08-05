@@ -29,23 +29,22 @@ import io.github.materiiapps.panels.rememberSwipePanelsState
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 actual fun MobileBaseplate(chatState: ChatState) {
-    val panelState = rememberSwipePanelsState()
+    val panelState = rememberDiscordPanelsState()
     val selectedChannel = chatState.selectedChannel
     val selectedThread = chatState.selectedThread
     val activeChannel = selectedThread ?: selectedChannel
 
-    BackHandler(enabled = panelState.currentValue != SwipePanelsValue.Center) {
+    BackHandler(enabled = panelState.currentValue != DiscordPanelValue.Center) {
         panelState.close()
     }
 
     Box(Modifier.fillMaxSize()) {
-        SwipePanels(
+        DiscordPanels(
             state = panelState,
-            inBetweenPadding = 6.dp,
             modifier = Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.surface),
-            start = {
+            startPanel = {
                 Sidebar(
                     chatState = chatState,
                     modifier = Modifier
@@ -54,8 +53,8 @@ actual fun MobileBaseplate(chatState: ChatState) {
                         .padding(start = 6.dp)
                 )
             },
-            center = {
-                val centerPanelShape = if (panelState.currentValue != SwipePanelsValue.Center) {
+            centerPanel = {
+                val centerPanelShape = if (panelState.currentValue != DiscordPanelValue.Center) {
                     MaterialTheme.shapes.large
                 } else {
                     RoundedCornerShape(0.dp)
@@ -120,7 +119,7 @@ actual fun MobileBaseplate(chatState: ChatState) {
                         }
                     }
 
-                    if (panelState.currentValue != SwipePanelsValue.Center) {
+                    if (panelState.currentValue != DiscordPanelValue.Center) {
                         Box(
                             modifier = Modifier
                                 .zIndex(1f)
@@ -134,7 +133,7 @@ actual fun MobileBaseplate(chatState: ChatState) {
                     }
                 }
             },
-            end = {
+            endPanel = {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -154,8 +153,13 @@ actual fun MobileBaseplate(chatState: ChatState) {
                         modifier = Modifier.height(60.dp).fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        NavButton(Icons.Filled.Group) { /* Friends */ }
-                        NavButton(Icons.Filled.Search) { /* Search */ }
+                        NavButton(Icons.Filled.Group) { 
+                            chatState.selectedGuild = null
+                            chatState.selectedChannel = null
+                            chatState.isFriendsSelected = true
+                            panelState.close()
+                        }
+                        NavButton(Icons.Filled.Search) { chatState.isQuickSwitcherVisible = true }
                         NavButton(Icons.Outlined.AlternateEmail) { /* Mentions */ }
                     }
                 }
@@ -205,6 +209,11 @@ actual fun MobileBaseplate(chatState: ChatState) {
                 }
                 Spacer(Modifier.navigationBarsPadding().height(16.dp))
             }
+        }
+
+        // Settings Screen
+        if (chatState.isSettingsVisible) {
+            SettingsScreen(chatState, onDismiss = { chatState.isSettingsVisible = false })
         }
     }
 }

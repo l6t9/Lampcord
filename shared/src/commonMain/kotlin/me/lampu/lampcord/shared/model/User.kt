@@ -3,6 +3,31 @@ package me.lampu.lampcord.shared.model
 import kotlinx.serialization.Serializable
 
 @Serializable
+data class AvatarDecorationData(
+    val asset: String,
+    val sku_id: String? = null
+)
+
+@Serializable
+data class Nameplate(
+    val asset: String,
+    val palette: String? = null
+)
+
+@Serializable
+data class Collectibles(
+    val nameplate: Nameplate? = null,
+    val avatar_decoration: AvatarDecorationData? = null
+)
+
+@Serializable
+data class PrimaryGuild(
+    val guild_id: String? = null,
+    val clan_tag: String? = null,
+    val clan_badge: String? = null
+)
+
+@Serializable
 data class User(
     val id: String,
     val username: String = "",
@@ -14,7 +39,10 @@ data class User(
     val pronouns: String? = null,
     val bio: String? = null,
     val public_flags: Int? = null,
-    val premium_type: Int? = null
+    val premium_type: Int? = null,
+    val avatar_decoration_data: AvatarDecorationData? = null,
+    val collectibles: Collectibles? = null,
+    val primary_guild: PrimaryGuild? = null
 )
 
 @Serializable
