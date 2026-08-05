@@ -165,7 +165,10 @@ class ChatState(
             try {
                 val ready = json.decodeFromJsonElement<ReadyPayload>(data)
                 currentUser = ready.user
-                currentToken?.let { tokenStore.addAccount(it, ready.user) }
+                currentToken?.let { 
+                    tokenStore.addAccount(it, ready.user)
+                    Settings.shared.discordToken = it
+                }
                 
                 (ready.user_settings as? JsonObject)?.let { el ->
                     try {

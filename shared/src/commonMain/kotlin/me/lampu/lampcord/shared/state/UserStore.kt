@@ -29,7 +29,8 @@ class UserStore {
                 user = member.user ?: existing.user,
                 nick = member.nick ?: existing.nick,
                 avatar = member.avatar ?: existing.avatar,
-                roles = if (member.roles.isNotEmpty()) member.roles else existing.roles
+                roles = if (member.roles.isNotEmpty()) member.roles else existing.roles,
+                display_name_styles = member.display_name_styles ?: existing.display_name_styles
             )
         }
     }

@@ -16,6 +16,22 @@ class SettingsStore(
 ) {
     var userSettings by mutableStateOf<UserSettings?>(null)
     
+    private var _pureBlack by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.pureBlack)
+    var pureBlack: Boolean
+        get() = _pureBlack
+        set(value) {
+            _pureBlack = value
+            me.lampu.lampcord.shared.settings.Settings.shared.pureBlack = value
+        }
+
+    private var _themeMode by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.themeMode)
+    var themeMode: String
+        get() = _themeMode
+        set(value) {
+            _themeMode = value
+            me.lampu.lampcord.shared.settings.Settings.shared.themeMode = value
+        }
+    
     private val scope = CoroutineScope(Dispatchers.Main)
     private var pendingUpdateJob: Job? = null
     private var hasPendingChanges = false

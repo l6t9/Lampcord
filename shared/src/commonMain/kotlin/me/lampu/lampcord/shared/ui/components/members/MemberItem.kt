@@ -120,12 +120,15 @@ fun MemberItem(member: Member, chatState: ChatState) {
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = member.nick ?: user.global_name ?: user.username,
-                                style = MaterialTheme.typography.bodyMedium,
+                            UsernameView(
+                                name = member.nick ?: user.global_name ?: user.username,
+                                style = member.display_name_styles ?: user.display_name_styles,
+                                baseStyle = MaterialTheme.typography.bodyMedium,
                                 color = if (roleColor != Color.Unspecified) roleColor else MaterialTheme.colorScheme.onSurface,
                                 maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                                overflow = TextOverflow.Ellipsis,
+                                ignoreEffects = true,
+                                ignoreColors = true
                             )
                             user.primary_guild?.let {
                                 Spacer(Modifier.width(4.dp))

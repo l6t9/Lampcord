@@ -15,7 +15,7 @@ import org.koin.compose.koinInject
 
 @Composable
 fun MainScreen(
-    chatState: ChatState = koinInject()
+    chatState: ChatState
 ) {
     if (!chatState.isConnected) {
         if (chatState.isConnecting) {

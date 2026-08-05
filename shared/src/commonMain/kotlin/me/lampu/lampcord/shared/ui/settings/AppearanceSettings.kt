@@ -30,27 +30,51 @@ fun AppearanceSettings(chatState: ChatState) {
         Text("Theme", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(16.dp))
 
-        var selectedTheme by remember { mutableStateOf(chatState.userSettings?.theme ?: "Dark") }
-        val themes =
-            listOf(
-                "Dark" to Icons.Filled.Bedtime,
-                "Light" to Icons.Filled.LightMode,
-                "AMOLED" to Icons.Filled.DarkMode,
-            )
+        val themes = listOf(
+            "Auto" to Icons.Filled.Public,
+            "Dark" to Icons.Filled.Bedtime,
+            "Light" to Icons.Filled.LightMode,
+            "AMOLED" to Icons.Filled.DarkMode,
+        )
 
         SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
             themes.forEachIndexed { index, (label, icon) ->
+                val themeValue = label.lowercase()
+                val isSelected = chatState.settingsStore.themeMode == themeValue
+
                 SegmentedButton(
-                    selected = selectedTheme.equals(label, ignoreCase = true),
+                    selected = isSelected,
                     onClick = { 
-                        selectedTheme = label
-                        chatState.userSettings = chatState.userSettings?.copy(theme = label.lowercase())
+                        chatState.settingsStore.themeMode = themeValue
+                        if (themeValue == "amoled") {
+                            chatState.settingsStore.pureBlack = true
+                        } else if (themeValue != "auto") {
+                            chatState.settingsStore.pureBlack = false
+                        }
                     },
                     shape = SegmentedButtonDefaults.itemShape(index = index, count = themes.size),
                     icon = { Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp)) }
                 ) {
                     Text(label)
                 }
+            }
+        }
+
+        if (chatState.settingsStore.themeMode == "auto") {
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth().clickable { 
+                    chatState.settingsStore.pureBlack = !chatState.settingsStore.pureBlack 
+                },
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Pure Black in Dark Mode", style = MaterialTheme.typography.bodyLarge)
+                    Text("Use pure black backgrounds when the system is in dark mode.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                ExpressiveSwitch(checked = chatState.settingsStore.pureBlack, onCheckedChange = { 
+                    chatState.settingsStore.pureBlack = it 
+                })
             }
         }
 
@@ -95,24 +119,6 @@ fun AppearanceSettings(chatState: ChatState) {
             ExpressiveSwitch(checked = showNitro, onCheckedChange = { showNitro = it })
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        val devMode = chatState.userSettings?.developer_mode ?: false
-        Row(
-            modifier = Modifier.fillMaxWidth().clickable { 
-                chatState.userSettings = chatState.userSettings?.copy(developer_mode = !devMode)
-            },
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text("Developer Mode", style = MaterialTheme.typography.bodyLarge)
-                Text("Exposes ID copying and other advanced debug tools.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            ExpressiveSwitch(checked = devMode, onCheckedChange = { 
-                chatState.userSettings = chatState.userSettings?.copy(developer_mode = it)
-            })
-        }
-        
         Spacer(modifier = Modifier.height(24.dp))
         
         var compactMode by remember { mutableStateOf(false) }

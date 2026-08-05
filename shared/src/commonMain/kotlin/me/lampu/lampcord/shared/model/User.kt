@@ -28,6 +28,13 @@ data class PrimaryGuild(
 )
 
 @Serializable
+data class DisplayNameStyles(
+    val font_id: Int? = null,
+    val effect_id: Int? = null,
+    val colors: List<Int>? = null
+)
+
+@Serializable
 data class User(
     val id: String,
     val username: String = "",
@@ -42,7 +49,8 @@ data class User(
     val premium_type: Int? = null,
     val avatar_decoration_data: AvatarDecorationData? = null,
     val collectibles: Collectibles? = null,
-    val primary_guild: PrimaryGuild? = null
+    val primary_guild: PrimaryGuild? = null,
+    val display_name_styles: DisplayNameStyles? = null
 )
 
 @Serializable
@@ -77,7 +85,8 @@ data class UserProfileMetadata(
     val accent_color: Int? = null,
     val banner: String? = null,
     val theme_colors: List<Int>? = null,
-    val pronouns: String? = null
+    val pronouns: String? = null,
+    val display_name_styles: DisplayNameStyles? = null
 )
 
 @Serializable

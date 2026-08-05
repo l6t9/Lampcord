@@ -71,30 +71,46 @@ actual fun ContextMenu(
                 modifier = Modifier
                     .fillMaxWidth()
                     .navigationBarsPadding()
-                    .padding(bottom = 8.dp)
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
-                items.forEach { item ->
-                    ListItem(
-                        headlineContent = {
-                            Text(
-                                text = item.label,
-                                color = item.color ?: MaterialTheme.colorScheme.onSurface
-                            )
-                        },
-                        leadingContent = item.icon?.let {
-                            {
-                                Icon(
-                                    imageVector = it,
-                                    contentDescription = null,
-                                    tint = item.color ?: MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        },
-                        modifier = Modifier.clickable {
+                items.forEachIndexed { index, item ->
+                    val shape = when {
+                        items.size == 1 -> RoundedCornerShape(28.dp)
+                        index == 0 -> RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp, bottomStart = 6.dp, bottomEnd = 6.dp)
+                        index == items.lastIndex -> RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp, bottomStart = 28.dp, bottomEnd = 28.dp)
+                        else -> RoundedCornerShape(6.dp)
+                    }
+
+                    Surface(
+                        onClick = {
                             item.onClick()
                             showSheet = false
-                        }
-                    )
+                        },
+                        shape = shape,
+                        color = MaterialTheme.colorScheme.surfaceContainerLowest
+                    ) {
+                        ListItem(
+                            headlineContent = {
+                                Text(
+                                    text = item.label,
+                                    color = item.color ?: MaterialTheme.colorScheme.onSurface,
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                            },
+                            leadingContent = item.icon?.let {
+                                {
+                                    Icon(
+                                        imageVector = it,
+                                        contentDescription = null,
+                                        tint = item.color ?: MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            },
+                            colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
+                        )
+                    }
                 }
             }
         }

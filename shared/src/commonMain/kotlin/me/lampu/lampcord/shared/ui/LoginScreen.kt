@@ -68,6 +68,7 @@ fun LoginScreen(
                 if (response == null) {
                     errorMessage = "Login failed"
                 } else if (response.token != null) {
+                    chatState.connect(response.token)
                     onLoginSuccess()
                 } else if (response.mfa == true && response.ticket != null) {
                     mfaTicket = response.ticket
@@ -77,8 +78,8 @@ fun LoginScreen(
             } else {
                 val currentTicket: String? = mfaTicket
                 if (currentTicket != null) {
-                    val success = chatState.verifyMFA(mfaCode.trim(), currentTicket, mfaType)
-                    if (success) {
+                    val res = chatState.verifyMFA(mfaCode.trim(), currentTicket, mfaType)
+                    if (res) {
                         onLoginSuccess()
                     } else {
                         errorMessage = "Invalid code or expired ticket"

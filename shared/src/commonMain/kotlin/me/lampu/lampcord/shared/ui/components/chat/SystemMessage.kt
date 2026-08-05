@@ -51,7 +51,7 @@ fun SystemMessage(message: Message, chatState: ChatState) {
             Spacer(modifier = Modifier.width(12.dp))
 
             val randomMessages = listOf("pizzaPre", "slid", "everyoneWelcomePre", "showedUp", "hopped")
-            val selectedMessage = randomMessages[message.id.toString().takeLast(1).toInt() % randomMessages.size]
+            val selectedMessage = randomMessages[message.id.takeLast(1).toInt() % randomMessages.size]
 
             if (selectedMessage.contains("Pre")) {
                 Text(

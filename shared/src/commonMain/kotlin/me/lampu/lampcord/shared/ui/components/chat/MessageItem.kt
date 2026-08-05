@@ -221,15 +221,19 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
                     
                     Column {
                         if (!isInline) {
+                            val isDm = message.guild_id == null && chatState.selectedGuild == null
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 var namePosition by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
-                                Text(
-                                    text = message.member?.nick ?: message.author.global_name ?: message.author.username,
-                                    style = MaterialTheme.typography.titleSmall,
-                                    color = displayColor,
+                                UsernameView(
+                                    name = message.member?.nick ?: message.author.global_name ?: message.author.username,
+                                    style = message.member?.display_name_styles ?: message.author.display_name_styles,
+                                    baseStyle = MaterialTheme.typography.titleSmall,
+                                    color = if (isDm) Color.White else displayColor,
                                     modifier = Modifier
                                         .onGloballyPositioned { namePosition = it.positionInRoot() }
-                                        .clickable { chatState.showProfile(message.author.id, namePosition) }
+                                        .clickable { chatState.showProfile(message.author.id, namePosition) },
+                                    ignoreEffects = !isHovered,
+                                    ignoreColors = if (isDm) !isHovered else true
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 MessageTimestamp(

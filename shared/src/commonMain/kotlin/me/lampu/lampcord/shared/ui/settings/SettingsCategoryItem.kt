@@ -17,30 +17,42 @@ fun SettingsCategoryItem(
     icon: ImageVector,
     isSelected: Boolean,
     color: Color = Color.Unspecified,
+    isFirst: Boolean = false,
+    isLast: Boolean = false,
     onClick: () -> Unit
 ) {
+    val cornerRadius = 24.dp
+    val reducedRadius = 4.dp
+    
+    val shape = RoundedCornerShape(
+        topStart = if (isFirst) cornerRadius else reducedRadius,
+        topEnd = if (isFirst) cornerRadius else reducedRadius,
+        bottomStart = if (isLast) cornerRadius else reducedRadius,
+        bottomEnd = if (isLast) cornerRadius else reducedRadius
+    )
+
     Surface(
-        modifier = Modifier.fillMaxWidth().height(40.dp),
+        modifier = Modifier.fillMaxWidth().height(56.dp),
         onClick = onClick,
-        color = if (isSelected) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent,
-        shape = RoundedCornerShape(8.dp)
+        color = if (isSelected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer,
+        shape = shape
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 12.dp),
+            modifier = Modifier.padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                modifier = Modifier.size(20.dp),
-                tint = if (color != Color.Unspecified) color else if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                modifier = Modifier.size(24.dp),
+                tint = if (color != Color.Unspecified) color else if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(16.dp))
             Text(
                 text = label,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                color = if (color != Color.Unspecified) color else if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                color = if (color != Color.Unspecified) color else if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface
             )
         }
     }

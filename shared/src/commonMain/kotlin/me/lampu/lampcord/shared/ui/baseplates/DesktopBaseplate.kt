@@ -111,18 +111,30 @@ fun DesktopBaseplate(chatState: ChatState) {
                     }
                     
                     // HomeNavButtons equivalent
-                    Row(
-                        modifier = Modifier.height(60.dp).fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        NavButton(Icons.Filled.Group) { 
-                            chatState.selectedGuild = null
-                            chatState.selectedChannel = null
-                            chatState.isFriendsSelected = true
-                        }
-                        NavButton(Icons.Filled.Search) { chatState.isQuickSwitcherVisible = true }
-                        NavButton(Icons.Outlined.AlternateEmail) { /* Mentions */ }
-                    }
+                    NavButtonRow(
+                        listOf(
+                            NavButtonData(
+                                icon = Icons.Filled.Group,
+                                title = "Members",
+                                selected = chatState.isFriendsSelected,
+                                onClick = {
+                                    chatState.selectedGuild = null
+                                    chatState.selectedChannel = null
+                                    chatState.isFriendsSelected = true
+                                }
+                            ),
+                            NavButtonData(
+                                icon = Icons.Filled.Search,
+                                title = "Search",
+                                onClick = { chatState.isQuickSwitcherVisible = true }
+                            ),
+                            NavButtonData(
+                                icon = Icons.Outlined.AlternateEmail,
+                                title = "Mentions",
+                                onClick = { /* Mentions */ }
+                            )
+                        )
+                    )
                 }
             }
         }

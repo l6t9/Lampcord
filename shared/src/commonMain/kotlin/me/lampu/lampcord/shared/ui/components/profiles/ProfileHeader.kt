@@ -69,9 +69,10 @@ fun ProfileHeader(
     }
 
     Column(modifier = Modifier.offset(y = if (isExpanded) (-50).dp else (-35).dp)) {
-        Text(
-            text = profile.guild_member?.nick ?: user.global_name ?: user.username,
-            style = if (isExpanded) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleLarge,
+        UsernameView(
+            name = profile.guild_member?.nick ?: user.global_name ?: user.username,
+            style = profile.guild_member?.display_name_styles ?: user.display_name_styles,
+            baseStyle = if (isExpanded) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             color = Color.White
         )

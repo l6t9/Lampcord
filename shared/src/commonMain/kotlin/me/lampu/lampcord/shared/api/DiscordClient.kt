@@ -525,7 +525,44 @@ class DiscordClient(
             false
         }
     }
+
+    suspend fun getConnections(): List<ConnectedAccount> {
+        if (token == null) return emptyList()
+        return try {
+            httpClient.get("$apiBase/users/@me/connections") {
+                header(HttpHeaders.Authorization, token!!)
+            }.body()
+        } catch (e: Exception) {
+            println("Error fetching connections: ${e.message}")
+            emptyList()
+        }
+    }
+
+    suspend fun getDevices(): List<DiscordDevice> {
+        if (token == null) return emptyList()
+        return try {
+            val response = httpClient.get("$apiBase/users/@me/devices") {
+                header(HttpHeaders.Authorization, token!!)
+            }
+            if (response.status.isSuccess()) response.body() else emptyList()
+        } catch (e: Exception) {
+            println("Error fetching devices: ${e.message}")
+            emptyList()
+        }
+    }
 }
+
+@Serializable
+data class DiscordDevice(
+    val id: String,
+    val model: String? = null,
+    val os: String? = null,
+    val browser: String? = null,
+    val client_version: String? = null,
+    val last_used: String? = null,
+    val ip_address: String? = null,
+    val location: String? = null
+)
 
 fun createHttpClient() = HttpClient(CIO) {
     install(HttpCookies)

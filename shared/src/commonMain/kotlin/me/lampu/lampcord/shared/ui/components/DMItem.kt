@@ -6,6 +6,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.Channel
@@ -23,6 +25,8 @@ fun DMItem(channel: Channel, chatState: ChatState) {
     val name = recipient?.let { it.global_name ?: it.username } ?: "Unnamed DM"
 
     val status = recipient?.let { chatState.getUserStatus(it.id) } ?: "offline"
+
+    var isHovered by remember { mutableStateOf(false) }
 
     val isUnread by remember(channel, chatState.readStates[channel.id]) {
         derivedStateOf { chatState.isUnread(channel) }
@@ -45,7 +49,18 @@ fun DMItem(channel: Channel, chatState: ChatState) {
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp)
-                .padding(horizontal = 8.dp),
+                .padding(horizontal = 8.dp)
+                .pointerInput(Unit) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            when (event.type) {
+                                PointerEventType.Enter -> isHovered = true
+                                PointerEventType.Exit -> isHovered = false
+                            }
+                        }
+                    }
+                },
             onClick = { chatState.selectChannel(channel) },
             color = if (isSelected) 
                 MaterialTheme.colorScheme.surfaceVariant 
@@ -65,14 +80,15 @@ fun DMItem(channel: Channel, chatState: ChatState) {
                     )
                 }
                 Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = name,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (isSelected || isUnread)
-                        MaterialTheme.colorScheme.onSurface 
-                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                UsernameView(
+                    name = name,
+                    style = recipient?.display_name_styles,
+                    baseStyle = MaterialTheme.typography.bodyMedium,
+                    color = Color.White,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    ignoreEffects = !isHovered,
+                    ignoreColors = !isHovered
                 )
             }
         }

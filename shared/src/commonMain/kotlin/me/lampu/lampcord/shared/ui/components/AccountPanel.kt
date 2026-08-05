@@ -96,9 +96,10 @@ fun AccountPanel(chatState: ChatState) {
                 Spacer(modifier = Modifier.width(10.dp))
                 
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = member?.nick ?: user.global_name ?: user.username,
-                        style = MaterialTheme.typography.labelLarge,
+                    UsernameView(
+                        name = member?.nick ?: user.global_name ?: user.username,
+                        style = member?.display_name_styles ?: user.display_name_styles,
+                        baseStyle = MaterialTheme.typography.labelLarge,
                         fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
