@@ -85,6 +85,12 @@ fun ChannelItem(channel: Channel, chatState: ChatState) {
                             tint = contentColor
                         )
                     } else if (channel.type == 2) {
+                        //Icon(
+                        //    imageVector = Icons.Outlined.Call,
+                        //    contentDescription = null,
+                        //    modifier = Modifier.size(20.dp),
+                        //    tint = contentColor
+                        //)
                         Text(
                             text = "V",
                             style = MaterialTheme.typography.bodyLarge,

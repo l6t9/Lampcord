@@ -19,7 +19,7 @@ fun App() {
     setSingletonImageLoaderFactory { context ->
         newImageLoader(context)
     }
-
+    
     val chatState: ChatState = koinInject()
     val isSystemInDarkTheme = androidx.compose.foundation.isSystemInDarkTheme()
     
@@ -29,7 +29,7 @@ fun App() {
         "amoled" -> true
         else -> isSystemInDarkTheme
     }
-
+    
     val pureBlack = chatState.settingsStore.themeMode == "amoled" || 
             (chatState.settingsStore.themeMode == "auto" && chatState.settingsStore.pureBlack && isSystemInDarkTheme)
 

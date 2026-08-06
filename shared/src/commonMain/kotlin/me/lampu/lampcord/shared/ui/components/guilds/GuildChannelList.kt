@@ -98,13 +98,23 @@ fun GuildChannelList(chatState: ChatState) {
                     }
 
                     item { Spacer(modifier = Modifier.height(8.dp)) }
-
+		    
+		            //val vcChannels = rootChannels.filter{it.type == 2}
+		    
                     items(rootChannels, key = { it.id }) { channel ->
-                        Box(Modifier.animateItem()) {
-                            ChannelItem(channel, chatState)
-                        }
+                        //if (channel.type != 2) {
+                            Box(Modifier.animateItem()) {
+                                ChannelItem(channel, chatState) // For non-VC channels
+                            }
+                        //}
                     }
                     
+                    //items(vcChannels, key = { it.id }) { channel ->
+                    //    Box(Modifier.animateItem()) {
+                    //        ChannelItem(channel, chatState) // For VC channels
+                    //    }
+                    //}
+
                     items(categories, key = { it.id }) { category ->
                         Box(Modifier.animateItem()) {
                             GuildCategoryItem(category, channels, chatState)
