@@ -19,7 +19,7 @@ fun LampcordTheme(
     content: @Composable () -> Unit
 ) {
     val dynamicSeed = rememberDynamicSeedColor()
-    val finalSeedColor = seedColor ?: dynamicSeed ?: Blurple
+    val finalSeedColor = seedColor ?: dynamicSeed ?: ColorLightPrimary
 
     DynamicMaterialTheme(
         primary = finalSeedColor,

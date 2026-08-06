@@ -31,6 +31,7 @@ fun AccountPanel(chatState: ChatState) {
     var panelPosition by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
     var showStatusMenu by remember { mutableStateOf(false) }
     var showAccountPicker by remember { mutableStateOf(false) }
+    var showAddAccountDialog by remember { mutableStateOf(false) }
     var showCustomStatusDialog by remember { mutableStateOf(false) }
     
     val isMuted = chatState.currentVoiceState?.self_mute ?: false
@@ -290,10 +291,33 @@ fun AccountPanel(chatState: ChatState) {
                     offset = IntOffset(16, (-70).dp.value.toInt()),
                     properties = androidx.compose.ui.window.PopupProperties(focusable = true)
                 ) {
-                    AccountPicker(chatState) { account ->
-                        chatState.tokenStore.switchAccount(account.token)
-                        showAccountPicker = false
-                        // TODO: trigger reconnect/refresh
+                    AccountPicker(
+                        chatState = chatState,
+                        onAccountSelected = { account ->
+                            if (account.user.id != user.id) {
+                                chatState.disconnect()
+                                chatState.connect(account.token)
+                            }
+                            showAccountPicker = false
+                        },
+                        onAddAccount = {
+                            showAccountPicker = false
+                            showAddAccountDialog = true
+                        }
+                    )
+                }
+            }
+
+            if (showAddAccountDialog) {
+                androidx.compose.ui.window.Dialog(
+                    onDismissRequest = { showAddAccountDialog = false },
+                    properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
+                ) {
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = MaterialTheme.colorScheme.background
+                    ) {
+                        me.lampu.lampcord.shared.ui.LoginScreen(onLoginSuccess = { showAddAccountDialog = false })
                     }
                 }
             }

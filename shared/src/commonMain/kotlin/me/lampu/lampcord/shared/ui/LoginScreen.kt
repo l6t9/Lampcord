@@ -283,8 +283,16 @@ fun LoginScreen(
                                             )
                                         }
                                         Spacer(Modifier.height(8.dp))
-                                        Text(state.user.global_name ?: state.user.username, style = MaterialTheme.typography.titleSmall, color = Color.Black)
-                                        Text("Approve on your phone", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                                        Text(
+                                            state.user.global_name ?: state.user.username,
+                                            style = MaterialTheme.typography.titleSmall,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            "Approve on your phone",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
                                     }
                                 }
                                 is RemoteAuthState.Connecting -> {

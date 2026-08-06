@@ -1,5 +1,6 @@
 package me.lampu.lampcord.shared.state
 
+import androidx.compose.runtime.mutableStateListOf
 import me.lampu.lampcord.shared.model.User
 import me.lampu.lampcord.shared.settings.Settings
 import kotlinx.serialization.Serializable
@@ -13,7 +14,7 @@ data class SavedAccount(
 )
 
 class TokenStore(private val json: Json) {
-    private var accounts: MutableList<SavedAccount> = mutableListOf()
+    private var accounts = mutableStateListOf<SavedAccount>()
 
     init {
         load()
@@ -22,23 +23,36 @@ class TokenStore(private val json: Json) {
     private fun load() {
         try {
             val jsonStr = Settings.shared.savedAccountsJson
-            accounts = json.decodeFromString<List<SavedAccount>>(jsonStr).toMutableList()
-        } catch (e: Exception) {
-            accounts = mutableListOf()
+            if (jsonStr.isNotBlank() && jsonStr != "[]") {
+                val loaded = json.decodeFromString<List<SavedAccount>>(jsonStr)
+                accounts.clear()
+                accounts.addAll(loaded)
+            }
+        } catch (_: Exception) {
+            // Silence error
         }
     }
 
     private fun save() {
-        Settings.shared.savedAccountsJson = json.encodeToString(accounts)
+        try {
+            val list = accounts.toList()
+            val jsonStr = json.encodeToString(list)
+            Settings.shared.savedAccountsJson = jsonStr
+        } catch (_: Exception) {
+            // Silence error
+        }
     }
 
     fun getAccounts(): List<SavedAccount> = accounts
 
     fun addAccount(token: String, user: User) {
-        if (accounts.none { it.token == token }) {
+        val existingIndex = accounts.indexOfFirst { it.user.id == user.id }
+        if (existingIndex != -1) {
+            accounts[existingIndex] = SavedAccount(token, user)
+        } else {
             accounts.add(SavedAccount(token, user))
-            save()
         }
+        save()
     }
 
     fun removeAccount(token: String) {

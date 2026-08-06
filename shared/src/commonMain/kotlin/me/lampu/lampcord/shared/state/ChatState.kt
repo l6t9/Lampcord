@@ -17,7 +17,7 @@ import me.lampu.lampcord.shared.utils.Permission
 import me.lampu.lampcord.shared.utils.PermissionHelper
 import me.lampu.lampcord.shared.utils.getCurrentTimeMillis
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.collect
 import kotlinx.serialization.json.*
 import kotlin.random.Random
 
@@ -149,7 +149,7 @@ class ChatState(
         }
 
         scope.launch {
-            gatewayManager.events.collectLatest { payload ->
+            gatewayManager.events.collect { payload ->
                 handleGatewayEvent(payload)
             }
         }
@@ -259,13 +259,23 @@ class ChatState(
 
     private fun handleReady(payload: GatewayPayload) {
         payload.d?.let { data ->
+            val user = try {
+                data.jsonObject["user"]?.let { json.decodeFromJsonElement<User>(it) }
+            } catch (e: Exception) {
+                println("Failed to decode user from READY: ${e.message}")
+                null
+            }
+
+            user?.let { u ->
+                currentUser = u
+                currentToken?.let { t ->
+                    tokenStore.addAccount(t, u)
+                    Settings.shared.discordToken = t
+                }
+            }
+
             try {
                 val ready = json.decodeFromJsonElement<ReadyPayload>(data)
-                currentUser = ready.user
-                currentToken?.let { 
-                    tokenStore.addAccount(it, ready.user)
-                    Settings.shared.discordToken = it
-                }
                 
                 (ready.user_settings as? JsonObject)?.let { el ->
                     try {
@@ -610,6 +620,8 @@ class ChatState(
         voiceGatewayManager.disconnect()
         isConnected = false
         isConnecting = false
+        currentToken = null
+        discordClient.setToken(null)
         clearAllStores()
     }
 
@@ -627,7 +639,7 @@ class ChatState(
     }
 
     suspend fun login(email: String, pass: String): LoginResponse? {
-        val fingerprint = currentFingerprint ?: discordClient.getFingerprint() ?: ""
+        val fingerprint = discordClient.getFingerprint() ?: ""
         currentFingerprint = fingerprint
         return discordClient.login(LoginRequest(email, pass), fingerprint)
     }

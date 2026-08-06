@@ -62,7 +62,7 @@ class DiscordClient(
     private val apiVersion = 9
     private val apiBase = "https://discord.com/api/v$apiVersion"
 
-    fun setToken(token: String) {
+    fun setToken(token: String?) {
         this.token = token
     }
 
@@ -147,10 +147,35 @@ class DiscordClient(
         token?.let { header(HttpHeaders.Authorization, it) }
     }
 
+    private fun HttpRequestBuilder.loginHeaders(fingerprint: String? = null) {
+        val platform = getPlatformName()
+        val isMobile = platform == "android" || platform == "ios"
+        val browserOsName = when(platform) {
+            "windows" -> "Windows NT 10.0; Win64; x64"
+            "linux" -> "X11; Linux x86_64"
+            "macos" -> "Macintosh; Intel Mac OS X 10_15_7"
+            "android" -> "Linux; Android ${getOsVersion()}; ${getDeviceName()}"
+            "ios" -> "iPhone; CPU iPhone OS ${getOsVersion().replace(".", "_")} like Mac OS X"
+            else -> "X11; Linux x86_64"
+        }
+        val userAgent = if (isMobile) {
+            if (platform == "android") "Discord Android/300.0" else "Discord/105180 CFNetwork/1410.0.3 Darwin/22.4.0"
+        } else {
+            "Mozilla/5.0 ($browserOsName) AppleWebKit/537.36 (KHTML, like Gecko) discord/0.0.398 Chrome/138.0.7204.251 Electron/37.6.0 Safari/537.36"
+        }
+
+        header("User-Agent", userAgent)
+        header("Accept-Language", "en-US,en;q=0.9")
+        header("X-Super-Properties", getSuperProperties())
+        fingerprint?.let { header("X-Fingerprint", it) }
+        header("Origin", "https://discord.com")
+        header("Referer", "https://discord.com/login")
+    }
+
     suspend fun getFingerprint(): String? {
         return try {
             val response: FingerprintResponse = httpClient.get("$apiBase/experiments") {
-                standardHeaders()
+                loginHeaders()
             }.body()
             response.fingerprint
         } catch (e: Exception) {
@@ -162,10 +187,7 @@ class DiscordClient(
     suspend fun login(request: LoginRequest, fingerprint: String): LoginResponse? {
         return try {
             val response = httpClient.post("$apiBase/auth/login") {
-                standardHeaders()
-                header("X-Fingerprint", fingerprint)
-                header("Origin", "https://discord.com")
-                header("Referer", "https://discord.com/login")
+                loginHeaders(fingerprint)
                 contentType(ContentType.Application.Json)
                 setBody(request)
             }
@@ -186,10 +208,7 @@ class DiscordClient(
     suspend fun loginMFA(request: MFALoginRequest, fingerprint: String, type: String): LoginResponse? {
         return try {
             val response = httpClient.post("$apiBase/auth/mfa/$type") {
-                standardHeaders()
-                header("X-Fingerprint", fingerprint)
-                header("Origin", "https://discord.com")
-                header("Referer", "https://discord.com/login")
+                loginHeaders(fingerprint)
                 contentType(ContentType.Application.Json)
                 setBody(request)
             }

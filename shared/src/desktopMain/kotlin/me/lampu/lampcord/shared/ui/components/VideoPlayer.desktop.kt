@@ -153,7 +153,7 @@ actual fun VideoPlayer(
                             modifier = Modifier.weight(1f).padding(horizontal = 16.dp),
                             colors = SliderDefaults.colors(
                                 thumbColor = Color.White,
-                                activeTrackColor = Color(0xFF5865F2),
+                                activeTrackColor = MaterialTheme.colorScheme.primary,
                                 inactiveTrackColor = Color.White.copy(alpha = 0.3f)
                             )
                         )
