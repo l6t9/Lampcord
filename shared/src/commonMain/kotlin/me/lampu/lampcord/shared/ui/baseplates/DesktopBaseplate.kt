@@ -80,6 +80,7 @@ fun DesktopBaseplate(chatState: ChatState) {
                                 fadeOut(quickEffectsSpec) + slideOutHorizontally(quickSpatialSpec) { -it / 8 }
                             )
                         },
+                        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface),
                         label = "MainContentTransition"
                     ) { target ->
                         if (activeChannel != null && target == activeChannel.id) {

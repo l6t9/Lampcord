@@ -174,12 +174,14 @@ fun SettingsSubScreen(
     title: String,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
+    contentScrollable: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     
     Scaffold(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             LargeTopAppBar(
                 title = { Text(title) },
@@ -197,7 +199,7 @@ fun SettingsSubScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .verticalScroll(scrollState)
+                .then(if (contentScrollable) Modifier.verticalScroll(scrollState) else Modifier)
                 .padding(vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {

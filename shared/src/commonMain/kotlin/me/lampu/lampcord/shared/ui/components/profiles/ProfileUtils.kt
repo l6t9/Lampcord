@@ -9,6 +9,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -93,7 +94,24 @@ fun UserConnectionItem(
     isFirst: Boolean,
     isLast: Boolean
 ) {
+    val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
+    val url = remember(connection) {
+        when (connection.type) {
+            "github" -> "https://github.com/${connection.name}"
+            "steam" -> "https://steamcommunity.com/profiles/${connection.id}"
+            "twitch" -> "https://www.twitch.tv/${connection.name}"
+            "youtube" -> "https://www.youtube.com/channel/${connection.id}"
+            "spotify" -> "https://open.spotify.com/user/${connection.id}"
+            "twitter" -> "https://twitter.com/${connection.name}"
+            "reddit" -> "https://www.reddit.com/u/${connection.name}"
+            "tiktok" -> "https://www.tiktok.com/@${connection.name}"
+            else -> null
+        }
+    }
+
     Surface(
+        onClick = { url?.let { uriHandler.openUri(it) } },
+        enabled = url != null,
         modifier = Modifier.fillMaxWidth(),
         color = Color.Black.copy(alpha = 0.1f),
         shape = when {
@@ -122,7 +140,7 @@ fun UserConnectionItem(
             }
             Spacer(Modifier.weight(1f))
             if (connection.verified) {
-                Icon(Icons.Filled.Check, null, modifier = Modifier.size(16.dp), tint = Color(0xFF5865F2))
+                Icon(Icons.Rounded.ArrowOutward, null, modifier = Modifier.size(16.dp), tint = contentColor.copy(alpha = 0.7f))
             }
         }
     }

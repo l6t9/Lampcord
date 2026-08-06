@@ -13,6 +13,13 @@ object IconsRounded {
         )
     }
 
+    val ArrowOutward: ImageVector by lazy {
+        materialSymbol(
+            name = "Rounded.ArrowOutward",
+            pathData = "M640-624L284-268Q273-257 256-257Q239-257 228-268Q217-279 217-296Q217-313 228-324L584-680H280Q263-680 251.5-691.5Q240-703 240-720Q240-737 251.5-748.5Q263-760 280-760H680Q697-760 708.5-748.5Q720-737 720-720V-320Q720-303 708.5-291.5Q697-280 680-280Q663-280 651.5-291.5Q640-303 640-320Z",
+        )
+    }
+
     val EmojiEmotions: ImageVector by lazy {
         materialSymbol(
             name = "Rounded.EmojiEmotions",

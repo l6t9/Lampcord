@@ -2,6 +2,7 @@ package me.lampu.lampcord.shared.ui
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -25,6 +26,7 @@ fun MainScreen(
 
     AnimatedContent(
         targetState = chatState.isConnected to chatState.isConnecting,
+        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface),
         transitionSpec = {
             fadeIn(quickEffectsSpec) togetherWith fadeOut(quickEffectsSpec)
         },

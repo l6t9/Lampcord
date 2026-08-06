@@ -101,7 +101,7 @@ actual fun MobileBaseplate(chatState: ChatState) {
                                     fadeOut(quickEffectsSpec) + slideOutHorizontally(quickSpatialSpec) { -it / 8 }
                                 )
                             },
-                            modifier = Modifier.padding(padding).fillMaxSize(),
+                            modifier = Modifier.padding(padding).fillMaxSize().background(MaterialTheme.colorScheme.surface),
                             label = "MainContentTransition"
                         ) { target ->
                             Box(Modifier.fillMaxSize()) {
