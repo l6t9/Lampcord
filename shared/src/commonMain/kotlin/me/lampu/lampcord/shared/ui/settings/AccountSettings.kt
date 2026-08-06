@@ -45,8 +45,7 @@ fun AccountSettings(chatState: ChatState) {
                             }
                         }
                     )
-                ),
-                horizontalPadding = 0.dp
+                )
             )
         }
 
@@ -68,8 +67,7 @@ fun AccountSettings(chatState: ChatState) {
                         description = { Text("********1234") },
                         onClick = { /* TODO */ }
                     )
-                ),
-                horizontalPadding = 0.dp
+                )
             )
         }
 
@@ -85,8 +83,7 @@ fun AccountSettings(chatState: ChatState) {
                         description = "Protect your account with an extra layer of security",
                         onClick = { /* TODO */ }
                     )
-                ),
-                horizontalPadding = 0.dp
+                )
             )
         }
     }

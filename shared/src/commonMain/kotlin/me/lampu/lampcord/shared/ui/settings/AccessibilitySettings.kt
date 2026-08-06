@@ -27,8 +27,7 @@ fun AccessibilitySettings(chatState: ChatState) {
                             )
                         }
                     )
-                ),
-                horizontalPadding = 0.dp
+                )
             )
         }
 
@@ -50,8 +49,7 @@ fun AccessibilitySettings(chatState: ChatState) {
                         checked = highContrast,
                         onCheckedChange = { highContrast = it }
                     )
-                ),
-                horizontalPadding = 0.dp
+                )
             )
         }
     }

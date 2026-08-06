@@ -40,7 +40,7 @@ fun Material3SettingsGroup(
                 textAlign = TextAlign.Start,
                 modifier = Modifier.padding(
                     bottom = 12.dp,
-                    top = 8.dp,
+                    top = 24.dp,
                     start = 16.dp,
                     end = 32.dp,
                 ),
@@ -74,8 +74,8 @@ private fun Material3SettingsItemRow(
     isLast: Boolean = false,
     horizontalPadding: Dp = 16.dp,
 ) {
-    val cornerRadius = 24.dp
-    val reducedRadius = 6.dp
+    val cornerRadius = 20.dp
+    val reducedRadius = 5.dp
 
     val shape = RoundedCornerShape(
         topStart = if (isFirst) cornerRadius else reducedRadius,
@@ -116,30 +116,25 @@ private fun Material3SettingsItemRow(
             Spacer(modifier = Modifier.width(16.dp))
         } else if (item.icon != null) {
             Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(CircleShape)
-                    .background(
-                        item.iconContainerColor ?: MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                    ),
+                modifier = Modifier.size(32.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     item.icon,
                     contentDescription = null,
-                    tint = item.iconTint ?: MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp),
+                    tint = item.iconTint ?: MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(24.dp),
                 )
             }
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(12.dp))
         }
 
         Column(
             modifier = Modifier.weight(1f),
         ) {
             ProvideTextStyle(
-                MaterialTheme.typography.bodyLarge.copy(
-                    fontWeight = FontWeight.Normal,
+                MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.W500,
                     color = if (!item.enabled) {
                         MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                     } else {
@@ -153,9 +148,9 @@ private fun Material3SettingsItemRow(
             item.description?.let { desc ->
                 Spacer(modifier = Modifier.height(2.dp))
                 ProvideTextStyle(
-                    MaterialTheme.typography.bodyMedium.copy(
+                    MaterialTheme.typography.bodySmall.copy(
                         color = if (!item.enabled) {
-                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
                         } else {
                             MaterialTheme.colorScheme.onSurfaceVariant
                         },

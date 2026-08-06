@@ -24,8 +24,7 @@ fun AdvancedSettings(chatState: ChatState) {
                             chatState.userSettings = chatState.userSettings?.copy(developer_mode = it)
                         }
                     )
-                ),
-                horizontalPadding = 0.dp
+                )
             )
         }
 
@@ -42,8 +41,7 @@ fun AdvancedSettings(chatState: ChatState) {
                         description = { Text("Restore all settings to their default values.") },
                         onClick = { /* TODO */ }
                     )
-                ),
-                horizontalPadding = 0.dp
+                )
             )
         }
     }

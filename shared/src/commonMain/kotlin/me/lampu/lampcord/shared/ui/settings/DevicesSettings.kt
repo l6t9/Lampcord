@@ -51,8 +51,7 @@ fun DevicesSettings(chatState: ChatState) {
                         description = { Text("If you see a device you don't recognize, sign out of all other sessions.") },
                         onClick = { /* TODO */ }
                     )
-                ),
-                horizontalPadding = 0.dp
+                )
             )
         }
     }

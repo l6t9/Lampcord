@@ -10,10 +10,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.state.ChatState
 
@@ -46,15 +45,28 @@ fun DMList(chatState: ChatState) {
             shadowElevation = 0.dp,
             tonalElevation = 0.dp
         ) {
-            Box(
+            Row(
                 modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-                contentAlignment = Alignment.CenterStart
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = "Direct Messages",
                     style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f)
                 )
+
+                IconButton(
+                    onClick = { chatState.selectFriends() },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = if (chatState.isFriendsSelected) Icons.Filled.Person else Icons.Outlined.Person,
+                        contentDescription = "Friends",
+                        tint = if (chatState.isFriendsSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
         
@@ -70,36 +82,6 @@ fun DMList(chatState: ChatState) {
                     modifier = Modifier.fillMaxSize().padding(top = 8.dp),
                     contentPadding = PaddingValues(bottom = 68.dp)
                 ) {
-                    item {
-                        Surface(
-                            onClick = { chatState.selectFriends() },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 8.dp, vertical = 2.dp),
-                            shape = RoundedCornerShape(8.dp),
-                            color = if (chatState.isFriendsSelected) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.Person,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(24.dp),
-                                    tint = if (chatState.isFriendsSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Spacer(Modifier.width(12.dp))
-                                Text(
-                                    text = "Friends",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = if (chatState.isFriendsSelected) FontWeight.Bold else FontWeight.Medium,
-                                    color = if (chatState.isFriendsSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-
                     if (chatState.privateChannels.isEmpty()) {
                         items(10) {
                             DMSkeleton()

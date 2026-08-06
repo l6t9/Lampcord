@@ -27,7 +27,7 @@ object DisplayNameCatalog {
         const val GLOW = 6
     }
 
-    object Font {
+    object Fonts {
         const val BANGERS = 1
         const val BIO_RHYME = 2
         const val CHERRY_BOMB = 3
@@ -44,27 +44,27 @@ object DisplayNameCatalog {
 
     @Composable
     fun getFontFamily(fontId: Int?): FontFamily? = when (fontId) {
-        Font.BANGERS -> FontFamily(Font(Res.font.Bangers_Regular))
-        Font.BIO_RHYME -> FontFamily(Font(Res.font.BioRhyme_Regular))
-        Font.CHERRY_BOMB -> FontFamily(Font(Res.font.CherryBombOne_Regular))
-        Font.CHICLE -> FontFamily(Font(Res.font.Chicle_Regular))
-        Font.COMPAGNON -> FontFamily(Font(Res.font.Compagnon_Medium))
-        Font.MUSEO_MODERNO -> FontFamily(Font(Res.font.MuseoModerno_Regular))
-        Font.NEO_CASTEL -> FontFamily(Font(Res.font.NeoCastel))
-        Font.PIXELIFY -> FontFamily(Font(Res.font.PixelifySans_Regular))
-        Font.RIBES -> FontFamily(Font(Res.font.Ribes_Black))
-        Font.SINISTRE -> FontFamily(Font(Res.font.Sinistre_Bold))
-        Font.ZILLA_SLAB -> FontFamily(Font(Res.font.ZillaSlab_SemiBold))
+        Fonts.BANGERS -> FontFamily(Font(Res.font.Bangers_Regular))
+        Fonts.BIO_RHYME -> FontFamily(Font(Res.font.BioRhyme_Regular))
+        Fonts.CHERRY_BOMB -> FontFamily(Font(Res.font.CherryBombOne_Regular))
+        Fonts.CHICLE -> FontFamily(Font(Res.font.Chicle_Regular))
+        Fonts.COMPAGNON -> FontFamily(Font(Res.font.Compagnon_Medium))
+        Fonts.MUSEO_MODERNO -> FontFamily(Font(Res.font.MuseoModerno_Regular))
+        Fonts.NEO_CASTEL -> FontFamily(Font(Res.font.NeoCastel))
+        Fonts.PIXELIFY -> FontFamily(Font(Res.font.PixelifySans_Regular))
+        Fonts.RIBES -> FontFamily(Font(Res.font.Ribes_Black))
+        Fonts.SINISTRE -> FontFamily(Font(Res.font.Sinistre_Bold))
+        Fonts.ZILLA_SLAB -> FontFamily(Font(Res.font.ZillaSlab_SemiBold))
         else -> null
     }
 
     fun getLetterSpacing(fontId: Int?): TextUnit = when (fontId) {
-        Font.CHERRY_BOMB -> 0.04.sp
-        Font.MUSEO_MODERNO -> 0.01.sp
-        Font.NEO_CASTEL -> 0.02.sp
-        Font.PIXELIFY -> 0.02.sp
-        Font.SINISTRE -> 0.01.sp
-        Font.ZILLA_SLAB -> 0.03.sp
+        Fonts.CHERRY_BOMB -> 0.04.sp
+        Fonts.MUSEO_MODERNO -> 0.01.sp
+        Fonts.NEO_CASTEL -> 0.02.sp
+        Fonts.PIXELIFY -> 0.02.sp
+        Fonts.SINISTRE -> 0.01.sp
+        Fonts.ZILLA_SLAB -> 0.03.sp
         else -> TextUnit.Unspecified
     }
 }

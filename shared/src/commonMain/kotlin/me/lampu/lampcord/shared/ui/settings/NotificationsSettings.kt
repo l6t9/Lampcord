@@ -29,8 +29,7 @@ fun NotificationsSettings(chatState: ChatState) {
                         checked = showPreview,
                         onCheckedChange = { showPreview = it }
                     )
-                ),
-                horizontalPadding = 0.dp
+                )
             )
         }
 
@@ -52,8 +51,7 @@ fun NotificationsSettings(chatState: ChatState) {
                         checked = callSound,
                         onCheckedChange = { callSound = it }
                     )
-                ),
-                horizontalPadding = 0.dp
+                )
             )
         }
     }

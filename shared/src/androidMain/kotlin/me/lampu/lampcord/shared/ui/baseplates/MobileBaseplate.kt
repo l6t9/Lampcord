@@ -1,6 +1,8 @@
 package me.lampu.lampcord.shared.ui.baseplates
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -15,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import me.lampu.lampcord.shared.state.ChatState
@@ -26,7 +29,7 @@ import io.github.materiiapps.panels.SwipePanels
 import io.github.materiiapps.panels.SwipePanelsValue
 import io.github.materiiapps.panels.rememberSwipePanelsState
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 actual fun MobileBaseplate(chatState: ChatState) {
     val panelState = rememberDiscordPanelsState()
@@ -88,29 +91,43 @@ actual fun MobileBaseplate(chatState: ChatState) {
                             }
                         }
                     ) { padding ->
-                        Box(Modifier.padding(padding).fillMaxSize()) {
-                            if (activeChannel != null) {
-                                if (activeChannel.type == 2 || activeChannel.type == 13) {
-                                    VoiceArea(activeChannel, chatState)
-                                } else {
-                                    Column(modifier = Modifier.fillMaxSize()) {
-                                        Box(modifier = Modifier.weight(1f)) {
-                                            ChatArea(modifier = Modifier.fillMaxSize(), chatState = chatState)
+                        val quickSpatialSpec = MaterialTheme.motionScheme.defaultSpatialSpec<IntOffset>()
+                        val quickEffectsSpec = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
+
+                        AnimatedContent(
+                            targetState = if (activeChannel != null) activeChannel.id else if (chatState.isFriendsSelected) "friends" else "none",
+                            transitionSpec = {
+                                (fadeIn(quickEffectsSpec) + slideInHorizontally(quickSpatialSpec) { it / 8 }).togetherWith(
+                                    fadeOut(quickEffectsSpec) + slideOutHorizontally(quickSpatialSpec) { -it / 8 }
+                                )
+                            },
+                            modifier = Modifier.padding(padding).fillMaxSize(),
+                            label = "MainContentTransition"
+                        ) { target ->
+                            Box(Modifier.fillMaxSize()) {
+                                if (activeChannel != null && target == activeChannel.id) {
+                                    if (activeChannel.type == 2 || activeChannel.type == 13) {
+                                        VoiceArea(activeChannel, chatState)
+                                    } else {
+                                        Column(modifier = Modifier.fillMaxSize()) {
+                                            Box(modifier = Modifier.weight(1f)) {
+                                                ChatArea(modifier = Modifier.fillMaxSize(), chatState = chatState)
+                                            }
+                                            ChatInputBar(activeChannel, chatState)
                                         }
-                                        ChatInputBar(activeChannel, chatState)
                                     }
-                                }
-                            } else if (chatState.isFriendsSelected) {
-                                FriendsList(chatState)
-                            } else {
-                                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Icon(Icons.Brand.Discord, null, modifier = Modifier.size(80.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f))
-                                        Spacer(Modifier.height(24.dp))
-                                        Text("Select a channel to start chatting", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                        Spacer(Modifier.height(24.dp))
-                                        Button(onClick = { panelState.openStart() }) {
-                                            Text("Open Drawer")
+                                } else if (target == "friends") {
+                                    FriendsList(chatState)
+                                } else {
+                                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Icon(Icons.Brand.Discord, null, modifier = Modifier.size(80.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f))
+                                            Spacer(Modifier.height(24.dp))
+                                            Text("Select a channel to start chatting", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            Spacer(Modifier.height(24.dp))
+                                            Button(onClick = { panelState.openStart() }) {
+                                                Text("Open Drawer")
+                                            }
                                         }
                                     }
                                 }

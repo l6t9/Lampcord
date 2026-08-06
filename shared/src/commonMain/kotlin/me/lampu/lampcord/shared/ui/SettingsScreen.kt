@@ -1,6 +1,7 @@
 package me.lampu.lampcord.shared.ui
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,13 +12,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.state.ChatState
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.settings.*
 import me.lampu.lampcord.shared.ui.components.settings.*
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SettingsScreen(
     chatState: ChatState,
@@ -25,7 +27,6 @@ fun SettingsScreen(
 ) {
     var selectedCategory by remember { mutableStateOf<String?>(null) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
-    val iconTones = rememberSettingsIconTones()
     
     val searchEntries = rememberSettingsSearchEntries()
     val searchResults = remember(searchEntries, searchQuery) {
@@ -41,169 +42,168 @@ fun SettingsScreen(
         val isCompact = maxWidth < 600.dp
         
         if (isCompact) {
-            if (selectedCategory == null) {
-                val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-                Scaffold(
-                    modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
-                    topBar = {
-                        LargeTopAppBar(
-                            title = { Text("Settings") },
-                            navigationIcon = {
-                                IconButton(onClick = onDismiss) {
-                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                                }
-                            },
-                            scrollBehavior = scrollBehavior
+            val quickSpatialSpec = MaterialTheme.motionScheme.defaultSpatialSpec<IntOffset>()
+            val quickEffectsSpec = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
+
+            AnimatedContent(
+                targetState = selectedCategory,
+                transitionSpec = {
+                    if (targetState != null) {
+                        (fadeIn(quickEffectsSpec) + slideInHorizontally(quickSpatialSpec) { it / 8 }).togetherWith(
+                            fadeOut(quickEffectsSpec) + slideOutHorizontally(quickSpatialSpec) { -it / 8 }
+                        )
+                    } else {
+                        (fadeIn(quickEffectsSpec) + slideInHorizontally(quickSpatialSpec) { -it / 8 }).togetherWith(
+                            fadeOut(quickEffectsSpec) + slideOutHorizontally(quickSpatialSpec) { it / 8 }
                         )
                     }
-                ) { padding ->
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize().padding(padding),
-                        contentPadding = PaddingValues(bottom = 24.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        item {
-                            SettingsSearchField(
-                                query = searchQuery,
-                                onQueryChange = { searchQuery = it },
-                                onClear = { searchQuery = "" },
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                },
+                label = "SettingsTransition"
+            ) { category ->
+                if (category == null) {
+                    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+                    Scaffold(
+                        modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
+                        topBar = {
+                            LargeTopAppBar(
+                                title = { Text("Settings") },
+                                navigationIcon = {
+                                    IconButton(onClick = onDismiss) {
+                                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                                    }
+                                },
+                                scrollBehavior = scrollBehavior
                             )
                         }
-
-                        if (searchQuery.isBlank()) {
+                    ) { padding ->
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize().padding(padding),
+                            contentPadding = PaddingValues(bottom = 24.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
                             item {
-                                Material3SettingsGroup(
-                                    title = "User Settings",
-                                    items = listOf(
-                                        Material3SettingsItem(
-                                            Icons.Filled.AccountCircle,
-                                            title = { Text("Account") },
-                                            description = { Text("Manage your account details and security") },
-                                            iconContainerColor = iconTones["blue"]?.second,
-                                            iconTint = iconTones["blue"]?.first,
-                                            onClick = { selectedCategory = "Account" }
-                                        ),
-                                        Material3SettingsItem(
-                                            Icons.Filled.Person,
-                                            title = { Text("Profiles") },
-                                            description = { Text("Customize your appearance across servers") },
-                                            iconContainerColor = iconTones["rose"]?.second,
-                                            iconTint = iconTones["rose"]?.first,
-                                            onClick = { selectedCategory = "Profiles" }
-                                        ),
-                                        Material3SettingsItem(
-                                            Icons.Filled.Link,
-                                            title = { Text("Connections") },
-                                            description = { Text("Connect your accounts from other platforms") },
-                                            iconContainerColor = iconTones["cyan"]?.second,
-                                            iconTint = iconTones["cyan"]?.first,
-                                            onClick = { selectedCategory = "Connections" }
-                                        ),
-                                        Material3SettingsItem(
-                                            Icons.Filled.Tv,
-                                            title = { Text("Devices") },
-                                            description = { Text("Manage your active sessions") },
-                                            iconContainerColor = iconTones["gold"]?.second,
-                                            iconTint = iconTones["gold"]?.first,
-                                            onClick = { selectedCategory = "Devices" }
-                                        )
-                                    )
-                                )
-                            }
-
-                            item {
-                                Material3SettingsGroup(
-                                    title = "App Settings",
-                                    items = listOf(
-                                        Material3SettingsItem(
-                                            Icons.Filled.Palette,
-                                            title = { Text("Appearance") },
-                                            description = { Text("Theme, colors, and message display") },
-                                            iconContainerColor = iconTones["orange"]?.second,
-                                            iconTint = iconTones["orange"]?.first,
-                                            onClick = { selectedCategory = "Appearance" }
-                                        ),
-                                        Material3SettingsItem(
-                                            Icons.Filled.Accessibility,
-                                            title = { Text("Accessibility") },
-                                            description = { Text("Visual and interactive adjustments") },
-                                            iconContainerColor = iconTones["green"]?.second,
-                                            iconTint = iconTones["green"]?.first,
-                                            onClick = { selectedCategory = "Accessibility" }
-                                        ),
-                                        Material3SettingsItem(
-                                            Icons.Filled.Mic,
-                                            title = { Text("Voice & Video") },
-                                            description = { Text("Input, output, and camera settings") },
-                                            iconContainerColor = iconTones["rose"]?.second,
-                                            iconTint = iconTones["rose"]?.first,
-                                            onClick = { selectedCategory = "Voice & Video" }
-                                        ),
-                                        Material3SettingsItem(
-                                            Icons.Filled.Notifications,
-                                            title = { Text("Notifications") },
-                                            description = { Text("Control how you're notified") },
-                                            iconContainerColor = iconTones["rose"]?.second,
-                                            iconTint = iconTones["rose"]?.first,
-                                            onClick = { selectedCategory = "Notifications" }
-                                        ),
-                                        Material3SettingsItem(
-                                            Icons.Filled.Tune,
-                                            title = { Text("Advanced") },
-                                            description = { Text("Developer settings and experimental features") },
-                                            iconContainerColor = iconTones["neutral"]?.second,
-                                            iconTint = iconTones["neutral"]?.first,
-                                            onClick = { selectedCategory = "Advanced" }
-                                        )
-                                    )
-                                )
-                            }
-
-                            item {
-                                Material3SettingsGroup(
-                                    items = listOf(
-                                        Material3SettingsItem(
-                                            Icons.AutoMirrored.Filled.Logout,
-                                            title = { Text("Log Out") },
-                                            iconContainerColor = MaterialTheme.colorScheme.errorContainer,
-                                            iconTint = MaterialTheme.colorScheme.error,
-                                            onClick = {
-                                                chatState.disconnect()
-                                                onDismiss()
-                                            }
-                                        )
-                                    )
-                                )
-                            }
-                        } else {
-                            item {
-                                SettingsSearchResults(
+                                SettingsSearchField(
                                     query = searchQuery,
-                                    results = searchResults,
-                                    onEntryClick = ::openSearchEntry
+                                    onQueryChange = { searchQuery = it },
+                                    onClear = { searchQuery = "" },
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                                 )
+                            }
+
+                            if (searchQuery.isBlank()) {
+                                item {
+                                    Material3SettingsGroup(
+                                        title = "User Settings",
+                                        items = listOf(
+                                            Material3SettingsItem(
+                                                Icons.Filled.AccountCircle,
+                                                title = { Text("Account") },
+                                                description = { Text("Manage your account details and security") },
+                                                onClick = { selectedCategory = "Account" }
+                                            ),
+                                            Material3SettingsItem(
+                                                Icons.Filled.Person,
+                                                title = { Text("Profiles") },
+                                                description = { Text("Customize your appearance across servers") },
+                                                onClick = { selectedCategory = "Profiles" }
+                                            ),
+                                            Material3SettingsItem(
+                                                Icons.Filled.Link,
+                                                title = { Text("Connections") },
+                                                description = { Text("Connect your accounts from other platforms") },
+                                                onClick = { selectedCategory = "Connections" }
+                                            ),
+                                            Material3SettingsItem(
+                                                Icons.Filled.Tv,
+                                                title = { Text("Devices") },
+                                                description = { Text("Manage your active sessions") },
+                                                onClick = { selectedCategory = "Devices" }
+                                            )
+                                        )
+                                    )
+                                }
+
+                                item {
+                                    Material3SettingsGroup(
+                                        title = "App Settings",
+                                        items = listOf(
+                                            Material3SettingsItem(
+                                                Icons.Filled.Palette,
+                                                title = { Text("Appearance") },
+                                                description = { Text("Theme, colors, and message display") },
+                                                onClick = { selectedCategory = "Appearance" }
+                                            ),
+                                            Material3SettingsItem(
+                                                Icons.Filled.Accessibility,
+                                                title = { Text("Accessibility") },
+                                                description = { Text("Visual and interactive adjustments") },
+                                                onClick = { selectedCategory = "Accessibility" }
+                                            ),
+                                            Material3SettingsItem(
+                                                Icons.Filled.Mic,
+                                                title = { Text("Voice & Video") },
+                                                description = { Text("Input, output, and camera settings") },
+                                                onClick = { selectedCategory = "Voice & Video" }
+                                            ),
+                                            Material3SettingsItem(
+                                                Icons.Filled.Notifications,
+                                                title = { Text("Notifications") },
+                                                description = { Text("Control how you're notified") },
+                                                onClick = { selectedCategory = "Notifications" }
+                                            ),
+                                            Material3SettingsItem(
+                                                Icons.Filled.Tune,
+                                                title = { Text("Advanced") },
+                                                description = { Text("Developer settings and experimental features") },
+                                                onClick = { selectedCategory = "Advanced" }
+                                            )
+                                        )
+                                    )
+                                }
+
+                                item {
+                                    Material3SettingsGroup(
+                                        items = listOf(
+                                            Material3SettingsItem(
+                                                Icons.AutoMirrored.Filled.Logout,
+                                                title = { Text("Log Out") },
+                                                onClick = {
+                                                    chatState.disconnect()
+                                                    onDismiss()
+                                                }
+                                            )
+                                        )
+                                    )
+                                }
+                            } else {
+                                item {
+                                    SettingsSearchResults(
+                                        query = searchQuery,
+                                        results = searchResults,
+                                        onEntryClick = ::openSearchEntry
+                                    )
+                                }
                             }
                         }
                     }
-                }
-            } else {
-                SettingsSubScreen(
-                    title = selectedCategory!!,
-                    onNavigateBack = { selectedCategory = null }
-                ) {
-                    when (selectedCategory) {
-                        "Account" -> AccountSettings(chatState)
-                        "Profiles" -> ProfileSettings(chatState)
-                        "Connections" -> ConnectionsSettings(chatState)
-                        "Devices" -> DevicesSettings(chatState)
-                        "Appearance" -> AppearanceSettings(chatState)
-                        "Accessibility" -> AccessibilitySettings(chatState)
-                        "Notifications" -> NotificationsSettings(chatState)
-                        "Advanced" -> AdvancedSettings(chatState)
-                        else -> {
-                            Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                                Text("Feature coming soon", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                } else {
+                    SettingsSubScreen(
+                        title = category,
+                        onNavigateBack = { selectedCategory = null }
+                    ) {
+                        when (category) {
+                            "Account" -> AccountSettings(chatState)
+                            "Profiles" -> ProfileSettings(chatState)
+                            "Connections" -> ConnectionsSettings(chatState)
+                            "Devices" -> DevicesSettings(chatState)
+                            "Appearance" -> AppearanceSettings(chatState)
+                            "Accessibility" -> AccessibilitySettings(chatState)
+                            "Notifications" -> NotificationsSettings(chatState)
+                            "Advanced" -> AdvancedSettings(chatState)
+                            else -> {
+                                Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                                    Text("Feature coming soon", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
                             }
                         }
                     }

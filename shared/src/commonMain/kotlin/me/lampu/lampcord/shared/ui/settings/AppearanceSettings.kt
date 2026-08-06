@@ -64,8 +64,7 @@ fun AppearanceSettings(chatState: ChatState) {
                             checked = chatState.settingsStore.pureBlack,
                             onCheckedChange = { chatState.settingsStore.pureBlack = it }
                         )
-                    ),
-                    horizontalPadding = 0.dp
+                    )
                 )
             }
         }
@@ -113,8 +112,7 @@ fun AppearanceSettings(chatState: ChatState) {
                         checked = compactMode,
                         onCheckedChange = { compactMode = it }
                     )
-                ),
-                horizontalPadding = 0.dp
+                )
             )
         }
     }

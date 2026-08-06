@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.state.ChatState
 import me.lampu.lampcord.shared.ui.components.*
@@ -28,7 +29,7 @@ import me.lampu.lampcord.shared.ui.components.profiles.UserProfileDialog
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.SettingsScreen
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun DesktopBaseplate(chatState: ChatState) {
     Box(
@@ -69,33 +70,46 @@ fun DesktopBaseplate(chatState: ChatState) {
                     shape = MaterialTheme.shapes.large,
                     tonalElevation = 2.dp
                 ) {
-                    if (activeChannel != null) {
-                        Column(modifier = Modifier.fillMaxSize()) {
-                            ChannelHeader(activeChannel, chatState)
-                            
-                            Box(modifier = Modifier.weight(1f)) {
-                                if ((activeChannel.type == 2 || activeChannel.type == 13) && !chatState.isVoiceChatTextVisible) {
-                                    VoiceArea(activeChannel, chatState)
-                                } else if (activeChannel.type == 15 && selectedThread == null) {
-                                    ForumPostList(chatState)
-                                } else {
-                                    ChatArea(
-                                        modifier = Modifier.fillMaxSize(),
-                                        chatState = chatState
-                                    )
+                    val quickSpatialSpec = MaterialTheme.motionScheme.defaultSpatialSpec<IntOffset>()
+                    val quickEffectsSpec = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
+
+                    AnimatedContent(
+                        targetState = if (activeChannel != null) activeChannel.id else if (chatState.isChannelsAndRolesVisible) "roles" else if (chatState.isFriendsSelected) "friends" else "none",
+                        transitionSpec = {
+                            (fadeIn(quickEffectsSpec) + slideInHorizontally(quickSpatialSpec) { it / 8 }).togetherWith(
+                                fadeOut(quickEffectsSpec) + slideOutHorizontally(quickSpatialSpec) { -it / 8 }
+                            )
+                        },
+                        label = "MainContentTransition"
+                    ) { target ->
+                        if (activeChannel != null && target == activeChannel.id) {
+                            Column(modifier = Modifier.fillMaxSize()) {
+                                ChannelHeader(activeChannel, chatState)
+                                
+                                Box(modifier = Modifier.weight(1f)) {
+                                    if ((activeChannel.type == 2 || activeChannel.type == 13) && !chatState.isVoiceChatTextVisible) {
+                                        VoiceArea(activeChannel, chatState)
+                                    } else if (activeChannel.type == 15 && selectedThread == null) {
+                                        ForumPostList(chatState)
+                                    } else {
+                                        ChatArea(
+                                            modifier = Modifier.fillMaxSize(),
+                                            chatState = chatState
+                                        )
+                                    }
+                                }
+                                
+                                if (activeChannel.type != 15 && ((activeChannel.type != 2 && activeChannel.type != 13) || chatState.isVoiceChatTextVisible)) {
+                                    ChatInputBar(activeChannel, chatState)
                                 }
                             }
-                            
-                            if (activeChannel.type != 15 && ((activeChannel.type != 2 && activeChannel.type != 13) || chatState.isVoiceChatTextVisible)) {
-                                ChatInputBar(activeChannel, chatState)
-                            }
+                        } else if (target == "roles") {
+                            ChannelsAndRoles(chatState)
+                        } else if (target == "friends") {
+                            FriendsList(chatState)
+                        } else {
+                            ChatUnselectedPlaceholder(chatState)
                         }
-                    } else if (chatState.isChannelsAndRolesVisible) {
-                        ChannelsAndRoles(chatState)
-                    } else if (chatState.isFriendsSelected) {
-                        FriendsList(chatState)
-                    } else {
-                        ChatUnselectedPlaceholder(chatState)
                     }
                 }
             }

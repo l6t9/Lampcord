@@ -712,7 +712,7 @@ class ChatState(
         memberListStore.clear()
         lastRequestedRanges = emptyList()
         val lastDmId = Settings.shared.getLastChannel("home")
-        if (lastDmId == "friends" || (lastDmId == null && privateChannels.isEmpty())) {
+        if (lastDmId == "friends") {
             isFriendsSelected = true
             selectedChannel = null
         } else {
@@ -720,7 +720,7 @@ class ChatState(
             if (dmToSelect != null) {
                 selectChannel(dmToSelect)
             } else {
-                isFriendsSelected = true
+                isFriendsSelected = false
                 selectedChannel = null
             }
         }

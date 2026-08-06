@@ -51,8 +51,7 @@ fun ConnectionsSettings(chatState: ChatState) {
                         title = { Text("Add Connection") },
                         onClick = { /* TODO */ }
                     )
-                ),
-                horizontalPadding = 0.dp
+                )
             )
         }
     }
