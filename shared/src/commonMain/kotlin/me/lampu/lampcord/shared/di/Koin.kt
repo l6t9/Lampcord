@@ -4,6 +4,7 @@ import me.lampu.lampcord.shared.api.DiscordClient
 import me.lampu.lampcord.shared.api.RemoteAuthClient
 import me.lampu.lampcord.shared.api.createHttpClient
 import me.lampu.lampcord.shared.gateway.GatewayManager
+import me.lampu.lampcord.shared.gateway.VoiceGatewayManager
 import me.lampu.lampcord.shared.state.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -16,14 +17,17 @@ val appModule = module {
             ignoreUnknownKeys = true 
             coerceInputValues = true
             isLenient = true
+            explicitNulls = true
         } 
     }
     single { createHttpClient() }
     single { DiscordClient(get(), get()) }
     single { GatewayManager(get(), get()) }
+    single { VoiceGatewayManager(get(), get()) }
     single { RemoteAuthClient(get(), get()) }
     
     single { ReadStateStore(get()) }
+    single { UserGuildSettingsStore() }
     single { PresenceStore(get()) }
     single { UserStore() }
     single { RelationshipStore(get(), CoroutineScope(Dispatchers.Main)) }
@@ -37,8 +41,8 @@ val appModule = module {
 
     single { 
         ChatState(
-            get(), get(), get(), 
-            get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()
+            get(), get(), get(), get(),
+            get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()
         ) 
     }
 }

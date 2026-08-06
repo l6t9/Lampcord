@@ -6,9 +6,11 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.geometry.Offset
 import me.lampu.lampcord.shared.api.DiscordClient
 import me.lampu.lampcord.shared.gateway.GatewayManager
+import me.lampu.lampcord.shared.gateway.VoiceGatewayManager
 import me.lampu.lampcord.shared.model.*
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.utils.Permission
@@ -21,10 +23,12 @@ import kotlin.random.Random
 
 class ChatState(
     private val gatewayManager: GatewayManager,
+    private val voiceGatewayManager: VoiceGatewayManager,
     private val discordClient: DiscordClient,
     private val json: Json,
     val readStateStore: ReadStateStore,
     val presenceStore: PresenceStore,
+    val userGuildSettingsStore: UserGuildSettingsStore,
     val userStore: UserStore,
     val relationshipStore: RelationshipStore,
     val guildStore: GuildStore,
@@ -68,6 +72,8 @@ class ChatState(
     var selectedChannel by guildStore::selectedChannel
     var selectedThread by guildStore::selectedThread
     
+    var selectedGuildOnboarding by mutableStateOf<Onboarding?>(null)
+    
     var isFriendsSelected by mutableStateOf(false)
     
     val currentMember by derivedStateOf {
@@ -77,6 +83,8 @@ class ChatState(
 
     var selectedUser by mutableStateOf<User?>(null)
     var selectedProfile by mutableStateOf<UserProfile?>(null)
+    var sidebarProfile by mutableStateOf<UserProfile?>(null)
+    var isSidebarProfileLoading by mutableStateOf(false)
     var isProfileExpanded by mutableStateOf(false)
     var isProfileLoading by mutableStateOf(false)
     var profilePosition by mutableStateOf<Offset?>(null)
@@ -86,6 +94,16 @@ class ChatState(
     var isSettingsVisible by mutableStateOf(false)
     var isQuickSwitcherVisible by mutableStateOf(false)
     val pendingFiles = mutableStateListOf<Pair<String, ByteArray>>()
+
+    var currentVoiceState by mutableStateOf<VoiceState?>(null)
+    var isVoiceConnected by mutableStateOf(false)
+    var voiceConnectionDuration by mutableStateOf(0L)
+    private var voiceTimerJob: Job? = null
+    val voiceStates = mutableStateMapOf<String, SnapshotStateMap<String, VoiceState>>() // guildId -> userId -> VoiceState
+
+    var isVoiceChatTextVisible by mutableStateOf(false)
+    var isChannelsAndRolesVisible by mutableStateOf(false)
+    var isServerSettingsVisible by mutableStateOf(false)
 
     var activeCommand by mutableStateOf<ApplicationCommand?>(null)
     val commandOptions = mutableStateMapOf<String, JsonElement>()
@@ -157,6 +175,85 @@ class ChatState(
             "MESSAGE_ACK" -> handleMessageAck(payload)
             "MESSAGE_REACTION_ADD" -> handleReactionAddEvent(payload)
             "MESSAGE_REACTION_REMOVE" -> handleReactionRemoveEvent(payload)
+            "USER_GUILD_SETTINGS_UPDATE" -> handleUserGuildSettingsUpdate(payload)
+            "VOICE_STATE_UPDATE" -> handleVoiceStateUpdate(payload)
+            "VOICE_SERVER_UPDATE" -> handleVoiceServerUpdate(payload)
+        }
+    }
+
+    private fun handleVoiceStateUpdate(payload: GatewayPayload) {
+        payload.d?.let { data ->
+            try {
+                val state = json.decodeFromJsonElement<VoiceState>(data)
+                println("Voice State Update: User=${state.user_id}, Channel=${state.channel_id}, Guild=${state.guild_id}")
+                val guildId = state.guild_id ?: "@me"
+                val guildMap = voiceStates.getOrPut(guildId) { mutableStateMapOf() }
+                
+                if (state.channel_id == null) {
+                    guildMap.remove(state.user_id)
+                } else {
+                    guildMap[state.user_id] = state
+                }
+
+                if (state.user_id == currentUser?.id) {
+                    if (state.channel_id == null) {
+                        currentVoiceState = null
+                        isVoiceConnected = false
+                        stopVoiceTimer()
+                    } else {
+                        val isNewConnection = currentVoiceState == null
+                        currentVoiceState = state
+                        isVoiceConnected = true
+                        if (isNewConnection) startVoiceTimer()
+                    }
+                }
+            } catch (e: Exception) { }
+        }
+    }
+
+    private fun startVoiceTimer() {
+        voiceTimerJob?.cancel()
+        voiceConnectionDuration = 0L
+        voiceTimerJob = scope.launch {
+            while (isActive) {
+                delay(1000)
+                voiceConnectionDuration++
+            }
+        }
+    }
+
+    private fun stopVoiceTimer() {
+        voiceTimerJob?.cancel()
+        voiceTimerJob = null
+        voiceConnectionDuration = 0L
+    }
+
+    private fun handleVoiceServerUpdate(payload: GatewayPayload) {
+        payload.d?.let { data ->
+            try {
+                val update = json.decodeFromJsonElement<VoiceServerUpdate>(data)
+                val userId = currentUser?.id ?: return
+                val sessionId = currentVoiceState?.session_id ?: return
+                
+                if (update.endpoint != null) {
+                    // voiceGatewayManager.connect(
+                    //     endpoint = update.endpoint,
+                    //     guildId = update.guild_id,
+                    //     userId = userId,
+                    //     sessionId = sessionId,
+                    //     token = update.token
+                    // )
+                }
+            } catch (e: Exception) { }
+        }
+    }
+
+    private fun handleUserGuildSettingsUpdate(payload: GatewayPayload) {
+        payload.d?.let { data ->
+            try {
+                val settings = json.decodeFromJsonElement<UserGuildSettings>(data)
+                userGuildSettingsStore.handleUpdate(settings)
+            } catch (e: Exception) { }
         }
     }
 
@@ -177,6 +274,7 @@ class ChatState(
                     } catch (e: Exception) { }
                 }
                 
+                userGuildSettingsStore.handleReady(ready)
                 guildStore.setGuilds(ready.guilds, settingsStore.userSettings?.guild_positions ?: emptyList())
                 guildStore.setPrivateChannels(ready.private_channels.sortedByDescending { it.lastMessageId() ?: "0" })
                 
@@ -200,7 +298,7 @@ class ChatState(
                             try {
                                 val gChannels = discordClient.getGuildChannels(guild.id)
                                 if (gChannels.isNotEmpty()) {
-                                    guildStore.allGuildChannels[guild.id] = gChannels.filter { it.type in listOf(0, 5, 4, 15) }.sortedBy { it.position }
+                                    guildStore.allGuildChannels[guild.id] = gChannels.filter { it.type in listOf(0, 2, 5, 4, 13, 15, 16) }.sortedBy { it.position }
                                 }
                                 delay(2000)
                             } catch (e: Exception) { }
@@ -210,6 +308,18 @@ class ChatState(
 
                 isConnected = true
                 isConnecting = false
+
+                // Matches Paicord's initial voice state update
+                scope.launch {
+                    delay(500)
+                    gatewayManager.sendVoiceStateUpdate(
+                        guildId = null,
+                        channelId = null,
+                        selfMute = true,
+                        selfDeaf = true,
+                        selfVideo = false
+                    )
+                }
 
                 if (selectedGuild == null && selectedChannel == null) {
                     selectHome()
@@ -497,6 +607,7 @@ class ChatState(
 
     fun disconnect() {
         gatewayManager.disconnect()
+        voiceGatewayManager.disconnect()
         isConnected = false
         isConnecting = false
         clearAllStores()
@@ -504,6 +615,7 @@ class ChatState(
 
     fun clearAllStores() {
         readStateStore.clear()
+        userGuildSettingsStore.clear()
         presenceStore.clear()
         userStore.currentUser = null
         relationshipStore.clear()
@@ -530,9 +642,11 @@ class ChatState(
     }
 
     fun selectGuild(guild: Guild) {
-        if (selectedGuild?.id == guild.id) return
+        if (selectedGuild?.id == guild.id && !isChannelsAndRolesVisible) return
         guildLoadingJob?.cancel()
         selectedGuild = guild
+        isChannelsAndRolesVisible = false
+        isServerSettingsVisible = false
         guildStore.channels.clear()
         memberListStore.clear()
         lastRequestedRanges = emptyList()
@@ -540,14 +654,20 @@ class ChatState(
             subscribeToGuild(guild.id)
             val guildChannels = discordClient.getGuildChannels(guild.id)
             if (guildChannels.isNotEmpty()) {
-                val filtered = guildChannels.filter { it.type in listOf(0, 5, 4, 15) }.sortedBy { it.position }
+                val filtered = guildChannels.filter { it.type in listOf(0, 2, 5, 4, 13, 15, 16) }.sortedBy { it.position }
                 guildStore.allGuildChannels[guild.id] = filtered
                 guildStore.channels.clear()
                 guildStore.channels.addAll(filtered)
             }
             val lastChannelId = Settings.shared.getLastChannel(guild.id)
-            val channelToSelect = if (lastChannelId != null) channels.find { it.id == lastChannelId } else channels.firstOrNull { it.type in listOf(0, 5, 15) }
+            val channelToSelect = if (lastChannelId != null) channels.find { it.id == lastChannelId } else channels.firstOrNull { it.type in listOf(0, 2, 5, 13, 15) }
             channelToSelect?.let { selectChannel(it) }
+            
+            // Onboarding
+            selectedGuildOnboarding = null
+            if (guild.features?.contains("ONBOARDING") == true) {
+                selectedGuildOnboarding = discordClient.getGuildOnboarding(guild.id)
+            }
             
             // Fetch commands
             try {
@@ -560,11 +680,35 @@ class ChatState(
         }
     }
 
-    fun isUnread(channel: Channel) = readStateStore.isUnread(channel)
+    fun isUnread(channel: Channel): Boolean {
+        val isMuted = userGuildSettingsStore.isChannelMuted(channel.guild_id, channel.id)
+        if (isMuted) return false
+        return readStateStore.isUnread(channel)
+    }
+
+    fun isGuildUnread(guildId: String): Boolean {
+        if (userGuildSettingsStore.isGuildMuted(guildId)) return false
+        return guildStore.allGuildChannels[guildId]?.any { isUnread(it) } ?: false
+    }
+
+    fun isFolderUnread(folder: GuildFolder): Boolean {
+        return folder.guild_ids.any { isGuildUnread(it) }
+    }
+    
+    fun getGuildMentionCount(guildId: String): Int {
+        return guildStore.allGuildChannels[guildId]?.sumOf { getMentionCount(it.id) } ?: 0
+    }
+    
+    fun getFolderMentionCount(folder: GuildFolder): Int {
+        return folder.guild_ids.sumOf { getGuildMentionCount(it) }
+    }
+
     fun getMentionCount(channelId: String) = readStateStore.getMentionCount(channelId)
 
     fun selectHome() {
         selectedGuild = null
+        isChannelsAndRolesVisible = false
+        isServerSettingsVisible = false
         memberListStore.clear()
         lastRequestedRanges = emptyList()
         val lastDmId = Settings.shared.getLastChannel("home")
@@ -585,6 +729,8 @@ class ChatState(
     fun selectFriends() {
         selectedGuild = null
         selectedChannel = null
+        isChannelsAndRolesVisible = false
+        isServerSettingsVisible = false
         isFriendsSelected = true
         Settings.shared.setLastChannel("home", "friends")
     }
@@ -592,13 +738,34 @@ class ChatState(
     fun selectChannel(channel: Channel) {
         if (selectedChannel?.id == channel.id) return
         isFriendsSelected = false
+        isChannelsAndRolesVisible = false
+        isServerSettingsVisible = false
+        isVoiceChatTextVisible = false
         channelLoadingJob?.cancel()
         selectedChannel = channel
         selectedThread = null
         memberListStore.clear()
         lastRequestedRanges = emptyList()
         Settings.shared.setLastChannel(selectedGuild?.id ?: "home", channel.id)
+        
+        if (channel.type == 2 || channel.type == 13) {
+            connectToVoice(channel)
+        }
+
         channelLoadingJob = scope.launch {
+            if (channel.type == 1) {
+                val userId = channel.recipients?.firstOrNull()?.id
+                if (userId != null) {
+                    sidebarProfile = null
+                    isSidebarProfileLoading = true
+                    sidebarProfile = discordClient.getUserProfile(userId)
+                    isSidebarProfileLoading = false
+                }
+            } else {
+                sidebarProfile = null
+                isSidebarProfileLoading = false
+            }
+
             if (channel.type == 15) {
                 isForumLoading = true
                 try { forumThreads.clear(); guildStore.forumThreads.addAll(loadForumThreads(channel.id)) } finally { isForumLoading = false }
@@ -615,6 +782,9 @@ class ChatState(
 
     fun selectThread(channel: Channel) {
         if (selectedThread?.id == channel.id) return
+        isChannelsAndRolesVisible = false
+        isServerSettingsVisible = false
+        isVoiceChatTextVisible = false
         selectedThread = channel
         messageStore.clear()
         scope.launch {
@@ -623,6 +793,66 @@ class ChatState(
             messageStore.addMessages(channelMessages)
             channelMessages.firstOrNull()?.let { readStateStore.ackMessage(channel.id, it.id) }
         }
+    }
+
+    fun connectToVoice(channel: Channel) {
+        gatewayManager.sendVoiceStateUpdate(
+            guildId = channel.guild_id,
+            channelId = channel.id,
+            selfMute = currentVoiceState?.self_mute ?: false,
+            selfDeaf = currentVoiceState?.self_deaf ?: false,
+            selfVideo = false
+        )
+    }
+
+    fun disconnectFromVoice() {
+        val guildId = currentVoiceState?.guild_id ?: selectedGuild?.id
+        println("Disconnecting from voice: Guild=$guildId")
+        gatewayManager.sendVoiceStateUpdate(
+            guildId = guildId,
+            channelId = null,
+            selfMute = true,
+            selfDeaf = true
+        )
+        voiceGatewayManager.disconnect()
+    }
+
+    fun toggleVoiceMute() {
+        val state = currentVoiceState ?: return
+        gatewayManager.sendVoiceStateUpdate(
+            guildId = state.guild_id,
+            channelId = state.channel_id,
+            selfMute = !state.self_mute,
+            selfDeaf = state.self_deaf,
+            selfVideo = state.self_video
+        )
+    }
+
+    fun toggleVoiceDeaf() {
+        val state = currentVoiceState ?: return
+        gatewayManager.sendVoiceStateUpdate(
+            guildId = state.guild_id,
+            channelId = state.channel_id,
+            selfMute = state.self_mute,
+            selfDeaf = !state.self_deaf,
+            selfVideo = state.self_video
+        )
+    }
+
+    fun toggleVoiceVideo() {
+        val state = currentVoiceState ?: return
+        gatewayManager.sendVoiceStateUpdate(
+            guildId = state.guild_id,
+            channelId = state.channel_id,
+            selfMute = state.self_mute,
+            selfDeaf = state.self_deaf,
+            selfVideo = !state.self_video
+        )
+    }
+
+    fun toggleVoiceStream() {
+        val state = currentVoiceState ?: return
+        // selfStream is not in the VoiceStateUpdate payload
     }
 
     fun loadMoreMessages() {
@@ -760,6 +990,31 @@ class ChatState(
         lastRequestedRanges = ranges
 
         gatewayManager.sendLazyRequest(guildId, channelId, ranges)
+    }
+
+    fun toggleMuteGuild(guildId: String) {
+        val currentMuted = userGuildSettingsStore.isGuildMuted(guildId)
+        scope.launch {
+            discordClient.updateUserGuildSettings(guildId, UserGuildSettings.Partial(muted = !currentMuted))
+        }
+    }
+
+    fun toggleMuteChannel(guildId: String, channelId: String) {
+        val guildSettings = userGuildSettingsStore.userGuildSettings[guildId] ?: return
+        val currentOverrides = guildSettings.channel_overrides.toMutableList()
+        val index = currentOverrides.indexOfFirst { it.channel_id == channelId }
+        
+        val newOverride = if (index != -1) {
+            currentOverrides[index].copy(muted = !currentOverrides[index].muted)
+        } else {
+            ChannelOverride(channel_id = channelId, muted = true)
+        }
+        
+        if (index != -1) currentOverrides[index] = newOverride else currentOverrides.add(newOverride)
+
+        scope.launch {
+            discordClient.updateUserGuildSettings(guildId, UserGuildSettings.Partial(channel_overrides = currentOverrides))
+        }
     }
 
     fun isMessageMentioningMe(message: Message): Boolean {

@@ -1,11 +1,10 @@
 package me.lampu.lampcord.shared.gateway
 
 import me.lampu.lampcord.shared.model.*
-import me.lampu.lampcord.shared.utils.getPlatformName
-import me.lampu.lampcord.shared.utils.randomUUID
-import me.lampu.lampcord.shared.utils.getCurrentTimeMillis
+import me.lampu.lampcord.shared.utils.*
 import io.ktor.client.*
 import io.ktor.client.plugins.websocket.*
+import io.ktor.client.request.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -28,18 +27,44 @@ class GatewayManager(
     private var lastSequence: Int? = null
     var sessionId: String? = null
     private var clientHeartbeatSessionId = randomUUID()
+    private val clientLaunchId = randomUUID()
+    private val launchSignature = "8d6a888b-20b7-46b6-9e74-6b912c1dc515" // Paicord's static UUID bitmask pattern
     
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     fun connect(token: String) {
         disconnect()
-        connectionJob = CoroutineScope(Dispatchers.Default).launch {
+        connectionJob = scope.launch {
             try {
-                // Gateway v9
-                client.webSocket("wss://gateway.discord.gg/?v=9&encoding=json") {
+                val platform = getPlatformName()
+                val isMobile = platform == "android" || platform == "ios"
+                val userAgent = if (isMobile) {
+                    if (platform == "android") {
+                        "Discord Android/300.0"
+                    } else {
+                        "Discord/105180 CFNetwork/1410.0.3 Darwin/22.4.0"
+                    }
+                } else {
+                    val browserOsName = when(platform) {
+                        "windows" -> "Windows NT 10.0; Win64; x64"
+                        "linux" -> "X11; Linux x86_64"
+                        "macos" -> "Macintosh; Intel Mac OS X 10_15_7"
+                        else -> "X11; Linux x86_64"
+                    }
+                    "Mozilla/5.0 ($browserOsName) AppleWebKit/537.36 (KHTML, like Gecko) discord/0.0.398 Chrome/138.0.7204.251 Electron/37.6.0 Safari/537.36"
+                }
+
+                client.webSocket(
+                    urlString = "wss://gateway.discord.gg/?v=9&encoding=json",
+                    request = {
+                        header("User-Agent", userAgent)
+                        header("Origin", "https://discord.com")
+                        header("Accept-Language", "en-US,en;q=0.9")
+                        header("Cache-Control", "no-cache")
+                    }
+                ) {
                     session = this
                     
-                    // Start listening for messages
                     while (isActive) {
                         val frame = incoming.receive()
                         if (frame is Frame.Text) {
@@ -71,7 +96,9 @@ class GatewayManager(
     private suspend fun handlePayload(payload: GatewayPayload, token: String) {
         when (payload.op) {
             10 -> { // Hello
-                val heartbeatInterval = payload.d?.jsonObject?.get("heartbeat_interval")?.jsonPrimitive?.long ?: 41250
+                val heartbeatInterval = payload.d?.jsonObject?.get("heartbeat_interval")?.jsonPrimitive?.let {
+                    it.longOrNull ?: it.doubleOrNull?.toLong()
+                } ?: 41250
                 startHeartbeat(heartbeatInterval)
                 identify(token)
             }
@@ -85,7 +112,6 @@ class GatewayManager(
                 sendHeartbeat()
             }
             11 -> { // Heartbeat ACK
-                // Handle ACK if needed
             }
         }
     }
@@ -140,11 +166,8 @@ class GatewayManager(
         val payload = GatewayPayload(
             op = 41,
             d = buildJsonObject {
-                // initialization_timestamp: Unix timestamp in ms
                 put("initialization_timestamp", JsonPrimitive(getCurrentTimeMillis()))
-                // session_id: client_heartbeat_session_id from identify
                 put("session_id", JsonPrimitive(clientHeartbeatSessionId))
-                // client_launch_id: can be fixed or random per session
                 put("client_launch_id", JsonPrimitive(clientHeartbeatSessionId))
             }
         )
@@ -153,6 +176,8 @@ class GatewayManager(
 
     private suspend fun identify(token: String) {
         val platform = getPlatformName()
+        val isMobile = platform == "android" || platform == "ios"
+        
         val discordOs = when (platform) {
             "macos" -> "Mac OS X"
             "android" -> "Android"
@@ -161,38 +186,49 @@ class GatewayManager(
             "windows" -> "Windows"
             else -> platform.replaceFirstChar { it.uppercase() }
         }
-        
-        val isMobile = platform == "android" || platform == "ios"
-        
+
+        val properties = IdentifyProperties(
+            os = discordOs,
+            browser = when (platform) {
+                "android" -> "Discord Android"
+                "ios" -> "Discord iOS"
+                else -> "Discord Client"
+            },
+            device = getDeviceName(),
+            system_locale = "en-US",
+            client_version = if (isMobile) "300.0" else "0.0.398",
+            os_version = getOsVersion(),
+            os_arch = getOsArch(),
+            app_arch = getOsArch(),
+            has_client_mods = false,
+            client_launch_id = clientLaunchId,
+            browser_user_agent = if (isMobile) "" else {
+                val browserOsName = when(platform) {
+                    "windows" -> "Windows NT 10.0; Win64; x64"
+                    "linux" -> "X11; Linux x86_64"
+                    "macos" -> "Macintosh; Intel Mac OS X 10_15_7"
+                    else -> "X11; Linux x86_64"
+                }
+                "Mozilla/5.0 ($browserOsName) AppleWebKit/537.36 (KHTML, like Gecko) discord/0.0.398 Chrome/138.0.7204.251 Electron/37.6.0 Safari/537.36"
+            },
+            browser_version = if (isMobile) "" else "37.6.0",
+            os_sdk_version = if (isMobile) getOsVersion() else "24",
+            client_build_number = if (isMobile) 105180 else 575562,
+            native_build_number = if (isMobile) null else 85861,
+            client_event_source = null,
+            launch_signature = if (platform == "ios") getCurrentTimeMillis().toString() else launchSignature,
+            client_heartbeat_session_id = clientHeartbeatSessionId,
+            client_app_state = if (isMobile) "active" else "focused",
+            release_channel = "stable"
+        )
+
         val identify = Identify(
             token = token,
-            properties = IdentifyProperties(
-                os = discordOs,
-                browser = when (discordOs) {
-                    "iOS", "Android" -> "Discord ${discordOs}"
-                    "Mac OS X" -> "Discord Client"
-                    else -> "Safari"
-                },
-                device = "Lampcord ${if (isMobile) "Mobile" else "Desktop"}",
-                release_channel = "stable",
-                client_version = if (isMobile) "336.0" else "0.0.398",
-                os_version = when (platform) {
-                    "macos" -> "24.5.0"
-                    "ios" -> "18.0"
-                    "android" -> "15.0"
-                    else -> "1.0"
-                },
-                os_arch = if (platform == "macos") "arm64" else "x64",
-                system_locale = "en-US",
-                client_build_number = when (discordOs) {
-                    "iOS", "Android" -> 105180
-                    "Mac OS X" -> 575562
-                    else -> null
-                },
-                client_app_state = if (isMobile) "active" else "focused",
-                client_heartbeat_session_id = clientHeartbeatSessionId
-            ),
-            capabilities = 8577
+            properties = properties,
+            capabilities = 8577, // Reverted to 8577 to disable userSettingsProto and restore JSON user_settings
+            intents = null,
+            large_threshold = 50,
+            compress = null
         )
         val payload = GatewayPayload(op = 2, d = json.encodeToJsonElement(identify))
         sendPayload(payload)
@@ -211,6 +247,21 @@ class GatewayManager(
                 put("typing", true)
                 put("threads", true)
                 put("activities", true)
+            }
+        )
+        scope.launch { sendPayload(payload) }
+    }
+
+    fun sendVoiceStateUpdate(guildId: String?, channelId: String?, selfMute: Boolean = false, selfDeaf: Boolean = false, selfVideo: Boolean = false, flags: Int = 0) {
+        val payload = GatewayPayload(
+            op = 4,
+            d = buildJsonObject {
+                put("guild_id", guildId?.let { JsonPrimitive(it) } ?: JsonNull)
+                put("channel_id", channelId?.let { JsonPrimitive(it) } ?: JsonNull)
+                put("self_mute", JsonPrimitive(selfMute))
+                put("self_deaf", JsonPrimitive(selfDeaf))
+                put("self_video", JsonPrimitive(selfVideo))
+                put("flags", JsonPrimitive(flags))
             }
         )
         scope.launch { sendPayload(payload) }

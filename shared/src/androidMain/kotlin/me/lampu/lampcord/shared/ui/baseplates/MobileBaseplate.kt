@@ -74,7 +74,10 @@ actual fun MobileBaseplate(chatState: ChatState) {
                                     actions = {
                                         if (activeChannel.guild_id != null || activeChannel.type == 1 || activeChannel.type == 3) {
                                             IconButton(onClick = { panelState.openEnd() }) {
-                                                Icon(Icons.Filled.Group, "Members")
+                                                Icon(
+                                                    imageVector = if (activeChannel.type == 1) Icons.Filled.Person else Icons.Filled.Group,
+                                                    contentDescription = if (activeChannel.type == 1) "Profile" else "Members"
+                                                )
                                             }
                                         }
                                     },
@@ -87,11 +90,15 @@ actual fun MobileBaseplate(chatState: ChatState) {
                     ) { padding ->
                         Box(Modifier.padding(padding).fillMaxSize()) {
                             if (activeChannel != null) {
-                                Column(modifier = Modifier.fillMaxSize()) {
-                                    Box(modifier = Modifier.weight(1f)) {
-                                        ChatArea(modifier = Modifier.fillMaxSize(), chatState = chatState)
+                                if (activeChannel.type == 2 || activeChannel.type == 13) {
+                                    VoiceArea(activeChannel, chatState)
+                                } else {
+                                    Column(modifier = Modifier.fillMaxSize()) {
+                                        Box(modifier = Modifier.weight(1f)) {
+                                            ChatArea(modifier = Modifier.fillMaxSize(), chatState = chatState)
+                                        }
+                                        ChatInputBar(activeChannel, chatState)
                                     }
-                                    ChatInputBar(activeChannel, chatState)
                                 }
                             } else if (chatState.isFriendsSelected) {
                                 FriendsList(chatState)
@@ -138,34 +145,62 @@ actual fun MobileBaseplate(chatState: ChatState) {
                         shape = MaterialTheme.shapes.medium,
                         tonalElevation = 1.dp
                     ) {
-                        MemberList(chatState)
+                        if (activeChannel?.type == 1) {
+                            val profile = chatState.sidebarProfile
+                            if (profile != null) {
+                                ProfileCard(
+                                    profile = profile,
+                                    chatState = chatState,
+                                    showBorder = true,
+                                    isSidebar = true,
+                                    showMemberSince = true,
+                                    modifier = Modifier.fillMaxSize(),
+                                    onExpand = { 
+                                        chatState.showProfile(profile.user.id)
+                                        panelState.close()
+                                    }
+                                )
+                            } else if (chatState.isSidebarProfileLoading) {
+                                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    ContainedLoadingIndicator()
+                                }
+                            } else {
+                                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Text("Profile not loaded", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        } else {
+                            MemberList(chatState)
+                        }
                     }
                     
-                    NavButtonRow(
-                        listOf(
-                            NavButtonData(
-                                icon = Icons.Filled.Group,
-                                title = "Members",
-                                selected = chatState.isFriendsSelected,
-                                onClick = {
-                                    chatState.selectedGuild = null
-                                    chatState.selectedChannel = null
-                                    chatState.isFriendsSelected = true
-                                    panelState.close()
-                                }
-                            ),
-                            NavButtonData(
-                                icon = Icons.Filled.Search,
-                                title = "Search",
-                                onClick = { chatState.isQuickSwitcherVisible = true }
-                            ),
-                            NavButtonData(
-                                icon = Icons.Outlined.AlternateEmail,
-                                title = "Mentions",
-                                onClick = { /* Mentions */ }
+                    if (activeChannel?.guild_id != null || activeChannel?.type == 3) {
+                        NavButtonRow(
+                            listOf(
+                                NavButtonData(
+                                    icon = Icons.Filled.Group,
+                                    title = "Members",
+                                    selected = chatState.isFriendsSelected,
+                                    onClick = {
+                                        chatState.selectedGuild = null
+                                        chatState.selectedChannel = null
+                                        chatState.isFriendsSelected = true
+                                        panelState.close()
+                                    }
+                                ),
+                                NavButtonData(
+                                    icon = Icons.Filled.Search,
+                                    title = "Search",
+                                    onClick = { chatState.isQuickSwitcherVisible = true }
+                                ),
+                                NavButtonData(
+                                    icon = Icons.Outlined.AlternateEmail,
+                                    title = "Mentions",
+                                    onClick = { /* Mentions */ }
+                                )
                             )
                         )
-                    )
+                    }
                 }
             }
         )
@@ -208,7 +243,7 @@ actual fun MobileBaseplate(chatState: ChatState) {
                     )
                 } else {
                     Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
+                        ContainedLoadingIndicator()
                     }
                 }
                 Spacer(Modifier.navigationBarsPadding().height(16.dp))

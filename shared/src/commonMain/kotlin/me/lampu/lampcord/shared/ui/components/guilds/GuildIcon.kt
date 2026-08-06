@@ -37,15 +37,22 @@ fun GuildIcon(
         "https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.$ext?size=96"
     } else null
 
-    val isUnread by remember(guild.id, chatState.readStates) {
-        derivedStateOf { chatState.guilds.find { it.id == guild.id }?.channels?.any { chatState.isUnread(it) } ?: false }
+    val isMuted by remember(guild.id, chatState.userGuildSettingsStore.userGuildSettings[guild.id]) {
+        derivedStateOf { chatState.userGuildSettingsStore.isGuildMuted(guild.id) }
     }
-    val mentionCount by remember(guild.id, chatState.readStates) {
-        derivedStateOf { chatState.guilds.find { it.id == guild.id }?.channels?.sumOf { chatState.getMentionCount(it.id) } ?: 0 }
+    
+    val isUnread by remember(guild.id, chatState.readStates, chatState.guildStore.allGuildChannels[guild.id], isMuted) {
+        derivedStateOf { chatState.isGuildUnread(guild.id) }
+    }
+    val mentionCount by remember(guild.id, chatState.readStates, chatState.guildStore.allGuildChannels[guild.id]) {
+        derivedStateOf { chatState.getGuildMentionCount(guild.id) }
     }
 
-    val contextMenuItems = remember(guild, isSelected, chatState.userSettings) {
+    val contextMenuItems = remember(guild, isSelected, chatState.userSettings, isMuted) {
         val items = mutableListOf(
+            ContextMenuItem(if (isMuted) "Unmute Server" else "Mute Server", if (isMuted) Icons.Filled.Notifications else Icons.AutoMirrored.Filled.VolumeOff) {
+                chatState.toggleMuteGuild(guild.id)
+            },
             ContextMenuItem("Mark as Read", Icons.Filled.Check) {
                 chatState.markGuildAsRead(guild.id)
             },
@@ -54,7 +61,9 @@ fun GuildIcon(
             }
         )
         if (!isSelected) {
-            items.add(ContextMenuItem("Leave Server", Icons.Filled.Logout, color = Color.Red) { /* TODO */ })
+            items.add(ContextMenuItem("Leave Server", Icons.Filled.Logout, color = Color.Red) { 
+                chatState.leaveGuild(guild.id)
+            })
         }
         if (chatState.userSettings?.developer_mode == true) {
             items.add(ContextMenuItem("Copy ID", Icons.Filled.Dns) { setClipboardText(guild.id) })

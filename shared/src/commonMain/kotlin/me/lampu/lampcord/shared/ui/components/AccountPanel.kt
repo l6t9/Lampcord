@@ -33,8 +33,8 @@ fun AccountPanel(chatState: ChatState) {
     var showAccountPicker by remember { mutableStateOf(false) }
     var showCustomStatusDialog by remember { mutableStateOf(false) }
     
-    var isMuted by remember { mutableStateOf(false) }
-    var isDeafened by remember { mutableStateOf(false) }
+    val isMuted = chatState.currentVoiceState?.self_mute ?: false
+    val isDeafened = chatState.currentVoiceState?.self_deaf ?: false
 
     if (showCustomStatusDialog) {
         CustomStatusDialog(
@@ -124,7 +124,7 @@ fun AccountPanel(chatState: ChatState) {
                         buttonGroupContent = {
                             ToggleButton(
                                 checked = isMuted, 
-                                onCheckedChange = { isMuted = it },
+                                onCheckedChange = { chatState.toggleVoiceMute() },
                                 shapes = ButtonGroupDefaults.connectedLeadingButtonShapes(),
                                 colors = ToggleButtonDefaults.tonalToggleButtonColors(),
                                 contentPadding = PaddingValues(0.dp),
@@ -140,7 +140,7 @@ fun AccountPanel(chatState: ChatState) {
                         menuContent = {
                             DropdownMenuItem(
                                 text = { Text(if (isMuted) "Unmute" else "Mute") },
-                                onClick = { isMuted = !isMuted },
+                                onClick = { chatState.toggleVoiceMute() },
                                 leadingIcon = { Icon(if (isMuted) Icons.Filled.MicOff else Icons.Filled.Mic, null, modifier = Modifier.size(18.dp)) }
                             )
                         }
@@ -149,7 +149,7 @@ fun AccountPanel(chatState: ChatState) {
                         buttonGroupContent = {
                             ToggleButton(
                                 checked = isDeafened, 
-                                onCheckedChange = { isDeafened = it },
+                                onCheckedChange = { chatState.toggleVoiceDeaf() },
                                 shapes = ButtonGroupDefaults.connectedMiddleButtonShapes(),
                                 colors = ToggleButtonDefaults.tonalToggleButtonColors(),
                                 contentPadding = PaddingValues(0.dp),
@@ -165,7 +165,7 @@ fun AccountPanel(chatState: ChatState) {
                         menuContent = {
                             DropdownMenuItem(
                                 text = { Text(if (isDeafened) "Undeafen" else "Deafen") },
-                                onClick = { isDeafened = !isDeafened },
+                                onClick = { chatState.toggleVoiceDeaf() },
                                 leadingIcon = { Icon(if (isDeafened) Icons.Filled.HeadsetOff else Icons.Filled.Headphones, null, modifier = Modifier.size(18.dp)) }
                             )
                         }

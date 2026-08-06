@@ -13,3 +13,9 @@ actual fun getPlatformName(): String {
 actual fun getCurrentTimeMillis(): Long = System.currentTimeMillis()
 
 actual fun randomUUID(): String = java.util.UUID.randomUUID().toString()
+
+actual fun getOsVersion(): String = System.getProperty("os.version") ?: "unknown"
+
+actual fun getOsArch(): String = System.getProperty("os.arch") ?: "unknown"
+
+actual fun getDeviceName(): String = "Desktop"

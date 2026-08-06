@@ -12,6 +12,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -19,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -105,6 +107,13 @@ fun GuildFolderItem(folder: GuildFolder, chatState: ChatState) {
     val folderColor = folder.color?.let { Color(it.toLong() or 0xFF000000L) } ?: MaterialTheme.colorScheme.primary
     
     val isAnyChildSelected = folder.guild_ids.any { it == chatState.selectedGuild?.id }
+    
+    val isUnread by remember(folder, chatState.readStates, chatState.userGuildSettingsStore.userGuildSettings) {
+        derivedStateOf { chatState.isFolderUnread(folder) }
+    }
+    val mentionCount by remember(folder, chatState.readStates, chatState.userGuildSettingsStore.userGuildSettings) {
+        derivedStateOf { chatState.getFolderMentionCount(folder) }
+    }
 
     val surfaceColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
     val expansionProgress by animateFloatAsState(targetValue = if (expanded) 1f else 0f)
@@ -133,13 +142,14 @@ fun GuildFolderItem(folder: GuildFolder, chatState: ChatState) {
                 .height(48.dp),
             contentAlignment = Alignment.Center
         ) {
-            // Indicator for COLLAPSED folder containing the selection
-            if (!expanded && isAnyChildSelected) {
+            // Indicator for COLLAPSED folder containing the selection or unreads
+            val showIndicator = (!expanded && isAnyChildSelected) || (isUnread && !expanded)
+            if (showIndicator) {
                 Box(
                     modifier = Modifier
                         .align(Alignment.CenterStart)
                         .width(4.dp)
-                        .height(8.dp)
+                        .height(if (isAnyChildSelected) 38.dp else 8.dp) // Stylized indicator
                         .clip(RoundedCornerShape(topEnd = 4.dp, bottomEnd = 4.dp))
                         .background(MaterialTheme.colorScheme.onSurface)
                 )
@@ -165,6 +175,29 @@ fun GuildFolderItem(folder: GuildFolder, chatState: ChatState) {
                     )
                 } else {
                     FolderPreviewGrid(folder, chatState)
+                }
+            }
+            
+            if (mentionCount > 0 && !expanded) {
+                Surface(
+                    color = MaterialTheme.colorScheme.error,
+                    shape = CircleShape,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(bottom = 2.dp, end = 2.dp)
+                        .height(20.dp)
+                        .widthIn(min = 20.dp),
+                    shadowElevation = 2.dp
+                ) {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 4.dp)) {
+                        Text(
+                            text = mentionCount.toString(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onError,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 10.sp
+                        )
+                    }
                 }
             }
         }

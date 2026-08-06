@@ -74,7 +74,7 @@ fun ProfileHeader(
             style = profile.guild_member?.display_name_styles ?: user.display_name_styles,
             baseStyle = if (isExpanded) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
-            color = Color.White
+            color = theme.contentColor
         )
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(user.username, style = MaterialTheme.typography.bodyMedium, color = theme.contentColor.copy(alpha = 0.9f))

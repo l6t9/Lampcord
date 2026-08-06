@@ -15,9 +15,9 @@ data class GatewayPayload(
 data class Identify(
     val token: String,
     val properties: IdentifyProperties,
-    val compress: Boolean = false,
-    val large_threshold: Int = 50,
-    val intents: Int = 0,
+    val compress: Boolean? = null,
+    val large_threshold: Int? = null,
+    val intents: Int? = null,
     val capabilities: Int? = null
 )
 
@@ -25,18 +25,26 @@ data class Identify(
 data class IdentifyProperties(
     val os: String,
     val browser: String,
-    val device: String,
-    val system_locale: String? = null,
-    val browser_user_agent: String? = null,
-    val browser_version: String? = null,
-    val os_version: String? = null,
-    val client_build_number: Int? = null,
-    val client_event_source: String? = null,
-    val client_app_state: String? = null,
-    val client_heartbeat_session_id: String? = null,
     val release_channel: String? = null,
     val client_version: String? = null,
-    val os_arch: String? = null
+    val os_version: String? = null,
+    val os_arch: String? = null,
+    val app_arch: String? = null,
+    val system_locale: String? = null,
+    val has_client_mods: Boolean? = null,
+    val client_launch_id: String? = null,
+    val browser_user_agent: String? = null,
+    val browser_version: String? = null,
+    val os_sdk_version: String? = null,
+    val client_build_number: Int? = null,
+    val native_build_number: Int? = null,
+    val client_event_source: String? = null,
+    val launch_signature: String? = null,
+    val client_heartbeat_session_id: String? = null,
+    val client_app_state: String? = null,
+    val device: String? = null,
+    val device_vendor_id: String? = null,
+    val design_id: Int? = null
 )
 
 @Serializable
@@ -48,6 +56,7 @@ data class ReadyPayload(
     val session_id: String,
     val resume_gateway_url: String,
     val read_state: List<ReadState>? = null,
+    val user_guild_settings: List<UserGuildSettings>? = null,
     val user_settings: JsonElement? = null
 )
 

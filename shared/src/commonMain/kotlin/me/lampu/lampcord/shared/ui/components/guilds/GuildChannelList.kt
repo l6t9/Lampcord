@@ -98,23 +98,50 @@ fun GuildChannelList(chatState: ChatState) {
                     }
 
                     item { Spacer(modifier = Modifier.height(8.dp)) }
-		    
-		            //val vcChannels = rootChannels.filter{it.type == 2}
-		    
-                    items(rootChannels, key = { it.id }) { channel ->
-                        //if (channel.type != 2) {
-                            Box(Modifier.animateItem()) {
-                                ChannelItem(channel, chatState) // For non-VC channels
+
+                    val showChannelsAndRoles = guild?.features?.contains("COMMUNITY") == true
+                    if (showChannelsAndRoles) {
+                        item {
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(40.dp)
+                                    .padding(horizontal = 8.dp),
+                                onClick = { 
+                                    chatState.isChannelsAndRolesVisible = true
+                                    chatState.selectedChannel = null
+                                    chatState.selectedThread = null
+                                },
+                                color = if (chatState.isChannelsAndRolesVisible) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent,
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Flag,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(20.dp),
+                                        tint = if (chatState.isChannelsAndRolesVisible) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(
+                                        text = "Channels & Roles",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = if (chatState.isChannelsAndRolesVisible) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
-                        //}
+                        }
+                    }
+
+                    items(rootChannels, key = { it.id }) { channel ->
+                        Box(Modifier.animateItem()) {
+                            ChannelItem(channel, chatState)
+                        }
                     }
                     
-                    //items(vcChannels, key = { it.id }) { channel ->
-                    //    Box(Modifier.animateItem()) {
-                    //        ChannelItem(channel, chatState) // For VC channels
-                    //    }
-                    //}
-
                     items(categories, key = { it.id }) { category ->
                         Box(Modifier.animateItem()) {
                             GuildCategoryItem(category, channels, chatState)
@@ -204,6 +231,14 @@ fun GuildChannelList(chatState: ChatState) {
                             menuExpanded = false 
                         },
                         leadingIcon = { Icon(Icons.Filled.AccountCircle, null, modifier = Modifier.size(18.dp)) }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Server Settings") },
+                        onClick = { 
+                            chatState.isServerSettingsVisible = true
+                            menuExpanded = false 
+                        },
+                        leadingIcon = { Icon(Icons.Filled.Settings, null, modifier = Modifier.size(18.dp)) }
                     )
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                     DropdownMenuItem(

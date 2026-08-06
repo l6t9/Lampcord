@@ -11,10 +11,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlin.math.*
 import me.lampu.lampcord.shared.model.ConnectedAccount
 import me.lampu.lampcord.shared.model.ProfileBadge
 import me.lampu.lampcord.shared.ui.components.AsyncImage
@@ -28,7 +30,8 @@ data class ProfileTheme(
     val cutoutColor: Color,
     val pfpBorderBrush: Brush,
     val primaryAccent: Color,
-    val buttonColor: Color
+    val buttonColor: Color,
+    val buttonTextColor: Color
 )
 
 @Composable
@@ -76,7 +79,7 @@ fun RoleTag(name: String, color: Color) {
             Text(
                 text = name,
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = color,
                 fontWeight = FontWeight.Medium
             )
         }
@@ -126,6 +129,18 @@ fun UserConnectionItem(
 }
 
 object ModernProfileColors {
+    fun getLuminance(color: Int): Double {
+        val r = (color shr 16) and 0xFF
+        val g = (color shr 8) and 0xFF
+        val b = color and 0xFF
+
+        fun channel(c: Int): Double {
+            val v = c / 255.0
+            return if (v <= 0.03928) v / 12.92 else ((v + 0.055) / 1.055).pow(2.4)
+        }
+        return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b)
+    }
+
     fun rgbToHsl(color: Int): Triple<Double, Double, Double> {
         val r = ((color shr 16) and 0xFF) / 255.0
         val g = ((color shr 8) and 0xFF) / 255.0
@@ -135,7 +150,7 @@ object ModernProfileColors {
         var h = 0.0
         val l = (max + min) / 2.0
         val d = max - min
-        val s = if (d == 0.0) 0.0 else d / (1.0 - kotlin.math.abs(2.0 * l - 1.0))
+        val s = if (d == 0.0) 0.0 else d / (1.0 - abs(2.0 * l - 1.0))
         if (d != 0.0) {
             h = when (max) {
                 r -> ((g - b) / d) % 6.0
@@ -149,9 +164,9 @@ object ModernProfileColors {
     }
 
     fun hslToRgb(h: Double, s: Double, l: Double): Int {
-        val c = (1 - kotlin.math.abs(2 * l - 1)) * s
+        val c = (1 - abs(2 * l - 1)) * s
         val hh = h / 60.0
-        val x = c * (1 - kotlin.math.abs(hh % 2 - 1))
+        val x = c * (1 - abs(hh % 2 - 1))
         val (r1, g1, b1) = when {
             hh < 1 -> Triple(c, x, 0.0)
             hh < 2 -> Triple(x, c, 0.0)
@@ -174,9 +189,9 @@ object ModernProfileColors {
         val br = (b shr 16) and 0xFF
         val bg = (b shr 8) and 0xFF
         val bb = b and 0xFF
-        val rr = kotlin.math.round(ar * (1 - t) + br * t).toInt().coerceIn(0, 255)
-        val rg = kotlin.math.round(ag * (1 - t) + bg * t).toInt().coerceIn(0, 255)
-        val rb = kotlin.math.round(ab * (1 - t) + bb * t).toInt().coerceIn(0, 255)
+        val rr = round(ar * (1 - t) + br * t).toInt().coerceIn(0, 255)
+        val rg = round(ag * (1 - t) + bg * t).toInt().coerceIn(0, 255)
+        val rb = round(ab * (1 - t) + bb * t).toInt().coerceIn(0, 255)
         return 0xFF000000.toInt() or (rr shl 16) or (rg shl 8) or rb
     }
 }

@@ -5,6 +5,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -28,12 +29,15 @@ fun DMItem(channel: Channel, chatState: ChatState) {
 
     var isHovered by remember { mutableStateOf(false) }
 
-    val isUnread by remember(channel, chatState.readStates[channel.id]) {
-        derivedStateOf { chatState.isUnread(channel) }
+    val isMuted by remember(channel, chatState.userGuildSettingsStore.userGuildSettings[null]) {
+        derivedStateOf { chatState.userGuildSettingsStore.isChannelMuted(null, channel.id) }
     }
 
-    val contextMenuItems = remember(channel, chatState.userSettings) {
+    val contextMenuItems = remember(channel, chatState.userSettings, isMuted) {
         val items = mutableListOf(
+            ContextMenuItem(if (isMuted) "Unmute" else "Mute", if (isMuted) Icons.Filled.Notifications else Icons.AutoMirrored.Filled.VolumeOff) {
+                chatState.toggleMuteChannel("@me", channel.id)
+            },
             ContextMenuItem("Mark as Read", Icons.Filled.Check) { /* TODO */ },
             ContextMenuItem("Profile", Icons.Filled.AccountCircle) { recipient?.let { chatState.showProfile(it.id) } },
             ContextMenuItem("Close DM", Icons.Filled.Close, color = Color.Red) { /* TODO */ }
@@ -50,6 +54,7 @@ fun DMItem(channel: Channel, chatState: ChatState) {
                 .fillMaxWidth()
                 .height(48.dp)
                 .padding(horizontal = 8.dp)
+                .alpha(if (isMuted && !isSelected) 0.5f else 1f)
                 .pointerInput(Unit) {
                     awaitPointerEventScope {
                         while (true) {

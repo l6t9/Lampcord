@@ -74,6 +74,8 @@ fun ProfileCard(
     chatState: ChatState, 
     modifier: Modifier = Modifier,
     isExpanded: Boolean = false,
+    isSidebar: Boolean = false,
+    showMemberSince: Boolean = false,
     onExpand: (() -> Unit)? = null,
     showBorder: Boolean = true
 ) {
@@ -91,8 +93,7 @@ fun ProfileCard(
         base?.let { colors ->
             if (colors.size >= 2) colors else {
                 val c = colors[0]
-                val (h, s, l) = ModernProfileColors.rgbToHsl(c)
-                val c2 = ModernProfileColors.hslToRgb((h + 20) % 360, (s * 1.2).coerceIn(0.0, 1.0), (l * 0.8).coerceIn(0.0, 1.0))
+                val c2 = ModernProfileColors.mix(c, 0xFFFFFFFF.toInt(), 0.12)
                 listOf(c, c2)
             }
         }
@@ -105,26 +106,57 @@ fun ProfileCard(
             val accent = themeColors[1]
             
             val (h1, s1, l1) = ModernProfileColors.rgbToHsl(primary)
-            val isLightMode = l1 > 0.6
+            val (h2, s2, l2) = ModernProfileColors.rgbToHsl(accent)
+
+            val base1Lum = ModernProfileColors.getLuminance(primary)
+            val base2Lum = ModernProfileColors.getLuminance(accent)
+            val isLightMode = base1Lum > 0.7 && base2Lum > 0.75
 
             // 1. Background Gradient (Darkened strictly from HSL for saturation and depth)
-            val bg1 = Color(ModernProfileColors.hslToRgb(h1, s1, (l1 * 0.65).coerceIn(0.0, 1.0)))
-            val (h2, s2, l2) = ModernProfileColors.rgbToHsl(accent)
-            val bg2 = Color(ModernProfileColors.hslToRgb(h2, s2, (l2 * 0.65).coerceIn(0.0, 1.0)))
+            val bg1 = if (base1Lum > 0.4) {
+                Color(ModernProfileColors.hslToRgb(h1, s1 * 0.8, (l1 * 0.88).coerceIn(0.0, 1.0)))
+            } else {
+                Color(ModernProfileColors.hslToRgb(h1, s1, (l1 * 0.65).coerceIn(0.0, 1.0)))
+            }
+
+            val bg2 = if (base2Lum > 0.4) {
+                Color(ModernProfileColors.hslToRgb(h2, s2 * 0.8, (l2 * 1.05).coerceIn(0.0, 1.0)))
+            } else {
+                Color(ModernProfileColors.hslToRgb(h2, s2, (l2 * 0.65).coerceIn(0.0, 1.0)))
+            }
             
             // 2. Outer Border (Lighter and more saturated versions for that "Accent" look)
-            val b1 = Color(ModernProfileColors.hslToRgb(h1, (s1 * 1.15).coerceIn(0.0, 1.0), (l1 * 1.3).coerceIn(0.0, 1.0)))
-            val b2 = Color(ModernProfileColors.hslToRgb(h2, (s2 * 1.15).coerceIn(0.0, 1.0), (l2 * 1.3).coerceIn(0.0, 1.0)))
+            val b1 = if (isLightMode) {
+                Color(ModernProfileColors.hslToRgb(h1, (s1 * 1.15).coerceIn(0.0, 1.0), (l1 * 0.8).coerceIn(0.0, 1.0)))
+            } else {
+                Color(ModernProfileColors.hslToRgb(h1, (s1 * 1.15).coerceIn(0.0, 1.0), (l1 * 1.3).coerceIn(0.0, 1.0)))
+            }
+            val b2 = if (isLightMode) {
+                Color(ModernProfileColors.hslToRgb(h2, (s2 * 1.15).coerceIn(0.0, 1.0), (l2 * 0.8).coerceIn(0.0, 1.0)))
+            } else {
+                Color(ModernProfileColors.hslToRgb(h2, (s2 * 1.15).coerceIn(0.0, 1.0), (l2 * 1.3).coerceIn(0.0, 1.0)))
+            }
+
+            val avgLum = (base1Lum + base2Lum) / 2.0
+            val bodyOverlayColor = if (isLightMode) {
+                when {
+                    avgLum >= 0.85 -> Color.White.copy(alpha = 0.0f)
+                    else -> Color.White.copy(alpha = 0.1f)
+                }
+            } else {
+                Color.Black.copy(alpha = 0.45f)
+            }
             
             ProfileTheme(
                 backgroundBrush = Brush.verticalGradient(0.0f to bg1, 0.35f to bg1, 1.0f to bg2),
                 outerBorderBrush = Brush.verticalGradient(listOf(b1, b2)),
-                bodyOverlayColor = if (isLightMode) Color.White.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.45f),
+                bodyOverlayColor = bodyOverlayColor,
                 contentColor = if (isLightMode) Color.Black else Color.White,
                 cutoutColor = bg1,
                 pfpBorderBrush = Brush.verticalGradient(listOf(Color(primary or 0xFF000000.toInt()), Color(accent or 0xFF000000.toInt()))),
                 primaryAccent = Color(primary or 0xFF000000.toInt()),
-                buttonColor = Color(primary or 0xFF000000.toInt())
+                buttonColor = Color(primary or 0xFF000000.toInt()),
+                buttonTextColor = if (base1Lum < 0.5) Color.White else Color.Black
             )
         } else {
             val primary = colorScheme.primary
@@ -139,32 +171,48 @@ fun ProfileCard(
                 cutoutColor = surface,
                 pfpBorderBrush = Brush.verticalGradient(listOf(primary, primary)),
                 primaryAccent = primary,
-                buttonColor = primary
+                buttonColor = primary,
+                buttonTextColor = Color.White
             )
         }
     }
 
+    val outerShape = when {
+        isSidebar -> RoundedCornerShape(24.dp)
+        isExpanded -> RoundedCornerShape(12.dp)
+        else -> RoundedCornerShape(10.dp)
+    }
+    val innerShape = when {
+        isSidebar -> RoundedCornerShape(21.dp)
+        isExpanded -> RoundedCornerShape(9.dp)
+        else -> RoundedCornerShape(7.dp)
+    }
+
     Box(
         modifier = modifier
-            .then(if (showBorder) Modifier.background(theme.outerBorderBrush, RoundedCornerShape(if (isExpanded) 12.dp else 10.dp)).padding(if (isExpanded) 4.dp else 3.dp) else Modifier)
+            .then(if (showBorder) Modifier.background(theme.outerBorderBrush, outerShape).padding(if (isExpanded || isSidebar) 4.dp else 3.dp) else Modifier)
     ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .then(if (showBorder) Modifier.clip(RoundedCornerShape(if (isExpanded) 9.dp else 7.dp)) else Modifier)
+                .then(if (isSidebar) Modifier.fillMaxSize() else Modifier.fillMaxWidth().wrapContentHeight())
+                .then(if (showBorder) Modifier.clip(innerShape) else Modifier)
                 .background(theme.backgroundBrush)
         ) {
             // Scrollable Body
-            Column(modifier = Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
+            Column(
+                modifier = Modifier
+                    .then(if (isSidebar) Modifier.weight(1f) else Modifier.wrapContentHeight())
+                    .verticalScroll(rememberScrollState())
+            ) {
                 ProfileBanner(profile, theme, isExpanded)
 
                 Column(modifier = Modifier.padding(start = if (isExpanded) 16.dp else 10.dp, end = 16.dp)) {
                     ProfileHeader(profile, chatState, theme, isExpanded, onExpand)
-                    ProfileSections(profile, chatState, theme, isExpanded)
+                    ProfileSections(profile, chatState, theme, isExpanded, showMemberSince)
                 }
             }
 
-            // Footer (Sticky) - Only show for current user
+            // Footer (Sticky)
             if (user.id == chatState.currentUser?.id) {
                 Box(
                     modifier = Modifier
@@ -174,13 +222,29 @@ fun ProfileCard(
                     Button(
                         onClick = { /* TODO */ },
                         modifier = Modifier.fillMaxWidth().height(32.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = theme.buttonColor),
+                        colors = ButtonDefaults.buttonColors(containerColor = theme.buttonColor, contentColor = theme.buttonTextColor),
                         shape = RoundedCornerShape(4.dp),
                         contentPadding = PaddingValues(horizontal = 12.dp)
                     ) {
-                        Icon(Icons.Filled.Edit, null, modifier = Modifier.size(16.dp), tint = Color.White)
+                        Icon(Icons.Filled.Edit, null, modifier = Modifier.size(16.dp), tint = theme.buttonTextColor)
                         Spacer(Modifier.width(8.dp))
-                        Text("Edit Profile", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Medium, color = Color.White)
+                        Text("Edit Profile", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Medium, color = theme.buttonTextColor)
+                    }
+                }
+            } else if (!isExpanded) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
+                ) {
+                    Button(
+                        onClick = { onExpand?.invoke() },
+                        modifier = Modifier.fillMaxWidth().height(32.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = theme.buttonColor, contentColor = theme.buttonTextColor),
+                        shape = RoundedCornerShape(4.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp)
+                    ) {
+                        Text("View Full Profile", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Medium, color = theme.buttonTextColor)
                     }
                 }
             } else {

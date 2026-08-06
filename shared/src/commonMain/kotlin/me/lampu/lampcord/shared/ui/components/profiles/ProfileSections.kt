@@ -21,7 +21,8 @@ fun ProfileSections(
     profile: UserProfile,
     chatState: ChatState,
     theme: ProfileTheme,
-    isExpanded: Boolean
+    isExpanded: Boolean,
+    showMemberSince: Boolean = false
 ) {
     val user = profile.user
     val guildMeta = profile.guild_member_profile
@@ -36,13 +37,13 @@ fun ProfileSections(
             DiscordMarkdownText(content = bio, style = MaterialTheme.typography.bodyMedium, color = theme.contentColor, chatState = chatState)
         }
 
-        if (isExpanded) {
+        if (isExpanded || showMemberSince) {
             val creationDate = remember(user.id) { 
                 val timestamp = (user.id.toLong() shr 22) + 1420070400000L
                 me.lampu.lampcord.shared.utils.DateTimeUtils.formatDiscordTimestamp(timestamp / 1000, "D")
             }
             val joinDate = profile.guild_member?.joined_at?.let { 
-                me.lampu.lampcord.shared.utils.DateTimeUtils.formatTimestamp(it).substringBefore(",")
+                if (it.isBlank()) null else me.lampu.lampcord.shared.utils.DateTimeUtils.formatTimestamp(it).substringBefore(",")
             }
 
             Spacer(Modifier.height(12.dp))

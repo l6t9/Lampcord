@@ -22,6 +22,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.state.ChatState
 import me.lampu.lampcord.shared.ui.components.*
+import me.lampu.lampcord.shared.ui.components.guilds.*
+import me.lampu.lampcord.shared.ui.components.profiles.ProfileCard
 import me.lampu.lampcord.shared.ui.components.profiles.UserProfileDialog
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.SettingsScreen
@@ -72,7 +74,9 @@ fun DesktopBaseplate(chatState: ChatState) {
                             ChannelHeader(activeChannel, chatState)
                             
                             Box(modifier = Modifier.weight(1f)) {
-                                if (activeChannel.type == 15 && selectedThread == null) {
+                                if ((activeChannel.type == 2 || activeChannel.type == 13) && !chatState.isVoiceChatTextVisible) {
+                                    VoiceArea(activeChannel, chatState)
+                                } else if (activeChannel.type == 15 && selectedThread == null) {
                                     ForumPostList(chatState)
                                 } else {
                                     ChatArea(
@@ -82,10 +86,12 @@ fun DesktopBaseplate(chatState: ChatState) {
                                 }
                             }
                             
-                            if (activeChannel.type != 15) {
+                            if (activeChannel.type != 15 && ((activeChannel.type != 2 && activeChannel.type != 13) || chatState.isVoiceChatTextVisible)) {
                                 ChatInputBar(activeChannel, chatState)
                             }
                         }
+                    } else if (chatState.isChannelsAndRolesVisible) {
+                        ChannelsAndRoles(chatState)
                     } else if (chatState.isFriendsSelected) {
                         FriendsList(chatState)
                     } else {
@@ -94,11 +100,14 @@ fun DesktopBaseplate(chatState: ChatState) {
                 }
             }
 
-            // Member List (End Panel)
-            if (activeChannel?.guild_id != null && activeChannel.type != 15) {
+            // Member List / Profile (End Panel)
+            val showMemberList = activeChannel?.guild_id != null && activeChannel.type != 15
+            val showDMProfile = activeChannel?.type == 1
+
+            if (showMemberList || showDMProfile) {
                 Column(
                     modifier = Modifier
-                        .width(240.dp)
+                        .width(if (showDMProfile) 340.dp else 240.dp)
                         .fillMaxHeight(),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
@@ -107,34 +116,55 @@ fun DesktopBaseplate(chatState: ChatState) {
                         shape = MaterialTheme.shapes.medium,
                         tonalElevation = 1.dp
                     ) {
-                        MemberList(chatState)
+                        if (showDMProfile) {
+                            val profile = chatState.sidebarProfile
+                            if (profile != null) {
+                                ProfileCard(
+                                    profile = profile,
+                                    chatState = chatState,
+                                    showBorder = true,
+                                    isSidebar = true,
+                                    showMemberSince = true,
+                                    modifier = Modifier.fillMaxSize(),
+                                    onExpand = { chatState.showProfile(profile.user.id) }
+                                )
+                            } else if (chatState.isSidebarProfileLoading) {
+                                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    ContainedLoadingIndicator()
+                                }
+                            }
+                        } else {
+                            MemberList(chatState)
+                        }
                     }
                     
                     // HomeNavButtons equivalent
-                    NavButtonRow(
-                        listOf(
-                            NavButtonData(
-                                icon = Icons.Filled.Group,
-                                title = "Members",
-                                selected = chatState.isFriendsSelected,
-                                onClick = {
-                                    chatState.selectedGuild = null
-                                    chatState.selectedChannel = null
-                                    chatState.isFriendsSelected = true
-                                }
-                            ),
-                            NavButtonData(
-                                icon = Icons.Filled.Search,
-                                title = "Search",
-                                onClick = { chatState.isQuickSwitcherVisible = true }
-                            ),
-                            NavButtonData(
-                                icon = Icons.Outlined.AlternateEmail,
-                                title = "Mentions",
-                                onClick = { /* Mentions */ }
+                    if (showMemberList) {
+                        NavButtonRow(
+                            listOf(
+                                NavButtonData(
+                                    icon = Icons.Filled.Group,
+                                    title = "Members",
+                                    selected = chatState.isFriendsSelected,
+                                    onClick = {
+                                        chatState.selectedGuild = null
+                                        chatState.selectedChannel = null
+                                        chatState.isFriendsSelected = true
+                                    }
+                                ),
+                                NavButtonData(
+                                    icon = Icons.Filled.Search,
+                                    title = "Search",
+                                    onClick = { chatState.isQuickSwitcherVisible = true }
+                                ),
+                                NavButtonData(
+                                    icon = Icons.Outlined.AlternateEmail,
+                                    title = "Mentions",
+                                    onClick = { /* Mentions */ }
+                                )
                             )
                         )
-                    )
+                    }
                 }
             }
         }
@@ -142,6 +172,10 @@ fun DesktopBaseplate(chatState: ChatState) {
         // Settings / Overlays
         if (chatState.isSettingsVisible) {
             SettingsScreen(chatState, onDismiss = { chatState.isSettingsVisible = false })
+        }
+
+        if (chatState.isServerSettingsVisible) {
+            ServerSettings(chatState, onDismiss = { chatState.isServerSettingsVisible = false })
         }
         
         if (chatState.isQuickSwitcherVisible) {

@@ -16,7 +16,52 @@ data class Guild(
     val emojis: List<Emoji> = emptyList(),
     val stickers: List<Sticker> = emptyList(),
     val members: List<Member>? = null,
-    val channels: List<Channel>? = null
+    val channels: List<Channel>? = null,
+    val welcome_screen: WelcomeScreen? = null
+)
+
+@Serializable
+data class WelcomeScreen(
+    val description: String? = null,
+    val welcome_channels: List<WelcomeScreenChannel> = emptyList()
+)
+
+@Serializable
+data class WelcomeScreenChannel(
+    val channel_id: String,
+    val description: String,
+    val emoji_id: String? = null,
+    val emoji_name: String? = null
+)
+
+@Serializable
+data class Onboarding(
+    val guild_id: String,
+    val prompts: List<OnboardingPrompt> = emptyList(),
+    val default_channel_ids: List<String> = emptyList(),
+    val enabled: Boolean = false,
+    val mode: Int = 0
+)
+
+@Serializable
+data class OnboardingPrompt(
+    val id: String,
+    val type: Int,
+    val options: List<OnboardingPromptOption> = emptyList(),
+    val title: String,
+    val single_select: Boolean = false,
+    val required: Boolean = false,
+    val in_onboarding: Boolean = false
+)
+
+@Serializable
+data class OnboardingPromptOption(
+    val id: String,
+    val channel_ids: List<String> = emptyList(),
+    val role_ids: List<String> = emptyList(),
+    val emoji: Emoji? = null,
+    val title: String,
+    val description: String? = null
 )
 
 @Serializable
@@ -105,4 +150,34 @@ data class MemberListGroup(
     val id: String,
     val count: Int? = null,
     val member_count: Int? = null
+)
+
+@Serializable
+data class UserGuildSettings(
+    val guild_id: String? = null,
+    val muted: Boolean = false,
+    val hide_muted_channels: Boolean = false,
+    val suppress_everyone: Boolean = false,
+    val suppress_roles: Boolean = false,
+    val message_notifications: Int = 0,
+    val mobile_push: Boolean = true,
+    val mute_scheduled_events: Boolean = false,
+    val channel_overrides: List<ChannelOverride> = emptyList(),
+    val flags: Int = 0,
+    val version: Int = 0
+) {
+    @Serializable
+    data class Partial(
+        val muted: Boolean? = null,
+        val channel_overrides: List<ChannelOverride>? = null
+    )
+}
+
+@Serializable
+data class ChannelOverride(
+    val channel_id: String,
+    val muted: Boolean = false,
+    val message_notifications: Int = 3, // inherit
+    val collapsed: Boolean = false,
+    val flags: Int = 0
 )

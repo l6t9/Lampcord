@@ -39,6 +39,10 @@ fun Sidebar(chatState: ChatState, modifier: Modifier = Modifier) {
             }
         }
 
+        if (chatState.isVoiceConnected) {
+            VoiceConnectionPanel(chatState)
+        }
+
         // Account Panel (CurrentUser)
         Surface(
             modifier = Modifier

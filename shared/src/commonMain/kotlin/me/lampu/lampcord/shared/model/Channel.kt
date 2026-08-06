@@ -20,7 +20,18 @@ data class Channel(
     val message_count: Int? = null,
     val member_count: Int? = null,
     val total_message_sent: Int? = null,
+    val available_tags: List<ForumTag>? = null,
+    val applied_tags: List<String>? = null,
     val permission_overwrites: List<PermissionOverwrite>? = null
+)
+
+@Serializable
+data class ForumTag(
+    val id: String,
+    val name: String,
+    val moderated: Boolean,
+    val emoji_id: String? = null,
+    val emoji_name: String? = null
 )
 
 @Serializable

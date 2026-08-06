@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,8 +19,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -111,7 +120,7 @@ fun TypingDots(modifier: Modifier = Modifier) {
 
 @Composable
 fun ChannelHeader(
-    channel: me.lampu.lampcord.shared.model.Channel,
+    channel: me.lampu.lampcord.shared.model.Channel?,
     chatState: ChatState
 ) {
     Surface(
@@ -124,75 +133,116 @@ fun ChannelHeader(
             modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            val isDm = channel.type == 1 || channel.type == 3 || channel.guild_id == null
-            val isThread = channel.type == 10 || channel.type == 11 || channel.type == 12
-            
-            if (isDm) {
-                // DM style
-                val recipient = channel.recipients?.firstOrNull()
-                val name = recipient?.let { it.global_name ?: it.username } ?: "Unnamed DM"
+            if (chatState.isChannelsAndRolesVisible) {
                 Icon(
-                    imageVector = Icons.Outlined.AlternateEmail,
+                    imageVector = Icons.Filled.Flag,
                     contentDescription = null,
                     modifier = Modifier.size(18.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(text = name, style = MaterialTheme.typography.titleSmall)
-            } else {
-                if (channel.type == 15) {
-                    Icon(
-                        imageVector = Icons.Outlined.Forum,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                } else if (isThread) {
-                    Text(">", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) // Thread
-                } else {
-                    Icon(
-                        imageVector = Icons.Filled.Tag,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(text = channel.name ?: "unnamed", style = MaterialTheme.typography.titleSmall)
-            }
-            
-            if (channel.topic?.isNotBlank() == true) {
-                Spacer(modifier = Modifier.width(12.dp))
-                Text("•", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = channel.topic,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                )
-            } else {
+                Text(text = "Channels & Roles", style = MaterialTheme.typography.titleSmall)
                 Spacer(modifier = Modifier.weight(1f))
-            }
-            
-            // Search bar (Far Right)
-            Surface(
-                modifier = Modifier.width(160.dp).height(24.dp),
-                shape = RoundedCornerShape(4.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerHigh
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+            } else if (channel != null) {
+                val isDm = channel.type == 1 || channel.type == 3 || channel.guild_id == null
+                val isThread = channel.type == 10 || channel.type == 11 || channel.type == 12
+                
+                if (isDm) {
+                    // DM style
+                    val recipient = channel.recipients?.firstOrNull()
+                    val name = recipient?.let { it.global_name ?: it.username } ?: "Unnamed DM"
+                    Icon(
+                        imageVector = Icons.Outlined.AlternateEmail,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = name, style = MaterialTheme.typography.titleSmall)
+                } else {
+                    val icon = when (channel.type) {
+                        15 -> Icons.Outlined.Forum
+                        2, 13 -> Icons.AutoMirrored.Filled.VolumeUp
+                        5 -> Icons.Filled.Campaign
+                        else -> Icons.Filled.Tag
+                    }
+                    if (isThread) {
+                        Text(">", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) // Thread
+                    } else {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = channel.name ?: "unnamed", style = MaterialTheme.typography.titleSmall)
+                }
+                
+                if (channel.topic?.isNotBlank() == true) {
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("•", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = channel.topic,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                } else {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+                
+                // Search bar (Far Right)
+                Surface(
+                    modifier = Modifier.width(160.dp).height(24.dp),
+                    shape = RoundedCornerShape(4.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh
                 ) {
-                    Text("Search", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.weight(1f))
-                    Icon(Icons.Filled.Search, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Search", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.weight(1f))
+                        Icon(Icons.Filled.Search, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
             }
         }
+    }
+}
+
+class DiscordInputVisualTransformation(val primaryColor: Color) : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText {
+        val build = AnnotatedString.Builder()
+        val rawText = text.text
+        
+        var i = 0
+        while (i < rawText.length) {
+            val char = rawText[i]
+            if (char == '@' || char == '#' || char == '/' || char == ':') {
+                 // Check if it's the start of a word or start of line
+                 if (i == 0 || rawText[i-1] == ' ' || rawText[i-1] == '\n') {
+                     var end = i + 1
+                     while (end < rawText.length && rawText[end] != ' ' && rawText[end] != '\n') {
+                         end++
+                     }
+                     build.withStyle(SpanStyle(color = primaryColor, fontWeight = FontWeight.Bold)) {
+                         append(rawText.substring(i, end))
+                     }
+                     i = end
+                     continue
+                 }
+            }
+            build.append(char)
+            i++
+        }
+        
+        return TransformedText(build.toAnnotatedString(), OffsetMapping.Identity)
     }
 }
 
@@ -209,29 +259,31 @@ fun ChatInputBar(
             derivedStateOf { chatState.hasPermission(Permission.SEND_MESSAGES) }
         }
         
-        var messageText by remember(channel.id) { 
-            mutableStateOf(chatState.draftMessages[channel.id] ?: "") 
+        var textFieldValue by remember(channel.id) { 
+            val draft = chatState.draftMessages[channel.id] ?: ""
+            mutableStateOf(TextFieldValue(draft, TextRange(draft.length))) 
         }
+        
         var showFilePicker by remember { mutableStateOf(false) }
         val focusRequester = remember { FocusRequester() }
 
         // Update draft whenever text changes
-        LaunchedEffect(messageText) {
-            chatState.draftMessages[channel.id] = messageText
+        LaunchedEffect(textFieldValue.text) {
+            chatState.draftMessages[channel.id] = textFieldValue.text
         }
 
         // Keep local messageText in sync with draft changes from outside
         LaunchedEffect(chatState.draftMessages[channel.id]) {
             val draft = chatState.draftMessages[channel.id] ?: ""
-            if (draft != messageText) {
-                messageText = draft
+            if (draft != textFieldValue.text) {
+                textFieldValue = TextFieldValue(draft, TextRange(draft.length))
             }
         }
 
         // Sync messageText when editing starts
         LaunchedEffect(chatState.editingMessage) {
             chatState.editingMessage?.let {
-                messageText = it.content
+                textFieldValue = TextFieldValue(it.content, TextRange(it.content.length))
                 chatState.pendingFiles.clear()
                 chatState.replyingTo = null
                 focusRequester.requestFocus()
@@ -280,7 +332,7 @@ fun ChatInputBar(
                             onClick = { 
                                 if (isEditing) {
                                     chatState.editingMessage = null
-                                    messageText = ""
+                                    textFieldValue = TextFieldValue("")
                                 } else {
                                     chatState.replyingTo = null 
                                 }
@@ -332,11 +384,14 @@ fun ChatInputBar(
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
 
+            var inputBarWidth by remember { mutableStateOf(0) }
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(68.dp)
                     .padding(horizontal = 8.dp)
+                    .onGloballyPositioned { inputBarWidth = it.size.width }
                     .animateContentSize(animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f)),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -373,28 +428,54 @@ fun ChatInputBar(
                 }
 
                 var showEmojiPicker by remember { mutableStateOf(false) }
-                var emojiSearchQuery by remember { mutableStateOf<String?>(null) }
-                var commandSearchQuery by remember { mutableStateOf<String?>(null) }
+                
+                var autocompleteType by remember { mutableStateOf<AutocompleteType?>(null) }
+                var autocompleteQuery by remember { mutableStateOf("") }
 
-                BasicTextField(
-                    value = messageText,
-                    onValueChange = { 
-                        if (canSend) {
-                            messageText = it
-                            val lastWord = it.substringAfterLast(' ', it)
-                            if (lastWord.startsWith(':') && !lastWord.contains(' ')) {
-                                emojiSearchQuery = lastWord.substring(1)
-                            } else {
-                                emojiSearchQuery = null
+                fun updateAutocomplete(text: String, selection: TextRange) {
+                    if (selection.collapsed) {
+                        val cursor = selection.start
+                        val textBefore = text.take(cursor)
+                        val lastWord = textBefore.substringAfterLast(' ')
+                        
+                        when {
+                            text.startsWith('/') && !text.contains(' ') -> {
+                                autocompleteType = AutocompleteType.COMMAND
+                                autocompleteQuery = text.substring(1)
                             }
-                            
-                            if (it.startsWith('/') && !it.contains(' ')) {
-                                commandSearchQuery = it.substring(1)
-                            } else {
-                                commandSearchQuery = null
+                            lastWord.startsWith('@') -> {
+                                autocompleteType = AutocompleteType.MENTION
+                                autocompleteQuery = lastWord.substring(1)
+                            }
+                            lastWord.startsWith('#') -> {
+                                autocompleteType = AutocompleteType.CHANNEL
+                                autocompleteQuery = lastWord.substring(1)
+                            }
+                            lastWord.startsWith(':') -> {
+                                autocompleteType = AutocompleteType.EMOJI
+                                autocompleteQuery = lastWord.substring(1)
+                            }
+                            else -> {
+                                autocompleteType = null
+                                autocompleteQuery = ""
                             }
                         }
+                    } else {
+                        autocompleteType = null
+                    }
+                }
+
+                val primaryColor = MaterialTheme.colorScheme.primary
+
+                BasicTextField(
+                    value = textFieldValue,
+                    onValueChange = { 
+                        if (canSend) {
+                            textFieldValue = it
+                            updateAutocomplete(it.text, it.selection)
+                        }
                     },
+                    visualTransformation = DiscordInputVisualTransformation(primaryColor),
                     modifier = Modifier
                         .weight(1f)
                         .padding(horizontal = 4.dp)
@@ -404,9 +485,13 @@ fun ChatInputBar(
                             if (!canSend) return@onPreviewKeyEvent false
                             if (event.type == KeyEventType.KeyDown) {
                                 if (event.key == Key.Escape) {
+                                    if (autocompleteType != null) {
+                                        autocompleteType = null
+                                        return@onPreviewKeyEvent true
+                                    }
                                     if (chatState.editingMessage != null) {
                                         chatState.editingMessage = null
-                                        messageText = ""
+                                        textFieldValue = TextFieldValue("")
                                         return@onPreviewKeyEvent true
                                     }
                                     if (chatState.replyingTo != null) {
@@ -422,18 +507,18 @@ fun ChatInputBar(
                                         }
                                 }
                     if (event.key == Key.Enter && !event.isShiftPressed) {
-                        if (messageText.startsWith('/') && !messageText.contains(' ')) {
-                            val cmdName = messageText.substring(1).trim()
+                        if (textFieldValue.text.startsWith('/') && !textFieldValue.text.contains(' ')) {
+                            val cmdName = textFieldValue.text.substring(1).trim()
                             val command = chatState.availableCommands.find { it.name == cmdName }
                             if (command != null) {
                                 chatState.sendInteraction(command)
-                                messageText = ""
+                                textFieldValue = TextFieldValue("")
                                 return@onPreviewKeyEvent true
                             }
                         }
-                        if (messageText.isNotBlank() || chatState.pendingFiles.isNotEmpty()) {
-                            chatState.sendMessage(messageText)
-                            messageText = ""
+                        if (textFieldValue.text.isNotBlank() || chatState.pendingFiles.isNotEmpty()) {
+                            chatState.sendMessage(textFieldValue.text)
+                            textFieldValue = TextFieldValue("")
                             return@onPreviewKeyEvent true
                         }
                     }
@@ -455,7 +540,7 @@ fun ChatInputBar(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Box(modifier = Modifier.weight(1f)) {
-                                    if (messageText.isEmpty()) {
+                                    if (textFieldValue.text.isEmpty()) {
                                         Text(
                                             text = placeholderText,
                                             style = MaterialTheme.typography.bodyMedium,
@@ -486,7 +571,9 @@ fun ChatInputBar(
                                             onDismissRequest = { showEmojiPicker = false }
                                         ) {
                                             EmojiPicker(chatState) { emoji ->
-                                                messageText += if (emoji.id != null) "<:${emoji.name}:${emoji.id}>" else emoji.name ?: ""
+                                                val emojiText = if (emoji.id != null) "<:${emoji.name}:${emoji.id}>" else emoji.name ?: ""
+                                                val newText = textFieldValue.text.take(textFieldValue.selection.start) + emojiText + textFieldValue.text.drop(textFieldValue.selection.end)
+                                                textFieldValue = TextFieldValue(newText, TextRange(textFieldValue.selection.start + emojiText.length))
                                                 showEmojiPicker = false
                                             }
                                         }
@@ -497,68 +584,60 @@ fun ChatInputBar(
                     }
                 )
 
-                if (emojiSearchQuery != null) {
-                    val filteredEmojis = remember(emojiSearchQuery, chatState.selectedGuild) {
-                        val all = chatState.selectedGuild?.emojis ?: emptyList()
-                        all.filter { it.name?.contains(emojiSearchQuery!!, ignoreCase = true) == true }.take(10)
-                    }
+                if (autocompleteType != null) {
+                    val density = LocalDensity.current
+                    var popupHeight by remember { mutableStateOf(0) }
                     
-                    if (filteredEmojis.isNotEmpty()) {
-                        androidx.compose.ui.window.Popup(
-                            alignment = Alignment.BottomStart,
-                            offset = IntOffset(60, (-220).dp.value.toInt())
-                        ) {
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                shadowElevation = 4.dp,
-                                modifier = Modifier.width(200.dp)
-                            ) {
-                                Column(modifier = Modifier.padding(4.dp)) {
-                                    filteredEmojis.forEach { emoji ->
-                                        DropdownMenuItem(
-                                            text = { Text(emoji.name ?: "", style = MaterialTheme.typography.bodySmall) },
-                                            leadingIcon = {
-                                                val url = if (emoji.id != null) "https://cdn.discordapp.com/emojis/${emoji.id}.png?size=32" else null
-                                                if (url != null) {
-                                                    AsyncImage(url, null, modifier = Modifier.size(18.dp))
-                                                }
-                                            },
-                                            onClick = {
-                                                val before = messageText.substringBeforeLast(':')
-                                                messageText = if (emoji.id != null) "$before<:${emoji.name}:${emoji.id}> " else "$before:${emoji.name}: "
-                                                emojiSearchQuery = null
-                                            }
-                                        )
+                    androidx.compose.ui.window.Popup(
+                        alignment = Alignment.TopStart,
+                        offset = IntOffset(
+                            x = 0,
+                            y = -popupHeight - with(density) { 8.dp.toPx().toInt() }
+                        ),
+                        onDismissRequest = { autocompleteType = null }
+                    ) {
+                        AutocompletePicker(
+                            chatState = chatState,
+                            type = autocompleteType!!,
+                            query = autocompleteQuery,
+                            modifier = Modifier
+                                .width(with(density) { (inputBarWidth).toDp() })
+                                .onGloballyPositioned { popupHeight = it.size.height },
+                            onItemSelected = { label, replacement ->
+                                val cursor = textFieldValue.selection.start
+                                val textBefore = textFieldValue.text.take(cursor)
+                                val textAfter = textFieldValue.text.drop(textFieldValue.selection.end)
+                                
+                                val startOfTrigger = when(autocompleteType) {
+                                    AutocompleteType.COMMAND -> 0
+                                    else -> textBefore.lastIndexOfAny(charArrayOf('@', '#', ':'))
+                                }
+                                
+                                if (startOfTrigger != -1) {
+                                    val prefix = textFieldValue.text.take(startOfTrigger)
+                                    if (autocompleteType == AutocompleteType.COMMAND) {
+                                         val command = chatState.availableCommands.find { it.name == replacement }
+                                         if (command != null && !command.options.isNullOrEmpty()) {
+                                             chatState.activeCommand = command
+                                             chatState.commandOptions.clear()
+                                             textFieldValue = TextFieldValue("")
+                                         } else if (command != null) {
+                                             chatState.sendInteraction(command)
+                                             textFieldValue = TextFieldValue("")
+                                         }
+                                    } else {
+                                        val newText = prefix + replacement + " " + textAfter
+                                        textFieldValue = TextFieldValue(newText, TextRange(prefix.length + replacement.length + 1))
                                     }
                                 }
+                                autocompleteType = null
                             }
-                        }
-                    }
-                }
-                
-                if (commandSearchQuery != null) {
-                    androidx.compose.ui.window.Popup(
-                        alignment = Alignment.BottomStart,
-                        offset = IntOffset(60, (-340).dp.value.toInt()),
-                        onDismissRequest = { commandSearchQuery = null }
-                    ) {
-                        CommandPicker(chatState, commandSearchQuery!!) { command ->
-                            if (command.options.isNullOrEmpty()) {
-                                chatState.sendInteraction(command)
-                                messageText = ""
-                            } else {
-                                chatState.activeCommand = command
-                                chatState.commandOptions.clear()
-                                messageText = ""
-                            }
-                            commandSearchQuery = null
-                        }
+                        )
                     }
                 }
                 
                 AnimatedVisibility(
-                    visible = messageText.isNotBlank() || chatState.pendingFiles.isNotEmpty() || chatState.activeCommand != null,
+                    visible = textFieldValue.text.isNotBlank() || chatState.pendingFiles.isNotEmpty() || chatState.activeCommand != null,
                     enter = fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) + 
                             expandHorizontally(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) +
                             scaleIn(initialScale = 0.8f, animationSpec = spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMediumLow)),
@@ -579,9 +658,9 @@ fun ChatInputBar(
                                     chatState.activeCommand = null
                                     chatState.commandOptions.clear()
                                 } else {
-                                    chatState.sendMessage(messageText)
+                                    chatState.sendMessage(textFieldValue.text)
                                 }
-                                messageText = ""
+                                textFieldValue = TextFieldValue("")
                             },
                             colors = IconButtonDefaults.filledIconButtonColors(
                                 containerColor = MaterialTheme.colorScheme.primary,
