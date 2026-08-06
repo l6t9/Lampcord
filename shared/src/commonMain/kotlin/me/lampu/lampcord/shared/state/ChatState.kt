@@ -887,6 +887,9 @@ class ChatState(
         )
         replyingTo = null
         pendingFiles.clear()
+        
+        // Clear draft
+        draftMessages.remove(channel.id)
     }
 
     fun forwardMessage(targetChannel: Channel, message: Message) {

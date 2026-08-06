@@ -26,7 +26,15 @@ data class MessageRequest(
     val content: String,
     val message_reference: MessageReference? = null,
     val tts: Boolean = false,
-    val nonce: String? = null
+    val nonce: String? = null,
+    val attachments: List<AttachmentRequest>? = null
+)
+
+@Serializable
+data class AttachmentRequest(
+    val id: String,
+    val filename: String,
+    val description: String? = null
 )
 
 @Serializable
@@ -234,16 +242,30 @@ class DiscordClient(
             } else {
                 val response = httpClient.post("$apiBase/channels/$channelId/messages") {
                     standardHeaders()
+                    
+                    val attachmentMetadata = files.mapIndexed { index, (name, _) ->
+                        AttachmentRequest(id = index.toString(), filename = name)
+                    }
+                    
                     setBody(MultiPartFormDataContent(
                         formData {
                             append("payload_json", json.encodeToString(MessageRequest(
                                 content = content,
                                 message_reference = messageReference,
-                                nonce = nonce
+                                nonce = nonce,
+                                attachments = attachmentMetadata
                             )))
                             files.forEachIndexed { index, (name, bytes) ->
-                                append("file$index", bytes, Headers.build {
-                                    append(HttpHeaders.ContentDisposition, "form-data; name=\"file$index\"; filename=\"$name\"")
+                                val contentType = when {
+                                    name.endsWith(".png", true) -> ContentType.Image.PNG
+                                    name.endsWith(".jpg", true) || name.endsWith(".jpeg", true) -> ContentType.Image.JPEG
+                                    name.endsWith(".gif", true) -> ContentType.Image.GIF
+                                    name.endsWith(".webp", true) -> ContentType.parse("image/webp")
+                                    else -> ContentType.Application.OctetStream
+                                }
+                                append("files[$index]", bytes, Headers.build {
+                                    append(HttpHeaders.ContentDisposition, "form-data; name=\"files[$index]\"; filename=\"$name\"")
+                                    append(HttpHeaders.ContentType, contentType.toString())
                                 })
                             }
                         }
