@@ -28,7 +28,6 @@ fun FriendsList(chatState: ChatState) {
     
     val scrollState = androidx.compose.foundation.lazy.rememberLazyListState()
     var isHovered by remember { mutableStateOf(false) }
-
     val filteredRelationships = remember(chatState.relationships, selectedTab) {
         when (selectedTab) {
             0 -> chatState.relationships.filter { chatState.getUserStatus(it.user.id) != "offline" && it.type == 1 }
