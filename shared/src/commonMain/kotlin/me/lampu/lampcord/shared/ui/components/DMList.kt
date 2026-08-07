@@ -26,7 +26,6 @@ fun DMList(chatState: ChatState) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface)
             .pointerInput(Unit) {
                 awaitPointerEventScope {
                     while (true) {
@@ -39,66 +38,55 @@ fun DMList(chatState: ChatState) {
                 }
             }
     ) {
-        Surface(
-            modifier = Modifier.fillMaxWidth().height(48.dp),
-            color = MaterialTheme.colorScheme.surface,
-            shadowElevation = 0.dp,
-            tonalElevation = 0.dp
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp)
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Direct Messages",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.weight(1f)
-                )
+            Text(
+                text = "Direct Messages",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f)
+            )
 
-                IconButton(
-                    onClick = { chatState.selectFriends() },
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        imageVector = if (chatState.isFriendsSelected) Icons.Filled.Person else Icons.Outlined.Person,
-                        contentDescription = "Friends",
-                        tint = if (chatState.isFriendsSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
+            IconButton(
+                onClick = { chatState.selectFriends() },
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    imageVector = if (chatState.isFriendsSelected) Icons.Filled.Person else Icons.Outlined.Person,
+                    contentDescription = "Friends",
+                    tint = if (chatState.isFriendsSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
         
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.surface,
-            shape = RoundedCornerShape(topStart = 16.dp),
-            tonalElevation = 1.dp
-        ) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                LazyColumn(
-                    state = scrollState,
-                    modifier = Modifier.fillMaxSize().padding(top = 8.dp),
-                    contentPadding = PaddingValues(bottom = 68.dp)
-                ) {
-                    if (chatState.privateChannels.isEmpty()) {
-                        items(10) {
-                            DMSkeleton()
-                        }
-                    } else {
-                        items(chatState.privateChannels, key = { it.id }) { channel ->
-                            DMItem(channel, chatState)
-                        }
+        Box(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                state = scrollState,
+                modifier = Modifier.fillMaxSize().padding(top = 8.dp),
+                contentPadding = PaddingValues(bottom = 68.dp)
+            ) {
+                if (chatState.privateChannels.isEmpty()) {
+                    items(10) {
+                        DMSkeleton()
+                    }
+                } else {
+                    items(chatState.privateChannels, key = { it.id }) { channel ->
+                        DMItem(channel, chatState)
                     }
                 }
-
-                VerticalScrollbar(
-                    state = scrollState,
-                    modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
-                    isVisible = isHovered
-                )
             }
+
+            VerticalScrollbar(
+                state = scrollState,
+                modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
+                isVisible = isHovered
+            )
         }
     }
 }

@@ -1,14 +1,18 @@
 package me.lampu.lampcord.shared.ui.components.chat
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -138,11 +142,30 @@ fun InteractionHeader(interaction: MessageInteraction) {
 
 @Composable
 fun ReplyBar(referencedMessage: Message, chatState: ChatState) {
-    val lineColor = MaterialTheme.colorScheme.outlineVariant
+    val lineColor = if (chatState.settingsStore.pureBlack) Color.DarkGray else MaterialTheme.colorScheme.outlineVariant
+    var isHovered by remember { mutableStateOf(false) }
+
     Row(
         modifier = Modifier
-            .padding(start = 8.dp, bottom = 4.dp)
-            .height(24.dp),
+            .padding(start = 0.dp, bottom = 4.dp)
+            .height(24.dp)
+            .pointerInput(Unit) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        when (event.type) {
+                            PointerEventType.Enter -> isHovered = true
+                            PointerEventType.Exit -> isHovered = false
+                        }
+                    }
+                }
+            }
+            .clickable(
+                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                indication = null // Removed the highlight indication
+            ) {
+                chatState.scrollToMessageId = referencedMessage.id
+            },
         verticalAlignment = Alignment.CenterVertically
     ) {
         androidx.compose.foundation.Canvas(
@@ -151,7 +174,7 @@ fun ReplyBar(referencedMessage: Message, chatState: ChatState) {
                 .fillMaxHeight()
         ) {
             val cornerRadius = 8.dp.toPx()
-            val gutterX = 20.dp.toPx()
+            val gutterX = 18.dp.toPx() // Moved gutter slightly right (was 16dp, original 20dp)
             val targetY = size.height / 2f
             
             val path = androidx.compose.ui.graphics.Path().apply {
@@ -166,7 +189,7 @@ fun ReplyBar(referencedMessage: Message, chatState: ChatState) {
 
             drawPath(
                 path = path,
-                color = lineColor,
+                color = if (isHovered) Color.White else lineColor, // Whiter indicator on hover
                 style = androidx.compose.ui.graphics.drawscope.Stroke(
                     width = 1.5.dp.toPx(),
                     cap = androidx.compose.ui.graphics.StrokeCap.Round
@@ -209,15 +232,20 @@ fun ReplyBar(referencedMessage: Message, chatState: ChatState) {
             text = referencedMessage.author.global_name ?: referencedMessage.author.username,
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
-            color = roleColor.copy(alpha = 0.8f)
+            color = if (isHovered) Color.White else roleColor.copy(alpha = 0.8f) // Whiter on hover
         )
 
         Spacer(modifier = Modifier.width(4.dp))
 
         Text(
-            text = referencedMessage.content,
+            text = when {
+                referencedMessage.content.isNotBlank() -> referencedMessage.content
+                referencedMessage.attachments.isNotEmpty() -> "Click to see attachment"
+                referencedMessage.embeds.isNotEmpty() -> "Click to see embed"
+                else -> "Original message"
+            },
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+            color = if (isHovered) Color.White.copy(alpha = 0.6f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f), // Whiter on hover
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )

@@ -55,6 +55,31 @@ fun ChatArea(
             }
         }
     }
+
+    LaunchedEffect(chatState.scrollToMessageId) {
+        chatState.scrollToMessageId?.let { messageId ->
+            val index = chatState.messages.indexOfFirst { it.id == messageId }
+            if (index != -1) {
+                chatState.highlightedMessageId = messageId
+                
+                // Get viewport height and estimate item offset to center it
+                val visibleItems = scrollState.layoutInfo.visibleItemsInfo
+                val viewportHeight = scrollState.layoutInfo.viewportSize.height
+
+                if (visibleItems.isNotEmpty()) {
+                    // Try to calculate an offset that centers the item
+                    // If we don't know the exact item height, we use an average or a safe estimate
+                    val averageItemHeight = visibleItems.map { it.size }.average().toInt()
+                    val centerOffset = (viewportHeight / 2) - (averageItemHeight / 2)
+
+                    scrollState.animateScrollToItem(index, scrollOffset = -centerOffset)
+                } else {
+                    scrollState.animateScrollToItem(index)
+                }
+            }
+            chatState.scrollToMessageId = null
+        }
+    }
     
     Box(
         modifier = modifier
@@ -126,8 +151,8 @@ fun ChatArea(
                     }
                 }
             }
-            item { 
-                Spacer(modifier = Modifier.height(16.dp)) 
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
             }
             item {
                 Column(

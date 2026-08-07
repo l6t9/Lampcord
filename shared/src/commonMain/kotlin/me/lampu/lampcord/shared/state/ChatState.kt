@@ -93,6 +93,8 @@ class ChatState(
     var forwardingMessage by mutableStateOf<Message?>(null)
     var isSettingsVisible by mutableStateOf(false)
     var isQuickSwitcherVisible by mutableStateOf(false)
+    var scrollToMessageId by mutableStateOf<String?>(null)
+    var highlightedMessageId by mutableStateOf<String?>(null)
     val pendingFiles = mutableStateListOf<Pair<String, ByteArray>>()
 
     var currentVoiceState by mutableStateOf<VoiceState?>(null)

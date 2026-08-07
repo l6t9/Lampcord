@@ -63,52 +63,44 @@ fun GuildChannelList(chatState: ChatState) {
                 }
             }
     ) {
-        Surface(
+        val channels = chatState.channels
+        val categories = channels.filter { it.type == 4 }.sortedBy { it.position ?: 0 }
+        val rootChannels = channels.filter { it.parent_id == null && it.type != 4 }.sortedBy { it.position ?: 0 }
+
+        LazyColumn(
+            state = scrollState,
             modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.surface,
-            shape = RoundedCornerShape(topStart = 16.dp),
-            tonalElevation = 1.dp
+            contentPadding = PaddingValues(top = if (bannerUrl == null) 48.dp else 0.dp, bottom = 68.dp)
         ) {
-            val channels = chatState.channels
-            val categories = channels.filter { it.type == 4 }.sortedBy { it.position ?: 0 }
-            val rootChannels = channels.filter { it.parent_id == null && it.type != 4 }.sortedBy { it.position ?: 0 }
-
-            LazyColumn(
-                state = scrollState,
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(top = if (bannerUrl == null) 48.dp else 0.dp, bottom = 68.dp)
-            ) {
-                if (chatState.channels.isEmpty() && chatState.selectedGuild != null) {
-                    items(15) {
-                        ChannelSkeleton()
+            if (chatState.channels.isEmpty() && chatState.selectedGuild != null) {
+                items(15) {
+                    ChannelSkeleton()
+                }
+            } else {
+                if (bannerUrl != null) {
+                    item {
+                        AsyncImage(
+                            model = bannerUrl,
+                            contentDescription = "Server Banner",
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(135.dp)
+                        )
                     }
-                } else {
-                    if (bannerUrl != null) {
-                        item {
-                            AsyncImage(
-                                model = bannerUrl,
-                                contentDescription = "Server Banner",
-                                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(135.dp)
-                                    .clip(RoundedCornerShape(topStart = 16.dp))
-                            )
-                        }
-                    }
+                }
 
-                    item { Spacer(modifier = Modifier.height(8.dp)) }
+                item { Spacer(modifier = Modifier.height(8.dp)) }
 
-                    items(rootChannels, key = { it.id }) { channel ->
-                        Box(Modifier.animateItem()) {
-                            ChannelItem(channel, chatState)
-                        }
+                items(rootChannels, key = { it.id }) { channel ->
+                    Box(Modifier.animateItem()) {
+                        ChannelItem(channel, chatState)
                     }
-                    
-                    items(categories, key = { it.id }) { category ->
-                        Box(Modifier.animateItem()) {
-                            GuildCategoryItem(category, channels, chatState)
-                        }
+                }
+                
+                items(categories, key = { it.id }) { category ->
+                    Box(Modifier.animateItem()) {
+                        GuildCategoryItem(category, channels, chatState)
                     }
                 }
             }
@@ -125,8 +117,7 @@ fun GuildChannelList(chatState: ChatState) {
             color = MaterialTheme.colorScheme.surface.copy(alpha = alpha),
             shadowElevation = 0.dp,
             tonalElevation = 0.dp,
-            onClick = { menuExpanded = true },
-            shape = if (alpha > 0.99f) RoundedCornerShape(0.dp) else RoundedCornerShape(topStart = 16.dp)
+            onClick = { menuExpanded = true }
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 if (bannerUrl != null) {

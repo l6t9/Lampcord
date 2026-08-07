@@ -15,6 +15,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
@@ -22,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.text.font.FontWeight
@@ -104,6 +106,15 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
 
     val isInline = priorMessage != null
 
+    val isHighlighted = chatState.highlightedMessageId == message.id
+    
+    LaunchedEffect(isHighlighted) {
+        if (isHighlighted) {
+            kotlinx.coroutines.delay(2000)
+            chatState.highlightedMessageId = null
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -118,182 +129,176 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
                     }
                 }
             }
-            .background(
-                color = when {
-                    isMentioned -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)
-                    isHovered || showReactionPicker -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.12f)
-                    message.sendError != null -> MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
-                    else -> Color.Transparent
-                }
-            )
-            .alpha(alpha)
     ) {
-        if (isMentioned) {
-            val mentionBarColor = MaterialTheme.colorScheme.primary
-            Spacer(
-                modifier = Modifier
-                    .matchParentSize()
-                    .drawBehind {
-                        drawRect(
-                            color = mentionBarColor,
-                            size = androidx.compose.ui.geometry.Size(2.dp.toPx(), size.height)
-                        )
-                    }
-            )
-        }
-
-        if (showReactionPicker) {
-            Popup(
-                alignment = Alignment.TopEnd,
-                offset = IntOffset(0, (-500).dp.value.toInt()), 
-                onDismissRequest = { showReactionPicker = false },
-                properties = PopupProperties(focusable = true)
-            ) {
-                EmojiPicker(chatState) { emoji ->
-                    val emojiStr = if (emoji.id != null) "${emoji.name}:${emoji.id}" else emoji.name ?: ""
-                    chatState.addReaction(message.channel_id, message.id, emojiStr)
-                    showReactionPicker = false
-                }
-            }
-        }
-        
-        ContextMenu(
-            items = contextMenuItems,
+        // Background and Content Layer
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = if (isInline) 1.5.dp else 8.dp)
+                .background(
+                    color = when {
+                        isHighlighted -> MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                        isMentioned -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)
+                        isHovered || showReactionPicker -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.12f)
+                        message.sendError != null -> MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
+                        else -> Color.Transparent
+                    }
+                )
+                .alpha(alpha)
+                .animateContentSize()
         ) {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                if (message.referenced_message != null) {
-                    ReplyBar(message.referenced_message, chatState)
-                }
-                
-                if (message.interaction != null) {
-                    InteractionHeader(message.interaction)
-                }
-
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    if (!isInline) {
-                        val avatarUrl = message.member?.avatar?.let {
-                            "https://cdn.discordapp.com/guilds/${message.guild_id ?: chatState.selectedGuild?.id}/users/${message.author.id}/avatars/$it.png?size=160"
-                        } ?: message.author.avatar?.let {
-                            "https://cdn.discordapp.com/avatars/${message.author.id}/$it.png?size=160"
-                        }
-
-                        var avatarPosition by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
-
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .onGloballyPositioned { avatarPosition = it.positionInRoot() }
-                        ) {
-                            AvatarWithDecoration(
-                                avatarUrl = avatarUrl,
-                                decorationData = message.member?.avatar_decoration_data ?: message.author.avatar_decoration_data ?: message.member?.collectibles?.avatar_decoration ?: message.author.collectibles?.avatar_decoration,
-                                size = 40.dp
+            if (isMentioned) {
+                val mentionBarColor = MaterialTheme.colorScheme.primary
+                Spacer(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .drawBehind {
+                            drawRect(
+                                color = mentionBarColor,
+                                size = androidx.compose.ui.geometry.Size(2.dp.toPx(), size.height)
                             )
-                            // Clickable overlay - circular hit area to match the avatar circle
+                        }
+                )
+            }
+
+            ContextMenu(
+                items = contextMenuItems,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = if (isInline) 1.5.dp else 8.dp)
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    if (message.referenced_message != null) {
+                        ReplyBar(message.referenced_message, chatState)
+                    }
+                    
+                    if (message.interaction != null) {
+                        InteractionHeader(message.interaction)
+                    }
+
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        if (!isInline) {
+                            val avatarUrl = message.member?.avatar?.let {
+                                "https://cdn.discordapp.com/guilds/${message.guild_id ?: chatState.selectedGuild?.id}/users/${message.author.id}/avatars/$it.png?size=160"
+                            } ?: message.author.avatar?.let {
+                                "https://cdn.discordapp.com/avatars/${message.author.id}/$it.png?size=160"
+                            }
+
+                            var avatarPosition by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+
                             Box(
                                 modifier = Modifier
-                                    .size(34.dp)
-                                    .align(Alignment.Center)
-                                    .clip(CircleShape)
-                                    .clickable { chatState.showProfile(message.author.id, avatarPosition) }
-                            )
-                        }
-                    } else {
-                        Spacer(modifier = Modifier.width(40.dp))
-                    }
-                    
-                    val roleColor by remember(message, chatState.selectedGuild) {
-                        derivedStateOf {
-                            val guild = chatState.selectedGuild ?: return@derivedStateOf Color.Unspecified
-                            val member = message.member ?: chatState.getMember(guild.id, message.author.id) ?: return@derivedStateOf Color.Unspecified
-                            val memberRoles = member.roles.mapNotNull { roleId -> guild.roles.find { it.id == roleId } }
-                            val highestRole = memberRoles.maxByOrNull { it.position }
-                            if (highestRole != null && highestRole.color != 0) Color(highestRole.color or 0xFF000000.toInt()) else Color.Unspecified
-                        }
-                    }
-                    
-                    val displayColor = if (roleColor == Color.Unspecified) MaterialTheme.colorScheme.onSurface else roleColor
-
-                    Spacer(modifier = Modifier.width(8.dp))
-                    
-                    Column {
-                        if (!isInline) {
-                            val isDm = message.guild_id == null && chatState.selectedGuild == null
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                var namePosition by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
-                                UsernameView(
-                                    name = message.member?.nick ?: message.author.global_name ?: message.author.username,
-                                    style = message.member?.display_name_styles ?: message.author.display_name_styles,
-                                    baseStyle = MaterialTheme.typography.titleSmall,
-                                    color = if (isDm) Color.White else displayColor,
+                                    .size(40.dp)
+                                    .onGloballyPositioned { avatarPosition = it.positionInRoot() }
+                            ) {
+                                AvatarWithDecoration(
+                                    avatarUrl = avatarUrl,
+                                    decorationData = message.member?.avatar_decoration_data ?: message.author.avatar_decoration_data ?: message.member?.collectibles?.avatar_decoration ?: message.author.collectibles?.avatar_decoration,
+                                    size = 40.dp
+                                )
+                                // Clickable overlay - circular hit area to match the avatar circle
+                                Box(
                                     modifier = Modifier
-                                        .onGloballyPositioned { namePosition = it.positionInRoot() }
-                                        .clickable { chatState.showProfile(message.author.id, namePosition) },
-                                    ignoreEffects = !isHovered,
-                                    ignoreColors = if (isDm) !isHovered else true
+                                        .size(34.dp)
+                                        .align(Alignment.Center)
+                                        .clip(CircleShape)
+                                        .clickable { chatState.showProfile(message.author.id, avatarPosition) }
                                 )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                MessageTimestamp(
-                                    timestamp = message.timestamp,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                            }
+                        } else {
+                            Spacer(modifier = Modifier.width(40.dp))
+                        }
+                        
+                        val roleColor by remember(message, chatState.selectedGuild) {
+                            derivedStateOf {
+                                val guild = chatState.selectedGuild ?: return@derivedStateOf Color.Unspecified
+                                val member = message.member ?: chatState.getMember(guild.id, message.author.id) ?: return@derivedStateOf Color.Unspecified
+                                val memberRoles = member.roles.mapNotNull { roleId -> guild.roles.find { it.id == roleId } }
+                                val highestRole = memberRoles.maxByOrNull { it.position }
+                                if (highestRole != null && highestRole.color != 0) Color(highestRole.color or 0xFF000000.toInt()) else Color.Unspecified
                             }
                         }
                         
-                        DiscordMarkdownText(
-                            content = message.content,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            chatState = chatState
-                        )
+                        val displayColor = if (roleColor == Color.Unspecified) MaterialTheme.colorScheme.onSurface else roleColor
 
-                        if (message.sendError != null) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Icon(
-                                    Icons.Rounded.Error,
-                                    null,
-                                    tint = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Text(
-                                    text = message.sendError,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.error
-                                )
-                                Text(
-                                    text = "Retry",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.clickable { chatState.retryMessage(message) }
-                                )
-                                Text(
-                                    text = "Delete",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.clickable { chatState.deletePendingMessage(message) }
-                                )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        
+                        Column {
+                            if (!isInline) {
+                                val isDm = message.guild_id == null && chatState.selectedGuild == null
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    var namePosition by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+                                    UsernameView(
+                                        name = message.member?.nick ?: message.author.global_name ?: message.author.username,
+                                        style = message.member?.display_name_styles ?: message.author.display_name_styles,
+                                        baseStyle = MaterialTheme.typography.titleSmall,
+                                        color = if (isDm) Color.White else displayColor,
+                                        modifier = Modifier
+                                            .onGloballyPositioned { namePosition = it.positionInRoot() }
+                                            .clickable { chatState.showProfile(message.author.id, namePosition) },
+                                        ignoreEffects = !isHovered,
+                                        ignoreColors = if (isDm) !isHovered else true
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    MessageTimestamp(
+                                        timestamp = message.timestamp,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
+                            
+                            DiscordMarkdownText(
+                                content = message.content,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                chatState = chatState
+                            )
+
+                            if (message.sendError != null) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Rounded.Error,
+                                        null,
+                                        tint = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Text(
+                                        text = message.sendError,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                    Text(
+                                        text = "Retry",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.clickable { chatState.retryMessage(message) }
+                                    )
+                                    Text(
+                                        text = "Delete",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.clickable { chatState.deletePendingMessage(message) }
+                                    )
+                                }
+                            }
+
+                            MessageBody(message, chatState)
+
+                            message.message_snapshots?.firstOrNull()?.let { snapshot ->
+                                ForwardedMessage(message, chatState)
+                            }
+
+                            ReactionsView(message, chatState)
                         }
-
-                        MessageBody(message, chatState)
-
-                        message.message_snapshots?.firstOrNull()?.let { snapshot ->
-                            ForwardedMessage(message, chatState)
-                        }
-
-                        ReactionsView(message, chatState)
                     }
                 }
             }
         }
 
+        // Overlay Layer (Action Buttons)
         if (isHovered || showReactionPicker) {
             val isMe = message.author.id == chatState.currentUser?.id
             
@@ -312,15 +317,22 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
 
             Box(
                 modifier = Modifier
-                    .matchParentSize()
+                    .align(Alignment.TopEnd)
                     .padding(end = 16.dp)
+                    .zIndex(1f) // Ensure buttons are always on top
+                    .layout { measurable, constraints ->
+                        val placeable = measurable.measure(constraints)
+                        // Report 0 height to parent so it doesn't affect list spacing
+                        layout(placeable.width, 0) {
+                            placeable.placeRelative(0, 0)
+                        }
+                    }
             ) {
                 ButtonGroup(
                     modifier = Modifier
-                        .align(Alignment.TopEnd)
                         .offset(y = (-12).dp)
                         .height(32.dp)
-                        .widthIn(min = 120.dp) // Ensure it doesn't squish
+                        .widthIn(min = 120.dp)
                         .animateContentSize(animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f)),
                     overflowIndicator = { menuState -> ButtonGroupDefaults.OverflowIndicator(menuState) },
                     horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
@@ -353,6 +365,21 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
                             }
                         )
                     }
+                }
+            }
+        }
+
+        if (showReactionPicker) {
+            Popup(
+                alignment = Alignment.TopEnd,
+                offset = IntOffset(0, (-500).dp.value.toInt()), 
+                onDismissRequest = { showReactionPicker = false },
+                properties = PopupProperties(focusable = true)
+            ) {
+                EmojiPicker(chatState) { emoji ->
+                    val emojiStr = if (emoji.id != null) "${emoji.name}:${emoji.id}" else emoji.name ?: ""
+                    chatState.addReaction(message.channel_id, message.id, emojiStr)
+                    showReactionPicker = false
                 }
             }
         }
