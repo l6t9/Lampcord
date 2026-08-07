@@ -4,7 +4,10 @@ import java.security.KeyPairGenerator
 import java.security.MessageDigest
 import java.security.PrivateKey
 import java.security.PublicKey
+import java.security.spec.MGF1ParameterSpec
 import javax.crypto.Cipher
+import javax.crypto.spec.OAEPParameterSpec
+import javax.crypto.spec.PSource
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
@@ -18,8 +21,14 @@ actual class RSAKeyPair(private val publicKey: PublicKey, private val privateKey
     }
 
     actual fun decrypt(encryptedData: ByteArray): ByteArray {
-        val cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding")
-        cipher.init(Cipher.DECRYPT_MODE, privateKey)
+        val cipher = Cipher.getInstance("RSA/ECB/OAEPPadding")
+        val oaepParams = OAEPParameterSpec(
+            "SHA-256", 
+            "MGF1", 
+            MGF1ParameterSpec.SHA256, 
+            PSource.PSpecified.DEFAULT
+        )
+        cipher.init(Cipher.DECRYPT_MODE, privateKey, oaepParams)
         return cipher.doFinal(encryptedData)
     }
 }

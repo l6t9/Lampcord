@@ -82,6 +82,8 @@ kotlin {
             dependencies {
                 implementation(compose.desktop.currentOs)
                 implementation(libs.vlcj)
+                implementation(libs.jna.core)
+                implementation(libs.jna.platform)
             }
         }
     }

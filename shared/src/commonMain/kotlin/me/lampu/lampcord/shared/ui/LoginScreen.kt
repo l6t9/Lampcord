@@ -19,7 +19,8 @@ import me.lampu.lampcord.shared.state.ChatState
 import me.lampu.lampcord.shared.api.RemoteAuthClient
 import me.lampu.lampcord.shared.api.RemoteAuthState
 import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
-import me.lampu.lampcord.shared.ui.components.MeshGradientBackground
+import io.ktor.http.encodeURLQueryComponent
+import coil3.compose.AsyncImagePainter
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
@@ -94,8 +95,6 @@ fun LoginScreen(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
-        MeshGradientBackground()
-
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
@@ -263,12 +262,20 @@ fun LoginScreen(
                         Box(contentAlignment = Alignment.Center) {
                             when (val state = remoteAuthState) {
                                 is RemoteAuthState.QRReady -> {
-                                    val qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${state.url}"
-                                    me.lampu.lampcord.shared.ui.components.AsyncImage(
-                                        model = qrUrl,
-                                        contentDescription = "QR Code",
-                                        modifier = Modifier.fillMaxSize().padding(12.dp)
-                                    )
+                                    val qrUrl = "https://quickchart.io/qr?text=${state.url.encodeURLQueryComponent()}&size=256&margin=0&ecLevel=L&format=png"
+
+                                    Box(contentAlignment = Alignment.Center) {
+                                        me.lampu.lampcord.shared.ui.components.AsyncImage(
+                                            model = qrUrl,
+                                            contentDescription = "QR Code",
+                                            modifier = Modifier.fillMaxSize().padding(8.dp),
+                                            onState = { state ->
+                                                if (state is AsyncImagePainter.State.Error) {
+                                                    println("QR Load Error: ${state.result.throwable.message}")
+                                                }
+                                            }
+                                        )
+                                    }
                                 }
                                 is RemoteAuthState.UserScanned -> {
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {

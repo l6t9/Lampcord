@@ -1,10 +1,10 @@
 package me.lampu.lampcord.shared.settings
 
-import com.russhwolf.settings.NSUserDefaultsSettings
+import com.russhwolf.settings.ExperimentalSettingsImplementation
+import com.russhwolf.settings.KeychainSettings
 import com.russhwolf.settings.Settings
-import platform.Foundation.NSUserDefaults
 
+@OptIn(ExperimentalSettingsImplementation::class)
 actual fun createSettings(): Settings {
-    val delegate = NSUserDefaults.standardUserDefaults
-    return NSUserDefaultsSettings(delegate)
+    return KeychainSettings("me.lampu.lampcord")
 }

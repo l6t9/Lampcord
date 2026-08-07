@@ -12,3 +12,7 @@ build/
 
 # Downloaded Material Symbols fonts (fetched by scripts/generate_material_symbols.py)
 /scripts/.fonts
+
+# Signing keys
+*.keystore
+*.jks

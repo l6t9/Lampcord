@@ -666,6 +666,25 @@ class DiscordClient(
             emptyList()
         }
     }
+
+    suspend fun exchangeRemoteAuthTicket(ticket: String): String? {
+        return try {
+            val response = httpClient.post("$apiBase/users/@me/remote-auth/login") {
+                loginHeaders()
+                contentType(ContentType.Application.Json)
+                setBody(buildJsonObject { put("ticket", ticket) })
+            }
+            if (response.status.isSuccess()) {
+                val body = response.body<JsonObject>()
+                body["encrypted_token"]?.jsonPrimitive?.content
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            println("Error exchanging remote auth ticket: ${e.message}")
+            null
+        }
+    }
 }
 
 @Serializable
