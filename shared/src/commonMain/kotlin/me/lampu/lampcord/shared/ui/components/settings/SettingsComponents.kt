@@ -5,6 +5,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.interaction.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -13,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
@@ -96,74 +98,95 @@ private fun Material3SettingsItemRow(
         label = "backgroundColor",
     )
 
-    Row(
+    Column(
         modifier = item.modifier
             .fillMaxWidth()
             .padding(horizontal = horizontalPadding)
             .clip(shape)
             .background(color = backgroundColor)
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                enabled = item.enabled && item.onClick != null,
-                onClick = { item.onClick?.invoke() },
-            )
-            .padding(horizontal = 16.dp, vertical = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .animateContentSize(),
     ) {
-        if (item.leadingContent != null) {
-            item.leadingContent.invoke()
-            Spacer(modifier = Modifier.width(16.dp))
-        } else if (item.icon != null) {
-            Box(
-                modifier = Modifier.size(32.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    item.icon,
-                    contentDescription = null,
-                    tint = item.iconTint ?: MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(24.dp),
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    enabled = item.enabled && item.onClick != null,
+                    onClick = { item.onClick?.invoke() },
                 )
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-        }
-
-        Column(
-            modifier = Modifier.weight(1f),
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            ProvideTextStyle(
-                MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.W500,
-                    color = if (!item.enabled) {
-                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                    } else {
-                        MaterialTheme.colorScheme.onSurface
-                    },
-                ),
-            ) {
-                item.title()
+            if (item.leadingContent != null) {
+                item.leadingContent.invoke()
+                Spacer(modifier = Modifier.width(16.dp))
+            } else if (item.icon != null) {
+                Box(
+                    modifier = Modifier.size(32.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        item.icon,
+                        contentDescription = null,
+                        tint = item.iconTint ?: MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
             }
 
-            item.description?.let { desc ->
-                Spacer(modifier = Modifier.height(2.dp))
+            Column(
+                modifier = Modifier.weight(1f),
+            ) {
                 ProvideTextStyle(
-                    MaterialTheme.typography.bodySmall.copy(
+                    MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.W500,
                         color = if (!item.enabled) {
-                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                         } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
+                            MaterialTheme.colorScheme.onSurface
                         },
                     ),
                 ) {
-                    desc()
+                    item.title()
                 }
+
+                item.description?.let { desc ->
+                    Spacer(modifier = Modifier.height(2.dp))
+                    ProvideTextStyle(
+                        MaterialTheme.typography.bodySmall.copy(
+                            color = if (!item.enabled) {
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                        ),
+                    ) {
+                        desc()
+                    }
+                }
+            }
+
+            if (item.trailingContent != null) {
+                Spacer(modifier = Modifier.width(8.dp))
+                item.trailingContent.invoke()
+            } else if (item.expandableContent != null) {
+                val rotation by animateFloatAsState(
+                    targetValue = if (item.expanded) 90f else 0f,
+                    animationSpec = tween(200)
+                )
+                Icon(
+                    imageVector = Icons.Outlined.ChevronRight,
+                    contentDescription = if (item.expanded) "Collapse" else "Expand",
+                    modifier = Modifier.graphicsLayer { rotationZ = rotation },
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (item.enabled) 1f else 0.38f),
+                )
             }
         }
 
-        item.trailingContent?.let { trailing ->
-            Spacer(modifier = Modifier.width(8.dp))
-            trailing()
+        AnimatedVisibility(visible = item.expanded && item.enabled) {
+            item.expandableContent?.invoke()
         }
     }
 }
@@ -208,6 +231,69 @@ fun SettingsSubScreen(
     }
 }
 
+@Composable
+fun SettingsExpandableActionRow(
+    title: String,
+    subtitle: String? = null,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    enabled: Boolean = true,
+    content: @Composable () -> Unit,
+) {
+    Material3SettingsItemRow(
+        item = Material3SettingsItem(
+            title = { Text(title) },
+            description = subtitle?.let { { Text(it) } },
+            expanded = expanded,
+            expandableContent = content,
+            enabled = enabled,
+            onClick = onToggle
+        ),
+        isFirst = true,
+        isLast = true
+    )
+}
+
+@Composable
+fun SettingsActionRow(
+    title: String,
+    subtitle: String,
+    enabled: Boolean = true,
+    onClick: () -> Unit,
+) {
+    Material3SettingsItemRow(
+        item = Material3SettingsItem(
+            title = { Text(title) },
+            description = { Text(subtitle) },
+            enabled = enabled,
+            onClick = onClick
+        ),
+        isFirst = true,
+        isLast = true
+    )
+}
+
+@Composable
+fun SettingsToggle(
+    title: String,
+    subtitle: String? = null,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    enabled: Boolean = true,
+) {
+    Material3SettingsItemRow(
+        item = switchSettingsItem(
+            title = title,
+            description = subtitle,
+            checked = checked,
+            enabled = enabled,
+            onCheckedChange = onCheckedChange
+        ),
+        isFirst = true,
+        isLast = true
+    )
+}
+
 data class Material3SettingsItem(
     val icon: ImageVector? = null,
     val leadingContent: (@Composable () -> Unit)? = null,
@@ -219,6 +305,8 @@ data class Material3SettingsItem(
     val iconTint: Color? = null,
     val modifier: Modifier = Modifier,
     val onClick: (() -> Unit)? = null,
+    val expanded: Boolean = false,
+    val expandableContent: (@Composable () -> Unit)? = null,
 )
 
 @Composable
@@ -237,6 +325,24 @@ fun switchSettingsItem(
             ExpressiveSwitch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled)
         },
         onClick = { onCheckedChange(!checked) }
+    )
+}
+
+fun expandableSettingsItem(
+    title: String,
+    description: String? = null,
+    expanded: Boolean,
+    enabled: Boolean = true,
+    onToggle: () -> Unit,
+    content: @Composable () -> Unit,
+): Material3SettingsItem {
+    return Material3SettingsItem(
+        title = { Text(title) },
+        description = description?.let { { Text(it) } },
+        expanded = expanded,
+        expandableContent = content,
+        enabled = enabled,
+        onClick = onToggle
     )
 }
 

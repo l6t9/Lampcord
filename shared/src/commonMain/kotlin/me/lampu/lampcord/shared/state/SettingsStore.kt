@@ -25,11 +25,43 @@ class SettingsStore(
         }
 
     private var _themeMode by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.themeMode)
-    var themeMode: String
+    var themeMode: me.lampu.lampcord.shared.settings.ThemeMode
         get() = _themeMode
         set(value) {
             _themeMode = value
             me.lampu.lampcord.shared.settings.Settings.shared.themeMode = value
+        }
+
+    private var _themePaletteStyle by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.themePaletteStyle)
+    var themePaletteStyle: me.lampu.lampcord.shared.settings.ThemePaletteStyle
+        get() = _themePaletteStyle
+        set(value) {
+            _themePaletteStyle = value
+            me.lampu.lampcord.shared.settings.Settings.shared.themePaletteStyle = value
+        }
+
+    private var _appFont by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.appFont)
+    var appFont: me.lampu.lampcord.shared.settings.FontOption
+        get() = _appFont
+        set(value) {
+            _appFont = value
+            me.lampu.lampcord.shared.settings.Settings.shared.appFont = value
+        }
+
+    private var _accentColor by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.accentColor)
+    var accentColor: String
+        get() = _accentColor
+        set(value) {
+            _accentColor = value
+            me.lampu.lampcord.shared.settings.Settings.shared.accentColor = value
+        }
+
+    private var _materialYou by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.materialYou)
+    var materialYou: Boolean
+        get() = _materialYou
+        set(value) {
+            _materialYou = value
+            me.lampu.lampcord.shared.settings.Settings.shared.materialYou = value
         }
 
     private var _showHiddenChannels by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.showHiddenChannels)

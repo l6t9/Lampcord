@@ -1,6 +1,36 @@
 package me.lampu.lampcord.shared.model
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+
+object NonceSerializer : KSerializer<String?> {
+    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("nonce", PrimitiveKind.STRING)
+
+    override fun deserialize(decoder: Decoder): String? {
+        val input = (decoder as? JsonDecoder)?.decodeJsonElement()
+        return when (input) {
+            is JsonPrimitive -> input.contentOrNull
+            else -> null
+        }
+    }
+
+    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+    override fun serialize(encoder: Encoder, value: String?) {
+        if (value == null) {
+            encoder.encodeNull()
+        } else {
+            encoder.encodeString(value)
+        }
+    }
+}
 
 @Serializable
 data class Message(
@@ -17,6 +47,7 @@ data class Message(
     val attachments: List<Attachment> = emptyList(),
     val embeds: List<Embed> = emptyList(),
     val reactions: List<MessageReaction>? = null,
+    @Serializable(with = NonceSerializer::class)
     val nonce: String? = null,
     val pinned: Boolean = false,
     val webhook_id: String? = null,

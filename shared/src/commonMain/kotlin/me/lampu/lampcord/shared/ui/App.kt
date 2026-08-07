@@ -4,7 +4,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import coil3.ImageLoader
 import coil3.PlatformContext
@@ -24,18 +26,28 @@ fun App() {
     val isSystemInDarkTheme = androidx.compose.foundation.isSystemInDarkTheme()
     
     val useDarkTheme = when (chatState.settingsStore.themeMode) {
-        "dark" -> true
-        "light" -> false
-        "amoled" -> true
+        me.lampu.lampcord.shared.settings.ThemeMode.DARK -> true
+        me.lampu.lampcord.shared.settings.ThemeMode.LIGHT -> false
         else -> isSystemInDarkTheme
     }
     
-    val pureBlack = chatState.settingsStore.themeMode == "amoled" || 
-            (chatState.settingsStore.themeMode == "auto" && chatState.settingsStore.pureBlack && isSystemInDarkTheme)
+    val pureBlack = chatState.settingsStore.pureBlack && useDarkTheme
+
+    val seedColor = remember(chatState.settingsStore.accentColor) {
+        try {
+            Color(chatState.settingsStore.accentColor.removePrefix("#").toLong(16) or 0xFF000000)
+        } catch (e: Exception) {
+            Color(0xFF6750A4)
+        }
+    }
 
     LampcordTheme(
         useDarkTheme = useDarkTheme,
-        pureBlack = pureBlack
+        pureBlack = pureBlack,
+        paletteStyle = chatState.settingsStore.themePaletteStyle,
+        useMaterialYou = chatState.settingsStore.materialYou,
+        appFont = chatState.settingsStore.appFont,
+        seedColor = seedColor
     ) {
         Surface(
             modifier = Modifier.fillMaxSize(),

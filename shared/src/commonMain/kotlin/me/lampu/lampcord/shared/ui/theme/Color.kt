@@ -2,7 +2,7 @@ package me.lampu.lampcord.shared.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val ColorLightPrimary = Color(0xFF3F4CDA)
+val ColorLightPrimary = Color(0xFF6750A4)
 val ColorLightOnPrimary = Color(0xFFFFFFFF)
 val ColorLightPrimaryContainer = Color(0xFFE0E0FF)
 val ColorLightOnPrimaryContainer = Color(0xFF000569)

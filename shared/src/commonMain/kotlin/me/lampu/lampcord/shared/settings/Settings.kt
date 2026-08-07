@@ -10,7 +10,11 @@ class Settings(private val settings: KmpSettings) {
     var discordToken by preference("discord_token", "")
     var savedAccountsJson by preference("saved_accounts", "[]")
     var pureBlack by preferenceBoolean("pure_black", false)
-    var themeMode by preference("theme_mode", "auto")
+    var themeMode by preferenceEnum("theme_mode", ThemeMode.AUTO)
+    var themePaletteStyle by preferenceEnum("theme_palette_style", ThemePaletteStyle.TONAL_SPOT)
+    var appFont by preferenceEnum("app_font", FontOption.SYSTEM)
+    var accentColor by preference("accent_color", "#6750A4")
+    var materialYou by preferenceBoolean("material_you", true)
     var showHiddenChannels by preferenceBoolean("show_hidden_channels", false)
 
     fun getLastChannel(guildId: String): String? {
@@ -21,6 +25,18 @@ class Settings(private val settings: KmpSettings) {
     fun setLastChannel(guildId: String, channelId: String) {
         settings["last_channel_$guildId"] = channelId
     }
+
+    private inline fun <reified T : Enum<T>> preferenceEnum(key: String, defaultValue: T): ReadWriteProperty<Any?, T> =
+        object : ReadWriteProperty<Any?, T> {
+            override fun getValue(thisRef: Any?, property: KProperty<*>): T {
+                val name = settings.getString(key, defaultValue.name)
+                return enumValues<T>().find { it.name == name } ?: defaultValue
+            }
+
+            override fun setValue(thisRef: Any?, property: KProperty<*>, value: T) {
+                settings[key] = value.name
+            }
+        }
 
     private fun preference(key: String, defaultValue: String): ReadWriteProperty<Any?, String> =
         object : ReadWriteProperty<Any?, String> {

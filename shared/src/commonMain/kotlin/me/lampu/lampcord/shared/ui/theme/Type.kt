@@ -6,9 +6,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-fun LampcordTypography(): Typography {
-    val font = FontFamily.Default
-
+fun LampcordTypography(font: FontFamily = FontFamily.Default): Typography {
     return Typography(
         displayLarge = TextStyle(
             fontFamily = font,
