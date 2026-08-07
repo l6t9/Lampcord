@@ -16,19 +16,41 @@ class GuildStore {
 
     val allGuildChannels = mutableStateMapOf<String, List<Channel>>()
 
-    fun setGuilds(newGuilds: List<Guild>, order: List<String>) {
-        val sorted = newGuilds.sortedBy { guild -> 
+    fun setGuilds(newGuilds: List<me.lampu.lampcord.shared.model.Guild>, order: List<String>) {
+        newGuilds.forEach { newGuild ->
+            val index = guilds.indexOfFirst { it.id == newGuild.id }
+            if (index != -1) {
+                val existing = guilds[index]
+                // Merge: prefer full data from existing if new one is partial
+                guilds[index] = existing.copy(
+                    name = newGuild.name ?: existing.name,
+                    icon = newGuild.icon ?: existing.icon,
+                    banner = newGuild.banner ?: existing.banner,
+                    roles = if (newGuild.roles.isNotEmpty()) newGuild.roles else existing.roles,
+                    features = newGuild.features ?: existing.features,
+                    owner_id = newGuild.owner_id ?: existing.owner_id
+                )
+            } else {
+                guilds.add(newGuild)
+            }
+        }
+        
+        // Re-sort
+        val sorted = guilds.sortedBy { guild -> 
             val pos = order.indexOf(guild.id)
             if (pos == -1) Int.MAX_VALUE else pos 
-        }
+        }.toList()
         guilds.clear()
         guilds.addAll(sorted)
     }
 
-    fun handleGuildCreate(guild: Guild, order: List<String>) {
+    fun handleGuildCreate(guild: me.lampu.lampcord.shared.model.Guild, order: List<String>) {
         val existingIndex = guilds.indexOfFirst { it.id == guild.id }
         if (existingIndex != -1) {
             guilds[existingIndex] = guild
+            if (selectedGuild?.id == guild.id) {
+                selectedGuild = guild
+            }
         } else {
             guilds.add(guild)
         }

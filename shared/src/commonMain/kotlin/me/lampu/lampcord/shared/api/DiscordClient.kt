@@ -144,6 +144,7 @@ class DiscordClient(
         header("User-Agent", userAgent)
         header("Accept-Language", "en-US,en;q=0.9")
         header("X-Super-Properties", getSuperProperties())
+        header("X-Discord-Locale", "en-US")
         token?.let { header(HttpHeaders.Authorization, it) }
     }
 
@@ -273,18 +274,23 @@ class DiscordClient(
                                 message_reference = messageReference,
                                 nonce = nonce,
                                 attachments = attachmentMetadata
-                            )))
+                            )), Headers.build {
+                                append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                            })
                             files.forEachIndexed { index, (name, bytes) ->
                                 val contentType = when {
                                     name.endsWith(".png", true) -> ContentType.Image.PNG
                                     name.endsWith(".jpg", true) || name.endsWith(".jpeg", true) -> ContentType.Image.JPEG
                                     name.endsWith(".gif", true) -> ContentType.Image.GIF
                                     name.endsWith(".webp", true) -> ContentType.parse("image/webp")
+                                    name.endsWith(".mp4", true) -> ContentType.Video.MP4
+                                    name.endsWith(".mov", true) -> ContentType.Video.QuickTime
+                                    name.endsWith(".webm", true) -> ContentType.Video.Any
                                     else -> ContentType.Application.OctetStream
                                 }
                                 append("files[$index]", bytes, Headers.build {
-                                    append(HttpHeaders.ContentDisposition, "form-data; name=\"files[$index]\"; filename=\"$name\"")
                                     append(HttpHeaders.ContentType, contentType.toString())
+                                    append(HttpHeaders.ContentDisposition, "form-data; name=\"files[$index]\"; filename=\"$name\"")
                                 })
                             }
                         }

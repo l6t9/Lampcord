@@ -9,11 +9,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.Channel
+import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.state.ChatState
 import me.lampu.lampcord.shared.ui.components.ChannelItem
 import me.lampu.lampcord.shared.ui.components.ContextMenu
 import me.lampu.lampcord.shared.ui.components.ContextMenuItem
 import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.utils.PermissionHelper
 import me.lampu.lampcord.shared.utils.setClipboardText
 
 @Composable
@@ -23,6 +25,15 @@ fun GuildCategoryItem(
     chatState: ChatState
 ) {
     var collapsed by remember { mutableStateOf(false) }
+    val guild = chatState.selectedGuild
+    val member = chatState.currentMember
+    val showHidden = chatState.settingsStore.showHiddenChannels
+
+    val categoryChannels = remember(channels, category.id, guild, member, showHidden) {
+        channels.filter { it.parent_id == category.id }.sortedBy { it.position ?: 0 }
+    }
+
+    if (categoryChannels.isEmpty() && !showHidden) return
 
     val categoryContextMenuItems = remember(category, chatState.userSettings) {
         val items = mutableListOf(

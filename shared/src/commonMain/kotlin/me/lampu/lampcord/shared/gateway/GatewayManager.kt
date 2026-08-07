@@ -149,7 +149,14 @@ class GatewayManager(
 
     private suspend fun sendHeartbeat() {
         val payload = GatewayPayload(
-            op = 40, 
+            op = 1,
+            d = lastSequence?.let { JsonPrimitive(it) } ?: JsonNull
+        )
+        sendPayload(payload)
+        
+        // Also send mobile-specific heartbeat
+        val mobilePayload = GatewayPayload(
+            op = 40,
             d = buildJsonObject {
                 put("seq", lastSequence?.let { JsonPrimitive(it) } ?: JsonNull)
                 put("qos", buildJsonObject {
@@ -159,7 +166,7 @@ class GatewayManager(
                 })
             }
         )
-        sendPayload(payload)
+        sendPayload(mobilePayload)
     }
 
     private suspend fun sendUpdateTimeSpent() {

@@ -23,6 +23,14 @@ fun AdvancedSettings(chatState: ChatState) {
                         onCheckedChange = { 
                             chatState.userSettings = chatState.userSettings?.copy(developer_mode = it)
                         }
+                    ),
+                    switchSettingsItem(
+                        title = "Show Hidden Channels",
+                        description = "Display channels you don't have permission to view as locked and greyed out.",
+                        checked = chatState.settingsStore.showHiddenChannels,
+                        onCheckedChange = { 
+                            chatState.settingsStore.showHiddenChannels = it
+                        }
                     )
                 )
             )

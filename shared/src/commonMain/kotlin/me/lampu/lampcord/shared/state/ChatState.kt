@@ -292,6 +292,14 @@ class ChatState(
                 
                 readStateStore.handleReady(ready)
                 
+                // Clear voice state on READY (matches Paicord logic)
+                gatewayManager.sendVoiceStateUpdate(
+                    guildId = null,
+                    channelId = null,
+                    selfMute = true,
+                    selfDeaf = true
+                )
+                
                 ready.guilds.forEach { guild ->
                     guild.members?.forEach { member ->
                         member.user?.let { user -> 
@@ -347,6 +355,13 @@ class ChatState(
             try {
                 val guild = json.decodeFromJsonElement<Guild>(data)
                 guildStore.handleGuildCreate(guild, userSettings?.guild_positions ?: emptyList())
+                
+                guild.members?.forEach { member ->
+                    member.user?.let { user ->
+                        userStore.cacheMember(guild.id, user.id, member)
+                        userStore.cacheUser(user)
+                    }
+                }
             } catch (e: Exception) { }
         }
     }
@@ -762,10 +777,6 @@ class ChatState(
         lastRequestedRanges = emptyList()
         Settings.shared.setLastChannel(selectedGuild?.id ?: "home", channel.id)
         
-        if (channel.type == 2 || channel.type == 13) {
-            connectToVoice(channel)
-        }
-
         channelLoadingJob = scope.launch {
             if (channel.type == 1) {
                 val userId = channel.recipients?.firstOrNull()?.id
@@ -956,7 +967,7 @@ class ChatState(
     fun hasPermission(permission: Permission, channel: Channel? = selectedChannel): Boolean {
         val member = currentMember ?: return true
         val guild = selectedGuild ?: return true
-        return PermissionHelper.hasPermission(member, guild, channel, permission)
+        return PermissionHelper.hasPermission(member, guild, channel, permission, currentUser?.id)
     }
 
     fun getMember(guildId: String, userId: String): Member? = userStore.getMember(guildId, userId)

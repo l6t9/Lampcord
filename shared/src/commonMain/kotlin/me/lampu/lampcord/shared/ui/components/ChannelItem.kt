@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.Channel
 import me.lampu.lampcord.shared.state.ChatState
 import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.utils.PermissionHelper
 import me.lampu.lampcord.shared.utils.setClipboardText
 
 @Composable
@@ -34,17 +35,25 @@ fun ChannelItem(channel: Channel, chatState: ChatState) {
         derivedStateOf { chatState.userGuildSettingsStore.isChannelMuted(channel.guild_id, channel.id) }
     }
 
+    val guild = chatState.selectedGuild
+    val member = chatState.currentMember
+    val canView = remember(channel, guild, member) {
+        if (guild == null || member == null) true
+        else PermissionHelper.canViewChannel(member, guild, channel, chatState.currentUser?.id)
+    }
+
     val contextMenuItems = remember(channel, chatState.userSettings, isMuted) {
-        val items = mutableListOf(
-            ContextMenuItem(if (isMuted) "Unmute Channel" else "Mute Channel", if (isMuted) Icons.Filled.Notifications else Icons.AutoMirrored.Filled.VolumeOff) {
+        val items = mutableListOf<ContextMenuItem>()
+        if (canView) {
+            items.add(ContextMenuItem(if (isMuted) "Unmute Channel" else "Mute Channel", if (isMuted) Icons.Filled.Notifications else Icons.AutoMirrored.Filled.VolumeOff) {
                 chatState.toggleMuteChannel(channel.guild_id ?: "@me", channel.id)
-            },
-            ContextMenuItem("Mark as Read", Icons.Filled.Check) { /* TODO */ },
-            ContextMenuItem("Copy Link", Icons.Filled.Link) {
-                val guildId = channel.guild_id ?: "@me"
-                setClipboardText("https://discord.com/channels/$guildId/${channel.id}")
-            }
-        )
+            })
+            items.add(ContextMenuItem("Mark as Read", Icons.Filled.Check) { /* TODO */ })
+        }
+        items.add(ContextMenuItem("Copy Link", Icons.Filled.Link) {
+            val guildId = channel.guild_id ?: "@me"
+            setClipboardText("https://discord.com/channels/$guildId/${channel.id}")
+        })
         if (chatState.userSettings?.developer_mode == true) {
             items.add(ContextMenuItem("Copy ID", Icons.Filled.Dns) { setClipboardText(channel.id) })
         }
@@ -55,7 +64,8 @@ fun ChannelItem(channel: Channel, chatState: ChatState) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 1.dp),
+                .padding(vertical = 1.dp)
+                .alpha(if (canView) 1f else 0.4f),
             verticalArrangement = Arrangement.Center
         ) {
             Box(
@@ -64,7 +74,7 @@ fun ChannelItem(channel: Channel, chatState: ChatState) {
                     .height(40.dp),
                 contentAlignment = Alignment.CenterStart
             ) {
-                if (isUnread && !isSelected) {
+                if (isUnread && !isSelected && canView) {
                     Box(
                         modifier = Modifier
                             .size(width = 4.dp, height = 12.dp)
@@ -79,23 +89,14 @@ fun ChannelItem(channel: Channel, chatState: ChatState) {
                         .height(34.dp)
                         .padding(horizontal = 8.dp),
                     onClick = { 
-                        if (channel.type == 2 || channel.type == 13) {
-                            if (chatState.currentVoiceState?.channel_id == channel.id) {
-                                // Already connected, just select to show full view
-                                chatState.selectChannel(channel)
-                            } else {
-                                chatState.connectToVoice(channel)
-                                // Also select it to show the full view immediately
-                                chatState.selectChannel(channel)
-                            }
-                        } else {
-                            chatState.selectChannel(channel) 
-                        }
+                        if (!canView) return@Surface
+                        chatState.selectChannel(channel)
                     },
                     color = if (isSelected) 
                         MaterialTheme.colorScheme.surfaceVariant 
                     else Color.Transparent,
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    enabled = canView
                 ) {
                     Row(
                         modifier = Modifier
@@ -103,12 +104,12 @@ fun ChannelItem(channel: Channel, chatState: ChatState) {
                             .alpha(if (isMuted && !isSelected) 0.5f else 1f),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        val contentColor = if (isSelected || isUnread) 
+                        val contentColor = if (isSelected || (isUnread && canView)) 
                             MaterialTheme.colorScheme.onSurface 
                         else MaterialTheme.colorScheme.onSurfaceVariant
                         
                         Icon(
-                            imageVector = when(channel.type) {
+                            imageVector = if (!canView) Icons.Rounded.Lock else when(channel.type) {
                                 15 -> Icons.Outlined.Forum
                                 2, 13 -> Icons.AutoMirrored.Filled.VolumeUp
                                 5 -> Icons.Filled.Campaign

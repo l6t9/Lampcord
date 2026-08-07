@@ -1,5 +1,6 @@
 package me.lampu.lampcord.shared.utils
 
+import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
@@ -18,8 +19,15 @@ actual fun FilePicker(
     ) { uris ->
         if (uris.isNotEmpty()) {
             val files = uris.mapNotNull { uri ->
+                var name = "file"
+                context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                    val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                    if (nameIndex != -1 && cursor.moveToFirst()) {
+                        name = cursor.getString(nameIndex)
+                    }
+                }
+                
                 context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                    val name = uri.path?.substringAfterLast('/') ?: "file"
                     name to inputStream.readBytes()
                 }
             }

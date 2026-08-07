@@ -82,6 +82,7 @@ kotlin {
             dependencies {
                 implementation(compose.desktop.currentOs)
                 implementation(libs.vlcj)
+                implementation(libs.ffmpeg.platform)
                 implementation(libs.jna.core)
                 implementation(libs.jna.platform)
             }

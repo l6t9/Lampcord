@@ -1,6 +1,8 @@
 package me.lampu.lampcord.shared.utils
 
-import me.lampu.lampcord.shared.model.*
+import me.lampu.lampcord.shared.model.Channel
+import me.lampu.lampcord.shared.model.Guild
+import me.lampu.lampcord.shared.model.Member
 
 enum class Permission(val value: Long) {
     CREATE_INSTANT_INVITE(1L shl 0),
@@ -51,19 +53,28 @@ enum class Permission(val value: Long) {
     USE_EXTERNAL_SOUNDS(1L shl 45),
     SEND_VOICE_MESSAGES(1L shl 46),
     SEND_POLLS(1L shl 49),
-    USE_EXTERNAL_APPS(1L shl 50)
+    USE_EXTERNAL_APPS(1L shl 50);
+
+    companion object {
+        fun fromValue(value: Long): Set<Permission> {
+            return entries.filter { (value and it.value) != 0L }.toSet()
+        }
+    }
 }
 
 object PermissionHelper {
-    fun computeBasePermissions(member: Member, guild: Guild): Long {
-        if (guild.owner_id == member.user?.id) return -1L
+    fun computeBasePermissions(member: Member, guild: Guild, userId: String? = null): Long {
+        val effectiveUserId = userId ?: member.user?.id
+        if (guild.owner_id != null && guild.owner_id == effectiveUserId) return -1L // All permissions
 
+        // Find @everyone role
         val everyoneRole = guild.roles.find { it.id == guild.id }
-        var permissions = everyoneRole?.permissions?.toLongOrNull() ?: 0L
+        var permissions = everyoneRole?.permissions?.toULongOrNull()?.toLong() ?: 0L
 
-        member.roles.forEach { roleId ->
-            guild.roles.find { it.id == roleId }?.let { role ->
-                permissions = permissions or (role.permissions.toLongOrNull() ?: 0L)
+        for (roleId in member.roles) {
+            val role = guild.roles.find { it.id == roleId }
+            if (role != null) {
+                permissions = permissions or (role.permissions.toULongOrNull()?.toLong() ?: 0L)
             }
         }
 
@@ -72,48 +83,60 @@ object PermissionHelper {
         return permissions
     }
 
-    fun computeOverwrites(basePermissions: Long, member: Member, guild: Guild, channel: Channel): Long {
-        if ((basePermissions and Permission.ADMINISTRATOR.value) != 0L) return -1L
+    fun computeOverwrites(basePermissions: Long, member: Member, guild: Guild, channel: Channel, userId: String? = null): Long {
+        if (basePermissions == -1L) return -1L
 
         var permissions = basePermissions
+        val overwrites = channel.permission_overwrites ?: return permissions
 
-        // Everyone overwrite
-        channel.permission_overwrites?.find { it.id == guild.id }?.let { overwrite ->
-            permissions = permissions and (overwrite.deny.toLongOrNull() ?: 0L).inv()
-            permissions = permissions or (overwrite.allow.toLongOrNull() ?: 0L)
+        // @everyone overwrite
+        overwrites.find { it.id == guild.id }?.let { everyoneOverwrite ->
+            val deny = everyoneOverwrite.deny.toULongOrNull()?.toLong() ?: 0L
+            val allow = everyoneOverwrite.allow.toULongOrNull()?.toLong() ?: 0L
+            permissions = (permissions and deny.inv()) or allow
         }
 
         // Role overwrites
-        var allow = 0L
-        var deny = 0L
-        member.roles.forEach { roleId ->
-            channel.permission_overwrites?.find { it.id == roleId }?.let { overwrite ->
-                allow = allow or (overwrite.allow.toLongOrNull() ?: 0L)
-                deny = deny or (overwrite.deny.toLongOrNull() ?: 0L)
+        var roleAllow = 0L
+        var roleDeny = 0L
+        for (roleId in member.roles) {
+            overwrites.find { it.id == roleId }?.let { roleOverwrite ->
+                roleAllow = roleAllow or (roleOverwrite.allow.toULongOrNull()?.toLong() ?: 0L)
+                roleDeny = roleDeny or (roleOverwrite.deny.toULongOrNull()?.toLong() ?: 0L)
             }
         }
-        permissions = permissions and deny.inv()
-        permissions = permissions or allow
+        permissions = (permissions and roleDeny.inv()) or roleAllow
 
         // Member overwrite
-        member.user?.let { user ->
-            channel.permission_overwrites?.find { it.id == user.id }?.let { overwrite ->
-                permissions = permissions and (overwrite.deny.toLongOrNull() ?: 0L).inv()
-                permissions = permissions or (overwrite.allow.toLongOrNull() ?: 0L)
+        val effectiveUserId = userId ?: member.user?.id
+        effectiveUserId?.let { uid ->
+            overwrites.find { it.id == uid }?.let { memberOverwrite ->
+                val deny = memberOverwrite.deny.toULongOrNull()?.toLong() ?: 0L
+                val allow = memberOverwrite.allow.toULongOrNull()?.toLong() ?: 0L
+                permissions = (permissions and deny.inv()) or allow
             }
         }
 
         return permissions
     }
 
-    fun computePermissions(member: Member, guild: Guild, channel: Channel?): Long {
-        val base = computeBasePermissions(member, guild)
-        if (channel == null) return base
-        return computeOverwrites(base, member, guild, channel)
+    fun hasPermission(member: Member, guild: Guild, channel: Channel?, permission: Permission, userId: String? = null): Boolean {
+        val effectiveUserId = userId ?: member.user?.id
+        if (guild.owner_id == effectiveUserId) return true
+        
+        var permissions = computeBasePermissions(member, guild, effectiveUserId)
+        if (permissions == -1L) return true
+        
+        if (channel != null) {
+            permissions = computeOverwrites(permissions, member, guild, channel, effectiveUserId)
+        }
+        
+        if (permissions == -1L) return true
+        
+        return (permissions and permission.value) != 0L
     }
 
-    fun hasPermission(member: Member, guild: Guild, channel: Channel?, permission: Permission): Boolean {
-        val perms = computePermissions(member, guild, channel)
-        return (perms and Permission.ADMINISTRATOR.value) != 0L || (perms and permission.value) != 0L
+    fun canViewChannel(member: Member, guild: Guild, channel: Channel, userId: String? = null): Boolean {
+        return hasPermission(member, guild, channel, Permission.VIEW_CHANNEL, userId)
     }
 }

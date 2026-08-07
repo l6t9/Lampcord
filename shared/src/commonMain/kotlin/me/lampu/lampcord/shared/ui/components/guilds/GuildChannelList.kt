@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.Channel
+import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.state.ChatState
 import me.lampu.lampcord.shared.ui.components.ChannelItem
 import me.lampu.lampcord.shared.ui.components.ChannelSkeleton
@@ -28,11 +29,15 @@ import me.lampu.lampcord.shared.ui.components.ContextMenuItem
 import me.lampu.lampcord.shared.ui.components.VerticalScrollbar
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.utils.PermissionHelper
 import me.lampu.lampcord.shared.utils.setClipboardText
 
 @Composable
 fun GuildChannelList(chatState: ChatState) {
     val guild = chatState.selectedGuild
+    val member = chatState.currentMember
+    val showHidden = chatState.settingsStore.showHiddenChannels
+
     val bannerUrl = guild?.banner?.let { 
         "https://cdn.discordapp.com/banners/${guild.id}/$it.png?size=600" 
     }
@@ -63,9 +68,18 @@ fun GuildChannelList(chatState: ChatState) {
                 }
             }
     ) {
-        val channels = chatState.channels
-        val categories = channels.filter { it.type == 4 }.sortedBy { it.position ?: 0 }
-        val rootChannels = channels.filter { it.parent_id == null && it.type != 4 }.sortedBy { it.position ?: 0 }
+        val allChannels = chatState.channels
+        val visibleChannels by remember(guild, member, showHidden) {
+            derivedStateOf {
+                if (guild == null || member == null) allChannels.toList()
+                else allChannels.filter { channel ->
+                    PermissionHelper.canViewChannel(member, guild, channel, chatState.currentUser?.id) || showHidden
+                }
+            }
+        }
+
+        val categories = visibleChannels.filter { it.type == 4 }.sortedBy { it.position ?: 0 }
+        val rootChannels = visibleChannels.filter { it.parent_id == null && it.type != 4 }.sortedBy { it.position ?: 0 }
 
         LazyColumn(
             state = scrollState,
@@ -100,7 +114,7 @@ fun GuildChannelList(chatState: ChatState) {
                 
                 items(categories, key = { it.id }) { category ->
                     Box(Modifier.animateItem()) {
-                        GuildCategoryItem(category, channels, chatState)
+                        GuildCategoryItem(category, visibleChannels, chatState)
                     }
                 }
             }

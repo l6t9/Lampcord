@@ -97,11 +97,17 @@ fun AttachmentViewer(
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             when {
                 item.isVideo() -> {
+                    val isGifv = item.isGifv()
                     VideoPlayer(
                         url = item.url ?: item.proxy_url ?: "",
+                        loop = isGifv,
+                        showControls = !isGifv,
                         modifier = Modifier
                             .fillMaxWidth(0.95f)
                             .aspectRatio((item.aspectRatio ?: (16f / 9f)).coerceIn(0.3f, 4f))
+                            .pointerInput(Unit) {
+                                detectTapGestures(onTap = { showControls = !showControls })
+                            }
                     )
                 }
                 item.isImage() -> {
@@ -308,6 +314,11 @@ private fun DiscordMedia.isVideo(): Boolean = when (this) {
     is Attachment -> content_type?.startsWith("video/") == true
     is EmbedVideo -> true
     else -> false
+}
+
+private fun DiscordMedia.isGifv(): Boolean {
+    val url = (url ?: proxy_url)?.lowercase() ?: return false
+    return url.contains("klipy.com") || url.contains(".gifv") || url.contains("tenor.com")
 }
 
 /** Same URL logic as Paicord: raw proxy URL for images, format=png for video posters. */

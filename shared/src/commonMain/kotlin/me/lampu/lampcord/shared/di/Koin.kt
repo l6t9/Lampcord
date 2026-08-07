@@ -17,7 +17,7 @@ val appModule = module {
             ignoreUnknownKeys = true 
             coerceInputValues = true
             isLenient = true
-            explicitNulls = true
+            explicitNulls = false
         } 
     }
     single { createHttpClient() }

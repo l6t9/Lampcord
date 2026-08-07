@@ -94,30 +94,34 @@ class MessageStore(
         isProcessingQueue = true
 
         scope.launch {
-            while (messageTasks.isNotEmpty()) {
-                val task = messageTasks.first()
-                val success = discordClient.sendMessage(
-                    task.channelId,
-                    task.content,
-                    task.replyTo,
-                    task.forwardFrom,
-                    task.files,
-                    task.nonce
-                )
+            try {
+                while (messageTasks.isNotEmpty()) {
+                    val task = messageTasks.first()
+                    val success = discordClient.sendMessage(
+                        task.channelId,
+                        task.content,
+                        task.replyTo,
+                        task.forwardFrom,
+                        task.files,
+                        task.nonce
+                    )
 
-                if (success) {
-                    messageTasks.removeAt(0)
-                } else {
-                    // Halt queue and mark error on the message
-                    val index = messages.indexOfFirst { it.nonce == task.nonce && it.isPending }
-                    if (index != -1) {
-                        messages[index] = messages[index].copy(sendError = "Failed to send. Tap to retry.")
+                    if (success) {
+                        messageTasks.removeAt(0)
+                    } else {
+                        // Halt queue and mark error on the message
+                        val index = messages.indexOfFirst { it.nonce == task.nonce && it.isPending }
+                        if (index != -1) {
+                            messages[index] = messages[index].copy(sendError = "Failed to send. Tap to retry.")
+                        }
+                        break
                     }
-                    isProcessingQueue = false
-                    return@launch
                 }
+            } catch (e: Exception) {
+                println("Error in queue processing: ${e.message}")
+            } finally {
+                isProcessingQueue = false
             }
-            isProcessingQueue = false
         }
     }
 

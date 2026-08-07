@@ -189,6 +189,18 @@ fun ChatArea(
                         fontSize = 24.sp,
                         color = Color.White
                     )
+
+                    if ((chatState.selectedChannel?.type == 2 || chatState.selectedChannel?.type == 13) && chatState.currentVoiceState?.channel_id != chatState.selectedChannel?.id) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = { chatState.selectedChannel?.let { chatState.connectToVoice(it) } },
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.VolumeUp, null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Join Voice")
+                        }
+                    }
                 }
             }
         }

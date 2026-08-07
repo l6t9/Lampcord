@@ -18,12 +18,16 @@ import androidx.media3.ui.PlayerView
 @Composable
 actual fun VideoPlayer(
     url: String,
-    modifier: Modifier
+    modifier: Modifier,
+    loop: Boolean,
+    showControls: Boolean
 ) {
     val context = LocalContext.current
     val exoPlayer = remember {
         ExoPlayer.Builder(context).build().apply {
             setMediaItem(MediaItem.fromUri(url))
+            repeatMode = if (loop) ExoPlayer.REPEAT_MODE_ALL else ExoPlayer.REPEAT_MODE_OFF
+            playWhenReady = true
             prepare()
         }
     }
@@ -39,6 +43,7 @@ actual fun VideoPlayer(
         factory = {
             PlayerView(context).apply {
                 player = exoPlayer
+                useController = showControls
                 layoutParams = FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT

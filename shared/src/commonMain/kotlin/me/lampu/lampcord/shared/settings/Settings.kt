@@ -11,6 +11,7 @@ class Settings(private val settings: KmpSettings) {
     var savedAccountsJson by preference("saved_accounts", "[]")
     var pureBlack by preferenceBoolean("pure_black", false)
     var themeMode by preference("theme_mode", "auto")
+    var showHiddenChannels by preferenceBoolean("show_hidden_channels", false)
 
     fun getLastChannel(guildId: String): String? {
         val id = settings.getString("last_channel_$guildId", "")

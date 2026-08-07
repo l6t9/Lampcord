@@ -31,6 +31,14 @@ class SettingsStore(
             _themeMode = value
             me.lampu.lampcord.shared.settings.Settings.shared.themeMode = value
         }
+
+    private var _showHiddenChannels by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.showHiddenChannels)
+    var showHiddenChannels: Boolean
+        get() = _showHiddenChannels
+        set(value) {
+            _showHiddenChannels = value
+            me.lampu.lampcord.shared.settings.Settings.shared.showHiddenChannels = value
+        }
     
     private val scope = CoroutineScope(Dispatchers.Main)
     private var pendingUpdateJob: Job? = null

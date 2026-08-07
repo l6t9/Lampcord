@@ -6,5 +6,7 @@ import androidx.compose.ui.Modifier
 @Composable
 expect fun VideoPlayer(
     url: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    loop: Boolean = false,
+    showControls: Boolean = true
 )
