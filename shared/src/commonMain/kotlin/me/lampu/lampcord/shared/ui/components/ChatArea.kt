@@ -84,6 +84,7 @@ fun ChatArea(
     Box(
         modifier = modifier
             .fillMaxSize()
+            .padding(bottom = 10.dp)
             .pointerInput(Unit) {
                 awaitPointerEventScope {
                     while (true) {
