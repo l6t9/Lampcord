@@ -36,7 +36,8 @@ class MessageStore(
 
     fun handleMessageCreate(message: Message) {
         // Remove matching pending message
-        message.nonce?.let { nonce ->
+        val nonce = message.nonce
+        if (nonce != null) {
             messages.removeAll { it.nonce == nonce && it.isPending }
         }
         addMessageAtTop(message)

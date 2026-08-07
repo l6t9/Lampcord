@@ -3,6 +3,7 @@ package me.lampu.lampcord.shared.ui.components
 import androidx.compose.foundation.background 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape 
 import androidx.compose.material3.*
@@ -50,8 +51,9 @@ fun ChatArea(
     
     LaunchedEffect(latestMessageId) {
         if (latestMessageId != null) {
-            if (scrollState.firstVisibleItemIndex < 3) {
-                scrollState.animateScrollToItem(0)
+            // If we are at or near the bottom (item 0 in reverseLayout), scroll to new item
+            if (scrollState.firstVisibleItemIndex <= 1) {
+                scrollState.scrollToItem(0)
             }
         }
     }
@@ -103,10 +105,10 @@ fun ChatArea(
             reverseLayout = true
         ) {
             items(
-                count = chatState.messages.size,
-                key = { index -> chatState.messages[index].id }
-            ) { index ->
-                val message = chatState.messages[index]
+                items = chatState.messages,
+                key = { it.id }
+            ) { message ->
+                val index = chatState.messages.indexOf(message)
                 val priorMessage = chatState.messages.getOrNull(index + 1)
                 
                 // Grouping logic: 7 minutes window, same author, current is regular message

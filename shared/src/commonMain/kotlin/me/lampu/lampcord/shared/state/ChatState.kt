@@ -774,6 +774,7 @@ class ChatState(
         selectedChannel = channel
         selectedThread = null
         memberListStore.clear()
+        messageStore.clear()
         lastRequestedRanges = emptyList()
         Settings.shared.setLastChannel(selectedGuild?.id ?: "home", channel.id)
         
@@ -795,7 +796,6 @@ class ChatState(
                 isForumLoading = true
                 try { forumThreads.clear(); guildStore.forumThreads.addAll(loadForumThreads(channel.id)) } finally { isForumLoading = false }
             } else {
-                messageStore.clear()
                 val channelMessages = discordClient.getChannelMessages(channel.id)
                 channelMessages.forEach { msg -> msg.member?.let { m -> userStore.cacheMember(channel.guild_id ?: selectedGuild?.id ?: "", msg.author.id, m) } }
                 messageStore.addMessages(channelMessages)

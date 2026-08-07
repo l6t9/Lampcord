@@ -2,8 +2,7 @@ package me.lampu.lampcord.shared.ui
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -426,7 +425,14 @@ fun SettingsScreen(
                                 modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface),
                                 label = "settingsContent",
                             ) { section ->
-                                Box(modifier = Modifier.fillMaxSize().padding(24.dp)) {
+                                val scrollState = rememberScrollState()
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .verticalScroll(scrollState)
+                                        .padding(24.dp),
+                                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                                ) {
                                     when (section) {
                                         SettingsSection.ACCOUNT -> AccountSettings(chatState)
                                         SettingsSection.PROFILES -> ProfileSettings(chatState)

@@ -252,7 +252,7 @@ fun AppearanceSettings(chatState: ChatState) {
         var compactMode by remember { mutableStateOf(false) }
 
         Material3SettingsGroup(
-            title = "Display",
+            title = "Messages",
             items = listOf(
                 switchSettingsItem(
                     title = "Show Nitro Badge",
