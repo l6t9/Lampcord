@@ -144,4 +144,14 @@ object DateTimeUtils {
                 }
                 return ("$displayHour:$minute $amPm")
         }
+        fun getCurrentTime24H(): String {
+                val now = Clock.System.now()
+                val timeZone = TimeZone.currentSystemDefault()
+                val localDateTime = now.toLocalDateTime(timeZone)
+                val nowDate = now.toLocalDateTime(timeZone).date
+    
+                val hour = localDateTime.hour
+                val minute = localDateTime.minute.toString().padStart(2, '0')
+                return ("$hour:$minute")
+        }
 }

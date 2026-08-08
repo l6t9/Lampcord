@@ -8,12 +8,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.input.key.*
 import me.lampu.lampcord.shared.state.ChatState
 import me.lampu.lampcord.shared.ui.baseplates.DesktopBaseplate
 import me.lampu.lampcord.shared.ui.baseplates.MobileBaseplate
+import me.lampu.lampcord.shared.utils.DateTimeUtils
 import me.lampu.lampcord.shared.ui.components.*
 import org.koin.compose.koinInject
 
@@ -34,8 +36,34 @@ fun MainScreen(
     ) { (isConnected, isConnecting) ->
         if (!isConnected) {
             if (isConnecting) {
+                println(chatState.currentUser)
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    ContainedLoadingIndicator()
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        ContainedLoadingIndicator()
+                        Spacer(Modifier.height(8.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = when(DateTimeUtils.getCurrentTime24H().split(":")[0].toInt()){
+                                    0, 1, 2, 3, 4, 5 -> "Productive night I see, "
+                                    6, 7, 8, 9, 10, 11 -> "Good morning, "
+                                    12, 13, 14, 15, 16, 17 -> "Good afternoon, "
+                                    18, 19, 20, 21, 22, 23 -> "Good evening, "
+                                    else -> "Evil day I guess, "
+                                },
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = ((chatState.currentUser?.global_name ?: chatState.currentUser?.username) ?: "user"), // Lamp save us here
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(text = ".")
+                        }
+                    }   
                 }
             } else {
                 LoginScreen(onLoginSuccess = { })
