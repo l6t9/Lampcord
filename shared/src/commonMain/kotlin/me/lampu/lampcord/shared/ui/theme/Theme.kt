@@ -21,6 +21,7 @@ fun LampcordTheme(
     paletteStyle: ThemePaletteStyle = Settings.shared.themePaletteStyle,
     useMaterialYou: Boolean = Settings.shared.materialYou,
     appFont: FontOption = Settings.shared.appFont,
+    fontScale: Float = Settings.shared.fontScale,
     content: @Composable () -> Unit
 ) {
     val dynamicSeed = rememberDynamicSeedColor()
@@ -56,7 +57,7 @@ fun LampcordTheme(
 
     MaterialExpressiveTheme(
         colorScheme = animatedColorScheme,
-        typography = LampcordTypography(font),
+        typography = LampcordTypography(font, scale = fontScale),
         shapes = LampcordShapes,
         content = content
     )

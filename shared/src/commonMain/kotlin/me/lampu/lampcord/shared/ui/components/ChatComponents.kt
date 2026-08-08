@@ -267,394 +267,456 @@ fun ChatInputBar(
     channel: me.lampu.lampcord.shared.model.Channel,
     chatState: ChatState
 ) {
-    Surface(
-        color = MaterialTheme.colorScheme.surface,
-        modifier = Modifier.fillMaxWidth().heightIn(min = 68.dp)
-    ) {
-        val canSend by remember(channel, chatState.currentUser) {
-            derivedStateOf { chatState.hasPermission(Permission.SEND_MESSAGES) }
+    var textFieldValue by remember(channel.id) { 
+        val draft = chatState.draftMessages[channel.id] ?: ""
+        mutableStateOf(TextFieldValue(draft, TextRange(draft.length))) 
+    }
+    
+    var showFilePicker by remember { mutableStateOf(false) }
+    val focusRequester = remember { FocusRequester() }
+
+    val canSend by remember(channel, chatState.currentUser) {
+        derivedStateOf { chatState.hasPermission(Permission.SEND_MESSAGES) }
+    }
+
+    // Update draft whenever text changes
+    LaunchedEffect(textFieldValue.text) {
+        chatState.draftMessages[channel.id] = textFieldValue.text
+    }
+
+    // Keep local messageText in sync with draft changes from outside
+    LaunchedEffect(chatState.draftMessages[channel.id]) {
+        val draft = chatState.draftMessages[channel.id] ?: ""
+        if (draft != textFieldValue.text) {
+            textFieldValue = TextFieldValue(draft, TextRange(draft.length))
         }
-        
-        var textFieldValue by remember(channel.id) { 
-            val draft = chatState.draftMessages[channel.id] ?: ""
-            mutableStateOf(TextFieldValue(draft, TextRange(draft.length))) 
+    }
+
+    // Sync messageText when editing starts
+    LaunchedEffect(chatState.editingMessage) {
+        chatState.editingMessage?.let {
+            textFieldValue = TextFieldValue(it.content, TextRange(it.content.length))
+            chatState.pendingFiles.clear()
+            chatState.replyingTo = null
+            focusRequester.requestFocus()
         }
-        
-        var showFilePicker by remember { mutableStateOf(false) }
-        val focusRequester = remember { FocusRequester() }
+    }
 
-        // Update draft whenever text changes
-        LaunchedEffect(textFieldValue.text) {
-            chatState.draftMessages[channel.id] = textFieldValue.text
+    LaunchedEffect(chatState.replyingTo) {
+        chatState.replyingTo?.let {
+            chatState.editingMessage = null
+            focusRequester.requestFocus()
         }
+    }
 
-        // Keep local messageText in sync with draft changes from outside
-        LaunchedEffect(chatState.draftMessages[channel.id]) {
-            val draft = chatState.draftMessages[channel.id] ?: ""
-            if (draft != textFieldValue.text) {
-                textFieldValue = TextFieldValue(draft, TextRange(draft.length))
-            }
+    fun applyAutocomplete(replacement: String) {
+        val text = textFieldValue.text
+        val selection = textFieldValue.selection
+        if (selection.collapsed) {
+            val cursor = selection.start
+            val textBefore = text.take(cursor)
+            val lastWordStart = textBefore.lastIndexOfAny(charArrayOf(' ', '\n')) + 1
+            
+            // If it's a command, it's usually at the start
+            val actualStart = if (chatState.autocompleteType == AutocompleteType.COMMAND) 0 else lastWordStart
+            
+            val newText = text.replaceRange(actualStart, cursor, replacement)
+            val newCursor = actualStart + replacement.length
+            textFieldValue = TextFieldValue(newText, TextRange(newCursor))
+            chatState.updateAutocomplete(null, "")
         }
+    }
 
-        // Sync messageText when editing starts
-        LaunchedEffect(chatState.editingMessage) {
-            chatState.editingMessage?.let {
-                textFieldValue = TextFieldValue(it.content, TextRange(it.content.length))
-                chatState.pendingFiles.clear()
-                chatState.replyingTo = null
-                focusRequester.requestFocus()
-            }
-        }
+    val primaryColor = MaterialTheme.colorScheme.primary
 
-        LaunchedEffect(chatState.replyingTo) {
-            chatState.replyingTo?.let {
-                chatState.editingMessage = null
-                focusRequester.requestFocus()
-            }
-        }
-
-        Column {
-            TypingIndicator(chatState, channel.id)
-
-            if (chatState.activeCommand != null) {
-                CommandParameterUI(chatState)
-            }
-
-            if (chatState.replyingTo != null || chatState.editingMessage != null) {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.surfaceContainerLow
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter)) {
+                // Autocomplete Picker
+                AnimatedVisibility(
+                    visible = chatState.autocompleteType != null,
+                    enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                    exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        val isEditing = chatState.editingMessage != null
-                        val activeMsg = chatState.editingMessage ?: chatState.replyingTo
-                        
-                        Icon(
-                            imageVector = if (isEditing) Icons.Filled.Edit else Icons.Rounded.Reply,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = if (isEditing) "Editing message" else "Replying to ${activeMsg?.author?.global_name ?: activeMsg?.author?.username}",
-                            style = MaterialTheme.typography.labelSmall,
-                            modifier = Modifier.weight(1f)
-                        )
-                        IconButton(
-                            onClick = { 
-                                if (isEditing) {
-                                    chatState.editingMessage = null
+                    chatState.autocompleteType?.let { type ->
+                        AutocompletePicker(
+                            chatState = chatState,
+                            type = type,
+                            query = chatState.autocompleteQuery,
+                            selectedIndex = chatState.autocompleteSelectedIndex,
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                            onItemSelected = { item ->
+                                if (item.isCommand && item.commandObj != null) {
+                                    chatState.activeCommand = item.commandObj
                                     textFieldValue = TextFieldValue("")
+                                    chatState.updateAutocomplete(null, "")
                                 } else {
-                                    chatState.replyingTo = null 
-                                }
-                            },
-                            modifier = Modifier.size(24.dp)
-                        ) {
-                            Icon(Icons.Filled.Close, null, modifier = Modifier.size(16.dp))
-                        }
-                    }
-                }
-            }
-
-            if (chatState.pendingFiles.isNotEmpty()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(8.dp)
-                        .height(120.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    chatState.pendingFiles.forEachIndexed { index, (name, data) ->
-                        Surface(
-                            modifier = Modifier.size(100.dp),
-                            shape = RoundedCornerShape(8.dp),
-                            color = MaterialTheme.colorScheme.surfaceContainerHigh
-                        ) {
-                            Box {
-                                if (name.lowercase().let { it.endsWith(".png") || it.endsWith(".jpg") || it.endsWith(".jpeg") || it.endsWith(".webp") || it.endsWith(".gif") }) {
-                                    AsyncImage(
-                                        model = data,
-                                        contentDescription = name,
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Crop
-                                    )
-                                } else {
-                                    Text(name, modifier = Modifier.align(Alignment.Center).padding(4.dp), style = MaterialTheme.typography.labelSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                                }
-                                
-                                IconButton(
-                                    onClick = { chatState.pendingFiles.removeAt(index) },
-                                    modifier = Modifier.align(Alignment.TopEnd).size(24.dp).background(Color.Black.copy(alpha = 0.4f), CircleShape)
-                                ) {
-                                    Icon(Icons.Filled.Close, null, modifier = Modifier.size(16.dp), tint = Color.White)
+                                    applyAutocomplete(item.replacement)
                                 }
                             }
-                        }
+                        )
                     }
                 }
-            }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
-
-            AnimatedVisibility(
-                visible = chatState.isMediaPickerVisible,
-                enter = expandVertically() + fadeIn(),
-                exit = shrinkVertically() + fadeOut()
-            ) {
-                MediaPicker(chatState) {
-                    chatState.isMediaPickerVisible = false
-                }
-            }
-
-            var inputBarWidth by remember { mutableStateOf(0) }
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 68.dp)
-                    .padding(horizontal = 8.dp, vertical = 8.dp)
-                    .onGloballyPositioned { inputBarWidth = it.size.width }
-                    .animateContentSize(animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f)),
-                verticalAlignment = Alignment.Bottom
-            ) {
-                if (getPlatformName() != "android") {
-                    FilePicker(
-                        show = showFilePicker,
-                        onFileSelected = { chatState.pendingFiles.addAll(it) },
-                        onDismiss = { showFilePicker = false }
-                    )
-                }
-
-                IconButton(
-                    onClick = {
-                        if (getPlatformName() == "android") {
-                            chatState.isMediaPickerVisible = !chatState.isMediaPickerVisible
-                        } else {
-                            showFilePicker = true
-                        }
-                    },
-                    enabled = chatState.editingMessage == null && canSend,
-                    modifier = Modifier.padding(bottom = 4.dp),
-                    colors = IconButtonDefaults.filledTonalIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Add,
-                        contentDescription = "Add",
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-                
-                Spacer(modifier = Modifier.width(8.dp))
-
-                val isDm = channel.type == 1 || channel.type == 3 || channel.guild_id == null
-                val isThread = channel.type == 10 || channel.type == 11 || channel.type == 12
-                
-                val placeholderText = when {
-                    !canSend -> "You do not have permission to send messages."
-                    isThread -> "Reply to thread..."
-                    isDm -> {
-                        val recipient = channel.recipients?.firstOrNull()
-                        val name = recipient?.let { it.global_name ?: it.username } ?: "Unnamed DM"
-                        "Message @$name"
-                    }
-                    else -> "Message #${channel.name ?: "unnamed"}"
-                }
-
-                var showEmojiPicker by remember { mutableStateOf(false) }
-                
-                var autocompleteType by remember { mutableStateOf<AutocompleteType?>(null) }
-                var autocompleteQuery by remember { mutableStateOf("") }
-
-                fun updateAutocomplete(text: String, selection: TextRange) {
-                    if (selection.collapsed) {
-                        val cursor = selection.start
-                        val textBefore = text.take(cursor)
-                        val lastWord = textBefore.substringAfterLast(' ')
-                        
-                        when {
-                            text.startsWith('/') && !text.contains(' ') -> {
-                                autocompleteType = AutocompleteType.COMMAND
-                                autocompleteQuery = text.substring(1)
-                            }
-                            lastWord.startsWith('@') -> {
-                                autocompleteType = AutocompleteType.MENTION
-                                autocompleteQuery = lastWord.substring(1)
-                            }
-                            lastWord.startsWith('#') -> {
-                                autocompleteType = AutocompleteType.CHANNEL
-                                autocompleteQuery = lastWord.substring(1)
-                            }
-                            lastWord.startsWith(':') -> {
-                                autocompleteType = AutocompleteType.EMOJI
-                                autocompleteQuery = lastWord.substring(1)
-                            }
-                            else -> {
-                                autocompleteType = null
-                                autocompleteQuery = ""
-                            }
-                        }
-                    } else {
-                        autocompleteType = null
-                    }
-                }
-
-                val primaryColor = MaterialTheme.colorScheme.primary
 
                 Surface(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(bottom = 4.dp),
-                    shape = RoundedCornerShape(24.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh
+                    color = MaterialTheme.colorScheme.surface,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        BasicTextField(
-                            value = textFieldValue,
-                            onValueChange = { 
-                                if (canSend) {
-                                    textFieldValue = it
-                                    updateAutocomplete(it.text, it.selection)
-                                    if (it.text.isNotEmpty()) {
-                                        chatState.sendTyping()
-                                    }
-                                }
-                            },
-                            visualTransformation = DiscordInputVisualTransformation(primaryColor),
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(start = 12.dp, top = 10.dp, bottom = 10.dp)
-                                .focusRequester(focusRequester)
-                                .onPreviewKeyEvent { event ->
-                                    if (!canSend) return@onPreviewKeyEvent false
-                                    if (event.type == KeyEventType.KeyDown) {
-                                        if (event.key == Key.Escape) {
-                                            if (autocompleteType != null) {
-                                                autocompleteType = null
-                                                return@onPreviewKeyEvent true
-                                            }
-                                            if (chatState.editingMessage != null) {
+                    Column {
+                        TypingIndicator(chatState, channel.id)
+
+                        if (chatState.activeCommand != null) {
+                            CommandParameterUI(chatState)
+                        }
+
+                        if (chatState.replyingTo != null || chatState.editingMessage != null) {
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                color = MaterialTheme.colorScheme.surfaceContainerLow
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    val isEditing = chatState.editingMessage != null
+                                    val activeMsg = chatState.editingMessage ?: chatState.replyingTo
+                                    
+                                    Icon(
+                                        imageVector = if (isEditing) Icons.Filled.Edit else Icons.Rounded.Reply,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = if (isEditing) "Editing message" else "Replying to ${activeMsg?.author?.global_name ?: activeMsg?.author?.username}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    IconButton(
+                                        onClick = { 
+                                            if (isEditing) {
                                                 chatState.editingMessage = null
                                                 textFieldValue = TextFieldValue("")
-                                                return@onPreviewKeyEvent true
+                                            } else {
+                                                chatState.replyingTo = null 
                                             }
-                                            if (chatState.replyingTo != null) {
-                                                chatState.replyingTo = null
-                                                return@onPreviewKeyEvent true
-                                            }
-                                        }
-                                        if (event.isCtrlPressed && event.key == Key.V) {
-                                                val files = getClipboardFiles()
-                                                if (files.isNotEmpty()) {
-                                                    chatState.pendingFiles.addAll(files)
-                                                    return@onPreviewKeyEvent true
-                                                }
-                                        }
-                            if (event.key == Key.Enter && !event.isShiftPressed) {
-                                if (textFieldValue.text.startsWith('/') && !textFieldValue.text.contains(' ')) {
-                                    val cmdName = textFieldValue.text.substring(1).trim()
-                                    val command = chatState.availableCommands.find { it.name == cmdName }
-                                    if (command != null) {
-                                        chatState.sendInteraction(command)
-                                        textFieldValue = TextFieldValue("")
-                                        return@onPreviewKeyEvent true
+                                        },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(Icons.Filled.Close, null, modifier = Modifier.size(16.dp))
                                     }
-                                }
-                                if (textFieldValue.text.isNotBlank() || chatState.pendingFiles.isNotEmpty()) {
-                                    chatState.sendMessage(textFieldValue.text)
-                                    textFieldValue = TextFieldValue("")
-                                    return@onPreviewKeyEvent true
                                 }
                             }
+                        }
+
+                        if (chatState.pendingFiles.isNotEmpty()) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(8.dp)
+                                    .height(120.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                chatState.pendingFiles.forEachIndexed { index, (name, data) ->
+                                    Surface(
+                                        modifier = Modifier.size(100.dp),
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = MaterialTheme.colorScheme.surfaceContainerHigh
+                                    ) {
+                                        Box {
+                                            if (name.lowercase().let { it.endsWith(".png") || it.endsWith(".jpg") || it.endsWith(".jpeg") || it.endsWith(".webp") || it.endsWith(".gif") }) {
+                                                AsyncImage(
+                                                    model = data,
+                                                    contentDescription = name,
+                                                    modifier = Modifier.fillMaxSize(),
+                                                    contentScale = ContentScale.Crop
+                                                )
+                                            } else {
+                                                Text(name, modifier = Modifier.align(Alignment.Center).padding(4.dp), style = MaterialTheme.typography.labelSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                            }
+                                            
+                                            IconButton(
+                                                onClick = { chatState.pendingFiles.removeAt(index) },
+                                                modifier = Modifier.align(Alignment.TopEnd).size(24.dp).background(Color.Black.copy(alpha = 0.4f), CircleShape)
+                                            ) {
+                                                Icon(Icons.Filled.Close, null, modifier = Modifier.size(16.dp), tint = Color.White)
+                                            }
+                                        }
                                     }
-                                    false
+                                }
+                            }
+                        }
+
+                        AnimatedVisibility(
+                            visible = chatState.isMediaPickerVisible,
+                            enter = expandVertically() + fadeIn(),
+                            exit = shrinkVertically() + fadeOut()
+                        ) {
+                            MediaPicker(chatState) {
+                                chatState.isMediaPickerVisible = false
+                            }
+                        }
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp, vertical = 8.dp)
+                                .animateContentSize(animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f)),
+                            verticalAlignment = Alignment.Bottom
+                        ) {
+                            if (getPlatformName() != "android") {
+                                FilePicker(
+                                    show = showFilePicker,
+                                    onFileSelected = { chatState.pendingFiles.addAll(it) },
+                                    onDismiss = { showFilePicker = false }
+                                )
+                            }
+
+                            IconButton(
+                                onClick = {
+                                    if (getPlatformName() == "android") {
+                                        chatState.isMediaPickerVisible = !chatState.isMediaPickerVisible
+                                    } else {
+                                        showFilePicker = true
+                                    }
                                 },
-                            textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
-                            cursorBrush = androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.primary),
-                            decorationBox = { innerTextField: @Composable () -> Unit ->
-                                Box(modifier = Modifier.fillMaxWidth()) {
-                                    if (textFieldValue.text.isEmpty()) {
-                                        Text(
-                                            text = placeholderText,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                enabled = chatState.editingMessage == null && canSend,
+                                modifier = Modifier.padding(bottom = 4.dp),
+                                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Add,
+                                    contentDescription = "Add",
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                            
+                            Spacer(modifier = Modifier.width(8.dp))
+
+                            val isDm = channel.type == 1 || channel.type == 3 || channel.guild_id == null
+                            val isThread = channel.type == 10 || channel.type == 11 || channel.type == 12
+                            
+                            val placeholderText = when {
+                                !canSend -> "You do not have permission to send messages."
+                                isThread -> "Reply to thread..."
+                                isDm -> {
+                                    val recipient = channel.recipients?.firstOrNull()
+                                    val name = recipient?.let { it.global_name ?: it.username } ?: "Unnamed DM"
+                                    "Message @$name"
+                                }
+                                else -> "Message #${channel.name ?: "unnamed"}"
+                            }
+
+                            var showEmojiPicker by remember { mutableStateOf(false) }
+
+                            Surface(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(bottom = 4.dp),
+                                shape = RoundedCornerShape(24.dp),
+                                color = MaterialTheme.colorScheme.surfaceContainerHigh
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                            BasicTextField(
+                                value = textFieldValue,
+                                onValueChange = { 
+                                    if (canSend) {
+                                        textFieldValue = it
+                                        
+                                        // Simplified autocomplete trigger check
+                                        if (it.selection.collapsed) {
+                                            val cursor = it.selection.start
+                                            val textBefore = it.text.take(cursor)
+                                            val lastWord = textBefore.substringAfterLast(' ', textBefore)
+                                            
+                                            val (type, query) = when {
+                                                it.text.startsWith('/') && !it.text.contains(' ') -> 
+                                                    AutocompleteType.COMMAND to it.text.substring(1)
+                                                lastWord.startsWith('@') -> 
+                                                    AutocompleteType.MENTION to lastWord.substring(1)
+                                                lastWord.startsWith('#') -> 
+                                                    AutocompleteType.CHANNEL to lastWord.substring(1)
+                                                lastWord.startsWith(':') -> 
+                                                    AutocompleteType.EMOJI to lastWord.substring(1)
+                                                else -> null to ""
+                                            }
+                                            chatState.updateAutocomplete(type, query)
+                                        } else {
+                                            chatState.updateAutocomplete(null, "")
+                                        }
+
+                                        if (it.text.isNotEmpty()) {
+                                            chatState.sendTyping()
+                                        }
+                                    }
+                                },
+                                visualTransformation = DiscordInputVisualTransformation(primaryColor),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(start = 12.dp, top = 10.dp, bottom = 10.dp)
+                                    .focusRequester(focusRequester)
+                                    .onPreviewKeyEvent { event ->
+                                        if (!canSend) return@onPreviewKeyEvent false
+                                        if (event.type == KeyEventType.KeyDown) {
+                                            if (chatState.autocompleteType != null) {
+                                                val itemCount = chatState.autocompleteItems.size
+                                                when (event.key) {
+                                                    Key.DirectionUp -> {
+                                                        if (itemCount > 0) {
+                                                            chatState.autocompleteSelectedIndex = (chatState.autocompleteSelectedIndex - 1 + itemCount) % itemCount
+                                                            return@onPreviewKeyEvent true
+                                                        }
+                                                    }
+                                                    Key.DirectionDown -> {
+                                                        if (itemCount > 0) {
+                                                            chatState.autocompleteSelectedIndex = (chatState.autocompleteSelectedIndex + 1) % itemCount
+                                                            return@onPreviewKeyEvent true
+                                                        }
+                                                    }
+                                                    Key.Tab, Key.Enter -> {
+                                                        if (itemCount > 0 && chatState.autocompleteSelectedIndex in 0 until itemCount) {
+                                                            val item = chatState.autocompleteItems[chatState.autocompleteSelectedIndex]
+                                                            if (item.isCommand && item.commandObj != null) {
+                                                                chatState.activeCommand = item.commandObj
+                                                                textFieldValue = TextFieldValue("")
+                                                                chatState.updateAutocomplete(null, "")
+                                                            } else {
+                                                                applyAutocomplete(item.replacement)
+                                                            }
+                                                            return@onPreviewKeyEvent true
+                                                        }
+                                                    }
+                                                }
+                                            }
+
+                                                    if (event.key == Key.Escape) {
+                                                        if (chatState.autocompleteType != null) {
+                                                            chatState.updateAutocomplete(null, "")
+                                                            return@onPreviewKeyEvent true
+                                                        }
+                                                        if (chatState.editingMessage != null) {
+                                                            chatState.editingMessage = null
+                                                            textFieldValue = TextFieldValue("")
+                                                            return@onPreviewKeyEvent true
+                                                        }
+                                                        if (chatState.replyingTo != null) {
+                                                            chatState.replyingTo = null
+                                                            return@onPreviewKeyEvent true
+                                                        }
+                                                    }
+                                                    if (event.isCtrlPressed && event.key == Key.V) {
+                                                            val files = getClipboardFiles()
+                                                            if (files.isNotEmpty()) {
+                                                                chatState.pendingFiles.addAll(files)
+                                                                return@onPreviewKeyEvent true
+                                                            }
+                                                    }
+                                                    if (event.key == Key.Enter && !event.isShiftPressed) {
+                                                        if (textFieldValue.text.startsWith('/') && !textFieldValue.text.contains(' ')) {
+                                                            val cmdName = textFieldValue.text.substring(1).trim()
+                                                            val command = chatState.availableCommands.find { it.name == cmdName }
+                                                            if (command != null) {
+                                                                chatState.sendInteraction(command)
+                                                                textFieldValue = TextFieldValue("")
+                                                                return@onPreviewKeyEvent true
+                                                            }
+                                                        }
+                                                        if (textFieldValue.text.isNotBlank() || chatState.pendingFiles.isNotEmpty()) {
+                                                            chatState.sendMessage(textFieldValue.text)
+                                                            textFieldValue = TextFieldValue("")
+                                                            return@onPreviewKeyEvent true
+                                                        }
+                                                    }
+                                                }
+                                                false
+                                            },
+                                        textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
+                                        cursorBrush = androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.primary),
+                                        decorationBox = { innerTextField: @Composable () -> Unit ->
+                                            Box(modifier = Modifier.fillMaxWidth()) {
+                                                if (textFieldValue.text.isEmpty()) {
+                                                    Text(
+                                                        text = placeholderText,
+                                                        style = MaterialTheme.typography.bodyMedium,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                                    )
+                                                }
+                                                innerTextField()
+                                            }
+                                        }
+                                    )
+
+                                    IconButton(
+                                        onClick = { showEmojiPicker = !showEmojiPicker },
+                                        modifier = Modifier.size(36.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Filled.SentimentSatisfied,
+                                            contentDescription = "Emojis",
+                                            modifier = Modifier.size(22.dp),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
-                                    innerTextField()
+
+                                    if (showEmojiPicker) {
+                                        androidx.compose.ui.window.Popup(
+                                            alignment = Alignment.BottomEnd,
+                                            offset = IntOffset(0, -48),
+                                            onDismissRequest = { showEmojiPicker = false }
+                                        ) {
+                                            EmojiPicker(chatState) { emoji ->
+                                                val emojiText = if (emoji.id != null) "<:${emoji.name}:${emoji.id}>" else emoji.name ?: ""
+                                                val newText = textFieldValue.text.take(textFieldValue.selection.start) + emojiText + textFieldValue.text.drop(textFieldValue.selection.end)
+                                                textFieldValue = TextFieldValue(newText, TextRange(textFieldValue.selection.start + emojiText.length))
+                                                showEmojiPicker = false
+                                            }
+                                        }
+                                    }
                                 }
                             }
-                        )
-
-                        IconButton(
-                            onClick = { showEmojiPicker = !showEmojiPicker },
-                            modifier = Modifier.size(36.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.SentimentSatisfied,
-                                contentDescription = "Emojis",
-                                modifier = Modifier.size(22.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-
-                        if (showEmojiPicker) {
-                            androidx.compose.ui.window.Popup(
-                                alignment = Alignment.BottomEnd,
-                                offset = IntOffset(0, -48),
-                                onDismissRequest = { showEmojiPicker = false }
+                            
+                            AnimatedVisibility(
+                                visible = textFieldValue.text.isNotBlank() || chatState.pendingFiles.isNotEmpty() || chatState.activeCommand != null,
+                                enter = fadeIn() + scaleIn(initialScale = 0.8f),
+                                exit = fadeOut() + scaleOut(targetScale = 0.8f),
+                                modifier = Modifier.padding(bottom = 4.dp, start = 8.dp)
                             ) {
-                                EmojiPicker(chatState) { emoji ->
-                                    val emojiText = if (emoji.id != null) "<:${emoji.name}:${emoji.id}>" else emoji.name ?: ""
-                                    val newText = textFieldValue.text.take(textFieldValue.selection.start) + emojiText + textFieldValue.text.drop(textFieldValue.selection.end)
-                                    textFieldValue = TextFieldValue(newText, TextRange(textFieldValue.selection.start + emojiText.length))
-                                    showEmojiPicker = false
+                                IconButton(
+                                    onClick = {
+                                        if (chatState.activeCommand != null) {
+                                            val interactionOptions = chatState.commandOptions.map { (name, value) ->
+                                                val optionType = chatState.activeCommand!!.options!!.find { it.name == name }?.type ?: 3
+                                                InteractionOption(type = optionType, name = name, value = value)
+                                            }
+                                            chatState.sendInteraction(chatState.activeCommand!!, interactionOptions)
+                                            chatState.activeCommand = null
+                                            chatState.commandOptions.clear()
+                                        } else {
+                                            chatState.sendMessage(textFieldValue.text)
+                                        }
+                                        textFieldValue = TextFieldValue("")
+                                    },
+                                    colors = IconButtonDefaults.filledIconButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.primary,
+                                        contentColor = MaterialTheme.colorScheme.onPrimary
+                                    ),
+                                    modifier = Modifier.size(40.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.Send,
+                                        contentDescription = "Send",
+                                        modifier = Modifier.size(20.dp)
+                                    )
                                 }
                             }
                         }
-                    }
-                }
-                
-                AnimatedVisibility(
-                    visible = textFieldValue.text.isNotBlank() || chatState.pendingFiles.isNotEmpty() || chatState.activeCommand != null,
-                    enter = fadeIn() + scaleIn(initialScale = 0.8f),
-                    exit = fadeOut() + scaleOut(targetScale = 0.8f),
-                    modifier = Modifier.padding(bottom = 4.dp, start = 8.dp)
-                ) {
-                    IconButton(
-                        onClick = {
-                            if (chatState.activeCommand != null) {
-                                val interactionOptions = chatState.commandOptions.map { (name, value) ->
-                                    val optionType = chatState.activeCommand!!.options!!.find { it.name == name }?.type ?: 3
-                                    InteractionOption(type = optionType, name = name, value = value)
-                                }
-                                chatState.sendInteraction(chatState.activeCommand!!, interactionOptions)
-                                chatState.activeCommand = null
-                                chatState.commandOptions.clear()
-                            } else {
-                                chatState.sendMessage(textFieldValue.text)
-                            }
-                            textFieldValue = TextFieldValue("")
-                        },
-                        colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        ),
-                        modifier = Modifier.size(40.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Send,
-                            contentDescription = "Send",
-                            modifier = Modifier.size(20.dp)
-                        )
                     }
                 }
             }

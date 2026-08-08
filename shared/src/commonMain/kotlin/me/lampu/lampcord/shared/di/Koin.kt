@@ -39,10 +39,12 @@ val appModule = module {
     single { TokenStore(get()) }
     single { SettingsStore(get()) }
 
+    single { ExperimentStore() }
+
     single { 
         ChatState(
             get(), get(), get(), get(),
-            get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()
+            get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()
         ) 
     }
 }
