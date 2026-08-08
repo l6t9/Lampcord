@@ -32,13 +32,13 @@ fun AccountSettings(chatState: ChatState) {
                                     AsyncImage(model = avatarUrl, contentDescription = null, modifier = Modifier.fillMaxSize())
                                 } else {
                                     Box(contentAlignment = Alignment.Center) {
-                                        Text(user.username.take(1).uppercase())
+                                        Text(user.username?.take(1)?.uppercase() ?: "?")
                                     }
                                 }
                             }
                         },
-                        title = { Text(user.global_name ?: user.username) },
-                        description = { Text(user.username) },
+                        title = { Text(user.global_name ?: user.username ?: "Unknown User") },
+                        description = { Text(user.username ?: "") },
                         trailingContent = {
                             FilledTonalButton(onClick = { /* TODO */ }, modifier = Modifier.height(32.dp)) {
                                 Text("Edit")
@@ -54,17 +54,17 @@ fun AccountSettings(chatState: ChatState) {
                 items = listOf(
                     Material3SettingsItem(
                         title = { Text("Username") },
-                        description = { Text(user.username) },
+                        description = { Text(user.username ?: "") },
                         onClick = { /* TODO */ }
                     ),
                     Material3SettingsItem(
                         title = { Text("Email") },
-                        description = { Text("********@gmail.com") },
+                        description = { Text(user.email ?: "Not set") },
                         onClick = { /* TODO */ }
                     ),
                     Material3SettingsItem(
                         title = { Text("Phone Number") },
-                        description = { Text("********1234") },
+                        description = { Text("********1234") }, // Discord doesn't return full phone usually
                         onClick = { /* TODO */ }
                     )
                 )
@@ -80,7 +80,7 @@ fun AccountSettings(chatState: ChatState) {
                     ),
                     navigationSettingsItem(
                         title = "Two-Factor Authentication",
-                        description = "Protect your account with an extra layer of security",
+                        description = if (user.mfa_enabled == true) "Enabled" else "Protect your account with an extra layer of security",
                         onClick = { /* TODO */ }
                     )
                 )

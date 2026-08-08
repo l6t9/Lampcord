@@ -122,7 +122,7 @@ private fun AccountItem(
                     )
                 } else {
                     Box(contentAlignment = Alignment.Center) {
-                        Text(account.user.username.take(1).uppercase(), style = MaterialTheme.typography.titleMedium)
+                        Text(account.user.username?.take(1)?.uppercase() ?: "?", style = MaterialTheme.typography.titleMedium)
                     }
                 }
             }
@@ -131,14 +131,14 @@ private fun AccountItem(
             
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = account.user.global_name ?: account.user.username,
+                    text = account.user.global_name ?: account.user.username ?: "Unknown User",
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = account.user.username,
+                    text = account.user.username ?: "",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,

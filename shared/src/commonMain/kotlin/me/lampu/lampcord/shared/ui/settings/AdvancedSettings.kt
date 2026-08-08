@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.state.ChatState
 import me.lampu.lampcord.shared.ui.components.settings.*
+import me.lampu.lampcord.shared.model.UserSettings
 
 @Composable
 fun AdvancedSettings(chatState: ChatState) {
@@ -21,7 +22,7 @@ fun AdvancedSettings(chatState: ChatState) {
                         description = "Exposes ID copying and other advanced debug tools.",
                         checked = devMode,
                         onCheckedChange = { 
-                            chatState.userSettings = chatState.userSettings?.copy(developer_mode = it)
+                            chatState.updateUserSettings(UserSettings.Partial(developer_mode = it))
                         }
                     ),
                     switchSettingsItem(

@@ -1,5 +1,7 @@
 package me.lampu.lampcord.shared.utils
 
+import me.lampu.lampcord.shared.model.LocalMedia
+
 actual fun getPlatformName(): String {
     val os = System.getProperty("os.name").lowercase()
     return when {
@@ -16,6 +18,16 @@ actual fun randomUUID(): String = java.util.UUID.randomUUID().toString()
 
 actual fun getOsVersion(): String = System.getProperty("os.version") ?: "unknown"
 
+actual fun getOsSdkVersion(): String = "24"
+
 actual fun getOsArch(): String = System.getProperty("os.arch") ?: "unknown"
 
 actual fun getDeviceName(): String = "Desktop"
+
+actual fun getCpuCoreCount(): Int = Runtime.getRuntime().availableProcessors()
+
+actual fun getMemoryMemory(): Long = Runtime.getRuntime().totalMemory() / (1024 * 1024)
+
+actual suspend fun getLocalMedia(): List<LocalMedia> = emptyList()
+
+actual suspend fun getLocalMediaBytes(uri: String): ByteArray? = null

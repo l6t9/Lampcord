@@ -29,11 +29,13 @@ import me.lampu.lampcord.shared.ui.components.settings.*
 private enum class SettingsSection(val title: String, val icon: ImageVector) {
     ACCOUNT("Account", Icons.Filled.AccountCircle),
     PROFILES("Profiles", Icons.Filled.Person),
+    PRIVACY("Privacy & Safety", Icons.Filled.Security),
     CONNECTIONS("Connections", Icons.Filled.Link),
     DEVICES("Devices", Icons.Filled.Tv),
     APPEARANCE("Appearance", Icons.Filled.Palette),
     ACCESSIBILITY("Accessibility", Icons.Filled.Accessibility),
     VOICE_VIDEO("Voice & Video", Icons.Filled.Mic),
+    TEXT_IMAGES("Text & Images", Icons.Filled.Tune),
     NOTIFICATIONS("Notifications", Icons.Filled.Notifications),
     ADVANCED("Advanced", Icons.Filled.Tune),
     ABOUT("About", Icons.Filled.Info),
@@ -156,6 +158,12 @@ fun SettingsScreen(
                                                 onClick = { selectedCategory = SettingsSection.PROFILES }
                                             ),
                                             Material3SettingsItem(
+                                                Icons.Filled.Security,
+                                                title = { Text("Privacy & Safety") },
+                                                description = { Text("Manage who can contact you and what you see") },
+                                                onClick = { selectedCategory = SettingsSection.PRIVACY }
+                                            ),
+                                            Material3SettingsItem(
                                                 Icons.Filled.Link,
                                                 title = { Text("Connections") },
                                                 description = { Text("Connect your accounts from other platforms") },
@@ -192,6 +200,12 @@ fun SettingsScreen(
                                                 title = { Text("Voice & Video") },
                                                 description = { Text("Input, output, and camera settings") },
                                                 onClick = { selectedCategory = SettingsSection.VOICE_VIDEO }
+                                            ),
+                                            Material3SettingsItem(
+                                                Icons.Outlined.Image,
+                                                title = { Text("Text & Images") },
+                                                description = { Text("Control how media is displayed in chat") },
+                                                onClick = { selectedCategory = SettingsSection.TEXT_IMAGES }
                                             ),
                                             Material3SettingsItem(
                                                 Icons.Filled.Notifications,
@@ -251,16 +265,18 @@ fun SettingsScreen(
                     SettingsSubScreen(
                         title = category.title,
                         onNavigateBack = { selectedCategory = null },
-                        contentScrollable = category != SettingsSection.ABOUT
+                        contentScrollable = true
                     ) {
                         when (category) {
                             SettingsSection.ACCOUNT -> AccountSettings(chatState)
                             SettingsSection.PROFILES -> ProfileSettings(chatState)
+                            SettingsSection.PRIVACY -> PrivacySettings(chatState)
                             SettingsSection.CONNECTIONS -> ConnectionsSettings(chatState)
                             SettingsSection.DEVICES -> DevicesSettings(chatState)
                             SettingsSection.APPEARANCE -> AppearanceSettings(chatState)
                             SettingsSection.ACCESSIBILITY -> AccessibilitySettings(chatState)
                             SettingsSection.VOICE_VIDEO -> { /* TODO */ }
+                            SettingsSection.TEXT_IMAGES -> TextAndImagesSettings(chatState)
                             SettingsSection.NOTIFICATIONS -> NotificationsSettings(chatState)
                             SettingsSection.ADVANCED -> AdvancedSettings(chatState)
                             SettingsSection.ABOUT -> AboutContent(version = "1.0.0", onOpenUrl = { uriHandler.openUri(it) })
@@ -436,10 +452,12 @@ fun SettingsScreen(
                                     when (section) {
                                         SettingsSection.ACCOUNT -> AccountSettings(chatState)
                                         SettingsSection.PROFILES -> ProfileSettings(chatState)
+                                        SettingsSection.PRIVACY -> PrivacySettings(chatState)
                                         SettingsSection.CONNECTIONS -> ConnectionsSettings(chatState)
                                         SettingsSection.DEVICES -> DevicesSettings(chatState)
                                         SettingsSection.APPEARANCE -> AppearanceSettings(chatState)
                                         SettingsSection.ACCESSIBILITY -> AccessibilitySettings(chatState)
+                                        SettingsSection.TEXT_IMAGES -> TextAndImagesSettings(chatState)
                                         SettingsSection.NOTIFICATIONS -> NotificationsSettings(chatState)
                                         SettingsSection.ADVANCED -> AdvancedSettings(chatState)
                                         SettingsSection.ABOUT -> AboutContent(version = "1.0.0", onOpenUrl = { uriHandler.openUri(it) })

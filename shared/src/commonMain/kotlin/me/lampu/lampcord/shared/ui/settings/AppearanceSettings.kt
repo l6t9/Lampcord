@@ -29,6 +29,7 @@ import me.lampu.lampcord.shared.settings.FontOption
 import me.lampu.lampcord.shared.state.ChatState
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.components.settings.*
+import me.lampu.lampcord.shared.model.UserSettings
 
 data class DesktopThemePalette(
     val name: String,
@@ -64,6 +65,11 @@ private val desktopPaletteColors =
 @Composable
 fun AppearanceSettings(chatState: ChatState) {
     val colorScheme = MaterialTheme.colorScheme
+    
+    fun updateTheme(theme: String) {
+        chatState.updateUserSettings(UserSettings.Partial(theme = theme))
+    }
+
     Column(modifier = Modifier.fillMaxWidth()) {
         var themeExpanded by remember { mutableStateOf(false) }
         var fontExpanded by remember { mutableStateOf(false) }
@@ -76,6 +82,12 @@ fun AppearanceSettings(chatState: ChatState) {
                     description = "Use system wallpaper colors as the base for the app's theme (Android 12+).",
                     checked = chatState.settingsStore.materialYou,
                     onCheckedChange = { chatState.settingsStore.materialYou = it }
+                ),
+                switchSettingsItem(
+                    title = "Sync across clients",
+                    description = "Sync your theme selection across all Discord clients.",
+                    checked = chatState.settingsStore.syncAppearance,
+                    onCheckedChange = { chatState.settingsStore.syncAppearance = it }
                 ),
                 expandableSettingsItem(
                     title = "Theme",
@@ -111,7 +123,10 @@ fun AppearanceSettings(chatState: ChatState) {
                                 pureBlack = false,
                                 showIcon = false,
                                 isSelected = chatState.settingsStore.themeMode == ThemeMode.LIGHT,
-                                onClick = { chatState.settingsStore.themeMode = ThemeMode.LIGHT },
+                                onClick = { 
+                                    chatState.settingsStore.themeMode = ThemeMode.LIGHT
+                                    if (chatState.settingsStore.syncAppearance) updateTheme("light")
+                                },
                             )
 
                             ModeCircle(
@@ -122,6 +137,7 @@ fun AppearanceSettings(chatState: ChatState) {
                                 onClick = {
                                     chatState.settingsStore.themeMode = ThemeMode.DARK
                                     chatState.settingsStore.pureBlack = false
+                                    if (chatState.settingsStore.syncAppearance) updateTheme("dark")
                                 },
                             )
 
@@ -133,6 +149,7 @@ fun AppearanceSettings(chatState: ChatState) {
                                 onClick = {
                                     chatState.settingsStore.themeMode = ThemeMode.DARK
                                     chatState.settingsStore.pureBlack = true
+                                    if (chatState.settingsStore.syncAppearance) updateTheme("dark")
                                 },
                             )
                         }
@@ -244,22 +261,26 @@ fun AppearanceSettings(chatState: ChatState) {
                             }
                         }
                     }
-                }
+                },
+                Material3SettingsItem(
+                    title = { Text("Font Scale: ${(chatState.settingsStore.fontScale * 100).toInt()}%") },
+                    description = {
+                        Slider(
+                            value = chatState.settingsStore.fontScale,
+                            onValueChange = { chatState.settingsStore.fontScale = it },
+                            valueRange = 0.5f..2.0f,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                )
             )
         )
 
-        var showNitro by remember { mutableStateOf(true) }
         var compactMode by remember { mutableStateOf(false) }
 
         Material3SettingsGroup(
             title = "Messages",
             items = listOf(
-                switchSettingsItem(
-                    title = "Show Nitro Badge",
-                    description = "Display the Nitro badge on your profile if you have an active subscription.",
-                    checked = showNitro,
-                    onCheckedChange = { showNitro = it }
-                ),
                 switchSettingsItem(
                     title = "Compact Messages",
                     description = "Use a denser layout for chat messages.",

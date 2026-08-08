@@ -8,25 +8,41 @@ import me.lampu.lampcord.shared.model.Relationship
 
 class RelationshipStore(
     private val discordClient: DiscordClient,
+    private val userStore: UserStore,
     private val scope: CoroutineScope
 ) {
     val relationships = mutableStateListOf<Relationship>()
+
+    fun handleReady(rels: List<Relationship>) {
+        println("RelationshipStore received ${rels.size} relationships")
+        relationships.clear()
+        relationships.addAll(rels.map { hydrate(it) })
+    }
+
+    private fun hydrate(rel: Relationship): Relationship {
+        if (rel.user != null) return rel
+        val userId = rel.user_id ?: rel.id ?: return rel
+        val cachedUser = userStore.getUser(userId)
+        return if (cachedUser != null) rel.copy(user = cachedUser) else rel
+    }
 
     fun fetchRelationships() {
         scope.launch {
             val friends = discordClient.getRelationships()
             relationships.clear()
-            relationships.addAll(friends)
+            relationships.addAll(friends.map { hydrate(it) })
         }
     }
 
     fun handleRelationshipAdd(rel: Relationship) {
-        relationships.removeAll { it.id == rel.id }
-        relationships.add(rel)
+        val hydrated = hydrate(rel)
+        val id = hydrated.id ?: hydrated.user?.id ?: hydrated.user_id
+        relationships.removeAll { (it.id ?: it.user?.id ?: it.user_id) == id }
+        relationships.add(hydrated)
     }
 
     fun handleRelationshipRemove(id: String) {
-        relationships.removeAll { it.id == id }
+        relationships.removeAll { (it.id ?: it.user?.id ?: it.user_id) == id }
     }
 
     fun addFriend(userId: String) {

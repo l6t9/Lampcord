@@ -2,7 +2,6 @@ package me.lampu.lampcord.shared.ui.components
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -13,11 +12,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.DefaultAlpha
-import androidx.compose.ui.graphics.FilterQuality
-import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.*
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.utils.ThumbHash
@@ -69,27 +65,12 @@ fun AsyncImage(
         label = "imageFade"
     )
 
-    val thumbColor = remember(placeholderHash) {
-        if (placeholderHash == null) return@remember null
-        try {
-            val bytes = Base64.decode(placeholderHash)
-            val rgba = ThumbHash.thumbHashToRGBA(bytes)
-            androidx.compose.ui.graphics.Color(rgba.r, rgba.g, rgba.b, rgba.a)
-        } catch (e: Exception) {
-            null
-        }
-    }
-
     Box(
         modifier = modifier.then(if (shape != null) Modifier.clip(shape) else Modifier),
         contentAlignment = Alignment.Center
     ) {
         if (showPlaceholder && state is AsyncImagePainter.State.Loading) {
-            if (thumbColor != null) {
-                Box(Modifier.fillMaxSize().background(thumbColor))
-            } else {
-                ImageLoadingPlaceholder(Modifier.fillMaxSize())
-            }
+            ImageLoadingPlaceholder(Modifier.fillMaxSize())
         }
 
         Image(
@@ -117,27 +98,49 @@ fun ShimmerBox(
 fun ImageLoadingPlaceholder(
     modifier: Modifier = Modifier
 ) {
-    val base = MaterialTheme.colorScheme.surfaceContainerHigh
-    val highlight = MaterialTheme.colorScheme.surfaceVariant
+    val colorScheme = MaterialTheme.colorScheme
+    val isDark = colorScheme.surface.luminance() < 0.5f
+
+    val base = if (isDark) {
+        colorScheme.surfaceContainerHigh.let { 
+            if (it == Color.Black) Color(0xFF121212) else it 
+        }
+    } else {
+        colorScheme.surfaceContainerHigh
+    }
+    
+    val highlight = if (isDark) {
+        colorScheme.surfaceVariant.let {
+            if (it == Color.Black) Color(0xFF1E1E1E) else it
+        }
+    } else {
+        colorScheme.surfaceVariant
+    }
     
     val transition = rememberInfiniteTransition(label = "shimmer")
     val progress by transition.animateFloat(
-        initialValue = -1f,
-        targetValue = 2f,
+        initialValue = 0f,
+        targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1200, easing = LinearEasing),
+            animation = tween(durationMillis = 1500, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
         label = "shimmerProgress"
     )
 
     Box(
-        modifier = modifier.background(
-            Brush.linearGradient(
-                colors = listOf(base, highlight, base),
-                start = Offset(progress * 400f, 0f),
-                end = Offset(progress * 400f + 300f, 300f)
+        modifier = modifier.drawBehind {
+            val width = size.width
+            val height = size.height
+            val xOffset = progress * (width * 2) - width
+            
+            drawRect(
+                brush = Brush.linearGradient(
+                    colors = listOf(base, highlight, base),
+                    start = Offset(xOffset, 0f),
+                    end = Offset(xOffset + width, height)
+                )
             )
-        )
+        }
     )
 }

@@ -19,7 +19,10 @@ import me.lampu.lampcord.shared.utils.setClipboardText
 @Composable
 fun DMItem(channel: Channel, chatState: ChatState) {
     val isSelected = chatState.selectedChannel?.id == channel.id
-    val recipient = channel.recipients?.firstOrNull()
+    val recipient = remember(channel.recipients, chatState.userStore) {
+        val first = channel.recipients?.firstOrNull() ?: return@remember null
+        chatState.userStore.getUser(first.id) ?: first
+    }
     val avatarUrl = recipient?.avatar?.let { 
         "https://cdn.discordapp.com/avatars/${recipient.id}/$it.png"
     }
@@ -95,6 +98,11 @@ fun DMItem(channel: Channel, chatState: ChatState) {
                     ignoreEffects = !isHovered,
                     ignoreColors = !isHovered
                 )
+                recipient?.primary_guild?.let {
+                    Spacer(Modifier.width(4.dp))
+                    ClanTagView(it)
+                }
+                recipient?.let { UserTagView(it, modifier = Modifier.padding(start = 4.dp)) }
             }
         }
     }

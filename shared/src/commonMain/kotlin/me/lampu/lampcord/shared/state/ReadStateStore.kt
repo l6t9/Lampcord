@@ -10,7 +10,7 @@ class ReadStateStore(private val discordClient: DiscordClient) {
 
     fun handleReady(ready: ReadyPayload) {
         readStates.clear()
-        ready.read_state?.forEach { state ->
+        ready.read_state?.entries?.forEach { state ->
             readStates[state.id] = state
         }
     }
@@ -48,6 +48,15 @@ class ReadStateStore(private val discordClient: DiscordClient) {
     }
 
     suspend fun ackMessage(channelId: String, messageId: String) {
+        val state = readStates[channelId]
+        if (state != null) {
+            val currentAckId = state.lastMessageId() ?: "0"
+            if ((messageId.toLongOrNull() ?: 0L) > (currentAckId.toLongOrNull() ?: 0L)) {
+                readStates[channelId] = state.copy(last_message_id = JsonPrimitive(messageId), mention_count = 0)
+            }
+        } else {
+            readStates[channelId] = ReadState(id = channelId, last_message_id = JsonPrimitive(messageId), mention_count = 0)
+        }
         discordClient.ackMessage(channelId, messageId)
     }
 }

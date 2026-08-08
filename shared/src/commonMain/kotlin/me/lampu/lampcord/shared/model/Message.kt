@@ -36,9 +36,9 @@ object NonceSerializer : KSerializer<String?> {
 data class Message(
     val id: String,
     val channel_id: String,
-    val author: User,
-    val content: String,
-    val timestamp: String,
+    val author: User? = null,
+    val content: String = "",
+    val timestamp: String = "",
     val edited_timestamp: String? = null,
     val tts: Boolean = false,
     val mention_everyone: Boolean = false,
@@ -159,14 +159,14 @@ data class MessageInteraction(
     val id: String,
     val type: Int,
     val name: String,
-    val user: User
+    val user: User? = null
 )
 
 @Serializable
 data class MessageInteractionMetadata(
     val id: String,
     val type: Int,
-    val user: User,
+    val user: User? = null,
     val authorizing_integration_owners: Map<String, String>? = null,
     val original_response_message_id: String? = null,
     val target_user: User? = null,
@@ -180,7 +180,8 @@ data class MessageReaction(
     val count_details: ReactionCountDetails,
     val me: Boolean,
     val me_burst: Boolean,
-    val burst_colors: List<String>? = null
+    val burst_colors: List<String>? = null,
+    val burst_count: Int? = 0
 )
 
 @Serializable
@@ -222,6 +223,10 @@ data class MessageReactionRemoveEmoji(
     val guild_id: String? = null,
     val emoji: Emoji
 )
+
+enum class AutocompleteType {
+    MENTION, CHANNEL, COMMAND, EMOJI, ROLE
+}
 
 @Serializable
 data class MessageAcknowledge(

@@ -19,7 +19,7 @@ import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.Message
 import me.lampu.lampcord.shared.model.MessageInteraction
 import me.lampu.lampcord.shared.state.ChatState
-import me.lampu.lampcord.shared.ui.components.AsyncImage
+import me.lampu.lampcord.shared.ui.components.*
 import me.lampu.lampcord.shared.utils.DateTimeUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -97,8 +97,8 @@ fun InteractionHeader(interaction: MessageInteraction) {
 
         Spacer(modifier = Modifier.width(4.dp))
 
-        val avatarUrl = interaction.user.avatar?.let {
-            "https://cdn.discordapp.com/avatars/${interaction.user.id}/$it.png?size=48"
+        val avatarUrl = interaction.user?.avatar?.let {
+            "https://cdn.discordapp.com/avatars/${interaction.user?.id}/$it.png?size=48"
         }
 
         if (avatarUrl != null) {
@@ -115,7 +115,7 @@ fun InteractionHeader(interaction: MessageInteraction) {
         Spacer(modifier = Modifier.width(4.dp))
 
         Text(
-            text = interaction.user.global_name ?: interaction.user.username,
+            text = interaction.user?.global_name ?: interaction.user?.username ?: "Unknown User",
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
@@ -200,9 +200,9 @@ fun ReplyBar(referencedMessage: Message, chatState: ChatState) {
         Spacer(modifier = Modifier.width(4.dp))
 
         val avatarUrl = referencedMessage.member?.avatar?.let {
-            "https://cdn.discordapp.com/guilds/${referencedMessage.guild_id ?: chatState.selectedGuild?.id}/users/${referencedMessage.author.id}/avatars/$it.png?size=48"
-        } ?: referencedMessage.author.avatar?.let {
-            "https://cdn.discordapp.com/avatars/${referencedMessage.author.id}/$it.png?size=48"
+            "https://cdn.discordapp.com/guilds/${referencedMessage.guild_id ?: chatState.selectedGuild?.id}/users/${referencedMessage.author?.id}/avatars/$it.png?size=48"
+        } ?: referencedMessage.author?.avatar?.let {
+            "https://cdn.discordapp.com/avatars/${referencedMessage.author?.id}/$it.png?size=48"
         }
 
         if (avatarUrl != null) {
@@ -221,7 +221,8 @@ fun ReplyBar(referencedMessage: Message, chatState: ChatState) {
         val roleColor by remember(referencedMessage, chatState.selectedGuild) {
             derivedStateOf {
                 val guild = chatState.selectedGuild ?: return@derivedStateOf Color.White
-                val member = referencedMessage.member ?: chatState.getMember(guild.id, referencedMessage.author.id) ?: return@derivedStateOf Color.White
+                val authorId = referencedMessage.author?.id ?: return@derivedStateOf Color.White
+                val member = referencedMessage.member ?: chatState.getMember(guild.id, authorId) ?: return@derivedStateOf Color.White
                 val memberRoles = member.roles.mapNotNull { roleId -> guild.roles.find { it.id == roleId } }
                 val highestRole = memberRoles.maxByOrNull { it.position }
                 if (highestRole != null && highestRole.color != 0) Color(highestRole.color or 0xFF000000.toInt()) else Color.White
@@ -229,11 +230,19 @@ fun ReplyBar(referencedMessage: Message, chatState: ChatState) {
         }
 
         Text(
-            text = referencedMessage.author.global_name ?: referencedMessage.author.username,
+            text = referencedMessage.author?.global_name ?: referencedMessage.author?.username ?: "Unknown User",
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
             color = if (isHovered) Color.White else roleColor.copy(alpha = 0.8f) // Whiter on hover
         )
+
+        referencedMessage.author?.let { author ->
+            author.primary_guild?.let {
+                Spacer(Modifier.width(4.dp))
+                ClanTagView(it, alpha = if (isHovered) 1f else 0.7f)
+            }
+            UserTagView(author, modifier = Modifier.padding(start = 4.dp), alpha = if (isHovered) 1f else 0.7f)
+        }
 
         Spacer(modifier = Modifier.width(4.dp))
 

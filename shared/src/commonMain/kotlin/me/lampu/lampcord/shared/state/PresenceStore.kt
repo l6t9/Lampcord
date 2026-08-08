@@ -8,7 +8,8 @@ class PresenceStore(private val discordClient: DiscordClient) {
     val presences = mutableStateMapOf<String, PresenceUpdate>()
 
     fun handlePresenceUpdate(update: PresenceUpdate) {
-        presences[update.user.id] = update
+        val userId = update.user?.id ?: update.user_id ?: return
+        presences[userId] = update
     }
 
     fun clear() {

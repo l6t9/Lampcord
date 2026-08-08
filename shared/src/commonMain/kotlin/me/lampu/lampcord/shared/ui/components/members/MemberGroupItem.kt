@@ -28,7 +28,12 @@ fun MemberGroupItem(group: MemberListGroup, chatState: ChatState) {
     
     // Find up-to-date count from chatState.memberListGroups if the item's count is stale
     val displayCount = remember(group, chatState.memberListGroups.size) {
-        chatState.memberListGroups.find { it.id == group.id }?.let { it.count ?: it.member_count } ?: group.count ?: group.member_count ?: 0
+        val currentGroup = chatState.memberListGroups[group.id]
+        if (currentGroup != null) {
+            currentGroup.count ?: currentGroup.member_count
+        } else {
+            group.count ?: group.member_count
+        } ?: 0
     }
 
     Box(

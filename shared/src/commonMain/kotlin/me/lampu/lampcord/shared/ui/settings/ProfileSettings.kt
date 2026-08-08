@@ -65,8 +65,8 @@ fun ProfileSettings(chatState: ChatState) {
                         }
                         
                         Column(modifier = Modifier.padding(top = 44.dp, bottom = 16.dp)) {
-                            Text(displayName.ifBlank { user.username }, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                            Text(user.username, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(displayName.ifBlank { user.username ?: "" }, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                            Text(user.username ?: "", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             
                             if (pronouns.isNotBlank()) {
                                 Spacer(Modifier.height(8.dp))

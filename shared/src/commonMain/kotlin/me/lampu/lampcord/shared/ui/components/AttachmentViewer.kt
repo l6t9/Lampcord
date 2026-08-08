@@ -44,9 +44,8 @@ import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.setClipboardText
 
 /**
- * Fullscreen attachment viewer, mirroring Paicord's AttachmentViewer:
- * zoomable images, inline video playback, keyboard/button navigation,
- * a thumbnail carousel and copy/close controls.
+ * Fullscreen attachment viewer: zoomable images, inline video playback,
+ * keyboard/button navigation, a thumbnail carousel and copy/close controls.
  */
 @Composable
 fun AttachmentViewer(
@@ -204,7 +203,7 @@ private fun ViewerRoundButton(
     }
 }
 
-/** Zoomable (pinch / mouse wheel / double-tap) pan-able image, like Paicord's ZoomableImageView. */
+/** Zoomable (pinch / mouse wheel / double-tap) pan-able image. */
 @Composable
 private fun ZoomableImageView(
     url: String,
@@ -321,7 +320,7 @@ private fun DiscordMedia.isGifv(): Boolean {
     return url.contains("klipy.com") || url.contains(".gifv") || url.contains("tenor.com")
 }
 
-/** Same URL logic as Paicord: raw proxy URL for images, format=png for video posters. */
+/** Raw proxy URL for images, format=png for video posters. */
 private fun DiscordMedia.thumbnailUrl(isPoster: Boolean): String? {
     val url = proxy_url ?: url ?: return null
     if (!isPoster || !isVideo()) return url

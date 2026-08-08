@@ -86,21 +86,21 @@ fun ChannelItem(channel: Channel, chatState: ChatState) {
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(34.dp)
-                        .padding(horizontal = 8.dp),
+                        .height(40.dp)
+                        .padding(horizontal = 8.dp, vertical = 2.dp),
                     onClick = { 
                         if (!canView) return@Surface
                         chatState.selectChannel(channel)
                     },
                     color = if (isSelected) 
-                        MaterialTheme.colorScheme.surfaceVariant 
+                        MaterialTheme.colorScheme.surfaceContainerHigh 
                     else Color.Transparent,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(20.dp),
                     enabled = canView
                 ) {
                     Row(
                         modifier = Modifier
-                            .padding(horizontal = 8.dp)
+                            .padding(horizontal = 12.dp)
                             .alpha(if (isMuted && !isSelected) 0.5f else 1f),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -113,19 +113,21 @@ fun ChannelItem(channel: Channel, chatState: ChatState) {
                                 15 -> Icons.Outlined.Forum
                                 2, 13 -> Icons.AutoMirrored.Filled.VolumeUp
                                 5 -> Icons.Filled.Campaign
-                                10, 11, 12 -> Icons.Filled.Tag // Thread icons
+                                10, 11, 12 -> Icons.Filled.Tag
                                 else -> Icons.Filled.Tag
                             },
                             contentDescription = null,
-                            modifier = Modifier.size(18.dp),
+                            modifier = Modifier.size(20.dp),
                             tint = contentColor
                         )
                         
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(12.dp))
                         
                         Text(
                             text = channel.name ?: "unnamed",
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = if (isUnread && canView) 
+                                MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold) 
+                            else MaterialTheme.typography.bodyLarge,
                             color = contentColor,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,

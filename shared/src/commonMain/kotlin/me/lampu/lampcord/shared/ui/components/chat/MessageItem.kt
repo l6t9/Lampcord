@@ -2,7 +2,7 @@
 
 package me.lampu.lampcord.shared.ui.components.chat
 
-import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.*
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -62,7 +62,7 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
             )
         }
         
-        val isMe = message.author.id == chatState.currentUser?.id
+        val isMe = message.author?.id == chatState.currentUser?.id
         val items = mutableListOf(
             ContextMenuItem("Add Reaction", Icons.Filled.AddReaction) { showReactionPicker = true },
             ContextMenuItem("Reply", Icons.Rounded.Reply) { chatState.replyingTo = message },
@@ -76,7 +76,7 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
             },
             ContextMenuItem("Mention", Icons.Outlined.AlternateEmail) {
                 val current = chatState.draftMessages[message.channel_id] ?: ""
-                chatState.draftMessages[message.channel_id] = "$current <@${message.author.id}> "
+                chatState.draftMessages[message.channel_id] = "$current <@${message.author?.id}> "
             }
         )
         
@@ -86,11 +86,13 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
             })
         }
         
-        items.add(ContextMenuItem("Pin Message", Icons.Filled.PushPin) { /* TODO */ })
+        items.add(ContextMenuItem(if (message.pinned) "Unpin Message" else "Pin Message", Icons.Filled.PushPin) {
+            if (message.pinned) chatState.unpinMessage(message) else chatState.pinMessage(message)
+        })
 
         if (chatState.userSettings?.developer_mode == true) {
             items.add(ContextMenuItem("Copy Message ID", Icons.Filled.Dns) { setClipboardText(message.id) })
-            items.add(ContextMenuItem("Copy Author ID", Icons.Filled.Dns) { setClipboardText(message.author.id) })
+            items.add(ContextMenuItem("Copy Author ID", Icons.Filled.Dns) { setClipboardText(message.author?.id ?: "") })
         }
 
         items.add(ContextMenuItem("Delete Message", Icons.Filled.Delete) { /* TODO */ })
@@ -176,7 +178,7 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
                     }
 
                     Row(modifier = Modifier.fillMaxWidth()) {
-                        if (!isInline) {
+                        if (!isInline && message.author != null) {
                             val avatarUrl = message.member?.avatar?.let {
                                 "https://cdn.discordapp.com/guilds/${message.guild_id ?: chatState.selectedGuild?.id}/users/${message.author.id}/avatars/$it.png?size=160"
                             } ?: message.author.avatar?.let {
@@ -211,7 +213,8 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
                         val roleColor by remember(message, chatState.selectedGuild) {
                             derivedStateOf {
                                 val guild = chatState.selectedGuild ?: return@derivedStateOf Color.Unspecified
-                                val member = message.member ?: chatState.getMember(guild.id, message.author.id) ?: return@derivedStateOf Color.Unspecified
+                                val authorId = message.author?.id ?: return@derivedStateOf Color.Unspecified
+                                val member = message.member ?: chatState.getMember(guild.id, authorId) ?: return@derivedStateOf Color.Unspecified
                                 val memberRoles = member.roles.mapNotNull { roleId -> guild.roles.find { it.id == roleId } }
                                 val highestRole = memberRoles.maxByOrNull { it.position }
                                 if (highestRole != null && highestRole.color != 0) Color(highestRole.color or 0xFF000000.toInt()) else Color.Unspecified
@@ -223,14 +226,17 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
                         Spacer(modifier = Modifier.width(8.dp))
                         
                         Column {
-                            if (!isInline) {
+                            if (!isInline && message.author != null) {
                                 val isDm = message.guild_id == null && chatState.selectedGuild == null
-                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(bottom = 2.dp)
+                                ) {
                                     var namePosition by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
                                     UsernameView(
-                                        name = message.member?.nick ?: message.author.global_name ?: message.author.username,
+                                        name = message.member?.nick ?: message.author.global_name ?: message.author.username ?: "Unknown User",
                                         style = message.member?.display_name_styles ?: message.author.display_name_styles,
-                                        baseStyle = MaterialTheme.typography.titleSmall,
+                                        baseStyle = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                                         color = if (isDm) Color.White else displayColor,
                                         modifier = Modifier
                                             .onGloballyPositioned { namePosition = it.positionInRoot() }
@@ -238,21 +244,28 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
                                         ignoreEffects = !isHovered,
                                         ignoreColors = if (isDm) !isHovered else true
                                     )
+                                    message.author.primary_guild?.let {
+                                        Spacer(Modifier.width(4.dp))
+                                        ClanTagView(it)
+                                    }
+                                    UserTagView(message.author, modifier = Modifier.padding(start = 4.dp))
                                     Spacer(modifier = Modifier.width(8.dp))
                                     MessageTimestamp(
                                         timestamp = message.timestamp,
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                                     )
                                 }
                             }
                             
-                            DiscordMarkdownText(
-                                content = message.content,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                chatState = chatState
-                            )
+                            Box(modifier = Modifier.fillMaxWidth()) {
+                                DiscordMarkdownText(
+                                    content = message.content,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    chatState = chatState
+                                )
+                            }
 
                             if (message.sendError != null) {
                                 Row(
@@ -299,72 +312,69 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
         }
 
         // Overlay Layer (Action Buttons)
-        if (isHovered || showReactionPicker) {
-            val isMe = message.author.id == chatState.currentUser?.id
-            
-            val actions = remember(message, isMe) {
-                val list = mutableListOf(
-                    Triple(Icons.Filled.AddReaction, "Add Reaction", { showReactionPicker = true }),
-                    Triple(Icons.Rounded.Reply, "Reply", { chatState.replyingTo = message }),
-                    Triple(Icons.Filled.Forward, "Forward", { chatState.forwardingMessage = message })
-                )
-                if (isMe) {
-                    list.add(Triple(Icons.Filled.Edit, "Edit", { chatState.editingMessage = message }))
-                }
-                list.add(Triple(Icons.Filled.MoreHoriz, "More", { /* TODO */ }))
-                list
+        val isMe = message.author?.id == chatState.currentUser?.id
+        val actions = remember(message, isMe) {
+            val list = mutableListOf(
+                Triple(Icons.Filled.AddReaction, "Add Reaction", { showReactionPicker = true }),
+                Triple(Icons.Rounded.Reply, "Reply", { chatState.replyingTo = message }),
+                Triple(Icons.Filled.Forward, "Forward", { chatState.forwardingMessage = message })
+            )
+            if (isMe) {
+                list.add(Triple(Icons.Filled.Edit, "Edit", { chatState.editingMessage = message }))
             }
+            list.add(Triple(Icons.Filled.MoreHoriz, "More", { /* TODO */ }))
+            list
+        }
 
-            Box(
+        AnimatedVisibility(
+            visible = isHovered || showReactionPicker,
+            enter = fadeIn() + scaleIn(initialScale = 0.9f),
+            exit = fadeOut() + scaleOut(targetScale = 0.9f),
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(end = 16.dp)
+                .zIndex(1f)
+                .layout { measurable, constraints ->
+                    val placeable = measurable.measure(constraints)
+                    layout(placeable.width, 0) {
+                        placeable.placeRelative(0, 0)
+                    }
+                }
+        ) {
+            ButtonGroup(
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(end = 16.dp)
-                    .zIndex(1f) // Ensure buttons are always on top
-                    .layout { measurable, constraints ->
-                        val placeable = measurable.measure(constraints)
-                        // Report 0 height to parent so it doesn't affect list spacing
-                        layout(placeable.width, 0) {
-                            placeable.placeRelative(0, 0)
-                        }
-                    }
+                    .offset(y = (-12).dp)
+                    .height(32.dp),
+                overflowIndicator = { menuState -> ButtonGroupDefaults.OverflowIndicator(menuState) },
+                horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
             ) {
-                ButtonGroup(
-                    modifier = Modifier
-                        .offset(y = (-12).dp)
-                        .height(32.dp)
-                        .widthIn(min = 120.dp)
-                        .animateContentSize(animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f)),
-                    overflowIndicator = { menuState -> ButtonGroupDefaults.OverflowIndicator(menuState) },
-                    horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
-                ) {
-                    actions.forEachIndexed { index, (icon, label, onClick) ->
-                        customItem(
-                            buttonGroupContent = {
-                                val shapes = when (index) {
-                                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                    actions.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                                }
-                                ToggleButton(
-                                    checked = false,
-                                    onCheckedChange = { onClick() },
-                                    shapes = shapes,
-                                    colors = ToggleButtonDefaults.tonalToggleButtonColors(),
-                                    contentPadding = PaddingValues(0.dp),
-                                    modifier = Modifier.fillMaxSize()
-                                ) {
-                                    Icon(icon, label, modifier = Modifier.size(18.dp))
-                                }
-                            },
-                            menuContent = {
-                                DropdownMenuItem(
-                                    text = { Text(label) },
-                                    onClick = { onClick() },
-                                    leadingIcon = { Icon(icon, null) }
-                                )
+                actions.forEachIndexed { index, (icon, label, onClick) ->
+                    customItem(
+                        buttonGroupContent = {
+                            val shapes = when (index) {
+                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                actions.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
                             }
-                        )
-                    }
+                            ToggleButton(
+                                checked = false,
+                                onCheckedChange = { onClick() },
+                                shapes = shapes,
+                                colors = ToggleButtonDefaults.tonalToggleButtonColors(),
+                                contentPadding = PaddingValues(0.dp),
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                Icon(icon, label, modifier = Modifier.size(18.dp))
+                            }
+                        },
+                        menuContent = {
+                            DropdownMenuItem(
+                                text = { Text(label) },
+                                onClick = { onClick() },
+                                leadingIcon = { Icon(icon, null) }
+                            )
+                        }
+                    )
                 }
             }
         }

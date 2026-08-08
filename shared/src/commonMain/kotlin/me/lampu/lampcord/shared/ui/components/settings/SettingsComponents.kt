@@ -70,7 +70,7 @@ fun Material3SettingsGroup(
 }
 
 @Composable
-private fun Material3SettingsItemRow(
+fun Material3SettingsItemRow(
     item: Material3SettingsItem,
     isFirst: Boolean = false,
     isLast: Boolean = false,

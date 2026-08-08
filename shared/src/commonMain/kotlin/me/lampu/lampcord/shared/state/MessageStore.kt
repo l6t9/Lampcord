@@ -2,6 +2,7 @@ package me.lampu.lampcord.shared.state
 
 import androidx.compose.runtime.*
 import me.lampu.lampcord.shared.api.DiscordClient
+import me.lampu.lampcord.shared.api.AllowedMentions
 import me.lampu.lampcord.shared.model.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -67,7 +68,9 @@ class MessageStore(
         replyTo: String?,
         files: List<Pair<String, ByteArray>>,
         guildId: String?,
-        forwardFrom: Message? = null
+        forwardFrom: Message? = null,
+        stickerIds: List<String>? = null,
+        allowedMentions: AllowedMentions? = null
     ) {
         val nowMillis = me.lampu.lampcord.shared.utils.getCurrentTimeMillis()
         val nonce = "${nowMillis}${Random.nextInt(1000, 9999)}"
@@ -85,7 +88,7 @@ class MessageStore(
         )
 
         messages.add(0, pendingMessage)
-        messageTasks.add(MessageTask(nonce, channelId, content, replyTo, files, forwardFrom))
+        messageTasks.add(MessageTask(nonce, channelId, content, replyTo, files, forwardFrom, stickerIds, allowedMentions))
 
         startQueueProcessing()
     }
@@ -104,7 +107,9 @@ class MessageStore(
                         task.replyTo,
                         task.forwardFrom,
                         task.files,
-                        task.nonce
+                        task.nonce,
+                        task.stickerIds,
+                        task.allowedMentions
                     )
 
                     if (success) {
@@ -148,6 +153,8 @@ private data class MessageTask(
     val content: String,
     val replyTo: String?,
     val files: List<Pair<String, ByteArray>>,
-    val forwardFrom: Message? = null
+    val forwardFrom: Message? = null,
+    val stickerIds: List<String>? = null,
+    val allowedMentions: AllowedMentions? = null
 )
 

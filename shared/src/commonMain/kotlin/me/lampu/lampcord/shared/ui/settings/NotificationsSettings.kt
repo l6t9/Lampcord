@@ -54,5 +54,18 @@ fun NotificationsSettings(chatState: ChatState) {
                 )
             )
         }
+
+        Material3SettingsGroup(title = "In-App Notifications") {
+            Material3SettingsGroup(
+                items = listOf(
+                    switchSettingsItem(
+                        title = "Show In-App Notifications",
+                        description = "Display banners for new messages while using the app.",
+                        checked = true,
+                        onCheckedChange = { /* TODO: Local setting */ }
+                    )
+                )
+            )
+        }
     }
 }

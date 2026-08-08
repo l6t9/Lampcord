@@ -21,7 +21,12 @@ fun ClanTagView(
     modifier: Modifier = Modifier,
     alpha: Float = 1f
 ) {
-    if (primaryGuild?.clan_tag == null) return
+    if (primaryGuild == null) return
+    if (primaryGuild.identity_enabled == false) return
+    
+    val tag = primaryGuild.tag ?: return
+    val badge = primaryGuild.badge
+    val guildId = primaryGuild.identity_guild_id ?: primaryGuild.guild_id ?: return
 
     Box(
         modifier = modifier
@@ -31,8 +36,8 @@ fun ClanTagView(
         contentAlignment = Alignment.Center
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            if (primaryGuild.clan_badge != null) {
-                val badgeUrl = "https://cdn.discordapp.com/clan-badges/${primaryGuild.guild_id}/${primaryGuild.clan_badge}.png?size=16"
+            if (badge != null) {
+                val badgeUrl = "https://cdn.discordapp.com/guild-tag-badges/$guildId/$badge.png?size=16"
                 AsyncImage(
                     model = badgeUrl,
                     contentDescription = null,
@@ -41,7 +46,7 @@ fun ClanTagView(
                 Spacer(Modifier.width(2.dp))
             }
             Text(
-                text = primaryGuild.clan_tag,
+                text = tag,
                 style = MaterialTheme.typography.labelSmall.copy(
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,

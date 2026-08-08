@@ -59,24 +59,28 @@ private fun hasPermission(bits: String?, flag: Long): Boolean {
 }
 
 fun Channel.memberListId(guild: Guild): String {
+    // 126.21 Fallback: Most channels use "everyone"
+    val overwrites = permission_overwrites ?: emptyList()
+    if (overwrites.isEmpty()) return "everyone"
+
     val everyoneRole = guild.roles.firstOrNull { it.id == guild.id }
     val everyoneCanView = everyoneRole != null && hasPermission(everyoneRole.permissions, VIEW_CHANNEL)
 
-    val overwrites = permission_overwrites ?: emptyList()
-
-    if (everyoneCanView && overwrites.none { hasPermission(it.deny, VIEW_CHANNEL) }) {
+    if (everyoneCanView && overwrites.none { hasPermission(it.denyString(), VIEW_CHANNEL) }) {
         return "everyone"
     }
 
     val entries = mutableListOf<String>()
     for (overwrite in overwrites) {
-        if (hasPermission(overwrite.allow, VIEW_CHANNEL)) {
+        if (hasPermission(overwrite.allowString(), VIEW_CHANNEL)) {
             entries.add("allow:${overwrite.id}")
-        } else if (hasPermission(overwrite.deny, VIEW_CHANNEL)) {
+        } else if (hasPermission(overwrite.denyString(), VIEW_CHANNEL)) {
             entries.add("deny:${overwrite.id}")
         }
     }
+    
+    if (entries.isEmpty()) return "everyone"
+    
     entries.sort()
-
     return murmurhash32(entries.joinToString(",")).toString()
 }

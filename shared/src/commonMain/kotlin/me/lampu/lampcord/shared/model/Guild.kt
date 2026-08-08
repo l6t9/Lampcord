@@ -1,6 +1,9 @@
 package me.lampu.lampcord.shared.model
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 
 @Serializable
 data class Guild(
@@ -17,8 +20,51 @@ data class Guild(
     val stickers: List<Sticker> = emptyList(),
     val members: List<Member>? = null,
     val channels: List<Channel>? = null,
-    val welcome_screen: WelcomeScreen? = null
-)
+    val welcome_screen: WelcomeScreen? = null,
+    val unavailable: Boolean? = null,
+    val premium_tier: Int? = null,
+    val premium_subscription_count: Int? = null,
+    val member_count: Int? = null,
+    val large: Boolean? = null,
+    
+    // Server Settings (126.21 alignment)
+    val afk_channel_id: String? = null,
+    val afk_timeout: Int? = null,
+    val system_channel_id: String? = null,
+    val system_channel_flags: Int? = null,
+    val rules_channel_id: String? = null,
+    val public_updates_channel_id: String? = null,
+    val preferred_locale: String? = null,
+    val verification_level: Int? = null,
+    val explicit_content_filter: Int? = null,
+    val mfa_level: Int? = null,
+    val nsfw_level: Int? = null,
+    val vanity_url_code: String? = null,
+    val description: String? = null,
+    val region: String? = null,
+    val splash: String? = null,
+    val discovery_splash: String? = null,
+    val hub_type: Int? = null
+) {
+    @Serializable
+    data class Partial(
+        val name: String? = null,
+        val icon: String? = null,
+        val banner: String? = null,
+        val splash: String? = null,
+        val description: String? = null,
+        val afk_channel_id: String? = null,
+        val afk_timeout: Int? = null,
+        val system_channel_id: String? = null,
+        val system_channel_flags: Int? = null,
+        val rules_channel_id: String? = null,
+        val public_updates_channel_id: String? = null,
+        val preferred_locale: String? = null,
+        val verification_level: Int? = null,
+        val explicit_content_filter: Int? = null,
+        val default_message_notifications: Int? = null
+    )
+}
 
 @Serializable
 data class WelcomeScreen(
@@ -96,12 +142,14 @@ data class Member(
     val avatar_decoration_data: AvatarDecorationData? = null,
     val collectibles: Collectibles? = null,
     val display_name_styles: DisplayNameStyles? = null
-)
+) {
+    fun userId(): String? = user?.id ?: presence?.user?.id
+}
 
 @Serializable
 data class GuildFolder(
-    val id: Long? = null,
-    val guild_ids: List<String>,
+    val id: JsonElement? = null,
+    val guild_ids: List<JsonElement> = emptyList(),
     val name: String? = null,
     val color: Int? = null
 )
@@ -164,14 +212,30 @@ data class UserGuildSettings(
     val mute_scheduled_events: Boolean = false,
     val channel_overrides: List<ChannelOverride> = emptyList(),
     val flags: Int = 0,
-    val version: Int = 0
+    val version: Int = 0,
+    val mute_config: MuteConfig? = null,
+    val notify_highlights: Int? = null
 ) {
     @Serializable
     data class Partial(
         val muted: Boolean? = null,
-        val channel_overrides: List<ChannelOverride>? = null
+        val hide_muted_channels: Boolean? = null,
+        val suppress_everyone: Boolean? = null,
+        val suppress_roles: Boolean? = null,
+        val message_notifications: Int? = null,
+        val mobile_push: Boolean? = null,
+        val channel_overrides: List<ChannelOverride>? = null,
+        val mute_config: MuteConfig? = null,
+        val notify_highlights: Int? = null,
+        val flags: Int? = null
     )
 }
+
+@Serializable
+data class MuteConfig(
+    val end_time: String? = null,
+    val selected_time_window: Int? = null
+)
 
 @Serializable
 data class ChannelOverride(
@@ -179,5 +243,24 @@ data class ChannelOverride(
     val muted: Boolean = false,
     val message_notifications: Int = 3, // inherit
     val collapsed: Boolean = false,
-    val flags: Int = 0
+    val flags: Int = 0,
+    val mute_config: MuteConfig? = null
+)
+
+@Serializable
+data class GuildRoleCreate(
+    val guild_id: String,
+    val role: Role
+)
+
+@Serializable
+data class GuildRoleUpdate(
+    val guild_id: String,
+    val role: Role
+)
+
+@Serializable
+data class GuildRoleDelete(
+    val guild_id: String,
+    val role_id: String
 )

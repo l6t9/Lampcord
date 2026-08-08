@@ -27,7 +27,17 @@ data class MessageRequest(
     val message_reference: MessageReference? = null,
     val tts: Boolean = false,
     val nonce: String? = null,
-    val attachments: List<AttachmentRequest>? = null
+    val attachments: List<AttachmentRequest>? = null,
+    val sticker_ids: List<String>? = null,
+    val allowed_mentions: AllowedMentions? = null
+)
+
+@Serializable
+data class AllowedMentions(
+    val parse: List<String>? = null,
+    val roles: List<String>? = null,
+    val users: List<String>? = null,
+    val replied_user: Boolean? = null
 )
 
 @Serializable
@@ -37,23 +47,6 @@ data class AttachmentRequest(
     val description: String? = null
 )
 
-@Serializable
-data class SuperProperties(
-    val os: String,
-    val browser: String,
-    val release_channel: String = "stable",
-    val client_version: String,
-    val os_version: String = "",
-    val os_arch: String = "x64",
-    val app_arch: String = "x64",
-    val system_locale: String = "en-US",
-    val browser_user_agent: String,
-    val browser_version: String = "",
-    val client_build_number: Int,
-    val native_build_number: Int? = null,
-    val client_event_source: String? = null
-)
-
 class DiscordClient(
     private val httpClient: HttpClient,
     private val json: Json
@@ -61,6 +54,10 @@ class DiscordClient(
     private var token: String? = null
     private val apiVersion = 9
     private val apiBase = "https://discord.com/api/v$apiVersion"
+    val vendorId = randomUUID()
+    val launchId = randomUUID()
+    val heartbeatSessionId = randomUUID()
+    val launchSignature = (getCurrentTimeMillis() * 1_000_000L).toString()
 
     fun setToken(token: String?) {
         this.token = token
@@ -70,50 +67,36 @@ class DiscordClient(
     private fun getSuperProperties(): String {
         val platform = getPlatformName()
         val isMobile = platform == "android" || platform == "ios"
-        val osName = when(platform) {
-            "macos" -> "Mac OS X"
-            "windows" -> "Windows"
-            "linux" -> "Linux"
-            "android" -> "Android"
-            "ios" -> "iOS"
-            else -> platform
-        }
         
-        val browserOsName = when(platform) {
-            "windows" -> "Windows NT 10.0; Win64; x64"
-            "linux" -> "X11; Linux x86_64"
-            "macos" -> "Macintosh; Intel Mac OS X 10_15_7"
-            "android" -> "Linux; Android ${getOsVersion()}; ${getDeviceName()}"
-            "ios" -> "iPhone; CPU iPhone OS ${getOsVersion().replace(".", "_")} like Mac OS X"
-            else -> "X11; Linux x86_64"
-        }
-
-        val userAgent = if (isMobile) {
-            if (platform == "android") {
-                "Discord Android/300.0"
+        val properties = buildJsonObject {
+            put("os", if (platform == "macos") "Mac OS X" else platform.replaceFirstChar { it.uppercase() })
+            put("browser", if (isMobile) "Discord Android" else "Discord Client")
+            put("device", getDeviceName())
+            put("system_locale", "en-US")
+            put("has_client_mods", false)
+            put("client_version", if (isMobile) "341.0 - rn" else "0.0.398")
+            put("release_channel", if (isMobile) "canaryRelease" else "stable")
+            put("device_vendor_id", vendorId)
+            put("design_id", 2)
+            put("browser_user_agent", if (isMobile) {
+                if (platform == "android") "Discord-Android/341200;RNA" else "Discord/105180 CFNetwork/1410.0.3 Darwin/22.4.0"
+            } else "")
+            put("browser_version", if (isMobile) "" else "37.6.0")
+            put("os_version", getOsVersion())
+            put("client_build_number", if (isMobile) 6081 else 575562)
+            put("client_event_source", JsonNull)
+            if (isMobile) {
+                put("client_launch_id", launchId)
+                put("launch_signature", launchSignature)
+                put("client_app_state", "active")
+                put("client_heartbeat_session_id", heartbeatSessionId)
             } else {
-                "Discord/105180 CFNetwork/1410.0.3 Darwin/22.4.0"
+                put("client_launch_id", JsonNull)
+                put("launch_signature", "")
+                put("client_app_state", JsonNull)
+                put("client_heartbeat_session_id", JsonNull)
             }
-        } else {
-            "Mozilla/5.0 ($browserOsName) AppleWebKit/537.36 (KHTML, like Gecko) discord/0.0.398 Chrome/138.0.7204.251 Electron/37.6.0 Safari/537.36"
         }
-
-        val properties = SuperProperties(
-            os = osName,
-            browser = when(platform) {
-                "android" -> "Discord Android"
-                "ios" -> "Discord iOS"
-                else -> "Discord Client"
-            },
-            client_version = if (isMobile) "300.0" else "0.0.398",
-            os_version = getOsVersion(),
-            os_arch = getOsArch(),
-            app_arch = getOsArch(),
-            browser_user_agent = userAgent,
-            browser_version = if (isMobile) "" else "37.6.0",
-            client_build_number = if (isMobile) 105180 else 575562,
-            native_build_number = if (isMobile) null else 85861
-        )
         val jsonString = json.encodeToString(properties)
         return Base64.encode(jsonString.encodeToByteArray())
     }
@@ -122,23 +105,14 @@ class DiscordClient(
         val platform = getPlatformName()
         val isMobile = platform == "android" || platform == "ios"
         
-        val browserOsName = when(platform) {
-            "windows" -> "Windows NT 10.0; Win64; x64"
-            "linux" -> "X11; Linux x86_64"
-            "macos" -> "Macintosh; Intel Mac OS X 10_15_7"
-            "android" -> "Linux; Android ${getOsVersion()}; ${getDeviceName()}"
-            "ios" -> "iPhone; CPU iPhone OS ${getOsVersion().replace(".", "_")} like Mac OS X"
-            else -> "X11; Linux x86_64"
-        }
-
         val userAgent = if (isMobile) {
             if (platform == "android") {
-                "Discord Android/300.0"
+                "Discord-Android/341200;RNA"
             } else {
                 "Discord/105180 CFNetwork/1410.0.3 Darwin/22.4.0"
             }
         } else {
-            "Mozilla/5.0 ($browserOsName) AppleWebKit/537.36 (KHTML, like Gecko) discord/0.0.398 Chrome/138.0.7204.251 Electron/37.6.0 Safari/537.36"
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) discord/0.0.398 Chrome/138.0.7204.251 Electron/37.6.0 Safari/537.36"
         }
 
         header("User-Agent", userAgent)
@@ -151,18 +125,10 @@ class DiscordClient(
     private fun HttpRequestBuilder.loginHeaders(fingerprint: String? = null) {
         val platform = getPlatformName()
         val isMobile = platform == "android" || platform == "ios"
-        val browserOsName = when(platform) {
-            "windows" -> "Windows NT 10.0; Win64; x64"
-            "linux" -> "X11; Linux x86_64"
-            "macos" -> "Macintosh; Intel Mac OS X 10_15_7"
-            "android" -> "Linux; Android ${getOsVersion()}; ${getDeviceName()}"
-            "ios" -> "iPhone; CPU iPhone OS ${getOsVersion().replace(".", "_")} like Mac OS X"
-            else -> "X11; Linux x86_64"
-        }
         val userAgent = if (isMobile) {
-            if (platform == "android") "Discord Android/300.0" else "Discord/105180 CFNetwork/1410.0.3 Darwin/22.4.0"
+            if (platform == "android") "Discord-Android/341200;RNA" else "Discord/105180 CFNetwork/1410.0.3 Darwin/22.4.0"
         } else {
-            "Mozilla/5.0 ($browserOsName) AppleWebKit/537.36 (KHTML, like Gecko) discord/0.0.398 Chrome/138.0.7204.251 Electron/37.6.0 Safari/537.36"
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) discord/0.0.398 Chrome/138.0.7204.251 Electron/37.6.0 Safari/537.36"
         }
 
         header("User-Agent", userAgent)
@@ -232,7 +198,9 @@ class DiscordClient(
         replyTo: String? = null,
         forwardFrom: Message? = null,
         files: List<Pair<String, ByteArray>> = emptyList(),
-        nonce: String? = null
+        nonce: String? = null,
+        stickerIds: List<String>? = null,
+        allowedMentions: AllowedMentions? = null
     ): Boolean {
         val messageReference = when {
             replyTo != null -> MessageReference(message_id = replyTo)
@@ -254,7 +222,9 @@ class DiscordClient(
                     val request = MessageRequest(
                         content = content,
                         message_reference = messageReference,
-                        nonce = nonce
+                        nonce = nonce,
+                        sticker_ids = stickerIds,
+                        allowed_mentions = allowedMentions
                     )
                     setBody(request)
                 }
@@ -273,7 +243,9 @@ class DiscordClient(
                                 content = content,
                                 message_reference = messageReference,
                                 nonce = nonce,
-                                attachments = attachmentMetadata
+                                attachments = attachmentMetadata,
+                                sticker_ids = stickerIds,
+                                allowed_mentions = allowedMentions
                             )), Headers.build {
                                 append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                             })
@@ -304,6 +276,32 @@ class DiscordClient(
         }
     }
 
+    suspend fun getGuild(guildId: String): Guild? {
+        return try {
+            val response = httpClient.get("$apiBase/guilds/$guildId") {
+                standardHeaders()
+            }
+            if (response.status.isSuccess()) response.body() else null
+        } catch (e: Exception) {
+            println("Error fetching guild: ${e.message}")
+            null
+        }
+    }
+
+    suspend fun updateGuild(guildId: String, partial: Guild.Partial): Boolean {
+        return try {
+            val response = httpClient.patch("$apiBase/guilds/$guildId") {
+                standardHeaders()
+                contentType(ContentType.Application.Json)
+                setBody(partial)
+            }
+            response.status.isSuccess()
+        } catch (e: Exception) {
+            println("Error updating guild: ${e.message}")
+            false
+        }
+    }
+
     suspend fun getGuildChannels(guildId: String): List<Channel> {
         return try {
             val response = httpClient.get("$apiBase/guilds/$guildId/channels") {
@@ -319,6 +317,18 @@ class DiscordClient(
             }
         } catch (e: Exception) {
             println("Error fetching channels: ${e.message}")
+            emptyList()
+        }
+    }
+
+    suspend fun getPrivateChannels(): List<Channel> {
+        return try {
+            val response = httpClient.get("$apiBase/users/@me/channels") {
+                standardHeaders()
+            }
+            if (response.status.isSuccess()) response.body() else emptyList()
+        } catch (e: Exception) {
+            println("Error fetching DMs: ${e.message}")
             emptyList()
         }
     }
@@ -377,11 +387,14 @@ class DiscordClient(
         }
     }
 
-    suspend fun getGuildMembers(guildId: String, limit: Int = 100): List<Member> {
+    suspend fun getGuildMembers(guildId: String, limit: Int = 100, after: String? = null): List<Member> {
         return try {
             val response = httpClient.get("$apiBase/guilds/$guildId/members") {
                 standardHeaders()
                 parameter("limit", limit)
+                if (after != null) {
+                    parameter("after", after)
+                }
             }
             if (response.status.isSuccess()) {
                 response.body()
@@ -396,6 +409,18 @@ class DiscordClient(
         }
     }
 
+    suspend fun getGuildMember(guildId: String, userId: String): Member? {
+        return try {
+            val response = httpClient.get("$apiBase/guilds/$guildId/members/$userId") {
+                standardHeaders()
+            }
+            if (response.status.isSuccess()) response.body() else null
+        } catch (e: Exception) {
+            println("Error fetching member: ${e.message}")
+            null
+        }
+    }
+
     suspend fun getUserProfile(userId: String, guildId: String? = null): UserProfile? {
         return try {
             val url = if (guildId != null) {
@@ -406,7 +431,13 @@ class DiscordClient(
             val response = httpClient.get(url) {
                 standardHeaders()
             }
-            if (response.status.isSuccess()) response.body() else null
+            if (response.status.isSuccess()) {
+                response.body()
+            } else {
+                val errorBody = response.bodyAsText()
+                println("Error fetching user profile: ${response.status}, body: $errorBody")
+                null
+            }
         } catch (e: Exception) {
             println("Error fetching user profile: ${e.message}")
             null
@@ -497,6 +528,53 @@ class DiscordClient(
             response.status.isSuccess()
         } catch (e: Exception) {
             println("Error removing reaction: ${e.message}")
+            false
+        }
+    }
+
+    suspend fun pinMessage(channelId: String, messageId: String): Boolean {
+        return try {
+            val response = httpClient.put("$apiBase/channels/$channelId/pins/$messageId") {
+                standardHeaders()
+            }
+            response.status.isSuccess()
+        } catch (e: Exception) {
+            println("Error pinning message: ${e.message}")
+            false
+        }
+    }
+
+    suspend fun unpinMessage(channelId: String, messageId: String): Boolean {
+        return try {
+            val response = httpClient.delete("$apiBase/channels/$channelId/pins/$messageId") {
+                standardHeaders()
+            }
+            response.status.isSuccess()
+        } catch (e: Exception) {
+            println("Error unpinning message: ${e.message}")
+            false
+        }
+    }
+
+    suspend fun getPinnedMessages(channelId: String): List<Message> {
+        return try {
+            val response = httpClient.get("$apiBase/channels/$channelId/pins") {
+                standardHeaders()
+            }
+            if (response.status.isSuccess()) response.body() else emptyList()
+        } catch (e: Exception) {
+            println("Error fetching pinned messages: ${e.message}")
+            emptyList()
+        }
+    }
+
+    suspend fun sendTyping(channelId: String): Boolean {
+        return try {
+            val response = httpClient.post("$apiBase/channels/$channelId/typing") {
+                standardHeaders()
+            }
+            response.status.isSuccess()
+        } catch (e: Exception) {
             false
         }
     }
@@ -604,12 +682,28 @@ class DiscordClient(
         }
     }
 
-    suspend fun updateUserSettings(settings: UserSettings): Boolean {
+    suspend fun getUserSettings(): UserSettings? {
+        return try {
+            val response = httpClient.get("$apiBase/users/@me/settings") {
+                standardHeaders()
+            }
+            if (response.status.isSuccess()) response.body() else null
+        } catch (e: Exception) {
+            println("Error fetching user settings: ${e.message}")
+            null
+        }
+    }
+
+    suspend fun getGuildFolders(): List<GuildFolder> {
+        return getUserSettings()?.guild_folders ?: emptyList()
+    }
+
+    suspend fun updateUserSettings(partial: UserSettings.Partial): Boolean {
         return try {
             val response = httpClient.patch("$apiBase/users/@me/settings") {
                 standardHeaders()
                 contentType(ContentType.Application.Json)
-                setBody(settings)
+                setBody(partial)
             }
             response.status.isSuccess()
         } catch (e: Exception) {
@@ -690,6 +784,29 @@ class DiscordClient(
             println("Error exchanging remote auth ticket: ${e.message}")
             null
         }
+    }
+
+    suspend fun getGatewayUrl(): String? {
+        return try {
+            val response = httpClient.get("$apiBase/gateway") {
+                standardHeaders()
+            }
+            if (response.status.isSuccess()) {
+                val body = response.body<JsonObject>()
+                body["url"]?.jsonPrimitive?.content
+            } else null
+        } catch (e: Exception) { null }
+    }
+
+    fun getGuildIconUrl(guildId: String, iconHash: String?, size: Int = 1024): String? {
+        if (iconHash == null) return null
+        return "https://cdn.discordapp.com/icons/$guildId/$iconHash.webp?size=$size"
+    }
+
+    fun getUserAvatarUrl(userId: String, avatarHash: String?, size: Int = 1024): String? {
+        if (avatarHash == null) return null
+        val extension = if (avatarHash.startsWith("a_")) "gif" else "webp"
+        return "https://cdn.discordapp.com/avatars/$userId/$avatarHash.$extension?size=$size"
     }
 }
 

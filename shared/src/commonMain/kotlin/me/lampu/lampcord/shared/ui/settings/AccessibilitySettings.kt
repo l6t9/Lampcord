@@ -7,9 +7,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.state.ChatState
 import me.lampu.lampcord.shared.ui.components.settings.*
+import me.lampu.lampcord.shared.model.UserSettings
 
 @Composable
 fun AccessibilitySettings(chatState: ChatState) {
+    val userSettings = chatState.userSettings
+
     Column(modifier = Modifier.fillMaxWidth()) {
         Material3SettingsGroup(title = "Visual") {
             var saturation by remember { mutableStateOf(1f) }
@@ -48,6 +51,21 @@ fun AccessibilitySettings(chatState: ChatState) {
                         description = "Increases contrast between foreground and background elements.",
                         checked = highContrast,
                         onCheckedChange = { highContrast = it }
+                    )
+                )
+            )
+        }
+
+        Material3SettingsGroup(title = "Detection") {
+            Material3SettingsGroup(
+                items = listOf(
+                    switchSettingsItem(
+                        title = "Allow Accessibility Detection",
+                        description = "Allow Discord to detect if you are using a screen reader or other accessibility tools.",
+                        checked = userSettings?.allow_accessibility_detection ?: false,
+                        onCheckedChange = { 
+                            chatState.updateUserSettings(UserSettings.Partial(allow_accessibility_detection = it))
+                        }
                     )
                 )
             )

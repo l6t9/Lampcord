@@ -27,7 +27,7 @@ fun VideoAttachment(video: Attachment, onClick: (() -> Unit)? = null) {
     
     var wantsPlayback by remember { mutableStateOf(false) }
 
-    // Match Paicord's AttachmentSizedView: cap at min(500, width) x min(300, height)
+    // Cap at min(500, width) x min(300, height)
     // and let the aspect ratio pick the final size so videos are never cropped.
     val interactionSource = remember { MutableInteractionSource() }
     Box(
@@ -95,7 +95,7 @@ fun AttachmentImage(
 ) {
     val url = media.proxy_url ?: media.url ?: ""
     
-    // Match Paicord exactly: use the proxy URL as-is for images,
+    // Use the proxy URL as-is for images,
     // only append format=png for video posters. No width/height resizing.
     val displayUrl = remember(url, needsPoster) {
         var result = url
@@ -125,7 +125,7 @@ fun AttachmentImage(
         val maxWidth = 500.dp
         val maxHeight = 300.dp
 
-        // Match Paicord's AttachmentSizedView: cap the box at
+        // Cap the box at
         // min(500, imageWidth) x min(300, imageHeight) and let the
         // aspect ratio decide the final size, so tall images (e.g. phone
         // screenshots) are shown in full and never cropped.

@@ -20,6 +20,7 @@ import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.getLocalMedia
 import me.lampu.lampcord.shared.utils.getLocalMediaBytes
+import me.lampu.lampcord.shared.utils.getPlatformName
 import kotlinx.coroutines.launch
 
 @Composable
@@ -29,10 +30,15 @@ fun MediaPicker(
 ) {
     var mediaList by remember { mutableStateOf<List<LocalMedia>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
+    var hasPermission by remember { mutableStateOf(true) }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
-        mediaList = getLocalMedia()
+        try {
+            mediaList = getLocalMedia()
+        } catch (e: Exception) {
+            hasPermission = false
+        }
         isLoading = false
     }
 
@@ -47,22 +53,39 @@ fun MediaPicker(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp)
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 4.dp)
+                        .size(width = 32.dp, height = 4.dp)
+                        .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f), CircleShape)
+                )
+
                 Text(
                     "Select Media",
                     style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.align(Alignment.Center)
+                    modifier = Modifier.align(Alignment.Center).padding(top = 12.dp)
                 )
                 TextButton(
                     onClick = onDismiss,
-                    modifier = Modifier.align(Alignment.CenterEnd)
+                    modifier = Modifier.align(Alignment.CenterEnd).padding(top = 12.dp)
                 ) {
                     Text("Done")
                 }
             }
 
-            if (isLoading) {
+            if (!hasPermission) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("Permission denied", color = MaterialTheme.colorScheme.error)
+                        Button(onClick = { /* Could trigger permission request again */ }) {
+                            Text("Retry")
+                        }
+                    }
+                }
+            } else if (isLoading) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }

@@ -22,7 +22,7 @@ val appModule = module {
     }
     single { createHttpClient() }
     single { DiscordClient(get(), get()) }
-    single { GatewayManager(get(), get()) }
+    single { GatewayManager(get(), get(), get()) }
     single { VoiceGatewayManager(get(), get()) }
     single { RemoteAuthClient(get(), get()) }
     
@@ -30,7 +30,7 @@ val appModule = module {
     single { UserGuildSettingsStore() }
     single { PresenceStore(get()) }
     single { UserStore() }
-    single { RelationshipStore(get(), CoroutineScope(Dispatchers.Main)) }
+    single { RelationshipStore(get(), get(), CoroutineScope(Dispatchers.Main)) }
     single { GuildStore() }
     single { MemberListStore() }
     single { MessageStore(get(), CoroutineScope(Dispatchers.Main)) }

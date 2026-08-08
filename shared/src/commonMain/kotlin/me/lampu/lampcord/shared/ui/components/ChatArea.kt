@@ -114,7 +114,7 @@ fun ChatArea(
                 // Grouping logic: 7 minutes window, same author, current is regular message
                 val isInline = remember(message, priorMessage) {
                     if (priorMessage == null) return@remember false
-                    if (priorMessage.author.id != message.author.id) return@remember false
+                    if (priorMessage.author?.id != message.author?.id) return@remember false
                     if (message.referenced_message != null) return@remember false
                     // Only regular messages (type 0) can be grouped inline.
                     // They can group under other regular messages (0) or replies (19).

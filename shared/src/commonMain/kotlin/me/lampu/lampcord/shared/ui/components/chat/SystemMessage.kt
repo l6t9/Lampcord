@@ -29,12 +29,12 @@ fun SystemMessage(message: Message, chatState: ChatState) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         val (icon, iconTint, text) = when (message.type) {
-            1 -> Triple(Icons.Filled.PersonAdd, DiscordGreen, "${message.author.username} added a recipient.")
-            2 -> Triple(Icons.Filled.PersonRemove, DiscordRed, "${message.author.username} removed a recipient.")
-            6 -> Triple(Icons.Filled.PushPin, MaterialTheme.colorScheme.primary, "${message.author.username} pinned a message to this channel.")
-            7 -> Triple(Icons.AutoMirrored.Filled.ArrowForward, DiscordGreen, "${message.author.global_name ?: message.author.username} joined the server.")
-            8, 9, 10, 11 -> Triple(Icons.Filled.RocketLaunch, Fuchsia, "${message.author.global_name ?: message.author.username} just boosted the server!")
-            18 -> Triple(Icons.Filled.Tag, MaterialTheme.colorScheme.primary, "${message.author.global_name ?: message.author.username} started a thread.")
+            1 -> Triple(Icons.Filled.PersonAdd, DiscordGreen, "${message.author?.username ?: "Unknown"} added a recipient.")
+            2 -> Triple(Icons.Filled.PersonRemove, DiscordRed, "${message.author?.username ?: "Unknown"} removed a recipient.")
+            6 -> Triple(Icons.Filled.PushPin, MaterialTheme.colorScheme.primary, "${message.author?.username ?: "Unknown"} pinned a message to this channel.")
+            7 -> Triple(Icons.AutoMirrored.Filled.ArrowForward, DiscordGreen, "${message.author?.global_name ?: message.author?.username ?: "Unknown"} joined the server.")
+            8, 9, 10, 11 -> Triple(Icons.Filled.RocketLaunch, Fuchsia, "${message.author?.global_name ?: message.author?.username ?: "Unknown"} just boosted the server!")
+            18 -> Triple(Icons.Filled.Tag, MaterialTheme.colorScheme.primary, "${message.author?.global_name ?: message.author?.username ?: "Unknown"} started a thread.")
             else -> Triple(Icons.Filled.Info, MaterialTheme.colorScheme.onSurfaceVariant, "System message (Type ${message.type})")
         }
 
@@ -51,7 +51,7 @@ fun SystemMessage(message: Message, chatState: ChatState) {
             Spacer(modifier = Modifier.width(12.dp))
 
             val randomMessages = listOf("pizzaPre", "slid", "everyoneWelcomePre", "showedUp", "hopped")
-            val selectedMessage = randomMessages[message.id.takeLast(1).toInt() % randomMessages.size]
+            val selectedMessage = randomMessages[message.id.takeLast(1).toIntOrNull()?.let { it % randomMessages.size } ?: 0]
 
             if (selectedMessage.contains("Pre")) {
                 Text(
@@ -68,12 +68,12 @@ fun SystemMessage(message: Message, chatState: ChatState) {
             
             var profilePosition by remember { mutableStateOf(Offset.Zero) }
             Text(
-                text = message.author.global_name ?: message.author.username,
+                text = message.author?.global_name ?: message.author?.username ?: "Unknown User",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier
                     .onGloballyPositioned { profilePosition = it.positionInRoot() }
-                    .clickable { chatState.showProfile(message.author.id, profilePosition) }
+                    .clickable { message.author?.let { chatState.showProfile(it.id, profilePosition) } }
             )
             
             // Spacer(modifier = Modifier.width(4.dp)) Disabled for dots and commas

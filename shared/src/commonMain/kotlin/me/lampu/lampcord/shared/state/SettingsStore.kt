@@ -71,6 +71,22 @@ class SettingsStore(
             _showHiddenChannels = value
             me.lampu.lampcord.shared.settings.Settings.shared.showHiddenChannels = value
         }
+
+    private var _syncAppearance by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.syncAppearance)
+    var syncAppearance: Boolean
+        get() = _syncAppearance
+        set(value) {
+            _syncAppearance = value
+            me.lampu.lampcord.shared.settings.Settings.shared.syncAppearance = value
+        }
+
+    private var _fontScale by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.fontScale)
+    var fontScale: Float
+        get() = _fontScale
+        set(value) {
+            _fontScale = value
+            me.lampu.lampcord.shared.settings.Settings.shared.fontScale = value
+        }
     
     private val scope = CoroutineScope(Dispatchers.Main)
     private var pendingUpdateJob: Job? = null
@@ -91,7 +107,19 @@ class SettingsStore(
             developer_mode = newSettings.developer_mode ?: userSettings?.developer_mode,
             guild_positions = if (newSettings.guild_positions.isNotEmpty()) newSettings.guild_positions else userSettings?.guild_positions ?: emptyList(),
             guild_folders = if (newSettings.guild_folders.isNotEmpty()) newSettings.guild_folders else userSettings?.guild_folders ?: emptyList(),
-            custom_status = newSettings.custom_status ?: userSettings?.custom_status
+            custom_status = newSettings.custom_status ?: userSettings?.custom_status,
+            inline_attachment_media = newSettings.inline_attachment_media ?: userSettings?.inline_attachment_media,
+            inline_embed_media = newSettings.inline_embed_media ?: userSettings?.inline_embed_media,
+            render_embeds = newSettings.render_embeds ?: userSettings?.render_embeds,
+            animate_emoji = newSettings.animate_emoji ?: userSettings?.animate_emoji,
+            animate_stickers = newSettings.animate_stickers ?: userSettings?.animate_stickers,
+            explicit_content_filter = newSettings.explicit_content_filter ?: userSettings?.explicit_content_filter,
+            allow_accessibility_detection = newSettings.allow_accessibility_detection ?: userSettings?.allow_accessibility_detection,
+            contact_sync_enabled = newSettings.contact_sync_enabled ?: userSettings?.contact_sync_enabled,
+            default_guilds_restricted = newSettings.default_guilds_restricted ?: userSettings?.default_guilds_restricted,
+            friend_discovery_flags = newSettings.friend_discovery_flags ?: userSettings?.friend_discovery_flags,
+            show_current_game = newSettings.show_current_game ?: userSettings?.show_current_game,
+            blocked_message_bar = newSettings.blocked_message_bar ?: userSettings?.blocked_message_bar
         ) ?: newSettings
     }
 
@@ -129,7 +157,23 @@ class SettingsStore(
         
         scope.launch {
             try {
-                discordClient.updateUserSettings(settings)
+                discordClient.updateUserSettings(UserSettings.Partial(
+                    theme = settings.theme,
+                    developer_mode = settings.developer_mode,
+                    render_embeds = settings.render_embeds,
+                    inline_embed_media = settings.inline_embed_media,
+                    inline_attachment_media = settings.inline_attachment_media,
+                    locale = settings.locale,
+                    status = settings.status,
+                    show_current_game = settings.show_current_game,
+                    explicit_content_filter = settings.explicit_content_filter,
+                    animate_emoji = settings.animate_emoji,
+                    allow_accessibility_detection = settings.allow_accessibility_detection,
+                    animate_stickers = settings.animate_stickers,
+                    contact_sync_enabled = settings.contact_sync_enabled,
+                    friend_discovery_flags = settings.friend_discovery_flags,
+                    custom_status = settings.custom_status
+                ))
             } catch (e: Exception) {
                 println("Failed to update user settings: ${e.message}")
             }

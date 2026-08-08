@@ -15,6 +15,8 @@ import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.state.ChatState
 import me.lampu.lampcord.shared.ui.baseplates.RegularGuildItem
 import me.lampu.lampcord.shared.ui.icons.Icons
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 
 @Composable
 fun GuildRail(chatState: ChatState, modifier: Modifier = Modifier) {
@@ -69,8 +71,10 @@ fun GuildRail(chatState: ChatState, modifier: Modifier = Modifier) {
             }
         } else {
             items(folders) { folder ->
-                if (folder.id == null && folder.guild_ids.size == 1) {
-                    val guild = chatState.guilds.find { it.id == folder.guild_ids.first() }
+                val guildIds = folder.guild_ids.mapNotNull { it.jsonPrimitive.contentOrNull ?: it.toString() }
+                if (folder.id == null && guildIds.size == 1) {
+                    val guildId = guildIds.first()
+                    val guild = chatState.guilds.find { it.id == guildId }
                     if (guild != null) {
                         GuildIcon(
                             guild = guild,

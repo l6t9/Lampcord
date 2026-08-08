@@ -30,7 +30,10 @@ fun FriendsList(chatState: ChatState) {
     var isHovered by remember { mutableStateOf(false) }
     val filteredRelationships = remember(chatState.relationships, selectedTab) {
         when (selectedTab) {
-            0 -> chatState.relationships.filter { chatState.getUserStatus(it.user.id) != "offline" && it.type == 1 }
+            0 -> chatState.relationships.filter { 
+                val userId = it.user?.id ?: it.user_id ?: it.id
+                userId != null && chatState.getUserStatus(userId) != "offline" && it.type == 1 
+            }
             1 -> chatState.relationships.filter { it.type == 1 }
             2 -> chatState.relationships.filter { it.type == 3 || it.type == 4 } // Incoming/Outgoing
             3 -> chatState.relationships.filter { it.type == 2 } // Blocked
@@ -130,7 +133,7 @@ fun FriendsList(chatState: ChatState) {
                             modifier = Modifier.padding(bottom = 8.dp)
                         )
                     }
-                    items(filteredRelationships, key = { it.id }) { relationship ->
+                    items(filteredRelationships, key = { it.id ?: (it.user?.id ?: "") }) { relationship ->
                         FriendItem(relationship, chatState)
                     }
                 }
@@ -147,7 +150,7 @@ fun FriendsList(chatState: ChatState) {
 
 @Composable
 fun FriendItem(relationship: Relationship, chatState: ChatState) {
-    val user = relationship.user
+    val user = relationship.user ?: return
     val status = chatState.getUserStatus(user.id)
     val avatarUrl = user.avatar?.let { "https://cdn.discordapp.com/avatars/${user.id}/$it.png?size=128" }
 
@@ -171,7 +174,7 @@ fun FriendItem(relationship: Relationship, chatState: ChatState) {
                         AsyncImage(model = avatarUrl, contentDescription = user.username, modifier = Modifier.fillMaxSize())
                     } else {
                         Box(contentAlignment = Alignment.Center) {
-                            Text(user.username.take(1).uppercase(), style = MaterialTheme.typography.titleMedium)
+                            Text(user.username?.take(1)?.uppercase() ?: "?", style = MaterialTheme.typography.titleMedium)
                         }
                     }
                 }
@@ -189,7 +192,7 @@ fun FriendItem(relationship: Relationship, chatState: ChatState) {
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = user.global_name ?: user.username,
+                        text = user.global_name ?: user.username ?: "Unknown User",
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
@@ -197,7 +200,7 @@ fun FriendItem(relationship: Relationship, chatState: ChatState) {
                     if (user.global_name != null) {
                         Spacer(Modifier.width(4.dp))
                         Text(
-                            text = user.username,
+                            text = user.username ?: "",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

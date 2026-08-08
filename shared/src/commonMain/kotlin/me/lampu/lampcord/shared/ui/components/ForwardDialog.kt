@@ -40,7 +40,7 @@ fun ForwardDialog(
                 allChannels.filter { (channel, guild) ->
                     channel.name?.lowercase()?.contains(q) == true || 
                     guild?.name?.lowercase()?.contains(q) == true ||
-                    channel.recipients?.any { it.username.lowercase().contains(q) || it.global_name?.lowercase()?.contains(q) == true } == true
+                    channel.recipients?.any { it.username?.lowercase()?.contains(q) == true || it.global_name?.lowercase()?.contains(q) == true } == true
                 }
             }
         }

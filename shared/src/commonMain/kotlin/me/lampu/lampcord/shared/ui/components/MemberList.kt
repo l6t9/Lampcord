@@ -47,30 +47,32 @@ fun MemberList(chatState: ChatState) {
     val firstVisible = scrollState.firstVisibleItemIndex
     val rowCount = chatState.memberListRowCount
     val ranges = remember(firstVisible, rowCount) {
-        val pairs = mutableListOf(listOf(0, 99))
-        val maxIndex = rowCount - 1
-        if (maxIndex >= 100) {
-            val currentBlock = firstVisible / 100
-            val maxBlock = maxIndex / 100
-            val clampedBlock = minOf(currentBlock, maxBlock)
-            var block = clampedBlock
-            var added = 0
-            while (added < 2 && block >= 1) {
-                val start = block * 100
-                if (pairs.none { it[0] == start }) {
-                    pairs.add(1, listOf(start, start + 99))
-                    added++
-                }
-                block--
-            }
-        }
-        pairs
+        val currentBlock = (firstVisible / 100) * 100
+        val blocks = mutableSetOf(0) // Always keep top members
+        
+        blocks.add(currentBlock)
+        if (currentBlock >= 100) blocks.add(currentBlock - 100)
+        blocks.add(currentBlock + 100)
+        blocks.add(currentBlock + 200)
+        
+        blocks.filter { it < rowCount }.sorted().map { listOf(it, it + 99) }
     }
-    LaunchedEffect(ranges) {
-        if (ranges.isNotEmpty()) {
-            // Debounce the request to avoid spamming the gateway
-            kotlinx.coroutines.delay(300)
-            chatState.requestMemberListRange(ranges)
+
+    // 126.21 Parity: Initial request is immediate, subsequent scrolls are debounced.
+    val channelId = chatState.selectedChannel?.id
+    var lastRequestedChannelId by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(ranges, channelId) {
+        if (ranges.isNotEmpty() && channelId != null) {
+            if (channelId != lastRequestedChannelId) {
+                // Immediate request for new channel selection
+                chatState.requestMemberListRange(ranges)
+                lastRequestedChannelId = channelId
+            } else {
+                // Debounce for scrolling
+                kotlinx.coroutines.delay(300)
+                chatState.requestMemberListRange(ranges)
+            }
         }
     }
 

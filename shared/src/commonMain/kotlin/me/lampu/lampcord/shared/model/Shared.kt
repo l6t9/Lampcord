@@ -8,5 +8,4 @@ fun JsonElement?.asSnowflake(): String? = when {
     else -> null
 }
 
-fun Channel.lastMessageId(): String? = last_message_id.asSnowflake()
 fun ReadState.lastMessageId(): String? = last_message_id.asSnowflake()

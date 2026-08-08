@@ -17,17 +17,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import me.lampu.lampcord.shared.state.ChatState
 import me.lampu.lampcord.shared.ui.components.*
+import me.lampu.lampcord.shared.ui.components.guilds.ServerSettings
+import me.lampu.lampcord.shared.ui.components.chat.PinnedMessagesScreen
 import me.lampu.lampcord.shared.ui.components.profiles.ProfileCard
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.SettingsScreen
-import io.github.materiiapps.panels.SwipePanels
-import io.github.materiiapps.panels.SwipePanelsValue
-import io.github.materiiapps.panels.rememberSwipePanelsState
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -67,7 +68,25 @@ actual fun MobileBaseplate(chatState: ChatState) {
                             if (activeChannel != null) {
                                 TopAppBar(
                                     title = {
-                                        Text(activeChannel.name ?: "Chat", style = MaterialTheme.typography.titleMedium)
+                                        Column {
+                                            Text(
+                                                text = if (activeChannel.type == 1) {
+                                                    val recipient = activeChannel.recipients?.firstOrNull()
+                                                    recipient?.let { it.global_name ?: it.username } ?: "Chat"
+                                                } else activeChannel.name ?: "Chat",
+                                                style = MaterialTheme.typography.titleMedium,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            if (activeChannel.topic?.isNotBlank() == true) {
+                                                Text(
+                                                    text = activeChannel.topic!!,
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
+                                            }
+                                        }
                                     },
                                     navigationIcon = {
                                         IconButton(onClick = { panelState.openStart() }) {
@@ -75,6 +94,11 @@ actual fun MobileBaseplate(chatState: ChatState) {
                                         }
                                     },
                                     actions = {
+                                        if (activeChannel.type != 2 && activeChannel.type != 13) {
+                                            IconButton(onClick = { chatState.isPinsVisible = true }) {
+                                                Icon(Icons.Filled.PushPin, "Pins")
+                                            }
+                                        }
                                         if (activeChannel.guild_id != null || activeChannel.type == 1 || activeChannel.type == 3) {
                                             IconButton(onClick = { panelState.openEnd() }) {
                                                 Icon(
@@ -270,6 +294,16 @@ actual fun MobileBaseplate(chatState: ChatState) {
         // Settings Screen
         if (chatState.isSettingsVisible) {
             SettingsScreen(chatState, onDismiss = { chatState.isSettingsVisible = false })
+        }
+
+        // Server Settings
+        if (chatState.isServerSettingsVisible) {
+            ServerSettings(chatState, onDismiss = { chatState.isServerSettingsVisible = false })
+        }
+
+        // Pinned Messages
+        if (chatState.isPinsVisible) {
+            PinnedMessagesScreen(chatState, onDismiss = { chatState.isPinsVisible = false })
         }
     }
 }

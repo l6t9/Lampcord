@@ -8,7 +8,7 @@ class UserGuildSettingsStore {
     val userGuildSettings = mutableStateMapOf<String?, UserGuildSettings>()
 
     fun handleReady(ready: ReadyPayload) {
-        ready.user_guild_settings?.forEach { settings ->
+        ready.user_guild_settings?.entries?.forEach { settings ->
             userGuildSettings[settings.guild_id] = settings
         }
     }

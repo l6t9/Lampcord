@@ -16,6 +16,8 @@ class Settings(private val settings: KmpSettings) {
     var accentColor by preference("accent_color", "#6750A4")
     var materialYou by preferenceBoolean("material_you", true)
     var showHiddenChannels by preferenceBoolean("show_hidden_channels", false)
+    var syncAppearance by preferenceBoolean("sync_appearance", true)
+    var fontScale by preferenceFloat("font_scale", 1.0f)
 
     fun getLastChannel(guildId: String): String? {
         val id = settings.getString("last_channel_$guildId", "")
@@ -54,6 +56,16 @@ class Settings(private val settings: KmpSettings) {
                 settings.getBoolean(key, defaultValue)
 
             override fun setValue(thisRef: Any?, property: KProperty<*>, value: Boolean) {
+                settings[key] = value
+            }
+        }
+
+    private fun preferenceFloat(key: String, defaultValue: Float): ReadWriteProperty<Any?, Float> =
+        object : ReadWriteProperty<Any?, Float> {
+            override fun getValue(thisRef: Any?, property: KProperty<*>): Float =
+                settings.getFloat(key, defaultValue)
+
+            override fun setValue(thisRef: Any?, property: KProperty<*>, value: Float) {
                 settings[key] = value
             }
         }

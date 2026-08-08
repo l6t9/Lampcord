@@ -34,10 +34,15 @@ import me.lampu.lampcord.shared.model.GuildFolder
 import me.lampu.lampcord.shared.state.ChatState
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.components.AsyncImage
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 
 @Composable
 fun FolderPreviewGrid(folder: GuildFolder, chatState: ChatState) {
-    val guilds = folder.guild_ids.mapNotNull { id -> chatState.guilds.find { it.id == id } }.take(4)
+    val guilds = folder.guild_ids.mapNotNull { el -> 
+        val id = el.jsonPrimitive.contentOrNull ?: return@mapNotNull null
+        chatState.guilds.find { it.id == id } 
+    }.take(4)
     
     Column(
         modifier = Modifier.padding(4.dp).fillMaxSize(),
@@ -106,7 +111,8 @@ fun GuildFolderItem(folder: GuildFolder, chatState: ChatState) {
     var expanded by remember { mutableStateOf(false) }
     val folderColor = folder.color?.let { Color(it.toLong() or 0xFF000000L) } ?: MaterialTheme.colorScheme.primary
     
-    val isAnyChildSelected = folder.guild_ids.any { it == chatState.selectedGuild?.id }
+    val guildIds = remember(folder.guild_ids) { folder.guild_ids.mapNotNull { el -> el.jsonPrimitive.contentOrNull } }
+    val isAnyChildSelected = guildIds.any { id -> id == chatState.selectedGuild?.id }
     
     val isUnread by remember(folder, chatState.readStates, chatState.userGuildSettingsStore.userGuildSettings) {
         derivedStateOf { chatState.isFolderUnread(folder) }
@@ -215,7 +221,8 @@ fun GuildFolderItem(folder: GuildFolder, chatState: ChatState) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                folder.guild_ids.forEach { guildId ->
+                folder.guild_ids.forEach { el ->
+                    val guildId = el.jsonPrimitive.contentOrNull ?: return@forEach
                     val guild = chatState.guilds.find { it.id == guildId }
                     if (guild != null) {
                         GuildIcon(

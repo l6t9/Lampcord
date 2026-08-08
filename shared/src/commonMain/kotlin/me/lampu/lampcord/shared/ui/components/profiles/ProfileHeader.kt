@@ -69,15 +69,22 @@ fun ProfileHeader(
     }
 
     Column(modifier = Modifier.offset(y = if (isExpanded) (-50).dp else (-35).dp)) {
-        UsernameView(
-            name = profile.guild_member?.nick ?: user.global_name ?: user.username,
-            style = profile.guild_member?.display_name_styles ?: user.display_name_styles,
-            baseStyle = if (isExpanded) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = theme.contentColor
-        )
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(user.username, style = MaterialTheme.typography.bodyMedium, color = theme.contentColor.copy(alpha = 0.9f))
+            UsernameView(
+                name = profile.guild_member?.nick ?: user.global_name ?: user.username ?: "Unknown User",
+                style = profile.guild_member?.display_name_styles ?: user.display_name_styles,
+                baseStyle = if (isExpanded) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = theme.contentColor
+            )
+            user.primary_guild?.let {
+                Spacer(Modifier.width(4.dp))
+                ClanTagView(it)
+            }
+            UserTagView(user, modifier = Modifier.padding(start = 4.dp))
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(user.username ?: "", style = MaterialTheme.typography.bodyMedium, color = theme.contentColor.copy(alpha = 0.9f))
             val pronouns = guildMeta?.pronouns ?: userMeta?.pronouns ?: user.pronouns
             if (!pronouns.isNullOrBlank()) {
                 Text(" • $pronouns", style = MaterialTheme.typography.bodyMedium, color = theme.contentColor.copy(alpha = 0.7f), modifier = Modifier.padding(start = 4.dp))

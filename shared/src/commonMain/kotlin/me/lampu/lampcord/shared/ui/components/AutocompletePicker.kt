@@ -16,17 +16,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import me.lampu.lampcord.shared.model.ApplicationCommand
-import me.lampu.lampcord.shared.model.Channel
-import me.lampu.lampcord.shared.model.Member
-import me.lampu.lampcord.shared.model.User
+import me.lampu.lampcord.shared.model.*
 import me.lampu.lampcord.shared.state.ChatState
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.theme.DiscordGreen
-
-enum class AutocompleteType {
-    MENTION, CHANNEL, COMMAND, EMOJI
-}
 
 @Composable
 fun AutocompletePicker(
@@ -49,20 +42,20 @@ fun AutocompletePicker(
             }
 
             val members = if (guildId != null) {
-                 chatState.memberListItems.values.mapNotNull { it?.member }.filter {
+                 chatState.memberListItems.filterNotNull().mapNotNull { it.member }.filter {
                      val name = it.nick ?: it.user?.global_name ?: it.user?.username ?: ""
                      name.contains(query, ignoreCase = true) || it.user?.username?.contains(query, ignoreCase = true) == true
                  }.take(10)
             } else {
                 chatState.relationships.filter { 
-                    it.user.global_name?.contains(query, ignoreCase = true) == true || 
-                    it.user.username.contains(query, ignoreCase = true)
-                }.map { Member(user = it.user) }.take(10)
+                    it.user?.global_name?.contains(query, ignoreCase = true) == true || 
+                    it.user?.username?.contains(query, ignoreCase = true) == true
+                }.mapNotNull { it.user?.let { u -> Member(user = u) } }.take(10)
             }
             
             results.addAll(members.map { member ->
                 val user = member.user!!
-                val name = member.nick ?: user.global_name ?: user.username
+                val name = member.nick ?: user.global_name ?: user.username ?: "Unknown User"
                 AutocompleteItem(
                     id = user.id,
                     title = name,
@@ -71,7 +64,21 @@ fun AutocompletePicker(
                     replacement = "<@${user.id}>"
                 )
             })
-            results.take(12)
+
+            val roles = chatState.selectedGuild?.roles?.filter { 
+                it.name.contains(query, ignoreCase = true) 
+            }?.take(5) ?: emptyList()
+            results.addAll(roles.map { role ->
+                AutocompleteItem(
+                    id = role.id,
+                    title = role.name,
+                    iconType = Icons.Filled.Group,
+                    replacement = "<@&${role.id}>",
+                    color = if (role.color != 0) Color(role.color or 0xFF000000.toInt()) else null
+                )
+            })
+
+            results.take(15)
         }
         AutocompleteType.CHANNEL -> {
             val channels = chatState.channels.filter { 
@@ -92,6 +99,7 @@ fun AutocompletePicker(
                 )
             }
         }
+        AutocompleteType.ROLE -> emptyList()
         AutocompleteType.COMMAND -> {
             val commands = chatState.availableCommands.filter { 
                 it.name.contains(query, ignoreCase = true) 
@@ -137,10 +145,11 @@ fun AutocompletePicker(
     ) {
         Column {
             val headerTitle = when(type) {
-                AutocompleteType.MENTION -> "Members"
+                AutocompleteType.MENTION -> "Members & Roles"
                 AutocompleteType.CHANNEL -> "Channels"
                 AutocompleteType.COMMAND -> "Commands"
                 AutocompleteType.EMOJI -> "Emojis"
+                AutocompleteType.ROLE -> ""
             }
             
             Text(
@@ -187,7 +196,7 @@ fun AutocompletePicker(
                                     imageVector = item.iconType,
                                     contentDescription = null,
                                     modifier = Modifier.size(20.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    tint = item.color ?: MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             } else {
                                 Box(
@@ -204,6 +213,7 @@ fun AutocompletePicker(
                                 Text(
                                     text = item.title,
                                     style = MaterialTheme.typography.bodyMedium,
+                                    color = item.color ?: MaterialTheme.colorScheme.onSurface,
                                     fontWeight = FontWeight.SemiBold,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
@@ -234,5 +244,6 @@ data class AutocompleteItem(
     val iconType: androidx.compose.ui.graphics.vector.ImageVector? = null,
     val replacement: String,
     val isCommand: Boolean = false,
-    val commandObj: ApplicationCommand? = null
+    val commandObj: ApplicationCommand? = null,
+    val color: Color? = null
 )

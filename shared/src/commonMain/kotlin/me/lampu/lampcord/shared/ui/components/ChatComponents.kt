@@ -32,13 +32,14 @@ import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import me.lampu.lampcord.shared.model.toTwemojiUrl
-import me.lampu.lampcord.shared.model.InteractionOption
+import me.lampu.lampcord.shared.model.*
 import me.lampu.lampcord.shared.state.ChatState
+import me.lampu.lampcord.shared.ui.components.chat.MediaPicker
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.FilePicker
 import me.lampu.lampcord.shared.utils.getClipboardFiles
 import me.lampu.lampcord.shared.utils.Permission
+import me.lampu.lampcord.shared.utils.getPlatformName
 
 @Composable
 fun TypingIndicator(chatState: ChatState, channelId: String) {
@@ -197,18 +198,33 @@ fun ChannelHeader(
                 }
                 
                 // Search bar (Far Right)
-                Surface(
-                    modifier = Modifier.width(160.dp).height(24.dp),
-                    shape = RoundedCornerShape(4.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    if (channel.type != 2 && channel.type != 13) {
+                        IconButton(onClick = { chatState.isPinsVisible = true }) {
+                            Icon(Icons.Filled.PushPin, "Pins", modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+
+                    Surface(
+                        modifier = Modifier.width(120.dp).height(32.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh
                     ) {
-                        Text("Search", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Spacer(Modifier.weight(1f))
-                        Icon(Icons.Filled.Search, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "Search",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            )
+                            Spacer(Modifier.weight(1f))
+                            Icon(Icons.Filled.Search, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
                 }
             }
@@ -384,40 +400,64 @@ fun ChatInputBar(
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
 
+            AnimatedVisibility(
+                visible = chatState.isMediaPickerVisible,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                MediaPicker(chatState) {
+                    chatState.isMediaPickerVisible = false
+                }
+            }
+
             var inputBarWidth by remember { mutableStateOf(0) }
 
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(68.dp)
-                    .padding(horizontal = 8.dp)
+                    .heightIn(min = 68.dp)
+                    .padding(horizontal = 8.dp, vertical = 8.dp)
                     .onGloballyPositioned { inputBarWidth = it.size.width }
                     .animateContentSize(animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f)),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.Bottom
             ) {
-                FilePicker(
-                    show = showFilePicker,
-                    onFileSelected = { chatState.pendingFiles.addAll(it) },
-                    onDismiss = { showFilePicker = false }
-                )
+                if (getPlatformName() != "android") {
+                    FilePicker(
+                        show = showFilePicker,
+                        onFileSelected = { chatState.pendingFiles.addAll(it) },
+                        onDismiss = { showFilePicker = false }
+                    )
+                }
 
                 IconButton(
-                    onClick = { showFilePicker = true },
+                    onClick = {
+                        if (getPlatformName() == "android") {
+                            chatState.isMediaPickerVisible = !chatState.isMediaPickerVisible
+                        } else {
+                            showFilePicker = true
+                        }
+                    },
                     enabled = chatState.editingMessage == null && canSend,
-                    colors = IconButtonDefaults.filledTonalIconButtonColors()
+                    modifier = Modifier.padding(bottom = 4.dp),
+                    colors = IconButtonDefaults.filledTonalIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Add,
                         contentDescription = "Add",
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(24.dp)
                     )
                 }
                 
+                Spacer(modifier = Modifier.width(8.dp))
+
                 val isDm = channel.type == 1 || channel.type == 3 || channel.guild_id == null
                 val isThread = channel.type == 10 || channel.type == 11 || channel.type == 12
                 
                 val placeholderText = when {
-                    !canSend -> "You do not have permission to send messages in this channel."
+                    !canSend -> "You do not have permission to send messages."
                     isThread -> "Reply to thread..."
                     isDm -> {
                         val recipient = channel.recipients?.firstOrNull()
@@ -467,212 +507,154 @@ fun ChatInputBar(
 
                 val primaryColor = MaterialTheme.colorScheme.primary
 
-                BasicTextField(
-                    value = textFieldValue,
-                    onValueChange = { 
-                        if (canSend) {
-                            textFieldValue = it
-                            updateAutocomplete(it.text, it.selection)
-                        }
-                    },
-                    visualTransformation = DiscordInputVisualTransformation(primaryColor),
+                Surface(
                     modifier = Modifier
                         .weight(1f)
-                        .padding(horizontal = 4.dp)
-                        .height(40.dp)
-                        .focusRequester(focusRequester)
-                        .onPreviewKeyEvent { event ->
-                            if (!canSend) return@onPreviewKeyEvent false
-                            if (event.type == KeyEventType.KeyDown) {
-                                if (event.key == Key.Escape) {
-                                    if (autocompleteType != null) {
-                                        autocompleteType = null
-                                        return@onPreviewKeyEvent true
+                        .padding(bottom = 4.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        BasicTextField(
+                            value = textFieldValue,
+                            onValueChange = { 
+                                if (canSend) {
+                                    textFieldValue = it
+                                    updateAutocomplete(it.text, it.selection)
+                                    if (it.text.isNotEmpty()) {
+                                        chatState.sendTyping()
                                     }
-                                    if (chatState.editingMessage != null) {
-                                        chatState.editingMessage = null
+                                }
+                            },
+                            visualTransformation = DiscordInputVisualTransformation(primaryColor),
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(start = 12.dp, top = 10.dp, bottom = 10.dp)
+                                .focusRequester(focusRequester)
+                                .onPreviewKeyEvent { event ->
+                                    if (!canSend) return@onPreviewKeyEvent false
+                                    if (event.type == KeyEventType.KeyDown) {
+                                        if (event.key == Key.Escape) {
+                                            if (autocompleteType != null) {
+                                                autocompleteType = null
+                                                return@onPreviewKeyEvent true
+                                            }
+                                            if (chatState.editingMessage != null) {
+                                                chatState.editingMessage = null
+                                                textFieldValue = TextFieldValue("")
+                                                return@onPreviewKeyEvent true
+                                            }
+                                            if (chatState.replyingTo != null) {
+                                                chatState.replyingTo = null
+                                                return@onPreviewKeyEvent true
+                                            }
+                                        }
+                                        if (event.isCtrlPressed && event.key == Key.V) {
+                                                val files = getClipboardFiles()
+                                                if (files.isNotEmpty()) {
+                                                    chatState.pendingFiles.addAll(files)
+                                                    return@onPreviewKeyEvent true
+                                                }
+                                        }
+                            if (event.key == Key.Enter && !event.isShiftPressed) {
+                                if (textFieldValue.text.startsWith('/') && !textFieldValue.text.contains(' ')) {
+                                    val cmdName = textFieldValue.text.substring(1).trim()
+                                    val command = chatState.availableCommands.find { it.name == cmdName }
+                                    if (command != null) {
+                                        chatState.sendInteraction(command)
                                         textFieldValue = TextFieldValue("")
                                         return@onPreviewKeyEvent true
                                     }
-                                    if (chatState.replyingTo != null) {
-                                        chatState.replyingTo = null
-                                        return@onPreviewKeyEvent true
+                                }
+                                if (textFieldValue.text.isNotBlank() || chatState.pendingFiles.isNotEmpty()) {
+                                    chatState.sendMessage(textFieldValue.text)
+                                    textFieldValue = TextFieldValue("")
+                                    return@onPreviewKeyEvent true
+                                }
+                            }
                                     }
-                                }
-                                if (event.isCtrlPressed && event.key == Key.V) {
-                                        val files = getClipboardFiles()
-                                        if (files.isNotEmpty()) {
-                                            chatState.pendingFiles.addAll(files)
-                                            return@onPreviewKeyEvent true
-                                        }
-                                }
-                    if (event.key == Key.Enter && !event.isShiftPressed) {
-                        if (textFieldValue.text.startsWith('/') && !textFieldValue.text.contains(' ')) {
-                            val cmdName = textFieldValue.text.substring(1).trim()
-                            val command = chatState.availableCommands.find { it.name == cmdName }
-                            if (command != null) {
-                                chatState.sendInteraction(command)
-                                textFieldValue = TextFieldValue("")
-                                return@onPreviewKeyEvent true
-                            }
-                        }
-                        if (textFieldValue.text.isNotBlank() || chatState.pendingFiles.isNotEmpty()) {
-                            chatState.sendMessage(textFieldValue.text)
-                            textFieldValue = TextFieldValue("")
-                            return@onPreviewKeyEvent true
-                        }
-                    }
-                            }
-                            false
-                        },
-                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
-                    cursorBrush = androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.primary),
-                    decorationBox = { innerTextField: @Composable () -> Unit ->
-                        Surface(
-                            shape = RoundedCornerShape(20.dp),
-                            color = MaterialTheme.colorScheme.surface,
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(horizontal = 16.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(modifier = Modifier.weight(1f)) {
+                                    false
+                                },
+                            textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
+                            cursorBrush = androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.primary),
+                            decorationBox = { innerTextField: @Composable () -> Unit ->
+                                Box(modifier = Modifier.fillMaxWidth()) {
                                     if (textFieldValue.text.isEmpty()) {
                                         Text(
                                             text = placeholderText,
                                             style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                                         )
                                     }
                                     innerTextField()
                                 }
-                                
-                                Box {
-                                    IconButton(
-                                        onClick = { showEmojiPicker = !showEmojiPicker },
-                                        modifier = Modifier.size(32.dp),
-                                        colors = IconButtonDefaults.iconButtonColors(
-                                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Filled.SentimentSatisfied,
-                                            contentDescription = "Emojis",
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
-                                    if (showEmojiPicker) {
-                                        androidx.compose.ui.window.Popup(
-                                            alignment = Alignment.BottomEnd,
-                                            offset = IntOffset(0, -48),
-                                            onDismissRequest = { showEmojiPicker = false }
-                                        ) {
-                                            EmojiPicker(chatState) { emoji ->
-                                                val emojiText = if (emoji.id != null) "<:${emoji.name}:${emoji.id}>" else emoji.name ?: ""
-                                                val newText = textFieldValue.text.take(textFieldValue.selection.start) + emojiText + textFieldValue.text.drop(textFieldValue.selection.end)
-                                                textFieldValue = TextFieldValue(newText, TextRange(textFieldValue.selection.start + emojiText.length))
-                                                showEmojiPicker = false
-                                            }
-                                        }
-                                    }
+                            }
+                        )
+
+                        IconButton(
+                            onClick = { showEmojiPicker = !showEmojiPicker },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.SentimentSatisfied,
+                                contentDescription = "Emojis",
+                                modifier = Modifier.size(22.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        if (showEmojiPicker) {
+                            androidx.compose.ui.window.Popup(
+                                alignment = Alignment.BottomEnd,
+                                offset = IntOffset(0, -48),
+                                onDismissRequest = { showEmojiPicker = false }
+                            ) {
+                                EmojiPicker(chatState) { emoji ->
+                                    val emojiText = if (emoji.id != null) "<:${emoji.name}:${emoji.id}>" else emoji.name ?: ""
+                                    val newText = textFieldValue.text.take(textFieldValue.selection.start) + emojiText + textFieldValue.text.drop(textFieldValue.selection.end)
+                                    textFieldValue = TextFieldValue(newText, TextRange(textFieldValue.selection.start + emojiText.length))
+                                    showEmojiPicker = false
                                 }
                             }
                         }
-                    }
-                )
-
-                if (autocompleteType != null) {
-                    val density = LocalDensity.current
-                    var popupHeight by remember { mutableStateOf(0) }
-                    
-                    androidx.compose.ui.window.Popup(
-                        alignment = Alignment.TopStart,
-                        offset = IntOffset(
-                            x = 0,
-                            y = -popupHeight - with(density) { 8.dp.toPx().toInt() }
-                        ),
-                        onDismissRequest = { autocompleteType = null }
-                    ) {
-                        AutocompletePicker(
-                            chatState = chatState,
-                            type = autocompleteType!!,
-                            query = autocompleteQuery,
-                            modifier = Modifier
-                                .width(with(density) { (inputBarWidth).toDp() })
-                                .onGloballyPositioned { popupHeight = it.size.height },
-                            onItemSelected = { label, replacement ->
-                                val cursor = textFieldValue.selection.start
-                                val textBefore = textFieldValue.text.take(cursor)
-                                val textAfter = textFieldValue.text.drop(textFieldValue.selection.end)
-                                
-                                val startOfTrigger = when(autocompleteType) {
-                                    AutocompleteType.COMMAND -> 0
-                                    else -> textBefore.lastIndexOfAny(charArrayOf('@', '#', ':'))
-                                }
-                                
-                                if (startOfTrigger != -1) {
-                                    val prefix = textFieldValue.text.take(startOfTrigger)
-                                    if (autocompleteType == AutocompleteType.COMMAND) {
-                                         val command = chatState.availableCommands.find { it.name == replacement }
-                                         if (command != null && !command.options.isNullOrEmpty()) {
-                                             chatState.activeCommand = command
-                                             chatState.commandOptions.clear()
-                                             textFieldValue = TextFieldValue("")
-                                         } else if (command != null) {
-                                             chatState.sendInteraction(command)
-                                             textFieldValue = TextFieldValue("")
-                                         }
-                                    } else {
-                                        val newText = prefix + replacement + " " + textAfter
-                                        textFieldValue = TextFieldValue(newText, TextRange(prefix.length + replacement.length + 1))
-                                    }
-                                }
-                                autocompleteType = null
-                            }
-                        )
                     }
                 }
                 
                 AnimatedVisibility(
                     visible = textFieldValue.text.isNotBlank() || chatState.pendingFiles.isNotEmpty() || chatState.activeCommand != null,
-                    enter = fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) + 
-                            expandHorizontally(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) +
-                            scaleIn(initialScale = 0.8f, animationSpec = spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMediumLow)),
-                    exit = fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) + 
-                           shrinkHorizontally(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) +
-                           scaleOut(targetScale = 0.8f, animationSpec = spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMediumLow))
+                    enter = fadeIn() + scaleIn(initialScale = 0.8f),
+                    exit = fadeOut() + scaleOut(targetScale = 0.8f),
+                    modifier = Modifier.padding(bottom = 4.dp, start = 8.dp)
                 ) {
-                    Row {
-                        Spacer(modifier = Modifier.width(4.dp))
-                        IconButton(
-                            onClick = {
-                                if (chatState.activeCommand != null) {
-                                    val interactionOptions = chatState.commandOptions.map { (name, value) ->
-                                        val optionType = chatState.activeCommand!!.options!!.find { it.name == name }?.type ?: 3
-                                        InteractionOption(type = optionType, name = name, value = value)
-                                    }
-                                    chatState.sendInteraction(chatState.activeCommand!!, interactionOptions)
-                                    chatState.activeCommand = null
-                                    chatState.commandOptions.clear()
-                                } else {
-                                    chatState.sendMessage(textFieldValue.text)
+                    IconButton(
+                        onClick = {
+                            if (chatState.activeCommand != null) {
+                                val interactionOptions = chatState.commandOptions.map { (name, value) ->
+                                    val optionType = chatState.activeCommand!!.options!!.find { it.name == name }?.type ?: 3
+                                    InteractionOption(type = optionType, name = name, value = value)
                                 }
-                                textFieldValue = TextFieldValue("")
-                            },
-                            colors = IconButtonDefaults.filledIconButtonColors(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary
-                            )
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.Send,
-                                contentDescription = "Send",
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
+                                chatState.sendInteraction(chatState.activeCommand!!, interactionOptions)
+                                chatState.activeCommand = null
+                                chatState.commandOptions.clear()
+                            } else {
+                                chatState.sendMessage(textFieldValue.text)
+                            }
+                            textFieldValue = TextFieldValue("")
+                        },
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Send,
+                            contentDescription = "Send",
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
                 }
             }

@@ -5,7 +5,8 @@ import kotlinx.serialization.json.JsonElement
 
 @Serializable
 data class PresenceUpdate(
-    val user: User,
+    val user: User? = null,
+    val user_id: String? = null,
     val guild_id: String? = null,
     val status: String = "offline",
     val activities: List<Activity> = emptyList(),

@@ -26,7 +26,11 @@ import me.lampu.lampcord.shared.utils.setClipboardText
 
 @Composable
 fun MemberItem(member: Member, chatState: ChatState) {
-    val user = member.user ?: return
+    val user = remember(member, chatState.userStore) {
+        member.user ?: member.userId()?.let { chatState.userStore.getUser(it) }
+    }
+    
+    if (user == null) return
     val avatarUrl = member.avatar?.let {
         "https://cdn.discordapp.com/guilds/${chatState.selectedGuild?.id}/users/${user.id}/avatars/$it.png"
     } ?: user.avatar?.let {
@@ -121,7 +125,7 @@ fun MemberItem(member: Member, chatState: ChatState) {
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             UsernameView(
-                                name = member.nick ?: user.global_name ?: user.username,
+                                name = member.nick ?: user.global_name ?: user.username ?: "Unknown User",
                                 style = member.display_name_styles ?: user.display_name_styles,
                                 baseStyle = MaterialTheme.typography.bodyMedium,
                                 color = if (roleColor != Color.Unspecified) roleColor else MaterialTheme.colorScheme.onSurface,
@@ -134,6 +138,7 @@ fun MemberItem(member: Member, chatState: ChatState) {
                                 Spacer(Modifier.width(4.dp))
                                 ClanTagView(it)
                             }
+                            UserTagView(user, modifier = Modifier.padding(start = 4.dp))
                         }
                         
                         val activities = member.presence?.activities ?: emptyList()

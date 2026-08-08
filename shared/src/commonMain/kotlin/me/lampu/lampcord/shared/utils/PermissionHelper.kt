@@ -91,8 +91,8 @@ object PermissionHelper {
 
         // @everyone overwrite
         overwrites.find { it.id == guild.id }?.let { everyoneOverwrite ->
-            val deny = everyoneOverwrite.deny.toULongOrNull()?.toLong() ?: 0L
-            val allow = everyoneOverwrite.allow.toULongOrNull()?.toLong() ?: 0L
+            val deny = everyoneOverwrite.denyString().toULongOrNull()?.toLong() ?: 0L
+            val allow = everyoneOverwrite.allowString().toULongOrNull()?.toLong() ?: 0L
             permissions = (permissions and deny.inv()) or allow
         }
 
@@ -101,8 +101,8 @@ object PermissionHelper {
         var roleDeny = 0L
         for (roleId in member.roles) {
             overwrites.find { it.id == roleId }?.let { roleOverwrite ->
-                roleAllow = roleAllow or (roleOverwrite.allow.toULongOrNull()?.toLong() ?: 0L)
-                roleDeny = roleDeny or (roleOverwrite.deny.toULongOrNull()?.toLong() ?: 0L)
+                roleAllow = roleAllow or (roleOverwrite.allowString().toULongOrNull()?.toLong() ?: 0L)
+                roleDeny = roleDeny or (roleOverwrite.denyString().toULongOrNull()?.toLong() ?: 0L)
             }
         }
         permissions = (permissions and roleDeny.inv()) or roleAllow
@@ -111,8 +111,8 @@ object PermissionHelper {
         val effectiveUserId = userId ?: member.user?.id
         effectiveUserId?.let { uid ->
             overwrites.find { it.id == uid }?.let { memberOverwrite ->
-                val deny = memberOverwrite.deny.toULongOrNull()?.toLong() ?: 0L
-                val allow = memberOverwrite.allow.toULongOrNull()?.toLong() ?: 0L
+                val deny = memberOverwrite.denyString().toULongOrNull()?.toLong() ?: 0L
+                val allow = memberOverwrite.allowString().toULongOrNull()?.toLong() ?: 0L
                 permissions = (permissions and deny.inv()) or allow
             }
         }
