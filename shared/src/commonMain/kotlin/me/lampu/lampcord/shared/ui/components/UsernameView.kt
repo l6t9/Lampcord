@@ -14,8 +14,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import me.lampu.lampcord.shared.model.DisplayNameStyles
-import org.jetbrains.compose.resources.Font
-import lampcord.shared.generated.resources.*
+import me.lampu.lampcord.shared.utils.loadFont
 
 object DisplayNameCatalog {
     object Effect {
@@ -44,17 +43,17 @@ object DisplayNameCatalog {
 
     @Composable
     fun getFontFamily(fontId: Int?): FontFamily? = when (fontId) {
-        Fonts.BANGERS -> FontFamily(Font(Res.font.Bangers_Regular))
-        Fonts.BIO_RHYME -> FontFamily(Font(Res.font.BioRhyme_Regular))
-        Fonts.CHERRY_BOMB -> FontFamily(Font(Res.font.CherryBombOne_Regular))
-        Fonts.CHICLE -> FontFamily(Font(Res.font.Chicle_Regular))
-        Fonts.COMPAGNON -> FontFamily(Font(Res.font.Compagnon_Medium))
-        Fonts.MUSEO_MODERNO -> FontFamily(Font(Res.font.MuseoModerno_Regular))
-        Fonts.NEO_CASTEL -> FontFamily(Font(Res.font.NeoCastel))
-        Fonts.PIXELIFY -> FontFamily(Font(Res.font.PixelifySans_Regular))
-        Fonts.RIBES -> FontFamily(Font(Res.font.Ribes_Black))
-        Fonts.SINISTRE -> FontFamily(Font(Res.font.Sinistre_Bold))
-        Fonts.ZILLA_SLAB -> FontFamily(Font(Res.font.ZillaSlab_SemiBold))
+        Fonts.BANGERS -> FontFamily(loadFont("font/Bangers-Regular.ttf"))
+        Fonts.BIO_RHYME -> FontFamily(loadFont("font/BioRhyme-Regular.ttf"))
+        Fonts.CHERRY_BOMB -> FontFamily(loadFont("font/CherryBombOne-Regular.ttf"))
+        Fonts.CHICLE -> FontFamily(loadFont("font/Chicle-Regular.ttf"))
+        Fonts.COMPAGNON -> FontFamily(loadFont("font/Compagnon-Medium.otf"))
+        Fonts.MUSEO_MODERNO -> FontFamily(loadFont("font/MuseoModerno-Regular.ttf"))
+        Fonts.NEO_CASTEL -> FontFamily(loadFont("font/NeoCastel.otf"))
+        Fonts.PIXELIFY -> FontFamily(loadFont("font/PixelifySans-Regular.otf"))
+        Fonts.RIBES -> FontFamily(loadFont("font/Ribes-Black.otf"))
+        Fonts.SINISTRE -> FontFamily(loadFont("font/Sinistre-Bold.otf"))
+        Fonts.ZILLA_SLAB -> FontFamily(loadFont("font/ZillaSlab-SemiBold.ttf"))
         else -> null
     }
 

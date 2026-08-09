@@ -6,6 +6,10 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+compose.resources {
+    publicResClass = true
+}
+
 kotlin {
     targets.all {
         compilations.all {

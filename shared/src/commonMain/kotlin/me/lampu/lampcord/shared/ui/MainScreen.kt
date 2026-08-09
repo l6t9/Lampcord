@@ -74,12 +74,6 @@ fun MainScreen(
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                                 modifier = Modifier.padding(horizontal = 32.dp)
                             )
-                            Text(
-                                text = (chatState.currentUser?.global_name ?: chatState.currentUser?.username) ?: "user",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                                modifier = Modifier.padding(top = 8.dp)
-                            )
                         }   
                     }
                 } else {

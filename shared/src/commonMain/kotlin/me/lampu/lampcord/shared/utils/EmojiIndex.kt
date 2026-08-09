@@ -4,8 +4,6 @@ import me.lampu.lampcord.shared.model.Emoji
 import me.lampu.lampcord.shared.model.toTwemojiUrl
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import org.jetbrains.compose.resources.ExperimentalResourceApi
-import lampcord.shared.generated.resources.Res
 
 @Serializable
 private data class EmojiEntry(
@@ -19,12 +17,11 @@ object EmojiIndex {
     private var allEmojis = listOf<Emoji>()
     private var initialized = false
 
-    @OptIn(ExperimentalResourceApi::class)
     suspend fun initialize() {
         if (initialized) return
         try {
-            val jsonBytes = Res.readBytes("files/emojis.json")
-            val jsonText = jsonBytes.decodeToString()
+            val jsonBytes = ResourceLoader.readBytes("files/emojis.json")
+            val jsonText = jsonBytes?.decodeToString() ?: ""
             val entries = Json.decodeFromString<List<EmojiEntry>>(jsonText)
             
             val charMap = mutableMapOf<String, List<String>>()

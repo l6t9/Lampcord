@@ -12,6 +12,7 @@ import kotlinx.serialization.json.*
 class GuildStore(
     private val discordClient: DiscordClient,
     private val errorStore: AppErrorStore,
+    private val selectionStore: SelectionStore,
     private val scope: CoroutineScope
 ) {
     val guilds = mutableStateListOf<Guild>()
@@ -19,9 +20,9 @@ class GuildStore(
     val privateChannels = mutableStateListOf<Channel>()
     val forumThreads = mutableStateListOf<Channel>()
     
-    var selectedGuild by mutableStateOf<Guild?>(null)
-    var selectedChannel by mutableStateOf<Channel?>(null)
-    var selectedThread by mutableStateOf<Channel?>(null)
+    var selectedGuild by selectionStore::selectedGuild
+    var selectedChannel by selectionStore::selectedChannel
+    var selectedThread by selectionStore::selectedThread
 
     val allGuildChannels = mutableStateMapOf<String, List<Channel>>()
 

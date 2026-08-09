@@ -16,8 +16,7 @@ import me.lampu.lampcord.shared.gateway.GatewayManager
 import me.lampu.lampcord.shared.gateway.VoiceGatewayManager
 import me.lampu.lampcord.shared.model.*
 import me.lampu.lampcord.shared.settings.Settings
-import me.lampu.lampcord.shared.utils.Permission
-import me.lampu.lampcord.shared.utils.PermissionHelper
+import me.lampu.lampcord.shared.utils.*
 import me.lampu.lampcord.shared.utils.getCurrentTimeMillis
 import kotlinx.coroutines.*
 import kotlinx.serialization.json.*
@@ -89,9 +88,9 @@ class ChatState(
     var currentUser by userStore::currentUser
     var userSettings by settingsStore::userSettings
     
-    var selectedGuild by guildStore::selectedGuild
-    var selectedChannel by guildStore::selectedChannel
-    var selectedThread by guildStore::selectedThread
+    var selectedGuild by navigationStore::selectedGuild
+    var selectedChannel by navigationStore::selectedChannel
+    var selectedThread by navigationStore::selectedThread
     
     var selectedGuildOnboarding
         get() = navigationStore.selectedGuildOnboarding
@@ -228,12 +227,11 @@ class ChatState(
 
         scope.launch {
             try {
-                val bytes = Res.readBytes("files/loading_messages.txt")
-                val text = bytes.decodeToString()
-                val lines = text.split("\n")
-                    .map { it.trim() }
-                    .filter { it.isNotEmpty() && !it.startsWith("#") }
-                if (lines.isNotEmpty()) {
+                val text = ResourceLoader.readText("files/loading_messages.txt")
+                val lines = text?.split("\n")
+                    ?.map { it.trim() }
+                    ?.filter { it.isNotEmpty() && !it.startsWith("#") }
+                if (lines != null && lines.isNotEmpty()) {
                     loadingMessages.addAll(lines)
                 }
             } catch (e: Exception) {

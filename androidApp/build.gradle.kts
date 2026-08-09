@@ -2,7 +2,8 @@ import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.multiplatform) apply false // KMP is handled in shared, but some tools like it here
+    alias(libs.plugins.kotlin.multiplatform) apply false
+    alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.compose.compiler)
 }
 

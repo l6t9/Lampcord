@@ -28,13 +28,14 @@ val networkModule = module {
 }
 
 val storeModule = module {
+    single { SelectionStore() }
     single { ReadStateStore(get()) }
     single { UserGuildSettingsStore() }
     single { AppErrorStore() }
     single { PresenceStore(get()) }
     single { UserStore() }
     single { RelationshipStore(get(), get(), CoroutineScope(Dispatchers.Main)) }
-    single { GuildStore(get(), get(), CoroutineScope(Dispatchers.Main)) }
+    single { GuildStore(get(), get(), get(), CoroutineScope(Dispatchers.Main)) }
     single { MemberListStore() }
     single { MessageStore(get(), get(), get(), CoroutineScope(Dispatchers.Main)) }
     single { TypingStore(CoroutineScope(Dispatchers.Main)) }
@@ -46,7 +47,7 @@ val storeModule = module {
     single { ExperimentStore() }
     single { TokenStore(get()) }
     single { SettingsStore(get()) }
-    single { NavigationStore(get(), get(), get(), get(), get(), get(), get(), get(), CoroutineScope(Dispatchers.Main)) }
+    single { NavigationStore(get(), get(), get(), get(), get(), get(), get(), get(), get(), CoroutineScope(Dispatchers.Main)) }
 }
 
 val gatewayModule = module {

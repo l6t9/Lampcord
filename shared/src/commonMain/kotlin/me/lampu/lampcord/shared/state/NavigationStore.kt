@@ -20,11 +20,13 @@ class NavigationStore(
     private val readStateStore: ReadStateStore,
     private val profileStore: ProfileStore,
     private val commandStore: CommandStore,
+    private val selectionStore: SelectionStore,
     private val scope: CoroutineScope
 ) {
-    var selectedGuild by mutableStateOf<Guild?>(null)
-    var selectedChannel by mutableStateOf<Channel?>(null)
-    var selectedThread by mutableStateOf<Channel?>(null)
+    var selectedGuild by selectionStore::selectedGuild
+    var selectedChannel by selectionStore::selectedChannel
+    var selectedThread by selectionStore::selectedThread
+
     var selectedGuildOnboarding by mutableStateOf<Onboarding?>(null)
     var isFriendsSelected by mutableStateOf(false)
 
