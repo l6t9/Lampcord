@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 import me.lampu.lampcord.shared.state.ChatState
 import me.lampu.lampcord.shared.model.UserSettings
 import me.lampu.lampcord.shared.ui.components.settings.*
+import me.lampu.lampcord.shared.settings.Settings
 
 @Composable
 fun PrivacySettings(chatState: ChatState) {
@@ -77,6 +78,25 @@ fun PrivacySettings(chatState: ChatState) {
                         onCheckedChange = { 
                             chatState.updateUserSettings(UserSettings.Partial(friend_source_flags = me.lampu.lampcord.shared.model.FriendSourceFlags(mutual_guilds = it)))
                         }
+                    )
+                )
+            )
+        }
+
+        Material3SettingsGroup(title = "Enhancements") {
+            Material3SettingsGroup(
+                items = listOf(
+                    switchSettingsItem(
+                        title = "Silent Typing",
+                        description = "Don't let others know when you are typing.",
+                        checked = Settings.shared.silentTyping,
+                        onCheckedChange = { Settings.shared.silentTyping = it }
+                    ),
+                    switchSettingsItem(
+                        title = "Hide Blocked Messages",
+                        description = "Completely remove messages from blocked users.",
+                        checked = Settings.shared.hideBlockedMessages,
+                        onCheckedChange = { Settings.shared.hideBlockedMessages = it }
                     )
                 )
             )

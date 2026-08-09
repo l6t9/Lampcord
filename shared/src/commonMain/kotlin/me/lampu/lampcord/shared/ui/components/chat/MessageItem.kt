@@ -8,6 +8,8 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -32,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
+import kotlin.math.roundToInt
 import me.lampu.lampcord.shared.model.Message
 import me.lampu.lampcord.shared.state.ChatState
 import me.lampu.lampcord.shared.ui.icons.Icons
@@ -53,6 +56,8 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
     var isHovered by remember { mutableStateOf(false) }
     var showReactionPicker by remember { mutableStateOf(false) }
     
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
     val contextMenuItems = remember(message, chatState.currentUser) {
         if (message.isPending) {
             return@remember listOf(
@@ -95,7 +100,9 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
             items.add(ContextMenuItem("Copy Author ID", Icons.Filled.Dns) { setClipboardText(message.author?.id ?: "") })
         }
 
-        items.add(ContextMenuItem("Delete Message", Icons.Filled.Delete) { /* TODO */ })
+        items.add(ContextMenuItem("Delete Message", Icons.Filled.Delete) { 
+            showDeleteDialog = true
+        })
         
         items
     }
@@ -104,12 +111,17 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
         derivedStateOf { if (message.isPending) false else chatState.isMessageMentioningMe(message) }
     }
     
+    val compactMode = me.lampu.lampcord.shared.settings.Settings.shared.compactMode
     val alpha by animateFloatAsState(if (message.isPending) 0.5f else 1f)
 
     val isInline = priorMessage != null
 
     val isHighlighted = chatState.highlightedMessageId == message.id
     
+    val tapTapEnabled = remember { me.lampu.lampcord.shared.settings.Settings.shared.tapTap }
+    val gestureMode = remember { me.lampu.lampcord.shared.settings.Settings.shared.chatGestures }
+    var offsetX by remember { mutableFloatStateOf(0f) }
+
     LaunchedEffect(isHighlighted) {
         if (isHighlighted) {
             kotlinx.coroutines.delay(2000)
@@ -120,6 +132,40 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
     Box(
         modifier = Modifier
             .fillMaxWidth()
+            .offset { IntOffset(offsetX.roundToInt(), 0) }
+            .pointerInput(message.id, gestureMode) {
+                if (gestureMode == me.lampu.lampcord.shared.settings.ChatGestures.SWIPE_TO_REPLY) {
+                    detectHorizontalDragGestures(
+                        onDragEnd = {
+                            if (offsetX < -80f) {
+                                chatState.replyingTo = message
+                            }
+                            offsetX = 0f
+                        },
+                        onHorizontalDrag = { change, dragAmount ->
+                            val newOffset = (offsetX + dragAmount).coerceIn(-150f, 0f)
+                            if (newOffset != offsetX) {
+                                offsetX = newOffset
+                                change.consume()
+                            }
+                        }
+                    )
+                }
+            }
+            .pointerInput(message.id, tapTapEnabled) {
+                if (tapTapEnabled) {
+                    detectTapGestures(
+                        onDoubleTap = {
+                            val isMe = message.author?.id == chatState.currentUser?.id
+                            if (isMe) {
+                                chatState.editingMessage = message
+                            } else {
+                                chatState.replyingTo = message
+                            }
+                        }
+                    )
+                }
+            }
             .pointerInput(Unit) {
                 awaitPointerEventScope {
                     while (true) {
@@ -140,6 +186,7 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
                     color = when {
                         isHighlighted -> MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
                         isMentioned -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)
+                        message.isDeleted -> MaterialTheme.colorScheme.error.copy(alpha = 0.15f)
                         isHovered || showReactionPicker -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.12f)
                         message.sendError != null -> MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
                         else -> Color.Transparent
@@ -148,14 +195,14 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
                 .alpha(alpha)
                 .animateContentSize()
         ) {
-            if (isMentioned) {
-                val mentionBarColor = MaterialTheme.colorScheme.primary
+            if (isMentioned || message.isDeleted) {
+                val barColor = if (message.isDeleted) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
                 Spacer(
                     modifier = Modifier
                         .matchParentSize()
                         .drawBehind {
                             drawRect(
-                                color = mentionBarColor,
+                                color = barColor,
                                 size = androidx.compose.ui.geometry.Size(2.dp.toPx(), size.height)
                             )
                         }
@@ -166,7 +213,7 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
                 items = contextMenuItems,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = if (isInline) 1.5.dp else 8.dp)
+                    .padding(horizontal = 8.dp, vertical = if (compactMode) 0.5.dp else if (isInline) 1.5.dp else 8.dp)
             ) {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     if (message.referenced_message != null) {
@@ -178,7 +225,7 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
                     }
 
                     Row(modifier = Modifier.fillMaxWidth()) {
-                        if (!isInline && message.author != null) {
+                        if (!isInline && message.author != null && !compactMode) {
                             val avatarUrl = message.member?.avatar?.let {
                                 "https://cdn.discordapp.com/guilds/${message.guild_id ?: chatState.selectedGuild?.id}/users/${message.author.id}/avatars/$it.png?size=160"
                             } ?: message.author.avatar?.let {
@@ -206,8 +253,8 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
                                         .clickable { chatState.showProfile(message.author.id, avatarPosition) }
                                 )
                             }
-                        } else {
-                            Spacer(modifier = Modifier.width(40.dp))
+                        } else if (!compactMode || isInline) {
+                            Spacer(modifier = Modifier.width(if (compactMode) 8.dp else 40.dp))
                         }
                         
                         val roleColor by remember(message, chatState.selectedGuild) {
@@ -255,16 +302,37 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                                     )
+                                    
+                                    if (message.isDeleted) {
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(
+                                            "(deleted)",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.error,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
                                 }
                             }
                             
                             Box(modifier = Modifier.fillMaxWidth()) {
-                                DiscordMarkdownText(
-                                    content = message.content,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    chatState = chatState
-                                )
+                                Column {
+                                    if (message.oldContent != null) {
+                                        Text(
+                                            text = message.oldContent,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                            modifier = Modifier.padding(bottom = 2.dp),
+                                            textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
+                                        )
+                                    }
+                                    DiscordMarkdownText(
+                                        content = message.content,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = if (message.isDeleted) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+                                        chatState = chatState
+                                    )
+                                }
                             }
 
                             if (message.sendError != null) {
@@ -392,6 +460,16 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
                     showReactionPicker = false
                 }
             }
+        }
+
+        if (showDeleteDialog) {
+            DeleteMessageDialog(
+                onDismiss = { showDeleteDialog = false },
+                onConfirm = {
+                    chatState.deleteMessage(message)
+                    showDeleteDialog = false
+                }
+            )
         }
     }
 }

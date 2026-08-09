@@ -46,6 +46,25 @@ data class Guild(
     val discovery_splash: String? = null,
     val hub_type: Int? = null
 ) {
+    fun merge(partial: Partial): Guild {
+        return copy(
+            name = partial.name ?: name,
+            icon = partial.icon ?: icon,
+            banner = partial.banner ?: banner,
+            splash = partial.splash ?: splash,
+            description = partial.description ?: description,
+            afk_channel_id = partial.afk_channel_id ?: afk_channel_id,
+            afk_timeout = partial.afk_timeout ?: afk_timeout,
+            system_channel_id = partial.system_channel_id ?: system_channel_id,
+            system_channel_flags = partial.system_channel_flags ?: system_channel_flags,
+            rules_channel_id = partial.rules_channel_id ?: rules_channel_id,
+            public_updates_channel_id = partial.public_updates_channel_id ?: public_updates_channel_id,
+            preferred_locale = partial.preferred_locale ?: preferred_locale,
+            verification_level = partial.verification_level ?: verification_level,
+            explicit_content_filter = partial.explicit_content_filter ?: explicit_content_filter
+        )
+    }
+
     @Serializable
     data class Partial(
         val name: String? = null,
@@ -218,6 +237,7 @@ data class UserGuildSettings(
 ) {
     @Serializable
     data class Partial(
+        val guild_id: String? = null,
         val muted: Boolean? = null,
         val hide_muted_channels: Boolean? = null,
         val suppress_everyone: Boolean? = null,

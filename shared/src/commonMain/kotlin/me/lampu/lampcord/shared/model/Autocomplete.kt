@@ -10,6 +10,7 @@ data class AutocompleteItem(
     val icon: String? = null,
     val iconType: ImageVector? = null,
     val replacement: String,
+    val searchReplacement: String? = null,
     val isCommand: Boolean = false,
     val commandObj: ApplicationCommand? = null,
     val color: Color? = null

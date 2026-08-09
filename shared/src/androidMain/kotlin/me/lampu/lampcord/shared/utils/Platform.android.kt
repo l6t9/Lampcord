@@ -3,6 +3,10 @@ package me.lampu.lampcord.shared.utils
 import android.content.ContentUris
 import android.os.Build
 import android.provider.MediaStore
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import me.lampu.lampcord.shared.model.LocalMedia
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -106,5 +110,31 @@ actual suspend fun getLocalMediaBytes(uri: String): ByteArray? = withContext(Dis
         context.contentResolver.openInputStream(android.net.Uri.parse(uri))?.use { it.readBytes() }
     } catch (e: Exception) {
         null
+    }
+}
+
+@Composable
+actual fun RequestMediaPermissions(onResult: (Boolean) -> Unit) {
+    val launcher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { results ->
+        onResult(results.values.all { it })
+    }
+
+    LaunchedEffect(Unit) {
+        val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            arrayOf(
+                android.Manifest.permission.READ_MEDIA_IMAGES,
+                android.Manifest.permission.READ_MEDIA_VIDEO,
+                android.Manifest.permission.CAMERA
+            )
+        } else {
+            arrayOf(
+                android.Manifest.permission.READ_EXTERNAL_STORAGE,
+                android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                android.Manifest.permission.CAMERA
+            )
+        }
+        launcher.launch(permissions)
     }
 }

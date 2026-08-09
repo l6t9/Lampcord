@@ -123,5 +123,18 @@ fun ProfileSettings(chatState: ChatState) {
                 }
             }
         }
+
+        Material3SettingsGroup(title = "Enhancements") {
+            Material3SettingsGroup(
+                items = listOf(
+                    switchSettingsItem(
+                        title = "Show Permissions",
+                        description = "Display user permissions on their profile card.",
+                        checked = me.lampu.lampcord.shared.settings.Settings.shared.showPermissions,
+                        onCheckedChange = { me.lampu.lampcord.shared.settings.Settings.shared.showPermissions = it }
+                    )
+                )
+            )
+        }
     }
 }

@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.state.ChatState
 import me.lampu.lampcord.shared.ui.components.*
+import me.lampu.lampcord.shared.ui.components.chat.SearchScreen
 import me.lampu.lampcord.shared.ui.components.guilds.*
 import me.lampu.lampcord.shared.ui.components.profiles.ProfileCard
 import me.lampu.lampcord.shared.ui.components.profiles.UserProfileDialog
@@ -126,6 +127,39 @@ fun DesktopBaseplate(chatState: ChatState) {
                         .fillMaxHeight(),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
+                    // HomeNavButtons equivalent
+                    if (showMemberList) {
+                        Surface(
+                            onClick = { chatState.isSearchVisible = true },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(40.dp),
+                            shape = RoundedCornerShape(20.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                            tonalElevation = 1.dp
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Search,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Search",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                )
+                            }
+                        }
+                    }
+
                     Surface(
                         modifier = Modifier.weight(1f),
                         shape = MaterialTheme.shapes.medium,
@@ -151,34 +185,6 @@ fun DesktopBaseplate(chatState: ChatState) {
                         } else {
                             MemberList(chatState)
                         }
-                    }
-                    
-                    // HomeNavButtons equivalent
-                    if (showMemberList) {
-                        NavButtonRow(
-                            listOf(
-                                NavButtonData(
-                                    icon = Icons.Filled.Group,
-                                    title = "Members",
-                                    selected = chatState.isFriendsSelected,
-                                    onClick = {
-                                        chatState.selectedGuild = null
-                                        chatState.selectedChannel = null
-                                        chatState.isFriendsSelected = true
-                                    }
-                                ),
-                                NavButtonData(
-                                    icon = Icons.Filled.Search,
-                                    title = "Search",
-                                    onClick = { chatState.isQuickSwitcherVisible = true }
-                                ),
-                                NavButtonData(
-                                    icon = Icons.Outlined.AlternateEmail,
-                                    title = "Mentions",
-                                    onClick = { /* Mentions */ }
-                                )
-                            )
-                        )
                     }
                 }
             }
@@ -217,6 +223,11 @@ fun DesktopBaseplate(chatState: ChatState) {
                     chatState.isProfileLoading = false
                 }
             )
+        }
+
+        // Search Screen
+        if (chatState.isSearchVisible) {
+            SearchScreen(chatState, onDismiss = { chatState.isSearchVisible = false })
         }
     }
 }

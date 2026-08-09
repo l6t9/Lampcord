@@ -99,17 +99,28 @@ fun ChatArea(
                 }
             }
     ) {
+        val filteredMessages = remember(chatState.messages.size, chatState.relationshipStore.relationships.size) {
+            val hideBlocked = me.lampu.lampcord.shared.settings.Settings.shared.hideBlockedMessages
+            if (hideBlocked) {
+                chatState.messages.filter { msg ->
+                    val authorId = msg.author?.id
+                    if (authorId == null) true
+                    else chatState.relationshipStore.relationships.none { (it.id ?: it.user?.id ?: it.user_id) == authorId && it.type == 2 }
+                }
+            } else chatState.messages
+        }
+
         LazyColumn(
             state = scrollState,
             modifier = Modifier.fillMaxSize(),
             reverseLayout = true
         ) {
             items(
-                items = chatState.messages,
+                items = filteredMessages,
                 key = { it.id }
             ) { message ->
-                val index = chatState.messages.indexOf(message)
-                val priorMessage = chatState.messages.getOrNull(index + 1)
+                val index = filteredMessages.indexOf(message)
+                val priorMessage = filteredMessages.getOrNull(index + 1)
                 
                 // Grouping logic: 7 minutes window, same author, current is regular message
                 val isInline = remember(message, priorMessage) {

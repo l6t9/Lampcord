@@ -1,5 +1,6 @@
 package me.lampu.lampcord.shared.utils
 
+import androidx.compose.runtime.Composable
 import me.lampu.lampcord.shared.model.LocalMedia
 
 expect fun getPlatformName(): String
@@ -23,3 +24,6 @@ expect fun getMemoryMemory(): Long
 expect suspend fun getLocalMedia(): List<LocalMedia>
 
 expect suspend fun getLocalMediaBytes(uri: String): ByteArray?
+
+@Composable
+expect fun RequestMediaPermissions(onResult: (Boolean) -> Unit)

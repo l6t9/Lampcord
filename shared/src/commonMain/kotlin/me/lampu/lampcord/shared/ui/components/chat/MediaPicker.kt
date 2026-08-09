@@ -31,15 +31,26 @@ fun MediaPicker(
     var mediaList by remember { mutableStateOf<List<LocalMedia>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var hasPermission by remember { mutableStateOf(true) }
+    var permissionRequested by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    LaunchedEffect(Unit) {
-        try {
-            mediaList = getLocalMedia()
-        } catch (e: Exception) {
-            hasPermission = false
+    if (!permissionRequested) {
+        me.lampu.lampcord.shared.utils.RequestMediaPermissions { granted ->
+            hasPermission = granted
+            permissionRequested = true
+            if (granted) {
+                scope.launch {
+                    try {
+                        mediaList = getLocalMedia()
+                    } catch (e: Exception) {
+                        hasPermission = false
+                    }
+                    isLoading = false
+                }
+            } else {
+                isLoading = false
+            }
         }
-        isLoading = false
     }
 
     Surface(

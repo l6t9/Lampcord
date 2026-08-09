@@ -38,7 +38,7 @@ fun AsyncImage(
     alpha: Float = DefaultAlpha,
     colorFilter: ColorFilter? = null,
     filterQuality: FilterQuality = FilterQuality.High,
-    shape: Shape? = null,
+    shape: Shape? = MaterialTheme.shapes.medium,
     showPlaceholder: Boolean = true,
     placeholderHash: String? = null
 ) {

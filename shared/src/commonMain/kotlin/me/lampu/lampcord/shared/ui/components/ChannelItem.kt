@@ -95,7 +95,7 @@ fun ChannelItem(channel: Channel, chatState: ChatState) {
                     color = if (isSelected) 
                         MaterialTheme.colorScheme.surfaceContainerHigh 
                     else Color.Transparent,
-                    shape = RoundedCornerShape(20.dp),
+                    shape = MaterialTheme.shapes.small,
                     enabled = canView
                 ) {
                     Row(
@@ -124,7 +124,7 @@ fun ChannelItem(channel: Channel, chatState: ChatState) {
                         Spacer(modifier = Modifier.width(12.dp))
                         
                         Text(
-                            text = channel.name ?: "unnamed",
+                            text = me.lampu.lampcord.shared.utils.CleanUtils.cleanChannelName(channel.name ?: "unnamed"),
                             style = if (isUnread && canView) 
                                 MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold) 
                             else MaterialTheme.typography.bodyLarge,

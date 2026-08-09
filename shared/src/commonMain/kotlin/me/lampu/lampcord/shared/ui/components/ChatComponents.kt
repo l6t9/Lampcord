@@ -178,7 +178,7 @@ fun ChannelHeader(
                         )
                     }
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = channel.name ?: "unnamed", style = MaterialTheme.typography.titleSmall)
+                    Text(text = me.lampu.lampcord.shared.utils.CleanUtils.cleanChannelName(channel.name ?: "unnamed"), style = MaterialTheme.typography.titleSmall)
                 }
                 
                 if (channel.topic?.isNotBlank() == true) {
@@ -205,25 +205,6 @@ fun ChannelHeader(
                     if (channel.type != 2 && channel.type != 13) {
                         IconButton(onClick = { chatState.isPinsVisible = true }) {
                             Icon(Icons.Filled.PushPin, "Pins", modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-
-                    Surface(
-                        modifier = Modifier.width(120.dp).height(32.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                "Search",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                            )
-                            Spacer(Modifier.weight(1f))
-                            Icon(Icons.Filled.Search, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -359,8 +340,11 @@ fun ChatInputBar(
                 }
 
                 Surface(
-                    color = MaterialTheme.colorScheme.surface,
-                    modifier = Modifier.fillMaxWidth()
+                    color = Color.Transparent,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .imePadding()
                 ) {
                     Column {
                         TypingIndicator(chatState, channel.id)
@@ -463,7 +447,7 @@ fun ChatInputBar(
                                 .fillMaxWidth()
                                 .padding(horizontal = 8.dp, vertical = 8.dp)
                                 .animateContentSize(animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f)),
-                            verticalAlignment = Alignment.Bottom
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             if (getPlatformName() != "android") {
                                 FilePicker(
@@ -482,11 +466,11 @@ fun ChatInputBar(
                                     }
                                 },
                                 enabled = chatState.editingMessage == null && canSend,
-                                modifier = Modifier.padding(bottom = 4.dp),
                                 colors = IconButtonDefaults.filledTonalIconButtonColors(
                                     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                                     contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                ),
+                                modifier = Modifier.size(40.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Filled.Add,
@@ -516,8 +500,8 @@ fun ChatInputBar(
                             Surface(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .padding(bottom = 4.dp),
-                                shape = RoundedCornerShape(24.dp),
+                                    .heightIn(min = 40.dp),
+                                shape = RoundedCornerShape(16.dp),
                                 color = MaterialTheme.colorScheme.surfaceContainerHigh
                             ) {
                                 Row(
@@ -560,7 +544,7 @@ fun ChatInputBar(
                                 visualTransformation = DiscordInputVisualTransformation(primaryColor),
                                 modifier = Modifier
                                     .weight(1f)
-                                    .padding(start = 12.dp, top = 10.dp, bottom = 10.dp)
+                                    .padding(start = 12.dp, top = 8.dp, bottom = 8.dp)
                                     .focusRequester(focusRequester)
                                     .onPreviewKeyEvent { event ->
                                         if (!canSend) return@onPreviewKeyEvent false
@@ -672,7 +656,23 @@ fun ChatInputBar(
                                             onDismissRequest = { showEmojiPicker = false }
                                         ) {
                                             EmojiPicker(chatState) { emoji ->
-                                                val emojiText = if (emoji.id != null) "<:${emoji.name}:${emoji.id}>" else emoji.name ?: ""
+                                                val isExternal = emoji.guild_id != null && emoji.guild_id != chatState.selectedGuild?.id
+                                                val hasNitro = (chatState.currentUser?.premium_type ?: 0) > 0
+                                                val freeNitro = me.lampu.lampcord.shared.settings.Settings.shared.freeNitroEmojis
+                                                
+                                                val emojiText = if (emoji.id != null) {
+                                                    if (isExternal && !hasNitro && freeNitro) {
+                                                        if (me.lampu.lampcord.shared.settings.Settings.shared.realmojis) {
+                                                            "<${if (emoji.animated == true) "a" else ""}:F_${emoji.name}:${emoji.id}>"
+                                                        } else {
+                                                            val ext = if (emoji.animated == true) "gif" else "png"
+                                                            "https://cdn.discordapp.com/emojis/${emoji.id}.$ext?size=48"
+                                                        }
+                                                    } else {
+                                                        "<${if (emoji.animated == true) "a" else ""}:${emoji.name}:${emoji.id}>"
+                                                    }
+                                                } else emoji.name ?: ""
+
                                                 val newText = textFieldValue.text.take(textFieldValue.selection.start) + emojiText + textFieldValue.text.drop(textFieldValue.selection.end)
                                                 textFieldValue = TextFieldValue(newText, TextRange(textFieldValue.selection.start + emojiText.length))
                                                 showEmojiPicker = false
@@ -684,9 +684,9 @@ fun ChatInputBar(
                             
                             AnimatedVisibility(
                                 visible = textFieldValue.text.isNotBlank() || chatState.pendingFiles.isNotEmpty() || chatState.activeCommand != null,
-                                enter = fadeIn() + scaleIn(initialScale = 0.8f),
-                                exit = fadeOut() + scaleOut(targetScale = 0.8f),
-                                modifier = Modifier.padding(bottom = 4.dp, start = 8.dp)
+                                enter = fadeIn() + scaleIn(initialScale = 0.8f) + slideInHorizontally { it },
+                                exit = fadeOut() + scaleOut(targetScale = 0.8f) + slideOutHorizontally { it },
+                                modifier = Modifier.padding(start = 8.dp)
                             ) {
                                 IconButton(
                                     onClick = {
@@ -710,7 +710,7 @@ fun ChatInputBar(
                                     modifier = Modifier.size(40.dp)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.Send,
+                                        imageVector = Icons.Rounded.Send,
                                         contentDescription = "Send",
                                         modifier = Modifier.size(20.dp)
                                     )

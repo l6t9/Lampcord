@@ -55,6 +55,7 @@ fun rememberDiscordPanelsState(
 fun DiscordPanels(
     state: DiscordPanelsState,
     modifier: Modifier = Modifier,
+    swipeEnabled: Boolean = true,
     startPanel: @Composable BoxScope.() -> Unit,
     endPanel: @Composable BoxScope.() -> Unit,
     centerPanel: @Composable BoxScope.() -> Unit
@@ -90,43 +91,47 @@ fun DiscordPanels(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .draggable(
-                    orientation = Orientation.Horizontal,
-                    state = rememberDraggableState { delta ->
-                        state.offset += delta
-                    },
-                    onDragStopped = { velocity ->
-                        val currentTotalOffset = targetOffset + state.offset
-                        val threshold = sidePanelWidthPx * 0.45f // Slightly more than half-way to center
-                        
-                        // Use density-independent velocity for consistent feel across devices
-                        val minFlingVelocity = with(density) { 400.dp.toPx() }
-                        val isFling = abs(velocity) > minFlingVelocity
-                        val isRightSwipe = velocity > 0f
+                .then(
+                    if (swipeEnabled) {
+                        Modifier.draggable(
+                            orientation = Orientation.Horizontal,
+                            state = rememberDraggableState { delta ->
+                                state.offset += delta
+                            },
+                            onDragStopped = { velocity ->
+                                val currentTotalOffset = targetOffset + state.offset
+                                val threshold = sidePanelWidthPx * 0.45f // Slightly more than half-way to center
+                                
+                                // Use density-independent velocity for consistent feel across devices
+                                val minFlingVelocity = with(density) { 400.dp.toPx() }
+                                val isFling = abs(velocity) > minFlingVelocity
+                                val isRightSwipe = velocity > 0f
 
-                        state.currentValue = when {
-                            isFling -> {
-                                if (isRightSwipe) {
-                                    // Right swipe: if at End -> Center, if at Center -> Start
-                                    when (state.currentValue) {
-                                        DiscordPanelValue.End -> DiscordPanelValue.Center
-                                        else -> DiscordPanelValue.Start
+                                state.currentValue = when {
+                                    isFling -> {
+                                        if (isRightSwipe) {
+                                            // Right swipe: if at End -> Center, if at Center -> Start
+                                            when (state.currentValue) {
+                                                DiscordPanelValue.End -> DiscordPanelValue.Center
+                                                else -> DiscordPanelValue.Start
+                                            }
+                                        } else {
+                                            // Left swipe: if at Start -> Center, if at Center -> End
+                                            when (state.currentValue) {
+                                                DiscordPanelValue.Start -> DiscordPanelValue.Center
+                                                else -> DiscordPanelValue.End
+                                            }
+                                        }
                                     }
-                                } else {
-                                    // Left swipe: if at Start -> Center, if at Center -> End
-                                    when (state.currentValue) {
-                                        DiscordPanelValue.Start -> DiscordPanelValue.Center
-                                        else -> DiscordPanelValue.End
-                                    }
+                                    // Snap based on position when not flinging
+                                    currentTotalOffset > threshold -> DiscordPanelValue.Start
+                                    currentTotalOffset < -threshold -> DiscordPanelValue.End
+                                    else -> DiscordPanelValue.Center
                                 }
+                                state.offset = 0f
                             }
-                            // Snap based on position when not flinging
-                            currentTotalOffset > threshold -> DiscordPanelValue.Start
-                            currentTotalOffset < -threshold -> DiscordPanelValue.End
-                            else -> DiscordPanelValue.Center
-                        }
-                        state.offset = 0f
-                    }
+                        )
+                    } else Modifier
                 )
         ) {
             // Start Panel (Left)

@@ -18,6 +18,33 @@ class Settings(private val settings: KmpSettings) {
     var showHiddenChannels by preferenceBoolean("show_hidden_channels", false)
     var syncAppearance by preferenceBoolean("sync_appearance", true)
     var fontScale by preferenceFloat("font_scale", 1.0f)
+    var searchHistoryJson by preference("search_history", "[]")
+    var tapTap by preferenceBoolean("tap_tap", true)
+    var chatGestures by preferenceEnum("chat_gestures", ChatGestures.SWIPE_TO_MEMBERS)
+
+    // Free Nitro Emojis
+    var freeNitroEmojis by preferenceBoolean("free_nitro_emojis", true)
+    var realmojis by preferenceBoolean("realmojis", true)
+    var compoundRealmojis by preferenceBoolean("compound_realmojis", true)
+    var useWebpEmojis by preferenceBoolean("use_webp_emojis", true)
+
+    // Clean Channels
+    var cleanChannelsRemoveEmojis by preferenceBoolean("clean_channels_remove_emojis", true)
+    var cleanChannelsHideSymbols by preferenceBoolean("clean_channels_hide_symbols", true)
+    var cleanChannelsNormalizeLetters by preferenceBoolean("clean_channels_normalize_letters", true)
+    var cleanChannelsCapitalizeCategories by preferenceBoolean("clean_channels_capitalize_categories", true)
+
+    // Message Logger
+    var messageLoggerEnabled by preferenceBoolean("message_logger_enabled", true)
+    var messageLoggerIgnoreBots by preferenceBoolean("message_logger_ignore_bots", false)
+    var messageLoggerIgnoreSelf by preferenceBoolean("message_logger_ignore_self", false)
+
+    // Other Enhancements
+    var bypassUploadLimit by preferenceBoolean("bypass_upload_limit", true)
+    var compactMode by preferenceBoolean("compact_mode", false)
+    var silentTyping by preferenceBoolean("silent_typing", false)
+    var hideBlockedMessages by preferenceBoolean("hide_blocked_messages", false)
+    var showPermissions by preferenceBoolean("show_permissions", true)
 
     fun getLastChannel(guildId: String): String? {
         val id = settings.getString("last_channel_$guildId", "")

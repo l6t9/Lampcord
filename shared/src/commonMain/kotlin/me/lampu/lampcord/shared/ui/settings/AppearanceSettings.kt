@@ -26,6 +26,7 @@ import com.materialkolor.rememberDynamicColorScheme
 import me.lampu.lampcord.shared.settings.ThemeMode
 import me.lampu.lampcord.shared.settings.ThemePaletteStyle
 import me.lampu.lampcord.shared.settings.FontOption
+import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.state.ChatState
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.components.settings.*
@@ -73,6 +74,7 @@ fun AppearanceSettings(chatState: ChatState) {
     Column(modifier = Modifier.fillMaxWidth()) {
         var themeExpanded by remember { mutableStateOf(false) }
         var fontExpanded by remember { mutableStateOf(false) }
+        var cleanChannelsExpanded by remember { mutableStateOf(false) }
 
         Material3SettingsGroup(
             title = "Display",
@@ -276,17 +278,53 @@ fun AppearanceSettings(chatState: ChatState) {
             )
         )
 
-        var compactMode by remember { mutableStateOf(false) }
-
         Material3SettingsGroup(
             title = "Messages",
             items = listOf(
                 switchSettingsItem(
                     title = "Compact Messages",
                     description = "Use a denser layout for chat messages.",
-                    checked = compactMode,
-                    onCheckedChange = { compactMode = it }
+                    checked = Settings.shared.compactMode,
+                    onCheckedChange = { Settings.shared.compactMode = it }
                 )
+            )
+        )
+
+        Material3SettingsGroup(
+            title = "Sidebar",
+            items = listOf(
+                expandableSettingsItem(
+                    title = "Clean Channels",
+                    description = "Simplify channel names by removing symbols and emojis.",
+                    expanded = cleanChannelsExpanded,
+                    onToggle = { cleanChannelsExpanded = !cleanChannelsExpanded }
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        switchSettingsItem(
+                            title = "Remove Emojis",
+                            checked = Settings.shared.cleanChannelsRemoveEmojis,
+                            onCheckedChange = { Settings.shared.cleanChannelsRemoveEmojis = it }
+                        ).let { Material3SettingsItemRow(it, isFirst = true, horizontalPadding = 0.dp) }
+
+                        switchSettingsItem(
+                            title = "Hide Symbols",
+                            checked = Settings.shared.cleanChannelsHideSymbols,
+                            onCheckedChange = { Settings.shared.cleanChannelsHideSymbols = it }
+                        ).let { Material3SettingsItemRow(it, horizontalPadding = 0.dp) }
+
+                        switchSettingsItem(
+                            title = "Normalize Letters",
+                            checked = Settings.shared.cleanChannelsNormalizeLetters,
+                            onCheckedChange = { Settings.shared.cleanChannelsNormalizeLetters = it }
+                        ).let { Material3SettingsItemRow(it, horizontalPadding = 0.dp) }
+
+                        switchSettingsItem(
+                            title = "Capitalize Categories",
+                            checked = Settings.shared.cleanChannelsCapitalizeCategories,
+                            onCheckedChange = { Settings.shared.cleanChannelsCapitalizeCategories = it }
+                        ).let { Material3SettingsItemRow(it, isLast = true, horizontalPadding = 0.dp) }
+                    }
+                }
             )
         )
     }

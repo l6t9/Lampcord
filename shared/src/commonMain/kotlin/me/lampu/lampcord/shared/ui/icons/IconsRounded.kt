@@ -132,6 +132,13 @@ object IconsRounded {
         )
     }
 
+    val Send: ImageVector by lazy {
+        materialSymbol(
+            name = "Rounded.Send",
+            pathData = "M792-443L176-183Q156-175 138-186.5Q120-198 120-220V-740Q120-762 138-773.5Q156-785 176-777L792-517Q817-506 817-480Q817-454 792-443ZM200-280L674-480L200-680V-540L440-480L200-420ZM200-280V-480V-680V-540V-540V-420V-420Z",
+        )
+    }
+
     val Shuffle: ImageVector by lazy {
         materialSymbol(
             name = "Rounded.Shuffle",

@@ -22,3 +22,8 @@ enum class FontOption {
     GOOGLE_SANS,
     MAPLE_MONO,
 }
+
+enum class ChatGestures {
+    SWIPE_TO_MEMBERS,
+    SWIPE_TO_REPLY,
+}

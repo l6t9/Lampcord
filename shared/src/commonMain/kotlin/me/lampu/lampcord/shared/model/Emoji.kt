@@ -13,7 +13,8 @@ data class Emoji(
     val managed: Boolean? = null,
     val animated: Boolean? = null,
     val available: Boolean? = null,
-    val url: String? = null
+    val url: String? = null,
+    val guild_id: String? = null
 )
 
 fun Emoji.getDisplayUrl(): String? {

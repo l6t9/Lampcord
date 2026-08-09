@@ -202,6 +202,24 @@ class DiscordClient(
         stickerIds: List<String>? = null,
         allowedMentions: AllowedMentions? = null
     ): Boolean {
+        // Free Nitro Emoji Outgoing Hook
+        val processedContent = if (me.lampu.lampcord.shared.settings.Settings.shared.freeNitroEmojis) {
+            val emojiRegex = Regex("""<(a)?:F_([a-zA-Z0-9_]+):(\d+)>""")
+            content.replace(emojiRegex) { match ->
+                val animated = match.groupValues[1].isNotEmpty()
+                val name = match.groupValues[2]
+                val id = match.groupValues[3]
+                val useWebp = me.lampu.lampcord.shared.settings.Settings.shared.useWebpEmojis
+                
+                val url = if (useWebp) {
+                    "https://cdn.discordapp.com/emojis/$id.webp?name=$name&animated=$animated"
+                } else {
+                    "https://cdn.discordapp.com/emojis/$id.${if (animated) "gif" else "png"}?name=$name"
+                }
+                "[$name]($url)"
+            }
+        } else content
+
         val messageReference = when {
             replyTo != null -> MessageReference(message_id = replyTo)
             forwardFrom != null -> MessageReference(
@@ -220,7 +238,7 @@ class DiscordClient(
                     contentType(ContentType.Application.Json)
                     
                     val request = MessageRequest(
-                        content = content,
+                        content = processedContent,
                         message_reference = messageReference,
                         nonce = nonce,
                         sticker_ids = stickerIds,
@@ -230,6 +248,8 @@ class DiscordClient(
                 }
                 response.status.isSuccess()
             } else {
+                // Bypass Upload Limit: We don't check size here, we just send it.
+                // If the server rejects it, it's a real server limit, but we remove the client-side block.
                 val response = httpClient.post("$apiBase/channels/$channelId/messages") {
                     standardHeaders()
                     
@@ -807,6 +827,72 @@ class DiscordClient(
         if (avatarHash == null) return null
         val extension = if (avatarHash.startsWith("a_")) "gif" else "webp"
         return "https://cdn.discordapp.com/avatars/$userId/$avatarHash.$extension?size=$size"
+    }
+
+    suspend fun searchChannelMessages(
+        channelId: String, 
+        content: String? = null,
+        authorId: String? = null,
+        mentions: String? = null,
+        has: String? = null,
+        before: String? = null,
+        after: String? = null,
+        during: String? = null,
+        sort: String? = null,
+        authorType: String? = null
+    ): SearchResponse? {
+        return try {
+            val response = httpClient.get("$apiBase/channels/$channelId/messages/search") {
+                standardHeaders()
+                content?.let { parameter("content", it) }
+                authorId?.let { parameter("author_id", it) }
+                mentions?.let { parameter("mentions", it) }
+                has?.let { parameter("has", it) }
+                before?.let { parameter("before", it) }
+                after?.let { parameter("after", it) }
+                during?.let { parameter("during", it) }
+                sort?.let { parameter("sort_by", it) }
+                authorType?.let { parameter("author_type", it) }
+            }
+            if (response.status.isSuccess()) response.body() else null
+        } catch (e: Exception) {
+            println("Error searching channel messages: ${e.message}")
+            null
+        }
+    }
+
+    suspend fun searchGuildMessages(
+        guildId: String, 
+        content: String? = null,
+        authorId: String? = null,
+        mentions: String? = null,
+        has: String? = null,
+        channelId: String? = null,
+        before: String? = null,
+        after: String? = null,
+        during: String? = null,
+        sort: String? = null,
+        authorType: String? = null
+    ): SearchResponse? {
+        return try {
+            val response = httpClient.get("$apiBase/guilds/$guildId/messages/search") {
+                standardHeaders()
+                content?.let { parameter("content", it) }
+                authorId?.let { parameter("author_id", it) }
+                mentions?.let { parameter("mentions", it) }
+                has?.let { parameter("has", it) }
+                channelId?.let { parameter("channel_id", it) }
+                before?.let { parameter("before", it) }
+                after?.let { parameter("after", it) }
+                during?.let { parameter("during", it) }
+                sort?.let { parameter("sort_by", it) }
+                authorType?.let { parameter("author_type", it) }
+            }
+            if (response.status.isSuccess()) response.body() else null
+        } catch (e: Exception) {
+            println("Error searching guild messages: ${e.message}")
+            null
+        }
     }
 }
 

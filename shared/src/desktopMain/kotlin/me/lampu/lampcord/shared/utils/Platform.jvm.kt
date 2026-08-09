@@ -1,5 +1,7 @@
 package me.lampu.lampcord.shared.utils
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import me.lampu.lampcord.shared.model.LocalMedia
 
 actual fun getPlatformName(): String {
@@ -31,3 +33,10 @@ actual fun getMemoryMemory(): Long = Runtime.getRuntime().totalMemory() / (1024 
 actual suspend fun getLocalMedia(): List<LocalMedia> = emptyList()
 
 actual suspend fun getLocalMediaBytes(uri: String): ByteArray? = null
+
+@Composable
+actual fun RequestMediaPermissions(onResult: (Boolean) -> Unit) {
+    LaunchedEffect(Unit) {
+        onResult(true)
+    }
+}

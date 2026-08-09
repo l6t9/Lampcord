@@ -55,6 +55,7 @@ fun AutocompletePicker(
         Column {
             val headerTitle = when(type) {
                 AutocompleteType.MENTION -> "Members & Roles"
+                AutocompleteType.USER -> "Members"
                 AutocompleteType.CHANNEL -> "Channels"
                 AutocompleteType.COMMAND -> "Commands"
                 AutocompleteType.EMOJI -> "Emojis"

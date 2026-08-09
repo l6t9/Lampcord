@@ -10,6 +10,8 @@ import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonDecoder
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.jsonPrimitive
 
 object NonceSerializer : KSerializer<String?> {
     override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("nonce", PrimitiveKind.STRING)
@@ -63,8 +65,19 @@ data class Message(
     val interaction: MessageInteraction? = null,
     val interaction_metadata: MessageInteractionMetadata? = null,
     val isPending: Boolean = false,
-    val sendError: String? = null
-)
+    val sendError: String? = null,
+    val hit: Boolean = false,
+    val isDeleted: Boolean = false,
+    val oldContent: String? = null
+) {
+    fun merge(data: kotlinx.serialization.json.JsonObject): Message {
+        return this.copy(
+            content = data["content"]?.jsonPrimitive?.content ?: content,
+            pinned = data["pinned"]?.jsonPrimitive?.boolean ?: pinned,
+            edited_timestamp = data["edited_timestamp"]?.jsonPrimitive?.contentOrNull ?: edited_timestamp
+        )
+    }
+}
 
 @Serializable
 data class MessageReference(
@@ -225,7 +238,7 @@ data class MessageReactionRemoveEmoji(
 )
 
 enum class AutocompleteType {
-    MENTION, CHANNEL, COMMAND, EMOJI, ROLE
+    MENTION, USER, CHANNEL, COMMAND, EMOJI, ROLE
 }
 
 @Serializable

@@ -35,7 +35,7 @@ fun EmojiPicker(
     onEmojiSelected: (Emoji) -> Unit
 ) {
     var selectedTab by remember { mutableStateOf(0) }
-    val nitro = (chatState.currentUser?.premium_type ?: 0) > 0
+    val nitro = (chatState.currentUser?.premium_type ?: 0) > 0 || me.lampu.lampcord.shared.settings.Settings.shared.freeNitroEmojis
     
     var defaultEmojis by remember { mutableStateOf<List<Emoji>>(emptyList()) }
     LaunchedEffect(Unit) {

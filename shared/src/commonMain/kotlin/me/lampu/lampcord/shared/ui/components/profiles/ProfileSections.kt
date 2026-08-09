@@ -70,6 +70,27 @@ fun ProfileSections(
             }
         }
 
+        if (me.lampu.lampcord.shared.settings.Settings.shared.showPermissions) {
+            val guild = chatState.selectedGuild
+            if (guild != null && profile.guild_member != null) {
+                val perms = me.lampu.lampcord.shared.utils.PermissionHelper.computeBasePermissions(profile.guild_member, guild, profile.user.id)
+                if (perms != 0L) {
+                    val allowedPerms = me.lampu.lampcord.shared.utils.Permission.fromValue(perms)
+                    if (allowedPerms.isNotEmpty()) {
+                        Spacer(Modifier.height(16.dp))
+                        Text("Permissions", style = MaterialTheme.typography.labelSmall, color = theme.contentColor.copy(alpha = 0.9f))
+                        Spacer(Modifier.height(8.dp))
+                        androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            allowedPerms.forEach { perm ->
+                                val label = perm.name.lowercase().replace('_', ' ').replaceFirstChar { it.uppercase() }
+                                RoleTag(label, theme.contentColor.copy(alpha = 0.6f))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         val presence = profile.guild_member?.presence ?: chatState.presences[user.id]
         val activities = presence?.activities ?: emptyList()
         val otherActivities = activities.filter { it.type != 4 }

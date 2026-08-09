@@ -98,7 +98,7 @@ fun InteractionHeader(interaction: MessageInteraction) {
         Spacer(modifier = Modifier.width(4.dp))
 
         val avatarUrl = interaction.user?.avatar?.let {
-            "https://cdn.discordapp.com/avatars/${interaction.user?.id}/$it.png?size=48"
+            "https://cdn.discordapp.com/avatars/${interaction.user.id}/$it.png?size=48"
         }
 
         if (avatarUrl != null) {
@@ -202,7 +202,7 @@ fun ReplyBar(referencedMessage: Message, chatState: ChatState) {
         val avatarUrl = referencedMessage.member?.avatar?.let {
             "https://cdn.discordapp.com/guilds/${referencedMessage.guild_id ?: chatState.selectedGuild?.id}/users/${referencedMessage.author?.id}/avatars/$it.png?size=48"
         } ?: referencedMessage.author?.avatar?.let {
-            "https://cdn.discordapp.com/avatars/${referencedMessage.author?.id}/$it.png?size=48"
+            "https://cdn.discordapp.com/avatars/${referencedMessage.author.id}/$it.png?size=48"
         }
 
         if (avatarUrl != null) {

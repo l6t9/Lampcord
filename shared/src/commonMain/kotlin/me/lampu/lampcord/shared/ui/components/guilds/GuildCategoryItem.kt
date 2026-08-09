@@ -57,7 +57,7 @@ fun GuildCategoryItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = category.name ?: "Category",
+                    text = me.lampu.lampcord.shared.utils.CleanUtils.cleanChannelName(category.name ?: "Category", isCategory = true),
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,

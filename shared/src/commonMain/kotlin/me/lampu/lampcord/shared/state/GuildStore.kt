@@ -1,11 +1,19 @@
 package me.lampu.lampcord.shared.state
 
 import androidx.compose.runtime.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
+import me.lampu.lampcord.shared.api.DiscordClient
 import me.lampu.lampcord.shared.model.Channel
 import me.lampu.lampcord.shared.model.Guild
 import me.lampu.lampcord.shared.model.Role
+import kotlinx.serialization.json.*
 
-class GuildStore {
+class GuildStore(
+    private val discordClient: DiscordClient,
+    private val errorStore: AppErrorStore,
+    private val scope: CoroutineScope
+) {
     val guilds = mutableStateListOf<Guild>()
     val channels = mutableStateListOf<Channel>()
     val privateChannels = mutableStateListOf<Channel>()
@@ -17,9 +25,73 @@ class GuildStore {
 
     val allGuildChannels = mutableStateMapOf<String, List<Channel>>()
 
+    fun leaveGuild(guildId: String, onLeave: () -> Unit) {
+        scope.launch {
+            try {
+                if (discordClient.leaveGuild(guildId)) {
+                    handleGuildDelete(guildId)
+                    onLeave()
+                } else {
+                    errorStore.pushError("Failed to leave guild.")
+                }
+            } catch (e: Exception) {
+                errorStore.pushError("Error leaving guild: ${e.message}")
+            }
+        }
+    }
+
+    fun markGuildAsRead(guildId: String) {
+        scope.launch {
+            try {
+                if (!discordClient.ackBulk(listOf(guildId))) {
+                    errorStore.pushError("Failed to mark guild as read.")
+                }
+            } catch (e: Exception) {
+                errorStore.pushError("Error marking guild as read: ${e.message}")
+            }
+        }
+    }
+
+    fun markCategoryAsRead(categoryId: String, guildId: String?) {
+        // Implementation
+    }
+
+    fun updateGuild(guildId: String, partial: Guild.Partial) {
+        scope.launch {
+            if (discordClient.updateGuild(guildId, partial)) {
+                guilds.find { it.id == guildId }?.let { g ->
+                    val updated = g.merge(partial)
+                    val index = guilds.indexOf(g)
+                    if (index != -1) guilds[index] = updated
+                    if (selectedGuild?.id == guildId) selectedGuild = updated
+                }
+            }
+        }
+    }
+
+    private fun Guild.merge(partial: Guild.Partial): Guild {
+        return copy(
+            name = partial.name ?: name,
+            icon = partial.icon ?: icon,
+            banner = partial.banner ?: banner,
+            splash = partial.splash ?: splash,
+            description = partial.description ?: description,
+            afk_channel_id = partial.afk_channel_id ?: afk_channel_id,
+            afk_timeout = partial.afk_timeout ?: afk_timeout,
+            system_channel_id = partial.system_channel_id ?: system_channel_id,
+            system_channel_flags = partial.system_channel_flags ?: system_channel_flags,
+            rules_channel_id = partial.rules_channel_id ?: rules_channel_id,
+            public_updates_channel_id = partial.public_updates_channel_id ?: public_updates_channel_id,
+            preferred_locale = partial.preferred_locale ?: preferred_locale,
+            verification_level = partial.verification_level ?: verification_level,
+            explicit_content_filter = partial.explicit_content_filter ?: explicit_content_filter
+        )
+    }
+
     fun setGuilds(newGuilds: List<me.lampu.lampcord.shared.model.Guild>, order: List<String>) {
         println("GuildStore received ${newGuilds.size} guilds")
-        newGuilds.forEach { newGuild ->
+        newGuilds.forEach { rawGuild ->
+            val newGuild = rawGuild.copy(emojis = rawGuild.emojis.map { it.copy(guild_id = rawGuild.id) })
             val index = guilds.indexOfFirst { it.id == newGuild.id }
             if (index != -1) {
                 val existing = guilds[index]
@@ -33,7 +105,8 @@ class GuildStore {
                     owner_id = newGuild.owner_id ?: existing.owner_id,
                     unavailable = newGuild.unavailable ?: existing.unavailable,
                     channels = newGuild.channels ?: existing.channels,
-                    members = if (newGuild.members != null) newGuild.members else existing.members
+                    members = if (newGuild.members != null) newGuild.members else existing.members,
+                    emojis = newGuild.emojis
                 )
             } else {
                 guilds.add(newGuild)
@@ -58,33 +131,35 @@ class GuildStore {
 
     fun handleGuildCreate(guild: me.lampu.lampcord.shared.model.Guild, order: List<String>) {
         println("GuildStore received GUILD_CREATE for ${guild.id}")
-        val existingIndex = guilds.indexOfFirst { it.id == guild.id }
+        val processedGuild = guild.copy(emojis = guild.emojis.map { it.copy(guild_id = guild.id) })
+        val existingIndex = guilds.indexOfFirst { it.id == processedGuild.id }
         if (existingIndex != -1) {
             val existing = guilds[existingIndex]
             guilds[existingIndex] = existing.copy(
-                name = guild.name ?: existing.name,
-                icon = guild.icon ?: existing.icon,
-                banner = guild.banner ?: existing.banner,
-                roles = if (guild.roles.isNotEmpty()) guild.roles else existing.roles,
-                features = guild.features ?: existing.features,
-                owner_id = guild.owner_id ?: existing.owner_id,
-                unavailable = guild.unavailable ?: existing.unavailable,
-                channels = guild.channels ?: existing.channels,
-                members = guild.members ?: existing.members
+                name = processedGuild.name ?: existing.name,
+                icon = processedGuild.icon ?: existing.icon,
+                banner = processedGuild.banner ?: existing.banner,
+                roles = if (processedGuild.roles.isNotEmpty()) processedGuild.roles else existing.roles,
+                features = processedGuild.features ?: existing.features,
+                owner_id = processedGuild.owner_id ?: existing.owner_id,
+                unavailable = processedGuild.unavailable ?: existing.unavailable,
+                channels = processedGuild.channels ?: existing.channels,
+                members = processedGuild.members ?: existing.members,
+                emojis = processedGuild.emojis
             )
-            if (selectedGuild?.id == guild.id) {
+            if (selectedGuild?.id == processedGuild.id) {
                 selectedGuild = guilds[existingIndex]
             }
         } else {
-            guilds.add(guild)
+            guilds.add(processedGuild)
         }
         
         // Sync channels to cache
-        guild.channels?.let { guildChannels ->
-            allGuildChannels[guild.id] = guildChannels.filter { it.type in listOf(0, 2, 5, 4, 13, 15, 16) }.sortedBy { it.position }
-            if (selectedGuild?.id == guild.id) {
+        processedGuild.channels?.let { guildChannels ->
+            allGuildChannels[processedGuild.id] = guildChannels.filter { it.type in listOf(0, 2, 5, 4, 13, 15, 16) }.sortedBy { it.position }
+            if (selectedGuild?.id == processedGuild.id) {
                 channels.clear()
-                channels.addAll(allGuildChannels[guild.id] ?: emptyList())
+                channels.addAll(allGuildChannels[processedGuild.id] ?: emptyList())
             }
         }
         
@@ -178,6 +253,20 @@ class GuildStore {
         privateChannels.clear()
         privateChannels.addAll(newChannels)
     }
+
+    fun upsertForumThread(thread: Channel) {
+        val index = forumThreads.indexOfFirst { it.id == thread.id }
+        if (index != -1) {
+            forumThreads[index] = thread
+        } else {
+            forumThreads.add(thread)
+        }
+        val sorted = forumThreads.sortedByDescending { it.forumSortKey() }
+        forumThreads.clear()
+        forumThreads.addAll(sorted)
+    }
+
+    private fun Channel.forumSortKey(): Long = last_message_id?.jsonPrimitive?.contentOrNull?.toLongOrNull() ?: id.toLong()
 
     fun clear() {
         guilds.clear()

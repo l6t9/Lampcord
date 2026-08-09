@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
@@ -26,6 +27,7 @@ import me.lampu.lampcord.shared.state.ChatState
 import me.lampu.lampcord.shared.ui.components.*
 import me.lampu.lampcord.shared.ui.components.guilds.ServerSettings
 import me.lampu.lampcord.shared.ui.components.chat.PinnedMessagesScreen
+import me.lampu.lampcord.shared.ui.components.chat.SearchScreen
 import me.lampu.lampcord.shared.ui.components.profiles.ProfileCard
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.SettingsScreen
@@ -37,17 +39,46 @@ actual fun MobileBaseplate(chatState: ChatState) {
     val selectedChannel = chatState.selectedChannel
     val selectedThread = chatState.selectedThread
     val activeChannel = selectedThread ?: selectedChannel
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    LaunchedEffect(panelState.currentValue) {
+        if (panelState.currentValue != DiscordPanelValue.Center) {
+            keyboardController?.hide()
+        }
+    }
 
     BackHandler(enabled = panelState.currentValue != DiscordPanelValue.Center) {
         panelState.close()
     }
 
+    BackHandler(enabled = chatState.isSearchVisible) {
+        chatState.isSearchVisible = false
+    }
+
+    BackHandler(enabled = chatState.isPinsVisible) {
+        chatState.isPinsVisible = false
+    }
+
+    BackHandler(enabled = chatState.selectedProfile != null) {
+        chatState.selectedProfile = null
+    }
+    
+    BackHandler(enabled = chatState.isSettingsVisible) {
+        chatState.isSettingsVisible = false
+    }
+
+    BackHandler(enabled = chatState.isServerSettingsVisible) {
+        chatState.isServerSettingsVisible = false
+    }
+
     Box(Modifier.fillMaxSize()) {
+        val swipeEnabled = me.lampu.lampcord.shared.settings.Settings.shared.chatGestures == me.lampu.lampcord.shared.settings.ChatGestures.SWIPE_TO_MEMBERS
         DiscordPanels(
             state = panelState,
             modifier = Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.surface),
+            swipeEnabled = swipeEnabled,
             startPanel = {
                 Sidebar(
                     chatState = chatState,
@@ -64,9 +95,11 @@ actual fun MobileBaseplate(chatState: ChatState) {
                     tonalElevation = 2.dp
                 ) {
                     Scaffold(
+                        contentWindowInsets = WindowInsets(0, 0, 0, 0),
                         topBar = {
                             if (activeChannel != null) {
                                 TopAppBar(
+                                    windowInsets = TopAppBarDefaults.windowInsets.union(WindowInsets.statusBars),
                                     title = {
                                         Column {
                                             Text(
@@ -79,7 +112,7 @@ actual fun MobileBaseplate(chatState: ChatState) {
                                             )
                                             if (activeChannel.topic?.isNotBlank() == true) {
                                                 Text(
-                                                    text = activeChannel.topic!!,
+                                                    text = activeChannel.topic,
                                                     style = MaterialTheme.typography.labelSmall,
                                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                     maxLines = 1,
@@ -125,7 +158,10 @@ actual fun MobileBaseplate(chatState: ChatState) {
                                     fadeOut(quickEffectsSpec) + slideOutHorizontally(quickSpatialSpec) { -it / 8 }
                                 )
                             },
-                            modifier = Modifier.padding(padding).fillMaxSize().background(MaterialTheme.colorScheme.surface),
+                            modifier = Modifier
+                                .padding(top = padding.calculateTopPadding())
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.surface),
                             label = "MainContentTransition"
                         ) { target ->
                             Box(Modifier.fillMaxSize()) {
@@ -133,7 +169,10 @@ actual fun MobileBaseplate(chatState: ChatState) {
                                     if (activeChannel.type == 2 || activeChannel.type == 13) {
                                         VoiceArea(activeChannel, chatState)
                                     } else {
-                                        Column(modifier = Modifier.fillMaxSize()) {
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                        ) {
                                             Box(modifier = Modifier.weight(1f)) {
                                                 ChatArea(modifier = Modifier.fillMaxSize(), chatState = chatState)
                                             }
@@ -181,6 +220,38 @@ actual fun MobileBaseplate(chatState: ChatState) {
                         .padding(end = 6.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
+                    if (activeChannel?.guild_id != null || activeChannel?.type == 3) {
+                        Surface(
+                            onClick = { chatState.isSearchVisible = true },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(40.dp),
+                            shape = RoundedCornerShape(20.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                            tonalElevation = 1.dp
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Search,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Search",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                )
+                            }
+                        }
+                    }
+
                     Surface(
                         modifier = Modifier.weight(1f),
                         shape = MaterialTheme.shapes.medium,
@@ -213,34 +284,6 @@ actual fun MobileBaseplate(chatState: ChatState) {
                         } else {
                             MemberList(chatState)
                         }
-                    }
-                    
-                    if (activeChannel?.guild_id != null || activeChannel?.type == 3) {
-                        NavButtonRow(
-                            listOf(
-                                NavButtonData(
-                                    icon = Icons.Filled.Group,
-                                    title = "Members",
-                                    selected = chatState.isFriendsSelected,
-                                    onClick = {
-                                        chatState.selectedGuild = null
-                                        chatState.selectedChannel = null
-                                        chatState.isFriendsSelected = true
-                                        panelState.close()
-                                    }
-                                ),
-                                NavButtonData(
-                                    icon = Icons.Filled.Search,
-                                    title = "Search",
-                                    onClick = { chatState.isQuickSwitcherVisible = true }
-                                ),
-                                NavButtonData(
-                                    icon = Icons.Outlined.AlternateEmail,
-                                    title = "Mentions",
-                                    onClick = { /* Mentions */ }
-                                )
-                            )
-                        )
                     }
                 }
             }
@@ -304,6 +347,11 @@ actual fun MobileBaseplate(chatState: ChatState) {
         // Pinned Messages
         if (chatState.isPinsVisible) {
             PinnedMessagesScreen(chatState, onDismiss = { chatState.isPinsVisible = false })
+        }
+
+        // Search Screen
+        if (chatState.isSearchVisible) {
+            SearchScreen(chatState, onDismiss = { chatState.isSearchVisible = false })
         }
     }
 }

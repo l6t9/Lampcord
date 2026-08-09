@@ -5,7 +5,17 @@ import androidx.compose.runtime.snapshots.SnapshotStateMap
 import me.lampu.lampcord.shared.model.*
 
 class UserStore {
-    var currentUser by mutableStateOf<User?>(null)
+    private var _currentUser by mutableStateOf<User?>(null)
+    var currentUser: User?
+        get() = _currentUser
+        set(value) {
+            _currentUser = value
+            currentUserStatic = value
+        }
+
+    companion object {
+        var currentUserStatic: User? = null
+    }
     
     // User Cache: userId -> User
     private val userCache = mutableStateMapOf<String, User>()

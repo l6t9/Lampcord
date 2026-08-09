@@ -19,6 +19,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.state.ChatState
@@ -35,7 +36,7 @@ private enum class SettingsSection(val title: String, val icon: ImageVector) {
     APPEARANCE("Appearance", Icons.Filled.Palette),
     ACCESSIBILITY("Accessibility", Icons.Filled.Accessibility),
     VOICE_VIDEO("Voice & Video", Icons.Filled.Mic),
-    TEXT_IMAGES("Text & Images", Icons.Filled.Tune),
+    CHAT("Chat", Icons.Outlined.Forum),
     NOTIFICATIONS("Notifications", Icons.Filled.Notifications),
     ADVANCED("Advanced", Icons.Filled.Tune),
     ABOUT("About", Icons.Filled.Info),
@@ -55,25 +56,59 @@ fun SettingsScreen(
     if (showLogoutConfirmation) {
         AlertDialog(
             onDismissRequest = { showLogoutConfirmation = false },
-            title = { Text("Log Out", color = MaterialTheme.colorScheme.error) },
-            text = { Text("Are you sure you want to log out of Materialcord?") },
+            icon = {
+                Icon(
+                    Icons.Filled.Logout,
+                    contentDescription = null,
+                    modifier = Modifier.size(32.dp),
+                    tint = MaterialTheme.colorScheme.error
+                )
+            },
+            title = {
+                Text(
+                    text = "Log Out",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            text = {
+                Text(
+                    text = "Are you sure you want to log out of Materialcord?",
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
             confirmButton = {
-                TextButton(
+                Button(
                     onClick = {
                         showLogoutConfirmation = false
                         chatState.disconnect()
                         onDismiss()
                     },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
+                    ),
+                    shape = MaterialTheme.shapes.medium
                 ) {
                     Text("Log Out")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showLogoutConfirmation = false }) {
+                TextButton(
+                    onClick = { showLogoutConfirmation = false },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                     Text("Cancel")
                 }
-            }
+            },
+            shape = MaterialTheme.shapes.extraLarge,
+            tonalElevation = AlertDialogDefaults.TonalElevation
         )
     }
 
@@ -202,10 +237,10 @@ fun SettingsScreen(
                                                 onClick = { selectedCategory = SettingsSection.VOICE_VIDEO }
                                             ),
                                             Material3SettingsItem(
-                                                Icons.Outlined.Image,
-                                                title = { Text("Text & Images") },
-                                                description = { Text("Control how media is displayed in chat") },
-                                                onClick = { selectedCategory = SettingsSection.TEXT_IMAGES }
+                                                Icons.Outlined.Forum,
+                                                title = { Text("Chat") },
+                                                description = { Text("Control how you interact with chat and media") },
+                                                onClick = { selectedCategory = SettingsSection.CHAT }
                                             ),
                                             Material3SettingsItem(
                                                 Icons.Filled.Notifications,
@@ -276,7 +311,7 @@ fun SettingsScreen(
                             SettingsSection.APPEARANCE -> AppearanceSettings(chatState)
                             SettingsSection.ACCESSIBILITY -> AccessibilitySettings(chatState)
                             SettingsSection.VOICE_VIDEO -> { /* TODO */ }
-                            SettingsSection.TEXT_IMAGES -> TextAndImagesSettings(chatState)
+                            SettingsSection.CHAT -> ChatSettings(chatState)
                             SettingsSection.NOTIFICATIONS -> NotificationsSettings(chatState)
                             SettingsSection.ADVANCED -> AdvancedSettings(chatState)
                             SettingsSection.ABOUT -> AboutContent(version = "1.0.0", onOpenUrl = { uriHandler.openUri(it) })
@@ -457,7 +492,7 @@ fun SettingsScreen(
                                         SettingsSection.DEVICES -> DevicesSettings(chatState)
                                         SettingsSection.APPEARANCE -> AppearanceSettings(chatState)
                                         SettingsSection.ACCESSIBILITY -> AccessibilitySettings(chatState)
-                                        SettingsSection.TEXT_IMAGES -> TextAndImagesSettings(chatState)
+                                        SettingsSection.CHAT -> ChatSettings(chatState)
                                         SettingsSection.NOTIFICATIONS -> NotificationsSettings(chatState)
                                         SettingsSection.ADVANCED -> AdvancedSettings(chatState)
                                         SettingsSection.ABOUT -> AboutContent(version = "1.0.0", onOpenUrl = { uriHandler.openUri(it) })
@@ -499,8 +534,8 @@ fun rememberSettingsSearchEntries(): List<SettingsSearchEntry> {
         add(SettingsSearchEntry("root-appearance", "Appearance", "Theme, colors, and message display", "Appearance", "App Settings", "dark mode light amoled color nitro compact", Icons.Filled.Palette, "orange", SettingsSearchDestination.Appearance))
         add(SettingsSearchEntry("root-accessibility", "Accessibility", "Visual and interactive adjustments", "Accessibility", "App Settings", "font size saturation reduce motion", Icons.Filled.Accessibility, "green", SettingsSearchDestination.Accessibility))
         add(SettingsSearchEntry("root-voice", "Voice & Video", "Input, output, and camera settings", "Voice & Video", "App Settings", "microphone camera noise suppression", Icons.Filled.Mic, "rose", SettingsSearchDestination.VoiceVideo))
+        add(SettingsSearchEntry("root-chat", "Chat", "Control how you interact with chat and media", "Chat", "App Settings", "gestures tap swipe message display", Icons.Outlined.Forum, "rose", SettingsSearchDestination.Advanced))
         add(SettingsSearchEntry("root-notifications", "Notifications", "Control how you're notified", "Notifications", "App Settings", "push mentions sounds", Icons.Filled.Notifications, "rose", SettingsSearchDestination.Notifications))
-        add(SettingsSearchEntry("root-advanced", "Advanced", "Developer settings and experimental features", "Advanced", "App Settings", "logs inspector debug", Icons.Filled.Tune, "neutral", SettingsSearchDestination.Advanced))
         add(SettingsSearchEntry("root-about", "About", "App information and credits", "About", "App Settings", "version info credits developer", Icons.Filled.Info, "neutral", SettingsSearchDestination.Advanced))
         add(SettingsSearchEntry("root-logout", "Log Out", "Sign out of your account", "Logout", "Account", "sign out exit", Icons.AutoMirrored.Filled.Logout, "neutral", SettingsSearchDestination.Logout))
         

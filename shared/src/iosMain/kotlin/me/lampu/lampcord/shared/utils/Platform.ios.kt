@@ -5,6 +5,8 @@ import platform.Foundation.timeIntervalSince1970
 import platform.Foundation.NSUUID
 import platform.UIKit.UIDevice
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import me.lampu.lampcord.shared.model.LocalMedia
 
 actual fun getPlatformName(): String = "ios"
@@ -28,3 +30,10 @@ actual fun getMemoryMemory(): Long = 4096 // Default for common iPhones
 actual suspend fun getLocalMedia(): List<LocalMedia> = emptyList()
 
 actual suspend fun getLocalMediaBytes(uri: String): ByteArray? = null
+
+@Composable
+actual fun RequestMediaPermissions(onResult: (Boolean) -> Unit) {
+    LaunchedEffect(Unit) {
+        onResult(true)
+    }
+}
