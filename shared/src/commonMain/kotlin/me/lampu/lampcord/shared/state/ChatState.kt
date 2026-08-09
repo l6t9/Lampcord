@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalResourceApi::class)
+
 package me.lampu.lampcord.shared.state
 
 import androidx.compose.runtime.derivedStateOf
@@ -25,6 +27,8 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Clock
 import kotlin.time.Instant
+import lampcord.shared.generated.resources.Res
+import org.jetbrains.compose.resources.ExperimentalResourceApi
 
 class ChatState(
     private val gatewayManager: GatewayManager,
@@ -169,6 +173,8 @@ class ChatState(
         set(value) { searchStore.totalSearchResults = value }
     val searchHistory get() = searchStore.searchHistory
 
+    val loadingMessages = mutableStateListOf<String>()
+
     var activeCommand by mutableStateOf<ApplicationCommand?>(null)
     val commandOptions = mutableStateMapOf<String, JsonElement>()
 
@@ -218,6 +224,21 @@ class ChatState(
     init {
         scope.launch {
             me.lampu.lampcord.shared.utils.EmojiIndex.initialize()
+        }
+
+        scope.launch {
+            try {
+                val bytes = Res.readBytes("files/loading_messages.txt")
+                val text = bytes.decodeToString()
+                val lines = text.split("\n")
+                    .map { it.trim() }
+                    .filter { it.isNotEmpty() && !it.startsWith("#") }
+                if (lines.isNotEmpty()) {
+                    loadingMessages.addAll(lines)
+                }
+            } catch (e: Exception) {
+                loadingMessages.add("Lampcord: Because standard Discord isn't expressive enough.")
+            }
         }
 
         val savedToken = Settings.shared.discordToken

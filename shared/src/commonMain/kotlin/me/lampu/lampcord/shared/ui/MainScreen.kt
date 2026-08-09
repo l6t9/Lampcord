@@ -1,7 +1,6 @@
 package me.lampu.lampcord.shared.ui
 
 import androidx.compose.animation.*
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -15,7 +14,6 @@ import androidx.compose.ui.input.key.*
 import me.lampu.lampcord.shared.state.ChatState
 import me.lampu.lampcord.shared.ui.baseplates.DesktopBaseplate
 import me.lampu.lampcord.shared.ui.baseplates.MobileBaseplate
-import me.lampu.lampcord.shared.utils.DateTimeUtils
 import me.lampu.lampcord.shared.ui.components.*
 import org.koin.compose.koinInject
 
@@ -26,6 +24,16 @@ fun MainScreen(
 ) {
     val quickEffectsSpec = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    val loadingMessage = remember(chatState.isConnecting, chatState.loadingMessages.size) {
+        if (chatState.isConnecting) {
+            if (chatState.loadingMessages.isNotEmpty()) {
+                chatState.loadingMessages.random()
+            } else {
+                "How"
+            }
+        } else ""
+    }
 
     LaunchedEffect(chatState.errorStore.errors.size) {
         val error = chatState.errorStore.errors.firstOrNull()
@@ -60,25 +68,18 @@ fun MainScreen(
                         ) {
                             ContainedLoadingIndicator()
                             Spacer(Modifier.height(8.dp))
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = when(DateTimeUtils.getCurrentTime24H().split(":")[0].toInt()){
-                                        0, 1, 2, 3, 4, 5 -> "Productive night I see, "
-                                        6, 7, 8, 9, 10, 11 -> "Good morning, "
-                                        12, 13, 14, 15, 16, 17 -> "Good afternoon, "
-                                        18, 19, 20, 21, 22, 23 -> "Good evening, "
-                                        else -> "Evil day I guess, "
-                                    },
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = ((chatState.currentUser?.global_name ?: chatState.currentUser?.username) ?: "user"), // Lamp save us here
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(text = ".")
-                            }
+                            Text(
+                                text = loadingMessage,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                modifier = Modifier.padding(horizontal = 32.dp)
+                            )
+                            Text(
+                                text = (chatState.currentUser?.global_name ?: chatState.currentUser?.username) ?: "user",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
                         }   
                     }
                 } else {
