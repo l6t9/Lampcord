@@ -109,7 +109,8 @@ data class TypingStart(
     val channel_id: String,
     val user_id: String,
     val timestamp: Long,
-    val guild_id: String? = null
+    val guild_id: String? = null,
+    val member: Member? = null
 )
 
 @Serializable

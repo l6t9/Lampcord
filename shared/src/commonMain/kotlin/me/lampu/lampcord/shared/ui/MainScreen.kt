@@ -48,11 +48,13 @@ fun MainScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        modifier = Modifier.fillMaxSize()
-    ) { padding ->
+        modifier = Modifier.fillMaxSize(),
+        containerColor = MaterialTheme.colorScheme.surface,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
+    ) { _ ->
         AnimatedContent(
             targetState = chatState.isConnected to chatState.isConnecting,
-            modifier = Modifier.fillMaxSize().padding(padding).background(MaterialTheme.colorScheme.surface),
+            modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface),
             transitionSpec = {
                 fadeIn(quickEffectsSpec) togetherWith fadeOut(quickEffectsSpec)
             },
@@ -61,7 +63,7 @@ fun MainScreen(
             if (!isConnected) {
                 if (isConnecting) {
                     println(chatState.currentUser)
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.fillMaxSize().systemBarsPadding(), contentAlignment = Alignment.Center) {
                         Column(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalAlignment = Alignment.CenterHorizontally
@@ -77,7 +79,7 @@ fun MainScreen(
                         }   
                     }
                 } else {
-                    LoginScreen(onLoginSuccess = { })
+                    LoginScreen(modifier = Modifier.systemBarsPadding(), onLoginSuccess = { })
                 }
             } else {
                 BoxWithConstraints(

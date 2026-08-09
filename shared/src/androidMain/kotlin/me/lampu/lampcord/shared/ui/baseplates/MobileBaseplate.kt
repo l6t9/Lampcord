@@ -29,6 +29,7 @@ import me.lampu.lampcord.shared.ui.components.guilds.ServerSettings
 import me.lampu.lampcord.shared.ui.components.chat.PinnedMessagesScreen
 import me.lampu.lampcord.shared.ui.components.chat.SearchScreen
 import me.lampu.lampcord.shared.ui.components.profiles.ProfileCard
+import me.lampu.lampcord.shared.ui.components.members.MemberHeader
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.SettingsScreen
 
@@ -127,11 +128,6 @@ actual fun MobileBaseplate(chatState: ChatState) {
                                         }
                                     },
                                     actions = {
-                                        if (activeChannel.type != 2 && activeChannel.type != 13) {
-                                            IconButton(onClick = { chatState.isPinsVisible = true }) {
-                                                Icon(Icons.Filled.PushPin, "Pins")
-                                            }
-                                        }
                                         if (activeChannel.guild_id != null || activeChannel.type == 1 || activeChannel.type == 3) {
                                             IconButton(onClick = { panelState.openEnd() }) {
                                                 Icon(
@@ -220,35 +216,13 @@ actual fun MobileBaseplate(chatState: ChatState) {
                         .padding(end = 6.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    if (activeChannel?.guild_id != null || activeChannel?.type == 3) {
+                    if (activeChannel != null) {
                         Surface(
-                            onClick = { chatState.isSearchVisible = true },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(40.dp),
-                            shape = RoundedCornerShape(20.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = MaterialTheme.shapes.medium,
                             tonalElevation = 1.dp
                         ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(horizontal = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.Search,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "Search",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                )
-                            }
+                            MemberHeader(activeChannel, chatState)
                         }
                     }
 

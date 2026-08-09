@@ -69,6 +69,14 @@ class GatewayHandler(
         payload.d?.let { data ->
             try {
                 val typing = json.decodeFromJsonElement<TypingStart>(data)
+                
+                // Cache member/user if provided (typical in guilds)
+                typing.guild_id?.let { guildId ->
+                    typing.member?.let { member ->
+                        userStore.cacheMember(guildId, typing.user_id, member)
+                    }
+                }
+
                 typingStore.handleTypingStart(typing.channel_id, typing.user_id, userStore.currentUser?.id)
             } catch (e: Exception) { }
         }

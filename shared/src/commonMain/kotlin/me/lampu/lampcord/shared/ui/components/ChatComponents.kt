@@ -48,9 +48,15 @@ fun TypingIndicator(chatState: ChatState, channelId: String) {
     if (userIds.isEmpty()) return
     
     val names = userIds.map { id ->
-         chatState.getMember(chatState.selectedGuild?.id ?: "", id)?.nick 
-         ?: chatState.userStore.getUser(id)?.global_name 
-         ?: chatState.userStore.getUser(id)?.username 
+         val member = chatState.getMember(chatState.selectedGuild?.id ?: "", id)
+         val userFromStore = chatState.userStore.getUser(id)
+         val userFromChannel = chatState.selectedChannel?.recipients?.find { it.id == id }
+         
+         member?.nick 
+         ?: userFromStore?.global_name 
+         ?: userFromStore?.username 
+         ?: userFromChannel?.global_name
+         ?: userFromChannel?.username
          ?: "Someone"
     }
     

@@ -27,6 +27,7 @@ import org.koin.compose.koinInject
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun LoginScreen(
+    modifier: Modifier = Modifier,
     chatState: ChatState = koinInject(),
     remoteAuthClient: RemoteAuthClient = koinInject(),
     onLoginSuccess: () -> Unit
@@ -92,7 +93,7 @@ fun LoginScreen(
     }
 
     Surface(
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
         Box(

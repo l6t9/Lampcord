@@ -50,6 +50,7 @@ fun DesktopBaseplate(chatState: ChatState) {
         Row(
             modifier = Modifier
                 .fillMaxSize()
+                .systemBarsPadding()
                 .padding(6.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
