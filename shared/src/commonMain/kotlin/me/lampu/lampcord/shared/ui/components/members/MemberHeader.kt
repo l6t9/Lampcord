@@ -2,6 +2,7 @@ package me.lampu.lampcord.shared.ui.components.members
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -17,6 +18,7 @@ import me.lampu.lampcord.shared.model.Channel
 import me.lampu.lampcord.shared.state.ChatState
 import me.lampu.lampcord.shared.ui.icons.Icons
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun MemberHeader(channel: Channel, chatState: ChatState) {
     Column(
@@ -50,13 +52,13 @@ fun MemberHeader(channel: Channel, chatState: ChatState) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                modifier = Modifier.size(28.dp),
+                modifier = Modifier.size(24.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.width(12.dp))
             Text(
                 text = name,
-                style = MaterialTheme.typography.headlineSmall,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -83,71 +85,88 @@ fun MemberHeader(channel: Channel, chatState: ChatState) {
 
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            HeaderButton(
-                icon = Icons.Filled.Search,
-                label = "Search",
-                onClick = { chatState.isSearchVisible = true },
-                modifier = Modifier.weight(1f)
+            val actions = listOf(
+                HeaderButtonData(
+                    icon = Icons.Filled.Search,
+                    label = "Search",
+                    onClick = { chatState.isSearchVisible = true }
+                ),
+                HeaderButtonData(
+                    icon = Icons.Filled.PushPin,
+                    label = "Pins",
+                    onClick = { chatState.isPinsVisible = true }
+                ),
+                HeaderButtonData(
+                    icon = Icons.Filled.Settings,
+                    label = "Settings",
+                    onClick = { },
+                    enabled = false
+                )
             )
-            HeaderButton(
-                icon = Icons.Filled.PushPin,
-                label = "Pins",
-                onClick = { chatState.isPinsVisible = true },
-                modifier = Modifier.weight(1f)
-            )
-            HeaderButton(
-                icon = Icons.Filled.Notifications,
-                label = "Notifications",
-                onClick = { },
-                enabled = false,
-                modifier = Modifier.weight(1f)
-            )
-            HeaderButton(
-                icon = Icons.Filled.Settings,
-                label = "Settings",
-                onClick = { },
-                enabled = false,
-                modifier = Modifier.weight(1f)
-            )
+
+            actions.forEachIndexed { index, action ->
+                val shape = when {
+                    actions.size == 1 -> RoundedCornerShape(20.dp)
+                    index == 0 -> RoundedCornerShape(topStart = 20.dp, bottomStart = 20.dp, topEnd = 4.dp, bottomEnd = 4.dp)
+                    index == actions.lastIndex -> RoundedCornerShape(topStart = 4.dp, bottomStart = 4.dp, topEnd = 20.dp, bottomEnd = 20.dp)
+                    else -> RoundedCornerShape(4.dp)
+                }
+
+                HeaderButton(
+                    action = action,
+                    shape = shape,
+                    modifier = Modifier.weight(1f)
+                )
+            }
         }
-        
-        Spacer(Modifier.height(16.dp))
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     }
 }
 
+private data class HeaderButtonData(
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val label: String,
+    val onClick: () -> Unit,
+    val enabled: Boolean = true
+)
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun HeaderButton(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    label: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true
+    action: HeaderButtonData,
+    shape: androidx.compose.ui.graphics.Shape,
+    modifier: Modifier = Modifier
 ) {
-    val contentAlpha = if (enabled) 1f else 0.4f
-    Column(
-        modifier = modifier
-            .clip(MaterialTheme.shapes.medium)
-            .clickable(enabled = enabled, onClick = onClick)
-            .padding(vertical = 8.dp)
-            .alpha(contentAlpha),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+    val contentAlpha = if (action.enabled) 1f else 0.4f
+    Surface(
+        onClick = action.onClick,
+        enabled = action.enabled,
+        modifier = modifier.height(64.dp),
+        shape = shape,
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            modifier = Modifier.size(24.dp),
-            tint = MaterialTheme.colorScheme.onSurface
-        )
-        Spacer(Modifier.height(4.dp))
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurface,
-            textAlign = TextAlign.Center
-        )
+        Column(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp, vertical = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = action.icon,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp).alpha(contentAlpha)
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = action.label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = contentAlpha),
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                fontSize = 10.sp
+            )
+        }
     }
 }

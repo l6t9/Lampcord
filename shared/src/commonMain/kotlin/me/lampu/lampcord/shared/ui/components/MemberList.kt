@@ -33,8 +33,12 @@ import me.lampu.lampcord.shared.ui.components.members.MemberSkeleton
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.setClipboardText
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun MemberList(chatState: ChatState) {
+fun MemberList(
+    chatState: ChatState,
+    header: @Composable (() -> Unit)? = null
+) {
     val scrollState = rememberLazyListState()
     var isHovered by remember { mutableStateOf(false) }
 
@@ -100,9 +104,25 @@ fun MemberList(chatState: ChatState) {
             Box(modifier = Modifier.fillMaxSize()) {
                 LazyColumn(
                     state = scrollState,
-                    modifier = Modifier.fillMaxSize().padding(top = 8.dp),
+                    modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 52.dp)
                 ) {
+                    if (header != null) {
+                        stickyHeader {
+                            Surface(
+                                color = MaterialTheme.colorScheme.surface,
+                                tonalElevation = 1.dp
+                            ) {
+                                header()
+                            }
+                        }
+                    } else {
+                        // Spacing at top if no header
+                        item {
+                            Spacer(Modifier.height(8.dp))
+                        }
+                    }
+
                     if (chatState.memberListRowCount == 0) {
                         items(20) {
                             MemberSkeleton()

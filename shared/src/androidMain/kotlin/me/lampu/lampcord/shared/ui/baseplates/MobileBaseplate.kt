@@ -216,16 +216,6 @@ actual fun MobileBaseplate(chatState: ChatState) {
                         .padding(end = 6.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    if (activeChannel != null) {
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = MaterialTheme.shapes.medium,
-                            tonalElevation = 1.dp
-                        ) {
-                            MemberHeader(activeChannel, chatState)
-                        }
-                    }
-
                     Surface(
                         modifier = Modifier.weight(1f),
                         shape = MaterialTheme.shapes.medium,
@@ -256,7 +246,14 @@ actual fun MobileBaseplate(chatState: ChatState) {
                                 }
                             }
                         } else {
-                            MemberList(chatState)
+                            MemberList(
+                                chatState = chatState,
+                                header = {
+                                    activeChannel?.let {
+                                        MemberHeader(it, chatState)
+                                    }
+                                }
+                            )
                         }
                     }
                 }
