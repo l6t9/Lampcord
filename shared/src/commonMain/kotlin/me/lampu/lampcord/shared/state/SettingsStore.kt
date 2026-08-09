@@ -162,30 +162,6 @@ class SettingsStore(
         userSettings = userSettings?.merge(partial)
     }
 
-    private fun UserSettings.merge(partial: UserSettings.Partial): UserSettings {
-        return copy(
-            theme = partial.theme ?: theme,
-            developer_mode = partial.developer_mode ?: developer_mode,
-            render_embeds = partial.render_embeds ?: render_embeds,
-            inline_embed_media = partial.inline_embed_media ?: inline_embed_media,
-            inline_attachment_media = partial.inline_attachment_media ?: inline_attachment_media,
-            blocked_message_bar = partial.blocked_message_bar ?: blocked_message_bar,
-            locale = partial.locale ?: locale,
-            restricted_guilds = partial.restricted_guilds ?: restricted_guilds,
-            status = partial.status ?: status,
-            show_current_game = partial.show_current_game ?: show_current_game,
-            guild_folders = partial.guild_folders ?: guild_folders,
-            default_guilds_restricted = partial.default_guilds_restricted ?: default_guilds_restricted,
-            friend_source_flags = partial.friend_source_flags ?: friend_source_flags,
-            explicit_content_filter = partial.explicit_content_filter ?: explicit_content_filter,
-            animate_emoji = partial.animate_emoji ?: animate_emoji,
-            allow_accessibility_detection = partial.allow_accessibility_detection ?: allow_accessibility_detection,
-            animate_stickers = partial.animate_stickers ?: animate_stickers,
-            contact_sync_enabled = partial.contact_sync_enabled ?: contact_sync_enabled,
-            friend_discovery_flags = partial.friend_discovery_flags ?: friend_discovery_flags,
-            custom_status = partial.custom_status ?: custom_status
-        )
-    }
 
     private fun performUpdate() {
         if (!hasPendingChanges) return

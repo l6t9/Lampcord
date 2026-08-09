@@ -121,7 +121,8 @@ class MessageStore(
                         channelId = task.channelId,
                         content = task.content,
                         nonce = task.nonce,
-                        replyTo = messages.find { it.id == task.replyTo },
+                        replyTo = task.replyTo,
+                        forwardFrom = task.forwardFrom,
                         files = task.files,
                         stickerIds = task.stickerIds,
                         allowedMentions = task.allowedMentions

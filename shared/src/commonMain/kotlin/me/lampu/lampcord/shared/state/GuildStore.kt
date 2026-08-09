@@ -69,24 +69,6 @@ class GuildStore(
         }
     }
 
-    private fun Guild.merge(partial: Guild.Partial): Guild {
-        return copy(
-            name = partial.name ?: name,
-            icon = partial.icon ?: icon,
-            banner = partial.banner ?: banner,
-            splash = partial.splash ?: splash,
-            description = partial.description ?: description,
-            afk_channel_id = partial.afk_channel_id ?: afk_channel_id,
-            afk_timeout = partial.afk_timeout ?: afk_timeout,
-            system_channel_id = partial.system_channel_id ?: system_channel_id,
-            system_channel_flags = partial.system_channel_flags ?: system_channel_flags,
-            rules_channel_id = partial.rules_channel_id ?: rules_channel_id,
-            public_updates_channel_id = partial.public_updates_channel_id ?: public_updates_channel_id,
-            preferred_locale = partial.preferred_locale ?: preferred_locale,
-            verification_level = partial.verification_level ?: verification_level,
-            explicit_content_filter = partial.explicit_content_filter ?: explicit_content_filter
-        )
-    }
 
     fun setGuilds(newGuilds: List<me.lampu.lampcord.shared.model.Guild>, order: List<String>) {
         println("GuildStore received ${newGuilds.size} guilds")
