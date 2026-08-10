@@ -92,7 +92,7 @@ class AutocompleteStore(
                         title = channel.name ?: "unnamed",
                         iconType = when (channel.type) {
                             4 -> Icons.Filled.Folder
-                            15 -> Icons.Outlined.Forum
+                            15 -> Icons.Rounded.Forum
                             2, 13 -> Icons.AutoMirrored.Filled.VolumeUp
                             5 -> Icons.Filled.Campaign
                             else -> Icons.Filled.Tag

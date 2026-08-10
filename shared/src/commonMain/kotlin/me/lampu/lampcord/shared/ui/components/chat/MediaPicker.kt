@@ -535,7 +535,7 @@ private fun MediaPickerTabs(
         colors = FloatingToolbarDefaults.standardFloatingToolbarColors(),
         content = {
             PickerTabItem(
-                icon = Icons.Outlined.Image,
+                icon = Icons.Rounded.Image,
                 label = "Images",
                 isSelected = selectedTab == 0,
                 onClick = { onTabSelected(0) }

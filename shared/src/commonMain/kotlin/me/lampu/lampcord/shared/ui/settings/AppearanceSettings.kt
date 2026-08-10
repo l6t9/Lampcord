@@ -590,7 +590,7 @@ private fun ModeCircle(
         when {
             showIcon -> {
                 Icon(
-                    imageVector = Icons.Outlined.Sync,
+                    imageVector = Icons.Rounded.Sync,
                     contentDescription = null,
                     tint = modeColorScheme.onSurface,
                     modifier = Modifier.size(20.dp),
@@ -600,7 +600,7 @@ private fun ModeCircle(
             isSelected -> {
                 AnimatedVisibility(visible = true) {
                     Icon(
-                        imageVector = Icons.Outlined.AutoAwesome,
+                        imageVector = Icons.Rounded.AutoAwesome,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.inversePrimary,
                         modifier = Modifier.size(20.dp),
@@ -610,7 +610,7 @@ private fun ModeCircle(
 
             !effectiveDark -> {
                 Icon(
-                    imageVector = Icons.Outlined.LightMode,
+                    imageVector = Icons.Rounded.LightMode,
                     contentDescription = null,
                     tint = modeColorScheme.onSurface,
                     modifier = Modifier.size(18.dp),
@@ -619,7 +619,7 @@ private fun ModeCircle(
 
             pureBlack -> {
                 Icon(
-                    imageVector = Icons.Outlined.Brightness4,
+                    imageVector = Icons.Rounded.Brightness4,
                     contentDescription = null,
                     tint = Color.White,
                     modifier = Modifier.size(18.dp),
@@ -628,7 +628,7 @@ private fun ModeCircle(
 
             else -> {
                 Icon(
-                    imageVector = Icons.Outlined.DarkMode,
+                    imageVector = Icons.Rounded.DarkMode,
                     contentDescription = null,
                     tint = modeColorScheme.onSurface,
                     modifier = Modifier.size(18.dp),
@@ -729,7 +729,7 @@ private fun PalettePreviewItem(
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.AutoAwesome,
+                        imageVector = Icons.Rounded.AutoAwesome,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(22.dp),

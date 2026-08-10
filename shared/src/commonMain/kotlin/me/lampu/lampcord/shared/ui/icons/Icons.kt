@@ -8,7 +8,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 object Icons {
     val Filled: IconsRoundedFilled = IconsRoundedFilled
     val Default: IconsRounded = IconsRounded
-    val Outlined: IconsRounded = IconsRounded
     val Rounded: IconsRounded = IconsRounded
     val Brand: IconsBrand = IconsBrand
 
@@ -49,7 +48,6 @@ object Icons {
             val VolumeUp: ImageVector by lazy { materialSymbol("Rounded_filled.VolumeUp", IconsRoundedFilled.VolumeUp_Path, autoMirror = true) }
         }
         
-        val Outlined = Rounded
         val Default = Rounded
     }
 }

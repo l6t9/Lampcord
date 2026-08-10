@@ -271,12 +271,12 @@ private fun DeveloperSocials(
                     ),
                     modifier = Modifier.weight(1f).height(48.dp),
                 ) {
-                    Icon(Icons.Outlined.Language, contentDescription = text.openWebsite)
+                    Icon(Icons.Rounded.Language, contentDescription = text.openWebsite)
                 }
             },
             menuContent = { menuState ->
                 DropdownMenuItem(
-                    leadingIcon = { Icon(Icons.Outlined.Language, contentDescription = null) },
+                    leadingIcon = { Icon(Icons.Rounded.Language, contentDescription = null) },
                     text = { Text(text.openWebsite) },
                     enabled = contributor.websiteUrl != null,
                     onClick = {

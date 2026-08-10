@@ -182,7 +182,7 @@ fun BrowseChannelItem(channel: me.lampu.lampcord.shared.model.Channel) {
             Icon(
                 imageVector = when(channel.type) {
                     2, 13 -> Icons.AutoMirrored.Filled.VolumeUp
-                    15 -> Icons.Outlined.Forum
+                    15 -> Icons.Rounded.Forum
                     else -> Icons.Filled.Tag
                 },
                 contentDescription = null,

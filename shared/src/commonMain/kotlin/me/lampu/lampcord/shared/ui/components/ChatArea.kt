@@ -183,7 +183,7 @@ fun ChatArea(
                     ) {
                         Icon(
                             imageVector = when(chatState.selectedChannel?.type ?: 0) {
-                                1, 3 -> Icons.Outlined.AlternateEmail
+                                1, 3 -> Icons.Rounded.AlternateEmail
                                 else -> Icons.Filled.Tag
                             },
                             contentDescription = "",

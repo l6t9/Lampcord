@@ -80,7 +80,7 @@ private fun SearchScreenContent(
     val searchOptions = remember {
         listOf(
             SearchOption("from", Icons.Filled.Person, "user"),
-            SearchOption("mentions", Icons.Outlined.AlternateEmail, "user"),
+            SearchOption("mentions", Icons.Rounded.AlternateEmail, "user"),
             SearchOption("has", Icons.Filled.Link, "link, embed or file"),
             SearchOption("in", Icons.Filled.Tag, "channel"),
             SearchOption("sort", Icons.AutoMirrored.Filled.List, "old"),

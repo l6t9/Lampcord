@@ -177,7 +177,7 @@ fun Material3SettingsItemRow(
                     animationSpec = tween(200)
                 )
                 Icon(
-                    imageVector = Icons.Outlined.ChevronRight,
+                    imageVector = Icons.Rounded.ChevronRight,
                     contentDescription = if (item.expanded) "Collapse" else "Expand",
                     modifier = Modifier.graphicsLayer { rotationZ = rotation },
                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (item.enabled) 1f else 0.38f),

@@ -35,7 +35,7 @@ data class SettingsSearchEntry(
     val screen: String,
     val section: String? = null,
     val keywords: String = "",
-    val icon: ImageVector = Icons.Outlined.Settings,
+    val icon: ImageVector = Icons.Rounded.Settings,
     val toneName: String = "neutral",
     val destination: SettingsSearchDestination,
 ) {

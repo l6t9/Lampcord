@@ -133,7 +133,7 @@ fun ForwardedMessage(message: Message, chatState: ChatState) {
                     } else {
                         // Fallback to "Direct Message" or similar if it's not a guild
                         Icon(
-                            imageVector = Icons.Outlined.AlternateEmail,
+                            imageVector = Icons.Rounded.AlternateEmail,
                             contentDescription = null,
                             modifier = Modifier.size(14.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)

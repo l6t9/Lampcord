@@ -47,7 +47,7 @@ fun MemberItem(member: Member, chatState: ChatState) {
     val contextMenuItems = remember(user, chatState.userSettings) {
         val items = mutableListOf(
             ContextMenuItem("Profile", Icons.Filled.AccountCircle) { chatState.showProfile(user.id) },
-            ContextMenuItem("Mention", Icons.Outlined.AlternateEmail) {
+            ContextMenuItem("Mention", Icons.Rounded.AlternateEmail) {
                 val channelId = chatState.selectedChannel?.id ?: return@ContextMenuItem
                 val current = chatState.draftMessages[channelId] ?: ""
                 chatState.draftMessages[channelId] = "$current <@${user.id}> "

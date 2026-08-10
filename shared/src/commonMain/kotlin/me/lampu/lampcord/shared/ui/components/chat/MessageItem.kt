@@ -79,7 +79,7 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
                 val messageId = message.id
                 setClipboardText("https://discord.com/channels/$guildId/$channelId/$messageId")
             },
-            ContextMenuItem("Mention", Icons.Outlined.AlternateEmail) {
+            ContextMenuItem("Mention", Icons.Rounded.AlternateEmail) {
                 val current = chatState.draftMessages[message.channel_id] ?: ""
                 chatState.draftMessages[message.channel_id] = "$current <@${message.author?.id}> "
             }

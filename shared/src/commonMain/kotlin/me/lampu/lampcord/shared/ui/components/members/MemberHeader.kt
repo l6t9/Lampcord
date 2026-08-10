@@ -32,10 +32,10 @@ fun MemberHeader(channel: Channel, chatState: ChatState) {
         ) {
             val isDm = channel.type == 1 || channel.type == 3 || channel.guild_id == null
             val icon = if (isDm) {
-                Icons.Outlined.AlternateEmail
+                Icons.Rounded.AlternateEmail
             } else {
                 when (channel.type) {
-                    15 -> Icons.Outlined.Forum
+                    15 -> Icons.Rounded.Forum
                     2, 13 -> Icons.AutoMirrored.Filled.VolumeUp
                     5 -> Icons.Filled.Campaign
                     else -> Icons.Filled.Tag

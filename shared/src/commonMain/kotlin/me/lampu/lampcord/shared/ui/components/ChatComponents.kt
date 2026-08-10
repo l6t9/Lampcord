@@ -159,7 +159,7 @@ fun ChannelHeader(
                     val recipient = channel.recipients?.firstOrNull()
                     val name = recipient?.let { it.global_name ?: it.username } ?: "Unnamed DM"
                     Icon(
-                        imageVector = Icons.Outlined.AlternateEmail,
+                        imageVector = Icons.Rounded.AlternateEmail,
                         contentDescription = null,
                         modifier = Modifier.size(18.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -168,7 +168,7 @@ fun ChannelHeader(
                     Text(text = name, style = MaterialTheme.typography.titleSmall)
                 } else {
                     val icon = when (channel.type) {
-                        15 -> Icons.Outlined.Forum
+                        15 -> Icons.Rounded.Forum
                         2, 13 -> Icons.AutoMirrored.Filled.VolumeUp
                         5 -> Icons.Filled.Campaign
                         else -> Icons.Filled.Tag
