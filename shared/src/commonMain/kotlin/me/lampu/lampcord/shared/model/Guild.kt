@@ -190,7 +190,7 @@ data class GuildSubscription(
 @Serializable
 data class MemberListUpdate(
     val guild_id: String,
-    val id: String,
+    val id: String = "everyone",
     val ops: List<MemberListOp>,
     val member_count: Int? = null,
     val online_count: Int? = null,

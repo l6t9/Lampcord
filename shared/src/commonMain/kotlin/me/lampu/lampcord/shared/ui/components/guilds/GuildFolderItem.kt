@@ -6,7 +6,6 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
@@ -81,7 +80,7 @@ fun PreviewIcon(guild: Guild) {
 
     Surface(
         modifier = Modifier.fillMaxSize(),
-        shape = RoundedCornerShape(4.dp),
+        shape = CircleShape,
         color = MaterialTheme.colorScheme.surfaceVariant,
         shadowElevation = 0.dp,
         tonalElevation = 0.dp
@@ -161,7 +160,7 @@ fun GuildFolderItem(folder: GuildFolder, chatState: ChatState) {
                 )
             }
 
-            val folderCornerRadius by animateDpAsState(targetValue = if (expanded) 12.dp else 16.dp)
+            val folderCornerRadius = 12.dp // Folders are always rounded squares
             val folderBgColor by animateColorAsState(targetValue = if (expanded) Color.Transparent else folderColor.copy(alpha = 0.2f))
 
             Box(

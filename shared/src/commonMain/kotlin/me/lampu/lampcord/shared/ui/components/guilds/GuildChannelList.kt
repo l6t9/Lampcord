@@ -79,8 +79,10 @@ fun GuildChannelList(chatState: ChatState) {
             }
         }
 
-        val categories = visibleChannels.filter { it.type == 4 }.sortedBy { it.position ?: 0 }
-        val rootChannels = visibleChannels.filter { it.parent_id == null && it.type != 4 }.sortedBy { it.position ?: 0 }
+        val categories = visibleChannels.filter { it.type == 4 }.distinctBy { it.id }.sortedBy { it.position ?: 0 }
+        val rootChannels = visibleChannels.filter { it.parent_id == null && it.type != 4 }
+            .distinctBy { it.id }
+            .sortedWith(compareBy({ it.type == 2 || it.type == 13 }, { it.position ?: 0 }))
 
         LazyColumn(
             state = scrollState,

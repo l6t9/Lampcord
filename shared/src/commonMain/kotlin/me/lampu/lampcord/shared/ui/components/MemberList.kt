@@ -132,7 +132,11 @@ fun MemberList(
                             count = chatState.memberListRowCount,
                             key = { index -> 
                                 val item = chatState.memberListItems[index]
-                                item?.member?.userId() ?: item?.group?.id ?: "null-$index"
+                                val baseId = item?.member?.userId() ?: item?.group?.id ?: "null"
+                                // 126.21 Parity: Discord member lists are index-based.
+                                // We include the index in the key to prevent crashes if the state is temporarily inconsistent
+                                // (e.g. during a channel switch or rapid gateway updates).
+                                "$index-$baseId"
                             }
                         ) { index ->
                             val item = chatState.memberListItems[index]

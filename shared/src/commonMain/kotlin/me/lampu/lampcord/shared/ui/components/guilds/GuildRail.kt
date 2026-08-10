@@ -61,7 +61,7 @@ fun GuildRail(chatState: ChatState, modifier: Modifier = Modifier) {
         val folders = chatState.userSettings?.guild_folders ?: emptyList()
 
         if (folders.isEmpty()) {
-            items(chatState.guilds, key = { it.id }) { guild ->
+            items(chatState.guilds.distinctBy { it.id }, key = { it.id }) { guild ->
                 GuildIcon(
                     guild = guild,
                     isSelected = chatState.selectedGuild?.id == guild.id,

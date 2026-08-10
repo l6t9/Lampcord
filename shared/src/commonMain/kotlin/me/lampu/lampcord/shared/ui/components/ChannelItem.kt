@@ -127,9 +127,7 @@ fun ChannelItem(channel: Channel, chatState: ChatState) {
                         
                         Text(
                             text = me.lampu.lampcord.shared.utils.CleanUtils.cleanChannelName(channel.name ?: "unnamed"),
-                            style = if (isUnread && canView) 
-                                MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold) 
-                            else MaterialTheme.typography.bodyLarge,
+                            style = MaterialTheme.typography.bodyLarge,
                             color = contentColor,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,

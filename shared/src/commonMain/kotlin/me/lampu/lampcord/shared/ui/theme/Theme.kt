@@ -25,7 +25,13 @@ fun LampcordTheme(
     content: @Composable () -> Unit
 ) {
     val dynamicSeed = rememberDynamicSeedColor()
-    val finalSeedColor = seedColor ?: dynamicSeed ?: ColorLightPrimary
+    val finalSeedColor = remember(seedColor, dynamicSeed, useMaterialYou) {
+        if (useMaterialYou && dynamicSeed != null) {
+            dynamicSeed
+        } else {
+            seedColor ?: dynamicSeed ?: ColorLightPrimary
+        }
+    }
 
     val materialPaletteStyle = when(paletteStyle) {
         ThemePaletteStyle.TONAL_SPOT -> PaletteStyle.TonalSpot

@@ -72,10 +72,12 @@ fun GuildCategoryItem(
             }
         }
         if (!collapsed) {
-            val categoryChannels =
-                channels.filter { it.parent_id == category.id }.sortedBy { it.position ?: 0 }
+            val sortedCategoryChannels =
+                channels.filter { it.parent_id == category.id }
+                    .distinctBy { it.id }
+                    .sortedWith(compareBy({ it.type == 2 || it.type == 13 }, { it.position ?: 0 }))
             Column {
-                categoryChannels.forEach { channel ->
+                sortedCategoryChannels.forEach { channel ->
                     ChannelItem(channel, chatState)
                 }
             }

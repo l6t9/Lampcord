@@ -43,8 +43,8 @@ fun GuildIcon(
         derivedStateOf { chatState.userGuildSettingsStore.isGuildMuted(guild.id) }
     }
     
-    val isUnread by remember(guild.id, chatState.readStates, chatState.guildStore.allGuildChannels[guild.id], isMuted) {
-        derivedStateOf { chatState.isGuildUnread(guild.id) && !isMuted }
+    val isUnread by remember(guild.id, chatState.readStates, chatState.guildStore.allGuildChannels[guild.id], chatState.userGuildSettingsStore.userGuildSettings[guild.id]) {
+        derivedStateOf { chatState.isGuildUnread(guild.id) }
     }
     val mentionCount by remember(guild.id, chatState.readStates, chatState.guildStore.allGuildChannels[guild.id]) {
         derivedStateOf { chatState.getGuildMentionCount(guild.id) }
@@ -82,20 +82,10 @@ fun GuildIcon(
 
     ContextMenu(items = contextMenuItems) {
         Box(contentAlignment = Alignment.Center) {
-            if (isUnread && !isSelected) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.CenterStart)
-                        .padding(start = 0.dp)
-                        .width(4.dp)
-                        .height(8.dp)
-                        .clip(MaterialTheme.shapes.extraSmall)
-                        .background(MaterialTheme.colorScheme.onSurface)
-                )
-            }
-
             RegularGuildItem(
                 isSelected = isSelected,
+                isUnread = isUnread,
+                isMuted = isMuted,
                 onClick = onClick,
                 selectedColor = if (iconUrl == null) MaterialTheme.colorScheme.primary else Color.Transparent,
                 unselectedColor = if (iconUrl == null) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent

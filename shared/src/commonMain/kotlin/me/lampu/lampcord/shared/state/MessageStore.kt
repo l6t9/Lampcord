@@ -32,7 +32,9 @@ class MessageStore(
     }
 
     fun addMessages(newMessages: List<Message>) {
-        messages.addAll(newMessages)
+        val existingIds = messages.map { it.id }.toSet()
+        val filtered = newMessages.filter { it.id !in existingIds }
+        messages.addAll(filtered)
     }
 
     fun handleMessageCreate(message: Message) {

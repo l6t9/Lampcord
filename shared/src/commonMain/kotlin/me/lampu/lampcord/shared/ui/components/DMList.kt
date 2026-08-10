@@ -76,7 +76,7 @@ fun DMList(chatState: ChatState) {
                         DMSkeleton()
                     }
                 } else {
-                    items(chatState.privateChannels, key = { it.id }) { channel ->
+                    items(chatState.privateChannels.distinctBy { it.id }, key = { it.id }) { channel ->
                         DMItem(channel, chatState)
                     }
                 }

@@ -334,7 +334,7 @@ class ChatState(
 
     fun isFolderUnread(folder: GuildFolder): Boolean {
         return folder.guild_ids.any { el -> 
-            val id = el.jsonPrimitive.contentOrNull ?: el.toString()
+            val id = el.jsonPrimitive.contentOrNull ?: return@any false
             isGuildUnread(id) 
         }
     }
@@ -345,7 +345,7 @@ class ChatState(
     
     fun getFolderMentionCount(folder: GuildFolder): Int {
         return folder.guild_ids.sumOf { el -> 
-            val id = el.jsonPrimitive.contentOrNull ?: el.toString()
+            val id = el.jsonPrimitive.contentOrNull ?: return@sumOf 0
             getGuildMentionCount(id)
         }
     }
@@ -520,10 +520,7 @@ class ChatState(
         val requestKey = "${guild.id}:${channel.id}:$ranges"
         if (requestKey == navigationStore.lastRequestedKey) return
         navigationStore.lastRequestedKey = requestKey
-
-        // 126.21 Parity: The key in the channels map is the MEMBER LIST ID (hash or "everyone"), not always the channel.id.
-        val memberListId = channel.member_list_id ?: channel.memberListId(guild)
-        gatewayManager.sendLazyRequest(guild.id, memberListId, ranges)
+        gatewayManager.sendLazyRequest(guild.id, channel.id, ranges)
     }
 
     fun toggleMuteGuild(guildId: String) {

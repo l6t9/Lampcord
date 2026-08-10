@@ -122,9 +122,22 @@ fun ChatArea(
                 val index = filteredMessages.indexOf(message)
                 val priorMessage = filteredMessages.getOrNull(index + 1)
                 
+                // Date separator logic
+                val showDateSeparator = remember(message, priorMessage) {
+                    if (priorMessage == null) return@remember true
+                    try {
+                        val currentTs = Instant.parse(message.timestamp).toLocalDateTime(TimeZone.currentSystemDefault()).date
+                        val priorTs = Instant.parse(priorMessage.timestamp).toLocalDateTime(TimeZone.currentSystemDefault()).date
+                        currentTs != priorTs
+                    } catch (e: Exception) {
+                        false
+                    }
+                }
+
                 // Grouping logic: 7 minutes window, same author, current is regular message
-                val isInline = remember(message, priorMessage) {
+                val isInline = remember(message, priorMessage, showDateSeparator) {
                     if (priorMessage == null) return@remember false
+                    if (showDateSeparator) return@remember false
                     if (priorMessage.author?.id != message.author?.id) return@remember false
                     if (message.referenced_message != null) return@remember false
                     // Only regular messages (type 0) can be grouped inline.
@@ -143,25 +156,12 @@ fun ChatArea(
                     }
                 }
 
-                // Date separator logic
-                val showDateSeparator = remember(message, priorMessage) {
-                    if (priorMessage == null) return@remember true
-                    try {
-                        val currentTs = Instant.parse(message.timestamp).toLocalDateTime(TimeZone.currentSystemDefault()).date
-                        val priorTs = Instant.parse(priorMessage.timestamp).toLocalDateTime(TimeZone.currentSystemDefault()).date
-                        currentTs != priorTs
-                    } catch (e: Exception) {
-                        false
-                    }
-                }
-
                 Column {
-                    Box(Modifier.animateItem()) {
-                        MessageItem(message, chatState, if (isInline) priorMessage else null)
-                    }
-                    
                     if (showDateSeparator) {
                         DateSeparator(message.timestamp)
+                    }
+                    Box(Modifier.animateItem()) {
+                        MessageItem(message, chatState, if (isInline) priorMessage else null)
                     }
                 }
             }

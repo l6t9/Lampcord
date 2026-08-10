@@ -20,21 +20,22 @@ import me.lampu.lampcord.shared.model.VoiceState
 import me.lampu.lampcord.shared.state.ChatState
 import me.lampu.lampcord.shared.ui.icons.Icons
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun VoiceArea(channel: Channel, chatState: ChatState, modifier: Modifier = Modifier) {
     val guildId = channel.guild_id ?: "@me"
     val participants = chatState.voiceStates[guildId]?.values?.filter { it.channel_id == channel.id } ?: emptyList()
 
-    Box(modifier = modifier.fillMaxSize().background(Color.Black)) {
+    Box(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainerLowest)) {
         if (participants.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("No one is here", color = Color.White.copy(alpha = 0.6f))
+                Text("No one is here", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
             }
         } else {
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = 240.dp),
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(bottom = 80.dp, start = 16.dp, end = 16.dp, top = 16.dp),
+                contentPadding = PaddingValues(bottom = 100.dp, start = 16.dp, end = 16.dp, top = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
@@ -44,86 +45,58 @@ fun VoiceArea(channel: Channel, chatState: ChatState, modifier: Modifier = Modif
             }
         }
 
-        // Bottom Controls Overlay
-        Column(
+        // Floating Toolbar (M3 Expressive)
+        HorizontalFloatingToolbar(
+            expanded = true,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .padding(bottom = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.padding(bottom = 16.dp)
-            ) {
-                Button(
-                    onClick = { /* TODO: Invite */ },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.1f)),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                .padding(bottom = 32.dp),
+            floatingActionButton = {
+                FloatingToolbarDefaults.StandardFloatingActionButton(
+                    onClick = { chatState.disconnectFromVoice() },
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError,
                 ) {
-                    Icon(Icons.Filled.PersonAdd, null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Invite to Voice")
+                    Icon(Icons.AutoMirrored.Filled.Logout, "Hang up")
                 }
-                Button(
-                    onClick = { /* TODO: Activity */ },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.1f)),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-                ) {
-                    Icon(Icons.Filled.SportsEsports, null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Choose Activity")
-                }
+            },
+            colors = FloatingToolbarDefaults.standardFloatingToolbarColors(),
+            content = {
+                VoiceControlButton(
+                    icon = if (chatState.currentVoiceState?.self_mute == true) Icons.Filled.MicOff else Icons.Filled.Mic,
+                    checked = chatState.currentVoiceState?.self_mute == true,
+                    onClick = { chatState.toggleVoiceMute() },
+                    tint = if (chatState.currentVoiceState?.self_mute == true) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+                )
+                VoiceControlButton(
+                    icon = if (chatState.currentVoiceState?.self_video == true) Icons.Filled.VisibilityOff else Icons.Filled.VideoCall,
+                    checked = chatState.currentVoiceState?.self_video == true,
+                    onClick = { chatState.toggleVoiceVideo() },
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
+                VoiceControlButton(
+                    icon = Icons.Filled.ScreenShare,
+                    checked = chatState.currentVoiceState?.self_stream == true,
+                    onClick = { chatState.toggleVoiceStream() },
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
+                VoiceControlButton(
+                    icon = Icons.Filled.PersonAdd,
+                    onClick = { /* Invite */ },
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
+                VoiceControlButton(
+                    icon = Icons.Filled.SportsEsports,
+                    onClick = { /* Activities */ },
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
+                VoiceControlButton(
+                    icon = Icons.Filled.MoreHoriz,
+                    onClick = { /* More */ },
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
             }
-
-            Surface(
-                color = Color(0xFF1E1F22),
-                shape = RoundedCornerShape(24.dp),
-                tonalElevation = 8.dp
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    VoiceControlButton(
-                        icon = if (chatState.currentVoiceState?.self_mute == true) Icons.Filled.MicOff else Icons.Filled.Mic,
-                        checked = chatState.currentVoiceState?.self_mute == true,
-                        onClick = { chatState.toggleVoiceMute() },
-                        tint = if (chatState.currentVoiceState?.self_mute == true) Color.White else Color.Unspecified
-                    )
-                    VoiceControlButton(
-                        icon = if (chatState.currentVoiceState?.self_video == true) Icons.Filled.VisibilityOff else Icons.Filled.VideoCall,
-                        checked = chatState.currentVoiceState?.self_video == true,
-                        onClick = { chatState.toggleVoiceVideo() }
-                    )
-                    VoiceControlButton(
-                        icon = Icons.Filled.ScreenShare,
-                        checked = chatState.currentVoiceState?.self_stream == true,
-                        onClick = { chatState.toggleVoiceStream() }
-                    )
-                    VoiceControlButton(
-                        icon = Icons.Filled.Star,
-                        onClick = { /* Effects/Stickers */ }
-                    )
-                    VoiceControlButton(
-                        icon = Icons.Filled.MoreHoriz,
-                        onClick = { /* More */ }
-                    )
-                    
-                    Spacer(Modifier.width(8.dp))
-                    
-                    IconButton(
-                        onClick = { chatState.disconnectFromVoice() },
-                        modifier = Modifier
-                            .size(40.dp)
-                            .background(MaterialTheme.colorScheme.error, CircleShape)
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.Logout, null, tint = Color.White)
-                    }
-                }
-            }
-        }
+        )
     }
 }
 
