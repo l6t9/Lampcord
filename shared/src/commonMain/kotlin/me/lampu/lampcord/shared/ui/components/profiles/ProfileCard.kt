@@ -197,14 +197,14 @@ fun ProfileCard(
                 backgroundBrush = Brush.verticalGradient(listOf(surface, colorScheme.surface)),
                 outerBorderBrush = Brush.verticalGradient(listOf(onSurface.copy(alpha = 0.2f), onSurface.copy(alpha = 0.1f))),
                 bodyOverlayColor = Color.Black.copy(alpha = 0.45f),
-                cardColor = colorScheme.surfaceContainerHigh,
-                tagColor = colorScheme.surfaceContainerHigh,
+                cardColor = profileScheme.surfaceContainerHigh,
+                tagColor = profileScheme.surfaceContainerHigh,
                 contentColor = Color.White,
                 cutoutColor = surface,
                 pfpBorderBrush = Brush.verticalGradient(listOf(primary, primary)),
                 primaryAccent = primary,
-                buttonColor = primary,
-                buttonTextColor = Color.White
+                buttonColor = profileScheme.primary,
+                buttonTextColor = profileScheme.onPrimary
             )
         }
     }

@@ -1,5 +1,6 @@
 package me.lampu.lampcord.shared.ui.components.profiles
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -15,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlin.math.*
@@ -68,6 +70,7 @@ fun RoleTag(name: String, tagColor: Color, dotColor: Color? = null) {
     Surface(
         shape = MaterialTheme.shapes.extraSmall,
         color = tagColor,
+        border = if (dotColor != null) BorderStroke(1.dp, dotColor.copy(alpha = 0.24f)) else null,
         modifier = Modifier.padding(vertical = 2.dp)
     ) {
         Row(
@@ -77,7 +80,7 @@ fun RoleTag(name: String, tagColor: Color, dotColor: Color? = null) {
             if (dotColor != null) {
                 Box(
                     modifier = Modifier
-                        .size(10.dp)
+                        .size(12.dp)
                         .background(dotColor, CircleShape)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
@@ -86,7 +89,7 @@ fun RoleTag(name: String, tagColor: Color, dotColor: Color? = null) {
                 text = name,
                 style = MaterialTheme.typography.labelSmall,
                 color = Color.White,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.Bold
             )
         }
     }
