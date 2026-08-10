@@ -128,7 +128,13 @@ fun MemberList(
                             MemberSkeleton()
                         }
                     } else {
-                        items(chatState.memberListRowCount) { index ->
+                        items(
+                            count = chatState.memberListRowCount,
+                            key = { index -> 
+                                val item = chatState.memberListItems[index]
+                                item?.member?.userId() ?: item?.group?.id ?: "null-$index"
+                            }
+                        ) { index ->
                             val item = chatState.memberListItems[index]
                             when {
                                 item?.member != null -> MemberItem(item.member, chatState)

@@ -62,7 +62,7 @@ actual fun ContextMenu(
                     modifier = Modifier
                         .padding(vertical = 12.dp)
                         .size(width = 40.dp, height = 4.dp)
-                        .clip(RoundedCornerShape(2.dp))
+                        .clip(MaterialTheme.shapes.extraSmall)
                         .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)),
                 )
             }
@@ -76,11 +76,13 @@ actual fun ContextMenu(
                 verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 items.forEachIndexed { index, item ->
+                    val cornerRadius = 12.dp
+                    val reducedRadius = 2.dp
                     val shape = when {
-                        items.size == 1 -> RoundedCornerShape(28.dp)
-                        index == 0 -> RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp, bottomStart = 6.dp, bottomEnd = 6.dp)
-                        index == items.lastIndex -> RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp, bottomStart = 28.dp, bottomEnd = 28.dp)
-                        else -> RoundedCornerShape(6.dp)
+                        items.size == 1 -> RoundedCornerShape(cornerRadius)
+                        index == 0 -> RoundedCornerShape(topStart = cornerRadius, topEnd = cornerRadius, bottomStart = reducedRadius, bottomEnd = reducedRadius)
+                        index == items.lastIndex -> RoundedCornerShape(topStart = reducedRadius, topEnd = reducedRadius, bottomStart = cornerRadius, bottomEnd = cornerRadius)
+                        else -> RoundedCornerShape(reducedRadius)
                     }
 
                     Surface(

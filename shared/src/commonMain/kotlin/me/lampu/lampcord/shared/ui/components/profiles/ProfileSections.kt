@@ -1,9 +1,9 @@
 package me.lampu.lampcord.shared.ui.components.profiles
 
+import kotlinx.datetime.Instant
+
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -29,12 +29,16 @@ fun ProfileSections(
     val userMeta = profile.user_profile
 
     Column(modifier = Modifier.offset(y = if (isExpanded) (-50).dp else (-35).dp)) {
-        val bio = (guildMeta?.bio ?: userMeta?.bio ?: user.bio)
+        val bio = guildMeta?.bio?.takeIf { it.isNotBlank() } 
+            ?: userMeta?.bio?.takeIf { it.isNotBlank() } 
+            ?: user.bio?.takeIf { it.isNotBlank() }
+            
         if (!bio.isNullOrBlank()) {
-            Spacer(Modifier.height(12.dp))
-            Text("About Me", style = MaterialTheme.typography.labelSmall, color = theme.contentColor.copy(alpha = 0.9f))
-            Spacer(Modifier.height(4.dp))
-            DiscordMarkdownText(content = bio, style = MaterialTheme.typography.bodyMedium, color = theme.contentColor, chatState = chatState)
+            Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                Text("About Me", style = MaterialTheme.typography.labelSmall, color = theme.contentColor.copy(alpha = 0.9f))
+                Spacer(Modifier.height(8.dp))
+                DiscordMarkdownText(content = bio, style = MaterialTheme.typography.bodyMedium, color = theme.contentColor, chatState = chatState)
+            }
         }
 
         if (isExpanded || showMemberSince) {
@@ -43,16 +47,22 @@ fun ProfileSections(
                 me.lampu.lampcord.shared.utils.DateTimeUtils.formatDiscordTimestamp(timestamp / 1000, "D")
             }
             val joinDate = profile.guild_member?.joined_at?.let { 
-                if (it.isBlank()) null else me.lampu.lampcord.shared.utils.DateTimeUtils.formatTimestamp(it).substringBefore(",")
+                if (it.isBlank()) null else {
+                    try {
+                        val instant = Instant.parse(it)
+                        me.lampu.lampcord.shared.utils.DateTimeUtils.formatDiscordTimestamp(instant.epochSeconds, "D")
+                    } catch (_: Exception) {
+                        null
+                    }
+                }
             }
 
-            Spacer(Modifier.height(12.dp))
-            Column(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(vertical = 8.dp)) {
                 Text("Member Since", style = MaterialTheme.typography.labelSmall, color = theme.contentColor.copy(alpha = 0.9f))
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Brand.Discord, null, modifier = Modifier.size(16.dp), tint = theme.contentColor.copy(alpha = 0.7f))
-                    Spacer(Modifier.width(6.dp))
+                    Spacer(Modifier.width(8.dp))
                     Text(creationDate, style = MaterialTheme.typography.bodySmall, color = theme.contentColor.copy(alpha = 0.7f))
                     
                     if (joinDate != null) {
@@ -62,9 +72,23 @@ fun ProfileSections(
                         }
                         if (guildIcon != null) {
                             AsyncImage(model = guildIcon, contentDescription = null, modifier = Modifier.size(16.dp).clip(androidx.compose.foundation.shape.CircleShape))
-                            Spacer(Modifier.width(6.dp))
+                            Spacer(Modifier.width(8.dp))
                         }
                         Text(joinDate, style = MaterialTheme.typography.bodySmall, color = theme.contentColor.copy(alpha = 0.7f))
+                    }
+                }
+            }
+        }
+
+        if (profile.guild_member?.roles?.isNotEmpty() == true) {
+            Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                Text("Roles", style = MaterialTheme.typography.labelSmall, color = theme.contentColor.copy(alpha = 0.9f))
+                Spacer(Modifier.height(8.dp))
+                androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    val guild = chatState.selectedGuild
+                    profile.guild_member.roles.mapNotNull { id -> guild?.roles?.find { it.id == id } }.sortedByDescending { it.position }.forEach { role ->
+                        val roleColor = if (role.color != 0) Color(role.color or 0xFF000000.toInt()) else null
+                        RoleTag(role.name, theme.tagColor, roleColor)
                     }
                 }
             }
@@ -77,13 +101,14 @@ fun ProfileSections(
                 if (perms != 0L) {
                     val allowedPerms = me.lampu.lampcord.shared.utils.Permission.fromValue(perms)
                     if (allowedPerms.isNotEmpty()) {
-                        Spacer(Modifier.height(16.dp))
-                        Text("Permissions", style = MaterialTheme.typography.labelSmall, color = theme.contentColor.copy(alpha = 0.9f))
-                        Spacer(Modifier.height(8.dp))
-                        androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            allowedPerms.forEach { perm ->
-                                val label = perm.name.lowercase().replace('_', ' ').replaceFirstChar { it.uppercase() }
-                                RoleTag(label, theme.contentColor.copy(alpha = 0.6f))
+                        Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                            Text("Permissions", style = MaterialTheme.typography.labelSmall, color = theme.contentColor.copy(alpha = 0.9f))
+                            Spacer(Modifier.height(8.dp))
+                            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                allowedPerms.forEach { perm ->
+                                    val label = perm.name.lowercase().replace('_', ' ').replaceFirstChar { it.uppercase() }
+                                    RoleTag(label, theme.tagColor)
+                                }
                             }
                         }
                     }
@@ -91,41 +116,22 @@ fun ProfileSections(
             }
         }
 
-        val presence = profile.guild_member?.presence ?: chatState.presences[user.id]
-        val activities = presence?.activities ?: emptyList()
-        val otherActivities = activities.filter { it.type != 4 }
-
-        otherActivities.forEach { activity ->
-            Spacer(Modifier.height(16.dp))
-            UserActivity(activity, compact = false)
-        }
-
-        if (profile.guild_member?.roles?.isNotEmpty() == true) {
-            Spacer(Modifier.height(16.dp))
-            Text("Roles", style = MaterialTheme.typography.labelSmall, color = theme.contentColor.copy(alpha = 0.9f))
-            Spacer(Modifier.height(8.dp))
-            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                val guild = chatState.selectedGuild
-                profile.guild_member.roles.mapNotNull { id -> guild?.roles?.find { it.id == id } }.sortedByDescending { it.position }.forEach { role ->
-                    RoleTag(role.name, if (role.color != 0) Color(role.color or 0xFF000000.toInt()) else theme.contentColor)
-                }
-            }
-        }
-
         if (isExpanded && profile.connected_accounts.isNotEmpty()) {
-            Spacer(Modifier.height(16.dp))
-            Text("Connections", style = MaterialTheme.typography.labelSmall, color = theme.contentColor.copy(alpha = 0.9f))
-            Spacer(Modifier.height(8.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                profile.connected_accounts.forEachIndexed { index, connection ->
-                    UserConnectionItem(
-                        connection = connection,
-                        contentColor = theme.contentColor,
-                        isFirst = index == 0,
-                        isLast = index == profile.connected_accounts.lastIndex
-                    )
+            Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                Text("Connections", style = MaterialTheme.typography.labelSmall, color = theme.contentColor.copy(alpha = 0.9f))
+                Spacer(Modifier.height(8.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    profile.connected_accounts.forEachIndexed { index, connection ->
+                        UserConnectionItem(
+                            connection = connection,
+                            contentColor = theme.contentColor,
+                            isFirst = index == 0,
+                            isLast = index == profile.connected_accounts.lastIndex
+                        )
+                    }
                 }
             }
         }
     }
 }
+

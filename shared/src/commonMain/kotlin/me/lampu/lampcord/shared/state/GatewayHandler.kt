@@ -393,6 +393,18 @@ class GatewayHandler(
             try {
                 val update = json.decodeFromJsonElement<MemberListUpdate>(data)
                 memberListStore.handleMemberListUpdate(update)
+
+                // 126.21 Parity: Update presence store with members that have presences
+                update.ops.forEach { op ->
+                    op.items?.forEach { item ->
+                        item.member?.presence?.let { presence ->
+                            presenceStore.handlePresenceUpdate(presence)
+                        }
+                    }
+                    op.item?.member?.presence?.let { presence ->
+                        presenceStore.handlePresenceUpdate(presence)
+                    }
+                }
             } catch (e: Exception) { }
         }
     }

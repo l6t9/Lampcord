@@ -63,9 +63,14 @@ fun MemberItem(member: Member, chatState: ChatState) {
     var itemPosition by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
     var isHovered by remember { mutableStateOf(false) }
 
-    val status = chatState.getUserStatus(user.id)
-    val isListening = member.presence?.activities?.any { it.type == 2 } == true
-    val isOffline = (status == "offline" || status == "invisible") && !isListening
+    val presence = remember(member.presence, chatState.presences[user.id]) {
+        member.presence ?: chatState.presences[user.id]
+    }
+    val isStreaming = presence?.activities?.any { it.type == 1 } == true
+    val isListening = presence?.activities?.any { it.type == 2 } == true
+    val isStatusVisible = chatState.isStatusVisible(user, presence, isStreaming)
+    
+    val isOffline = !isStatusVisible && !isListening
 
     val nameplate = member.collectibles?.nameplate ?: user.collectibles?.nameplate
 

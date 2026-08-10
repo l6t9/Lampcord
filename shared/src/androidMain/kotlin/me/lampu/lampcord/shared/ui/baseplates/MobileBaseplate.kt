@@ -26,6 +26,7 @@ import androidx.compose.ui.zIndex
 import me.lampu.lampcord.shared.state.ChatState
 import me.lampu.lampcord.shared.ui.components.*
 import me.lampu.lampcord.shared.ui.components.guilds.ServerSettings
+import me.lampu.lampcord.shared.ui.components.guilds.ServerBottomSheet
 import me.lampu.lampcord.shared.ui.components.chat.PinnedMessagesScreen
 import me.lampu.lampcord.shared.ui.components.chat.SearchScreen
 import me.lampu.lampcord.shared.ui.components.profiles.ProfileCard
@@ -313,6 +314,13 @@ actual fun MobileBaseplate(chatState: ChatState) {
         // Server Settings
         if (chatState.isServerSettingsVisible) {
             ServerSettings(chatState, onDismiss = { chatState.isServerSettingsVisible = false })
+        }
+
+        // Server Menu Bottom Sheet
+        if (chatState.isServerMenuVisible) {
+            chatState.selectedGuild?.let { guild ->
+                ServerBottomSheet(guild, chatState, onDismiss = { chatState.isServerMenuVisible = false })
+            }
         }
 
         // Pinned Messages

@@ -5,16 +5,16 @@ import androidx.compose.material3.Shapes
 import androidx.compose.ui.unit.dp
 
 val LampcordShapes = Shapes(
-    extraSmall = RoundedCornerShape(16.dp),
-    small = RoundedCornerShape(20.dp),
-    medium = RoundedCornerShape(24.dp),
-    large = RoundedCornerShape(28.dp),
-    extraLarge = RoundedCornerShape(32.dp),
+    extraSmall = RoundedCornerShape(4.dp),
+    small = RoundedCornerShape(8.dp),
+    medium = RoundedCornerShape(12.dp),
+    large = RoundedCornerShape(18.dp),
+    extraLarge = RoundedCornerShape(24.dp),
 )
 
 object ComponentShapes {
-    val CardShape = RoundedCornerShape(20.dp)
-    val DialogShape = RoundedCornerShape(28.dp)
-    val BottomSheetShape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)
-    val ButtonShape = RoundedCornerShape(20.dp)
+    val CardShape = RoundedCornerShape(12.dp)
+    val DialogShape = RoundedCornerShape(18.dp)
+    val BottomSheetShape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+    val ButtonShape = RoundedCornerShape(12.dp)
 }

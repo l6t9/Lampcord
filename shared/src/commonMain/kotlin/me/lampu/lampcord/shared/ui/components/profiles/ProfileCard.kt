@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
@@ -31,6 +32,8 @@ import me.lampu.lampcord.shared.state.ChatState
 import me.lampu.lampcord.shared.model.ProfileBadge
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.components.*
+import me.lampu.lampcord.shared.ui.theme.rememberPlatformColorScheme
+import com.materialkolor.PaletteStyle
 
 @Composable
 fun UserProfileDialog(
@@ -100,7 +103,20 @@ fun ProfileCard(
     }
 
     val colorScheme = MaterialTheme.colorScheme
-    val theme = remember(themeColors, colorScheme) {
+    val isDark = colorScheme.surface.luminance() < 0.5f
+    
+    val profileSeed = remember(themeColors) {
+        themeColors?.get(0)?.let { Color(it or 0xFF000000.toInt()) } ?: colorScheme.primary
+    }
+
+    val profileScheme = rememberPlatformColorScheme(
+        seedColor = profileSeed,
+        isDark = isDark,
+        paletteStyle = PaletteStyle.TonalSpot,
+        useMaterialYou = false
+    )
+
+    val theme = remember(themeColors, colorScheme, profileScheme) {
         if (themeColors != null && themeColors.size >= 2) {
             val primary = themeColors[0]
             val accent = themeColors[1]
@@ -146,17 +162,31 @@ fun ProfileCard(
             } else {
                 Color.Black.copy(alpha = 0.45f)
             }
+
+            val cardL = if (isLightMode) {
+                l1
+            } else {
+                // Dark mode: Ensure cards are significantly darker than the background
+                // We use a much lower factor than the background (which uses 0.65-0.88)
+                (l1 * 0.12).coerceIn(0.01, 0.1)
+            }
+            val cardS = (s1 * 0.85).coerceIn(0.0, 1.0)
+            val cardColor = Color(ModernProfileColors.hslToRgb(h1, cardS, cardL))
             
             ProfileTheme(
                 backgroundBrush = Brush.verticalGradient(0.0f to bg1, 0.35f to bg1, 1.0f to bg2),
                 outerBorderBrush = Brush.verticalGradient(listOf(b1, b2)),
                 bodyOverlayColor = bodyOverlayColor,
+                cardColor = cardColor,
+                tagColor = profileScheme.surfaceContainerHigh,
                 contentColor = if (isLightMode) Color.Black else Color.White,
                 cutoutColor = bg1,
                 pfpBorderBrush = Brush.verticalGradient(listOf(Color(primary or 0xFF000000.toInt()), Color(accent or 0xFF000000.toInt()))),
                 primaryAccent = Color(primary or 0xFF000000.toInt()),
-                buttonColor = Color(primary or 0xFF000000.toInt()),
-                buttonTextColor = if (base1Lum < 0.5) Color.White else Color.Black
+                buttonColor = profileScheme.secondary,
+                buttonTextColor = profileScheme.onSecondary,
+                isCustom = true,
+                themeColors = listOf(Color(primary or 0xFF000000.toInt()), Color(accent or 0xFF000000.toInt()))
             )
         } else {
             val primary = colorScheme.primary
@@ -167,6 +197,8 @@ fun ProfileCard(
                 backgroundBrush = Brush.verticalGradient(listOf(surface, colorScheme.surface)),
                 outerBorderBrush = Brush.verticalGradient(listOf(onSurface.copy(alpha = 0.2f), onSurface.copy(alpha = 0.1f))),
                 bodyOverlayColor = Color.Black.copy(alpha = 0.45f),
+                cardColor = colorScheme.surfaceContainerHigh,
+                tagColor = colorScheme.surfaceContainerHigh,
                 contentColor = Color.White,
                 cutoutColor = surface,
                 pfpBorderBrush = Brush.verticalGradient(listOf(primary, primary)),
@@ -177,20 +209,12 @@ fun ProfileCard(
         }
     }
 
-    val outerShape = when {
-        isSidebar -> RoundedCornerShape(24.dp)
-        isExpanded -> RoundedCornerShape(12.dp)
-        else -> RoundedCornerShape(10.dp)
-    }
-    val innerShape = when {
-        isSidebar -> RoundedCornerShape(21.dp)
-        isExpanded -> RoundedCornerShape(9.dp)
-        else -> RoundedCornerShape(7.dp)
-    }
+    val outerShape = MaterialTheme.shapes.large
+    val innerShape = MaterialTheme.shapes.medium
 
     Box(
         modifier = modifier
-            .then(if (showBorder) Modifier.background(theme.outerBorderBrush, outerShape).padding(if (isExpanded || isSidebar) 4.dp else 3.dp) else Modifier)
+            .then(if (showBorder) Modifier.background(theme.outerBorderBrush, outerShape).padding(if (isExpanded || isSidebar) 8.dp else 4.dp) else Modifier)
     ) {
         Column(
             modifier = Modifier
@@ -212,26 +236,7 @@ fun ProfileCard(
                 }
             }
 
-            // Footer (Sticky)
-            if (user.id == chatState.currentUser?.id) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
-                ) {
-                    Button(
-                        onClick = { /* TODO */ },
-                        modifier = Modifier.fillMaxWidth().height(32.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = theme.buttonColor, contentColor = theme.buttonTextColor),
-                        shape = RoundedCornerShape(4.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp)
-                    ) {
-                        Icon(Icons.Filled.Edit, null, modifier = Modifier.size(16.dp), tint = theme.buttonTextColor)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Edit Profile", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Medium, color = theme.buttonTextColor)
-                    }
-                }
-            } else if (!isExpanded) {
+            if (!isExpanded && user.id != chatState.currentUser?.id) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -240,11 +245,14 @@ fun ProfileCard(
                     Button(
                         onClick = { onExpand?.invoke() },
                         modifier = Modifier.fillMaxWidth().height(32.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = theme.buttonColor, contentColor = theme.buttonTextColor),
-                        shape = RoundedCornerShape(4.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = theme.buttonColor,
+                            contentColor = theme.buttonTextColor
+                        ),
+                        shape = CircleShape,
                         contentPadding = PaddingValues(horizontal = 12.dp)
                     ) {
-                        Text("View Full Profile", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Medium, color = theme.buttonTextColor)
+                        Text("View Full Profile", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Medium)
                     }
                 }
             } else {

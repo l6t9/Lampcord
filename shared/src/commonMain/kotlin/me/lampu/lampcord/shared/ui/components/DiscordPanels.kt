@@ -180,7 +180,7 @@ fun DiscordPanels(
                     .zIndex(1f)
                     .offset { IntOffset(animatedOffset.roundToInt(), 0) }
                     .graphicsLayer {
-                        val cornerRadius = 28.dp.toPx() * absProgress
+                        val cornerRadius = 18.dp.toPx() * absProgress
                         shape = RoundedCornerShape(cornerRadius)
                         clip = absProgress > 0.01f
                         shadowElevation = if (absProgress > 0.01f) 8.dp.toPx() else 0f

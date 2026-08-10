@@ -36,6 +36,7 @@ class NavigationStore(
     var isSettingsVisible by mutableStateOf(false)
     var isQuickSwitcherVisible by mutableStateOf(false)
     var isSearchVisible by mutableStateOf(false)
+    var isServerMenuVisible by mutableStateOf(false)
     var isServerSettingsVisible by mutableStateOf(false)
     var isChannelsAndRolesVisible by mutableStateOf(false)
     var isMediaPickerVisible by mutableStateOf(false)

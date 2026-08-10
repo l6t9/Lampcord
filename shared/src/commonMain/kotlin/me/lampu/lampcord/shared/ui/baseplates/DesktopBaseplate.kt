@@ -199,7 +199,7 @@ fun DesktopBaseplate(chatState: ChatState) {
         if (chatState.isServerSettingsVisible) {
             ServerSettings(chatState, onDismiss = { chatState.isServerSettingsVisible = false })
         }
-        
+
         if (chatState.isQuickSwitcherVisible) {
             QuickSwitcher(chatState, onDismiss = { chatState.isQuickSwitcherVisible = false })
         }

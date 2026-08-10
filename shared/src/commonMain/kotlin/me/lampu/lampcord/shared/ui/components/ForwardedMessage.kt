@@ -100,7 +100,7 @@ fun ForwardedMessage(message: Message, chatState: ChatState) {
                 },
                 enabled = canLink,
                 color = Color.Transparent,
-                shape = RoundedCornerShape(4.dp)
+                shape = MaterialTheme.shapes.extraSmall
             ) {
                 Row(
                     modifier = Modifier.padding(vertical = 0.dp),
@@ -115,10 +115,10 @@ fun ForwardedMessage(message: Message, chatState: ChatState) {
                             AsyncImage(
                                 model = iconUrl,
                                 contentDescription = null,
-                                modifier = Modifier.size(16.dp).clip(RoundedCornerShape(4.dp))
+                                modifier = Modifier.size(16.dp).clip(MaterialTheme.shapes.extraSmall)
                             )
                         } else {
-                            Surface(modifier = Modifier.size(16.dp), shape = RoundedCornerShape(4.dp), color = MaterialTheme.colorScheme.primaryContainer) {
+                            Surface(modifier = Modifier.size(16.dp), shape = MaterialTheme.shapes.extraSmall, color = MaterialTheme.colorScheme.primaryContainer) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Text(guild.name?.take(1) ?: "", style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp))
                                 }

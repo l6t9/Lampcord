@@ -234,7 +234,7 @@ class GuildStore(
     fun setPrivateChannels(newChannels: List<Channel>) {
         println("GuildStore received ${newChannels.size} private channels")
         privateChannels.clear()
-        privateChannels.addAll(newChannels)
+        privateChannels.addAll(newChannels.distinctBy { it.id })
     }
 
     fun upsertForumThread(thread: Channel) {

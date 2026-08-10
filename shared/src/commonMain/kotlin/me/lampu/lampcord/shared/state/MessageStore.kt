@@ -86,11 +86,12 @@ class MessageStore(
         content: String,
         currentUser: User,
         replyTo: String? = null,
-        files: List<Pair<String, ByteArray>> = emptyList(),
+        files: List<PendingFile> = emptyList(),
         guildId: String? = null,
         forwardFrom: Message? = null,
         stickerIds: List<String>? = null,
-        allowedMentions: AllowedMentions? = null
+        allowedMentions: AllowedMentions? = null,
+        poll: Poll? = null
     ) {
         val nonce = getCurrentTimeMillis().toString()
         val tempMessage = Message(
@@ -101,11 +102,12 @@ class MessageStore(
             timestamp = "",
             nonce = nonce,
             isPending = true,
-            guild_id = guildId
+            guild_id = guildId,
+            poll = poll
         )
         messages.add(0, tempMessage)
         
-        messageTasks.add(MessageTask(nonce, channelId, content, replyTo, files, forwardFrom, stickerIds, allowedMentions))
+        messageTasks.add(MessageTask(nonce, channelId, content, replyTo, files, forwardFrom, stickerIds, allowedMentions, poll))
         if (!isProcessingQueue) {
             startQueueProcessing()
         }
@@ -123,9 +125,10 @@ class MessageStore(
                         nonce = task.nonce,
                         replyTo = task.replyTo,
                         forwardFrom = task.forwardFrom,
-                        files = task.files,
+                        files = task.files.map { it.name to it.data },
                         stickerIds = task.stickerIds,
-                        allowedMentions = task.allowedMentions
+                        allowedMentions = task.allowedMentions,
+                        poll = task.poll
                     )
                     
                     if (success) {
@@ -216,8 +219,9 @@ private data class MessageTask(
     val channelId: String,
     val content: String,
     val replyTo: String?,
-    val files: List<Pair<String, ByteArray>>,
+    val files: List<PendingFile>,
     val forwardFrom: Message?,
     val stickerIds: List<String>? = null,
-    val allowedMentions: AllowedMentions? = null
+    val allowedMentions: AllowedMentions? = null,
+    val poll: Poll? = null
 )

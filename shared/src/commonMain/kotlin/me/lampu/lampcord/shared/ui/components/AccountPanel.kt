@@ -132,7 +132,7 @@ fun AccountPanel(chatState: ChatState) {
                                 modifier = Modifier.fillMaxSize()
                             ) {
                                 Icon(
-                                    imageVector = if (isMuted) Icons.Filled.MicOff else Icons.Filled.Mic,
+                                    imageVector = if (isMuted) Icons.Filled.MicOff else Icons.Rounded.Mic,
                                     contentDescription = "Mute",
                                     modifier = Modifier.size(18.dp)
                                 )
@@ -142,7 +142,7 @@ fun AccountPanel(chatState: ChatState) {
                             DropdownMenuItem(
                                 text = { Text(if (isMuted) "Unmute" else "Mute") },
                                 onClick = { chatState.toggleVoiceMute() },
-                                leadingIcon = { Icon(if (isMuted) Icons.Filled.MicOff else Icons.Filled.Mic, null, modifier = Modifier.size(18.dp)) }
+                                leadingIcon = { Icon(if (isMuted) Icons.Filled.MicOff else Icons.Rounded.Mic, null, modifier = Modifier.size(18.dp)) }
                             )
                         }
                     )
@@ -157,7 +157,7 @@ fun AccountPanel(chatState: ChatState) {
                                 modifier = Modifier.fillMaxSize()
                             ) {
                                 Icon(
-                                    imageVector = if (isDeafened) Icons.Filled.HeadsetOff else Icons.Filled.Headphones,
+                                    imageVector = if (isDeafened) Icons.Filled.HeadsetOff else Icons.Rounded.Headphones,
                                     contentDescription = "Deafen",
                                     modifier = Modifier.size(18.dp)
                                 )
@@ -167,7 +167,7 @@ fun AccountPanel(chatState: ChatState) {
                             DropdownMenuItem(
                                 text = { Text(if (isDeafened) "Undeafen" else "Deafen") },
                                 onClick = { chatState.toggleVoiceDeaf() },
-                                leadingIcon = { Icon(if (isDeafened) Icons.Filled.HeadsetOff else Icons.Filled.Headphones, null, modifier = Modifier.size(18.dp)) }
+                                leadingIcon = { Icon(if (isDeafened) Icons.Filled.HeadsetOff else Icons.Rounded.Headphones, null, modifier = Modifier.size(18.dp)) }
                             )
                         }
                     )
@@ -181,14 +181,14 @@ fun AccountPanel(chatState: ChatState) {
                                 contentPadding = PaddingValues(0.dp),
                                 modifier = Modifier.fillMaxSize()
                             ) {
-                                Icon(Icons.Filled.Settings, "Settings", modifier = Modifier.size(18.dp))
+                                Icon(Icons.Rounded.Settings, "Settings", modifier = Modifier.size(18.dp))
                             }
                         },
                         menuContent = {
                             DropdownMenuItem(
                                 text = { Text("Settings") },
                                 onClick = { chatState.isSettingsVisible = true },
-                                leadingIcon = { Icon(Icons.Filled.Settings, null) }
+                                leadingIcon = { Icon(Icons.Rounded.Settings, null) }
                             )
                         }
                     )
@@ -206,7 +206,7 @@ fun AccountPanel(chatState: ChatState) {
                         showStatusMenu = false
                         chatState.showProfile(user.id, panelPosition)
                     },
-                    leadingIcon = { Icon(Icons.Filled.Person, null) }
+                    leadingIcon = { Icon(Icons.Rounded.Person, null) }
                 )
                 
                 DropdownMenuItem(
@@ -215,7 +215,7 @@ fun AccountPanel(chatState: ChatState) {
                         showStatusMenu = false
                         showCustomStatusDialog = true
                     },
-                    leadingIcon = { Icon(Icons.Filled.Edit, null) }
+                    leadingIcon = { Icon(Icons.Rounded.Edit, null) }
                 )
 
                 DropdownMenuItem(
@@ -224,7 +224,7 @@ fun AccountPanel(chatState: ChatState) {
                         showStatusMenu = false
                         showAccountPicker = true
                     },
-                    leadingIcon = { Icon(Icons.Filled.Groups, null) }
+                    leadingIcon = { Icon(Icons.Rounded.Groups, null) }
                 )
 
                 DropdownMenuItem(
@@ -233,7 +233,7 @@ fun AccountPanel(chatState: ChatState) {
                         showStatusMenu = false
                         chatState.isSettingsVisible = true
                     },
-                    leadingIcon = { Icon(Icons.Filled.Settings, null) }
+                    leadingIcon = { Icon(Icons.Rounded.Settings, null) }
                 )
                 
                 HorizontalDivider()

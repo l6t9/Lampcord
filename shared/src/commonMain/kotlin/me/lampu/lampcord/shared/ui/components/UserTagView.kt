@@ -15,6 +15,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import me.lampu.lampcord.shared.model.User
 
+import androidx.compose.material3.Icon
+import me.lampu.lampcord.shared.ui.icons.Icons
+
 @Composable
 fun UserTagView(
     user: User,
@@ -23,6 +26,7 @@ fun UserTagView(
 ) {
     val isBot = user.bot == true
     val isSystem = user.system == true
+    val isVerifiedBot = ((user.public_flags ?: 0) or (user.flags ?: 0)) and 65536 != 0
     
     if (!isBot && !isSystem) return
 
@@ -36,14 +40,26 @@ fun UserTagView(
             .padding(horizontal = 4.dp, vertical = 1.dp),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = tagText,
-            style = MaterialTheme.typography.labelSmall.copy(
-                fontSize = 9.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 0.5.sp
-            ),
-            color = Color.White.copy(alpha = alpha)
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (isVerifiedBot && !isSystem) {
+                // Official Parity: Verified bots show a small checkmark in the tag
+                Icon(
+                    imageVector = Icons.Filled.Check,
+                    contentDescription = null,
+                    modifier = Modifier.size(8.dp),
+                    tint = Color.White.copy(alpha = alpha)
+                )
+                Spacer(Modifier.width(2.dp))
+            }
+            Text(
+                text = tagText,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.5.sp
+                ),
+                color = Color.White.copy(alpha = alpha)
+            )
+        }
     }
 }

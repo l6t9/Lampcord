@@ -29,7 +29,8 @@ data class MessageRequest(
     val nonce: String? = null,
     val attachments: List<AttachmentRequest>? = null,
     val sticker_ids: List<String>? = null,
-    val allowed_mentions: AllowedMentions? = null
+    val allowed_mentions: AllowedMentions? = null,
+    val poll: Poll? = null
 )
 
 @Serializable
@@ -200,7 +201,8 @@ class DiscordClient(
         files: List<Pair<String, ByteArray>> = emptyList(),
         nonce: String? = null,
         stickerIds: List<String>? = null,
-        allowedMentions: AllowedMentions? = null
+        allowedMentions: AllowedMentions? = null,
+        poll: Poll? = null
     ): Boolean {
         // Free Nitro Emoji Outgoing Hook
         val processedContent = if (me.lampu.lampcord.shared.settings.Settings.shared.freeNitroEmojis) {
@@ -242,7 +244,8 @@ class DiscordClient(
                         message_reference = messageReference,
                         nonce = nonce,
                         sticker_ids = stickerIds,
-                        allowed_mentions = allowedMentions
+                        allowed_mentions = allowedMentions,
+                        poll = poll
                     )
                     setBody(request)
                 }
@@ -265,7 +268,8 @@ class DiscordClient(
                                 nonce = nonce,
                                 attachments = attachmentMetadata,
                                 sticker_ids = stickerIds,
-                                allowed_mentions = allowedMentions
+                                allowed_mentions = allowedMentions,
+                                poll = poll
                             )), Headers.build {
                                 append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                             })

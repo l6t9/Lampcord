@@ -4,8 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -13,11 +12,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.layout.ContentScale
 import me.lampu.lampcord.shared.model.UserProfile
 import me.lampu.lampcord.shared.state.ChatState
 import me.lampu.lampcord.shared.ui.components.*
+import me.lampu.lampcord.shared.ui.icons.Icons
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ProfileHeader(
     profile: UserProfile,
@@ -92,5 +94,99 @@ fun ProfileHeader(
         }
         Spacer(Modifier.height(8.dp))
         UserBadges(badges = profile.badges + profile.guild_badges, flags = user.public_flags ?: 0)
+        
+        // Edit Profile Buttons
+        if (user.id == chatState.currentUser?.id) {
+            Spacer(Modifier.height(12.dp))
+            val isServerProfile = profile.guild_member != null && chatState.selectedGuild != null
+            
+            if (isServerProfile) {
+                ButtonGroup(
+                    overflowIndicator = { menuState -> ButtonGroupDefaults.OverflowIndicator(menuState) },
+                    expandedRatio = 1f,
+                    horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                    modifier = Modifier.fillMaxWidth().height(32.dp),
+                ) {
+                    customItem(
+                        buttonGroupContent = {
+                            Button(
+                                onClick = { /* TODO: Edit User Profile */ },
+                                shapes = ButtonDefaults.shapes(
+                                    shape = ButtonGroupDefaults.connectedLeadingButtonShape,
+                                    pressedShape = ButtonGroupDefaults.connectedLeadingButtonPressShape,
+                                ),
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = theme.buttonColor,
+                                    contentColor = theme.buttonTextColor
+                                ),
+                                contentPadding = PaddingValues(horizontal = 12.dp)
+                            ) {
+                                Icon(Icons.Filled.Edit, null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text("User Profile", fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                            }
+                        },
+                        menuContent = { menuState ->
+                            DropdownMenuItem(
+                                leadingIcon = { Icon(Icons.Filled.Edit, null) },
+                                text = { Text("Edit User Profile") },
+                                onClick = {
+                                    /* TODO */
+                                    menuState.dismiss()
+                                }
+                            )
+                        }
+                    )
+                    customItem(
+                        buttonGroupContent = {
+                            Button(
+                                onClick = { /* TODO: Edit Server Profile */ },
+                                shapes = ButtonDefaults.shapes(
+                                    shape = ButtonGroupDefaults.connectedTrailingButtonShape,
+                                    pressedShape = ButtonGroupDefaults.connectedTrailingButtonPressShape,
+                                ),
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = theme.buttonColor,
+                                    contentColor = theme.buttonTextColor
+                                ),
+                                contentPadding = PaddingValues(horizontal = 12.dp)
+                            ) {
+                                Icon(Icons.Filled.Edit, null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text("Server Profile", fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                            }
+                        },
+                        menuContent = { menuState ->
+                            DropdownMenuItem(
+                                leadingIcon = { Icon(Icons.Filled.Edit, null) },
+                                text = { Text("Edit Server Profile") },
+                                onClick = {
+                                    /* TODO */
+                                    menuState.dismiss()
+                                }
+                            )
+                        }
+                    )
+                }
+            } else {
+                Button(
+                    onClick = { /* TODO: Edit Profile */ },
+                    modifier = Modifier.fillMaxWidth().height(32.dp),
+                    shape = CircleShape,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = theme.buttonColor,
+                        contentColor = theme.buttonTextColor
+                    ),
+                    contentPadding = PaddingValues(horizontal = 12.dp)
+                ) {
+                    Icon(Icons.Filled.Edit, null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Edit Profile", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Medium)
+                }
+            }
+        }
+        Spacer(Modifier.height(16.dp))
     }
 }

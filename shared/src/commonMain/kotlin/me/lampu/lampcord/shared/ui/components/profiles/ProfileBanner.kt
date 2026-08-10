@@ -11,7 +11,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.UserProfile
 import me.lampu.lampcord.shared.ui.components.AsyncImage
-import me.lampu.lampcord.shared.ui.components.MeshGradientBackground
 
 @Composable
 fun ProfileBanner(
@@ -32,15 +31,6 @@ fun ProfileBanner(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
                 filterQuality = FilterQuality.Medium
-            )
-        } else {
-            MeshGradientBackground(
-                colors = listOf(
-                    theme.primaryAccent,
-                    theme.primaryAccent.copy(alpha = 0.8f),
-                    theme.buttonColor.copy(alpha = 0.6f),
-                    theme.cutoutColor
-                )
             )
         }
     }

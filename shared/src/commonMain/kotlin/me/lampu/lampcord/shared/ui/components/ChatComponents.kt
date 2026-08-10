@@ -408,19 +408,30 @@ fun ChatInputBar(
                                     .height(120.dp),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                chatState.pendingFiles.forEachIndexed { index, (name, data) ->
+                                chatState.pendingFiles.forEachIndexed { index, pendingFile ->
                                     Surface(
                                         modifier = Modifier.size(100.dp),
                                         shape = RoundedCornerShape(8.dp),
                                         color = MaterialTheme.colorScheme.surfaceContainerHigh
                                     ) {
                                         Box {
+                                            val name = pendingFile.name
+                                            val data = pendingFile.data
+                                            val uri = pendingFile.uri
+                                            val isVideo = name.lowercase().let { it.endsWith(".mp4") || it.endsWith(".mov") || it.endsWith(".mkv") || it.endsWith(".webm") }
+
                                             if (name.lowercase().let { it.endsWith(".png") || it.endsWith(".jpg") || it.endsWith(".jpeg") || it.endsWith(".webp") || it.endsWith(".gif") }) {
                                                 AsyncImage(
                                                     model = data,
                                                     contentDescription = name,
                                                     modifier = Modifier.fillMaxSize(),
                                                     contentScale = ContentScale.Crop
+                                                )
+                                            } else if (isVideo && uri != null) {
+                                                VideoThumbnail(
+                                                    uri = uri,
+                                                    contentDescription = name,
+                                                    modifier = Modifier.fillMaxSize()
                                                 )
                                             } else {
                                                 Text(name, modifier = Modifier.align(Alignment.Center).padding(4.dp), style = MaterialTheme.typography.labelSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -438,13 +449,22 @@ fun ChatInputBar(
                             }
                         }
 
-                        AnimatedVisibility(
-                            visible = chatState.isMediaPickerVisible,
-                            enter = expandVertically() + fadeIn(),
-                            exit = shrinkVertically() + fadeOut()
-                        ) {
-                            MediaPicker(chatState) {
-                                chatState.isMediaPickerVisible = false
+                        val isMobile = getPlatformName() == "android" || getPlatformName() == "ios"
+                        if (isMobile) {
+                            if (chatState.isMediaPickerVisible) {
+                                MediaPicker(chatState) {
+                                    chatState.isMediaPickerVisible = false
+                                }
+                            }
+                        } else {
+                            AnimatedVisibility(
+                                visible = chatState.isMediaPickerVisible,
+                                enter = expandVertically() + fadeIn(),
+                                exit = shrinkVertically() + fadeOut()
+                            ) {
+                                MediaPicker(chatState) {
+                                    chatState.isMediaPickerVisible = false
+                                }
                             }
                         }
 
@@ -458,7 +478,7 @@ fun ChatInputBar(
                             if (getPlatformName() != "android") {
                                 FilePicker(
                                     show = showFilePicker,
-                                    onFileSelected = { chatState.pendingFiles.addAll(it) },
+                                    onFileSelected = { chatState.pendingFiles.addAll(it.map { PendingFile(it.first, it.second) }) },
                                     onDismiss = { showFilePicker = false }
                                 )
                             }
@@ -604,7 +624,7 @@ fun ChatInputBar(
                                                     if (event.isCtrlPressed && event.key == Key.V) {
                                                             val files = getClipboardFiles()
                                                             if (files.isNotEmpty()) {
-                                                                chatState.pendingFiles.addAll(files)
+                                                                chatState.pendingFiles.addAll(files.map { PendingFile(it.first, it.second) })
                                                                 return@onPreviewKeyEvent true
                                                             }
                                                     }

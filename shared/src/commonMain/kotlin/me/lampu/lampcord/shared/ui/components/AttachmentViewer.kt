@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -35,6 +36,8 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.Attachment
 import me.lampu.lampcord.shared.model.DiscordMedia
@@ -126,21 +129,47 @@ fun AttachmentViewer(
             }
         }
 
-        // Top-right controls
+        // Top Header
         AnimatedVisibility(
             visible = showControls,
             enter = fadeIn(),
             exit = fadeOut(),
-            modifier = Modifier.align(Alignment.TopEnd).padding(16.dp)
+            modifier = Modifier.align(Alignment.TopCenter)
         ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ViewerRoundButton(onClick = {
-                    setClipboardText(item.url ?: item.proxy_url ?: "")
-                }) {
-                    Icon(Icons.Filled.ContentCopy, "Copy URL", tint = Color.White, modifier = Modifier.size(20.dp))
-                }
-                ViewerRoundButton(onClick = onDismiss) {
-                    Icon(Icons.Filled.Close, "Close", tint = Color.White, modifier = Modifier.size(20.dp))
+            Surface(
+                modifier = Modifier.fillMaxWidth().height(80.dp),
+                color = Color.Black.copy(alpha = 0.5f)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp).statusBarsPadding(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = (item as? Attachment)?.filename ?: "Image",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = Color.White,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = (item as? Attachment)?.content_type ?: "image/png",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White.copy(alpha = 0.7f)
+                        )
+                    }
+                    
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        ViewerRoundButton(onClick = {
+                            setClipboardText(item.url ?: item.proxy_url ?: "")
+                        }) {
+                            Icon(Icons.Filled.ContentCopy, "Copy URL", tint = Color.White, modifier = Modifier.size(20.dp))
+                        }
+                        ViewerRoundButton(onClick = onDismiss) {
+                            Icon(Icons.Filled.Close, "Close", tint = Color.White, modifier = Modifier.size(20.dp))
+                        }
+                    }
                 }
             }
         }
@@ -213,18 +242,32 @@ private fun ZoomableImageView(
 ) {
     var scale by remember(url) { mutableFloatStateOf(1f) }
     var offset by remember(url) { mutableStateOf(Offset.Zero) }
+    
+    val sizeState = remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
 
     Box(
         modifier = modifier
             .clipToBounds()
+            .onGloballyPositioned {
+                sizeState.value = it.size
+            }
             .pointerInput(url) {
                 detectTransformGestures { _, pan, zoom, _ ->
                     val newScale = (scale * zoom).coerceIn(1f, 8f)
-                    // Keep the focal point stable when zooming
+                    
                     if (newScale != scale) {
                         offset = offset * (newScale / scale)
                     }
-                    offset += pan
+                    
+                    val maxX = (sizeState.value.width * (newScale - 1f)) / 2f
+                    val maxY = (sizeState.value.height * (newScale - 1f)) / 2f
+                    
+                    val newOffset = offset + pan
+                    offset = Offset(
+                        newOffset.x.coerceIn(-maxX, maxX),
+                        newOffset.y.coerceIn(-maxY, maxY)
+                    )
+
                     scale = newScale
                 }
             }

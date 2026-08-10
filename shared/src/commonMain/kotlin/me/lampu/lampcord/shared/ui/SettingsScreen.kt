@@ -14,32 +14,35 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.state.ChatState
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.settings.*
+import kotlinx.coroutines.launch
 import me.lampu.lampcord.shared.ui.components.settings.*
 
-private enum class SettingsSection(val title: String, val icon: ImageVector) {
-    ACCOUNT("Account", Icons.Filled.AccountCircle),
-    PROFILES("Profiles", Icons.Filled.Person),
-    PRIVACY("Privacy & Safety", Icons.Filled.Security),
-    CONNECTIONS("Connections", Icons.Filled.Link),
-    DEVICES("Devices", Icons.Filled.Tv),
-    APPEARANCE("Appearance", Icons.Filled.Palette),
-    ACCESSIBILITY("Accessibility", Icons.Filled.Accessibility),
-    VOICE_VIDEO("Voice & Video", Icons.Filled.Mic),
-    CHAT("Chat", Icons.Outlined.Forum),
-    NOTIFICATIONS("Notifications", Icons.Filled.Notifications),
-    ADVANCED("Advanced", Icons.Filled.Tune),
-    ABOUT("About", Icons.Filled.Info),
+enum class SettingsSection(val title: String, val icon: ImageVector, val selectedIcon: ImageVector) {
+    ACCOUNT("Account", Icons.Rounded.AccountCircle, Icons.Filled.AccountCircle),
+    PROFILES("Profiles", Icons.Rounded.Person, Icons.Filled.Person),
+    PRIVACY("Privacy & Safety", Icons.Rounded.Security, Icons.Filled.Security),
+    CONNECTIONS("Connections", Icons.Rounded.Link, Icons.Filled.Link),
+    DEVICES("Devices", Icons.Rounded.Tv, Icons.Filled.Tv),
+    APPEARANCE("Appearance", Icons.Rounded.Palette, Icons.Filled.Palette),
+    ACCESSIBILITY("Accessibility", Icons.Rounded.Accessibility, Icons.Filled.Accessibility),
+    VOICE_VIDEO("Voice & Video", Icons.Rounded.Mic, Icons.Filled.Mic),
+    CHAT("Chat", Icons.Rounded.Forum, Icons.Filled.Forum),
+    NOTIFICATIONS("Notifications", Icons.Rounded.Notifications, Icons.Filled.Notifications),
+    ADVANCED("Advanced", Icons.Rounded.Tune, Icons.Filled.Tune),
+    ABOUT("About", Icons.Rounded.Info, Icons.Filled.Info),
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -52,6 +55,8 @@ fun SettingsScreen(
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var showLogoutConfirmation by remember { mutableStateOf(false) }
     val uriHandler = LocalUriHandler.current
+
+    val railState = rememberWideNavigationRailState(initialValue = WideNavigationRailValue.Expanded)
 
     if (showLogoutConfirmation) {
         AlertDialog(
@@ -320,201 +325,198 @@ fun SettingsScreen(
                 }
             }
         } else {
-            // Desktop Layout - Metrolist-style Overlay
+            // Desktop Layout
+            val railState = rememberWideNavigationRailState(initialValue = WideNavigationRailValue.Expanded)
             androidx.compose.ui.window.Dialog(
                 onDismissRequest = onDismiss,
                 properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
             ) {
-                Card(
-                    modifier = Modifier
-                        .padding(32.dp)
-                        .widthIn(max = 1080.dp)
-                        .fillMaxWidth()
-                        .heightIn(max = 720.dp)
-                        .fillMaxHeight(),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
+                SettingsDesktopOverlay(chatState, selectedCategory, onDismiss, { selectedCategory = it }, showLogoutConfirmation, { showLogoutConfirmation = it }, railState)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun SettingsDesktopOverlay(
+    chatState: ChatState,
+    selectedCategory: SettingsSection?,
+    onDismiss: () -> Unit,
+    onCategorySelected: (SettingsSection) -> Unit,
+    showLogoutConfirmation: Boolean,
+    onLogoutConfirmationChanged: (Boolean) -> Unit,
+    railState: WideNavigationRailState
+) {
+    val activeCategory = selectedCategory ?: SettingsSection.ACCOUNT
+    val uriHandler = LocalUriHandler.current
+    
+    Surface(
+        modifier = Modifier
+            .widthIn(max = 1200.dp)
+            .fillMaxWidth(0.95f)
+            .heightIn(max = 850.dp)
+            .fillMaxHeight(0.9f)
+            .clip(MaterialTheme.shapes.large),
+        color = MaterialTheme.colorScheme.surfaceContainerLowest,
+        shape = MaterialTheme.shapes.large
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Titlebar
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp, start = 16.dp, end = 16.dp)
+            ) {
+                Text(
+                    text = "Settings",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.align(Alignment.Center)
+                )
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.align(Alignment.CenterEnd)
                 ) {
-                    val activeCategory = selectedCategory ?: SettingsSection.ACCOUNT
-                    Row(modifier = Modifier.fillMaxSize()) {
-                        // Sidebar Category List
-                        Surface(
-                            modifier = Modifier.width(280.dp).fillMaxHeight(),
-                            color = MaterialTheme.colorScheme.surfaceContainerLowest
+                    Icon(Icons.Default.Close, "Close", tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(20.dp))
+                }
+            }
+
+            Row(modifier = Modifier.fillMaxSize()) {
+                // Wide Navigation Rail
+                WideNavigationRail(
+                    state = railState,
+                    colors = WideNavigationRailDefaults.colors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
+                    ),
+                    windowInsets = WindowInsets(0.dp),
+                    contentPadding = PaddingValues(0.dp),
+                    header = {
+                        val scope = rememberCoroutineScope()
+                        val isExpanded = railState.currentValue == WideNavigationRailValue.Expanded
+                        Column(
+                            horizontalAlignment = Alignment.Start,
+                            modifier = Modifier.padding(start = 20.dp, top = 12.dp, bottom = 4.dp)
                         ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text(
-                                    "Settings",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp)
-                                )
-                                
-                                Spacer(modifier = Modifier.height(12.dp))
-                                
-                                SettingsSearchField(
-                                    query = searchQuery,
-                                    onQueryChange = { searchQuery = it },
-                                    onClear = { searchQuery = "" },
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                                
-                                Spacer(modifier = Modifier.height(16.dp))
-                                
-                                LazyColumn(
-                                    modifier = Modifier.fillMaxSize(),
-                                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    items(SettingsSection.entries, key = { it.ordinal }) { section ->
-                                        val isSelected = activeCategory == section
-                                        
-                                        val animatedIconColor by animateColorAsState(
-                                            targetValue = if (isSelected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
-                                            animationSpec = tween(300, easing = FastOutSlowInEasing),
-                                            label = "iconBgColor",
-                                        )
-                                        val animatedIconTint by animateColorAsState(
-                                            targetValue = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                                            animationSpec = tween(300, easing = FastOutSlowInEasing),
-                                            label = "iconTint",
-                                        )
-
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .clip(RoundedCornerShape(12.dp))
-                                                .selectable(
-                                                    selected = isSelected,
-                                                    role = Role.Tab,
-                                                    onClick = {
-                                                        selectedCategory = section
-                                                        searchQuery = ""
-                                                    },
-                                                ).padding(horizontal = 8.dp, vertical = 8.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                        ) {
-                                            Surface(
-                                                modifier = Modifier.size(40.dp),
-                                                shape = RoundedCornerShape(10.dp),
-                                                color = animatedIconColor,
-                                            ) {
-                                                Icon(
-                                                    section.icon,
-                                                    contentDescription = section.title,
-                                                    tint = animatedIconTint,
-                                                    modifier = Modifier.fillMaxSize().padding(8.dp),
-                                                )
-                                            }
-                                            Text(
-                                                section.title,
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                                                color = MaterialTheme.colorScheme.onSurface,
-                                            )
-                                        }
-                                    }
-                                    
-                                    item { Spacer(modifier = Modifier.height(16.dp)) }
-                                    
-                                    item {
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .clip(RoundedCornerShape(12.dp))
-                                                .clickable { showLogoutConfirmation = true }
-                                                .padding(horizontal = 8.dp, vertical = 8.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                        ) {
-                                            Surface(
-                                                modifier = Modifier.size(40.dp),
-                                                shape = RoundedCornerShape(10.dp),
-                                                color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f),
-                                            ) {
-                                                Icon(
-                                                    Icons.AutoMirrored.Filled.Logout,
-                                                    contentDescription = "Log Out",
-                                                    tint = MaterialTheme.colorScheme.error,
-                                                    modifier = Modifier.fillMaxSize().padding(8.dp),
-                                                )
-                                            }
-                                            Text(
-                                                "Log Out",
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = MaterialTheme.colorScheme.error,
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        // Divider
-                        Box(modifier = Modifier.fillMaxHeight().width(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
-
-                        // Main Content Area
-                        Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                            AnimatedContent(
-                                targetState = activeCategory,
-                                transitionSpec = {
-                                    val isForward = targetState.ordinal > initialState.ordinal
-                                    (
-                                        slideInVertically(
-                                            animationSpec = tween(300, easing = FastOutSlowInEasing),
-                                            initialOffsetY = { if (isForward) it else -it },
-                                        ) + fadeIn(animationSpec = tween(300))
-                                    ) togetherWith (
-                                        slideOutVertically(
-                                            animationSpec = tween(300, easing = FastOutSlowInEasing),
-                                            targetOffsetY = { if (isForward) -it else it },
-                                        ) + fadeOut(animationSpec = tween(200))
-                                    )
-                                },
-                                modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface),
-                                label = "settingsContent",
-                            ) { section ->
-                                val scrollState = rememberScrollState()
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .verticalScroll(scrollState)
-                                        .padding(24.dp),
-                                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                                ) {
-                                    when (section) {
-                                        SettingsSection.ACCOUNT -> AccountSettings(chatState)
-                                        SettingsSection.PROFILES -> ProfileSettings(chatState)
-                                        SettingsSection.PRIVACY -> PrivacySettings(chatState)
-                                        SettingsSection.CONNECTIONS -> ConnectionsSettings(chatState)
-                                        SettingsSection.DEVICES -> DevicesSettings(chatState)
-                                        SettingsSection.APPEARANCE -> AppearanceSettings(chatState)
-                                        SettingsSection.ACCESSIBILITY -> AccessibilitySettings(chatState)
-                                        SettingsSection.CHAT -> ChatSettings(chatState)
-                                        SettingsSection.NOTIFICATIONS -> NotificationsSettings(chatState)
-                                        SettingsSection.ADVANCED -> AdvancedSettings(chatState)
-                                        SettingsSection.ABOUT -> AboutContent(version = "1.0.0", onOpenUrl = { uriHandler.openUri(it) })
-                                        else -> {
-                                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                                Text("Feature coming soon", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            
-                            IconButton(
-                                onClick = onDismiss,
-                                modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).size(36.dp),
-                            ) {
+                            IconButton(onClick = { scope.launch { railState.toggle() } }) {
                                 Icon(
-                                    Icons.Default.Close,
-                                    contentDescription = "Close",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(20.dp),
+                                    imageVector = if (isExpanded) Icons.AutoMirrored.Filled.MenuOpen else Icons.Filled.Menu,
+                                    contentDescription = "Toggle Sidebar",
                                 )
+                            }
+
+                            ExtendedFloatingActionButton(
+                                onClick = { onCategorySelected(SettingsSection.PROFILES) },
+                                expanded = isExpanded,
+                                icon = { Icon(Icons.Filled.Edit, null) },
+                                text = { Text("Edit profile") },
+                                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                shape = RoundedCornerShape(16.dp),
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                        }
+                    }
+                ) {
+                    val railSections = listOf(
+                        SettingsSection.ACCOUNT,
+                        SettingsSection.APPEARANCE,
+                        SettingsSection.CHAT,
+                        SettingsSection.NOTIFICATIONS,
+                        SettingsSection.ADVANCED,
+                        SettingsSection.ABOUT
+                    )
+
+                    railSections.forEach { section ->
+                        val isSelected = activeCategory == section
+
+                        WideNavigationRailItem(
+                            selected = isSelected,
+                            railExpanded = railState.currentValue == WideNavigationRailValue.Expanded,
+                            onClick = { onCategorySelected(section) },
+                            icon = {
+                                Icon(
+                                    if (isSelected) section.selectedIcon else section.icon,
+                                    contentDescription = section.title,
+                                )
+                            },
+                            label = {
+                                Text(
+                                    section.title,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        )
+                    }
+
+                    // Logout
+                    WideNavigationRailItem(
+                        selected = false,
+                        railExpanded = railState.currentValue == WideNavigationRailValue.Expanded,
+                        onClick = { onLogoutConfirmationChanged(true) },
+                        icon = {
+                            Icon(
+                                Icons.AutoMirrored.Filled.Logout,
+                                contentDescription = "Log Out",
+                                tint = MaterialTheme.colorScheme.error,
+                            )
+                        },
+                        label = {
+                            Text(
+                                "Log Out",
+                                color = MaterialTheme.colorScheme.error,
+                                maxLines = 1
+                            )
+                        }
+                    )
+                }
+
+                // Main Content Area
+                Surface(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .padding(end = 8.dp, bottom = 8.dp),
+                    shape = MaterialTheme.shapes.medium,
+                    color = MaterialTheme.colorScheme.surfaceContainerLow
+                ) {
+                    AnimatedContent(
+                        targetState = activeCategory,
+                        transitionSpec = {
+                            (fadeIn(animationSpec = tween(300)) + slideInVertically(animationSpec = tween(300)) { 20 }).togetherWith(
+                                fadeOut(animationSpec = tween(200))
+                            )
+                        },
+                        modifier = Modifier.fillMaxSize(),
+                        label = "settingsContent",
+                    ) { section ->
+                        val scrollState = rememberScrollState()
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .verticalScroll(scrollState)
+                                .padding(24.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            when (section) {
+                                SettingsSection.ACCOUNT -> AccountSettings(chatState)
+                                SettingsSection.PROFILES -> ProfileSettings(chatState)
+                                SettingsSection.PRIVACY -> PrivacySettings(chatState)
+                                SettingsSection.CONNECTIONS -> ConnectionsSettings(chatState)
+                                SettingsSection.DEVICES -> DevicesSettings(chatState)
+                                SettingsSection.APPEARANCE -> AppearanceSettings(chatState)
+                                SettingsSection.ACCESSIBILITY -> AccessibilitySettings(chatState)
+                                SettingsSection.CHAT -> ChatSettings(chatState)
+                                SettingsSection.NOTIFICATIONS -> NotificationsSettings(chatState)
+                                SettingsSection.ADVANCED -> AdvancedSettings(chatState)
+                                SettingsSection.ABOUT -> AboutContent(version = "1.0.0", onOpenUrl = { uriHandler.openUri(it) })
+                                else -> {
+                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                        Text("Feature coming soon", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                }
                             }
                         }
                     }

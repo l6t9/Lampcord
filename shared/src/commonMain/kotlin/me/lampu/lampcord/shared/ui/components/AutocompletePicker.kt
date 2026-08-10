@@ -47,7 +47,7 @@ fun AutocompletePicker(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(max = 320.dp),
-        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+        shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         tonalElevation = 3.dp,
         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
@@ -83,7 +83,7 @@ fun AutocompletePicker(
                     Surface(
                         onClick = { onItemSelected(item) },
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(8.dp),
+                        shape = MaterialTheme.shapes.small,
                         color = if (isSelected) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Transparent
                     ) {
                         Row(
@@ -94,9 +94,10 @@ fun AutocompletePicker(
                                 AsyncImage(
                                     model = item.icon,
                                     contentDescription = null,
-                                    modifier = Modifier.size(24.dp).clip(if (type == AutocompleteType.MENTION) CircleShape else RoundedCornerShape(4.dp))
+                                    modifier = Modifier.size(24.dp).clip(if (type == AutocompleteType.MENTION) CircleShape else MaterialTheme.shapes.extraSmall)
                                 )
-                            } else if (item.iconType != null) {
+                            }
+else if (item.iconType != null) {
                                 Icon(
                                     imageVector = item.iconType,
                                     contentDescription = null,

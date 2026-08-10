@@ -18,7 +18,7 @@ fun DevicesSettings(chatState: ChatState) {
             title = "Active Sessions",
             items = devices.map { device ->
                 Material3SettingsItem(
-                    icon = if (device.os?.contains("Android", true) == true) Icons.Filled.Smartphone else Icons.Filled.Tv,
+                    icon = if (device.os?.contains("Android", true) == true) Icons.Rounded.Devices else Icons.Rounded.Tv,
                     title = { Text(device.model ?: "Unknown Device") },
                     description = { Text("${device.os} • ${device.location ?: "Unknown Location"}") },
                     trailingContent = {

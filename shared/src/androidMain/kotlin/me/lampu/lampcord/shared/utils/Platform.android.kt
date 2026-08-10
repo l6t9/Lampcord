@@ -104,6 +104,106 @@ actual suspend fun getLocalMedia(): List<LocalMedia> = withContext(Dispatchers.I
     mediaList
 }
 
+actual suspend fun getLocalFiles(): List<LocalMedia> = withContext(Dispatchers.IO) {
+    val fileList = mutableListOf<LocalMedia>()
+    val context = AndroidContext.context
+    
+    // 1. Replicate Discord 126.21's broad MediaStore.Files search
+    try {
+        val projection = arrayOf(
+            MediaStore.Files.FileColumns._ID,
+            MediaStore.Files.FileColumns.DISPLAY_NAME,
+            MediaStore.Files.FileColumns.SIZE,
+            MediaStore.Files.FileColumns.MIME_TYPE,
+            MediaStore.Files.FileColumns.DATA
+        )
+
+        // Discord 126.21 doesn\u0027t filter out media types in its main query, 
+        // it just queries MediaStore.Files.getContentUri("external")
+        context.contentResolver.query(
+            MediaStore.Files.getContentUri("external"),
+            projection,
+            null,
+            null,
+            "${MediaStore.Files.FileColumns.DATE_ADDED} DESC"
+        )?.use { cursor ->
+            val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
+            val nameColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
+            val sizeColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE)
+            val mimeTypeColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE)
+            val dataColumn = cursor.getColumnIndex(MediaStore.Files.FileColumns.DATA)
+
+            while (cursor.moveToNext()) {
+                val id = cursor.getLong(idColumn)
+                val name = cursor.getString(nameColumn) ?: "unknown"
+                val size = cursor.getLong(sizeColumn)
+                val mimeType = cursor.getString(mimeTypeColumn) ?: "application/octet-stream"
+                val data = if (dataColumn != -1) cursor.getString(dataColumn) else null
+                
+                if (data != null && java.io.File(data).isDirectory) continue
+
+                // Avoid duplicates of images/videos already in the media tab
+                val isMedia = mimeType.startsWith("image/") || mimeType.startsWith("video/")
+                if (isMedia) continue
+
+                val contentUri = ContentUris.withAppendedId(
+                    MediaStore.Files.getContentUri("external"),
+                    id
+                )
+
+                fileList.add(LocalMedia(id, contentUri.toString(), name, size, mimeType, false))
+                if (fileList.size >= 150) break
+            }
+        }
+    } catch (e: Exception) { }
+
+    // 2. Manual recursive crawl of high-yield folders if list is small (fallback)
+    if (fileList.size < 50) {
+        val searchDirs = listOfNotNull(
+            android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS),
+            android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOCUMENTS),
+            @Suppress("DEPRECATION")
+            android.os.Environment.getExternalStorageDirectory()
+        )
+
+        val queue = java.util.ArrayDeque<java.io.File>()
+        searchDirs.forEach { if (it.exists() && it.isDirectory) queue.add(it) }
+
+        val scannedDirs = mutableSetOf<String>()
+        var crawlCount = 0
+
+        while (queue.isNotEmpty() && fileList.size < 200 && scannedDirs.size < 100) {
+            val dir = queue.removeFirst()
+            val path = try { dir.absolutePath } catch(e: Exception) { continue }
+            if (path in scannedDirs) continue
+            scannedDirs.add(path)
+
+            dir.listFiles()?.forEach { file ->
+                if (file.isHidden) return@forEach
+                if (file.isDirectory) {
+                    if (queue.size < 200 && !path.contains("/Android/data")) queue.add(file)
+                } else {
+                    val uri = android.net.Uri.fromFile(file).toString()
+                    if (fileList.none { it.uri == uri || it.name == file.name }) {
+                        fileList.add(LocalMedia(file.hashCode().toLong(), uri, file.name, file.length(), "application/octet-stream", false))
+                        crawlCount++
+                    }
+                }
+            }
+        }
+    }
+
+    fileList.sortWith(compareByDescending { 
+        if (it.uri.startsWith("file://")) {
+            java.io.File(android.net.Uri.parse(it.uri).path ?: "").lastModified()
+        } else {
+            Long.MAX_VALUE 
+        }
+    })
+
+    fileList
+}
+
 actual suspend fun getLocalMediaBytes(uri: String): ByteArray? = withContext(Dispatchers.IO) {
     val context = AndroidContext.context
     try {

@@ -83,9 +83,13 @@ fun MemberHeader(channel: Channel, chatState: ChatState) {
         
         Spacer(Modifier.height(16.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(2.dp)
+        ButtonGroup(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .height(64.dp),
+            overflowIndicator = { menuState -> ButtonGroupDefaults.OverflowIndicator(menuState) },
+            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
         ) {
             val actions = listOf(
                 HeaderButtonData(
@@ -107,17 +111,65 @@ fun MemberHeader(channel: Channel, chatState: ChatState) {
             )
 
             actions.forEachIndexed { index, action ->
-                val shape = when {
-                    actions.size == 1 -> RoundedCornerShape(20.dp)
-                    index == 0 -> RoundedCornerShape(topStart = 20.dp, bottomStart = 20.dp, topEnd = 4.dp, bottomEnd = 4.dp)
-                    index == actions.lastIndex -> RoundedCornerShape(topStart = 4.dp, bottomStart = 4.dp, topEnd = 20.dp, bottomEnd = 20.dp)
-                    else -> RoundedCornerShape(4.dp)
-                }
+                customItem(
+                    buttonGroupContent = {
+                        val shapes = when {
+                            actions.size == 1 -> ButtonDefaults.shapes()
+                            index == 0 -> ButtonDefaults.shapes(
+                                shape = ButtonGroupDefaults.connectedLeadingButtonShape,
+                                pressedShape = ButtonGroupDefaults.connectedLeadingButtonPressShape
+                            )
+                            index == actions.lastIndex -> ButtonDefaults.shapes(
+                                shape = ButtonGroupDefaults.connectedTrailingButtonShape,
+                                pressedShape = ButtonGroupDefaults.connectedTrailingButtonPressShape
+                            )
+                            else -> ButtonDefaults.shapes(
+                                shape = MaterialTheme.shapes.small,
+                                pressedShape = ButtonGroupDefaults.connectedMiddleButtonPressShape
+                            )
+                        }
 
-                HeaderButton(
-                    action = action,
-                    shape = shape,
-                    modifier = Modifier.weight(1f)
+                        FilledTonalButton(
+                            onClick = action.onClick,
+                            enabled = action.enabled,
+                            shapes = shapes,
+                            modifier = Modifier.weight(1f).fillMaxHeight(),
+                            contentPadding = PaddingValues(0.dp)
+                        ) {
+                            val contentAlpha = if (action.enabled) 1f else 0.4f
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = action.icon,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp).alpha(contentAlpha)
+                                )
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    text = action.label,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = contentAlpha),
+                                    textAlign = TextAlign.Center,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    fontSize = 10.sp
+                                )
+                            }
+                        }
+                    },
+                    menuContent = { menuState ->
+                        DropdownMenuItem(
+                            text = { Text(action.label) },
+                            onClick = {
+                                action.onClick()
+                                menuState.dismiss()
+                            },
+                            leadingIcon = { Icon(action.icon, null, modifier = Modifier.size(18.dp)) },
+                            enabled = action.enabled
+                        )
+                    }
                 )
             }
         }
@@ -131,42 +183,3 @@ private data class HeaderButtonData(
     val enabled: Boolean = true
 )
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun HeaderButton(
-    action: HeaderButtonData,
-    shape: androidx.compose.ui.graphics.Shape,
-    modifier: Modifier = Modifier
-) {
-    val contentAlpha = if (action.enabled) 1f else 0.4f
-    Surface(
-        onClick = action.onClick,
-        enabled = action.enabled,
-        modifier = modifier.height(64.dp),
-        shape = shape,
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp, vertical = 8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Icon(
-                imageVector = action.icon,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp).alpha(contentAlpha)
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = action.label,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = contentAlpha),
-                textAlign = TextAlign.Center,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                fontSize = 10.sp
-            )
-        }
-    }
-}

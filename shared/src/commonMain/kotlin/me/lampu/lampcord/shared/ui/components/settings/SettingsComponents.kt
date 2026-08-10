@@ -76,8 +76,8 @@ fun Material3SettingsItemRow(
     isLast: Boolean = false,
     horizontalPadding: Dp = 16.dp,
 ) {
-    val cornerRadius = 20.dp
-    val reducedRadius = 5.dp
+    val cornerRadius = 12.dp
+    val reducedRadius = 2.dp
 
     val shape = RoundedCornerShape(
         topStart = if (isFirst) cornerRadius else reducedRadius,
@@ -357,9 +357,6 @@ fun navigationSettingsItem(
         title = { Text(title) },
         description = description?.let { { Text(it) } },
         enabled = enabled,
-        trailingContent = {
-            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        },
         onClick = onClick
     )
 }

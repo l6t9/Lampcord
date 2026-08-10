@@ -147,7 +147,7 @@ fun AboutContent(
 @Composable
 private fun AppHeaderCard(version: String) {
     ElevatedCard(
-        shape = RoundedCornerShape(32.dp),
+        shape = MaterialTheme.shapes.extraLarge,
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
     ) {
@@ -158,7 +158,7 @@ private fun AppHeaderCard(version: String) {
             Box(
                 modifier = Modifier
                     .size(64.dp)
-                    .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(16.dp)),
+                    .background(MaterialTheme.colorScheme.primary, MaterialTheme.shapes.medium),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -194,7 +194,7 @@ private fun LeadDeveloperCard(
     onOpenUrl: (String) -> Unit,
 ) {
     ElevatedCard(
-        shape = RoundedCornerShape(32.dp),
+        shape = MaterialTheme.shapes.extraLarge,
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
     ) {
@@ -408,7 +408,7 @@ private fun InfoBadge(
     containerColor: androidx.compose.ui.graphics.Color,
     contentColor: androidx.compose.ui.graphics.Color,
 ) {
-    Surface(shape = RoundedCornerShape(8.dp), color = containerColor) {
+    Surface(shape = MaterialTheme.shapes.small, color = containerColor) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,
@@ -435,12 +435,14 @@ private fun AboutSection(
         )
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             repeat(itemCount) { index ->
+                val cornerRadius = 12.dp
+                val reducedRadius = 2.dp
                 val shape =
                     RoundedCornerShape(
-                        topStart = if (index == 0) 20.dp else 5.dp,
-                        topEnd = if (index == 0) 20.dp else 5.dp,
-                        bottomStart = if (index == itemCount - 1) 20.dp else 5.dp,
-                        bottomEnd = if (index == itemCount - 1) 20.dp else 5.dp,
+                        topStart = if (index == 0) cornerRadius else reducedRadius,
+                        topEnd = if (index == 0) cornerRadius else reducedRadius,
+                        bottomStart = if (index == itemCount - 1) cornerRadius else reducedRadius,
+                        bottomEnd = if (index == itemCount - 1) cornerRadius else reducedRadius,
                     )
                 Surface(
                     modifier = Modifier

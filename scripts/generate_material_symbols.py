@@ -65,6 +65,7 @@ STYLE_FONTS = {
     "filled": "MaterialSymbolsOutlined[FILL,GRAD,opsz,wght].ttf",
     "outlined": "MaterialSymbolsOutlined[FILL,GRAD,opsz,wght].ttf",
     "rounded": "MaterialSymbolsRounded[FILL,GRAD,opsz,wght].ttf",
+    "rounded_filled": "MaterialSymbolsRounded[FILL,GRAD,opsz,wght].ttf",
     "sharp": "MaterialSymbolsSharp[FILL,GRAD,opsz,wght].ttf",
 }
 
@@ -72,6 +73,7 @@ OUTPUT_FILES = {
     "filled": "IconsFilled.kt",
     "outlined": "IconsOutlined.kt",
     "rounded": "IconsRounded.kt",
+    "rounded_filled": "IconsRoundedFilled.kt",
     "sharp": None,
 }
 
@@ -79,12 +81,16 @@ OBJECT_NAMES = {
     "filled": "IconsFilled",
     "outlined": "IconsOutlined",
     "rounded": "IconsRounded",
+    "rounded_filled": "IconsRoundedFilled",
     "sharp": "IconsSharp",
 }
 
 # The "Filled" style means the FILL axis baked in. Outlined/Rounded/Sharp use the
 # default FILL=0 instance.
-DEFAULT_FILL = {"filled": 1.0}
+DEFAULT_FILL = {
+    "filled": 1.0,
+    "rounded_filled": 1.0,
+}
 
 # Classic Material Icons names that no longer exist as glyphs in the current
 # Material Symbols font, mapped to the current equivalent glyph.
@@ -254,10 +260,11 @@ def write_file(style: str, entries: dict[str, str]) -> None:
         f"object {obj} {{",
     ]
     for name, path_data in entries.items():
+        lines.append(f'    internal const val {name}_Path = "{path_data}"')
         lines.append(f"    val {name}: ImageVector by lazy {{")
         lines.append("        materialSymbol(")
         lines.append(f'            name = "{style.capitalize()}.{name}",')
-        lines.append(f'            pathData = "{path_data}",')
+        lines.append(f'            pathData = {name}_Path,')
         lines.append("        )")
         lines.append("    }")
         lines.append("")

@@ -24,7 +24,7 @@ import me.lampu.lampcord.shared.ui.icons.Icons
 @Composable
 fun VideoAttachment(video: Attachment, onClick: (() -> Unit)? = null) {
     val aspectRatio = video.aspectRatio ?: (16f / 9f)
-    
+
     var wantsPlayback by remember { mutableStateOf(false) }
 
     // Cap at min(500, width) x min(300, height)

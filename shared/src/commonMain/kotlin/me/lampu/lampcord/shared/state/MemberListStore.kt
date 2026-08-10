@@ -12,6 +12,8 @@ class MemberListStore {
     // Exposed state for the currently active list
     val memberListItems = mutableStateListOf<MemberListListItem?>()
     val memberListGroups = mutableStateMapOf<String, MemberListGroup>()
+    var onlineCount by mutableStateOf<Int?>(null)
+    var memberCount by mutableStateOf<Int?>(null)
     
     private var currentListId: String? = null
     
@@ -62,6 +64,11 @@ class MemberListStore {
     }
 
     fun handleMemberListUpdate(update: MemberListUpdate) {
+        if (update.id == currentListId) {
+            update.online_count?.let { onlineCount = it }
+            update.member_count?.let { memberCount = it }
+        }
+
         // If the update is for a list we haven't seen, create a cache entry
         val entry = if (update.id == currentListId) {
             // Update current visible state
@@ -76,30 +83,7 @@ class MemberListStore {
         val targetItems: MutableList<MemberListListItem?> = entry?.items ?: memberListItems
         val targetGroups: MutableMap<String, MemberListGroup> = entry?.groups ?: memberListGroups
 
-        // 1. Handle Groups (Pre-size the list like ChannelMemberList.setGroups)
-        update.groups?.let { groups ->
-            val totalSize = groups.sumOf { (it.count ?: it.member_count ?: 0) + 1 }
-            
-            if (targetItems.size < totalSize) {
-                repeat(totalSize - targetItems.size) { targetItems.add(null) }
-            } else if (targetItems.size > totalSize) {
-                while (targetItems.size > totalSize) {
-                    targetItems.removeAt(targetItems.size - 1)
-                }
-            }
-
-            targetGroups.clear()
-            var currentOffset = 0
-            groups.forEach { group ->
-                targetGroups[group.id] = group
-                if (currentOffset < targetItems.size) {
-                    targetItems[currentOffset] = MemberListListItem(group = group)
-                }
-                currentOffset += (group.count ?: group.member_count ?: 0) + 1
-            }
-        }
-
-        // 2. Handle Operations (Flat indices)
+        // 1. Handle Operations (Matches StoreChannelMembers.handleGuildMemberListUpdate order)
         for (op in update.ops) {
             when (op.op) {
                 "SYNC" -> {
@@ -109,6 +93,10 @@ class MemberListStore {
                     for (i in items.indices) {
                         val index = start + i
                         if (index < targetItems.size) {
+                            targetItems[index] = items[i]
+                        } else if (index >= targetItems.size) {
+                            // Expand if SYNC goes beyond current size
+                            while (targetItems.size <= index) targetItems.add(null)
                             targetItems[index] = items[i]
                         }
                     }
@@ -143,6 +131,37 @@ class MemberListStore {
                         }
                     }
                 }
+            }
+        }
+
+        // 2. Handle Groups (Matches ChannelMemberList.setGroups)
+        update.groups?.let { groups ->
+            val totalSize = groups.sumOf { (it.count ?: it.member_count ?: 0) + 1 }
+            
+            // Resize list to match total size from groups
+            if (targetItems.size < totalSize) {
+                repeat(totalSize - targetItems.size) { targetItems.add(null) }
+            } else if (targetItems.size > totalSize) {
+                while (targetItems.size > totalSize) {
+                    targetItems.removeAt(targetItems.size - 1)
+                }
+            }
+
+            // Clear existing headers to avoid duplicates when shifts occur
+            for (i in targetItems.indices) {
+                if (targetItems[i]?.group != null) {
+                    targetItems[i] = null
+                }
+            }
+
+            targetGroups.clear()
+            var currentOffset = 0
+            groups.forEach { group ->
+                targetGroups[group.id] = group
+                if (currentOffset < targetItems.size) {
+                    targetItems[currentOffset] = MemberListListItem(group = group)
+                }
+                currentOffset += (group.count ?: group.member_count ?: 0) + 1
             }
         }
     }

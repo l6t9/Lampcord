@@ -29,6 +29,8 @@ actual fun getMemoryMemory(): Long = 4096 // Default for common iPhones
 
 actual suspend fun getLocalMedia(): List<LocalMedia> = emptyList()
 
+actual suspend fun getLocalFiles(): List<LocalMedia> = emptyList()
+
 actual suspend fun getLocalMediaBytes(uri: String): ByteArray? = null
 
 @Composable

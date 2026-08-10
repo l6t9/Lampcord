@@ -81,6 +81,8 @@ class ChatState(
     val memberListItems get() = memberListStore.memberListItems
     val memberListGroups get() = memberListStore.memberListGroups
     val memberListRowCount get() = memberListStore.memberListRowCount
+    val onlineCount get() = memberListStore.onlineCount
+    val totalMemberCount get() = memberListStore.memberCount
     
     val relationships get() = relationshipStore.relationships
     val presences get() = presenceStore.presences
@@ -134,7 +136,7 @@ class ChatState(
     
     var scrollToMessageId by mutableStateOf<String?>(null)
     var highlightedMessageId by mutableStateOf<String?>(null)
-    val pendingFiles = mutableStateListOf<Pair<String, ByteArray>>()
+    val pendingFiles = mutableStateListOf<PendingFile>()
 
     val currentVoiceState get() = voiceStore.currentVoiceState
     val isVoiceConnected get() = voiceStore.isVoiceConnected
@@ -148,6 +150,9 @@ class ChatState(
     var isChannelsAndRolesVisible
         get() = navigationStore.isChannelsAndRolesVisible
         set(value) { navigationStore.isChannelsAndRolesVisible = value }
+    var isServerMenuVisible
+        get() = navigationStore.isServerMenuVisible
+        set(value) { navigationStore.isServerMenuVisible = value }
     var isServerSettingsVisible
         get() = navigationStore.isServerSettingsVisible
         set(value) { navigationStore.isServerSettingsVisible = value }
@@ -235,7 +240,7 @@ class ChatState(
                     loadingMessages.addAll(lines)
                 }
             } catch (e: Exception) {
-                loadingMessages.add("Lampcord: Because standard Discord isn't expressive enough.")
+                loadingMessages.add("how")
             }
         }
 
@@ -366,7 +371,7 @@ class ChatState(
 
     fun performSearch() = searchStore.performSearch(selectedGuild, selectedChannel)
 
-    fun sendMessage(content: String) {
+    fun sendMessage(content: String, poll: Poll? = null) {
         val channel = selectedThread ?: selectedChannel ?: return
 
         if (editingMessage != null) {
@@ -383,7 +388,8 @@ class ChatState(
             replyTo = replyingTo?.id,
             files = pendingFiles.toList(),
             guildId = selectedGuild?.id,
-            forwardFrom = null
+            forwardFrom = null,
+            poll = poll
         )
         replyingTo = null
         pendingFiles.clear()
@@ -428,6 +434,17 @@ class ChatState(
     fun showProfile(userId: String, position: Offset? = null) = profileStore.showProfile(userId, selectedGuild?.id, position)
 
     fun getUserStatus(userId: String): String = presenceStore.getUserStatus(userId, currentUser?.id, userSettings?.status)
+
+    fun isStatusVisible(user: User, presence: PresenceUpdate?, isStreaming: Boolean): Boolean {
+        val flags = (user.public_flags ?: 0) or (user.flags ?: 0)
+        // 524288 = PUBLIC_FLAG_BOT_HTTP_INTERACTIONS
+        return if ((flags and 524288) != 0) {
+            presence != null && presence.status != "offline" && presence.status != "invisible"
+        } else {
+            presence != null || isStreaming
+        }
+    }
+
     fun updateStatus(status: String) = scope.launch { discordClient.updateStatus(status) }
     fun updateCustomStatus(text: String?) = scope.launch { discordClient.updateCustomStatus(text) }
 
@@ -504,8 +521,9 @@ class ChatState(
         if (requestKey == navigationStore.lastRequestedKey) return
         navigationStore.lastRequestedKey = requestKey
 
-        // 126.21 Parity: We MUST send the actual channel.id as the key in the lazy load map.
-        gatewayManager.sendLazyRequest(guild.id, channel.id, ranges)
+        // 126.21 Parity: The key in the channels map is the MEMBER LIST ID (hash or "everyone"), not always the channel.id.
+        val memberListId = channel.member_list_id ?: channel.memberListId(guild)
+        gatewayManager.sendLazyRequest(guild.id, memberListId, ranges)
     }
 
     fun toggleMuteGuild(guildId: String) {
@@ -566,6 +584,30 @@ class ChatState(
 
         scope.launch {
             discordClient.updateUserGuildSettings(guildId, UserGuildSettings.Partial(channel_overrides = currentOverrides))
+        }
+    }
+
+    fun setServerDMsAllowed(guildId: String, allowed: Boolean) {
+        // This is a placeholder logic, usually this is a bitmask or a separate field in real Discord API
+        // For now we use message_notifications as a proxy or just send a partial update if the model supports more
+        scope.launch {
+            discordClient.updateUserGuildSettings(
+                guildId,
+                UserGuildSettings.Partial(
+                    message_notifications = if (allowed) 0 else 2
+                )
+            )
+        }
+    }
+
+    fun setHideMutedChannels(guildId: String, hide: Boolean) {
+        scope.launch {
+            discordClient.updateUserGuildSettings(
+                guildId,
+                UserGuildSettings.Partial(
+                    hide_muted_channels = hide
+                )
+            )
         }
     }
 

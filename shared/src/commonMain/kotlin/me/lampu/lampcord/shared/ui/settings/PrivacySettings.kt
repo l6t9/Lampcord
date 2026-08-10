@@ -3,16 +3,128 @@ package me.lampu.lampcord.shared.ui.settings
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.state.ChatState
 import me.lampu.lampcord.shared.model.UserSettings
 import me.lampu.lampcord.shared.ui.components.settings.*
 import me.lampu.lampcord.shared.settings.Settings
+import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.ui.components.ExpressiveSwitch
 
 @Composable
 fun PrivacySettings(chatState: ChatState) {
     val userSettings = chatState.userSettings
+    val isMobile = me.lampu.lampcord.shared.utils.getPlatformName().let { it == "android" || it == "ios" }
 
+    if (!isMobile) {
+        DesktopPrivacySettings(chatState, userSettings)
+    } else {
+        MobilePrivacySettings(chatState, userSettings)
+    }
+}
+
+@Composable
+private fun DesktopPrivacySettings(chatState: ChatState, userSettings: UserSettings?) {
+    DesktopSettingsLayout {
+        DesktopSettingsSection(
+            title = "Safe Direct Messaging",
+            icon = Icons.Filled.Security
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Content Filter", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                DesktopButtonGroupSelection(
+                    options = listOf(2, 1, 0),
+                    selectedOption = userSettings?.explicit_content_filter ?: 1,
+                    onOptionSelected = { filter: Int -> chatState.updateUserSettings(UserSettings.Partial(explicit_content_filter = filter)) },
+                    iconProvider = { filter: Int, isSelected ->
+                        when (filter) {
+                            2 -> if (isSelected) Icons.Filled.Security else Icons.Rounded.Security
+                            1 -> if (isSelected) Icons.Filled.Favorite else Icons.Rounded.Favorite
+                            else -> if (isSelected) Icons.Filled.Warning else Icons.Rounded.Warning
+                        }
+                    },
+                    labelProvider = {
+                        when (it) {
+                            2 -> "Keep me safe"
+                            1 -> "My friends are nice"
+                            else -> "I live on the edge"
+                        }
+                    }
+                )
+                Text(
+                    text = when (userSettings?.explicit_content_filter) {
+                        2 -> "Scan direct messages from everyone."
+                        1 -> "Scan direct messages from everyone unless they are a friend."
+                        else -> "Don't scan any direct messages."
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        DesktopSettingsSection(
+            title = "Server Privacy Defaults",
+            icon = Icons.Filled.Public
+        ) {
+            PrivacyToggle("Allow direct messages from server members", userSettings?.default_guilds_restricted == false, "This setting is applied when you join a new server.") { 
+                chatState.updateUserSettings(UserSettings.Partial(default_guilds_restricted = !it))
+            }
+        }
+
+        DesktopSettingsSection(
+            title = "Friend Requests",
+            icon = Icons.Filled.PersonAdd
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                val flags = userSettings?.friend_source_flags
+                
+                PrivacyToggle("Everyone", flags?.all == true) {
+                    chatState.updateUserSettings(UserSettings.Partial(friend_source_flags = me.lampu.lampcord.shared.model.FriendSourceFlags(all = it)))
+                }
+                PrivacyToggle("Friends of Friends", flags?.mutual_friends == true) {
+                    chatState.updateUserSettings(UserSettings.Partial(friend_source_flags = me.lampu.lampcord.shared.model.FriendSourceFlags(mutual_friends = it)))
+                }
+                PrivacyToggle("Server Members", flags?.mutual_guilds == true) {
+                    chatState.updateUserSettings(UserSettings.Partial(friend_source_flags = me.lampu.lampcord.shared.model.FriendSourceFlags(mutual_guilds = it)))
+                }
+            }
+        }
+
+        DesktopSettingsSection(
+            title = "Enhancements",
+            icon = Icons.Filled.RocketLaunch
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                PrivacyToggle("Silent Typing", Settings.shared.silentTyping, "Don't let others know when you are typing.") {
+                    Settings.shared.silentTyping = it
+                }
+                PrivacyToggle("Hide Blocked Messages", Settings.shared.hideBlockedMessages, "Completely remove messages from blocked users.") {
+                    Settings.shared.hideBlockedMessages = it
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PrivacyToggle(label: String, checked: Boolean, description: String? = null, onCheckedChange: (Boolean) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+            if (description != null) {
+                Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        ExpressiveSwitch(checked = checked, onCheckedChange = onCheckedChange)
+    }
+}
+
+@Composable
+private fun MobilePrivacySettings(chatState: ChatState, userSettings: UserSettings?) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Material3SettingsGroup(title = "Safe Direct Messaging") {
             Material3SettingsGroup(

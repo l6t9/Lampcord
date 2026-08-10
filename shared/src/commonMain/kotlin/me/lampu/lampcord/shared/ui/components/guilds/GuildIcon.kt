@@ -44,7 +44,7 @@ fun GuildIcon(
     }
     
     val isUnread by remember(guild.id, chatState.readStates, chatState.guildStore.allGuildChannels[guild.id], isMuted) {
-        derivedStateOf { chatState.isGuildUnread(guild.id) }
+        derivedStateOf { chatState.isGuildUnread(guild.id) && !isMuted }
     }
     val mentionCount by remember(guild.id, chatState.readStates, chatState.guildStore.allGuildChannels[guild.id]) {
         derivedStateOf { chatState.getGuildMentionCount(guild.id) }
@@ -89,7 +89,7 @@ fun GuildIcon(
                         .padding(start = 0.dp)
                         .width(4.dp)
                         .height(8.dp)
-                        .clip(RoundedCornerShape(topEnd = 4.dp, bottomEnd = 4.dp))
+                        .clip(MaterialTheme.shapes.extraSmall)
                         .background(MaterialTheme.colorScheme.onSurface)
                 )
             }

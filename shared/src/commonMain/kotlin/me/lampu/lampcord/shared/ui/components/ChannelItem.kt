@@ -78,7 +78,7 @@ fun ChannelItem(channel: Channel, chatState: ChatState) {
                     Box(
                         modifier = Modifier
                             .size(width = 4.dp, height = 12.dp)
-                            .clip(RoundedCornerShape(topEnd = 4.dp, bottomEnd = 4.dp))
+                            .clip(MaterialTheme.shapes.extraSmall)
                             .background(MaterialTheme.colorScheme.onSurface)
                     )
                 }
@@ -109,12 +109,14 @@ fun ChannelItem(channel: Channel, chatState: ChatState) {
                         else MaterialTheme.colorScheme.onSurfaceVariant
                         
                         Icon(
-                            imageVector = if (!canView) Icons.Rounded.Lock else when(channel.type) {
-                                15 -> Icons.Outlined.Forum
-                                2, 13 -> Icons.AutoMirrored.Filled.VolumeUp
-                                5 -> Icons.Filled.Campaign
-                                10, 11, 12 -> Icons.Filled.Tag
-                                else -> Icons.Filled.Tag
+                            imageVector = if (!canView) {
+                                if (isSelected) Icons.Filled.Lock else Icons.Rounded.Lock
+                            } else when(channel.type) {
+                                15 -> if (isSelected) Icons.Filled.Forum else Icons.Rounded.Forum
+                                2, 13 -> if (isSelected) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Rounded.VolumeUp
+                                5 -> if (isSelected) Icons.Filled.Campaign else Icons.Rounded.Campaign
+                                10, 11, 12 -> if (isSelected) Icons.Filled.Tag else Icons.Rounded.Tag
+                                else -> if (isSelected) Icons.Filled.Tag else Icons.Rounded.Tag
                             },
                             contentDescription = null,
                             modifier = Modifier.size(20.dp),

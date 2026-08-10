@@ -57,7 +57,7 @@ fun DMList(chatState: ChatState) {
                 modifier = Modifier.size(32.dp)
             ) {
                 Icon(
-                    imageVector = if (chatState.isFriendsSelected) Icons.Filled.Person else Icons.Outlined.Person,
+                    imageVector = if (chatState.isFriendsSelected) Icons.Filled.Person else Icons.Rounded.Person,
                     contentDescription = "Friends",
                     tint = if (chatState.isFriendsSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(20.dp)

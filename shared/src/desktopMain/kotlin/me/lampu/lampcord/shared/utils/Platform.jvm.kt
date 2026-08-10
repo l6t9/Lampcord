@@ -32,6 +32,8 @@ actual fun getMemoryMemory(): Long = Runtime.getRuntime().totalMemory() / (1024 
 
 actual suspend fun getLocalMedia(): List<LocalMedia> = emptyList()
 
+actual suspend fun getLocalFiles(): List<LocalMedia> = emptyList()
+
 actual suspend fun getLocalMediaBytes(uri: String): ByteArray? = null
 
 @Composable

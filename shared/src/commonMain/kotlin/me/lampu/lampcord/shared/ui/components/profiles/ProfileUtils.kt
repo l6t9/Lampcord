@@ -27,12 +27,16 @@ data class ProfileTheme(
     val backgroundBrush: Brush,
     val outerBorderBrush: Brush,
     val bodyOverlayColor: Color,
+    val cardColor: Color,
+    val tagColor: Color,
     val contentColor: Color,
     val cutoutColor: Color,
     val pfpBorderBrush: Brush,
     val primaryAccent: Color,
     val buttonColor: Color,
-    val buttonTextColor: Color
+    val buttonTextColor: Color,
+    val isCustom: Boolean = false,
+    val themeColors: List<Color> = emptyList()
 )
 
 @Composable
@@ -60,27 +64,28 @@ fun Badge(color: Color) {
 }
 
 @Composable
-fun RoleTag(name: String, color: Color) {
+fun RoleTag(name: String, tagColor: Color, dotColor: Color? = null) {
     Surface(
-        shape = RoundedCornerShape(4.dp),
-        color = Color.Transparent,
-        border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.5f)),
+        shape = MaterialTheme.shapes.extraSmall,
+        color = tagColor,
         modifier = Modifier.padding(vertical = 2.dp)
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .size(12.dp)
-                    .background(color, CircleShape)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
+            if (dotColor != null) {
+                Box(
+                    modifier = Modifier
+                        .size(10.dp)
+                        .background(dotColor, CircleShape)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+            }
             Text(
                 text = name,
-                style = MaterialTheme.typography.labelMedium,
-                color = color,
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.White,
                 fontWeight = FontWeight.Medium
             )
         }
@@ -105,6 +110,7 @@ fun UserConnectionItem(
             "twitter" -> "https://twitter.com/${connection.name}"
             "reddit" -> "https://www.reddit.com/u/${connection.name}"
             "tiktok" -> "https://www.tiktok.com/@${connection.name}"
+            "domain" -> "https://${connection.name}"
             else -> null
         }
     }
@@ -115,7 +121,7 @@ fun UserConnectionItem(
         modifier = Modifier.fillMaxWidth(),
         color = Color.Black.copy(alpha = 0.1f),
         shape = when {
-            isFirst && isLast -> RoundedCornerShape(8.dp)
+            isFirst && isLast -> MaterialTheme.shapes.small
             isFirst -> RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)
             isLast -> RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp)
             else -> androidx.compose.ui.graphics.RectangleShape
@@ -130,6 +136,7 @@ fun UserConnectionItem(
                 "steam" -> Icons.Brand.Steam
                 "twitch" -> Icons.Brand.Twitch
                 "youtube" -> Icons.Brand.Youtube
+                "domain" -> Icons.Filled.Public
                 else -> Icons.Filled.Link
             }
             Icon(icon, null, modifier = Modifier.size(24.dp), tint = contentColor)
@@ -139,7 +146,7 @@ fun UserConnectionItem(
                 Text(connection.type.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }, style = MaterialTheme.typography.labelSmall, color = contentColor.copy(alpha = 0.6f))
             }
             Spacer(Modifier.weight(1f))
-            if (connection.verified) {
+            if (connection.verified || url != null) {
                 Icon(Icons.Rounded.ArrowOutward, null, modifier = Modifier.size(16.dp), tint = contentColor.copy(alpha = 0.7f))
             }
         }

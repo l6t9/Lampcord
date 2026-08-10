@@ -48,51 +48,74 @@ fun QuickSwitcher(
         }
     }
 
-    Dialog(onDismissRequest = onDismiss) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
+    ) {
         Surface(
             modifier = Modifier
-                .width(500.dp)
-                .heightIn(max = 400.dp),
-            shape = RoundedCornerShape(8.dp),
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 6.dp
+                .widthIn(max = 1200.dp)
+                .fillMaxWidth(0.95f)
+                .heightIn(max = 850.dp)
+                .fillMaxHeight(0.9f)
+                .clip(MaterialTheme.shapes.large),
+            shape = MaterialTheme.shapes.large,
+            color = MaterialTheme.colorScheme.surfaceContainerLowest,
         ) {
             Column {
-                TextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("Where would you like to go?") },
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Color.Transparent,
-                        unfocusedContainerColor = Color.Transparent,
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent
-                    ),
-                    singleLine = true
-                )
-                
-                HorizontalDivider()
-                
-                LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(8.dp),
+                    shape = MaterialTheme.shapes.medium,
+                    color = MaterialTheme.colorScheme.surfaceContainer
                 ) {
-                    items(results) { result ->
-                        SwitcherResultItem(result) {
-                            when (result) {
-                                is SwitcherResult.GuildResult -> chatState.selectGuild(result.guild)
-                                is SwitcherResult.ChannelResult -> chatState.selectChannel(result.channel)
+                    Column {
+                        TextField(
+                            value = query,
+                            onValueChange = { query = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text("Where would you like to go?") },
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent
+                            ),
+                            singleLine = true
+                        )
+
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+                        LazyColumn(
+                            modifier = Modifier.weight(1f),
+                            contentPadding = PaddingValues(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            items(results) { result ->
+                                SwitcherResultItem(result) {
+                                    when (result) {
+                                        is SwitcherResult.GuildResult -> chatState.selectGuild(result.guild)
+                                        is SwitcherResult.ChannelResult -> chatState.selectChannel(result.channel)
+                                    }
+                                    onDismiss()
+                                }
                             }
-                            onDismiss()
-                        }
-                    }
-                    
-                    if (results.isEmpty() && query.isNotBlank()) {
-                        item {
-                            Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                                Text("No results found", color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+                            if (results.isEmpty() && query.isNotBlank()) {
+                                item {
+                                    Box(
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .padding(32.dp), contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            "No results found",
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
                             }
                         }
                     }

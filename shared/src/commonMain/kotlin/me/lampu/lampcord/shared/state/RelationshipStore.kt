@@ -16,7 +16,7 @@ class RelationshipStore(
     fun handleReady(rels: List<Relationship>) {
         println("RelationshipStore received ${rels.size} relationships")
         relationships.clear()
-        relationships.addAll(rels.map { hydrate(it) })
+        relationships.addAll(rels.map { hydrate(it) }.distinctBy { it.id ?: it.user?.id ?: it.user_id })
     }
 
     private fun hydrate(rel: Relationship): Relationship {
@@ -30,7 +30,7 @@ class RelationshipStore(
         scope.launch {
             val friends = discordClient.getRelationships()
             relationships.clear()
-            relationships.addAll(friends.map { hydrate(it) })
+            relationships.addAll(friends.map { hydrate(it) }.distinctBy { it.id ?: it.user?.id ?: it.user_id })
         }
     }
 

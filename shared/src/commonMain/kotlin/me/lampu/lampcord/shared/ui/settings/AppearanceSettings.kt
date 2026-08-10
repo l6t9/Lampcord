@@ -30,6 +30,7 @@ import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.state.ChatState
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.components.settings.*
+import me.lampu.lampcord.shared.ui.components.ExpressiveSwitch
 import me.lampu.lampcord.shared.model.UserSettings
 
 data class DesktopThemePalette(
@@ -66,11 +67,204 @@ private val desktopPaletteColors =
 @Composable
 fun AppearanceSettings(chatState: ChatState) {
     val colorScheme = MaterialTheme.colorScheme
-    
+    val isMobile = me.lampu.lampcord.shared.utils.getPlatformName().let { it == "android" || it == "ios" }
+
     fun updateTheme(theme: String) {
         chatState.updateUserSettings(UserSettings.Partial(theme = theme))
     }
 
+    if (!isMobile) {
+        DesktopAppearanceSettings(chatState, colorScheme, ::updateTheme)
+    } else {
+        MobileAppearanceSettings(chatState, colorScheme, ::updateTheme)
+    }
+}
+
+@Composable
+private fun DesktopAppearanceSettings(
+    chatState: ChatState,
+    colorScheme: ColorScheme,
+    updateTheme: (String) -> Unit
+) {
+    DesktopSettingsLayout {
+        DesktopSettingsSection(
+            title = "Wallpaper & Colors",
+            icon = Icons.Filled.Monitor
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                AppearanceToggle("Material You", chatState.settingsStore.materialYou, "Use system wallpaper colors as the base for the app's theme.") {
+                    chatState.settingsStore.materialYou = it
+                }
+
+                AppearanceToggle("Sync across clients", chatState.settingsStore.syncAppearance, "Sync your theme selection across all Discord clients.") {
+                    chatState.settingsStore.syncAppearance = it
+                }
+            }
+        }
+
+        DesktopSettingsSection(
+            title = "Theme",
+            icon = Icons.Filled.DarkMode
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Theme mode", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = colorScheme.onSurfaceVariant)
+                    
+                    DesktopLargeButtonGroupSelection(
+                        options = listOf(ThemeMode.LIGHT, ThemeMode.DARK),
+                        selectedOption = if (chatState.settingsStore.themeMode == ThemeMode.LIGHT) ThemeMode.LIGHT else ThemeMode.DARK,
+                        onOptionSelected = { mode: ThemeMode ->
+                            chatState.settingsStore.themeMode = mode
+                            chatState.settingsStore.pureBlack = false
+                            if (chatState.settingsStore.syncAppearance) updateTheme(if (mode == ThemeMode.LIGHT) "light" else "dark")
+                        },
+                        iconProvider = { mode: ThemeMode, isSelected -> 
+                            when (mode) {
+                                ThemeMode.LIGHT -> if (isSelected) Icons.Filled.LightMode else Icons.Rounded.LightMode
+                                else -> if (isSelected) Icons.Filled.DarkMode else Icons.Rounded.DarkMode
+                            }
+                        },
+                        labelProvider = { mode: ThemeMode -> if (mode == ThemeMode.LIGHT) "Light" else "Dark" }
+                    )
+
+                    Spacer(Modifier.height(4.dp))
+
+                    DesktopButtonGroupSelection(
+                        options = listOf(ThemeMode.AUTO, null),
+                        selectedOption = if (chatState.settingsStore.themeMode == ThemeMode.AUTO) ThemeMode.AUTO else if (chatState.settingsStore.pureBlack) null else ThemeMode.AUTO,
+                        onOptionSelected = { mode: ThemeMode? ->
+                            if (mode == null) {
+                                chatState.settingsStore.themeMode = ThemeMode.DARK
+                                chatState.settingsStore.pureBlack = true
+                                if (chatState.settingsStore.syncAppearance) updateTheme("dark")
+                            } else {
+                                chatState.settingsStore.themeMode = mode
+                                chatState.settingsStore.pureBlack = false
+                                if (chatState.settingsStore.syncAppearance) updateTheme("dark")
+                            }
+                        },
+                        iconProvider = { mode: ThemeMode?, isSelected -> 
+                            when (mode) {
+                                ThemeMode.AUTO -> if (isSelected) Icons.Filled.Sync else Icons.Rounded.Sync
+                                null -> if (isSelected) Icons.Filled.Bedtime else Icons.Rounded.Bedtime
+                                else -> Icons.Rounded.Sync // Should not happen
+                            }
+                        },
+                        labelProvider = { mode: ThemeMode? -> if (mode == ThemeMode.AUTO) "Auto" else "Pure Black" }
+                    )
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Color palette", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = colorScheme.onSurfaceVariant)
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(vertical = 4.dp),
+                    ) {
+                        items(desktopPaletteColors) { palette ->
+                            val isDynamicPalette = palette.seedColor == Color.Transparent
+                            val currentAccentHex = chatState.settingsStore.accentColor.lowercase()
+                            val paletteAccentHex = if (isDynamicPalette) "" else "#" + palette.seedColor.value.toString(16).substring(2).lowercase()
+
+                            val isSelected = if (isDynamicPalette) {
+                                chatState.settingsStore.materialYou
+                            } else {
+                                !chatState.settingsStore.materialYou && (currentAccentHex == paletteAccentHex || (currentAccentHex == "#6750a4" && palette.name == "Baseline"))
+                            }
+
+                            PalettePreviewItem(
+                                palette = palette,
+                                isSelected = isSelected,
+                                onClick = {
+                                    if (isDynamicPalette) {
+                                        chatState.settingsStore.materialYou = true
+                                    } else {
+                                        chatState.settingsStore.materialYou = false
+                                        chatState.settingsStore.accentColor = "#" + palette.seedColor.value.toString(16).substring(2)
+                                    }
+                                },
+                            )
+                        }
+                    }
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Palette style", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = colorScheme.onSurfaceVariant)
+                    DesktopButtonGroupSelection(
+                        options = ThemePaletteStyle.entries.toList(),
+                        selectedOption = chatState.settingsStore.themePaletteStyle,
+                        onOptionSelected = { chatState.settingsStore.themePaletteStyle = it },
+                        iconProvider = { style: ThemePaletteStyle, isSelected ->
+                            when (style) {
+                                ThemePaletteStyle.TONAL_SPOT -> if (isSelected) Icons.Filled.Palette else Icons.Rounded.Palette
+                                ThemePaletteStyle.EXPRESSIVE -> if (isSelected) Icons.Filled.FormatPaint else Icons.Rounded.FormatPaint
+                                ThemePaletteStyle.VIBRANT -> if (isSelected) Icons.Filled.AutoAwesome else Icons.Rounded.AutoAwesome
+                                ThemePaletteStyle.RAINBOW -> if (isSelected) Icons.Filled.Texture else Icons.Rounded.Texture
+                                ThemePaletteStyle.MONOCHROME -> if (isSelected) Icons.Filled.Rectangle else Icons.Rounded.Rectangle
+                                ThemePaletteStyle.FRUIT_SALAD -> if (isSelected) Icons.Filled.Fastfood else Icons.Rounded.Fastfood
+                                else -> if (isSelected) Icons.Filled.Palette else Icons.Rounded.Palette
+                            }
+                        },
+                        labelProvider = { it.name.lowercase().replace('_', ' ').replaceFirstChar { char -> char.uppercase() } }
+                    )
+                }
+            }
+        }
+
+        DesktopSettingsSection(
+            title = "Typography",
+            icon = Icons.Filled.TextFields
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("App Font", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = colorScheme.onSurfaceVariant)
+                    DesktopButtonGroupSelection(
+                        options = FontOption.entries.toList(),
+                        selectedOption = chatState.settingsStore.appFont,
+                        onOptionSelected = { chatState.settingsStore.appFont = it },
+                        labelProvider = {
+                            when (it) {
+                                FontOption.SYSTEM -> "System"
+                                FontOption.INTER -> "Inter"
+                                FontOption.GOOGLE_SANS -> "Google Sans"
+                                FontOption.MAPLE_MONO -> "Maple Mono"
+                            }
+                        }
+                    )
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Font Scale: ${(chatState.settingsStore.fontScale * 100).toInt()}%", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = colorScheme.onSurfaceVariant)
+                    Slider(
+                        value = chatState.settingsStore.fontScale,
+                        onValueChange = { chatState.settingsStore.fontScale = it },
+                        valueRange = 0.5f..2.0f,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AppearanceToggle(label: String, checked: Boolean, description: String? = null, onCheckedChange: (Boolean) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+            if (description != null) {
+                Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        ExpressiveSwitch(checked = checked, onCheckedChange = onCheckedChange)
+    }
+}
+
+@Composable
+private fun MobileAppearanceSettings(
+    chatState: ChatState,
+    colorScheme: ColorScheme,
+    updateTheme: (String) -> Unit
+) {
     Column(modifier = Modifier.fillMaxWidth()) {
         var themeExpanded by remember { mutableStateOf(false) }
         var fontExpanded by remember { mutableStateOf(false) }

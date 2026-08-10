@@ -23,6 +23,8 @@ expect fun getMemoryMemory(): Long
 
 expect suspend fun getLocalMedia(): List<LocalMedia>
 
+expect suspend fun getLocalFiles(): List<LocalMedia>
+
 expect suspend fun getLocalMediaBytes(uri: String): ByteArray?
 
 @Composable

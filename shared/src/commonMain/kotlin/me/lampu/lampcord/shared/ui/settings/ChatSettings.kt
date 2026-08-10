@@ -5,16 +5,157 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.state.ChatState
 import me.lampu.lampcord.shared.model.UserSettings
 import me.lampu.lampcord.shared.ui.components.settings.*
 import me.lampu.lampcord.shared.settings.ChatGestures
 import me.lampu.lampcord.shared.settings.Settings
+import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.ui.components.ExpressiveSwitch
 
 @Composable
 fun ChatSettings(chatState: ChatState) {
     val userSettings = chatState.userSettings
+    val isMobile = me.lampu.lampcord.shared.utils.getPlatformName().let { it == "android" || it == "ios" }
+
+    if (!isMobile) {
+        DesktopChatSettings(chatState, userSettings)
+    } else {
+        MobileChatSettings(chatState, userSettings)
+    }
+}
+
+@Composable
+private fun DesktopChatSettings(chatState: ChatState, userSettings: UserSettings?) {
+    DesktopSettingsLayout {
+        DesktopSettingsSection(
+            title = "Gestures",
+            icon = Icons.Filled.DragIndicator
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                ChatToggle("TapTap", Settings.shared.tapTap, "Double tap a message to edit or reply.") {
+                    Settings.shared.tapTap = it
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Swipe Gesture", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    DesktopButtonGroupSelection(
+                        options = ChatGestures.entries.toList(),
+                        selectedOption = Settings.shared.chatGestures,
+                        onOptionSelected = { Settings.shared.chatGestures = it },
+                        iconProvider = { gesture: ChatGestures, isSelected ->
+                            when (gesture) {
+                                ChatGestures.SWIPE_TO_MEMBERS -> if (isSelected) Icons.Filled.Group else Icons.Rounded.Group
+                                ChatGestures.SWIPE_TO_REPLY -> if (isSelected) Icons.Filled.Reply else Icons.Rounded.Reply
+                            }
+                        },
+                        labelProvider = {
+                            when (it) {
+                                ChatGestures.SWIPE_TO_MEMBERS -> "View members"
+                                ChatGestures.SWIPE_TO_REPLY -> "Reply"
+                            }
+                        }
+                    )
+                }
+            }
+        }
+
+        DesktopSettingsSection(
+            title = "Media",
+            icon = Icons.Filled.Album
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                ChatToggle("Auto-display uploads", userSettings?.inline_attachment_media ?: true, "Images and videos uploaded directly to Discord.") {
+                    chatState.updateUserSettings(UserSettings.Partial(inline_attachment_media = it))
+                }
+                ChatToggle("Auto-display links", userSettings?.inline_embed_media ?: true, "Links to rich media from other websites.") {
+                    chatState.updateUserSettings(UserSettings.Partial(inline_embed_media = it))
+                }
+                ChatToggle("Show embeds", userSettings?.render_embeds ?: true, "Previews for website links pasted into chat.") {
+                    chatState.updateUserSettings(UserSettings.Partial(render_embeds = it))
+                }
+            }
+        }
+
+        DesktopSettingsSection(
+            title = "Emoji and Stickers",
+            icon = Icons.Filled.Mood
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                ChatToggle("Animate Emoji", userSettings?.animate_emoji ?: true) {
+                    chatState.updateUserSettings(UserSettings.Partial(animate_emoji = it))
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Animate Stickers", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                    DesktopButtonGroupSelection(
+                        options = listOf(0, 1, 2),
+                        selectedOption = userSettings?.animate_stickers ?: 0,
+                        onOptionSelected = { chatState.updateUserSettings(UserSettings.Partial(animate_stickers = it)) },
+                        iconProvider = { level: Int, isSelected ->
+                            when (level) {
+                                0 -> if (isSelected) Icons.Filled.PlayArrow else Icons.Rounded.PlayArrow
+                                1 -> if (isSelected) Icons.Filled.AddReaction else Icons.Rounded.AddReaction
+                                else -> if (isSelected) Icons.Filled.Pause else Icons.Rounded.Pause
+                            }
+                        },
+                        labelProvider = {
+                            when (it) {
+                                0 -> "Always"
+                                1 -> "On interaction"
+                                else -> "Never"
+                            }
+                        }
+                    )
+                }
+
+                ChatToggle("Free Nitro Emojis", Settings.shared.freeNitroEmojis, "Use emojis from any server for free.") {
+                    Settings.shared.freeNitroEmojis = it
+                }
+                ChatToggle("Realmojis", Settings.shared.realmojis, "Makes free nitro emojis look like real ones.") {
+                    Settings.shared.realmojis = it
+                }
+            }
+        }
+
+        DesktopSettingsSection(
+            title = "Logger",
+            icon = Icons.Filled.History
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                ChatToggle("Message Logger", Settings.shared.messageLoggerEnabled, "Keep a local history of deleted and edited messages.") {
+                    Settings.shared.messageLoggerEnabled = it
+                }
+                if (Settings.shared.messageLoggerEnabled) {
+                    ChatToggle("Ignore Bots", Settings.shared.messageLoggerIgnoreBots) {
+                        Settings.shared.messageLoggerIgnoreBots = it
+                    }
+                    ChatToggle("Ignore Self", Settings.shared.messageLoggerIgnoreSelf) {
+                        Settings.shared.messageLoggerIgnoreSelf = it
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChatToggle(label: String, checked: Boolean, description: String? = null, onCheckedChange: (Boolean) -> Unit) {
+    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            if (description != null) {
+                Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        ExpressiveSwitch(checked = checked, onCheckedChange = onCheckedChange)
+    }
+}
+
+@Composable
+private fun MobileChatSettings(chatState: ChatState, userSettings: UserSettings?) {
     var gesturesExpanded by remember { mutableStateOf(false) }
     var nitroExpanded by remember { mutableStateOf(false) }
     var loggerExpanded by remember { mutableStateOf(false) }

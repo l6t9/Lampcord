@@ -29,6 +29,7 @@ import me.lampu.lampcord.shared.ui.components.ContextMenuItem
 import me.lampu.lampcord.shared.ui.components.VerticalScrollbar
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.utils.getPlatformName
 import me.lampu.lampcord.shared.utils.PermissionHelper
 import me.lampu.lampcord.shared.utils.setClipboardText
 
@@ -131,7 +132,13 @@ fun GuildChannelList(chatState: ChatState) {
             color = MaterialTheme.colorScheme.surface.copy(alpha = alpha),
             shadowElevation = 0.dp,
             tonalElevation = 0.dp,
-            onClick = { menuExpanded = true }
+            onClick = { 
+                if (getPlatformName() == "android" || getPlatformName() == "ios") {
+                    chatState.isServerMenuVisible = true
+                } else {
+                    menuExpanded = true 
+                }
+            }
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 if (bannerUrl != null) {
