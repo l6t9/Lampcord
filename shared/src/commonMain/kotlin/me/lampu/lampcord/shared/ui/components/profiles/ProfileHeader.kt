@@ -34,7 +34,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import me.lampu.lampcord.shared.model.UserProfile
-import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.state.PresenceStore
 import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.state.UserStore
@@ -54,7 +53,6 @@ fun ProfileHeader(
     isExpanded: Boolean,
     onExpand: (() -> Unit)? = null,
     userStore: UserStore = koinInject(),
-    navigationStore: NavigationStore = koinInject(),
     presenceStore: PresenceStore = koinInject(),
     settingsStore: SettingsStore = koinInject()
 ) {
@@ -65,7 +63,7 @@ fun ProfileHeader(
 
     // Avatar
     val avatarUrl = profile.guild_member?.avatar?.let {
-        "https://cdn.discordapp.com/guilds/${navigationStore.selectedGuild?.id}/users/${user.id}/avatars/$it.png?size=160"
+        "https://cdn.discordapp.com/guilds/${profile.guild_id}/users/${user.id}/avatars/$it.png?size=160"
     } ?: user.avatar?.let {
         "https://cdn.discordapp.com/avatars/${user.id}/$it.png?size=160"
     }
@@ -129,8 +127,8 @@ fun ProfileHeader(
         
         // Edit Profile Buttons
         if (user.id == currentUser?.id) {
-            Spacer(Modifier.height(12.dp))
-            val isServerProfile = profile.guild_member != null && navigationStore.selectedGuild != null
+            Spacer(Modifier.height(8.dp))
+            val isServerProfile = profile.guild_member != null && profile.guild_id != null
             
             if (isServerProfile) {
                 ButtonGroup(
@@ -219,6 +217,6 @@ fun ProfileHeader(
                 }
             }
         }
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(8.dp))
     }
 }

@@ -38,7 +38,6 @@ class VoiceStore(
 
     fun disconnectFromVoice(fallbackGuildId: String? = null) {
         val guildId = currentVoiceState?.guild_id ?: fallbackGuildId
-        println("Disconnecting from voice: Guild=$guildId")
         gatewayManager.sendVoiceStateUpdate(
             guildId = guildId,
             channelId = null,
@@ -89,7 +88,6 @@ class VoiceStore(
         payload.d?.let { data ->
             try {
                 val state = json.decodeFromJsonElement<VoiceState>(data)
-                println("Voice State Update: User=${state.user_id}, Channel=${state.channel_id}, Guild=${state.guild_id}")
                 val guildId = state.guild_id ?: "@me"
                 val guildMap = voiceStates.getOrPut(guildId) { mutableStateMapOf() }
                 
@@ -119,17 +117,9 @@ class VoiceStore(
         payload.d?.let { data ->
             try {
                 val update = json.decodeFromJsonElement<VoiceServerUpdate>(data)
-                val userId = currentUserId ?: return
-                val sessionId = currentVoiceState?.session_id ?: return
                 
                 if (update.endpoint != null) {
-                    // voiceGatewayManager.connect(
-                    //     endpoint = update.endpoint,
-                    //     guildId = update.guild_id,
-                    //     userId = userId,
-                    //     sessionId = sessionId,
-                    //     token = update.token
-                    // )
+                    // voiceGatewayManager.connect(...)
                 }
             } catch (e: Exception) { }
         }

@@ -64,8 +64,9 @@ fun MemberItem(
     }
     
     if (user == null) return
+    val guildId = navigationStore.selectedGuild?.id
     val avatarUrl = member.avatar?.let {
-        "https://cdn.discordapp.com/guilds/${navigationStore.selectedGuild?.id}/users/${user.id}/avatars/$it.png"
+        "https://cdn.discordapp.com/guilds/$guildId/users/${user.id}/avatars/$it.png"
     } ?: user.avatar?.let {
         "https://cdn.discordapp.com/avatars/${user.id}/$it.png"
     }
@@ -79,7 +80,7 @@ fun MemberItem(
 
     val contextMenuItems = remember(user, settingsStore.userSettings) {
         val items = mutableListOf(
-            ContextMenuItem("Profile", Icons.Filled.AccountCircle) { profileStore.showProfile(user.id) },
+            ContextMenuItem("Profile", Icons.Filled.AccountCircle) { profileStore.showProfile(user.id, guildId) },
             ContextMenuItem("Mention", Icons.Rounded.AlternateEmail) {
                 val channelId = navigationStore.selectedChannel?.id ?: return@ContextMenuItem
                 val current = messageStore.draftMessages[channelId] ?: ""
@@ -132,7 +133,7 @@ fun MemberItem(
     ) {
         Surface(
             modifier = Modifier.fillMaxWidth().height(44.dp),
-            onClick = { profileStore.showProfile(user.id, position = itemPosition) },
+            onClick = { profileStore.showProfile(user.id, guildId, position = itemPosition) },
             color = Color.Transparent,
             shape = RoundedCornerShape(8.dp)
         ) {

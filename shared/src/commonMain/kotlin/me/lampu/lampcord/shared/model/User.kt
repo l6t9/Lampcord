@@ -67,6 +67,7 @@ data class User(
 data class UserProfile(
     val user: User,
     val user_profile: UserProfileMetadata? = null,
+    val guild_id: String? = null,
     val guild_member: Member? = null,
     val guild_member_profile: UserProfileMetadata? = null,
     val badges: List<ProfileBadge> = emptyList(),

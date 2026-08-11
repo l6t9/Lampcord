@@ -216,10 +216,14 @@ fun ChannelHeader(
                 val isThread = channel.type == 10 || channel.type == 11 || channel.type == 12
                 
                 if (isDm) {
-                    // DM style
-                    val recipientId = channel.recipients?.firstOrNull()?.id ?: channel.recipient_ids?.firstOrNull()
-                    val recipient = recipientId?.let { allUsers[it] } ?: channel.recipients?.firstOrNull()
-                    val name = recipient?.let { it.global_name ?: it.username } ?: "Unnamed DM"
+                    val name = if (channel.name?.isNotBlank() == true) {
+                        channel.name
+                    } else {
+                        val recipientId = channel.recipients?.firstOrNull()?.id ?: channel.recipient_ids?.firstOrNull()
+                        val recipient = recipientId?.let { allUsers[it] } ?: channel.recipients?.firstOrNull()
+                        recipient?.let { it.global_name ?: it.username } ?: "Unnamed DM"
+                    }
+
                     Icon(
                         imageVector = Icons.Rounded.AlternateEmail,
                         contentDescription = null,

@@ -11,6 +11,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.Channel
@@ -72,7 +73,7 @@ fun DMItem(
                     readStateStore.ackMessage(channel.id, channel.lastMessageId() ?: "0")
                 }
             },
-            ContextMenuItem("Profile", Icons.Filled.AccountCircle) { recipient?.let { profileStore.showProfile(it.id, navigationStore.selectedGuild?.id) } },
+            ContextMenuItem("Profile", Icons.Filled.AccountCircle) { recipient?.let { profileStore.showProfile(it.id) } },
             ContextMenuItem("Close DM", Icons.Filled.Close, color = Color.Red) { /* TODO */ }
         )
         if (userSettings?.developer_mode == true) {
@@ -81,6 +82,8 @@ fun DMItem(
         items
     }
     
+    val nameplate = recipient?.collectibles?.nameplate
+
     ContextMenu(items = contextMenuItems) {
         Surface(
             modifier = Modifier
@@ -105,30 +108,48 @@ fun DMItem(
             else Color.Transparent,
             shape = MaterialTheme.shapes.small
         ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(modifier = Modifier.size(32.dp)) {
-                    AvatarWithDecoration(
-                        avatarUrl = avatarUrl,
-                        decorationData = recipient?.avatar_decoration_data ?: recipient?.collectibles?.avatar_decoration,
-                        size = 32.dp,
-                        status = status
+            Box(modifier = Modifier.fillMaxSize()) {
+                // Nameplate background (only on hover/selected)
+                if (nameplate != null && (isHovered || isSelected)) {
+                    val decoUrl = "https://cdn.discordapp.com/assets/collectibles/${nameplate.asset}img.png?passthrough=true"
+                    AsyncImage(
+                        model = decoUrl,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                        alpha = 0.4f
                     )
                 }
-                Spacer(modifier = Modifier.width(12.dp))
-                UsernameView(
-                    name = name,
-                    style = recipient?.display_name_styles,
-                    baseStyle = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    ignoreEffects = !isHovered,
-                    ignoreColors = !isHovered
-                )
-                recipient?.let { UserTagView(it, modifier = Modifier.padding(start = 4.dp)) }
+
+                Row(
+                    modifier = Modifier.padding(horizontal = 8.dp).fillMaxSize(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(modifier = Modifier.size(32.dp)) {
+                        AvatarWithDecoration(
+                            avatarUrl = avatarUrl,
+                            decorationData = recipient?.avatar_decoration_data ?: recipient?.collectibles?.avatar_decoration,
+                            size = 32.dp,
+                            status = status
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    UsernameView(
+                        name = name,
+                        style = recipient?.display_name_styles,
+                        baseStyle = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        ignoreEffects = !isHovered,
+                        ignoreColors = !isHovered
+                    )
+                    recipient?.primary_guild?.let {
+                        Spacer(Modifier.width(4.dp))
+                        ClanTagView(it)
+                    }
+                    recipient?.let { UserTagView(it, modifier = Modifier.padding(start = 4.dp)) }
+                }
             }
         }
     }

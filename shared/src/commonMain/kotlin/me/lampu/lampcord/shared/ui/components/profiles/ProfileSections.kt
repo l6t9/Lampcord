@@ -7,11 +7,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.UserProfile
 import me.lampu.lampcord.shared.state.*
@@ -28,17 +29,20 @@ fun ProfileSections(
     theme: ProfileTheme,
     isExpanded: Boolean,
     showMemberSince: Boolean = false,
-    navigationStore: NavigationStore = koinInject()
+    guildStore: GuildStore = koinInject()
 ) {
     val user = profile.user
     val userMeta = profile.user_profile
     val guildMeta = profile.guild_member_profile
 
-    Column(modifier = Modifier.padding(vertical = 12.dp)) {
-        // Bio
-        val bio = guildMeta?.bio ?: userMeta?.bio ?: user.bio
+    Column(modifier = Modifier.padding(bottom = 12.dp)) {
+        // Bio Priority: Guild Member Bio -> User Profile Bio -> Base User Bio
+        val bio = guildMeta?.bio?.takeIf { it.isNotBlank() } 
+            ?: userMeta?.bio?.takeIf { it.isNotBlank() } 
+            ?: user.bio?.takeIf { it.isNotBlank() }
+            
         if (!bio.isNullOrBlank()) {
-            Text("ABOUT ME", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.ExtraBold, color = theme.contentColor.copy(alpha = 0.8f))
+            Text("About Me", style = MaterialTheme.typography.labelSmall, color = theme.contentColor.copy(alpha = 0.8f))
             Spacer(Modifier.height(4.dp))
             DiscordMarkdownText(content = bio, style = MaterialTheme.typography.bodyMedium, color = theme.contentColor)
             Spacer(Modifier.height(16.dp))
@@ -46,38 +50,33 @@ fun ProfileSections(
 
         // Dates
         if (isExpanded || showMemberSince) {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                // Discord Join Date
-                Column {
-                    Text("DISCORD MEMBER SINCE", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.ExtraBold, color = theme.contentColor.copy(alpha = 0.8f))
-                    Spacer(Modifier.height(4.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Surface(modifier = Modifier.size(16.dp), color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f), shape = CircleShape) {
-                            Icon(me.lampu.lampcord.shared.ui.icons.Icons.Brand.Discord, null, modifier = Modifier.padding(2.dp), tint = MaterialTheme.colorScheme.primary)
+            Column {
+                Text("Member Since", style = MaterialTheme.typography.labelSmall, color = theme.contentColor.copy(alpha = 0.8f))
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Discord Join Date
+                    Surface(modifier = Modifier.size(16.dp), color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f), shape = CircleShape) {
+                        Icon(me.lampu.lampcord.shared.ui.icons.Icons.Brand.Discord, null, modifier = Modifier.padding(2.dp), tint = MaterialTheme.colorScheme.primary)
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Text(formatDate(user.id), style = MaterialTheme.typography.bodyMedium, color = theme.contentColor)
+
+                    // Guild Join Date
+                    profile.guild_member?.joined_at?.let { joinedAt ->
+                        Text(" • ", style = MaterialTheme.typography.bodyMedium, color = theme.contentColor.copy(alpha = 0.5f))
+                        val guilds by guildStore.guilds.collectAsState()
+                        val guild = profile.guild_id?.let { gid -> guilds.find { it.id == gid } }
+                        
+                        val guildIcon = guild?.let { g ->
+                            if (g.icon != null) "https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png?size=32" else null
+                        }
+                        if (guildIcon != null) {
+                            AsyncImage(model = guildIcon, contentDescription = null, modifier = Modifier.size(16.dp).clip(CircleShape))
+                        } else {
+                            Surface(modifier = Modifier.size(16.dp), color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f), shape = CircleShape) {}
                         }
                         Spacer(Modifier.width(8.dp))
-                        Text(formatDate(user.id), style = MaterialTheme.typography.bodyMedium, color = theme.contentColor)
-                    }
-                }
-
-                // Guild Join Date
-                profile.guild_member?.joined_at?.let { joinedAt ->
-                    Column {
-                        val guild = navigationStore.selectedGuild
-                        Text("${guild?.name?.uppercase() ?: "SERVER"} MEMBER SINCE", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.ExtraBold, color = theme.contentColor.copy(alpha = 0.8f))
-                        Spacer(Modifier.height(4.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            val guildIcon = guild?.let { g ->
-                                if (g.icon != null) "https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png?size=32" else null
-                            }
-                            if (guildIcon != null) {
-                                AsyncImage(model = guildIcon, contentDescription = null, modifier = Modifier.size(16.dp).clip(CircleShape))
-                            } else {
-                                Surface(modifier = Modifier.size(16.dp), color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f), shape = CircleShape) {}
-                            }
-                            Spacer(Modifier.width(8.dp))
-                            Text(formatJoinDate(joinedAt), style = MaterialTheme.typography.bodyMedium, color = theme.contentColor)
-                        }
+                        Text(formatJoinDate(joinedAt), style = MaterialTheme.typography.bodyMedium, color = theme.contentColor)
                     }
                 }
             }
@@ -88,9 +87,11 @@ fun ProfileSections(
             // Roles
             val roles = profile.guild_member?.roles
             if (!roles.isNullOrEmpty()) {
-                val guild = navigationStore.selectedGuild
+                val guilds by guildStore.guilds.collectAsState()
+                val guild = profile.guild_id?.let { gid -> guilds.find { it.id == gid } }
+                
                 if (guild != null) {
-                    Text("ROLES", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.ExtraBold, color = theme.contentColor.copy(alpha = 0.8f))
+                    Text("Roles", style = MaterialTheme.typography.labelSmall, color = theme.contentColor.copy(alpha = 0.8f))
                     Spacer(Modifier.height(8.dp))
                     androidx.compose.foundation.layout.FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -131,17 +132,17 @@ private fun formatDate(userId: String): String {
     val timestamp = (userId.toLong() shr 22) + 1420070400000L
     val instant = Instant.fromEpochMilliseconds(timestamp)
     val date = instant.toLocalDateTime(TimeZone.currentSystemDefault())
-    return "${date.month.name.lowercase().capitalize()} ${date.day}, ${date.year}"
+    val month = date.month.name.lowercase().take(3).replaceFirstChar { it.uppercase() }
+    return "$month ${date.day}, ${date.year}"
 }
 
 private fun formatJoinDate(iso: String): String {
     try {
         val instant = Instant.parse(iso)
         val date = instant.toLocalDateTime(TimeZone.currentSystemDefault())
-        return "${date.month.name.lowercase().capitalize()} ${date.day}, ${date.year}"
+        val month = date.month.name.lowercase().take(3).replaceFirstChar { it.uppercase() }
+        return "$month ${date.day}, ${date.year}"
     } catch (e: Exception) {
         return iso
     }
 }
-
-private fun String.capitalize() = replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }

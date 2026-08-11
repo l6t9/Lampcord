@@ -24,8 +24,6 @@ class MemberListEventHandler(
         try {
             val update = json.decodeFromJsonElement<MemberListUpdate>(data)
             memberListStore.handleMemberListUpdate(update)
-        } catch (e: Exception) {
-            println("Error handling GUILD_MEMBER_LIST_UPDATE: ${e.message}")
-        }
+        } catch (e: Exception) { }
     }
 }

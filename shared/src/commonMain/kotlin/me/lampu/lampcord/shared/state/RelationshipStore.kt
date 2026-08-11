@@ -18,7 +18,6 @@ class RelationshipStore(
     val relationships: StateFlow<List<Relationship>> = _relationships.asStateFlow()
 
     fun handleReady(rels: List<Relationship>) {
-        println("RelationshipStore received ${rels.size} relationships")
         rels.forEach { rel -> rel.user?.let { userStore.handleUserUpdate(it) } }
         _relationships.value = rels.map { hydrate(it) }.distinctBy { it.id ?: it.user?.id ?: it.user_id }
     }

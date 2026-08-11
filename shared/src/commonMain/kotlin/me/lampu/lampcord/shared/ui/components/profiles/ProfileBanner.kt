@@ -21,13 +21,19 @@ fun ProfileBanner(
     val user = profile.user
     val guildMeta = profile.guild_member_profile
     val userMeta = profile.user_profile
-    
+    val guildId = profile.guild_id
+
     Box(modifier = Modifier.fillMaxWidth().height(if (isExpanded) 160.dp else 105.dp)) {
-        val bannerUrl = guildMeta?.banner ?: userMeta?.banner ?: user.banner
+        val bannerUrl = if (guildMeta?.banner != null && guildId != null) {
+            "https://cdn.discordapp.com/guilds/$guildId/users/${user.id}/banners/${guildMeta.banner}.png?size=600"
+        } else (userMeta?.banner ?: user.banner)?.let {
+            "https://cdn.discordapp.com/banners/${user.id}/$it.png?size=600"
+        }
+
         if (bannerUrl != null) {
             AsyncImage(
-                model = "https://cdn.discordapp.com/banners/${user.id}/$bannerUrl.png?size=600",
-                contentDescription = null,
+                model = bannerUrl,
+                contentDescription = "Profile Banner",
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
                 filterQuality = FilterQuality.Medium

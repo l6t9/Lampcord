@@ -23,7 +23,7 @@ class ProfileStore(
         profilePosition = position
         isProfileLoading = true
         scope.launch {
-            selectedProfile = discordClient.getUserProfile(userId, guildId)
+            selectedProfile = discordClient.getUserProfile(userId, guildId)?.copy(guild_id = guildId)
             isProfileLoading = false
         }
     }

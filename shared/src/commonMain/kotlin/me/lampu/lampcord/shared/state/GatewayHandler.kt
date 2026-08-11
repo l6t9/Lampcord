@@ -97,13 +97,12 @@ class GatewayHandler(
                 
                 navigationStore.isConnected = true
                 navigationStore.isConnecting = false
-                
+
                 // Auto-select last channel/DM on startup
                 if (navigationStore.selectedGuild == null && navigationStore.selectedChannel == null && !navigationStore.isFriendsSelected) {
                     navigationStore.selectHome()
                 }
-            } catch (e: Exception) {
-            }
+            } catch (e: Exception) { }
         }
     }
 }

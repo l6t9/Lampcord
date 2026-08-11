@@ -78,7 +78,6 @@ class GatewayManager(
                     "Mozilla/5.0 ($browserOsName) AppleWebKit/537.36 (KHTML, like Gecko) discord/0.0.398 Chrome/138.0.7204.251 Electron/37.6.0 Safari/537.36"
                 }
 
-                // Hello Timeout (20 seconds like 126.21)
                 startHelloTimeout(token)
 
                 client.webSocket(
@@ -91,8 +90,7 @@ class GatewayManager(
                     }
                 ) {
                     session = this
-                    println("WebSocket connected to $url")
-                    reconnectAttempt = 0 // Reset backoff on successful connection
+                    reconnectAttempt = 0
                     
                     while (isActive) {
                         val frame = incoming.receive()
@@ -106,18 +104,15 @@ class GatewayManager(
                     }
                 }
             } catch (e: Exception) {
-                println("Gateway Error: ${e.message}")
             } finally {
                 session = null
                 stopHeartbeat()
                 stopTimeSpentUpdates()
                 stopHelloTimeout()
                 
-                // Exponential Backoff Reconnect (Stability Parity with 126.21)
                 if (isActive) {
                     reconnectAttempt++
                     val delay = (1000 * (1 shl (reconnectAttempt - 1))).milliseconds.coerceAtMost(maxReconnectDelay)
-                    println("Reconnecting in $delay...")
                     delay(delay)
                     connect(token)
                 }
@@ -189,7 +184,6 @@ class GatewayManager(
             while (isActive) {
                 delay(interval.milliseconds)
                 if (!heartbeatAckReceived) {
-                    // Gateway didn't ACK last heartbeat, might be a ghost connection
                     session?.close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "Heartbeat ACK timeout"))
                     return@launch
                 }
@@ -208,7 +202,6 @@ class GatewayManager(
         helloTimeoutJob?.cancel()
         helloTimeoutJob = scope.launch {
             delay(20.seconds)
-            println("HELLO timeout reached, reconnecting...")
             disconnect()
             connect(token)
         }
@@ -301,7 +294,7 @@ class GatewayManager(
         val identify = Identify(
             token = token,
             properties = properties,
-            capabilities = 351, // Legacy 126.21 handshake protocol used by Aliucord
+            capabilities = 351, 
             large_threshold = 100,
             compress = false, 
             client_state = IdentifyClientState(
@@ -362,7 +355,6 @@ class GatewayManager(
     fun sendLazyRequest(guildId: String, channelId: String, ranges: List<List<Int>>) {
         val state = guildSubscriptions.getOrPut(guildId) { GuildSubscriptionState() }
         
-        // 126.21 Parity: The key in the channels map is the CHANNEL ID, not the member list hash.
         state.channels.clear() 
         state.channels[channelId] = ranges
 

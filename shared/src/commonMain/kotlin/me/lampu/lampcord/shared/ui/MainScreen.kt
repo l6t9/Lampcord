@@ -23,17 +23,17 @@ fun MainScreen(
     errorStore: AppErrorStore = koinInject(),
     profileStore: ProfileStore = koinInject()
 ) {
-    val isMobile = getPlatformName() == "android" || getPlatformName() == "ios"
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val isMobile = getPlatformName() == "android" || getPlatformName() == "ios" || maxWidth < 600.dp
 
-    val loadingMessage = remember(navigationStore.isConnecting, messageStore.loadingMessages.size) {
-        if (navigationStore.isConnecting) {
-            if (messageStore.loadingMessages.isNotEmpty()) {
-                messageStore.loadingMessages.random()
-            } else "Connecting to Discord..."
-        } else ""
-    }
+        val loadingMessage = remember(navigationStore.isConnecting, messageStore.loadingMessages.size) {
+            if (navigationStore.isConnecting) {
+                if (messageStore.loadingMessages.isNotEmpty()) {
+                    messageStore.loadingMessages.random()
+                } else "Connecting to Discord..."
+            } else ""
+        }
 
-    Box(modifier = Modifier.fillMaxSize()) {
         AnimatedContent(
             targetState = navigationStore.isConnected to navigationStore.isConnecting,
             transitionSpec = {
@@ -82,10 +82,6 @@ fun MainScreen(
         }
 
         // Global Overlays
-        navigationStore.selectedThread?.let {
-            // Placeholder for thread overlay if needed on mobile
-        }
-
         val errors = errorStore.errors
         if (errors.isNotEmpty()) {
             Box(

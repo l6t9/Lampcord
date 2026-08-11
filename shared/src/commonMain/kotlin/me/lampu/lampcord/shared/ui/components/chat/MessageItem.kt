@@ -2,13 +2,10 @@
 
 package me.lampu.lampcord.shared.ui.components.chat
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -51,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
@@ -174,8 +172,7 @@ fun MessageItem(
         derivedStateOf { if (message.isPending) false else messageStore.isMessageMentioningMe(message, currentUser, currentMember) }
     }
     
-    val compactMode = me.lampu.lampcord.shared.settings.Settings.shared.compactMode
-    val alpha by animateFloatAsState(if (message.isPending) 0.5f else 1f)
+    val messageAlpha by animateFloatAsState(if (message.isPending) 0.5f else 1f)
 
     val isInline = priorMessage != null
     val isHighlighted = messageStore.highlightedMessageId == message.id
@@ -239,7 +236,10 @@ fun MessageItem(
                     }
                 }
             }
+            .graphicsLayer(clip = false) // Allow actions to draw outside if parent row allows
     ) {
+        val guildId = message.guild_id ?: navigationStore.selectedGuild?.id
+
         // Background and Content Layer
         Box(
             modifier = Modifier
@@ -254,8 +254,9 @@ fun MessageItem(
                         else -> Color.Transparent
                     }
                 )
-                .alpha(alpha)
+                .alpha(messageAlpha)
                 .animateContentSize()
+                .graphicsLayer(clip = false)
         ) {
             if (isMentioned || message.isDeleted) {
                 val barColor = if (message.isDeleted) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
@@ -275,7 +276,7 @@ fun MessageItem(
                 items = contextMenuItems,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = if (compactMode) 0.5.dp else if (isInline) 1.5.dp else 8.dp)
+                    .padding(horizontal = 8.dp, vertical = if (isInline) 1.5.dp else 8.dp)
             ) {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     if (message.referenced_message != null) {
@@ -287,7 +288,7 @@ fun MessageItem(
                     }
 
                     Row(modifier = Modifier.fillMaxWidth()) {
-                        if (!isInline && message.author != null && !compactMode) {
+                        if (!isInline && message.author != null) {
                             var avatarPosition by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
 
                             Box(
@@ -298,11 +299,11 @@ fun MessageItem(
                                 UserAvatar(
                                     user = message.author,
                                     size = 40.dp,
-                                    modifier = Modifier.clickable { profileStore.showProfile(message.author.id, navigationStore.selectedGuild?.id, avatarPosition) }
+                                    modifier = Modifier.clickable { profileStore.showProfile(message.author.id, guildId, avatarPosition) }
                                 )
                             }
-                        } else if (!compactMode || isInline) {
-                            Spacer(modifier = Modifier.width(if (compactMode) 8.dp else 40.dp))
+                        } else {
+                            Spacer(modifier = Modifier.width(40.dp))
                         }
                         
                         val roleColor by remember(message, navigationStore.selectedGuild) {
@@ -335,7 +336,7 @@ fun MessageItem(
                                         color = if (isDm) Color.White else displayColor,
                                         modifier = Modifier
                                             .onGloballyPositioned { namePosition = it.positionInRoot() }
-                                            .clickable { profileStore.showProfile(message.author.id, navigationStore.selectedGuild?.id, namePosition) },
+                                            .clickable { profileStore.showProfile(message.author.id, guildId, namePosition) },
                                         ignoreEffects = !isHovered,
                                         ignoreColors = if (isDm) !isHovered else true
                                     )
@@ -363,22 +364,30 @@ fun MessageItem(
                                 }
                             }
                             
-                            Box(modifier = Modifier.fillMaxWidth()) {
-                                Column {
-                                    if (message.oldContent != null) {
-                                        Text(
-                                            text = message.oldContent,
+                            val hasSnapshots = !message.message_snapshots.isNullOrEmpty()
+                            val snapshotContent = message.message_snapshots?.firstOrNull()?.message?.content
+                            // Logic: If forwarded, ONLY show outer content if it's not a duplicate of original message content
+                            val isDuplicateForward = hasSnapshots && message.content.trim() == snapshotContent?.trim()
+                            val shouldShowContent = !hasSnapshots || (message.content.isNotEmpty() && !isDuplicateForward)
+
+                            if (shouldShowContent) {
+                                Box(modifier = Modifier.fillMaxWidth()) {
+                                    Column {
+                                        if (message.oldContent != null) {
+                                            Text(
+                                                text = message.oldContent,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                                modifier = Modifier.padding(bottom = 2.dp),
+                                                textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
+                                            )
+                                        }
+                                        DiscordMarkdownText(
+                                            content = message.content,
                                             style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                            modifier = Modifier.padding(bottom = 2.dp),
-                                            textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
+                                            color = if (message.isDeleted) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
                                         )
                                     }
-                                    DiscordMarkdownText(
-                                        content = message.content,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = if (message.isDeleted) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
-                                    )
                                 }
                             }
 
@@ -445,55 +454,72 @@ fun MessageItem(
             list
         }
 
-        AnimatedVisibility(
-            visible = isHovered || showReactionPicker,
-            enter = fadeIn() + scaleIn(initialScale = 0.9f),
-            exit = fadeOut() + scaleOut(targetScale = 0.9f),
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(end = 16.dp)
-                .zIndex(1f)
-                .layout { measurable, constraints ->
-                    val placeable = measurable.measure(constraints)
-                    layout(placeable.width, 0) {
-                        placeable.placeRelative(0, 0)
-                    }
-                }
-        ) {
-            ButtonGroup(
+        val showActions = isHovered || showReactionPicker
+        val actionAlpha by animateFloatAsState(
+            targetValue = if (showActions) 1f else 0f,
+            animationSpec = tween(durationMillis = 150),
+            label = "actionAlpha"
+        )
+        val actionScale by animateFloatAsState(
+            targetValue = if (showActions) 1f else 0.92f,
+            animationSpec = spring(dampingRatio = 0.7f, stiffness = 400f),
+            label = "actionScale"
+        )
+
+        if (actionAlpha > 0f) {
+            Box(
                 modifier = Modifier
-                    .offset(y = (-12).dp)
-                    .height(32.dp),
-                overflowIndicator = { menuState -> ButtonGroupDefaults.OverflowIndicator(menuState) },
-                horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
-            ) {
-                actions.forEachIndexed { index, (icon, label, onClick) ->
-                    customItem(
-                        buttonGroupContent = {
-                            val shapes = when (index) {
-                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                actions.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                            }
-                            ToggleButton(
-                                checked = false,
-                                onCheckedChange = { onClick() },
-                                shapes = shapes,
-                                colors = ToggleButtonDefaults.tonalToggleButtonColors(),
-                                contentPadding = PaddingValues(0.dp),
-                                modifier = Modifier.fillMaxSize()
-                            ) {
-                                Icon(icon, label, modifier = Modifier.size(18.dp))
-                            }
-                        },
-                        menuContent = {
-                            DropdownMenuItem(
-                                text = { Text(label) },
-                                onClick = { onClick() },
-                                leadingIcon = { Icon(icon, null) }
-                            )
+                    .align(Alignment.TopEnd)
+                    .padding(end = 16.dp)
+                    .zIndex(2f)
+                    .graphicsLayer {
+                        alpha = actionAlpha
+                        scaleX = actionScale
+                        scaleY = actionScale
+                        clip = false
+                        translationY = -16.dp.toPx() // Explicitly move up in graphics layer
+                    }
+                    .layout { measurable, constraints ->
+                        val placeable = measurable.measure(constraints)
+                        // Occupy 0 height in layout pass so it doesn't affect message spacing
+                        layout(placeable.width, 0) {
+                            placeable.placeRelative(0, 0)
                         }
-                    )
+                    }
+            ) {
+                ButtonGroup(
+                    modifier = Modifier.height(32.dp),
+                    overflowIndicator = { menuState -> ButtonGroupDefaults.OverflowIndicator(menuState) },
+                    horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
+                ) {
+                    actions.forEachIndexed { index, (icon, label, onClick) ->
+                        customItem(
+                            buttonGroupContent = {
+                                val shapes = when (index) {
+                                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                    actions.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                                }
+                                ToggleButton(
+                                    checked = false,
+                                    onCheckedChange = { onClick() },
+                                    shapes = shapes,
+                                    colors = ToggleButtonDefaults.tonalToggleButtonColors(),
+                                    contentPadding = PaddingValues(0.dp),
+                                    modifier = Modifier.fillMaxSize()
+                                ) {
+                                    Icon(icon, label, modifier = Modifier.size(18.dp))
+                                }
+                            },
+                            menuContent = {
+                                DropdownMenuItem(
+                                    text = { Text(label) },
+                                    onClick = { onClick() },
+                                    leadingIcon = { Icon(icon, null) }
+                                )
+                            }
+                        )
+                    }
                 }
             }
         }
