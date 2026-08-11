@@ -23,19 +23,8 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun ServerRoles(guild: Guild, chatState: ChatState, onRoleClick: (DiscordRole) -> Unit) {
-    val isMobile = me.lampu.lampcord.shared.utils.getPlatformName().let { it == "android" || it == "ios" }
-
-    if (!isMobile) {
-        DesktopServerRoles(guild, chatState, onRoleClick)
-    } else {
-        MobileServerRoles(guild, chatState, onRoleClick)
-    }
-}
-
-@Composable
-private fun DesktopServerRoles(guild: Guild, chatState: ChatState, onRoleClick: (DiscordRole) -> Unit) {
-    DesktopSettingsLayout {
-        DesktopSettingsSection(
+    SettingsLayout {
+        SettingsSection(
             title = "Roles",
             icon = Icons.Filled.Flag
         ) {
@@ -44,11 +33,11 @@ private fun DesktopServerRoles(guild: Guild, chatState: ChatState, onRoleClick: 
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(48.dp)
+                            .heightIn(min = 48.dp)
                             .clip(RoundedCornerShape(12.dp))
                             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f))
                             .clickable { onRoleClick(role) }
-                            .padding(horizontal = 16.dp),
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
@@ -74,38 +63,6 @@ private fun DesktopServerRoles(guild: Guild, chatState: ChatState, onRoleClick: 
             }
         }
     }
-}
-
-@Composable
-private fun MobileServerRoles(guild: Guild, chatState: ChatState, onRoleClick: (DiscordRole) -> Unit) {
-    Material3SettingsGroup(
-        items = guild.roles.sortedByDescending { it.position }.map { role ->
-            Material3SettingsItem(
-                leadingContent = {
-                    Box(
-                        modifier = Modifier
-                            .size(12.dp)
-                            .background(
-                                if (role.color != 0) Color(role.color.toLong() or 0xFF000000L) else MaterialTheme.colorScheme.onSurfaceVariant,
-                                CircleShape
-                            )
-                    )
-                },
-                title = { Text(role.name) },
-                trailingContent = {
-                    if (role.managed) {
-                        Icon(
-                            Icons.Filled.Security,
-                            null,
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
-                onClick = { onRoleClick(role) }
-            )
-        }
-    )
 }
 
 @Composable
@@ -135,7 +92,7 @@ fun RoleEditor(role: DiscordRole, guild: Guild, chatState: ChatState) {
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
-        DesktopSettingsSection(title = "Display", icon = Icons.Filled.Info) {
+        SettingsSection(title = "Display", icon = Icons.Filled.Info) {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Role Name", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
@@ -175,7 +132,7 @@ fun RoleEditor(role: DiscordRole, guild: Guild, chatState: ChatState) {
             }
         }
 
-        DesktopSettingsSection(title = "Permissions", icon = Icons.Filled.Security) {
+        SettingsSection(title = "Permissions", icon = Icons.Filled.Security) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 me.lampu.lampcord.shared.utils.Permission.entries.forEach { permission ->
                     val permissionsLong = draftPermissions.toULongOrNull()?.toLong() ?: 0L

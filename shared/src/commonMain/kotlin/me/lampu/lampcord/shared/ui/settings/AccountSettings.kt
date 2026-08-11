@@ -16,19 +16,9 @@ import me.lampu.lampcord.shared.ui.components.settings.*
 @Composable
 fun AccountSettings(chatState: ChatState) {
     val user = chatState.currentUser ?: return
-    val isMobile = me.lampu.lampcord.shared.utils.getPlatformName().let { it == "android" || it == "ios" }
 
-    if (!isMobile) {
-        DesktopAccountSettings(chatState, user)
-    } else {
-        MobileAccountSettings(chatState, user)
-    }
-}
-
-@Composable
-private fun DesktopAccountSettings(chatState: ChatState, user: me.lampu.lampcord.shared.model.User) {
-    DesktopSettingsLayout {
-        DesktopSettingsSection(
+    SettingsLayout {
+        SettingsSection(
             title = "Profile",
             icon = Icons.Filled.AccountCircle
         ) {
@@ -63,7 +53,7 @@ private fun DesktopAccountSettings(chatState: ChatState, user: me.lampu.lampcord
             }
         }
 
-        DesktopSettingsSection(
+        SettingsSection(
             title = "Account Information",
             icon = Icons.Filled.Info
         ) {
@@ -74,7 +64,7 @@ private fun DesktopAccountSettings(chatState: ChatState, user: me.lampu.lampcord
             }
         }
 
-        DesktopSettingsSection(
+        SettingsSection(
             title = "Password and Authentication",
             icon = Icons.Filled.Security
         ) {
@@ -107,77 +97,3 @@ private fun AccountInfoItem(label: String, value: String) {
     }
 }
 
-@Composable
-private fun MobileAccountSettings(chatState: ChatState, user: me.lampu.lampcord.shared.model.User) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Material3SettingsGroup(title = "Profile") {
-            Material3SettingsGroup(
-                items = listOf(
-                    Material3SettingsItem(
-                        leadingContent = {
-                            val avatarUrl = user.avatar?.let { "https://cdn.discordapp.com/avatars/${user.id}/$it.png?size=128" }
-                            Surface(
-                                modifier = Modifier.size(48.dp),
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.primaryContainer
-                            ) {
-                                if (avatarUrl != null) {
-                                    AsyncImage(model = avatarUrl, contentDescription = null, modifier = Modifier.fillMaxSize())
-                                } else {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Text(user.username?.take(1)?.uppercase() ?: "?")
-                                    }
-                                }
-                            }
-                        },
-                        title = { Text(user.global_name ?: user.username ?: "Unknown User") },
-                        description = { Text(user.username ?: "") },
-                        trailingContent = {
-                            FilledTonalButton(onClick = { /* TODO */ }, modifier = Modifier.height(32.dp)) {
-                                Text("Edit")
-                            }
-                        }
-                    )
-                )
-            )
-        }
-
-        Material3SettingsGroup(title = "Account Information") {
-            Material3SettingsGroup(
-                items = listOf(
-                    Material3SettingsItem(
-                        title = { Text("Username") },
-                        description = { Text(user.username ?: "") },
-                        onClick = { /* TODO */ }
-                    ),
-                    Material3SettingsItem(
-                        title = { Text("Email") },
-                        description = { Text(user.email ?: "Not set") },
-                        onClick = { /* TODO */ }
-                    ),
-                    Material3SettingsItem(
-                        title = { Text("Phone Number") },
-                        description = { Text("********1234") }, // Discord doesn't return full phone usually
-                        onClick = { /* TODO */ }
-                    )
-                )
-            )
-        }
-
-        Material3SettingsGroup(title = "Password and Authentication") {
-            Material3SettingsGroup(
-                items = listOf(
-                    navigationSettingsItem(
-                        title = "Change Password",
-                        onClick = { /* TODO */ }
-                    ),
-                    navigationSettingsItem(
-                        title = "Two-Factor Authentication",
-                        description = if (user.mfa_enabled == true) "Enabled" else "Protect your account with an extra layer of security",
-                        onClick = { /* TODO */ }
-                    )
-                )
-            )
-        }
-    }
-}

@@ -25,8 +25,8 @@ fun NotificationsSettings(chatState: ChatState) {
 
 @Composable
 private fun DesktopNotificationsSettings(chatState: ChatState) {
-    DesktopSettingsLayout {
-        DesktopSettingsSection(
+    SettingsLayout {
+        SettingsSection(
             title = "Push Notifications",
             icon = Icons.Filled.Notifications
         ) {
@@ -43,7 +43,7 @@ private fun DesktopNotificationsSettings(chatState: ChatState) {
             }
         }
 
-        DesktopSettingsSection(
+        SettingsSection(
             title = "Sounds",
             icon = Icons.Filled.VolumeUp
         ) {

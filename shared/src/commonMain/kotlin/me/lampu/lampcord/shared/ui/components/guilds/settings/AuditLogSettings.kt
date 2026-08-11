@@ -22,7 +22,6 @@ import me.lampu.lampcord.shared.ui.icons.Icons
 
 @Composable
 fun ServerAuditLog(guild: Guild, chatState: ChatState) {
-    val isMobile = me.lampu.lampcord.shared.utils.getPlatformName().let { it == "android" || it == "ios" }
     var auditLog by remember { mutableStateOf<AuditLog?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     
@@ -32,67 +31,35 @@ fun ServerAuditLog(guild: Guild, chatState: ChatState) {
         isLoading = false
     }
 
-    if (isMobile) {
-        if (isLoading) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                ContainedLoadingIndicator()
-            }
-        } else if (auditLog == null || auditLog!!.audit_log_entries.isEmpty()) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+    SettingsLayout {
+        SettingsSection(title = "Audit Log", icon = Icons.Filled.Article) {
+            if (isLoading) {
+                ContainedLoadingIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+            } else if (auditLog == null || auditLog!!.audit_log_entries.isEmpty()) {
                 Text("No audit log entries", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        } else {
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
-                items(auditLog!!.audit_log_entries) { entry ->
-                    val user = auditLog!!.users.find { it.id == entry.user_id }
-                    Material3SettingsItem(
-                        leadingContent = {
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    auditLog!!.audit_log_entries.forEach { entry ->
+                        val user = auditLog!!.users.find { it.id == entry.user_id }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 56.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f))
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
                             val avatarUrl = user?.avatar?.let { "https://cdn.discordapp.com/avatars/${user.id}/$it.png?size=64" }
                             AsyncImage(
                                 model = avatarUrl,
                                 contentDescription = null,
                                 modifier = Modifier.size(32.dp).clip(CircleShape)
                             )
-                        },
-                        title = { Text(user?.global_name ?: user?.username ?: "Unknown User") },
-                        description = { 
-                            Text(formatAuditLogAction(entry))
-                        }
-                    )
-                }
-            }
-        }
-    } else {
-        DesktopSettingsLayout {
-            DesktopSettingsSection(title = "Audit Log", icon = Icons.Filled.Article) {
-                if (isLoading) {
-                    ContainedLoadingIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
-                } else if (auditLog == null || auditLog!!.audit_log_entries.isEmpty()) {
-                    Text("No audit log entries", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                } else {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        auditLog!!.audit_log_entries.forEach { entry ->
-                            val user = auditLog!!.users.find { it.id == entry.user_id }
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(56.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f))
-                                    .padding(horizontal = 16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                val avatarUrl = user?.avatar?.let { "https://cdn.discordapp.com/avatars/${user.id}/$it.png?size=64" }
-                                AsyncImage(
-                                    model = avatarUrl,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(32.dp).clip(CircleShape)
-                                )
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(user?.global_name ?: user?.username ?: "Unknown User", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
-                                    Text(formatAuditLogAction(entry), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(user?.global_name ?: user?.username ?: "Unknown User", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                                Text(formatAuditLogAction(entry), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }

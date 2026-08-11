@@ -28,8 +28,8 @@ fun AccessibilitySettings(chatState: ChatState) {
 
 @Composable
 private fun DesktopAccessibilitySettings(chatState: ChatState, userSettings: UserSettings?) {
-    DesktopSettingsLayout {
-        DesktopSettingsSection(
+    SettingsLayout {
+        SettingsSection(
             title = "Visual",
             icon = Icons.Filled.Visibility
         ) {
@@ -45,7 +45,7 @@ private fun DesktopAccessibilitySettings(chatState: ChatState, userSettings: Use
             }
         }
 
-        DesktopSettingsSection(
+        SettingsSection(
             title = "Motion & Contrast",
             icon = Icons.Filled.Speed
         ) {
@@ -62,7 +62,7 @@ private fun DesktopAccessibilitySettings(chatState: ChatState, userSettings: Use
             }
         }
 
-        DesktopSettingsSection(
+        SettingsSection(
             title = "Detection",
             icon = Icons.Filled.Accessibility
         ) {

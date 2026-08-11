@@ -16,17 +16,16 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun ServerOverview(guild: Guild, chatState: ChatState) {
-    val isMobile = me.lampu.lampcord.shared.utils.getPlatformName().let { it == "android" || it == "ios" }
     val scope = rememberCoroutineScope()
     
     // Draft state for unsaved changes
-    var draftName by remember(guild.name) { mutableStateOf(guild.name ?: "") }
-    var draftAfkChannelId by remember(guild.afk_channel_id) { mutableStateOf(guild.afk_channel_id) }
-    var draftAfkTimeout by remember(guild.afk_timeout) { mutableStateOf(guild.afk_timeout ?: 300) }
-    var draftSystemChannelId by remember(guild.system_channel_id) { mutableStateOf(guild.system_channel_id) }
-    var draftDefaultNotifications by remember(guild.default_message_notifications) { mutableStateOf(guild.default_message_notifications ?: 0) }
-    var draftVerificationLevel by remember(guild.verification_level) { mutableStateOf(guild.verification_level ?: 0) }
-    var draftExplicitContentFilter by remember(guild.explicit_content_filter) { mutableStateOf(guild.explicit_content_filter ?: 0) }
+    var draftName by remember(guild.id, guild.name) { mutableStateOf(guild.name ?: "") }
+    var draftAfkChannelId by remember(guild.id, guild.afk_channel_id) { mutableStateOf(guild.afk_channel_id) }
+    var draftAfkTimeout by remember(guild.id, guild.afk_timeout) { mutableStateOf(guild.afk_timeout ?: 300) }
+    var draftSystemChannelId by remember(guild.id, guild.system_channel_id) { mutableStateOf(guild.system_channel_id) }
+    var draftDefaultNotifications by remember(guild.id, guild.default_message_notifications) { mutableStateOf(guild.default_message_notifications ?: 0) }
+    var draftVerificationLevel by remember(guild.id, guild.verification_level) { mutableStateOf(guild.verification_level ?: 0) }
+    var draftExplicitContentFilter by remember(guild.id, guild.explicit_content_filter) { mutableStateOf(guild.explicit_content_filter ?: 0) }
     
     val hasChanges = draftName != (guild.name ?: "") || 
                      draftAfkChannelId != guild.afk_channel_id || 
@@ -36,72 +35,51 @@ fun ServerOverview(guild: Guild, chatState: ChatState) {
                      draftVerificationLevel != (guild.verification_level ?: 0) ||
                      draftExplicitContentFilter != (guild.explicit_content_filter ?: 0)
 
-    if (!isMobile) {
-        DesktopServerOverview(
-            guild = guild,
-            chatState = chatState,
-            draftName = draftName,
-            onNameChange = { draftName = it },
-            draftAfkChannelId = draftAfkChannelId,
-            onAfkChannelChange = { draftAfkChannelId = it },
-            draftAfkTimeout = draftAfkTimeout,
-            onAfkTimeoutChange = { draftAfkTimeout = it },
-            draftSystemChannelId = draftSystemChannelId,
-            onSystemChannelChange = { draftSystemChannelId = it },
-            draftDefaultNotifications = draftDefaultNotifications,
-            onDefaultNotificationsChange = { draftDefaultNotifications = it },
-            draftVerificationLevel = draftVerificationLevel,
-            onVerificationLevelChange = { draftVerificationLevel = it },
-            draftExplicitContentFilter = draftExplicitContentFilter,
-            onExplicitContentFilterChange = { draftExplicitContentFilter = it },
-            hasChanges = hasChanges,
-            onSave = {
-                scope.launch {
-                    chatState.updateGuild(guild.id, Guild.Partial(
-                        name = draftName,
-                        afk_channel_id = draftAfkChannelId,
-                        afk_timeout = draftAfkTimeout,
-                        system_channel_id = draftSystemChannelId,
-                        default_message_notifications = draftDefaultNotifications,
-                        verification_level = draftVerificationLevel,
-                        explicit_content_filter = draftExplicitContentFilter
-                    ))
-                }
-            },
-            onReset = {
-                draftName = guild.name ?: ""
-                draftAfkChannelId = guild.afk_channel_id
-                draftAfkTimeout = guild.afk_timeout ?: 300
-                draftSystemChannelId = guild.system_channel_id
-                draftDefaultNotifications = guild.default_message_notifications ?: 0
-                draftVerificationLevel = guild.verification_level ?: 0
-                draftExplicitContentFilter = guild.explicit_content_filter ?: 0
+    ServerOverviewContent(
+        guild = guild,
+        chatState = chatState,
+        draftName = draftName,
+        onNameChange = { draftName = it },
+        draftAfkChannelId = draftAfkChannelId,
+        onAfkChannelChange = { draftAfkChannelId = it },
+        draftAfkTimeout = draftAfkTimeout,
+        onAfkTimeoutChange = { draftAfkTimeout = it },
+        draftSystemChannelId = draftSystemChannelId,
+        onSystemChannelChange = { draftSystemChannelId = it },
+        draftDefaultNotifications = draftDefaultNotifications,
+        onDefaultNotificationsChange = { draftDefaultNotifications = it },
+        draftVerificationLevel = draftVerificationLevel,
+        onVerificationLevelChange = { draftVerificationLevel = it },
+        draftExplicitContentFilter = draftExplicitContentFilter,
+        onExplicitContentFilterChange = { draftExplicitContentFilter = it },
+        hasChanges = hasChanges,
+        onSave = {
+            scope.launch {
+                chatState.updateGuild(guild.id, Guild.Partial(
+                    name = draftName,
+                    afk_channel_id = draftAfkChannelId,
+                    afk_timeout = draftAfkTimeout,
+                    system_channel_id = draftSystemChannelId,
+                    default_message_notifications = draftDefaultNotifications,
+                    verification_level = draftVerificationLevel,
+                    explicit_content_filter = draftExplicitContentFilter
+                ))
             }
-        )
-    } else {
-        MobileServerOverview(
-            guild = guild,
-            chatState = chatState,
-            draftName = draftName,
-            onNameChange = { draftName = it },
-            draftAfkChannelId = draftAfkChannelId,
-            onAfkChannelChange = { draftAfkChannelId = it },
-            draftAfkTimeout = draftAfkTimeout,
-            onAfkTimeoutChange = { draftAfkTimeout = it },
-            draftSystemChannelId = draftSystemChannelId,
-            onSystemChannelChange = { draftSystemChannelId = it },
-            draftDefaultNotifications = draftDefaultNotifications,
-            onDefaultNotificationsChange = { draftDefaultNotifications = it },
-            draftVerificationLevel = draftVerificationLevel,
-            onVerificationLevelChange = { draftVerificationLevel = it },
-            draftExplicitContentFilter = draftExplicitContentFilter,
-            onExplicitContentFilterChange = { draftExplicitContentFilter = it }
-        )
-    }
+        },
+        onReset = {
+            draftName = guild.name ?: ""
+            draftAfkChannelId = guild.afk_channel_id
+            draftAfkTimeout = guild.afk_timeout ?: 300
+            draftSystemChannelId = guild.system_channel_id
+            draftDefaultNotifications = guild.default_message_notifications ?: 0
+            draftVerificationLevel = guild.verification_level ?: 0
+            draftExplicitContentFilter = guild.explicit_content_filter ?: 0
+        }
+    )
 }
 
 @Composable
-private fun DesktopServerOverview(
+private fun ServerOverviewContent(
     guild: Guild,
     chatState: ChatState,
     draftName: String,
@@ -122,8 +100,8 @@ private fun DesktopServerOverview(
     onSave: () -> Unit,
     onReset: () -> Unit
 ) {
-    DesktopSettingsLayout {
-        DesktopSettingsSection(
+    SettingsLayout {
+        SettingsSection(
             title = "Server Details",
             icon = Icons.Filled.Info
         ) {
@@ -145,7 +123,7 @@ private fun DesktopServerOverview(
             }
         }
 
-        DesktopSettingsSection(
+        SettingsSection(
             title = "Channels",
             icon = Icons.Filled.Tag
         ) {
@@ -153,7 +131,7 @@ private fun DesktopServerOverview(
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("AFK Channel", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
                     val voiceChannels = chatState.channels.filter { it.guild_id == guild.id && it.type == 2 }
-                    DesktopButtonGroupSelection(
+                    SettingsButtonGroup(
                         options = listOf(null) + voiceChannels.map { it.id },
                         selectedOption = draftAfkChannelId,
                         onOptionSelected = onAfkChannelChange,
@@ -164,7 +142,7 @@ private fun DesktopServerOverview(
                 if (draftAfkChannelId != null) {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Text("AFK Timeout", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
-                        DesktopButtonGroupSelection(
+                        SettingsButtonGroup(
                             options = listOf(60, 300, 900, 1800, 3600),
                             selectedOption = draftAfkTimeout,
                             onOptionSelected = onAfkTimeoutChange,
@@ -184,7 +162,7 @@ private fun DesktopServerOverview(
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("System Messages Channel", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
                     val textChannels = chatState.channels.filter { it.guild_id == guild.id && it.type == 0 }
-                    DesktopButtonGroupSelection(
+                    SettingsButtonGroup(
                         options = listOf(null) + textChannels.map { it.id },
                         selectedOption = draftSystemChannelId,
                         onOptionSelected = onSystemChannelChange,
@@ -194,11 +172,11 @@ private fun DesktopServerOverview(
             }
         }
 
-        DesktopSettingsSection(
+        SettingsSection(
             title = "Default Notifications",
             icon = Icons.Filled.Notifications
         ) {
-            DesktopButtonGroupSelection(
+            SettingsButtonGroup(
                 options = listOf(0, 1),
                 selectedOption = draftDefaultNotifications,
                 onOptionSelected = onDefaultNotificationsChange,
@@ -206,14 +184,14 @@ private fun DesktopServerOverview(
             )
         }
 
-        DesktopSettingsSection(
+        SettingsSection(
             title = "Safety Setup",
             icon = Icons.Filled.Security
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Verification Level", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    DesktopButtonGroupSelection(
+                    SettingsButtonGroup(
                         options = listOf(0, 1, 2, 3, 4),
                         selectedOption = draftVerificationLevel,
                         onOptionSelected = onVerificationLevelChange,
@@ -239,7 +217,7 @@ private fun DesktopServerOverview(
 
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Explicit Content Filter", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    DesktopButtonGroupSelection(
+                    SettingsButtonGroup(
                         options = listOf(0, 1, 2),
                         selectedOption = draftExplicitContentFilter,
                         onOptionSelected = onExplicitContentFilterChange,
@@ -278,114 +256,3 @@ private fun DesktopServerOverview(
     }
 }
 
-@Composable
-private fun MobileServerOverview(
-    guild: Guild,
-    chatState: ChatState,
-    draftName: String,
-    onNameChange: (String) -> Unit,
-    draftAfkChannelId: String?,
-    onAfkChannelChange: (String?) -> Unit,
-    draftAfkTimeout: Int,
-    onAfkTimeoutChange: (Int) -> Unit,
-    draftSystemChannelId: String?,
-    onSystemChannelChange: (String?) -> Unit,
-    draftDefaultNotifications: Int,
-    onDefaultNotificationsChange: (Int) -> Unit,
-    draftVerificationLevel: Int,
-    onVerificationLevelChange: (Int) -> Unit,
-    draftExplicitContentFilter: Int,
-    onExplicitContentFilterChange: (Int) -> Unit
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Material3SettingsGroup(
-            title = "Server Details",
-            items = listOf(
-                Material3SettingsItem(
-                    title = { Text("Server Name") },
-                    description = { Text(draftName) },
-                    onClick = { /* TODO: edit name dialog/screen */ }
-                ),
-                Material3SettingsItem(
-                    title = { Text("Server ID") },
-                    description = { Text(guild.id) },
-                    onClick = { /* TODO: copy ID */ }
-                )
-            )
-        )
-
-        Material3SettingsGroup(
-            title = "Channels",
-            items = listOf(
-                Material3SettingsItem(
-                    title = { Text("AFK Channel") },
-                    description = { 
-                        Text(chatState.channels.find { it.id == draftAfkChannelId }?.name ?: "No AFK Channel") 
-                    },
-                    onClick = { /* TODO: selector */ }
-                ),
-                Material3SettingsItem(
-                    title = { Text("System Messages Channel") },
-                    description = {
-                        Text(chatState.channels.find { it.id == draftSystemChannelId }?.name ?: "No System Channel")
-                    },
-                    onClick = { /* TODO: selector */ }
-                )
-            )
-        )
-
-        Material3SettingsGroup(
-            title = "Security",
-            items = listOf(
-                Material3SettingsItem(
-                    title = { Text("Verification Level") },
-                    description = {
-                        Text(
-                            when (draftVerificationLevel) {
-                                0 -> "None"
-                                1 -> "Low"
-                                2 -> "Medium"
-                                3 -> "High"
-                                4 -> "Highest"
-                                else -> "None"
-                            }
-                        )
-                    },
-                    onClick = { 
-                        // Cycle for mobile simplicity or we could use a proper picker
-                        onVerificationLevelChange((draftVerificationLevel + 1) % 5)
-                    }
-                ),
-                Material3SettingsItem(
-                    title = { Text("Explicit Content Filter") },
-                    description = {
-                        Text(
-                            when (draftExplicitContentFilter) {
-                                0 -> "Don't scan any messages"
-                                1 -> "Scan messages from members without a role"
-                                2 -> "Scan messages from all members"
-                                else -> "Don't scan"
-                            }
-                        )
-                    },
-                    onClick = { 
-                        onExplicitContentFilterChange((draftExplicitContentFilter + 1) % 3)
-                    }
-                )
-            )
-        )
-
-        Material3SettingsGroup(
-            title = "Notifications",
-            items = listOf(
-                Material3SettingsItem(
-                    title = { Text("Default Notification Settings") },
-                    description = {
-                        Text(if (draftDefaultNotifications == 0) "All Messages" else "Only @mentions")
-                    },
-                    onClick = { /* TODO: picker */ }
-                )
-            )
-        )
-    }
-}

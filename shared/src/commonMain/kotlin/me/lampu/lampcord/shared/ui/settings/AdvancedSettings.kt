@@ -26,8 +26,8 @@ fun AdvancedSettings(chatState: ChatState) {
 
 @Composable
 private fun DesktopAdvancedSettings(chatState: ChatState) {
-    DesktopSettingsLayout {
-        DesktopSettingsSection(
+    SettingsLayout {
+        SettingsSection(
             title = "Developer Settings",
             icon = Icons.Filled.Tune
         ) {
@@ -42,7 +42,7 @@ private fun DesktopAdvancedSettings(chatState: ChatState) {
             }
         }
 
-        DesktopSettingsSection(
+        SettingsSection(
             title = "Data Management",
             icon = Icons.Filled.Delete
         ) {

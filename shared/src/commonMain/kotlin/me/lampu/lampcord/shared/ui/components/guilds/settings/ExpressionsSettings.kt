@@ -27,7 +27,6 @@ import kotlin.io.encoding.ExperimentalEncodingApi
 @OptIn(ExperimentalEncodingApi::class)
 @Composable
 fun ServerEmoji(guild: Guild, chatState: ChatState) {
-    val isMobile = me.lampu.lampcord.shared.utils.getPlatformName().let { it == "android" || it == "ios" }
     var emojis by remember { mutableStateOf(guild.emojis) }
     var isLoading by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -94,107 +93,56 @@ fun ServerEmoji(guild: Guild, chatState: ChatState) {
         )
     }
 
-    if (isMobile) {
-        Scaffold(
-            floatingActionButton = {
-                FloatingActionButton(onClick = { showUploadPicker = true }) {
-                    Icon(Icons.Default.Add, "Upload Emoji")
+    SettingsLayout {
+        SettingsSection(
+            title = "Emoji",
+            icon = Icons.Filled.Mood,
+            actions = {
+                Button(onClick = { showUploadPicker = true }) {
+                    Icon(Icons.Rounded.Upload, null, Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Upload Emoji")
                 }
             }
-        ) { padding ->
+        ) {
             if (isLoading) {
-                Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                    ContainedLoadingIndicator()
-                }
+                ContainedLoadingIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
             } else if (emojis.isEmpty()) {
-                Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                    Text("No custom emojis", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+                Text("No custom emojis", color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else {
-                LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
-                    items(emojis) { emoji ->
-                        Material3SettingsItem(
-                            leadingContent = {
-                                AsyncImage(
-                                    model = "https://cdn.discordapp.com/emojis/${emoji.id}.png?size=96",
-                                    contentDescription = emoji.name,
-                                    modifier = Modifier.size(32.dp)
-                                )
-                            },
-                            title = { Text(emoji.name ?: "unnamed") },
-                            description = { Text("Added by ${emoji.user?.global_name ?: emoji.user?.username ?: "Unknown"}") },
-                            onClick = { 
-                                newEmojiName = emoji.name ?: ""
-                                emojiToRename = emoji 
-                            },
-                            trailingContent = {
-                                IconButton(onClick = {
-                                    scope.launch {
-                                        if (chatState.client.deleteEmoji(guild.id, emoji.id!!)) {
-                                            emojis = emojis.filter { it.id != emoji.id }
-                                        }
-                                    }
-                                }) {
-                                    Icon(Icons.Default.Delete, "Delete", tint = MaterialTheme.colorScheme.error)
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    emojis.forEach { emoji ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 56.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f))
+                                .clickable { 
+                                    newEmojiName = emoji.name ?: ""
+                                    emojiToRename = emoji 
                                 }
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            AsyncImage(
+                                model = "https://cdn.discordapp.com/emojis/${emoji.id}.png?size=96",
+                                contentDescription = emoji.name,
+                                modifier = Modifier.size(32.dp)
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(emoji.name ?: "unnamed", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                                Text("Added by ${emoji.user?.global_name ?: emoji.user?.username ?: "Unknown"}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
-                        )
-                    }
-                }
-            }
-        }
-    } else {
-        DesktopSettingsLayout {
-            DesktopSettingsSection(
-                title = "Emoji",
-                icon = Icons.Filled.Mood,
-                actions = {
-                    Button(onClick = { showUploadPicker = true }) {
-                        Icon(Icons.Rounded.Upload, null, Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Upload Emoji")
-                    }
-                }
-            ) {
-                if (isLoading) {
-                    ContainedLoadingIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
-                } else if (emojis.isEmpty()) {
-                    Text("No custom emojis", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                } else {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        emojis.forEach { emoji ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(56.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f))
-                                    .clickable { 
-                                        newEmojiName = emoji.name ?: ""
-                                        emojiToRename = emoji 
+                            IconButton(onClick = {
+                                scope.launch {
+                                    if (chatState.client.deleteEmoji(guild.id, emoji.id!!)) {
+                                        emojis = emojis.filter { it.id != emoji.id }
                                     }
-                                    .padding(horizontal = 16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                AsyncImage(
-                                    model = "https://cdn.discordapp.com/emojis/${emoji.id}.png?size=96",
-                                    contentDescription = emoji.name,
-                                    modifier = Modifier.size(32.dp)
-                                )
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(emoji.name ?: "unnamed", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
-                                    Text("Added by ${emoji.user?.global_name ?: emoji.user?.username ?: "Unknown"}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
-                                IconButton(onClick = {
-                                    scope.launch {
-                                        if (chatState.client.deleteEmoji(guild.id, emoji.id!!)) {
-                                            emojis = emojis.filter { it.id != emoji.id }
-                                        }
-                                    }
-                                }) {
-                                    Icon(Icons.Default.Delete, "Delete", tint = MaterialTheme.colorScheme.error)
-                                }
+                            }) {
+                                Icon(Icons.Default.Delete, "Delete", tint = MaterialTheme.colorScheme.error)
                             }
                         }
                     }
@@ -206,14 +154,9 @@ fun ServerEmoji(guild: Guild, chatState: ChatState) {
 
 @Composable
 fun ServerStickers(guild: Guild, chatState: ChatState) {
-    val isMobile = me.lampu.lampcord.shared.utils.getPlatformName().let { it == "android" || it == "ios" }
-    if (isMobile) {
-        Text("Sticker management coming soon", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(16.dp))
-    } else {
-        DesktopSettingsLayout {
-            DesktopSettingsSection(title = "Stickers", icon = Icons.Filled.StickyNote2) {
-                Text("Sticker management coming soon", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+    SettingsLayout {
+        SettingsSection(title = "Stickers", icon = Icons.Filled.StickyNote2) {
+            Text("Sticker management coming soon", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

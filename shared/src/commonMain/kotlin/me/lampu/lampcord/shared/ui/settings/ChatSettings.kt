@@ -29,8 +29,8 @@ fun ChatSettings(chatState: ChatState) {
 
 @Composable
 private fun DesktopChatSettings(chatState: ChatState, userSettings: UserSettings?) {
-    DesktopSettingsLayout {
-        DesktopSettingsSection(
+    SettingsLayout {
+        SettingsSection(
             title = "Gestures",
             icon = Icons.Filled.DragIndicator
         ) {
@@ -41,7 +41,7 @@ private fun DesktopChatSettings(chatState: ChatState, userSettings: UserSettings
 
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Swipe Gesture", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    DesktopButtonGroupSelection(
+                    SettingsButtonGroup(
                         options = ChatGestures.entries.toList(),
                         selectedOption = Settings.shared.chatGestures,
                         onOptionSelected = { Settings.shared.chatGestures = it },
@@ -62,7 +62,7 @@ private fun DesktopChatSettings(chatState: ChatState, userSettings: UserSettings
             }
         }
 
-        DesktopSettingsSection(
+        SettingsSection(
             title = "Media",
             icon = Icons.Filled.Album
         ) {
@@ -79,7 +79,7 @@ private fun DesktopChatSettings(chatState: ChatState, userSettings: UserSettings
             }
         }
 
-        DesktopSettingsSection(
+        SettingsSection(
             title = "Emoji and Stickers",
             icon = Icons.Filled.Mood
         ) {
@@ -90,7 +90,7 @@ private fun DesktopChatSettings(chatState: ChatState, userSettings: UserSettings
 
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Animate Stickers", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                    DesktopButtonGroupSelection(
+                    SettingsButtonGroup(
                         options = listOf(0, 1, 2),
                         selectedOption = userSettings?.animate_stickers ?: 0,
                         onOptionSelected = { chatState.updateUserSettings(UserSettings.Partial(animate_stickers = it)) },
@@ -120,7 +120,7 @@ private fun DesktopChatSettings(chatState: ChatState, userSettings: UserSettings
             }
         }
 
-        DesktopSettingsSection(
+        SettingsSection(
             title = "Logger",
             icon = Icons.Filled.History
         ) {

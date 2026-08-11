@@ -86,7 +86,19 @@ kotlin {
             dependencies {
                 implementation(compose.desktop.currentOs)
                 implementation(libs.vlcj)
-                implementation(libs.ffmpeg.platform)
+
+                val javacppPlatform = System.getProperty("org.bytedeco.javacpp.platform") ?: run {
+                    val osName = System.getProperty("os.name").lowercase()
+                    val osArch = System.getProperty("os.arch").lowercase()
+                    when {
+                        osName.contains("mac") -> if (osArch == "aarch64" || osArch == "arm64") "macosx-arm64" else "macosx-x86_64"
+                        osName.contains("win") -> "windows-x86_64"
+                        else -> if (osArch == "aarch64" || osArch == "arm64") "linux-arm64" else "linux-x86_64"
+                    }
+                }
+                implementation("org.bytedeco:ffmpeg:${libs.versions.ffmpegPlatform.get()}")
+                implementation("org.bytedeco:ffmpeg:${libs.versions.ffmpegPlatform.get()}:$javacppPlatform")
+
                 implementation(libs.jna.core)
                 implementation(libs.jna.platform)
             }

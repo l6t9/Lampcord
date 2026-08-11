@@ -8,291 +8,352 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun DesktopSettingsLayout(
+fun SettingsLayout(
     content: @Composable ColumnScope.() -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 48.dp, vertical = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val isCompact = maxWidth < 600.dp
+        
         Column(
-            modifier = Modifier.widthIn(max = 850.dp),
-            verticalArrangement = Arrangement.spacedBy(48.dp)
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(
+                    horizontal = if (isCompact) 16.dp else 48.dp,
+                    vertical = if (isCompact) 16.dp else 24.dp
+                ),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            content()
+            Column(
+                modifier = Modifier.widthIn(max = 850.dp).fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(if (isCompact) 24.dp else 48.dp)
+            ) {
+                content()
+            }
         }
     }
 }
 
 @Composable
-fun DesktopSettingsSection(
+fun SettingsSection(
     title: String,
     icon: ImageVector,
     actions: @Composable (RowScope.() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(24.dp),
-                tint = MaterialTheme.colorScheme.onSurface
-            )
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.weight(1f)
-            )
-            if (actions != null) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    actions()
+    BoxWithConstraints {
+        val isCompact = maxWidth < 600.dp
+        
+        Column(verticalArrangement = Arrangement.spacedBy(if (isCompact) 16.dp else 24.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(if (isCompact) 20.dp else 24.dp),
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = title,
+                    style = if (isCompact) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f)
+                )
+                if (actions != null) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        actions()
+                    }
                 }
             }
-        }
-        
-        Column(
-            verticalArrangement = Arrangement.spacedBy(20.dp)
-        ) {
-            content()
+            
+            Column(
+                verticalArrangement = Arrangement.spacedBy(if (isCompact) 12.dp else 20.dp)
+            ) {
+                content()
+            }
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun <T> DesktopButtonGroupSelection(
+fun <T> SettingsButtonGroup(
     options: List<T>,
     selectedOption: T,
     onOptionSelected: (T) -> Unit,
     iconProvider: ((T, Boolean) -> ImageVector?)? = null,
     labelProvider: (T) -> String
 ) {
-    ButtonGroup(
-        modifier = Modifier.height(44.dp),
-        overflowIndicator = { menuState -> ButtonGroupDefaults.OverflowIndicator(menuState) },
-        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
-    ) {
-        options.forEachIndexed { index, option ->
-            val isSelected = option == selectedOption
-            customItem(
-                buttonGroupContent = {
-                    val shapes = when {
-                        options.size == 1 -> ButtonDefaults.shapes()
-                        index == 0 -> ButtonDefaults.shapes(
-                            shape = ButtonGroupDefaults.connectedLeadingButtonShape,
-                            pressedShape = ButtonGroupDefaults.connectedLeadingButtonPressShape
-                        )
-                        index == options.lastIndex -> ButtonDefaults.shapes(
-                            shape = ButtonGroupDefaults.connectedTrailingButtonShape,
-                            pressedShape = ButtonGroupDefaults.connectedTrailingButtonPressShape
-                        )
-                        else -> ButtonDefaults.shapes(
-                            shape = MaterialTheme.shapes.small,
-                            pressedShape = ButtonGroupDefaults.connectedMiddleButtonPressShape
-                        )
-                    }
-
-                    val icon = iconProvider?.invoke(option, isSelected)
-
-                    Button(
-                        onClick = { onOptionSelected(option) },
-                        shapes = shapes,
-                        colors = if (isSelected) {
-                            ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
-                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+    BoxWithConstraints {
+        val isCompact = maxWidth < 600.dp
+        
+        ButtonGroup(
+            modifier = Modifier
+                .then(if (isCompact) Modifier.fillMaxWidth() else Modifier)
+                .height(44.dp),
+            overflowIndicator = { menuState -> ButtonGroupDefaults.OverflowIndicator(menuState) },
+            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
+        ) {
+            options.forEachIndexed { index, option ->
+                val isSelected = option == selectedOption
+                customItem(
+                    buttonGroupContent = {
+                        val shapes = when {
+                            options.size == 1 -> ButtonDefaults.shapes()
+                            index == 0 -> ButtonDefaults.shapes(
+                                shape = ButtonGroupDefaults.connectedLeadingButtonShape,
+                                pressedShape = ButtonGroupDefaults.connectedLeadingButtonPressShape
                             )
-                        } else {
-                            ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.25f),
-                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            index == options.lastIndex -> ButtonDefaults.shapes(
+                                shape = ButtonGroupDefaults.connectedTrailingButtonShape,
+                                pressedShape = ButtonGroupDefaults.connectedTrailingButtonPressShape
                             )
-                        },
-                        contentPadding = PaddingValues(horizontal = 16.dp),
-                        modifier = Modifier.fillMaxHeight()
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            else -> ButtonDefaults.shapes(
+                                shape = MaterialTheme.shapes.small,
+                                pressedShape = ButtonGroupDefaults.connectedMiddleButtonPressShape
+                            )
+                        }
+
+                        val icon = iconProvider?.invoke(option, isSelected)
+
+                        Button(
+                            onClick = { onOptionSelected(option) },
+                            shapes = shapes,
+                            colors = if (isSelected) {
+                                ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
+                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            } else {
+                                ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.25f),
+                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            },
+                            contentPadding = PaddingValues(horizontal = if (isCompact) 8.dp else 16.dp),
+                            modifier = Modifier
+                                .then(if (isCompact) Modifier.weight(1f) else Modifier)
+                                .fillMaxHeight()
                         ) {
-                            if (icon != null) {
-                                Icon(icon, null, modifier = Modifier.size(18.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    if (icon != null) {
+                                        Icon(icon, null, modifier = Modifier.size(18.dp))
+                                    }
+                                    Text(
+                                        labelProvider(option),
+                                        style = MaterialTheme.typography.labelLarge,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
                             }
-                            Text(labelProvider(option), style = MaterialTheme.typography.labelLarge)
                         }
+                    },
+                    menuContent = { menuState ->
+                        DropdownMenuItem(
+                            text = { Text(labelProvider(option)) },
+                            leadingIcon = iconProvider?.invoke(option, isSelected)?.let { { Icon(it, null) } },
+                            onClick = {
+                                onOptionSelected(option)
+                                menuState.dismiss()
+                            }
+                        )
                     }
-                },
-                menuContent = { menuState ->
-                    DropdownMenuItem(
-                        text = { Text(labelProvider(option)) },
-                        leadingIcon = iconProvider?.invoke(option, isSelected)?.let { { Icon(it, null) } },
-                        onClick = {
-                            onOptionSelected(option)
-                            menuState.dismiss()
-                        }
-                    )
-                }
-            )
+                )
+            }
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun <T> DesktopButtonGroupSelectionCustomIcon(
+fun <T> SettingsButtonGroupCustomIcon(
     options: List<T>,
     selectedOption: T,
     onOptionSelected: (T) -> Unit,
     iconProvider: @Composable ((T, Boolean) -> Unit)? = null,
     labelProvider: (T) -> String
 ) {
-    ButtonGroup(
-        modifier = Modifier.height(44.dp),
-        overflowIndicator = { menuState -> ButtonGroupDefaults.OverflowIndicator(menuState) },
-        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
-    ) {
-        options.forEachIndexed { index, option ->
-            val isSelected = option == selectedOption
-            customItem(
-                buttonGroupContent = {
-                    val shapes = when {
-                        options.size == 1 -> ButtonDefaults.shapes()
-                        index == 0 -> ButtonDefaults.shapes(
-                            shape = ButtonGroupDefaults.connectedLeadingButtonShape,
-                            pressedShape = ButtonGroupDefaults.connectedLeadingButtonPressShape
-                        )
-                        index == options.lastIndex -> ButtonDefaults.shapes(
-                            shape = ButtonGroupDefaults.connectedTrailingButtonShape,
-                            pressedShape = ButtonGroupDefaults.connectedTrailingButtonPressShape
-                        )
-                        else -> ButtonDefaults.shapes(
-                            shape = MaterialTheme.shapes.small,
-                            pressedShape = ButtonGroupDefaults.connectedMiddleButtonPressShape
-                        )
-                    }
+    BoxWithConstraints {
+        val isCompact = maxWidth < 600.dp
+        
+        ButtonGroup(
+            modifier = Modifier
+                .then(if (isCompact) Modifier.fillMaxWidth() else Modifier)
+                .height(44.dp),
+            overflowIndicator = { menuState -> ButtonGroupDefaults.OverflowIndicator(menuState) },
+            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
+        ) {
+            options.forEachIndexed { index, option ->
+                val isSelected = option == selectedOption
+                customItem(
+                    buttonGroupContent = {
+                        val shapes = when {
+                            options.size == 1 -> ButtonDefaults.shapes()
+                            index == 0 -> ButtonDefaults.shapes(
+                                shape = ButtonGroupDefaults.connectedLeadingButtonShape,
+                                pressedShape = ButtonGroupDefaults.connectedLeadingButtonPressShape
+                            )
+                            index == options.lastIndex -> ButtonDefaults.shapes(
+                                shape = ButtonGroupDefaults.connectedTrailingButtonShape,
+                                pressedShape = ButtonGroupDefaults.connectedTrailingButtonPressShape
+                            )
+                            else -> ButtonDefaults.shapes(
+                                shape = MaterialTheme.shapes.small,
+                                pressedShape = ButtonGroupDefaults.connectedMiddleButtonPressShape
+                            )
+                        }
 
-                    Button(
-                        onClick = { onOptionSelected(option) },
-                        shapes = shapes,
-                        colors = if (isSelected) {
-                            ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
-                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        } else {
-                            ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.25f),
-                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        },
-                        contentPadding = PaddingValues(horizontal = 16.dp),
-                        modifier = Modifier.fillMaxHeight()
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        Button(
+                            onClick = { onOptionSelected(option) },
+                            shapes = shapes,
+                            colors = if (isSelected) {
+                                ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
+                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            } else {
+                                ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.25f),
+                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            },
+                            contentPadding = PaddingValues(horizontal = if (isCompact) 8.dp else 16.dp),
+                            modifier = Modifier
+                                .then(if (isCompact) Modifier.weight(1f) else Modifier)
+                                .fillMaxHeight()
                         ) {
-                            iconProvider?.invoke(option, isSelected)
-                            Text(labelProvider(option), style = MaterialTheme.typography.labelLarge)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    iconProvider?.invoke(option, isSelected)
+                                    Text(
+                                        labelProvider(option),
+                                        style = MaterialTheme.typography.labelLarge,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
                         }
+                    },
+                    menuContent = { menuState ->
+                        DropdownMenuItem(
+                            text = { Text(labelProvider(option)) },
+                            leadingIcon = iconProvider?.let { { it(option, isSelected) } },
+                            onClick = {
+                                onOptionSelected(option)
+                                menuState.dismiss()
+                            }
+                        )
                     }
-                },
-                menuContent = { menuState ->
-                    DropdownMenuItem(
-                        text = { Text(labelProvider(option)) },
-                        leadingIcon = iconProvider?.let { { it(option, isSelected) } },
-                        onClick = {
-                            onOptionSelected(option)
-                            menuState.dismiss()
-                        }
-                    )
-                }
-            )
+                )
+            }
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun <T> DesktopLargeButtonGroupSelection(
+fun <T> SettingsLargeButtonGroup(
     options: List<T>,
     selectedOption: T,
     onOptionSelected: (T) -> Unit,
     iconProvider: (T, Boolean) -> ImageVector,
     labelProvider: (T) -> String
 ) {
-    ButtonGroup(
-        modifier = Modifier.height(110.dp).width(260.dp),
-        overflowIndicator = { menuState -> ButtonGroupDefaults.OverflowIndicator(menuState) },
-        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
-    ) {
-        options.forEachIndexed { index, option ->
-            val isSelected = option == selectedOption
-            customItem(
-                buttonGroupContent = {
-                    val shapes = when {
-                        index == 0 -> ButtonDefaults.shapes(
-                            shape = ButtonGroupDefaults.connectedLeadingButtonShape,
-                            pressedShape = ButtonGroupDefaults.connectedLeadingButtonPressShape
-                        )
-                        else -> ButtonDefaults.shapes(
-                            shape = ButtonGroupDefaults.connectedTrailingButtonShape,
-                            pressedShape = ButtonGroupDefaults.connectedTrailingButtonPressShape
-                        )
-                    }
+    BoxWithConstraints {
+        val isCompact = maxWidth < 600.dp
+        
+        ButtonGroup(
+            modifier = Modifier
+                .height(110.dp)
+                .then(if (isCompact) Modifier.fillMaxWidth() else Modifier.width(260.dp)),
+            overflowIndicator = { menuState -> ButtonGroupDefaults.OverflowIndicator(menuState) },
+            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
+        ) {
+            options.forEachIndexed { index, option ->
+                val isSelected = option == selectedOption
+                customItem(
+                    buttonGroupContent = {
+                        val shapes = when {
+                            index == 0 -> ButtonDefaults.shapes(
+                                shape = ButtonGroupDefaults.connectedLeadingButtonShape,
+                                pressedShape = ButtonGroupDefaults.connectedLeadingButtonPressShape
+                            )
+                            else -> ButtonDefaults.shapes(
+                                shape = ButtonGroupDefaults.connectedTrailingButtonShape,
+                                pressedShape = ButtonGroupDefaults.connectedTrailingButtonPressShape
+                            )
+                        }
 
-                    Button(
-                        onClick = { onOptionSelected(option) },
-                        shapes = shapes,
-                        colors = if (isSelected) {
-                            ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
-                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        } else {
-                            ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.3f),
-                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        },
-                        modifier = Modifier.weight(1f).fillMaxHeight()
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
+                        Button(
+                            onClick = { onOptionSelected(option) },
+                            shapes = shapes,
+                            colors = if (isSelected) {
+                                ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
+                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            } else {
+                                ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.3f),
+                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            },
+                            modifier = Modifier.weight(1f).fillMaxHeight()
                         ) {
-                            Icon(iconProvider(option, isSelected), null, modifier = Modifier.size(32.dp))
-                            Spacer(Modifier.height(8.dp))
-                            Text(labelProvider(option), style = MaterialTheme.typography.labelLarge)
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Icon(iconProvider(option, isSelected), null, modifier = Modifier.size(32.dp))
+                                Spacer(Modifier.height(8.dp))
+                                Text(
+                                    labelProvider(option),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                         }
+                    },
+                    menuContent = { menuState ->
+                        DropdownMenuItem(
+                            text = { Text(labelProvider(option)) },
+                            leadingIcon = { Icon(iconProvider(option, isSelected), null) },
+                            onClick = {
+                                onOptionSelected(option)
+                                menuState.dismiss()
+                            }
+                        )
                     }
-                },
-                menuContent = { menuState ->
-                    DropdownMenuItem(
-                        text = { Text(labelProvider(option)) },
-                        leadingIcon = { Icon(iconProvider(option, isSelected), null) },
-                        onClick = {
-                            onOptionSelected(option)
-                            menuState.dismiss()
-                        }
-                    )
-                }
-            )
+                )
+            }
         }
     }
 }

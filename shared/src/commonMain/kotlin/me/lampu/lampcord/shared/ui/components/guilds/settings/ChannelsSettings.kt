@@ -21,7 +21,6 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun ServerChannels(guild: Guild, chatState: ChatState) {
-    val isMobile = me.lampu.lampcord.shared.utils.getPlatformName().let { it == "android" || it == "ios" }
     val allChannels = chatState.channels.filter { it.guild_id == guild.id }
     
     val categories = allChannels.filter { it.type == 4 }.sortedBy { it.position }
@@ -30,56 +29,24 @@ fun ServerChannels(guild: Guild, chatState: ChatState) {
     var editingChannel by remember { mutableStateOf<Channel?>(null) }
 
     if (editingChannel != null) {
-        if (isMobile) {
-            SettingsSubScreen(title = "Edit Channel", onNavigateBack = { editingChannel = null }) {
-                ChannelEditor(editingChannel!!, chatState, onDone = { editingChannel = null })
-            }
-        } else {
-            // On desktop we can just show it in the same area if we had a proper router, 
-            // but for now let's just replace the content.
-            ChannelEditor(editingChannel!!, chatState, onDone = { editingChannel = null })
-        }
+        ChannelEditor(editingChannel!!, chatState, onDone = { editingChannel = null })
     } else {
-        if (isMobile) {
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
-                items(uncategorized) { channel ->
-                    ChannelItem(channel, onClick = { editingChannel = channel })
-                }
-                categories.forEach { category ->
-                    item {
-                        Text(
-                            text = category.name?.uppercase() ?: "CATEGORY",
-                            style = MaterialTheme.typography.labelSmall,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { editingChannel = category }
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+        SettingsLayout {
+            SettingsSection(title = "Channels", icon = Icons.Filled.Tag) {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    uncategorized.forEach { channel ->
+                        ChannelRow(channel, onClick = { editingChannel = channel })
                     }
-                    items(allChannels.filter { it.parent_id == category.id }.sortedBy { it.position }) { channel ->
-                        ChannelItem(channel, onClick = { editingChannel = channel })
-                    }
-                }
-            }
-        } else {
-            DesktopSettingsLayout {
-                DesktopSettingsSection(title = "Channels", icon = Icons.Filled.Tag) {
-                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        uncategorized.forEach { channel ->
-                            ChannelRow(channel, onClick = { editingChannel = channel })
-                        }
-                        categories.forEach { category ->
-                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text(
-                                    text = category.name?.uppercase() ?: "CATEGORY",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.clickable { editingChannel = category }
-                                )
-                                allChannels.filter { it.parent_id == category.id }.sortedBy { it.position }.forEach { channel ->
-                                    ChannelRow(channel, onClick = { editingChannel = channel })
-                                }
+                    categories.forEach { category ->
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                text = category.name?.uppercase() ?: "CATEGORY",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.clickable { editingChannel = category }
+                            )
+                            allChannels.filter { it.parent_id == category.id }.sortedBy { it.position }.forEach { channel ->
+                                ChannelRow(channel, onClick = { editingChannel = channel })
                             }
                         }
                     }
@@ -90,28 +57,15 @@ fun ServerChannels(guild: Guild, chatState: ChatState) {
 }
 
 @Composable
-private fun ChannelItem(channel: Channel, onClick: () -> Unit) {
-    Material3SettingsItem(
-        icon = when (channel.type) {
-            4 -> Icons.Rounded.Folder
-            2 -> Icons.Rounded.VolumeUp
-            else -> Icons.Rounded.Tag
-        },
-        title = { Text(channel.name ?: "unnamed") },
-        onClick = onClick
-    )
-}
-
-@Composable
 private fun ChannelRow(channel: Channel, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(48.dp)
+            .heightIn(min = 48.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f))
             .clickable { onClick() }
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {

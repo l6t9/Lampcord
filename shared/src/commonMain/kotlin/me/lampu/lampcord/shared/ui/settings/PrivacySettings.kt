@@ -28,14 +28,14 @@ fun PrivacySettings(chatState: ChatState) {
 
 @Composable
 private fun DesktopPrivacySettings(chatState: ChatState, userSettings: UserSettings?) {
-    DesktopSettingsLayout {
-        DesktopSettingsSection(
+    SettingsLayout {
+        SettingsSection(
             title = "Safe Direct Messaging",
             icon = Icons.Filled.Security
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Content Filter", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                DesktopButtonGroupSelection(
+                SettingsButtonGroup(
                     options = listOf(2, 1, 0),
                     selectedOption = userSettings?.explicit_content_filter ?: 1,
                     onOptionSelected = { filter: Int -> chatState.updateUserSettings(UserSettings.Partial(explicit_content_filter = filter)) },
@@ -66,7 +66,7 @@ private fun DesktopPrivacySettings(chatState: ChatState, userSettings: UserSetti
             }
         }
 
-        DesktopSettingsSection(
+        SettingsSection(
             title = "Server Privacy Defaults",
             icon = Icons.Filled.Public
         ) {
@@ -75,7 +75,7 @@ private fun DesktopPrivacySettings(chatState: ChatState, userSettings: UserSetti
             }
         }
 
-        DesktopSettingsSection(
+        SettingsSection(
             title = "Friend Requests",
             icon = Icons.Filled.PersonAdd
         ) {
@@ -94,7 +94,7 @@ private fun DesktopPrivacySettings(chatState: ChatState, userSettings: UserSetti
             }
         }
 
-        DesktopSettingsSection(
+        SettingsSection(
             title = "Enhancements",
             icon = Icons.Filled.RocketLaunch
         ) {
