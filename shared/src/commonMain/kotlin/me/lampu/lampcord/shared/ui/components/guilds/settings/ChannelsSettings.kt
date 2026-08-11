@@ -92,41 +92,46 @@ fun ChannelEditor(channel: Channel, chatState: ChatState, onDone: () -> Unit) {
 
     val hasChanges = draftName != (channel.name ?: "") || draftTopic != (channel.topic ?: "") || draftNsfw != (channel.nsfw ?: false)
 
-    Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
-        Text(if (channel.type == 4) "Category Settings" else "Channel Settings", style = MaterialTheme.typography.headlineSmall)
-        
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Channel Name", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
-            OutlinedTextField(
-                value = draftName,
-                onValueChange = { draftName = it },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp)
-            )
-        }
-
-        if (channel.type != 4 && channel.type != 2) {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Channel Topic", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
-                OutlinedTextField(
-                    value = draftTopic,
-                    onValueChange = { draftTopic = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                )
-            }
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Age-Restricted Channel", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
-                    Text("Users will need to confirm they are of over legal age to view this channel.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    SettingsLayout {
+        SettingsSection(
+            title = if (channel.type == 4) "Category Details" else "Channel Details",
+            icon = Icons.Filled.Info
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Name", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
+                    OutlinedTextField(
+                        value = draftName,
+                        onValueChange = { draftName = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp)
+                    )
                 }
-                ExpressiveSwitch(checked = draftNsfw, onCheckedChange = { draftNsfw = it })
+
+                if (channel.type != 4 && channel.type != 2) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text("Topic", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
+                        OutlinedTextField(
+                            value = draftTopic,
+                            onValueChange = { draftTopic = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                    }
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Age-Restricted Channel", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
+                            Text("Users will need to confirm they are of over legal age to view this channel.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        ExpressiveSwitch(checked = draftNsfw, onCheckedChange = { draftNsfw = it })
+                    }
+                }
             }
         }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End), modifier = Modifier.fillMaxWidth()) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End), modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) {
             TextButton(onClick = onDone) {
                 Text("Cancel")
             }
@@ -143,7 +148,7 @@ fun ChannelEditor(channel: Channel, chatState: ChatState, onDone: () -> Unit) {
             }
         }
 
-        HorizontalDivider()
+        HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
         Button(
             onClick = {

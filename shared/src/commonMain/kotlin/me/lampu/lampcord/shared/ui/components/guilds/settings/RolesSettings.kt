@@ -91,7 +91,7 @@ fun RoleEditor(role: DiscordRole, guild: Guild, chatState: ChatState) {
         }
     }
 
-    Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
+    SettingsLayout {
         SettingsSection(title = "Display", icon = Icons.Filled.Info) {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -165,7 +165,7 @@ fun RoleEditor(role: DiscordRole, guild: Guild, chatState: ChatState) {
         }
         
         if (hasChanges) {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End), modifier = Modifier.fillMaxWidth()) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End), modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) {
                 TextButton(onClick = {
                     draftName = role.name
                     draftColor = role.color
