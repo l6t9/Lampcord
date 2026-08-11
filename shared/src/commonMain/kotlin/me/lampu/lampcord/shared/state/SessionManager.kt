@@ -2,7 +2,6 @@ package me.lampu.lampcord.shared.state
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import me.lampu.lampcord.shared.api.DiscordClient
 import me.lampu.lampcord.shared.gateway.GatewayManager

@@ -15,7 +15,7 @@ actual class RSAKeyPair(private val publicKey: PublicKey, private val privateKey
     @OptIn(ExperimentalEncodingApi::class)
     actual fun getPublicKeyBase64(): String {
         val encoded = publicKey.encoded
-        return Base64.Default.encode(encoded)
+        return Base64.encode(encoded)
             .replace("\n", "")
             .replace("\r", "")
     }

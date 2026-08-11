@@ -57,17 +57,15 @@ fun ChannelItem(
     val allMembers by userStore.members.collectAsState()
     
     val member = remember(guild, currentUser, allMembers) {
-        val g = guild
         val u = currentUser
-        if (g == null || u == null) null
-        else allMembers[g.id]?.get(u.id)
+        if (guild == null || u == null) null
+        else allMembers[guild.id]?.get(u.id)
     }
     
     val canView = remember(channel, guild, member) {
-        val g = guild
         val u = currentUser
-        if (g == null || member == null) true
-        else PermissionHelper.canViewChannel(member, g, channel, u?.id)
+        if (guild == null || member == null) true
+        else PermissionHelper.canViewChannel(member, guild, channel, u?.id)
     }
 
     val userSettings = settingsStore.userSettings

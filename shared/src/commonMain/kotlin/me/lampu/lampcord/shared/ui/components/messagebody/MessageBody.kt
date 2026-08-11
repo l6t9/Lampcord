@@ -1,13 +1,18 @@
 package me.lampu.lampcord.shared.ui.components.messagebody
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import me.lampu.lampcord.shared.model.*
-import me.lampu.lampcord.shared.state.*
-import me.lampu.lampcord.shared.ui.components.*
-import me.lampu.lampcord.shared.ui.components.messagebody.*
+import me.lampu.lampcord.shared.model.Attachment
+import me.lampu.lampcord.shared.model.DiscordMedia
+import me.lampu.lampcord.shared.model.Embed
+import me.lampu.lampcord.shared.model.Message
+import me.lampu.lampcord.shared.model.MessageComponent
+import me.lampu.lampcord.shared.model.Poll
+import me.lampu.lampcord.shared.model.StickerItem
+import me.lampu.lampcord.shared.state.NavigationStore
 import org.koin.compose.koinInject
 
 @Composable

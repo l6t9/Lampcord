@@ -17,8 +17,7 @@ object NonceSerializer : KSerializer<String?> {
     override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("nonce", PrimitiveKind.STRING)
 
     override fun deserialize(decoder: Decoder): String? {
-        val input = (decoder as? JsonDecoder)?.decodeJsonElement()
-        return when (input) {
+        return when (val input = (decoder as? JsonDecoder)?.decodeJsonElement()) {
             is JsonPrimitive -> input.contentOrNull
             else -> null
         }

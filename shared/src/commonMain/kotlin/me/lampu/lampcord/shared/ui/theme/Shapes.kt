@@ -12,9 +12,3 @@ val LampcordShapes = Shapes(
     extraLarge = RoundedCornerShape(24.dp),
 )
 
-object ComponentShapes {
-    val CardShape = RoundedCornerShape(12.dp)
-    val DialogShape = RoundedCornerShape(18.dp)
-    val BottomSheetShape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
-    val ButtonShape = RoundedCornerShape(12.dp)
-}

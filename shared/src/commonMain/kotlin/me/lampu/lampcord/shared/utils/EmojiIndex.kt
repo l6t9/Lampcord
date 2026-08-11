@@ -17,7 +17,7 @@ object EmojiIndex {
     private var allEmojis = listOf<Emoji>()
     private var initialized = false
 
-    suspend fun initialize() {
+    fun initialize() {
         if (initialized) return
         try {
             val jsonBytes = ResourceLoader.readBytes("files/emojis.json")

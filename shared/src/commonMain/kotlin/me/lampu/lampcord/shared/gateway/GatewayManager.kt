@@ -1,20 +1,52 @@
 package me.lampu.lampcord.shared.gateway
 
-import me.lampu.lampcord.shared.model.*
-import me.lampu.lampcord.shared.utils.*
-import io.ktor.client.*
-import io.ktor.client.plugins.websocket.*
-import io.ktor.client.request.*
-import io.ktor.websocket.*
-import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.*
-import kotlinx.serialization.json.*
-import kotlinx.serialization.encodeToString
+import io.ktor.client.HttpClient
+import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
+import io.ktor.client.plugins.websocket.webSocket
+import io.ktor.client.request.header
+import io.ktor.websocket.CloseReason
+import io.ktor.websocket.Frame
+import io.ktor.websocket.close
+import io.ktor.websocket.readText
+import io.ktor.websocket.send
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
+import kotlinx.serialization.json.put
+import me.lampu.lampcord.shared.api.DiscordClient
+import me.lampu.lampcord.shared.model.GatewayPayload
+import me.lampu.lampcord.shared.model.Identify
+import me.lampu.lampcord.shared.model.IdentifyClientState
+import me.lampu.lampcord.shared.model.Resume
+import me.lampu.lampcord.shared.utils.getCpuCoreCount
+import me.lampu.lampcord.shared.utils.getCurrentTimeMillis
+import me.lampu.lampcord.shared.utils.getDeviceName
+import me.lampu.lampcord.shared.utils.getMemoryMemory
+import me.lampu.lampcord.shared.utils.getOsSdkVersion
+import me.lampu.lampcord.shared.utils.getPlatformName
+import me.lampu.lampcord.shared.utils.randomUUID
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
-
-import me.lampu.lampcord.shared.api.DiscordClient
 
 class GatewayManager(
     private val client: HttpClient,
@@ -45,7 +77,6 @@ class GatewayManager(
     private var reconnectAttempt = 0
     private val maxReconnectDelay = 30.seconds
 
-    // Subscription tracking (Stability Parity with 126.21 GuildSubscriptionsManager)
     private val guildSubscriptions = mutableMapOf<String, GuildSubscriptionState>()
 
     private data class GuildSubscriptionState(
@@ -63,19 +94,22 @@ class GatewayManager(
                 val gatewayUrl = discordClient.getGatewayUrl() ?: "wss://gateway.discord.gg"
                 val url = (resumeGatewayUrl ?: gatewayUrl).removeSuffix("/") + "/?v=9&encoding=json"
 
-                val platform = getPlatformName()
-                val userAgent = if (platform == "android") {
-                    "Discord-Android/341200;RNA"
-                } else if (platform == "ios") {
-                    "Discord/105180 CFNetwork/1410.0.3 Darwin/22.4.0"
-                } else {
-                    val browserOsName = when(platform) {
-                        "windows" -> "Windows NT 10.0; Win64; x64"
-                        "linux" -> "X11; Linux x86_64"
-                        "macos" -> "Macintosh; Intel Mac OS X 10_15_7"
-                        else -> "X11; Linux x86_64"
+                val userAgent = when (val platform = getPlatformName()) {
+                    "android" -> {
+                        "Discord-Android/341200;RNA"
                     }
-                    "Mozilla/5.0 ($browserOsName) AppleWebKit/537.36 (KHTML, like Gecko) discord/0.0.398 Chrome/138.0.7204.251 Electron/37.6.0 Safari/537.36"
+                    "ios" -> {
+                        "Discord/105180 CFNetwork/1410.0.3 Darwin/22.4.0"
+                    }
+                    else -> {
+                        val browserOsName = when (platform) {
+                            "windows" -> "Windows NT 10.0; Win64; x64"
+                            "linux" -> "X11; Linux x86_64"
+                            "macos" -> "Macintosh; Intel Mac OS X 10_15_7"
+                            else -> "X11; Linux x86_64"
+                        }
+                        "Mozilla/5.0 ($browserOsName) AppleWebKit/537.36 (KHTML, like Gecko) discord/0.0.398 Chrome/138.0.7204.251 Electron/37.6.0 Safari/537.36"
+                    }
                 }
 
                 startHelloTimeout(token)
@@ -132,7 +166,7 @@ class GatewayManager(
 
     private suspend fun handlePayload(payload: GatewayPayload, token: String) {
         when (payload.op) {
-            10 -> { // Hello
+            10 -> { 
                 stopHelloTimeout()
                 val heartbeatInterval = payload.d?.jsonObject?.get("heartbeat_interval")?.jsonPrimitive?.let {
                     it.longOrNull ?: it.doubleOrNull?.toLong()
@@ -145,7 +179,7 @@ class GatewayManager(
                     identify(token)
                 }
             }
-            0 -> { // Dispatch
+            0 -> { 
                 when (payload.t) {
                     "READY" -> {
                         val data = payload.d?.jsonObject
@@ -155,23 +189,23 @@ class GatewayManager(
                     }
                 }
             }
-            1 -> { // Heartbeat requested
+            1 -> { 
                 sendHeartbeat()
             }
-            7 -> { // Reconnect
+            7 -> { 
                 disconnect()
                 connect(token)
             }
-            9 -> { // Invalid Session
+            9 -> { 
                 val resumable = payload.d?.jsonPrimitive?.boolean ?: false
                 if (!resumable) {
                     sessionId = null
                     lastSequence = null
                 }
-                delay(1000)
+                delay(1000.milliseconds)
                 identify(token)
             }
-            11 -> { // Heartbeat ACK
+            11 -> {
                 heartbeatAckReceived = true
             }
         }

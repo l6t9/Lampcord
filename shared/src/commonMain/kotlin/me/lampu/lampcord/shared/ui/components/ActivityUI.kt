@@ -19,6 +19,7 @@ import me.lampu.lampcord.shared.model.Activity
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.getCurrentTimeMillis
 import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 private fun getAssetUrl(applicationId: String?, assetId: String?): String? {
     if (assetId == null) return null
@@ -215,7 +216,7 @@ fun MusicProgressBar(start: Long, end: Long, color: Color = Color.White) {
         while (true) {
             val now = getCurrentTimeMillis()
             currentMillis = (now - startMs).coerceIn(0, totalMs)
-            delay(1000)
+            delay(1000.milliseconds)
         }
     }
 

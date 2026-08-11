@@ -60,7 +60,7 @@ class GuildStore(
     }
 
     fun handleGuildDelete(guildId: String) {
-        _guildIds.value = _guildIds.value - guildId
+        _guildIds.value -= guildId
         entityStore.removeGuild(guildId)
     }
 

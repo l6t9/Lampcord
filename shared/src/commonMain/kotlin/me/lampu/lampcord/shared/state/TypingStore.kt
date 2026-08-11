@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import me.lampu.lampcord.shared.utils.getCurrentTimeMillis
+import kotlin.time.Duration.Companion.milliseconds
 
 class TypingStore(private val scope: CoroutineScope) {
     // channelId -> userId -> timestamp
@@ -25,7 +26,7 @@ class TypingStore(private val scope: CoroutineScope) {
         
         typingJobs[channelId to userId]?.cancel()
         typingJobs[channelId to userId] = scope.launch {
-            delay(10000L)
+            delay(10000L.milliseconds)
             _typingUsers.update { current ->
                 val channelTyping = current[channelId]?.toMutableMap() ?: return@update current
                 channelTyping.remove(userId)

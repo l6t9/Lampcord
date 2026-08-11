@@ -1,7 +1,6 @@
 package me.lampu.lampcord.shared.ui.components.settings
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.runtime.Composable

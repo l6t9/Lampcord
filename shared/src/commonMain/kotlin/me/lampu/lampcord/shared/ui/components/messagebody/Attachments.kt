@@ -5,85 +5,18 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.*
 import me.lampu.lampcord.shared.ui.components.AsyncImage
-import me.lampu.lampcord.shared.ui.components.VideoPlayer
 import me.lampu.lampcord.shared.ui.icons.Icons
-
-@Composable
-fun VideoAttachment(video: Attachment, onClick: (() -> Unit)? = null) {
-    val aspectRatio = video.aspectRatio ?: (16f / 9f)
-
-    var wantsPlayback by remember { mutableStateOf(false) }
-
-    // Cap at min(500, width) x min(300, height)
-    // and let the aspect ratio pick the final size so videos are never cropped.
-    val interactionSource = remember { MutableInteractionSource() }
-    Box(
-        modifier = Modifier
-            .sizeIn(
-                maxWidth = (video.width?.dp ?: 500.dp).coerceAtMost(500.dp),
-                maxHeight = (video.height?.dp ?: 300.dp).coerceAtMost(300.dp)
-            )
-            .aspectRatio(aspectRatio)
-            .then(
-                if (onClick != null) {
-                    Modifier.clickable(interactionSource = interactionSource, indication = null) { onClick() }
-                } else {
-                    Modifier
-                }
-            )
-            .clip(RoundedCornerShape(8.dp))
-            .background(Color.Black)
-    ) {
-        if (!wantsPlayback) {
-            AttachmentImage(
-                media = video,
-                modifier = Modifier.fillMaxSize(),
-                needsPoster = true
-            )
-            
-            // Inline play button only when the video isn't wired to open the viewer
-            if (onClick == null) {
-                Box(
-                    modifier = Modifier.fillMaxSize().clickable { wantsPlayback = true },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Surface(
-                        shape = CircleShape,
-                        color = Color.Black.copy(alpha = 0.4f),
-                        modifier = Modifier.size(64.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Filled.PlayArrow,
-                                contentDescription = "Play",
-                                tint = Color.White,
-                                modifier = Modifier.size(40.dp).offset(x = 2.dp)
-                            )
-                        }
-                    }
-                }
-            }
-        } else {
-            VideoPlayer(
-                url = video.url, 
-                modifier = Modifier.fillMaxSize()
-            )
-        }
-    }
-}
 
 @Composable
 fun AttachmentImage(

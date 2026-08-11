@@ -1,29 +1,23 @@
 package me.lampu.lampcord.shared.ui.components.profiles
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.compositeOver
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import kotlin.math.*
-import me.lampu.lampcord.shared.model.ConnectedAccount
 import me.lampu.lampcord.shared.model.ProfileBadge
 import me.lampu.lampcord.shared.ui.components.AsyncImage
-import me.lampu.lampcord.shared.ui.icons.Icons
+import kotlin.math.abs
+import kotlin.math.pow
+import kotlin.math.round
 
 data class ProfileTheme(
     val backgroundBrush: Brush,
@@ -62,96 +56,6 @@ fun UserBadges(badges: List<ProfileBadge>, flags: Int) {
 fun Badge(color: Color) {
     Box(modifier = Modifier.size(18.dp).background(color.copy(alpha = 0.2f), CircleShape).padding(4.dp)) {
         Box(modifier = Modifier.fillMaxSize().background(color, CircleShape))
-    }
-}
-
-@Composable
-fun RoleTag(name: String, tagColor: Color, contentColor: Color = Color.White, dotColor: Color? = null) {
-    Surface(
-        shape = MaterialTheme.shapes.extraSmall,
-        color = tagColor,
-        modifier = Modifier.padding(vertical = 2.dp)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (dotColor != null) {
-                Box(
-                    modifier = Modifier
-                        .size(12.dp)
-                        .background(dotColor, CircleShape)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-            }
-            Text(
-                text = name,
-                style = MaterialTheme.typography.labelSmall,
-                color = contentColor,
-                fontWeight = FontWeight.Bold
-            )
-        }
-    }
-}
-
-@Composable
-fun UserConnectionItem(
-    connection: ConnectedAccount,
-    contentColor: Color,
-    isFirst: Boolean,
-    isLast: Boolean
-) {
-    val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
-    val url = remember(connection) {
-        when (connection.type) {
-            "github" -> "https://github.com/${connection.name}"
-            "steam" -> "https://steamcommunity.com/profiles/${connection.id}"
-            "twitch" -> "https://www.twitch.tv/${connection.name}"
-            "youtube" -> "https://www.youtube.com/channel/${connection.id}"
-            "spotify" -> "https://open.spotify.com/user/${connection.id}"
-            "twitter" -> "https://twitter.com/${connection.name}"
-            "reddit" -> "https://www.reddit.com/u/${connection.name}"
-            "tiktok" -> "https://www.tiktok.com/@${connection.name}"
-            "domain" -> "https://${connection.name}"
-            else -> null
-        }
-    }
-
-    Surface(
-        onClick = { url?.let { uriHandler.openUri(it) } },
-        enabled = url != null,
-        modifier = Modifier.fillMaxWidth(),
-        color = Color.Black.copy(alpha = 0.1f),
-        shape = when {
-            isFirst && isLast -> MaterialTheme.shapes.small
-            isFirst -> RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)
-            isLast -> RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp)
-            else -> androidx.compose.ui.graphics.RectangleShape
-        }
-    ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            val icon = when (connection.type) {
-                "github" -> Icons.Brand.Github
-                "steam" -> Icons.Brand.Steam
-                "twitch" -> Icons.Brand.Twitch
-                "youtube" -> Icons.Brand.Youtube
-                "domain" -> Icons.Filled.Public
-                else -> Icons.Filled.Link
-            }
-            Icon(icon, null, modifier = Modifier.size(24.dp), tint = contentColor)
-            Spacer(Modifier.width(12.dp))
-            Column {
-                Text(connection.name, style = MaterialTheme.typography.bodyMedium, color = contentColor)
-                Text(connection.type.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }, style = MaterialTheme.typography.labelSmall, color = contentColor.copy(alpha = 0.6f))
-            }
-            Spacer(Modifier.weight(1f))
-            if (connection.verified || url != null) {
-                Icon(Icons.Rounded.ArrowOutward, null, modifier = Modifier.size(16.dp), tint = contentColor.copy(alpha = 0.7f))
-            }
-        }
     }
 }
 

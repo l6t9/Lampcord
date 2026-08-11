@@ -1,25 +1,75 @@
 package me.lampu.lampcord.shared.api
 
-import io.ktor.client.*
-import io.ktor.client.call.*
-import io.ktor.client.request.*
-import io.ktor.client.statement.*
-import io.ktor.http.*
-import io.ktor.client.request.forms.*
-import io.ktor.http.content.*
-import me.lampu.lampcord.shared.model.*
-import me.lampu.lampcord.shared.utils.*
-import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.client.plugins.websocket.*
-import io.ktor.client.plugins.cookies.*
-import io.ktor.client.engine.cio.*
-import io.ktor.serialization.kotlinx.json.*
-import io.ktor.util.*
+import io.ktor.client.HttpClient
+import io.ktor.client.call.body
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.cookies.HttpCookies
+import io.ktor.client.plugins.websocket.WebSockets
+import io.ktor.client.request.HttpRequestBuilder
+import io.ktor.client.request.delete
+import io.ktor.client.request.forms.MultiPartFormDataContent
+import io.ktor.client.request.forms.formData
+import io.ktor.client.request.get
+import io.ktor.client.request.header
+import io.ktor.client.request.parameter
+import io.ktor.client.request.patch
+import io.ktor.client.request.post
+import io.ktor.client.request.put
+import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
+import io.ktor.http.Headers
+import io.ktor.http.HttpHeaders
+import io.ktor.http.contentType
+import io.ktor.http.isSuccess
+import io.ktor.serialization.kotlinx.json.json
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
+import me.lampu.lampcord.shared.model.ApplicationCommandIndex
+import me.lampu.lampcord.shared.model.AuditLog
+import me.lampu.lampcord.shared.model.Ban
+import me.lampu.lampcord.shared.model.Channel
+import me.lampu.lampcord.shared.model.ConnectedAccount
+import me.lampu.lampcord.shared.model.Emoji
+import me.lampu.lampcord.shared.model.FingerprintResponse
+import me.lampu.lampcord.shared.model.Gif
+import me.lampu.lampcord.shared.model.Guild
+import me.lampu.lampcord.shared.model.GuildFolder
+import me.lampu.lampcord.shared.model.InteractionRequest
+import me.lampu.lampcord.shared.model.Invite
+import me.lampu.lampcord.shared.model.LoginRequest
+import me.lampu.lampcord.shared.model.LoginResponse
+import me.lampu.lampcord.shared.model.MFALoginRequest
+import me.lampu.lampcord.shared.model.Member
+import me.lampu.lampcord.shared.model.Message
+import me.lampu.lampcord.shared.model.MessageReference
+import me.lampu.lampcord.shared.model.Onboarding
+import me.lampu.lampcord.shared.model.Poll
+import me.lampu.lampcord.shared.model.Relationship
+import me.lampu.lampcord.shared.model.Role
+import me.lampu.lampcord.shared.model.SearchResponse
+import me.lampu.lampcord.shared.model.StickerPack
+import me.lampu.lampcord.shared.model.StickerStoreDirectory
+import me.lampu.lampcord.shared.model.ThreadListResponse
+import me.lampu.lampcord.shared.model.TrendingGifCategoriesResponse
+import me.lampu.lampcord.shared.model.UserGuildSettings
+import me.lampu.lampcord.shared.model.UserProfile
+import me.lampu.lampcord.shared.model.UserSettings
+import me.lampu.lampcord.shared.utils.getCurrentTimeMillis
+import me.lampu.lampcord.shared.utils.getDeviceName
+import me.lampu.lampcord.shared.utils.getOsVersion
+import me.lampu.lampcord.shared.utils.getPlatformName
+import me.lampu.lampcord.shared.utils.randomUUID
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
-import kotlinx.serialization.json.*
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 
 @Serializable
 data class MessageRequest(
@@ -204,7 +254,6 @@ class DiscordClient(
         allowedMentions: AllowedMentions? = null,
         poll: Poll? = null
     ): Boolean {
-        // Free Nitro Emoji Outgoing Hook
         val processedContent = if (me.lampu.lampcord.shared.settings.Settings.shared.freeNitroEmojis) {
             val emojiRegex = Regex("""<(a)?:F_([a-zA-Z0-9_]+):(\d+)>""")
             content.replace(emojiRegex) { match ->
@@ -251,8 +300,6 @@ class DiscordClient(
                 }
                 response.status.isSuccess()
             } else {
-                // Bypass Upload Limit: We don't check size here, we just send it.
-                // If the server rejects it, it's a real server limit, but we remove the client-side block.
                 val response = httpClient.post("$apiBase/channels/$channelId/messages") {
                     standardHeaders()
                     
@@ -844,7 +891,7 @@ class DiscordClient(
                 setBody(buildJsonObject {
                     put("read_states", buildJsonArray {
                         channelIds.forEach { id ->
-                            add(buildJsonObject { put("channel_id", id); put("message_id", "99999999999999999999") }) // Hack to mark all as read
+                            add(buildJsonObject { put("channel_id", id); put("message_id", "99999999999999999999") })
                         }
                     })
                 })

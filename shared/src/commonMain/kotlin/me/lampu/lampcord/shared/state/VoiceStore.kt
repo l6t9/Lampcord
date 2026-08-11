@@ -11,6 +11,7 @@ import me.lampu.lampcord.shared.model.Channel
 import me.lampu.lampcord.shared.model.GatewayPayload
 import me.lampu.lampcord.shared.model.VoiceServerUpdate
 import me.lampu.lampcord.shared.model.VoiceState
+import kotlin.time.Duration.Companion.milliseconds
 
 class VoiceStore(
     private val gatewayManager: GatewayManager,
@@ -130,7 +131,7 @@ class VoiceStore(
         voiceConnectionDuration = 0L
         voiceTimerJob = scope.launch {
             while (isActive) {
-                delay(1000)
+                delay(1000.milliseconds)
                 voiceConnectionDuration++
             }
         }

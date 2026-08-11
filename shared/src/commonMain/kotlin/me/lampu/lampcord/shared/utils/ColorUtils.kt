@@ -25,9 +25,8 @@ object ColorUtils {
         }
 
         val s = if (max == 0f) 0f else delta / max
-        val v = max
 
-        return floatArrayOf(h, s, v)
+        return floatArrayOf(h, s, max)
     }
 
     fun hsvToColor(h: Float, s: Float, v: Float, alpha: Float = 1f): Color {

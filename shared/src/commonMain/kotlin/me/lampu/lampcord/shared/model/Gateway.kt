@@ -30,37 +30,6 @@ data class IdentifyClientState(
 )
 
 @Serializable
-data class IdentifyProperties(
-    val os: String,
-    val browser: String,
-    val release_channel: String? = null,
-    val client_version: String? = null,
-    val os_version: String? = null,
-    val os_arch: String? = null,
-    val app_arch: String? = null,
-    val system_locale: String? = null,
-    val has_client_mods: Boolean? = null,
-    val client_launch_id: String? = null,
-    val browser_user_agent: String? = null,
-    val browser_version: String? = null,
-    val os_sdk_version: String? = null,
-    val client_build_number: Int? = null,
-    val native_build_number: Int? = null,
-    val client_event_source: String? = null,
-    val launch_signature: String? = null,
-    val client_heartbeat_session_id: String? = null,
-    val client_app_state: String? = null,
-    val device: String? = null,
-    val device_vendor_id: String? = null,
-    val design_id: Int? = null,
-    val accessibility_features: Long? = null,
-    val accessibility_support_enabled: Boolean? = null,
-    val client_performance_cpu: Int? = null,
-    val client_performance_memory: Long? = null,
-    val cpu_core_count: Int? = null
-)
-
-@Serializable
 data class VersionedModel<T>(
     val entries: List<T> = emptyList(),
     val version: Int = -1,
@@ -120,9 +89,3 @@ data class Resume(
     val seq: Int
 )
 
-@Serializable
-data class ReadySupplementalPayload(
-    val guilds: List<Guild> = emptyList(),
-    val merged_members: List<List<Member>>? = null,
-    val merged_presences: MergedPresences? = null
-)

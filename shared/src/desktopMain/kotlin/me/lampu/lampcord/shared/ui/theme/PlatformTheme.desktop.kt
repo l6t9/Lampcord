@@ -9,6 +9,7 @@ import com.materialkolor.rememberDynamicColorScheme
 import me.lampu.lampcord.shared.settings.FontOption
 import kotlinx.coroutines.delay
 import java.io.File
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 actual fun rememberDynamicSeedColor(): Color? {
@@ -44,7 +45,7 @@ actual fun rememberDynamicSeedColor(): Color? {
             if (seedColor != foundColor) {
                 seedColor = foundColor
             }
-            delay(2000)
+            delay(2000.milliseconds)
         }
     }
     

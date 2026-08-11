@@ -48,13 +48,6 @@ data class PermissionOverwrite(
     val allow_new: String? = null,
     val deny_new: String? = null
 ) {
-    fun typeInt(): Int {
-        return when {
-            type is JsonPrimitive && type.isString -> if (type.content == "role") 0 else 1
-            type is JsonPrimitive -> type.intOrNull ?: 0
-            else -> 0
-        }
-    }
 
     fun allowString(): String {
         return allow_new ?: if (allow is JsonPrimitive) allow.content else "0"
@@ -80,22 +73,6 @@ data class ThreadListResponse(
     val threads: List<Channel> = emptyList(),
     val members: List<ThreadMember> = emptyList(),
     val has_more: Boolean? = null
-)
-
-@Serializable
-data class ThreadListSync(
-    val guild_id: String,
-    val channel_ids: List<String>? = null,
-    val threads: List<Channel> = emptyList(),
-    val members: List<ThreadMember> = emptyList()
-)
-
-@Serializable
-data class ThreadDeleteEvent(
-    val id: String,
-    val guild_id: String? = null,
-    val parent_id: String? = null,
-    val type: Int? = null
 )
 
 @Serializable

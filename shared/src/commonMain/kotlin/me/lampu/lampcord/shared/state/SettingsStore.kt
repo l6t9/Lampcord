@@ -10,6 +10,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 class SettingsStore(
     private val discordClient: DiscordClient
@@ -121,8 +122,8 @@ class SettingsStore(
             theme = newSettings.theme ?: userSettings?.theme,
             locale = newSettings.locale ?: userSettings?.locale,
             developer_mode = newSettings.developer_mode ?: userSettings?.developer_mode,
-            guild_positions = if (newSettings.guild_positions.isNotEmpty()) newSettings.guild_positions else userSettings?.guild_positions ?: emptyList(),
-            guild_folders = if (newSettings.guild_folders.isNotEmpty()) newSettings.guild_folders else userSettings?.guild_folders ?: emptyList(),
+            guild_positions = newSettings.guild_positions.ifEmpty { userSettings?.guild_positions ?: emptyList() },
+            guild_folders = newSettings.guild_folders.ifEmpty { userSettings?.guild_folders ?: emptyList() },
             custom_status = newSettings.custom_status ?: userSettings?.custom_status,
             inline_attachment_media = newSettings.inline_attachment_media ?: userSettings?.inline_attachment_media,
             inline_embed_media = newSettings.inline_embed_media ?: userSettings?.inline_embed_media,
@@ -160,7 +161,7 @@ class SettingsStore(
             performUpdate()
         } else {
             pendingUpdateJob = scope.launch {
-                delay(delayMs)
+                delay(delayMs.milliseconds)
                 performUpdate()
             }
         }

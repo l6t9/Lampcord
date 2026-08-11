@@ -1,18 +1,28 @@
 package me.lampu.lampcord.shared.api
 
-import io.ktor.client.*
-import io.ktor.client.plugins.websocket.*
-import io.ktor.client.request.*
-import io.ktor.http.*
-import io.ktor.websocket.*
+import io.ktor.client.HttpClient
+import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
+import io.ktor.client.plugins.websocket.webSocket
+import io.ktor.client.request.header
+import io.ktor.websocket.Frame
+import io.ktor.websocket.readText
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import me.lampu.lampcord.shared.utils.CryptoUtils
 import me.lampu.lampcord.shared.utils.RSAKeyPair
-import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.*
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.*
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
+import kotlin.time.Duration.Companion.milliseconds
 
 @Serializable
 data class RemoteAuthPayload(
@@ -112,7 +122,7 @@ class RemoteAuthClient(
             }
             "nonce_proof" -> {
                 val encryptedNonceB64 = payload.encrypted_nonce ?: return
-                val encryptedNonce = Base64.Default.decode(encryptedNonceB64)
+                val encryptedNonce = Base64.decode(encryptedNonceB64)
                 val decryptedNonce = keyPair?.decrypt(encryptedNonce) ?: return
                 val nonce = Base64.UrlSafe.encode(decryptedNonce).replace("=", "")
                 sendPayload(RemoteAuthPayload(op = "nonce_proof", nonce = nonce))
@@ -124,7 +134,7 @@ class RemoteAuthClient(
             }
             "pending_ticket" -> {
                 val encryptedUserB64 = payload.encrypted_user_payload ?: return
-                val encryptedUser = Base64.Default.decode(encryptedUserB64)
+                val encryptedUser = Base64.decode(encryptedUserB64)
                 val decryptedUser = keyPair?.decrypt(encryptedUser) ?: return
                 val userStr = decryptedUser.decodeToString()
                 val parts = userStr.split(":")
@@ -132,7 +142,7 @@ class RemoteAuthClient(
                     val user = RemoteUserPayload(
                         id = parts[0],
                         discriminator = parts[1],
-                        avatar = if (parts[2].isEmpty()) null else parts[2],
+                        avatar = parts[2].ifEmpty { null },
                         username = parts[3]
                     )
                     _state.value = RemoteAuthState.UserScanned(user)
@@ -144,7 +154,7 @@ class RemoteAuthClient(
                         val encryptedToken = discordClient.exchangeRemoteAuthTicket(ticket)
                         if (encryptedToken != null) {
                             try {
-                                val encryptedData = Base64.Default.decode(encryptedToken)
+                                val encryptedData = Base64.decode(encryptedToken)
                                 val decryptedToken = keyPair?.decrypt(encryptedData) ?: return@launch
                                 val token = decryptedToken.decodeToString()
                                 _state.value = RemoteAuthState.Finished(token)
@@ -159,7 +169,7 @@ class RemoteAuthClient(
             }
             "finish" -> {
                 val encryptedTokenB64 = payload.encrypted_token ?: return
-                val encryptedToken = Base64.Default.decode(encryptedTokenB64)
+                val encryptedToken = Base64.decode(encryptedTokenB64)
                 val decryptedToken = keyPair?.decrypt(encryptedToken) ?: return
                 val token = decryptedToken.decodeToString()
                 _state.value = RemoteAuthState.Finished(token)
@@ -175,7 +185,7 @@ class RemoteAuthClient(
         heartbeatJob?.cancel()
         heartbeatJob = CoroutineScope(Dispatchers.Default).launch {
             while (isActive) {
-                delay(interval)
+                delay(interval.milliseconds)
                 sendPayload(RemoteAuthPayload(op = "heartbeat"))
             }
         }

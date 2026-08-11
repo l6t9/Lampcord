@@ -1,18 +1,29 @@
 package me.lampu.lampcord.shared.state
 
-import androidx.compose.runtime.*
-import kotlinx.coroutines.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.serialization.json.*
-import me.lampu.lampcord.shared.api.DiscordClient
+import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonObject
 import me.lampu.lampcord.shared.api.AllowedMentions
-import me.lampu.lampcord.shared.model.*
-import me.lampu.lampcord.shared.utils.getCurrentTimeMillis
+import me.lampu.lampcord.shared.api.DiscordClient
+import me.lampu.lampcord.shared.model.Channel
+import me.lampu.lampcord.shared.model.Member
+import me.lampu.lampcord.shared.model.Message
+import me.lampu.lampcord.shared.model.PendingFile
+import me.lampu.lampcord.shared.model.Poll
+import me.lampu.lampcord.shared.model.User
 import me.lampu.lampcord.shared.utils.ResourceLoader
-import me.lampu.lampcord.shared.settings.Settings
+import me.lampu.lampcord.shared.utils.getCurrentTimeMillis
 import kotlin.time.Clock
 
 class MessageStore(
@@ -52,7 +63,7 @@ class MessageStore(
                 val lines = text?.split("\n")
                     ?.map { it.trim() }
                     ?.filter { it.isNotEmpty() && !it.startsWith("#") }
-                if (lines != null && lines.isNotEmpty()) {
+                if (!lines.isNullOrEmpty()) {
                     loadingMessages.addAll(lines)
                 }
             } catch (e: Exception) {

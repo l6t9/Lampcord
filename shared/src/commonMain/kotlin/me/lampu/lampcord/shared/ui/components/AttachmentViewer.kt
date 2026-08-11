@@ -256,7 +256,7 @@ private fun ZoomableImageView(
                     val newScale = (scale * zoom).coerceIn(1f, 8f)
                     
                     if (newScale != scale) {
-                        offset = offset * (newScale / scale)
+                        offset *= (newScale / scale)
                     }
                     
                     val maxX = (sizeState.value.width * (newScale - 1f)) / 2f

@@ -6,11 +6,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import me.lampu.lampcord.shared.model.*
 
-/**
- * EntityStore acts as the primary repository for Guilds and Channels,
- * aligning with Discord's StoreChannels and StoreGuilds logic.
- * User and Member data is handled by UserStore.
- */
 class EntityStore(
     private val userStore: UserStore
 ) {
@@ -23,37 +18,34 @@ class EntityStore(
     fun updateGuild(guild: Guild) {
         _guilds.update { current ->
             val existing = current[guild.id]
-            val updated = if (existing == null) {
-                guild
-            } else {
-                existing.copy(
-                    name = guild.name ?: existing.name,
-                    icon = guild.icon ?: existing.icon,
-                    banner = guild.banner ?: existing.banner,
-                    splash = guild.splash ?: existing.splash,
-                    description = guild.description ?: existing.description,
-                    features = guild.features ?: existing.features,
-                    roles = if (guild.roles.isNotEmpty()) guild.roles else existing.roles,
-                    emojis = if (guild.emojis.isNotEmpty()) guild.emojis else existing.emojis,
-                    stickers = if (guild.stickers.isNotEmpty()) guild.stickers else existing.stickers,
-                    afk_channel_id = guild.afk_channel_id ?: existing.afk_channel_id,
-                    afk_timeout = guild.afk_timeout ?: existing.afk_timeout,
-                    system_channel_id = guild.system_channel_id ?: existing.system_channel_id,
-                    system_channel_flags = guild.system_channel_flags ?: existing.system_channel_flags,
-                    rules_channel_id = guild.rules_channel_id ?: existing.rules_channel_id,
-                    public_updates_channel_id = guild.public_updates_channel_id ?: existing.public_updates_channel_id,
-                    preferred_locale = guild.preferred_locale ?: existing.preferred_locale,
-                    verification_level = guild.verification_level ?: existing.verification_level,
-                    explicit_content_filter = guild.explicit_content_filter ?: existing.explicit_content_filter,
-                    default_message_notifications = guild.default_message_notifications ?: existing.default_message_notifications,
-                    mfa_level = guild.mfa_level ?: existing.mfa_level,
-                    nsfw_level = guild.nsfw_level ?: existing.nsfw_level,
-                    unavailable = guild.unavailable ?: existing.unavailable,
-                    member_count = guild.member_count ?: existing.member_count,
-                    premium_tier = guild.premium_tier ?: existing.premium_tier,
-                    premium_subscription_count = guild.premium_subscription_count ?: existing.premium_subscription_count
-                )
-            }
+            val updated = existing?.copy(
+                name = guild.name ?: existing.name,
+                icon = guild.icon ?: existing.icon,
+                banner = guild.banner ?: existing.banner,
+                splash = guild.splash ?: existing.splash,
+                description = guild.description ?: existing.description,
+                features = guild.features ?: existing.features,
+                roles = guild.roles.ifEmpty { existing.roles },
+                emojis = guild.emojis.ifEmpty { existing.emojis },
+                stickers = guild.stickers.ifEmpty { existing.stickers },
+                afk_channel_id = guild.afk_channel_id ?: existing.afk_channel_id,
+                afk_timeout = guild.afk_timeout ?: existing.afk_timeout,
+                system_channel_id = guild.system_channel_id ?: existing.system_channel_id,
+                system_channel_flags = guild.system_channel_flags ?: existing.system_channel_flags,
+                rules_channel_id = guild.rules_channel_id ?: existing.rules_channel_id,
+                public_updates_channel_id = guild.public_updates_channel_id ?: existing.public_updates_channel_id,
+                preferred_locale = guild.preferred_locale ?: existing.preferred_locale,
+                verification_level = guild.verification_level ?: existing.verification_level,
+                explicit_content_filter = guild.explicit_content_filter ?: existing.explicit_content_filter,
+                default_message_notifications = guild.default_message_notifications ?: existing.default_message_notifications,
+                mfa_level = guild.mfa_level ?: existing.mfa_level,
+                nsfw_level = guild.nsfw_level ?: existing.nsfw_level,
+                unavailable = guild.unavailable ?: existing.unavailable,
+                member_count = guild.member_count ?: existing.member_count,
+                premium_tier = guild.premium_tier ?: existing.premium_tier,
+                premium_subscription_count = guild.premium_subscription_count ?: existing.premium_subscription_count
+            )
+                ?: guild
             current + (guild.id to updated)
         }
         
@@ -104,7 +96,6 @@ class EntityStore(
                 flags = channel.flags ?: existing.flags
             ) ?: channel
             
-            // Sync recipients to UserStore
             updated.recipients?.forEach { userStore.handleUserUpdate(it) }
             
             current + (channel.id to updated)

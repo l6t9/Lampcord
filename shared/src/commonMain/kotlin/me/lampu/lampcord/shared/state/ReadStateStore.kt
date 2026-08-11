@@ -27,18 +27,15 @@ class ReadStateStore(private val discordClient: DiscordClient) {
     fun handleMessageAck(ack: MessageAcknowledge) {
         _readStates.update { current ->
             val existing = current[ack.channel_id]
-            val updated = if (existing != null) {
-                existing.copy(
-                    last_message_id = JsonPrimitive(ack.message_id),
-                    mention_count = ack.mention_count ?: 0
-                )
-            } else {
-                ReadState(
+            val updated = existing?.copy(
+                last_message_id = JsonPrimitive(ack.message_id),
+                mention_count = ack.mention_count ?: 0
+            )
+                ?: ReadState(
                     id = ack.channel_id,
                     last_message_id = JsonPrimitive(ack.message_id),
                     mention_count = ack.mention_count ?: 0
                 )
-            }
             current + (ack.channel_id to updated)
         }
     }

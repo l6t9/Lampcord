@@ -1,30 +1,42 @@
 package me.lampu.lampcord.shared.ui.components
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.text.InlineTextContent
+import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
-import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.text.*
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.Placeholder
+import androidx.compose.ui.text.PlaceholderVerticalAlign
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.text.Placeholder
-import androidx.compose.ui.text.PlaceholderVerticalAlign
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.sp
-import me.lampu.lampcord.shared.state.*
-import androidx.compose.foundation.text.InlineTextContent
-import androidx.compose.foundation.text.appendInlineContent
 import me.lampu.lampcord.shared.model.toTwemojiUrl
-import me.lampu.lampcord.shared.utils.EmojiIndex
+import me.lampu.lampcord.shared.state.GuildStore
+import me.lampu.lampcord.shared.state.NavigationStore
+import me.lampu.lampcord.shared.state.ProfileStore
+import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.utils.DateTimeUtils
+import me.lampu.lampcord.shared.utils.EmojiIndex
 import org.koin.compose.koinInject
 
 @Composable
@@ -191,9 +203,9 @@ private fun AnnotatedString.Builder.appendDiscordMarkdown(
         // Suppressed links
         Regex("""<(https?://[^>]+)>""") to "URL_SUPPRESSED",
         // Masked links
-        Regex("""\[([^\]]+)\]\((https?://[^\s\)]+)\)""") to "MASKED_LINK",
+        Regex("""\[([^]]+)]\((https?://[^\s)]+)\)""") to "MASKED_LINK",
         // Auto links
-        Regex("""(https?://[^\s\)>]+)""") to "URL",
+        Regex("""(https?://[^\s)>]+)""") to "URL",
         // Bold
         Regex("""\*\*([^*]+)\*\*""") to "BOLD",
         // Underline
@@ -371,9 +383,8 @@ private fun AnnotatedString.Builder.appendDiscordMarkdown(
             }
             "SLASH_COMMAND" -> {
                 val name = match!!.groupValues[1]
-                val mentionColor = primaryColor
-                val mentionBg = mentionColor.copy(alpha = 0.1f)
-                withStyle(style = SpanStyle(color = mentionColor, fontWeight = FontWeight.Medium, background = mentionBg)) {
+                val mentionBg = primaryColor.copy(alpha = 0.1f)
+                withStyle(style = SpanStyle(color = primaryColor, fontWeight = FontWeight.Medium, background = mentionBg)) {
                     append("/$name")
                 }
             }
@@ -381,8 +392,7 @@ private fun AnnotatedString.Builder.appendDiscordMarkdown(
                 val id = if (tag == "EVERYONE" || tag == "HERE") "" else match!!.groupValues[1]
                 var name = id
                 var prefix = "@"
-                val mentionColor = primaryColor
-                val mentionBg = mentionColor.copy(alpha = 0.1f)
+                val mentionBg = primaryColor.copy(alpha = 0.1f)
                 
                 when(tag) {
                     "MENTION" -> {
@@ -408,7 +418,7 @@ private fun AnnotatedString.Builder.appendDiscordMarkdown(
                     )
                 } else null
 
-                withStyle(style = SpanStyle(color = mentionColor, fontWeight = FontWeight.Medium, background = mentionBg)) {
+                withStyle(style = SpanStyle(color = primaryColor, fontWeight = FontWeight.Medium, background = mentionBg)) {
                     if (link != null) {
                         pushLink(link)
                         append("$prefix$name")

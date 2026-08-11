@@ -1,15 +1,40 @@
 package me.lampu.lampcord.shared.ui.components.settings
 
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.*
-import androidx.compose.foundation.interaction.*
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LargeTopAppBar
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ProvideTextStyle
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -21,8 +46,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.components.ExpressiveSwitch
+import me.lampu.lampcord.shared.ui.icons.Icons
 
 @Composable
 fun Material3SettingsGroup(
@@ -231,69 +256,6 @@ fun SettingsSubScreen(
     }
 }
 
-@Composable
-fun SettingsExpandableActionRow(
-    title: String,
-    subtitle: String? = null,
-    expanded: Boolean,
-    onToggle: () -> Unit,
-    enabled: Boolean = true,
-    content: @Composable () -> Unit,
-) {
-    Material3SettingsItemRow(
-        item = Material3SettingsItem(
-            title = { Text(title) },
-            description = subtitle?.let { { Text(it) } },
-            expanded = expanded,
-            expandableContent = content,
-            enabled = enabled,
-            onClick = onToggle
-        ),
-        isFirst = true,
-        isLast = true
-    )
-}
-
-@Composable
-fun SettingsActionRow(
-    title: String,
-    subtitle: String,
-    enabled: Boolean = true,
-    onClick: () -> Unit,
-) {
-    Material3SettingsItemRow(
-        item = Material3SettingsItem(
-            title = { Text(title) },
-            description = { Text(subtitle) },
-            enabled = enabled,
-            onClick = onClick
-        ),
-        isFirst = true,
-        isLast = true
-    )
-}
-
-@Composable
-fun SettingsToggle(
-    title: String,
-    subtitle: String? = null,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    enabled: Boolean = true,
-) {
-    Material3SettingsItemRow(
-        item = switchSettingsItem(
-            title = title,
-            description = subtitle,
-            checked = checked,
-            enabled = enabled,
-            onCheckedChange = onCheckedChange
-        ),
-        isFirst = true,
-        isLast = true
-    )
-}
-
 data class Material3SettingsItem(
     val icon: ImageVector? = null,
     val leadingContent: (@Composable () -> Unit)? = null,
@@ -343,21 +305,6 @@ fun expandableSettingsItem(
         expandableContent = content,
         enabled = enabled,
         onClick = onToggle
-    )
-}
-
-@Composable
-fun navigationSettingsItem(
-    title: String,
-    description: String? = null,
-    enabled: Boolean = true,
-    onClick: () -> Unit
-): Material3SettingsItem {
-    return Material3SettingsItem(
-        title = { Text(title) },
-        description = description?.let { { Text(it) } },
-        enabled = enabled,
-        onClick = onClick
     )
 }
 

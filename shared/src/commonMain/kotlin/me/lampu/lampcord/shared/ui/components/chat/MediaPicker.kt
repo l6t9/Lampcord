@@ -1,16 +1,55 @@
 package me.lampu.lampcord.shared.ui.components.chat
 
-import androidx.compose.animation.core.*
+import androidx.compose.animation.core.animateDp
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.updateTransition
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.*
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FloatingToolbarDefaults
+import androidx.compose.material3.HorizontalFloatingToolbar
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -21,19 +60,29 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
-import me.lampu.lampcord.shared.model.*
-import me.lampu.lampcord.shared.state.*
+import androidx.compose.ui.zIndex
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import me.lampu.lampcord.shared.model.LocalMedia
+import me.lampu.lampcord.shared.model.PendingFile
+import me.lampu.lampcord.shared.model.Poll
+import me.lampu.lampcord.shared.model.PollAnswer
+import me.lampu.lampcord.shared.model.PollMedia
+import me.lampu.lampcord.shared.state.MessageStore
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
 import me.lampu.lampcord.shared.ui.components.VideoThumbnail
 import me.lampu.lampcord.shared.ui.icons.Icons
-import me.lampu.lampcord.shared.utils.*
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import me.lampu.lampcord.shared.utils.FilePicker
+import me.lampu.lampcord.shared.utils.RequestMediaPermissions
+import me.lampu.lampcord.shared.utils.getLocalFiles
+import me.lampu.lampcord.shared.utils.getLocalMedia
+import me.lampu.lampcord.shared.utils.getLocalMediaBytes
+import me.lampu.lampcord.shared.utils.getPlatformName
 import org.koin.compose.koinInject
+import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -54,7 +103,7 @@ fun MediaPicker(
     val animatedDismiss = {
         scope.launch {
             isToolbarVisible = false
-            delay(100)
+            delay(100.milliseconds)
             onDismiss()
         }
     }
@@ -183,7 +232,7 @@ private fun MediaPickerContent(
     }
 
     if (!permissionRequested) {
-        me.lampu.lampcord.shared.utils.RequestMediaPermissions { granted ->
+        RequestMediaPermissions { granted ->
             hasPermission = granted
             permissionRequested = true
         }
@@ -478,10 +527,10 @@ private fun MediaPickerContent(
                             val canPost = pollQuestion.isNotBlank() && pollAnswers.count { it.isNotBlank() } >= 2
                             Button(
                                 onClick = { 
-                                    val poll = me.lampu.lampcord.shared.model.Poll(
-                                        question = me.lampu.lampcord.shared.model.PollMedia(text = pollQuestion),
-                                        answers = pollAnswers.filter { it.isNotBlank() }.mapIndexed { idx, text -> 
-                                            me.lampu.lampcord.shared.model.PollAnswer(answer_id = idx + 1, poll_media = me.lampu.lampcord.shared.model.PollMedia(text = text))
+                                    val poll = Poll(
+                                        question = PollMedia(text = pollQuestion),
+                                        answers = pollAnswers.filter { it.isNotBlank() }.mapIndexed { idx, text ->
+                                            PollAnswer(answer_id = idx + 1, poll_media = PollMedia(text = text))
                                         },
                                         allow_multiselect = pollAllowMultiselect
                                     )
