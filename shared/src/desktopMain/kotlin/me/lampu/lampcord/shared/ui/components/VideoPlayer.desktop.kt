@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.playback.ffmpeg.AudioRenderer
+import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
 import me.lampu.lampcord.shared.playback.ffmpeg.FFmpegFrameGrabber
 import me.lampu.lampcord.shared.playback.ffmpeg.FFmpegLogCallback
 import me.lampu.lampcord.shared.playback.ffmpeg.Frame
@@ -121,7 +122,7 @@ actual fun VideoPlayer(
                     }
             )
         } else if (isResolving) {
-            CircularProgressIndicator(color = Color.White)
+            ContainedLoadingIndicator(indicatorColor = Color.White)
         }
 
         // Overlay controls

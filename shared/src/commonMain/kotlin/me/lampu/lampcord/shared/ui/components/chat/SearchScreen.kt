@@ -38,7 +38,12 @@ fun SearchScreen(
     val isMobile = getPlatformName() == "android" || getPlatformName() == "ios"
 
     if (isMobile) {
-        SearchScreenContent(chatState, onDismiss)
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.surface
+        ) {
+            SearchScreenContent(chatState, onDismiss)
+        }
     } else {
         androidx.compose.ui.window.Dialog(
             onDismissRequest = onDismiss,

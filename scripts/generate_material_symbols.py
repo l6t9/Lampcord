@@ -233,8 +233,8 @@ def extract_glyph(font: TTFont, glyph: str) -> str:
 # ---------------------------------------------------------------------------
 
 _ENTRY_RE = re.compile(
-    r"val\s+(\w+):\s*ImageVector\s+by\s+lazy\s*\{.*?pathData\s*=\s*\"([^\"]+)\"",
-    re.S,
+    r"internal const val (\w+)_Path = \"([^\"]+)\"",
+    re.MULTILINE
 )
 
 

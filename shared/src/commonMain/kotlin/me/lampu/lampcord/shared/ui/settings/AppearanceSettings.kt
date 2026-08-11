@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,10 +18,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Popup
 import com.materialkolor.PaletteStyle
 import com.materialkolor.rememberDynamicColorScheme
 import me.lampu.lampcord.shared.settings.ThemeMode
@@ -31,7 +37,14 @@ import me.lampu.lampcord.shared.state.ChatState
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.components.settings.*
 import me.lampu.lampcord.shared.ui.components.ExpressiveSwitch
+import me.lampu.lampcord.shared.ui.components.AsyncImage
+import me.lampu.lampcord.shared.ui.components.HsvColorPicker
 import me.lampu.lampcord.shared.model.UserSettings
+import me.lampu.lampcord.shared.utils.FilePicker
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
+
+private enum class PaletteOption { DYNAMIC, CUSTOM }
 
 data class DesktopThemePalette(
     val name: String,
@@ -64,9 +77,17 @@ private val desktopPaletteColors =
         DesktopThemePalette("Blue Grey", Color(0xFF546E7A)),
     )
 
+@OptIn(ExperimentalEncodingApi::class)
 @Composable
 fun AppearanceSettings(chatState: ChatState) {
     val colorScheme = MaterialTheme.colorScheme
+    val isSystemDark = isSystemInDarkTheme()
+    val isDark = when (chatState.settingsStore.themeMode) {
+        ThemeMode.DARK -> true
+        ThemeMode.LIGHT -> false
+        else -> isSystemDark
+    }
+    
     val isMobile = me.lampu.lampcord.shared.utils.getPlatformName().let { it == "android" || it == "ios" }
 
     fun updateTheme(theme: String) {
@@ -74,16 +95,18 @@ fun AppearanceSettings(chatState: ChatState) {
     }
 
     if (!isMobile) {
-        DesktopAppearanceSettings(chatState, colorScheme, ::updateTheme)
+        DesktopAppearanceSettings(chatState, colorScheme, isDark, ::updateTheme)
     } else {
         MobileAppearanceSettings(chatState, colorScheme, ::updateTheme)
     }
 }
 
+@OptIn(ExperimentalEncodingApi::class)
 @Composable
 private fun DesktopAppearanceSettings(
     chatState: ChatState,
     colorScheme: ColorScheme,
+    isDark: Boolean,
     updateTheme: (String) -> Unit
 ) {
     DesktopSettingsLayout {
@@ -91,104 +114,124 @@ private fun DesktopAppearanceSettings(
             title = "Wallpaper & Colors",
             icon = Icons.Filled.Monitor
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                AppearanceToggle("Material You", chatState.settingsStore.materialYou, "Use system wallpaper colors as the base for the app's theme.") {
-                    chatState.settingsStore.materialYou = it
-                }
-
-                AppearanceToggle("Sync across clients", chatState.settingsStore.syncAppearance, "Sync your theme selection across all Discord clients.") {
-                    chatState.settingsStore.syncAppearance = it
-                }
-            }
-        }
-
-        DesktopSettingsSection(
-            title = "Theme",
-            icon = Icons.Filled.DarkMode
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Theme mode", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = colorScheme.onSurfaceVariant)
-                    
-                    DesktopLargeButtonGroupSelection(
-                        options = listOf(ThemeMode.LIGHT, ThemeMode.DARK),
-                        selectedOption = if (chatState.settingsStore.themeMode == ThemeMode.LIGHT) ThemeMode.LIGHT else ThemeMode.DARK,
-                        onOptionSelected = { mode: ThemeMode ->
-                            chatState.settingsStore.themeMode = mode
-                            chatState.settingsStore.pureBlack = false
-                            if (chatState.settingsStore.syncAppearance) updateTheme(if (mode == ThemeMode.LIGHT) "light" else "dark")
-                        },
-                        iconProvider = { mode: ThemeMode, isSelected -> 
-                            when (mode) {
-                                ThemeMode.LIGHT -> if (isSelected) Icons.Filled.LightMode else Icons.Rounded.LightMode
-                                else -> if (isSelected) Icons.Filled.DarkMode else Icons.Rounded.DarkMode
+            Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                // Main Row: Preview and Theme Controls
+                Row(
+                    modifier = Modifier.fillMaxWidth().height(220.dp),
+                    horizontalArrangement = Arrangement.spacedBy(20.dp)
+                ) {
+                    // Preview Area
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clip(RoundedCornerShape(24.dp))
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (chatState.settingsStore.chatBackground.isNotEmpty()) {
+                             AsyncImage(
+                                model = chatState.settingsStore.chatBackground,
+                                contentDescription = "Chat Background Preview",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(
+                                    Icons.Rounded.Image,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(48.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                Text("No background set", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
                             }
-                        },
-                        labelProvider = { mode: ThemeMode -> if (mode == ThemeMode.LIGHT) "Light" else "Dark" }
-                    )
+                        }
+                    }
 
-                    Spacer(Modifier.height(4.dp))
+                    // Theme Controls
+                    Column(
+                        modifier = Modifier.width(280.dp).fillMaxHeight(),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // Auto / Pure Black row
+                        DesktopButtonGroupSelection(
+                            options = listOf(ThemeMode.AUTO, null),
+                            selectedOption = if (chatState.settingsStore.themeMode == ThemeMode.AUTO) ThemeMode.AUTO else if (chatState.settingsStore.pureBlack) null else ThemeMode.AUTO,
+                            onOptionSelected = { mode: ThemeMode? ->
+                                if (mode == null) {
+                                    chatState.settingsStore.themeMode = ThemeMode.DARK
+                                    chatState.settingsStore.pureBlack = true
+                                    if (chatState.settingsStore.syncAppearance) updateTheme("dark")
+                                } else {
+                                    chatState.settingsStore.themeMode = mode
+                                    chatState.settingsStore.pureBlack = false
+                                    if (chatState.settingsStore.syncAppearance) updateTheme("dark")
+                                }
+                            },
+                            iconProvider = { mode, isSelected ->
+                                when (mode) {
+                                    ThemeMode.AUTO -> if (isSelected) Icons.Filled.Sync else Icons.Rounded.Sync
+                                    null -> if (isSelected) Icons.Filled.Bedtime else Icons.Rounded.Bedtime
+                                    else -> null
+                                }
+                            },
+                            labelProvider = { mode: ThemeMode? -> if (mode == ThemeMode.AUTO) "Auto" else "Pure Black" }
+                        )
 
-                    DesktopButtonGroupSelection(
-                        options = listOf(ThemeMode.AUTO, null),
-                        selectedOption = if (chatState.settingsStore.themeMode == ThemeMode.AUTO) ThemeMode.AUTO else if (chatState.settingsStore.pureBlack) null else ThemeMode.AUTO,
-                        onOptionSelected = { mode: ThemeMode? ->
-                            if (mode == null) {
-                                chatState.settingsStore.themeMode = ThemeMode.DARK
-                                chatState.settingsStore.pureBlack = true
-                                if (chatState.settingsStore.syncAppearance) updateTheme("dark")
-                            } else {
+                        // Light / Dark buttons
+                        DesktopLargeButtonGroupSelection(
+                            options = listOf(ThemeMode.LIGHT, ThemeMode.DARK),
+                            selectedOption = if (chatState.settingsStore.themeMode == ThemeMode.LIGHT) ThemeMode.LIGHT else ThemeMode.DARK,
+                            onOptionSelected = { mode: ThemeMode ->
                                 chatState.settingsStore.themeMode = mode
                                 chatState.settingsStore.pureBlack = false
-                                if (chatState.settingsStore.syncAppearance) updateTheme("dark")
-                            }
-                        },
-                        iconProvider = { mode: ThemeMode?, isSelected -> 
-                            when (mode) {
-                                ThemeMode.AUTO -> if (isSelected) Icons.Filled.Sync else Icons.Rounded.Sync
-                                null -> if (isSelected) Icons.Filled.Bedtime else Icons.Rounded.Bedtime
-                                else -> Icons.Rounded.Sync // Should not happen
-                            }
-                        },
-                        labelProvider = { mode: ThemeMode? -> if (mode == ThemeMode.AUTO) "Auto" else "Pure Black" }
-                    )
-                }
-
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Color palette", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = colorScheme.onSurfaceVariant)
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        contentPadding = PaddingValues(vertical = 4.dp),
-                    ) {
-                        items(desktopPaletteColors) { palette ->
-                            val isDynamicPalette = palette.seedColor == Color.Transparent
-                            val currentAccentHex = chatState.settingsStore.accentColor.lowercase()
-                            val paletteAccentHex = if (isDynamicPalette) "" else "#" + palette.seedColor.value.toString(16).substring(2).lowercase()
-
-                            val isSelected = if (isDynamicPalette) {
-                                chatState.settingsStore.materialYou
-                            } else {
-                                !chatState.settingsStore.materialYou && (currentAccentHex == paletteAccentHex || (currentAccentHex == "#6750a4" && palette.name == "Baseline"))
-                            }
-
-                            PalettePreviewItem(
-                                palette = palette,
-                                isSelected = isSelected,
-                                onClick = {
-                                    if (isDynamicPalette) {
-                                        chatState.settingsStore.materialYou = true
-                                    } else {
-                                        chatState.settingsStore.materialYou = false
-                                        chatState.settingsStore.accentColor = "#" + palette.seedColor.value.toString(16).substring(2)
-                                    }
-                                },
-                            )
+                                if (chatState.settingsStore.syncAppearance) updateTheme(if (mode == ThemeMode.LIGHT) "light" else "dark")
+                            },
+                            iconProvider = { mode: ThemeMode, isSelected -> 
+                                when (mode) {
+                                    ThemeMode.LIGHT -> if (isSelected) Icons.Filled.LightMode else Icons.Rounded.LightMode
+                                    else -> if (isSelected) Icons.Filled.DarkMode else Icons.Rounded.DarkMode
+                                }
+                            },
+                            labelProvider = { mode: ThemeMode -> if (mode == ThemeMode.LIGHT) "Light" else "Dark" }
+                        )
+                        
+                        var showBackgroundPicker by remember { mutableStateOf(false) }
+                        
+                        FilePicker(
+                            show = showBackgroundPicker,
+                            onFileSelected = { files ->
+                                files.firstOrNull()?.let { (_, data) ->
+                                    val base64 = Base64.encode(data)
+                                    chatState.settingsStore.chatBackground = "data:image/png;base64,$base64"
+                                }
+                                showBackgroundPicker = false
+                            },
+                            onDismiss = { showBackgroundPicker = false }
+                        )
+                        
+                        Button(
+                            onClick = { showBackgroundPicker = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = CircleShape,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary,
+                            ),
+                            contentPadding = PaddingValues(12.dp)
+                        ) {
+                            Icon(Icons.Rounded.Image, null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(12.dp))
+                            Text("Choose background", fontWeight = FontWeight.ExtraBold)
                         }
                     }
                 }
 
+                // Palette Styles
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Palette style", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = colorScheme.onSurfaceVariant)
+                    Text("Palette style", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = colorScheme.onSurface)
                     DesktopButtonGroupSelection(
                         options = ThemePaletteStyle.entries.toList(),
                         selectedOption = chatState.settingsStore.themePaletteStyle,
@@ -206,6 +249,135 @@ private fun DesktopAppearanceSettings(
                         },
                         labelProvider = { it.name.lowercase().replace('_', ' ').replaceFirstChar { char -> char.uppercase() } }
                     )
+                }
+
+                // Color Palette - Custom Picker
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Color palette", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = colorScheme.onSurface)
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        val selectedOption = if (chatState.settingsStore.materialYou) PaletteOption.DYNAMIC else PaletteOption.CUSTOM
+                        
+                        DesktopButtonGroupSelectionCustomIcon(
+                            options = PaletteOption.entries,
+                            selectedOption = selectedOption,
+                            onOptionSelected = { option ->
+                                if (option == PaletteOption.DYNAMIC) {
+                                    chatState.settingsStore.materialYou = true
+                                } else {
+                                    chatState.settingsStore.materialYou = false
+                                }
+                            },
+                            iconProvider = { option, isSelected ->
+                                when (option) {
+                                    PaletteOption.DYNAMIC -> {
+                                        Icon(
+                                            Icons.Rounded.AutoAwesome, 
+                                            null, 
+                                            modifier = Modifier.size(18.dp),
+                                            tint = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                    PaletteOption.CUSTOM -> {
+                                        val accentColor = remember(chatState.settingsStore.accentColor) {
+                                            try {
+                                                Color(chatState.settingsStore.accentColor.removePrefix("#").toLong(16) or 0xFF000000)
+                                            } catch (_: Exception) {
+                                                Color(0xFF6750A4)
+                                            }
+                                        }
+                                        Box(
+                                            modifier = Modifier
+                                                .size(18.dp)
+                                                .clip(RoundedCornerShape(4.dp))
+                                                .background(accentColor)
+                                                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), RoundedCornerShape(4.dp))
+                                        )
+                                    }
+                                }
+                            },
+                            labelProvider = { 
+                                when (it) {
+                                    PaletteOption.DYNAMIC -> "Dynamic"
+                                    PaletteOption.CUSTOM -> "Custom"
+                                }
+                            }
+                        )
+
+                        // Custom Color Picker Trigger
+                        var showPicker by remember { mutableStateOf(false) }
+                        
+                        if (!chatState.settingsStore.materialYou) {
+                            Surface(
+                                modifier = Modifier.weight(1f).height(44.dp),
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)),
+                                onClick = { showPicker = true }
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = chatState.settingsStore.accentColor.uppercase(),
+                                        style = MaterialTheme.typography.bodyLarge.copy(
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            fontWeight = FontWeight.Bold,
+                                            fontFamily = FontFamily.Monospace
+                                        )
+                                    )
+                                    
+                                    Spacer(Modifier.weight(1f))
+                                    
+                                    Text(
+                                        "Pick color", 
+                                        style = MaterialTheme.typography.labelMedium, 
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+
+                        if (showPicker) {
+                            Popup(
+                                alignment = Alignment.TopStart,
+                                onDismissRequest = { showPicker = false },
+                                offset = IntOffset(0, 52)
+                            ) {
+                                val currentAccent = remember(chatState.settingsStore.accentColor) {
+                                    try {
+                                        Color(chatState.settingsStore.accentColor.removePrefix("#").toLong(16) or 0xFF000000)
+                                    } catch (_: Exception) {
+                                        Color(0xFF6750A4)
+                                    }
+                                }
+                                HsvColorPicker(
+                                    initialColor = currentAccent,
+                                    onColorSelected = {
+                                        val r = (it.red * 255).toInt().toString(16).padStart(2, '0')
+                                        val g = (it.green * 255).toInt().toString(16).padStart(2, '0')
+                                        val b = (it.blue * 255).toInt().toString(16).padStart(2, '0')
+                                        chatState.settingsStore.accentColor = "#$r$g$b"
+                                        chatState.settingsStore.materialYou = false
+                                        showPicker = false
+                                    },
+                                    onDismiss = { showPicker = false }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+                AppearanceToggle("Sync across clients", chatState.settingsStore.syncAppearance, "Sync your theme selection across all Discord clients.") {
+                    chatState.settingsStore.syncAppearance = it
                 }
             }
         }
@@ -242,6 +414,70 @@ private fun DesktopAppearanceSettings(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun PaletteGridItem(
+    palette: DesktopThemePalette,
+    isDark: Boolean,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val colorScheme = rememberDynamicColorScheme(
+        seedColor = if (palette.seedColor == Color.Transparent) Color(0xFF6750A4) else palette.seedColor,
+        isDark = isDark,
+        style = PaletteStyle.TonalSpot,
+    )
+
+    Surface(
+        onClick = onClick,
+        modifier = modifier.height(68.dp),
+        shape = RoundedCornerShape(16.dp),
+        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+        border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
+    ) {
+        Row(
+            modifier = Modifier.fillMaxSize().padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+            ) {
+                if (palette.seedColor == Color.Transparent) {
+                    Box(
+                        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.primary),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.AutoAwesome,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                } else {
+                    Canvas(modifier = Modifier.fillMaxSize()) {
+                        drawRect(color = colorScheme.primary, size = Size(size.width, size.height / 2))
+                        drawRect(color = colorScheme.secondary, topLeft = Offset(0f, size.height / 2), size = Size(size.width / 2, size.height / 2))
+                        drawRect(color = colorScheme.tertiary, topLeft = Offset(size.width / 2, size.height / 2), size = Size(size.width / 2, size.height / 2))
+                    }
+                }
+            }
+            
+            Text(
+                text = palette.name,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
@@ -364,7 +600,11 @@ private fun MobileAppearanceSettings(
                                 items(desktopPaletteColors) { palette ->
                                     val isDynamicPalette = palette.seedColor == Color.Transparent
                                     val currentAccentHex = chatState.settingsStore.accentColor.lowercase()
-                                    val paletteAccentHex = if (isDynamicPalette) "" else "#" + palette.seedColor.value.toString(16).substring(2).lowercase()
+                                    val paletteAccentHex = if (isDynamicPalette) {
+                                        ""
+                                    } else {
+                                        "#" + palette.seedColor.value.toString(16).substring(2).lowercase()
+                                    }
 
                                     val isSelected = if (isDynamicPalette) {
                                         chatState.settingsStore.materialYou

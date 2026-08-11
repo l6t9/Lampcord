@@ -55,6 +55,7 @@ class ChatState(
     val settingsStore: SettingsStore,
     val errorStore: AppErrorStore
 ) {
+    val client get() = discordClient
     val draftMessages = mutableStateMapOf<String, String>()
 
     var isConnected

@@ -87,6 +87,14 @@ class SettingsStore(
             _fontScale = value
             me.lampu.lampcord.shared.settings.Settings.shared.fontScale = value
         }
+
+    private var _chatBackground by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.chatBackground)
+    var chatBackground: String
+        get() = _chatBackground
+        set(value) {
+            _chatBackground = value
+            me.lampu.lampcord.shared.settings.Settings.shared.chatBackground = value
+        }
     
     private val scope = CoroutineScope(Dispatchers.Main)
     private var pendingUpdateJob: Job? = null

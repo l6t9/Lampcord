@@ -44,7 +44,8 @@ data class Guild(
     val region: String? = null,
     val splash: String? = null,
     val discovery_splash: String? = null,
-    val hub_type: Int? = null
+    val hub_type: Int? = null,
+    val default_message_notifications: Int? = null
 ) {
     fun merge(partial: Partial): Guild {
         return copy(
@@ -61,7 +62,8 @@ data class Guild(
             public_updates_channel_id = partial.public_updates_channel_id ?: public_updates_channel_id,
             preferred_locale = partial.preferred_locale ?: preferred_locale,
             verification_level = partial.verification_level ?: verification_level,
-            explicit_content_filter = partial.explicit_content_filter ?: explicit_content_filter
+            explicit_content_filter = partial.explicit_content_filter ?: explicit_content_filter,
+            default_message_notifications = partial.default_message_notifications ?: default_message_notifications
         )
     }
 
@@ -81,7 +83,9 @@ data class Guild(
         val preferred_locale: String? = null,
         val verification_level: Int? = null,
         val explicit_content_filter: Int? = null,
-        val default_message_notifications: Int? = null
+        val default_message_notifications: Int? = null,
+        val mfa_level: Int? = null,
+        val nsfw_level: Int? = null
     )
 }
 
@@ -141,7 +145,18 @@ data class Role(
     val mentionable: Boolean,
     val icon: String? = null,
     val unicode_emoji: String? = null
-)
+) {
+    @Serializable
+    data class Partial(
+        val name: String? = null,
+        val color: Int? = null,
+        val hoist: Boolean? = null,
+        val mentionable: Boolean? = null,
+        val permissions: String? = null,
+        val icon: String? = null,
+        val unicode_emoji: String? = null
+    )
+}
 
 @Serializable
 data class Member(

@@ -36,7 +36,7 @@ fun main() {
         val targetSeedColor = remember(seedColorString) {
             try {
                 Color(seedColorString.removePrefix("#").toLong(16) or 0xFF000000)
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 Color(0xFF6750A4)
             }
         }

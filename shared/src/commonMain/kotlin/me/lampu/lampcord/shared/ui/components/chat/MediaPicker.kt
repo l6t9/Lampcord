@@ -27,6 +27,7 @@ import androidx.compose.ui.window.PopupProperties
 import me.lampu.lampcord.shared.model.*
 import me.lampu.lampcord.shared.state.ChatState
 import me.lampu.lampcord.shared.ui.components.AsyncImage
+import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
 import me.lampu.lampcord.shared.ui.components.VideoThumbnail
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.*
@@ -231,7 +232,7 @@ private fun MediaPickerContent(
                         }
                     } else if (isLoading) {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator()
+                            ContainedLoadingIndicator()
                         }
                     } else if (mediaList.isEmpty()) {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -332,7 +333,7 @@ private fun MediaPickerContent(
                         }
                     } else if (isLoading) {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator()
+                            ContainedLoadingIndicator()
                         }
                     } else if (fileList.isEmpty()) {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

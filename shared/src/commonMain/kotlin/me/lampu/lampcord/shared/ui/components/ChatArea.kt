@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color 
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -51,7 +52,6 @@ fun ChatArea(
     
     LaunchedEffect(latestMessageId) {
         if (latestMessageId != null) {
-            // If we are at or near the bottom (item 0 in reverseLayout), scroll to new item
             if (scrollState.firstVisibleItemIndex <= 1) {
                 scrollState.scrollToItem(0)
             }
@@ -64,13 +64,10 @@ fun ChatArea(
             if (index != -1) {
                 chatState.highlightedMessageId = messageId
                 
-                // Get viewport height and estimate item offset to center it
                 val visibleItems = scrollState.layoutInfo.visibleItemsInfo
                 val viewportHeight = scrollState.layoutInfo.viewportSize.height
 
                 if (visibleItems.isNotEmpty()) {
-                    // Try to calculate an offset that centers the item
-                    // If we don't know the exact item height, we use an average or a safe estimate
                     val averageItemHeight = visibleItems.map { it.size }.average().toInt()
                     val centerOffset = (viewportHeight / 2) - (averageItemHeight / 2)
 
@@ -99,6 +96,21 @@ fun ChatArea(
                 }
             }
     ) {
+        if (chatState.settingsStore.chatBackground.isNotEmpty()) {
+            AsyncImage(
+                model = chatState.settingsStore.chatBackground,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+            // Overlay to ensure readability
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.6f))
+            )
+        }
+
         val filteredMessages = remember(chatState.messages.size, chatState.relationshipStore.relationships.size) {
             val hideBlocked = me.lampu.lampcord.shared.settings.Settings.shared.hideBlockedMessages
             if (hideBlocked) {
@@ -122,7 +134,6 @@ fun ChatArea(
                 val index = filteredMessages.indexOf(message)
                 val priorMessage = filteredMessages.getOrNull(index + 1)
                 
-                // Date separator logic
                 val showDateSeparator = remember(message, priorMessage) {
                     if (priorMessage == null) return@remember true
                     try {
@@ -134,14 +145,11 @@ fun ChatArea(
                     }
                 }
 
-                // Grouping logic: 7 minutes window, same author, current is regular message
                 val isInline = remember(message, priorMessage, showDateSeparator) {
                     if (priorMessage == null) return@remember false
                     if (showDateSeparator) return@remember false
                     if (priorMessage.author?.id != message.author?.id) return@remember false
                     if (message.referenced_message != null) return@remember false
-                    // Only regular messages (type 0) can be grouped inline.
-                    // They can group under other regular messages (0) or replies (19).
                     val currentType = message.type ?: 0
                     val priorType = priorMessage.type ?: 0
                     if (currentType != 0) return@remember false
@@ -256,4 +264,3 @@ fun DateSeparator(timestamp: String) {
         HorizontalDivider(modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     }
 }
-

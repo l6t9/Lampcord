@@ -88,7 +88,7 @@ fun ProfileSections(
                     val guild = chatState.selectedGuild
                     profile.guild_member.roles.mapNotNull { id -> guild?.roles?.find { it.id == id } }.sortedByDescending { it.position }.forEach { role ->
                         val roleColor = if (role.color != 0) Color(role.color or 0xFF000000.toInt()) else null
-                        RoleTag(role.name, theme.tagColor, roleColor)
+                        RoleTag(role.name, theme.tagColor, theme.contentColor, roleColor)
                     }
                 }
             }
@@ -107,7 +107,7 @@ fun ProfileSections(
                             androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 allowedPerms.forEach { perm ->
                                     val label = perm.name.lowercase().replace('_', ' ').replaceFirstChar { it.uppercase() }
-                                    RoleTag(label, theme.tagColor)
+                                    RoleTag(label, theme.tagColor, theme.contentColor)
                                 }
                             }
                         }

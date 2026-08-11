@@ -304,7 +304,7 @@ fun LoginScreen(
                                     }
                                 }
                                 is RemoteAuthState.Connecting -> {
-                                    CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                                    ContainedLoadingIndicator(modifier = Modifier.size(32.dp))
                                 }
                                 is RemoteAuthState.Error -> {
                                     Column(
@@ -318,7 +318,7 @@ fun LoginScreen(
                                     }
                                 }
                                 else -> {
-                                    CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                                    ContainedLoadingIndicator(modifier = Modifier.size(32.dp))
                                 }
                             }
                         }

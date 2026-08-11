@@ -33,12 +33,14 @@ fun DesktopSettingsLayout(
 fun DesktopSettingsSection(
     title: String,
     icon: ImageVector,
+    actions: @Composable (RowScope.() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.fillMaxWidth()
         ) {
             Icon(
                 imageVector = icon,
@@ -50,8 +52,17 @@ fun DesktopSettingsSection(
                 text = title,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f)
             )
+            if (actions != null) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    actions()
+                }
+            }
         }
         
         Column(
@@ -130,6 +141,81 @@ fun <T> DesktopButtonGroupSelection(
                     DropdownMenuItem(
                         text = { Text(labelProvider(option)) },
                         leadingIcon = iconProvider?.invoke(option, isSelected)?.let { { Icon(it, null) } },
+                        onClick = {
+                            onOptionSelected(option)
+                            menuState.dismiss()
+                        }
+                    )
+                }
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun <T> DesktopButtonGroupSelectionCustomIcon(
+    options: List<T>,
+    selectedOption: T,
+    onOptionSelected: (T) -> Unit,
+    iconProvider: @Composable ((T, Boolean) -> Unit)? = null,
+    labelProvider: (T) -> String
+) {
+    ButtonGroup(
+        modifier = Modifier.height(44.dp),
+        overflowIndicator = { menuState -> ButtonGroupDefaults.OverflowIndicator(menuState) },
+        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
+    ) {
+        options.forEachIndexed { index, option ->
+            val isSelected = option == selectedOption
+            customItem(
+                buttonGroupContent = {
+                    val shapes = when {
+                        options.size == 1 -> ButtonDefaults.shapes()
+                        index == 0 -> ButtonDefaults.shapes(
+                            shape = ButtonGroupDefaults.connectedLeadingButtonShape,
+                            pressedShape = ButtonGroupDefaults.connectedLeadingButtonPressShape
+                        )
+                        index == options.lastIndex -> ButtonDefaults.shapes(
+                            shape = ButtonGroupDefaults.connectedTrailingButtonShape,
+                            pressedShape = ButtonGroupDefaults.connectedTrailingButtonPressShape
+                        )
+                        else -> ButtonDefaults.shapes(
+                            shape = MaterialTheme.shapes.small,
+                            pressedShape = ButtonGroupDefaults.connectedMiddleButtonPressShape
+                        )
+                    }
+
+                    Button(
+                        onClick = { onOptionSelected(option) },
+                        shapes = shapes,
+                        colors = if (isSelected) {
+                            ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
+                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        } else {
+                            ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.25f),
+                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
+                        contentPadding = PaddingValues(horizontal = 16.dp),
+                        modifier = Modifier.fillMaxHeight()
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            iconProvider?.invoke(option, isSelected)
+                            Text(labelProvider(option), style = MaterialTheme.typography.labelLarge)
+                        }
+                    }
+                },
+                menuContent = { menuState ->
+                    DropdownMenuItem(
+                        text = { Text(labelProvider(option)) },
+                        leadingIcon = iconProvider?.let { { it(option, isSelected) } },
                         onClick = {
                             onOptionSelected(option)
                             menuState.dismiss()

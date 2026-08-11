@@ -16,3 +16,7 @@ build/
 # Signing keys
 *.keystore
 *.jks
+
+# Packaging outputs
+/dist/
+/tools/

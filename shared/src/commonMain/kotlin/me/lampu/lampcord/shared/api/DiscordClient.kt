@@ -326,6 +326,144 @@ class DiscordClient(
         }
     }
 
+    suspend fun getGuildRoles(guildId: String): List<Role> {
+        return try {
+            httpClient.get("$apiBase/guilds/$guildId/roles") {
+                standardHeaders()
+            }.body<List<Role>>()
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    suspend fun createRole(guildId: String): Role? {
+        return try {
+            httpClient.post("$apiBase/guilds/$guildId/roles") {
+                standardHeaders()
+                setBody(mapOf("name" to "new role"))
+            }.body<Role>()
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    suspend fun updateRole(guildId: String, roleId: String, partial: Role.Partial): Role? {
+        return try {
+            httpClient.patch("$apiBase/guilds/$guildId/roles/$roleId") {
+                standardHeaders()
+                setBody(partial)
+            }.body<Role>()
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    suspend fun deleteRole(guildId: String, roleId: String): Boolean {
+        return try {
+            val response = httpClient.delete("$apiBase/guilds/$guildId/roles/$roleId") {
+                standardHeaders()
+            }
+            response.status.isSuccess()
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    suspend fun getGuildBans(guildId: String): List<Ban> {
+        return try {
+            httpClient.get("$apiBase/guilds/$guildId/bans") {
+                standardHeaders()
+            }.body<List<Ban>>()
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    suspend fun unbanUser(guildId: String, userId: String): Boolean {
+        return try {
+            val response = httpClient.delete("$apiBase/guilds/$guildId/bans/$userId") {
+                standardHeaders()
+            }
+            response.status.isSuccess()
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    suspend fun getGuildEmojis(guildId: String): List<Emoji> {
+        return try {
+            httpClient.get("$apiBase/guilds/$guildId/emojis") {
+                standardHeaders()
+            }.body<List<Emoji>>()
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    suspend fun createEmoji(guildId: String, name: String, image: String): Emoji? {
+        return try {
+            httpClient.post("$apiBase/guilds/$guildId/emojis") {
+                standardHeaders()
+                setBody(mapOf("name" to name, "image" to image))
+            }.body<Emoji>()
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    suspend fun updateEmoji(guildId: String, emojiId: String, name: String): Emoji? {
+        return try {
+            httpClient.patch("$apiBase/guilds/$guildId/emojis/$emojiId") {
+                standardHeaders()
+                setBody(mapOf("name" to name))
+            }.body<Emoji>()
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    suspend fun deleteEmoji(guildId: String, emojiId: String): Boolean {
+        return try {
+            val response = httpClient.delete("$apiBase/guilds/$guildId/emojis/$emojiId") {
+                standardHeaders()
+            }
+            response.status.isSuccess()
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    suspend fun getGuildInvites(guildId: String): List<Invite> {
+        return try {
+            httpClient.get("$apiBase/guilds/$guildId/invites") {
+                standardHeaders()
+            }.body<List<Invite>>()
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    suspend fun deleteInvite(inviteCode: String): Boolean {
+        return try {
+            val response = httpClient.delete("$apiBase/invites/$inviteCode") {
+                standardHeaders()
+            }
+            response.status.isSuccess()
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    suspend fun getGuildAuditLog(guildId: String): AuditLog? {
+        return try {
+            httpClient.get("$apiBase/guilds/$guildId/audit-logs") {
+                standardHeaders()
+            }.body<AuditLog>()
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     suspend fun getGuildChannels(guildId: String): List<Channel> {
         return try {
             val response = httpClient.get("$apiBase/guilds/$guildId/channels") {
@@ -342,6 +480,33 @@ class DiscordClient(
         } catch (e: Exception) {
             println("Error fetching channels: ${e.message}")
             emptyList()
+        }
+    }
+
+    suspend fun updateChannel(channelId: String, name: String?, topic: String? = null, nsfw: Boolean? = null): Boolean {
+        return try {
+            val response = httpClient.patch("$apiBase/channels/$channelId") {
+                standardHeaders()
+                val body = mutableMapOf<String, Any?>()
+                if (name != null) body["name"] = name
+                if (topic != null) body["topic"] = topic
+                if (nsfw != null) body["nsfw"] = nsfw
+                setBody(body)
+            }
+            response.status.isSuccess()
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    suspend fun deleteChannel(channelId: String): Boolean {
+        return try {
+            val response = httpClient.delete("$apiBase/channels/$channelId") {
+                standardHeaders()
+            }
+            response.status.isSuccess()
+        } catch (e: Exception) {
+            false
         }
     }
 
@@ -429,6 +594,26 @@ class DiscordClient(
             }
         } catch (e: Exception) {
             println("Error fetching members: ${e.message}")
+            emptyList()
+        }
+    }
+
+    suspend fun searchGuildMembers(guildId: String, query: String = "", limit: Int = 100): List<Member> {
+        return try {
+            val response = httpClient.get("$apiBase/guilds/$guildId/members/search") {
+                standardHeaders()
+                parameter("query", query)
+                parameter("limit", limit)
+            }
+            if (response.status.isSuccess()) {
+                response.body()
+            } else {
+                val errorBody = response.bodyAsText()
+                println("Error searching members: $errorBody")
+                emptyList()
+            }
+        } catch (e: Exception) {
+            println("Error searching members: ${e.message}")
             emptyList()
         }
     }

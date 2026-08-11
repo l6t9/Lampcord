@@ -66,11 +66,10 @@ fun Badge(color: Color) {
 }
 
 @Composable
-fun RoleTag(name: String, tagColor: Color, dotColor: Color? = null) {
+fun RoleTag(name: String, tagColor: Color, contentColor: Color = Color.White, dotColor: Color? = null) {
     Surface(
         shape = MaterialTheme.shapes.extraSmall,
         color = tagColor,
-        border = if (dotColor != null) BorderStroke(1.dp, dotColor.copy(alpha = 0.24f)) else null,
         modifier = Modifier.padding(vertical = 2.dp)
     ) {
         Row(
@@ -88,7 +87,7 @@ fun RoleTag(name: String, tagColor: Color, dotColor: Color? = null) {
             Text(
                 text = name,
                 style = MaterialTheme.typography.labelSmall,
-                color = Color.White,
+                color = contentColor,
                 fontWeight = FontWeight.Bold
             )
         }
