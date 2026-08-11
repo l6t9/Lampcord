@@ -26,30 +26,32 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import me.lampu.lampcord.shared.model.Member
 import me.lampu.lampcord.shared.model.MemberListGroup
-import me.lampu.lampcord.shared.state.ChatState
+import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.components.members.MemberGroupItem
 import me.lampu.lampcord.shared.ui.components.members.MemberItem
 import me.lampu.lampcord.shared.ui.components.members.MemberSkeleton
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.setClipboardText
+import org.koin.compose.koinInject
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MemberList(
-    chatState: ChatState,
+    navigationStore: NavigationStore = koinInject(),
+    memberListStore: MemberListStore = koinInject(),
     header: @Composable (() -> Unit)? = null
 ) {
     val scrollState = rememberLazyListState()
     var isHovered by remember { mutableStateOf(false) }
 
     // Scroll to top when channel changes
-    LaunchedEffect(chatState.selectedChannel?.id) {
+    LaunchedEffect(navigationStore.selectedChannel?.id) {
         scrollState.scrollToItem(0)
     }
 
     // Scrolling range logic: keep current and surrounding blocks subscribed.
     val firstVisible = scrollState.firstVisibleItemIndex
-    val rowCount = chatState.memberListRowCount
+    val rowCount = memberListStore.memberListRowCount
     val ranges = remember(firstVisible, rowCount) {
         val currentBlock = (firstVisible / 100) * 100
         val blocks = mutableSetOf(0) // Always keep top members
@@ -63,19 +65,19 @@ fun MemberList(
     }
 
     // 126.21 Parity: Initial request is immediate, subsequent scrolls are debounced.
-    val channelId = chatState.selectedChannel?.id
+    val channelId = navigationStore.selectedChannel?.id
     var lastRequestedChannelId by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(ranges, channelId) {
         if (ranges.isNotEmpty() && channelId != null) {
             if (channelId != lastRequestedChannelId) {
                 // Immediate request for new channel selection
-                chatState.requestMemberListRange(ranges)
+                memberListStore.requestMemberListRange(ranges)
                 lastRequestedChannelId = channelId
             } else {
                 // Debounce for scrolling
                 kotlinx.coroutines.delay(300)
-                chatState.requestMemberListRange(ranges)
+                memberListStore.requestMemberListRange(ranges)
             }
         }
     }
@@ -123,15 +125,15 @@ fun MemberList(
                         }
                     }
 
-                    if (chatState.memberListRowCount == 0) {
+                    if (memberListStore.memberListRowCount == 0) {
                         items(20) {
                             MemberSkeleton()
                         }
                     } else {
                         items(
-                            count = chatState.memberListRowCount,
+                            count = memberListStore.memberListRowCount,
                             key = { index -> 
-                                val item = chatState.memberListItems[index]
+                                val item = memberListStore.memberListItems[index]
                                 val baseId = item?.member?.userId() ?: item?.group?.id ?: "null"
                                 // 126.21 Parity: Discord member lists are index-based.
                                 // We include the index in the key to prevent crashes if the state is temporarily inconsistent
@@ -139,10 +141,10 @@ fun MemberList(
                                 "$index-$baseId"
                             }
                         ) { index ->
-                            val item = chatState.memberListItems[index]
+                            val item = memberListStore.memberListItems[index]
                             when {
-                                item?.member != null -> MemberItem(item.member, chatState)
-                                item?.group != null -> MemberGroupItem(item.group, chatState)
+                                item?.member != null -> MemberItem(item.member)
+                                item?.group != null -> MemberGroupItem(item.group)
                                 else -> {
                                     MemberSkeleton()
                                 }
@@ -160,4 +162,3 @@ fun MemberList(
         }
     }
 }
-

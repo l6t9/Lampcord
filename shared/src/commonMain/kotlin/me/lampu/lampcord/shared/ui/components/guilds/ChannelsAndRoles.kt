@@ -8,22 +8,34 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import me.lampu.lampcord.shared.state.ChatState
+import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.model.OnboardingPrompt
 import me.lampu.lampcord.shared.model.OnboardingPromptOption
 import me.lampu.lampcord.shared.ui.icons.Icons
 import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChannelsAndRoles(chatState: ChatState) {
+fun ChannelsAndRoles(
+    navigationStore: NavigationStore = koinInject(),
+    guildStore: GuildStore = koinInject(),
+    userStore: UserStore = koinInject()
+) {
     var selectedTab by remember { mutableStateOf(0) }
-    val onboarding = chatState.selectedGuildOnboarding
+    val onboarding = navigationStore.selectedGuildOnboarding
+    val guild = navigationStore.selectedGuild
+    val currentUser by userStore.currentUser.collectAsState()
+    val currentMember = remember(guild?.id, currentUser) {
+        if (guild != null && currentUser != null) userStore.getMember(guild.id, currentUser!!.id) else null
+    }
 
     Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
         PrimaryTabRow(
@@ -46,15 +58,15 @@ fun ChannelsAndRoles(chatState: ChatState) {
 
         Box(modifier = Modifier.weight(1f)) {
             when (selectedTab) {
-                0 -> CustomizeTab(chatState, onboarding?.prompts ?: emptyList())
-                1 -> BrowseChannelsTab(chatState)
+                0 -> CustomizeTab(navigationStore, onboarding?.prompts ?: emptyList())
+                1 -> BrowseChannelsTab(navigationStore, guildStore)
             }
         }
     }
 }
 
 @Composable
-fun CustomizeTab(chatState: ChatState, prompts: List<OnboardingPrompt>) {
+fun CustomizeTab(navigationStore: NavigationStore, prompts: List<OnboardingPrompt>) {
     if (prompts.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("No customization options available", color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -77,7 +89,7 @@ fun CustomizeTab(chatState: ChatState, prompts: List<OnboardingPrompt>) {
                 Spacer(Modifier.height(12.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     prompt.options.forEach { option ->
-                        OnboardingOptionItem(option, chatState)
+                        OnboardingOptionItem(option, navigationStore)
                     }
                 }
             }
@@ -86,9 +98,17 @@ fun CustomizeTab(chatState: ChatState, prompts: List<OnboardingPrompt>) {
 }
 
 @Composable
-fun OnboardingOptionItem(option: OnboardingPromptOption, chatState: ChatState) {
+fun OnboardingOptionItem(
+    option: OnboardingPromptOption,
+    navigationStore: NavigationStore,
+    userStore: UserStore = koinInject()
+) {
     // Check if any role in the option is already possessed by the user
-    val currentMember = chatState.currentMember
+    val guild = navigationStore.selectedGuild
+    val currentUser by userStore.currentUser.collectAsState()
+    val currentMember = remember(guild?.id, currentUser) {
+        if (guild != null && currentUser != null) userStore.getMember(guild.id, currentUser!!.id) else null
+    }
     var isSelected by remember(option.role_ids, currentMember) {
         mutableStateOf(option.role_ids.any { it in (currentMember?.roles ?: emptyList()) })
     }
@@ -127,9 +147,10 @@ fun OnboardingOptionItem(option: OnboardingPromptOption, chatState: ChatState) {
 }
 
 @Composable
-fun BrowseChannelsTab(chatState: ChatState) {
-    val guildId = chatState.selectedGuild?.id ?: return
-    val allChannels = chatState.guildStore.allGuildChannels[guildId] ?: emptyList()
+fun BrowseChannelsTab(navigationStore: NavigationStore, guildStore: GuildStore) {
+    val guildId = navigationStore.selectedGuild?.id ?: return
+    val allGuildChannels by guildStore.allGuildChannels.collectAsState()
+    val allChannels = allGuildChannels.values.filter { it.guild_id == guildId }
     val categories = allChannels.filter { it.type == 4 }.sortedBy { it.position ?: 0 }
     
     LazyColumn(

@@ -13,22 +13,29 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import me.lampu.lampcord.shared.model.MemberListGroup
-import me.lampu.lampcord.shared.state.ChatState
+import me.lampu.lampcord.shared.state.*
+import org.koin.compose.koinInject
 
 @Composable
-fun MemberGroupItem(group: MemberListGroup, chatState: ChatState) {
-    val role = remember(group.id, chatState.selectedGuild) {
-        chatState.selectedGuild?.roles?.find { it.id == group.id }
+fun MemberGroupItem(
+    group: MemberListGroup,
+    navigationStore: NavigationStore = koinInject(),
+    memberListStore: MemberListStore = koinInject()
+) {
+    val role = remember(group.id, navigationStore.selectedGuild) {
+        navigationStore.selectedGuild?.roles?.find { it.id == group.id }
     }
     val roleName = remember(group.id, role) {
-        if (group.id == "online") "Online"
-        else if (group.id == "offline") "Offline"
-        else role?.name ?: group.id
+        when (group.id) {
+            "online" -> "Online"
+            "offline" -> "Offline"
+            else -> role?.name ?: group.id
+        }
     }
     
-    // Find up-to-date count from chatState.memberListGroups if the item's count is stale
-    val displayCount = remember(group, chatState.memberListGroups.size) {
-        val currentGroup = chatState.memberListGroups[group.id]
+    // Find up-to-date count from memberListStore.memberListGroups if the item's count is stale
+    val displayCount = remember(group, memberListStore.memberListGroups.size) {
+        val currentGroup = memberListStore.memberListGroups[group.id]
         if (currentGroup != null) {
             currentGroup.count ?: currentGroup.member_count
         } else {

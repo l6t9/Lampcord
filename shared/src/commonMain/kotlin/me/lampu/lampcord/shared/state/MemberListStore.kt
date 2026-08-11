@@ -2,9 +2,13 @@ package me.lampu.lampcord.shared.state
 
 import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshots.SnapshotStateList
+import me.lampu.lampcord.shared.gateway.GatewayManager
 import me.lampu.lampcord.shared.model.*
 
-class MemberListStore {
+class MemberListStore(
+    private val gatewayManager: GatewayManager,
+    private val selectionStore: SelectionStore
+) {
     // 126.21 Parity: Cache multiple member lists by their memberListId
     // Map<memberListId, Entry>
     private val listCache = mutableMapOf<String, MemberListCacheEntry>()
@@ -29,6 +33,12 @@ class MemberListStore {
         memberListGroups.clear()
         listCache.clear()
         currentListId = null
+    }
+
+    fun requestMemberListRange(ranges: List<List<Int>>) {
+        val guild = selectionStore.selectedGuild ?: return
+        val channel = selectionStore.selectedChannel ?: return
+        gatewayManager.sendLazyRequest(guild.id, channel.id, ranges)
     }
 
     /**

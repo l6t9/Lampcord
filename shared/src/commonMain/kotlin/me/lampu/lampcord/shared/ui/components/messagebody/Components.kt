@@ -12,7 +12,6 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import me.lampu.lampcord.shared.model.MessageComponent
-import me.lampu.lampcord.shared.state.ChatState
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.theme.DiscordGreen
@@ -36,7 +35,9 @@ fun SelectMenuView(component: MessageComponent) {
 }
 
 @Composable
-fun MessageComponentsRow(components: List<MessageComponent>, chatState: ChatState) {
+fun MessageComponentsRow(
+    components: List<MessageComponent>
+) {
     androidx.compose.foundation.layout.FlowRow(
         modifier = Modifier.padding(top = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -44,7 +45,7 @@ fun MessageComponentsRow(components: List<MessageComponent>, chatState: ChatStat
     ) {
         components.forEach { component ->
             when (component.type) {
-                1 -> { component.components?.let { MessageComponentsRow(it, chatState) } }
+                1 -> { component.components?.let { MessageComponentsRow(it) } }
                 2 -> {
                     val isLink = component.style == 5
                     val buttonColor = when (component.style) {

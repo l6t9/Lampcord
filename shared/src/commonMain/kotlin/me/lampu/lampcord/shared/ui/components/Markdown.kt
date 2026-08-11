@@ -19,12 +19,13 @@ import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import me.lampu.lampcord.shared.state.ChatState
+import me.lampu.lampcord.shared.state.*
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
 import me.lampu.lampcord.shared.model.toTwemojiUrl
 import me.lampu.lampcord.shared.utils.EmojiIndex
 import me.lampu.lampcord.shared.utils.DateTimeUtils
+import org.koin.compose.koinInject
 
 @Composable
 fun DiscordMarkdownText(
@@ -32,7 +33,10 @@ fun DiscordMarkdownText(
     modifier: Modifier = Modifier,
     style: TextStyle = MaterialTheme.typography.bodyLarge,
     color: Color = Color.Unspecified,
-    chatState: ChatState? = null
+    navigationStore: NavigationStore = koinInject(),
+    guildStore: GuildStore = koinInject(),
+    userStore: UserStore = koinInject(),
+    profileStore: ProfileStore = koinInject()
 ) {
     var revealedSpoilers by remember { mutableStateOf(setOf<Int>()) }
     val primaryColor = MaterialTheme.colorScheme.primary
@@ -76,11 +80,22 @@ fun DiscordMarkdownText(
         }
     }
 
-    val annotatedString = remember(processedContent, chatState, revealedSpoilers, primaryColor) {
+    val allGuildChannels by guildStore.allGuildChannels.collectAsState()
+
+    val annotatedString = remember(processedContent, revealedSpoilers, primaryColor, allGuildChannels.size) {
         buildAnnotatedString {
-            appendDiscordMarkdown(processedContent, chatState, revealedSpoilers, primaryColor) { index ->
-                revealedSpoilers = revealedSpoilers + index
-            }
+            appendDiscordMarkdown(
+                content = processedContent,
+                revealedSpoilers = revealedSpoilers,
+                primaryColor = primaryColor,
+                navigationStore = navigationStore,
+                guildStore = guildStore,
+                userStore = userStore,
+                profileStore = profileStore,
+                onSpoilerClick = { index ->
+                    revealedSpoilers = revealedSpoilers + index
+                }
+            )
         }
     }
 
@@ -148,9 +163,12 @@ fun DiscordMarkdownText(
 
 private fun AnnotatedString.Builder.appendDiscordMarkdown(
     content: String,
-    chatState: ChatState?,
     revealedSpoilers: Set<Int>,
     primaryColor: Color,
+    navigationStore: NavigationStore,
+    guildStore: GuildStore,
+    userStore: UserStore,
+    profileStore: ProfileStore,
     onSpoilerClick: (Int) -> Unit
 ) {
     val patterns = listOf(
@@ -246,26 +264,26 @@ private fun AnnotatedString.Builder.appendDiscordMarkdown(
                 pop()
             }
             "H1" -> withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontSize = 24.sp)) { 
-                appendDiscordMarkdown(match!!.groupValues[1], chatState, revealedSpoilers, primaryColor, onSpoilerClick) 
+                appendDiscordMarkdown(match!!.groupValues[1], revealedSpoilers, primaryColor, navigationStore, guildStore, userStore, profileStore, onSpoilerClick) 
             }
             "H2" -> withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontSize = 20.sp)) { 
-                appendDiscordMarkdown(match!!.groupValues[1], chatState, revealedSpoilers, primaryColor, onSpoilerClick) 
+                appendDiscordMarkdown(match!!.groupValues[1], revealedSpoilers, primaryColor, navigationStore, guildStore, userStore, profileStore, onSpoilerClick) 
             }
             "H3" -> withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontSize = 18.sp)) { 
-                appendDiscordMarkdown(match!!.groupValues[1], chatState, revealedSpoilers, primaryColor, onSpoilerClick) 
+                appendDiscordMarkdown(match!!.groupValues[1], revealedSpoilers, primaryColor, navigationStore, guildStore, userStore, profileStore, onSpoilerClick) 
             }
             "BLOCKQUOTE", "BLOCKQUOTE_MULTI" -> {
                 withStyle(style = SpanStyle(color = Color.Gray, background = Color.Gray.copy(alpha = 0.1f))) {
                     append("▎")
-                    appendDiscordMarkdown(match!!.groupValues[1], chatState, revealedSpoilers, primaryColor, onSpoilerClick)
+                    appendDiscordMarkdown(match!!.groupValues[1], revealedSpoilers, primaryColor, navigationStore, guildStore, userStore, profileStore, onSpoilerClick)
                 }
             }
             "SUBTEXT" -> withStyle(SpanStyle(fontSize = 12.sp, color = Color.Gray)) { 
-                appendDiscordMarkdown(match!!.groupValues[1], chatState, revealedSpoilers, primaryColor, onSpoilerClick) 
+                appendDiscordMarkdown(match!!.groupValues[1], revealedSpoilers, primaryColor, navigationStore, guildStore, userStore, profileStore, onSpoilerClick) 
             }
             "BULLET" -> {
                 append("  • ")
-                appendDiscordMarkdown(match!!.groupValues[1], chatState, revealedSpoilers, primaryColor, onSpoilerClick)
+                appendDiscordMarkdown(match!!.groupValues[1], revealedSpoilers, primaryColor, navigationStore, guildStore, userStore, profileStore, onSpoilerClick)
             }
             "SPOILER" -> {
                 val spoilerText = match!!.groupValues[1]
@@ -273,7 +291,7 @@ private fun AnnotatedString.Builder.appendDiscordMarkdown(
                 val isRevealed = revealedSpoilers.contains(index)
                 if (isRevealed) {
                     withStyle(style = SpanStyle(background = Color.Gray.copy(alpha = 0.2f))) {
-                        appendDiscordMarkdown(spoilerText, chatState, revealedSpoilers, primaryColor, onSpoilerClick)
+                        appendDiscordMarkdown(spoilerText, revealedSpoilers, primaryColor, navigationStore, guildStore, userStore, profileStore, onSpoilerClick)
                     }
                 } else {
                     val link = LinkAnnotation.Clickable(
@@ -293,7 +311,7 @@ private fun AnnotatedString.Builder.appendDiscordMarkdown(
                 val link = LinkAnnotation.Url(url)
                 withStyle(style = SpanStyle(color = primaryColor, textDecoration = TextDecoration.Underline)) {
                     pushLink(link)
-                    appendDiscordMarkdown(text, chatState, revealedSpoilers, primaryColor, onSpoilerClick)
+                    appendDiscordMarkdown(text, revealedSpoilers, primaryColor, navigationStore, guildStore, userStore, profileStore, onSpoilerClick)
                     pop()
                 }
             }
@@ -307,16 +325,16 @@ private fun AnnotatedString.Builder.appendDiscordMarkdown(
                 }
             }
             "BOLD" -> withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) { 
-                appendDiscordMarkdown(match!!.groupValues[1], chatState, revealedSpoilers, primaryColor, onSpoilerClick) 
+                appendDiscordMarkdown(match!!.groupValues[1], revealedSpoilers, primaryColor, navigationStore, guildStore, userStore, profileStore, onSpoilerClick) 
             }
             "UNDERLINE" -> withStyle(style = SpanStyle(textDecoration = TextDecoration.Underline)) { 
-                appendDiscordMarkdown(match!!.groupValues[1], chatState, revealedSpoilers, primaryColor, onSpoilerClick) 
+                appendDiscordMarkdown(match!!.groupValues[1], revealedSpoilers, primaryColor, navigationStore, guildStore, userStore, profileStore, onSpoilerClick) 
             }
             "ITALIC" -> withStyle(style = SpanStyle(fontStyle = FontStyle.Italic)) { 
-                appendDiscordMarkdown(match!!.groupValues[1], chatState, revealedSpoilers, primaryColor, onSpoilerClick) 
+                appendDiscordMarkdown(match!!.groupValues[1], revealedSpoilers, primaryColor, navigationStore, guildStore, userStore, profileStore, onSpoilerClick) 
             }
             "STRIKE" -> withStyle(style = SpanStyle(textDecoration = TextDecoration.LineThrough)) { 
-                appendDiscordMarkdown(match!!.groupValues[1], chatState, revealedSpoilers, primaryColor, onSpoilerClick)
+                appendDiscordMarkdown(match!!.groupValues[1], revealedSpoilers, primaryColor, navigationStore, guildStore, userStore, profileStore, onSpoilerClick)
             }
             "CODE_BLOCK" -> {
                 val language = match!!.groupValues[1].lowercase().let { languageAliases[it] ?: it }
@@ -368,25 +386,25 @@ private fun AnnotatedString.Builder.appendDiscordMarkdown(
                 
                 when(tag) {
                     "MENTION" -> {
-                        val member = chatState?.getMember(chatState.selectedGuild?.id ?: "", id)
-                        name = member?.nick ?: chatState?.userStore?.getUser(id)?.let { it.global_name ?: it.username } ?: id
+                        val member = userStore.getMember(navigationStore.selectedGuild?.id ?: "", id)
+                        name = member?.nick ?: userStore.getUser(id)?.let { it.global_name ?: it.username } ?: id
                     }
                     "CHANNEL" -> {
                         prefix = "#"
-                        name = chatState?.channels?.find { it.id == id }?.name ?: id
+                        name = guildStore.allGuildChannels.value[id]?.name ?: id
                     }
                     "ROLE" -> {
-                        val role = chatState?.selectedGuild?.roles?.find { it.id == id }
+                        val role = navigationStore.selectedGuild?.roles?.find { it.id == id }
                         name = role?.name ?: id
                     }
                     "EVERYONE" -> name = "everyone"
                     "HERE" -> name = "here"
                 }
                 
-                val link = if (tag == "MENTION" && chatState != null) {
+                val link = if (tag == "MENTION") {
                     LinkAnnotation.Clickable(
                         tag = "MENTION",
-                        linkInteractionListener = { chatState.showProfile(id) }
+                        linkInteractionListener = { profileStore.showProfile(id, navigationStore.selectedGuild?.id) }
                     )
                 } else null
 

@@ -1,68 +1,61 @@
 package me.lampu.lampcord.shared.ui
 
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Modifier
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.compose.setSingletonImageLoaderFactory
 import coil3.request.crossfade
-import me.lampu.lampcord.shared.state.ChatState
+import coil3.util.DebugLogger
+import me.lampu.lampcord.shared.settings.ThemeMode
+import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.theme.LampcordTheme
+import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.koin.compose.koinInject
 
+@OptIn(ExperimentalResourceApi::class)
 @Composable
 fun App() {
-    setSingletonImageLoaderFactory { context ->
-        newImageLoader(context)
+    val settingsStore: SettingsStore = koinInject()
+    
+    val useDarkTheme = when (settingsStore.themeMode) {
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+        ThemeMode.AUTO -> isSystemInDarkTheme()
     }
-    
-    val chatState: ChatState = koinInject()
-    val isSystemInDarkTheme = androidx.compose.foundation.isSystemInDarkTheme()
-    
-    val useDarkTheme = when (chatState.settingsStore.themeMode) {
-        me.lampu.lampcord.shared.settings.ThemeMode.DARK -> true
-        me.lampu.lampcord.shared.settings.ThemeMode.LIGHT -> false
-        else -> isSystemInDarkTheme
-    }
-    
-    val pureBlack = chatState.settingsStore.pureBlack && useDarkTheme
 
-    val seedColor = remember(chatState.settingsStore.accentColor) {
+    val pureBlack = settingsStore.pureBlack && useDarkTheme
+
+    val seedColor = remember(settingsStore.accentColor) {
         try {
-            Color(chatState.settingsStore.accentColor.removePrefix("#").toLong(16) or 0xFF000000)
+            Color(settingsStore.accentColor.removePrefix("#").toLong(16) or 0xFF000000)
         } catch (e: Exception) {
             Color(0xFF6750A4)
         }
     }
 
+    setSingletonImageLoaderFactory { context ->
+        newImageLoader(context)
+    }
+
     LampcordTheme(
         useDarkTheme = useDarkTheme,
         pureBlack = pureBlack,
-        paletteStyle = chatState.settingsStore.themePaletteStyle,
-        useMaterialYou = chatState.settingsStore.materialYou,
-        appFont = chatState.settingsStore.appFont,
-        fontScale = chatState.settingsStore.fontScale,
-        customFontPath = chatState.settingsStore.customFontPath,
-        seedColor = seedColor
+        seedColor = seedColor,
+        paletteStyle = settingsStore.themePaletteStyle,
+        useMaterialYou = settingsStore.materialYou,
+        appFont = settingsStore.appFont,
+        fontScale = settingsStore.fontScale,
+        customFontPath = settingsStore.customFontPath,
     ) {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 0.dp
-        ) {
-            MainScreen(chatState)
-        }
+        MainScreen()
     }
 }
 
 fun newImageLoader(context: PlatformContext): ImageLoader {
     return ImageLoader.Builder(context)
         .crossfade(true)
+        .logger(DebugLogger())
         .build()
 }

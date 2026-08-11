@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.input.key.*
-import me.lampu.lampcord.shared.state.ChatState
+import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.components.*
 import me.lampu.lampcord.shared.ui.components.guilds.ServerSettings
 import me.lampu.lampcord.shared.ui.components.guilds.ServerBottomSheet
@@ -33,13 +33,18 @@ import me.lampu.lampcord.shared.ui.components.profiles.ProfileCard
 import me.lampu.lampcord.shared.ui.components.members.MemberHeader
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.SettingsScreen
+import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-actual fun MobileBaseplate(chatState: ChatState) {
+actual fun MobileBaseplate(
+    navigationStore: NavigationStore,
+    profileStore: ProfileStore,
+    userStore: UserStore
+) {
     val panelState = rememberDiscordPanelsState()
-    val selectedChannel = chatState.selectedChannel
-    val selectedThread = chatState.selectedThread
+    val selectedChannel = navigationStore.selectedChannel
+    val selectedThread = navigationStore.selectedThread
     val activeChannel = selectedThread ?: selectedChannel
     val keyboardController = LocalSoftwareKeyboardController.current
 
@@ -70,13 +75,7 @@ actual fun MobileBaseplate(chatState: ChatState) {
                 .background(MaterialTheme.colorScheme.surface),
             swipeEnabled = swipeEnabled,
             startPanel = {
-                Sidebar(
-                    chatState = chatState,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .systemBarsPadding()
-                        .padding(start = 6.dp)
-                )
+                Sidebar()
             },
             centerPanel = {
                 Surface(
@@ -137,7 +136,7 @@ actual fun MobileBaseplate(chatState: ChatState) {
                         val quickEffectsSpec = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
 
                         AnimatedContent(
-                            targetState = if (activeChannel != null) activeChannel.id else if (chatState.isFriendsSelected) "friends" else "none",
+                            targetState = if (activeChannel != null) activeChannel.id else if (navigationStore.isFriendsSelected) "friends" else "none",
                             transitionSpec = {
                                 (fadeIn(quickEffectsSpec) + slideInHorizontally(quickSpatialSpec) { it / 8 }).togetherWith(
                                     fadeOut(quickEffectsSpec) + slideOutHorizontally(quickSpatialSpec) { -it / 8 }
@@ -152,20 +151,20 @@ actual fun MobileBaseplate(chatState: ChatState) {
                             Box(Modifier.fillMaxSize()) {
                                 if (activeChannel != null && target == activeChannel.id) {
                                     if (activeChannel.type == 2 || activeChannel.type == 13) {
-                                        VoiceArea(activeChannel, chatState)
+                                        VoiceArea(activeChannel)
                                     } else {
                                         Column(
                                             modifier = Modifier
                                                 .fillMaxSize()
                                         ) {
                                             Box(modifier = Modifier.weight(1f)) {
-                                                ChatArea(modifier = Modifier.fillMaxSize(), chatState = chatState)
+                                                ChatArea(modifier = Modifier.fillMaxSize())
                                             }
-                                            ChatInputBar(activeChannel, chatState)
+                                            ChatInputBar(activeChannel)
                                         }
                                     }
                                 } else if (target == "friends") {
-                                    FriendsList(chatState)
+                                    FriendsList()
                                 } else {
                                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -211,21 +210,20 @@ actual fun MobileBaseplate(chatState: ChatState) {
                         tonalElevation = 1.dp
                     ) {
                         if (activeChannel?.type == 1) {
-                            val profile = chatState.sidebarProfile
+                            val profile = profileStore.sidebarProfile
                             if (profile != null) {
                                 ProfileCard(
                                     profile = profile,
-                                    chatState = chatState,
                                     showBorder = true,
                                     isSidebar = true,
                                     showMemberSince = true,
                                     modifier = Modifier.fillMaxSize(),
                                     onExpand = { 
-                                        chatState.showProfile(profile.user.id)
+                                        profileStore.showProfile(profile.user.id, navigationStore.selectedGuild?.id)
                                         panelState.close()
                                     }
                                 )
-                            } else if (chatState.isSidebarProfileLoading) {
+                            } else if (profileStore.isSidebarProfileLoading) {
                                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                     ContainedLoadingIndicator()
                                 }
@@ -236,10 +234,9 @@ actual fun MobileBaseplate(chatState: ChatState) {
                             }
                         } else {
                             MemberList(
-                                chatState = chatState,
                                 header = {
                                     activeChannel?.let {
-                                        MemberHeader(it, chatState)
+                                        MemberHeader(it)
                                     }
                                 }
                             )
@@ -249,21 +246,21 @@ actual fun MobileBaseplate(chatState: ChatState) {
             }
         )
 
-        if (chatState.isAttachmentViewerVisible) {
+        if (navigationStore.isAttachmentViewerVisible) {
             AttachmentViewer(
-                items = chatState.attachmentViewerItems,
-                selectedIndex = chatState.attachmentViewerIndex,
-                onIndexChange = { chatState.attachmentViewerIndex = it },
-                onDismiss = { chatState.closeAttachmentViewer() }
+                items = navigationStore.attachmentViewerItems,
+                selectedIndex = navigationStore.attachmentViewerIndex,
+                onIndexChange = { navigationStore.attachmentViewerIndex = it },
+                onDismiss = { navigationStore.closeAttachmentViewer() }
             )
         }
 
         // User Profile Sheet
-        if (chatState.isProfileLoading || chatState.selectedProfile != null) {
+        if (profileStore.isProfileLoading || profileStore.selectedProfile != null) {
             ModalBottomSheet(
                 onDismissRequest = {
-                    chatState.selectedProfile = null
-                    chatState.isProfileLoading = false
+                    profileStore.selectedProfile = null
+                    profileStore.isProfileLoading = false
                 },
                 shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
                 containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -277,10 +274,9 @@ actual fun MobileBaseplate(chatState: ChatState) {
                     )
                 }
             ) {
-                if (chatState.selectedProfile != null) {
+                if (profileStore.selectedProfile != null) {
                     ProfileCard(
-                        profile = chatState.selectedProfile!!,
-                        chatState = chatState,
+                        profile = profileStore.selectedProfile!!,
                         modifier = Modifier.fillMaxWidth().wrapContentHeight(),
                         showBorder = false,
                         isExpanded = true
@@ -295,30 +291,30 @@ actual fun MobileBaseplate(chatState: ChatState) {
         }
 
         // Settings Screen
-        if (chatState.isSettingsVisible) {
-            SettingsScreen(chatState, onDismiss = { chatState.isSettingsVisible = false })
+        if (navigationStore.isSettingsVisible) {
+            SettingsScreen(onDismiss = { navigationStore.isSettingsVisible = false })
         }
 
         // Server Settings
-        if (chatState.isServerSettingsVisible) {
-            ServerSettings(chatState, onDismiss = { chatState.isServerSettingsVisible = false })
+        if (navigationStore.isServerSettingsVisible) {
+            ServerSettings(onDismiss = { navigationStore.isServerSettingsVisible = false })
         }
 
         // Server Menu Bottom Sheet
-        if (chatState.isServerMenuVisible) {
-            chatState.selectedGuild?.let { guild ->
-                ServerBottomSheet(guild, chatState, onDismiss = { chatState.isServerMenuVisible = false })
+        if (navigationStore.isServerMenuVisible) {
+            navigationStore.selectedGuild?.let { guild ->
+                ServerBottomSheet(guild, onDismiss = { navigationStore.isServerMenuVisible = false })
             }
         }
 
         // Pinned Messages
-        if (chatState.isPinsVisible) {
-            PinnedMessagesScreen(chatState, onDismiss = { chatState.isPinsVisible = false })
+        if (navigationStore.isPinsVisible) {
+            PinnedMessagesScreen(onDismiss = { navigationStore.isPinsVisible = false })
         }
 
         // Search Screen
-        if (chatState.isSearchVisible) {
-            SearchScreen(chatState, onDismiss = { chatState.isSearchVisible = false })
+        if (navigationStore.isSearchVisible) {
+            SearchScreen(onDismiss = { navigationStore.isSearchVisible = false })
         }
     }
 }

@@ -26,35 +26,41 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import me.lampu.lampcord.shared.model.Emoji
-import me.lampu.lampcord.shared.state.ChatState
+import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.icons.Icons
+import org.koin.compose.koinInject
 
 @Composable
 fun EmojiPicker(
-    chatState: ChatState,
+    userStore: UserStore = koinInject(),
+    guildStore: GuildStore = koinInject(),
+    navigationStore: NavigationStore = koinInject(),
     onEmojiSelected: (Emoji) -> Unit
 ) {
     var selectedTab by remember { mutableStateOf(0) }
-    val nitro = (chatState.currentUser?.premium_type ?: 0) > 0 || me.lampu.lampcord.shared.settings.Settings.shared.freeNitroEmojis
+    val currentUser by userStore.currentUser.collectAsState()
+    val nitro = (currentUser?.premium_type ?: 0) > 0 || me.lampu.lampcord.shared.settings.Settings.shared.freeNitroEmojis
     
     var defaultEmojis by remember { mutableStateOf<List<Emoji>>(emptyList()) }
     LaunchedEffect(Unit) {
         defaultEmojis = EmojiLoader.getDefaultEmojis()
     }
 
-    val emojiGroups = remember(chatState.selectedGuild, chatState.guilds.size, nitro, defaultEmojis) {
+    val guilds by guildStore.guilds.collectAsState()
+    val selectedGuild = navigationStore.selectedGuild
+    val emojiGroups = remember(selectedGuild, guilds.size, nitro, defaultEmojis) {
         val groups = mutableListOf<EmojiGroup>()
         
         if (nitro) {
             groups.addAll(
-                chatState.guilds
-                    .sortedByDescending { it.id == chatState.selectedGuild?.id }
+                guilds
+                    .sortedByDescending { it.id == selectedGuild?.id }
                     .map { guild ->
                         EmojiGroup(guild.name, guild.emojis)
                     }.filter { it.emojis.isNotEmpty() }
             )
         } else {
-            groups.add(EmojiGroup(chatState.selectedGuild?.name, chatState.selectedGuild?.emojis ?: emptyList()))
+            groups.add(EmojiGroup(selectedGuild?.name, selectedGuild?.emojis ?: emptyList()))
         }
         
         if (defaultEmojis.isNotEmpty()) {

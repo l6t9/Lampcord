@@ -16,16 +16,17 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import me.lampu.lampcord.shared.model.ApplicationCommand
-import me.lampu.lampcord.shared.state.ChatState
+import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.icons.Icons
+import org.koin.compose.koinInject
 
 @Composable
 fun CommandPicker(
-    chatState: ChatState,
     query: String,
-    onCommandSelected: (ApplicationCommand) -> Unit
+    onCommandSelected: (ApplicationCommand) -> Unit,
+    commandStore: CommandStore = koinInject()
 ) {
-    val filteredCommands = chatState.availableCommands.filter { 
+    val filteredCommands = commandStore.availableCommands.filter { 
         it.name.contains(query, ignoreCase = true) 
     }.take(15)
 
@@ -55,7 +56,7 @@ fun CommandPicker(
                 verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 items(filteredCommands) { command ->
-                    val app = chatState.availableApplications.find { it.id == command.application_id }
+                    val app = commandStore.availableApplications.find { it.id == command.application_id }
                     
                     Surface(
                         onClick = { onCommandSelected(command) },

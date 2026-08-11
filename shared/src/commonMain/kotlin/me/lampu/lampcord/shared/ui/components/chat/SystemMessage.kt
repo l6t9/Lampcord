@@ -14,14 +14,18 @@ import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.Message
-import me.lampu.lampcord.shared.state.ChatState
+import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.theme.DiscordGreen
 import me.lampu.lampcord.shared.ui.theme.DiscordRed
 import me.lampu.lampcord.shared.ui.theme.Fuchsia
+import org.koin.compose.koinInject
 
 @Composable
-fun SystemMessage(message: Message, chatState: ChatState) {
+fun SystemMessage(
+    message: Message,
+    profileStore: ProfileStore = koinInject()
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -73,7 +77,7 @@ fun SystemMessage(message: Message, chatState: ChatState) {
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier
                     .onGloballyPositioned { profilePosition = it.positionInRoot() }
-                    .clickable { message.author?.let { chatState.showProfile(it.id, profilePosition) } }
+                    .clickable { message.author?.let { profileStore.showProfile(it.id, position = profilePosition) } }
             )
             
             // Spacer(modifier = Modifier.width(4.dp)) Disabled for dots and commas

@@ -5,19 +5,31 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import me.lampu.lampcord.shared.state.ChatState
+import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.icons.Icons
+import org.koin.compose.koinInject
 
 @Composable
-fun NotificationList(chatState: ChatState) {
-    val unreadChannels = chatState.readStates.values
+fun NotificationList(
+    readStateStore: ReadStateStore = koinInject(),
+    guildStore: GuildStore = koinInject(),
+    navigationStore: NavigationStore = koinInject()
+) {
+    val readStates by readStateStore.readStates.collectAsState()
+    val allChannels by guildStore.allGuildChannels.collectAsState()
+    val privateChannels by guildStore.privateChannels.collectAsState()
+    val guilds by guildStore.guilds.collectAsState()
+
+    val unreadChannels = readStates.values
         .filter { it.mention_count > 0 }
         .mapNotNull { state ->
-            val channel = chatState.guildStore.channels.find { it.id == state.id }
-                ?: chatState.guildStore.privateChannels.find { it.id == state.id }
+            val channel = allChannels[state.id]
+                ?: privateChannels.firstOrNull { it.id == state.id }
             if (channel != null) channel to state.mention_count else null
         }
         .sortedByDescending { it.second }
@@ -52,9 +64,9 @@ fun NotificationList(chatState: ChatState) {
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 items(unreadChannels) { (channel, count) ->
-                    val guild = chatState.guilds.find { it.id == channel.guild_id }
+                    val guild = guilds.firstOrNull { it.id == channel.guild_id }
                     Surface(
-                        onClick = { chatState.selectChannel(channel) },
+                        onClick = { navigationStore.selectChannel(channel) },
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp),
                         shape = MaterialTheme.shapes.small,
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)

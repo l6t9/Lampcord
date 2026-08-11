@@ -1,17 +1,28 @@
 package me.lampu.lampcord.shared.ui.components
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import me.lampu.lampcord.shared.state.ChatState
+import me.lampu.lampcord.shared.state.NavigationStore
+import me.lampu.lampcord.shared.state.VoiceStore
 import me.lampu.lampcord.shared.ui.components.guilds.GuildChannelList
 import me.lampu.lampcord.shared.ui.components.guilds.GuildRail
+import org.koin.compose.koinInject
 
 @Composable
-fun Sidebar(chatState: ChatState, modifier: Modifier = Modifier) {
+fun Sidebar(
+    navigationStore: NavigationStore = koinInject(),
+    voiceStore: VoiceStore = koinInject(),
+    modifier: Modifier = Modifier
+) {
     Column(
         modifier = modifier
             .fillMaxHeight(),
@@ -21,7 +32,7 @@ fun Sidebar(chatState: ChatState, modifier: Modifier = Modifier) {
             modifier = Modifier.weight(1f),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            GuildRail(chatState)
+            GuildRail()
 
             // Channels / DMs List
             Surface(
@@ -31,16 +42,16 @@ fun Sidebar(chatState: ChatState, modifier: Modifier = Modifier) {
                 shape = MaterialTheme.shapes.large,
                 tonalElevation = 1.dp
             ) {
-                if (chatState.selectedGuild != null) {
-                    GuildChannelList(chatState)
+                if (navigationStore.selectedGuild != null) {
+                    GuildChannelList()
                 } else {
-                    DMList(chatState)
+                    DMList()
                 }
             }
         }
 
-        if (chatState.isVoiceConnected) {
-            VoiceConnectionPanel(chatState)
+        if (voiceStore.isVoiceConnected) {
+            VoiceConnectionPanel()
         }
 
         // Account Panel (CurrentUser)
@@ -51,7 +62,7 @@ fun Sidebar(chatState: ChatState, modifier: Modifier = Modifier) {
             shape = MaterialTheme.shapes.medium,
             tonalElevation = 1.dp
         ) {
-            AccountPanel(chatState)
+            AccountPanel()
         }
     }
 }

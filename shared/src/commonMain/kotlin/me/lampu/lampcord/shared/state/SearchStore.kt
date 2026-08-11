@@ -77,7 +77,7 @@ class SearchStore(
                             "in" -> {
                                 if (value.toLongOrNull() == null) {
                                     val name = if (value.startsWith("#")) value.substring(1) else value
-                                    val channel = guildStore.channels.find { it.name?.equals(name, ignoreCase = true) == true }
+                                    val channel = guildStore.allGuildChannels.value.values.find { it.name?.equals(name, ignoreCase = true) == true }
                                     channel?.id ?: value
                                 } else value
                             }

@@ -5,12 +5,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import me.lampu.lampcord.shared.state.ChatState
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.components.settings.*
 
 @Composable
-fun ConnectionsSettings(chatState: ChatState) {
+fun ConnectionsSettings() {
     val connections = emptyList<me.lampu.lampcord.shared.model.ConnectedAccount>()
 
     Column(modifier = Modifier.fillMaxWidth()) {

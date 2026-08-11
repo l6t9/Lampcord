@@ -1,25 +1,44 @@
 package me.lampu.lampcord.shared.ui.components
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import me.lampu.lampcord.shared.state.ChatState
+import me.lampu.lampcord.shared.state.GuildStore
+import me.lampu.lampcord.shared.state.VoiceStore
 import me.lampu.lampcord.shared.ui.icons.Icons
+import org.koin.compose.koinInject
 
 @Composable
-fun VoiceConnectionPanel(chatState: ChatState) {
-    val voiceState = chatState.currentVoiceState ?: return
-    val guild = chatState.guilds.find { it.id == voiceState.guild_id }
-    val channel = chatState.channels.find { it.id == voiceState.channel_id }
+fun VoiceConnectionPanel(
+    voiceStore: VoiceStore = koinInject(),
+    guildStore: GuildStore = koinInject()
+) {
+    val voiceState = voiceStore.currentVoiceState ?: return
+    val guilds by guildStore.guilds.collectAsState()
+    val allChannels by guildStore.allGuildChannels.collectAsState()
+    val guild = guilds.find { it.id == voiceState.guild_id }
+    val channel = allChannels.values.find { it.id == voiceState.channel_id }
     
-    val duration = chatState.voiceConnectionDuration
+    val duration = voiceStore.voiceConnectionDuration
     val hours = duration / 3600
     val minutes = (duration % 3600) / 60
     val seconds = duration % 60
@@ -65,7 +84,7 @@ fun VoiceConnectionPanel(chatState: ChatState) {
                 )
             }
 
-            IconButton(onClick = { chatState.toggleVoiceVideo() }) {
+            IconButton(onClick = { voiceStore.toggleVoiceVideo() }) {
                 Icon(
                     imageVector = Icons.Filled.VideoCall,
                     contentDescription = null,
@@ -74,7 +93,7 @@ fun VoiceConnectionPanel(chatState: ChatState) {
                 )
             }
             
-            IconButton(onClick = { chatState.toggleVoiceStream() }) {
+            IconButton(onClick = { voiceStore.toggleVoiceStream() }) {
                 Icon(
                     imageVector = Icons.Filled.ScreenShare,
                     contentDescription = null,
@@ -84,7 +103,7 @@ fun VoiceConnectionPanel(chatState: ChatState) {
             }
 
             IconButton(
-                onClick = { chatState.disconnectFromVoice() },
+                onClick = { voiceStore.disconnectFromVoice(voiceState.guild_id) },
                 colors = IconButtonDefaults.iconButtonColors(contentColor = MaterialTheme.colorScheme.error)
             ) {
                 Icon(Icons.AutoMirrored.Filled.Logout, null, modifier = Modifier.size(20.dp))

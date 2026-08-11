@@ -11,16 +11,23 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import me.lampu.lampcord.shared.api.DiscordClient
 import me.lampu.lampcord.shared.model.Message
-import me.lampu.lampcord.shared.state.ChatState
+import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.model.getDisplayUrl
+import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ReactionsView(message: Message, chatState: ChatState) {
+fun ReactionsView(
+    message: Message,
+    discordClient: DiscordClient = koinInject()
+) {
     val reactions = message.reactions ?: return
     if (reactions.isEmpty()) return
+    val scope = rememberCoroutineScope()
 
     CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
         androidx.compose.foundation.layout.FlowRow(
@@ -36,10 +43,12 @@ fun ReactionsView(message: Message, chatState: ChatState) {
                     modifier = Modifier.height(28.dp),
                     selected = isMe,
                     onClick = {
-                        if (isMe) {
-                            chatState.removeReaction(message.channel_id, message.id, emojiStr)
-                        } else {
-                            chatState.addReaction(message.channel_id, message.id, emojiStr)
+                        scope.launch {
+                            if (isMe) {
+                                discordClient.removeReaction(message.channel_id, message.id, emojiStr)
+                            } else {
+                                discordClient.addReaction(message.channel_id, message.id, emojiStr)
+                            }
                         }
                     },
                     label = {

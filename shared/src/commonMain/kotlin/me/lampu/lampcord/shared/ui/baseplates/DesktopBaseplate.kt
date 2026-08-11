@@ -1,38 +1,68 @@
 package me.lampu.lampcord.shared.ui.baseplates
 
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.key.*
-import androidx.compose.ui.input.pointer.PointerEventType
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import me.lampu.lampcord.shared.state.ChatState
-import me.lampu.lampcord.shared.ui.components.*
+import me.lampu.lampcord.shared.state.NavigationStore
+import me.lampu.lampcord.shared.state.ProfileStore
+import me.lampu.lampcord.shared.state.VoiceStore
+import me.lampu.lampcord.shared.ui.SettingsScreen
+import me.lampu.lampcord.shared.ui.components.AttachmentViewer
+import me.lampu.lampcord.shared.ui.components.ChannelHeader
+import me.lampu.lampcord.shared.ui.components.ChatArea
+import me.lampu.lampcord.shared.ui.components.ChatInputBar
+import me.lampu.lampcord.shared.ui.components.ChatSkeleton
+import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
+import me.lampu.lampcord.shared.ui.components.ForumPostList
+import me.lampu.lampcord.shared.ui.components.FriendsList
+import me.lampu.lampcord.shared.ui.components.MemberList
+import me.lampu.lampcord.shared.ui.components.QuickSwitcher
+import me.lampu.lampcord.shared.ui.components.Sidebar
+import me.lampu.lampcord.shared.ui.components.VoiceArea
 import me.lampu.lampcord.shared.ui.components.chat.SearchScreen
-import me.lampu.lampcord.shared.ui.components.guilds.*
+import me.lampu.lampcord.shared.ui.components.guilds.ChannelsAndRoles
+import me.lampu.lampcord.shared.ui.components.guilds.ServerSettings
 import me.lampu.lampcord.shared.ui.components.profiles.ProfileCard
 import me.lampu.lampcord.shared.ui.components.profiles.UserProfileDialog
 import me.lampu.lampcord.shared.ui.icons.Icons
-import me.lampu.lampcord.shared.ui.SettingsScreen
+import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun DesktopBaseplate(chatState: ChatState) {
+fun DesktopBaseplate(
+    navigationStore: NavigationStore = koinInject(),
+    profileStore: ProfileStore = koinInject(),
+    voiceStore: VoiceStore = koinInject()
+) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -45,11 +75,11 @@ fun DesktopBaseplate(chatState: ChatState) {
                 .padding(6.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Sidebar(chatState, Modifier.width(318.dp))
+            Sidebar(modifier = Modifier.width(312.dp))
 
             // Main Content Area (Chat)
-            val selectedChannel = chatState.selectedChannel
-            val selectedThread = chatState.selectedThread
+            val selectedChannel = navigationStore.selectedChannel
+            val selectedThread = navigationStore.selectedThread
             val activeChannel = selectedThread ?: selectedChannel
 
             Column(
@@ -67,7 +97,8 @@ fun DesktopBaseplate(chatState: ChatState) {
                     val quickEffectsSpec = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
 
                     AnimatedContent(
-                        targetState = if (activeChannel != null) activeChannel.id else if (chatState.isChannelsAndRolesVisible) "roles" else if (chatState.isFriendsSelected) "friends" else "none",
+                        targetState = activeChannel?.id
+                            ?: if (navigationStore.isChannelsAndRolesVisible) "roles" else if (navigationStore.isFriendsSelected) "friends" else "none",
                         transitionSpec = {
                             (fadeIn(quickEffectsSpec) + slideInHorizontally(quickSpatialSpec) { it / 8 }).togetherWith(
                                 fadeOut(quickEffectsSpec) + slideOutHorizontally(quickSpatialSpec) { -it / 8 }
@@ -78,31 +109,30 @@ fun DesktopBaseplate(chatState: ChatState) {
                     ) { target ->
                         if (activeChannel != null && target == activeChannel.id) {
                             Column(modifier = Modifier.fillMaxSize()) {
-                                ChannelHeader(activeChannel, chatState)
+                                ChannelHeader(activeChannel, navigationStore)
                                 
                                 Box(modifier = Modifier.weight(1f)) {
-                                    if ((activeChannel.type == 2 || activeChannel.type == 13) && !chatState.isVoiceChatTextVisible) {
-                                        VoiceArea(activeChannel, chatState)
+                                    if ((activeChannel.type == 2 || activeChannel.type == 13) && !voiceStore.isVoiceChatTextVisible) {
+                                        VoiceArea(activeChannel)
                                     } else if (activeChannel.type == 15 && selectedThread == null) {
-                                        ForumPostList(chatState)
+                                        ForumPostList()
                                     } else {
                                         ChatArea(
-                                            modifier = Modifier.fillMaxSize(),
-                                            chatState = chatState
+                                            modifier = Modifier.fillMaxSize()
                                         )
                                     }
                                 }
                                 
-                                if (activeChannel.type != 15 && ((activeChannel.type != 2 && activeChannel.type != 13) || chatState.isVoiceChatTextVisible)) {
-                                    ChatInputBar(activeChannel, chatState)
+                                if (activeChannel.type != 15 && ((activeChannel.type != 2 && activeChannel.type != 13) || voiceStore.isVoiceChatTextVisible)) {
+                                    ChatInputBar(activeChannel)
                                 }
                             }
                         } else if (target == "roles") {
-                            ChannelsAndRoles(chatState)
+                            ChannelsAndRoles()
                         } else if (target == "friends") {
-                            FriendsList(chatState)
+                            FriendsList()
                         } else {
-                            ChatUnselectedPlaceholder(chatState)
+                            ChatUnselectedPlaceholder()
                         }
                     }
                 }
@@ -122,7 +152,7 @@ fun DesktopBaseplate(chatState: ChatState) {
                     // HomeNavButtons equivalent
                     if (showMemberList) {
                         Surface(
-                            onClick = { chatState.isSearchVisible = true },
+                            onClick = { navigationStore.isSearchVisible = true },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(40.dp),
@@ -158,24 +188,23 @@ fun DesktopBaseplate(chatState: ChatState) {
                         tonalElevation = 1.dp
                     ) {
                         if (showDMProfile) {
-                            val profile = chatState.sidebarProfile
+                            val profile = profileStore.sidebarProfile
                             if (profile != null) {
                                 ProfileCard(
                                     profile = profile,
-                                    chatState = chatState,
                                     showBorder = true,
                                     isSidebar = true,
                                     showMemberSince = true,
                                     modifier = Modifier.fillMaxSize(),
-                                    onExpand = { chatState.showProfile(profile.user.id) }
+                                    onExpand = { profileStore.showProfile(profile.user.id, navigationStore.selectedGuild?.id) }
                                 )
-                            } else if (chatState.isSidebarProfileLoading) {
+                            } else if (profileStore.isSidebarProfileLoading) {
                                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                     ContainedLoadingIndicator()
                                 }
                             }
                         } else {
-                            MemberList(chatState)
+                            MemberList()
                         }
                     }
                 }
@@ -183,51 +212,52 @@ fun DesktopBaseplate(chatState: ChatState) {
         }
 
         // Settings / Overlays
-        if (chatState.isSettingsVisible) {
-            SettingsScreen(chatState, onDismiss = { chatState.isSettingsVisible = false })
+        if (navigationStore.isSettingsVisible) {
+            SettingsScreen(onDismiss = { navigationStore.isSettingsVisible = false })
         }
 
-        if (chatState.isServerSettingsVisible) {
-            ServerSettings(chatState, onDismiss = { chatState.isServerSettingsVisible = false })
+        if (navigationStore.isServerSettingsVisible) {
+            ServerSettings(onDismiss = { navigationStore.isServerSettingsVisible = false })
         }
 
-        if (chatState.isQuickSwitcherVisible) {
-            QuickSwitcher(chatState, onDismiss = { chatState.isQuickSwitcherVisible = false })
+        if (navigationStore.isQuickSwitcherVisible) {
+            QuickSwitcher(onDismiss = { navigationStore.isQuickSwitcherVisible = false })
         }
 
         // Attachment Viewer Overlay
-        if (chatState.isAttachmentViewerVisible) {
+        if (navigationStore.isAttachmentViewerVisible) {
             AttachmentViewer(
-                items = chatState.attachmentViewerItems,
-                selectedIndex = chatState.attachmentViewerIndex,
-                onIndexChange = { chatState.attachmentViewerIndex = it },
-                onDismiss = { chatState.closeAttachmentViewer() }
+                items = navigationStore.attachmentViewerItems,
+                selectedIndex = navigationStore.attachmentViewerIndex,
+                onIndexChange = { navigationStore.attachmentViewerIndex = it },
+                onDismiss = { navigationStore.closeAttachmentViewer() }
             )
         }
 
         // User Profile Dialog
-        if (chatState.isProfileLoading || chatState.selectedProfile != null) {
+        if (profileStore.isProfileLoading || profileStore.selectedProfile != null) {
             UserProfileDialog(
-                profile = chatState.selectedProfile,
-                chatState = chatState,
+                profile = profileStore.selectedProfile,
                 onDismiss = { 
-                    chatState.selectedProfile = null
-                    chatState.isProfileLoading = false
+                    profileStore.selectedProfile = null
+                    profileStore.isProfileLoading = false
                 }
             )
         }
 
         // Search Screen
-        if (chatState.isSearchVisible) {
-            SearchScreen(chatState, onDismiss = { chatState.isSearchVisible = false })
+        if (navigationStore.isSearchVisible) {
+            SearchScreen(onDismiss = { navigationStore.isSearchVisible = false })
         }
     }
 }
 
 @Composable
-fun ChatUnselectedPlaceholder(chatState: ChatState) {
+fun ChatUnselectedPlaceholder(
+    navigationStore: NavigationStore = koinInject()
+) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        if (chatState.selectedGuild == null) {
+        if (navigationStore.selectedGuild == null) {
             Text("Select a friend to start chatting", color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else {
             ChatSkeleton()

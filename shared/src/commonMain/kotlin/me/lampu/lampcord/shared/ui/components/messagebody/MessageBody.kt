@@ -1,72 +1,61 @@
 package me.lampu.lampcord.shared.ui.components.messagebody
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.*
-import me.lampu.lampcord.shared.state.ChatState
+import me.lampu.lampcord.shared.state.*
+import me.lampu.lampcord.shared.ui.components.*
+import me.lampu.lampcord.shared.ui.components.messagebody.*
+import org.koin.compose.koinInject
 
 @Composable
-fun MessageBody(message: Message, chatState: ChatState) {
-    if (message.attachments.isNotEmpty() || message.embeds.isNotEmpty() || !message.sticker_items.isNullOrEmpty() || message.poll != null || !message.components.isNullOrEmpty()) {
-        Spacer(modifier = Modifier.height(8.dp))
-        MessageAttachments(message.attachments, message.embeds, message.sticker_items, message.poll, message.components, chatState)
+fun MessageBody(
+    message: Message
+) {
+    Column(modifier = Modifier.padding(top = 4.dp)) {
+        DiscordMarkdownText(message.content)
+        MessageAttachments(message.attachments, message.embeds, message.sticker_items, message.poll, message.components)
     }
 }
 
 @Composable
 fun MessageAttachments(
-    attachments: List<Attachment>, 
-    embeds: List<Embed>, 
-    stickers: List<StickerItem>? = null, 
-    poll: Poll? = null, 
+    attachments: List<Attachment>,
+    embeds: List<Embed>,
+    stickerItems: List<StickerItem>? = null,
+    poll: Poll? = null,
     components: List<MessageComponent>? = null,
-    chatState: ChatState
+    navigationStore: NavigationStore = koinInject()
 ) {
     val images = attachments.filter { it.content_type?.startsWith("image/") == true }
     val videos = attachments.filter { it.content_type?.startsWith("video/") == true }
     val otherFiles = attachments.filter { it.content_type?.startsWith("image/") != true && it.content_type?.startsWith("video/") != true }
-    val viewableItems: List<DiscordMedia> = images + videos
     
-    if (images.isNotEmpty()) {
-        MessageMosaic(images, onOpenItem = { imageIndex ->
-            chatState.openAttachmentViewer(viewableItems, imageIndex)
+    val viewableItems: List<DiscordMedia> = images + videos
+
+    if (viewableItems.isNotEmpty()) {
+        MessageMosaic(viewableItems, onOpenItem = { index ->
+            navigationStore.openAttachmentViewer(viewableItems, index)
         })
     }
-    
-    if (videos.isNotEmpty()) {
-        Spacer(modifier = Modifier.height(8.dp))
-        videos.forEachIndexed { videoIndex, video ->
-            VideoAttachment(
-                video = video,
-                onClick = { chatState.openAttachmentViewer(viewableItems, images.size + videoIndex) }
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-        }
+
+    otherFiles.forEach { file ->
+        FileAttachmentView(file)
     }
 
-    if (otherFiles.isNotEmpty()) {
-        Spacer(modifier = Modifier.height(8.dp))
-        otherFiles.forEach { file ->
-            FileAttachmentView(file)
-        }
-    }
-
-    stickers?.let {
+    stickerItems?.let { 
         StickersView(it)
     }
 
-    poll?.let {
-        PollView(it)
-    }
+    poll?.let { PollView(it) }
 
     embeds.forEach { embed ->
-        EmbedView(embed, chatState)
+        EmbedView(embed)
     }
 
     components?.let {
-        MessageComponentsRow(it, chatState)
+        MessageComponentsRow(it)
     }
 }

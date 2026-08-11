@@ -15,7 +15,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.CircleShape
-import me.lampu.lampcord.shared.state.ChatState
+import me.lampu.lampcord.shared.state.SessionManager
 import me.lampu.lampcord.shared.api.RemoteAuthClient
 import me.lampu.lampcord.shared.api.RemoteAuthState
 import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
@@ -28,7 +28,7 @@ import org.koin.compose.koinInject
 @Composable
 fun LoginScreen(
     modifier: Modifier = Modifier,
-    chatState: ChatState = koinInject(),
+    sessionManager: SessionManager = koinInject(),
     remoteAuthClient: RemoteAuthClient = koinInject(),
     onLoginSuccess: () -> Unit
 ) {
@@ -46,7 +46,7 @@ fun LoginScreen(
     LaunchedEffect(remoteAuthState) {
         val state = remoteAuthState
         if (state is RemoteAuthState.Finished) {
-            chatState.connect(state.token)
+            sessionManager.connect(state.token)
             onLoginSuccess()
         }
     }
@@ -66,11 +66,11 @@ fun LoginScreen(
             isLoading = true
             errorMessage = null
             if (mfaTicket == null) {
-                val response = chatState.login(login, password)
+                val response = sessionManager.login(login, password)
                 if (response == null) {
                     errorMessage = "Login failed"
                 } else if (response.token != null) {
-                    chatState.connect(response.token)
+                    sessionManager.connect(response.token)
                     onLoginSuccess()
                 } else if (response.mfa == true && response.ticket != null) {
                     mfaTicket = response.ticket
@@ -80,7 +80,7 @@ fun LoginScreen(
             } else {
                 val currentTicket: String? = mfaTicket
                 if (currentTicket != null) {
-                    val res = chatState.verifyMFA(mfaCode.trim(), currentTicket, mfaType)
+                    val res = sessionManager.verifyMFA(mfaCode.trim(), currentTicket, mfaType)
                     if (res) {
                         onLoginSuccess()
                     } else {

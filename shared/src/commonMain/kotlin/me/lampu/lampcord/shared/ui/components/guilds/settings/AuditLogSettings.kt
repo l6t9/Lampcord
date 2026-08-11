@@ -1,33 +1,47 @@
 package me.lampu.lampcord.shared.ui.components.guilds.settings
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import me.lampu.lampcord.shared.model.*
-import me.lampu.lampcord.shared.state.ChatState
+import me.lampu.lampcord.shared.api.DiscordClient
+import me.lampu.lampcord.shared.model.AuditLog
+import me.lampu.lampcord.shared.model.AuditLogEntry
+import me.lampu.lampcord.shared.model.Guild
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
-import me.lampu.lampcord.shared.ui.components.settings.*
+import me.lampu.lampcord.shared.ui.components.settings.SettingsLayout
+import me.lampu.lampcord.shared.ui.components.settings.SettingsSection
 import me.lampu.lampcord.shared.ui.icons.Icons
+import org.koin.compose.koinInject
 
 @Composable
-fun ServerAuditLog(guild: Guild, chatState: ChatState) {
+fun ServerAuditLog(guild: Guild, discordClient: DiscordClient = koinInject()) {
     var auditLog by remember { mutableStateOf<AuditLog?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     
     LaunchedEffect(guild.id) {
         isLoading = true
-        auditLog = chatState.client.getGuildAuditLog(guild.id)
+        auditLog = discordClient.getGuildAuditLog(guild.id)
         isLoading = false
     }
 

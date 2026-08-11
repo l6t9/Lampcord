@@ -1,9 +1,13 @@
 package me.lampu.lampcord.shared.state
 
-import androidx.compose.runtime.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.*
 import me.lampu.lampcord.shared.model.Channel
 import me.lampu.lampcord.shared.model.Guild
 import me.lampu.lampcord.shared.model.User
+import kotlin.time.Duration.Companion.milliseconds
 
 sealed class FinderResult {
     abstract val score: Float
@@ -33,37 +37,50 @@ sealed class FinderResult {
 }
 
 class FinderStore(
-    private val guildStore: GuildStore
+    private val guildStore: GuildStore,
+    private val scope: CoroutineScope
 ) {
-    var searchQuery by mutableStateOf("")
+    private val _searchQuery = MutableStateFlow("")
+    var searchQuery: String
+        get() = _searchQuery.value
+        set(value) { _searchQuery.value = value }
+
+    private val _recentChannelIds = MutableStateFlow<List<String>>(emptyList())
     
-    // Tracks IDs of recently visited or messaged channels
-    val recentChannelIds = mutableStateListOf<String>()
+    @OptIn(FlowPreview::class)
+    val results: StateFlow<List<FinderResult>> = combine(
+        _searchQuery.debounce(200.milliseconds),
+        _recentChannelIds,
+        guildStore.guilds,
+        guildStore.privateChannels,
+        guildStore.allGuildChannels
+    ) { query, recents, guilds, privateChannels, allGuildChannels ->
+        performSearch(query.lowercase().trim(), recents, guilds, privateChannels, allGuildChannels)
+    }.flowOn(Dispatchers.Default)
+    .stateIn(scope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val results by derivedStateOf {
-        val query = searchQuery.lowercase().trim()
-        val guilds = guildStore.guilds
-        val allGuildChannels = guildStore.allGuildChannels
-        val privateChannels = guildStore.privateChannels
-
+    private fun performSearch(
+        query: String, 
+        recents: List<String>,
+        guilds: List<Guild>,
+        privateChannels: List<Channel>,
+        allGuildChannels: Map<String, Channel>
+    ): List<FinderResult> {
         if (query.isEmpty()) {
-            // Return recents
-            val recents = mutableListOf<FinderResult>()
-            recentChannelIds.distinct().take(20).forEach { id ->
-                // Check if it's a DM
-                privateChannels.find { it.id == id }?.let {
-                    recents.add(FinderResult.DirectMessage(it, 0f))
-                } ?: run {
-                    // Check if it's a guild channel
-                    allGuildChannels.forEach { (guildId, channels) ->
-                        channels.find { it.id == id }?.let { channel ->
-                            val guild = guilds.find { it.id == guildId }
-                            recents.add(FinderResult.Channel(channel, guild, 0f))
-                        }
+            val list = mutableListOf<FinderResult>()
+            recents.distinct().take(20).forEach { id ->
+                val dm = privateChannels.find { it.id == id }
+                if (dm != null) {
+                    list.add(FinderResult.DirectMessage(dm, 0f))
+                } else {
+                    val channel = allGuildChannels[id]
+                    if (channel != null) {
+                        val guild = guilds.find { it.id == channel.guild_id }
+                        list.add(FinderResult.Channel(channel, guild, 0f))
                     }
                 }
             }
-            return@derivedStateOf recents
+            return list
         }
 
         val list = mutableListOf<FinderResult>()
@@ -77,13 +94,11 @@ class FinderStore(
         }
 
         // Search Channels
-        allGuildChannels.forEach { (guildId, channels) ->
-            val guild = guilds.find { it.id == guildId }
-            channels.forEach { channel ->
-                val name = channel.name?.lowercase() ?: ""
-                if (name.contains(query)) {
-                    list.add(FinderResult.Channel(channel, guild, if (name.startsWith(query)) 2f else 1f))
-                }
+        allGuildChannels.values.forEach { channel ->
+            val name = channel.name?.lowercase() ?: ""
+            if (name.contains(query)) {
+                val guild = guilds.find { it.id == channel.guild_id }
+                list.add(FinderResult.Channel(channel, guild, if (name.startsWith(query)) 2f else 1f))
             }
         }
 
@@ -98,12 +113,14 @@ class FinderStore(
             }
         }
 
-        list.sortedByDescending { it.score }.distinctBy { it.key }
+        return list.sortedByDescending { it.score }.distinctBy { it.key }
     }
 
     fun addRecent(channelId: String) {
-        recentChannelIds.remove(channelId)
-        recentChannelIds.add(0, channelId)
-        if (recentChannelIds.size > 50) recentChannelIds.removeAt(recentChannelIds.lastIndex)
+        val current = _recentChannelIds.value.toMutableList()
+        current.remove(channelId)
+        current.add(0, channelId)
+        if (current.size > 50) current.removeAt(current.lastIndex)
+        _recentChannelIds.value = current
     }
 }

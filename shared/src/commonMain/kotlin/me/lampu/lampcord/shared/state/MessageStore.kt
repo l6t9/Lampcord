@@ -2,85 +2,174 @@ package me.lampu.lampcord.shared.state
 
 import androidx.compose.runtime.*
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.serialization.json.*
 import me.lampu.lampcord.shared.api.DiscordClient
 import me.lampu.lampcord.shared.api.AllowedMentions
 import me.lampu.lampcord.shared.model.*
 import me.lampu.lampcord.shared.utils.getCurrentTimeMillis
+import me.lampu.lampcord.shared.utils.ResourceLoader
+import me.lampu.lampcord.shared.settings.Settings
 
 class MessageStore(
     private val discordClient: DiscordClient,
     private val userStore: UserStore,
     private val errorStore: AppErrorStore,
+    private val selectionStore: SelectionStore,
     private val scope: CoroutineScope
 ) {
-    val messages = mutableStateListOf<Message>()
-    private val messageTasks = mutableStateListOf<MessageTask>()
-    private var isProcessingQueue = false
+    private val _messages = MutableStateFlow<List<Message>>(emptyList())
+    val messages: StateFlow<List<Message>> = _messages.asStateFlow()
 
-    var isLoadingHistory by mutableStateOf(false)
-    var hasMoreHistory by mutableStateOf(true)
-    
+    private val _isLoadingHistory = MutableStateFlow(false)
+    val isLoadingHistory: StateFlow<Boolean> = _isLoadingHistory.asStateFlow()
+
+    private val _hasMoreHistory = MutableStateFlow(true)
+    val hasMoreHistory: StateFlow<Boolean> = _hasMoreHistory.asStateFlow()
+
+    val draftMessages = mutableStateMapOf<String, String>()
+    var replyingTo by mutableStateOf<Message?>(null)
+    var editingMessage by mutableStateOf<Message?>(null)
+    val pendingFiles = mutableStateListOf<PendingFile>()
+    val loadingMessages = mutableStateListOf<String>()
+    val pinnedMessages = mutableStateListOf<Message>()
+
+    var scrollToMessageId by mutableStateOf<String?>(null)
+    var highlightedMessageId by mutableStateOf<String?>(null)
+
+    private val messageTasks = mutableListOf<MessageTask>()
+    private var isProcessingQueue = false
     private var historyLoadingJob: Job? = null
 
+    init {
+        scope.launch {
+            try {
+                val text = ResourceLoader.readText("files/loading_messages.txt")
+                val lines = text?.split("\n")
+                    ?.map { it.trim() }
+                    ?.filter { it.isNotEmpty() && !it.startsWith("#") }
+                if (lines != null && lines.isNotEmpty()) {
+                    loadingMessages.addAll(lines)
+                }
+            } catch (e: Exception) {
+                loadingMessages.add("how")
+            }
+        }
+    }
+
+    fun showPinnedMessages() {
+        val channel = selectionStore.selectedChannel ?: return
+        scope.launch {
+            try {
+                val msgs = discordClient.getPinnedMessages(channel.id)
+                pinnedMessages.clear()
+                pinnedMessages.addAll(msgs)
+            } catch (e: Exception) { }
+        }
+    }
+
     fun clear() {
-        messages.clear()
+        _messages.value = emptyList()
         messageTasks.clear()
-        hasMoreHistory = true
-        isLoadingHistory = false
+        _hasMoreHistory.value = true
+        _isLoadingHistory.value = false
         historyLoadingJob?.cancel()
     }
 
     fun addMessages(newMessages: List<Message>) {
-        val existingIds = messages.map { it.id }.toSet()
-        val filtered = newMessages.filter { it.id !in existingIds }
-        messages.addAll(filtered)
+        _messages.update { current ->
+            val existingIds = current.map { it.id }.toSet()
+            current + newMessages.filter { it.id !in existingIds }
+        }
     }
 
     fun handleMessageCreate(message: Message) {
-        val index = messages.indexOfFirst { it.id == message.id || (message.nonce != null && it.nonce == message.nonce) }
-        if (index != -1) {
-            messages[index] = message
-        } else {
-            messages.add(0, message)
+        _messages.update { current ->
+            val index = current.indexOfFirst { it.id == message.id || (message.nonce != null && it.nonce == message.nonce) }
+            if (index != -1) {
+                current.toMutableList().apply { set(index, message) }
+            } else {
+                listOf(message) + current
+            }
         }
     }
 
     fun handleMessageUpdate(message: Message, dataObj: JsonObject) {
-        val index = messages.indexOfFirst { it.id == message.id }
-        if (index != -1) {
-            val existing = messages[index]
-            messages[index] = existing.merge(dataObj)
+        _messages.update { current ->
+            val index = current.indexOfFirst { it.id == message.id }
+            if (index != -1) {
+                val existing = current[index]
+                current.toMutableList().apply { set(index, existing.merge(dataObj)) }
+            } else current
         }
     }
 
     fun handleMessageDelete(id: String) {
-        messages.removeAll { it.id == id }
+        _messages.update { it.filter { msg -> msg.id != id } }
     }
 
     fun loadMoreMessages(channelId: String, guildId: String?, threadId: String?) {
-        if (isLoadingHistory || !hasMoreHistory) return
-        val before = messages.lastOrNull()?.id ?: return
-        isLoadingHistory = true
+        if (_isLoadingHistory.value || !_hasMoreHistory.value) return
+        val before = _messages.value.lastOrNull()?.id ?: return
+        _isLoadingHistory.value = true
         historyLoadingJob = scope.launch {
             try {
                 val more = discordClient.getChannelMessages(threadId ?: channelId, before = before)
                 if (more.isEmpty()) {
-                    hasMoreHistory = false
+                    _hasMoreHistory.value = false
                 } else {
                     more.forEach { msg -> 
                         msg.author?.let { author ->
                             msg.member?.let { m -> userStore.cacheMember(guildId ?: "", author.id, m) }
                         }
                     }
-                    messages.addAll(more)
+                    _messages.update { it + more }
                 }
             } catch (e: Exception) {
                 println("Error loading history: ${e.message}")
             } finally {
-                isLoadingHistory = false
+                _isLoadingHistory.value = false
             }
         }
+    }
+
+    fun forwardMessage(targetChannel: Channel, message: Message) {
+        val user = userStore.currentUser.value ?: return
+        sendMessage(
+            channelId = targetChannel.id,
+            content = "",
+            currentUser = user,
+            forwardFrom = message,
+            guildId = targetChannel.guild_id
+        )
+    }
+
+    fun sendMessageDraft(
+        content: String,
+        stickerIds: List<String>? = null,
+        allowedMentions: AllowedMentions? = null,
+        poll: Poll? = null
+    ) {
+        val channel = selectionStore.selectedThread ?: selectionStore.selectedChannel ?: return
+        val user = userStore.currentUser.value ?: return
+
+        sendMessage(
+            channelId = channel.id,
+            content = content,
+            currentUser = user,
+            replyTo = replyingTo?.id,
+            files = pendingFiles.toList(),
+            guildId = selectionStore.selectedGuild?.id,
+            stickerIds = stickerIds,
+            allowedMentions = allowedMentions,
+            poll = poll
+        )
+        replyingTo = null
+        pendingFiles.clear()
+        draftMessages.remove(channel.id)
     }
 
     fun sendMessage(
@@ -107,7 +196,7 @@ class MessageStore(
             guild_id = guildId,
             poll = poll
         )
-        messages.add(0, tempMessage)
+        _messages.update { listOf(tempMessage) + it }
         
         messageTasks.add(MessageTask(nonce, channelId, content, replyTo, files, forwardFrom, stickerIds, allowedMentions, poll))
         if (!isProcessingQueue) {
@@ -136,17 +225,25 @@ class MessageStore(
                     if (success) {
                         messageTasks.removeAt(0)
                     } else {
-                        val index = messages.indexOfFirst { it.nonce == task.nonce }
-                        if (index != -1) {
-                            messages[index] = messages[index].copy(sendError = "Failed to send", isPending = false)
+                        _messages.update { current ->
+                            val index = current.indexOfFirst { it.nonce == task.nonce }
+                            if (index != -1) {
+                                current.toMutableList().apply { 
+                                    set(index, get(index).copy(sendError = "Failed to send", isPending = false))
+                                }
+                            } else current
                         }
                         errorStore.pushError("Failed to send message.")
                         messageTasks.removeAt(0)
                     }
                 } catch (e: Exception) {
-                    val index = messages.indexOfFirst { it.nonce == task.nonce }
-                    if (index != -1) {
-                        messages[index] = messages[index].copy(sendError = e.message ?: "Error", isPending = false)
+                    _messages.update { current ->
+                        val index = current.indexOfFirst { it.nonce == task.nonce }
+                        if (index != -1) {
+                            current.toMutableList().apply { 
+                                set(index, get(index).copy(sendError = e.message ?: "Error", isPending = false))
+                            }
+                        } else current
                     }
                     errorStore.pushError("Error sending message: ${e.message}")
                     messageTasks.removeAt(0)
@@ -160,9 +257,13 @@ class MessageStore(
     fun retryMessage(message: Message) {
         val task = messageTasks.find { it.nonce == message.nonce }
         if (task == null) {
-            val index = messages.indexOf(message)
+            val index = _messages.value.indexOf(message)
             if (index != -1) {
-                messages[index] = message.copy(sendError = null, isPending = true)
+                _messages.update { current ->
+                    current.toMutableList().apply {
+                        set(index, message.copy(sendError = null, isPending = true))
+                    }
+                }
                 messageTasks.add(MessageTask(message.nonce!!, message.channel_id, message.content, null, emptyList(), null))
                 if (!isProcessingQueue) startQueueProcessing()
             }
@@ -170,8 +271,16 @@ class MessageStore(
     }
 
     fun deletePendingMessage(message: Message) {
-        messages.remove(message)
+        _messages.update { it - message }
         messageTasks.removeAll { it.nonce == message.nonce }
+    }
+
+    fun sendTyping(channelId: String) {
+        scope.launch {
+            try {
+                discordClient.sendTyping(channelId)
+            } catch (e: Exception) { }
+        }
     }
 
     fun editMessage(message: Message, content: String) {

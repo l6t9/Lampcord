@@ -2,31 +2,53 @@ package me.lampu.lampcord.shared.ui.components.guilds.settings
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import me.lampu.lampcord.shared.model.*
-import me.lampu.lampcord.shared.state.ChatState
+import kotlinx.coroutines.launch
+import me.lampu.lampcord.shared.api.DiscordClient
+import me.lampu.lampcord.shared.model.Emoji
+import me.lampu.lampcord.shared.model.Guild
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
-import me.lampu.lampcord.shared.ui.components.settings.*
+import me.lampu.lampcord.shared.ui.components.settings.SettingsLayout
+import me.lampu.lampcord.shared.ui.components.settings.SettingsSection
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.FilePicker
-import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
 @OptIn(ExperimentalEncodingApi::class)
 @Composable
-fun ServerEmoji(guild: Guild, chatState: ChatState) {
+fun ServerEmoji(guild: Guild, discordClient: DiscordClient = koinInject()) {
     var emojis by remember { mutableStateOf(guild.emojis) }
     var isLoading by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -37,7 +59,7 @@ fun ServerEmoji(guild: Guild, chatState: ChatState) {
 
     LaunchedEffect(guild.id) {
         isLoading = true
-        emojis = chatState.client.getGuildEmojis(guild.id)
+        emojis = discordClient.getGuildEmojis(guild.id)
         isLoading = false
     }
 
@@ -51,7 +73,7 @@ fun ServerEmoji(guild: Guild, chatState: ChatState) {
                 val mimeType = if (extension == "gif") "image/gif" else "image/png"
                 val base64Data = Base64.encode(file.second)
                 val dataUrl = "data:$mimeType;base64,$base64Data"
-                val newEmoji = chatState.client.createEmoji(guild.id, file.first.substringBeforeLast("."), dataUrl)
+                val newEmoji = discordClient.createEmoji(guild.id, file.first.substringBeforeLast("."), dataUrl)
                 if (newEmoji != null) {
                     emojis = emojis + newEmoji
                 }
@@ -75,7 +97,7 @@ fun ServerEmoji(guild: Guild, chatState: ChatState) {
             confirmButton = {
                 Button(onClick = {
                     scope.launch {
-                        val updated = chatState.client.updateEmoji(guild.id, emojiToRename!!.id!!, newEmojiName)
+                        val updated = discordClient.updateEmoji(guild.id, emojiToRename!!.id!!, newEmojiName)
                         if (updated != null) {
                             emojis = emojis.map { if (it.id == updated.id) updated else it }
                         }
@@ -137,7 +159,7 @@ fun ServerEmoji(guild: Guild, chatState: ChatState) {
                             }
                             IconButton(onClick = {
                                 scope.launch {
-                                    if (chatState.client.deleteEmoji(guild.id, emoji.id!!)) {
+                                    if (discordClient.deleteEmoji(guild.id, emoji.id!!)) {
                                         emojis = emojis.filter { it.id != emoji.id }
                                     }
                                 }
@@ -153,7 +175,7 @@ fun ServerEmoji(guild: Guild, chatState: ChatState) {
 }
 
 @Composable
-fun ServerStickers(guild: Guild, chatState: ChatState) {
+fun ServerStickers() {
     SettingsLayout {
         SettingsSection(title = "Stickers", icon = Icons.Filled.StickyNote2) {
             Text("Sticker management coming soon", color = MaterialTheme.colorScheme.onSurfaceVariant)

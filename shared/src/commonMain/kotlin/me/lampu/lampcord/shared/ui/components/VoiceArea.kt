@@ -1,30 +1,50 @@
 package me.lampu.lampcord.shared.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FloatingToolbarDefaults
+import androidx.compose.material3.HorizontalFloatingToolbar
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.Channel
 import me.lampu.lampcord.shared.model.VoiceState
-import me.lampu.lampcord.shared.state.ChatState
+import me.lampu.lampcord.shared.state.UserStore
+import me.lampu.lampcord.shared.state.VoiceStore
 import me.lampu.lampcord.shared.ui.icons.Icons
+import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun VoiceArea(channel: Channel, chatState: ChatState, modifier: Modifier = Modifier) {
+fun VoiceArea(
+    channel: Channel,
+    modifier: Modifier = Modifier,
+    voiceStore: VoiceStore = koinInject()
+) {
     val guildId = channel.guild_id ?: "@me"
-    val participants = chatState.voiceStates[guildId]?.values?.filter { it.channel_id == channel.id } ?: emptyList()
+    val participants = voiceStore.voiceStates[guildId]?.values?.filter { it.channel_id == channel.id } ?: emptyList()
 
     Box(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainerLowest)) {
         if (participants.isEmpty()) {
@@ -40,7 +60,7 @@ fun VoiceArea(channel: Channel, chatState: ChatState, modifier: Modifier = Modif
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 items(participants) { state ->
-                    VoiceParticipantCard(state, chatState)
+                    VoiceParticipantCard(state)
                 }
             }
         }
@@ -53,7 +73,7 @@ fun VoiceArea(channel: Channel, chatState: ChatState, modifier: Modifier = Modif
                 .padding(bottom = 32.dp),
             floatingActionButton = {
                 FloatingToolbarDefaults.StandardFloatingActionButton(
-                    onClick = { chatState.disconnectFromVoice() },
+                    onClick = { voiceStore.disconnectFromVoice() },
                     containerColor = MaterialTheme.colorScheme.error,
                     contentColor = MaterialTheme.colorScheme.onError,
                 ) {
@@ -63,21 +83,21 @@ fun VoiceArea(channel: Channel, chatState: ChatState, modifier: Modifier = Modif
             colors = FloatingToolbarDefaults.standardFloatingToolbarColors(),
             content = {
                 VoiceControlButton(
-                    icon = if (chatState.currentVoiceState?.self_mute == true) Icons.Filled.MicOff else Icons.Filled.Mic,
-                    checked = chatState.currentVoiceState?.self_mute == true,
-                    onClick = { chatState.toggleVoiceMute() },
-                    tint = if (chatState.currentVoiceState?.self_mute == true) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+                    icon = if (voiceStore.currentVoiceState?.self_mute == true) Icons.Filled.MicOff else Icons.Filled.Mic,
+                    checked = voiceStore.currentVoiceState?.self_mute == true,
+                    onClick = { voiceStore.toggleVoiceMute() },
+                    tint = if (voiceStore.currentVoiceState?.self_mute == true) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
                 )
                 VoiceControlButton(
-                    icon = if (chatState.currentVoiceState?.self_video == true) Icons.Filled.VisibilityOff else Icons.Filled.VideoCall,
-                    checked = chatState.currentVoiceState?.self_video == true,
-                    onClick = { chatState.toggleVoiceVideo() },
+                    icon = if (voiceStore.currentVoiceState?.self_video == true) Icons.Filled.VisibilityOff else Icons.Filled.VideoCall,
+                    checked = voiceStore.currentVoiceState?.self_video == true,
+                    onClick = { voiceStore.toggleVoiceVideo() },
                     tint = MaterialTheme.colorScheme.onSurface
                 )
                 VoiceControlButton(
                     icon = Icons.Filled.ScreenShare,
-                    checked = chatState.currentVoiceState?.self_stream == true,
-                    onClick = { chatState.toggleVoiceStream() },
+                    checked = voiceStore.currentVoiceState?.self_stream == true,
+                    onClick = { voiceStore.toggleVoiceStream() },
                     tint = MaterialTheme.colorScheme.onSurface
                 )
                 VoiceControlButton(
@@ -118,9 +138,12 @@ fun VoiceControlButton(
 }
 
 @Composable
-fun VoiceParticipantCard(state: VoiceState, chatState: ChatState) {
-    val user = chatState.userStore.getUser(state.user_id)
-    val member = state.guild_id?.let { chatState.userStore.getMember(it, state.user_id) }
+fun VoiceParticipantCard(
+    state: VoiceState,
+    userStore: UserStore = koinInject()
+) {
+    val user = userStore.getUser(state.user_id)
+    val member = state.guild_id?.let { userStore.getMember(it, state.user_id) }
     val name = member?.nick ?: user?.global_name ?: user?.username ?: "Unknown"
     val avatarUrl = member?.avatar?.let { 
         "https://cdn.discordapp.com/guilds/${state.guild_id}/users/${state.user_id}/avatars/$it.png?size=160"

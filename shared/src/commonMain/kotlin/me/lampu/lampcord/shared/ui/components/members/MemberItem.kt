@@ -1,12 +1,24 @@
 package me.lampu.lampcord.shared.ui.components.members
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -19,42 +31,63 @@ import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.Member
-import me.lampu.lampcord.shared.state.ChatState
-import me.lampu.lampcord.shared.ui.components.*
+import me.lampu.lampcord.shared.state.MessageStore
+import me.lampu.lampcord.shared.state.NavigationStore
+import me.lampu.lampcord.shared.state.PresenceStore
+import me.lampu.lampcord.shared.state.ProfileStore
+import me.lampu.lampcord.shared.state.SettingsStore
+import me.lampu.lampcord.shared.state.UserStore
+import me.lampu.lampcord.shared.ui.components.AsyncImage
+import me.lampu.lampcord.shared.ui.components.AvatarWithDecoration
+import me.lampu.lampcord.shared.ui.components.ClanTagView
+import me.lampu.lampcord.shared.ui.components.ContextMenu
+import me.lampu.lampcord.shared.ui.components.ContextMenuItem
+import me.lampu.lampcord.shared.ui.components.UserActivity
+import me.lampu.lampcord.shared.ui.components.UserTagView
+import me.lampu.lampcord.shared.ui.components.UsernameView
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.setClipboardText
+import org.koin.compose.koinInject
 
 @Composable
-fun MemberItem(member: Member, chatState: ChatState) {
-    val user = remember(member, chatState.userStore) {
-        member.user ?: member.userId()?.let { chatState.userStore.getUser(it) }
+fun MemberItem(
+    member: Member,
+    userStore: UserStore = koinInject(),
+    navigationStore: NavigationStore = koinInject(),
+    settingsStore: SettingsStore = koinInject(),
+    profileStore: ProfileStore = koinInject(),
+    messageStore: MessageStore = koinInject(),
+    presenceStore: PresenceStore = koinInject()
+) {
+    val user = remember(member, userStore) {
+        member.user ?: member.userId()?.let { userStore.getUser(it) }
     }
     
     if (user == null) return
     val avatarUrl = member.avatar?.let {
-        "https://cdn.discordapp.com/guilds/${chatState.selectedGuild?.id}/users/${user.id}/avatars/$it.png"
+        "https://cdn.discordapp.com/guilds/${navigationStore.selectedGuild?.id}/users/${user.id}/avatars/$it.png"
     } ?: user.avatar?.let {
         "https://cdn.discordapp.com/avatars/${user.id}/$it.png"
     }
 
-    val roleColor = remember(member.roles, chatState.selectedGuild) {
-        val guild = chatState.selectedGuild ?: return@remember Color.Unspecified
+    val roleColor = remember(member.roles, navigationStore.selectedGuild) {
+        val guild = navigationStore.selectedGuild ?: return@remember Color.Unspecified
         val memberRoles = member.roles.mapNotNull { roleId -> guild.roles.find { it.id == roleId } }
         val highestRole = memberRoles.maxByOrNull { it.position }
         if (highestRole != null && highestRole.color != 0) Color(highestRole.color or 0xFF000000.toInt()) else Color.Unspecified
     }
 
-    val contextMenuItems = remember(user, chatState.userSettings) {
+    val contextMenuItems = remember(user, settingsStore.userSettings) {
         val items = mutableListOf(
-            ContextMenuItem("Profile", Icons.Filled.AccountCircle) { chatState.showProfile(user.id) },
+            ContextMenuItem("Profile", Icons.Filled.AccountCircle) { profileStore.showProfile(user.id) },
             ContextMenuItem("Mention", Icons.Rounded.AlternateEmail) {
-                val channelId = chatState.selectedChannel?.id ?: return@ContextMenuItem
-                val current = chatState.draftMessages[channelId] ?: ""
-                chatState.draftMessages[channelId] = "$current <@${user.id}> "
+                val channelId = navigationStore.selectedChannel?.id ?: return@ContextMenuItem
+                val current = messageStore.draftMessages[channelId] ?: ""
+                messageStore.draftMessages[channelId] = "$current <@${user.id}> "
             },
             ContextMenuItem("Message", Icons.Filled.Share) { /* TODO */ }
         )
-        if (chatState.userSettings?.developer_mode == true) {
+        if (settingsStore.userSettings?.developer_mode == true) {
             items.add(ContextMenuItem("Copy User ID", Icons.Filled.Dns) { setClipboardText(user.id) })
         }
         items
@@ -63,12 +96,13 @@ fun MemberItem(member: Member, chatState: ChatState) {
     var itemPosition by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
     var isHovered by remember { mutableStateOf(false) }
 
-    val presence = remember(member.presence, chatState.presences[user.id]) {
-        member.presence ?: chatState.presences[user.id]
+    val presences by presenceStore.presences.collectAsState()
+    val presence = remember(member.presence, presences[user.id]) {
+        member.presence ?: presences[user.id]
     }
     val isStreaming = presence?.activities?.any { it.type == 1 } == true
     val isListening = presence?.activities?.any { it.type == 2 } == true
-    val isStatusVisible = chatState.isStatusVisible(user, presence, isStreaming)
+    val isStatusVisible = presenceStore.isStatusVisible(user, presence, isStreaming)
     
     val isOffline = !isStatusVisible && !isListening
 
@@ -98,7 +132,7 @@ fun MemberItem(member: Member, chatState: ChatState) {
     ) {
         Surface(
             modifier = Modifier.fillMaxWidth().height(44.dp),
-            onClick = { chatState.showProfile(user.id, itemPosition) },
+            onClick = { profileStore.showProfile(user.id, position = itemPosition) },
             color = Color.Transparent,
             shape = RoundedCornerShape(8.dp)
         ) {
@@ -119,11 +153,12 @@ fun MemberItem(member: Member, chatState: ChatState) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(modifier = Modifier.size(32.dp)) {
+                        val currentUser by userStore.currentUser.collectAsState()
                         AvatarWithDecoration(
                             avatarUrl = avatarUrl,
                             decorationData = member.avatar_decoration_data ?: user.avatar_decoration_data,
                             size = 32.dp,
-                            status = chatState.getUserStatus(user.id)
+                            status = presenceStore.getUserStatus(user.id, currentUser?.id, settingsStore.userSettings?.status)
                         )
                     }
                     Spacer(modifier = Modifier.width(12.dp))

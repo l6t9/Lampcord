@@ -1,27 +1,56 @@
 package me.lampu.lampcord.shared.ui.components.guilds.settings
 
-import androidx.compose.foundation.*
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import me.lampu.lampcord.shared.model.*
-import me.lampu.lampcord.shared.state.ChatState
-import me.lampu.lampcord.shared.ui.components.ExpressiveSwitch
-import me.lampu.lampcord.shared.ui.components.settings.*
-import me.lampu.lampcord.shared.ui.icons.Icons
 import kotlinx.coroutines.launch
+import me.lampu.lampcord.shared.api.DiscordClient
+import me.lampu.lampcord.shared.model.Channel
+import me.lampu.lampcord.shared.model.Guild
+import me.lampu.lampcord.shared.state.GuildStore
+import me.lampu.lampcord.shared.ui.components.ExpressiveSwitch
+import me.lampu.lampcord.shared.ui.components.settings.SettingsLayout
+import me.lampu.lampcord.shared.ui.components.settings.SettingsSection
+import me.lampu.lampcord.shared.ui.icons.Icons
+import org.koin.compose.koinInject
 
 @Composable
-fun ServerChannels(guild: Guild, chatState: ChatState) {
-    val allChannels = chatState.channels.filter { it.guild_id == guild.id }
+fun ServerChannels(
+    guild: Guild,
+    guildStore: GuildStore = koinInject(),
+    discordClient: DiscordClient = koinInject()
+) {
+    val allGuildChannels by guildStore.allGuildChannels.collectAsState()
+    val allChannels = allGuildChannels.values.filter { it.guild_id == guild.id }
     
     val categories = allChannels.filter { it.type == 4 }.sortedBy { it.position }
     val uncategorized = allChannels.filter { it.parent_id == null && it.type != 4 }.sortedBy { it.position }
@@ -29,7 +58,7 @@ fun ServerChannels(guild: Guild, chatState: ChatState) {
     var editingChannel by remember { mutableStateOf<Channel?>(null) }
 
     if (editingChannel != null) {
-        ChannelEditor(editingChannel!!, chatState, onDone = { editingChannel = null })
+        ChannelEditor(editingChannel!!, discordClient, onDone = { editingChannel = null })
     } else {
         SettingsLayout {
             SettingsSection(title = "Channels", icon = Icons.Filled.Tag) {
@@ -84,7 +113,7 @@ private fun ChannelRow(channel: Channel, onClick: () -> Unit) {
 }
 
 @Composable
-fun ChannelEditor(channel: Channel, chatState: ChatState, onDone: () -> Unit) {
+fun ChannelEditor(channel: Channel, discordClient: DiscordClient, onDone: () -> Unit) {
     val scope = rememberCoroutineScope()
     var draftName by remember(channel.name) { mutableStateOf(channel.name ?: "") }
     var draftTopic by remember(channel.topic) { mutableStateOf(channel.topic ?: "") }
@@ -138,7 +167,7 @@ fun ChannelEditor(channel: Channel, chatState: ChatState, onDone: () -> Unit) {
             if (hasChanges) {
                 Button(onClick = {
                     scope.launch {
-                        if (chatState.client.updateChannel(channel.id, draftName, draftTopic, draftNsfw)) {
+                        if (discordClient.updateChannel(channel.id, draftName, draftTopic, draftNsfw)) {
                             onDone()
                         }
                     }
@@ -153,7 +182,7 @@ fun ChannelEditor(channel: Channel, chatState: ChatState, onDone: () -> Unit) {
         Button(
             onClick = {
                 scope.launch {
-                    if (chatState.client.deleteChannel(channel.id)) {
+                    if (discordClient.deleteChannel(channel.id)) {
                         onDone()
                     }
                 }

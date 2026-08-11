@@ -42,6 +42,20 @@ class NavigationStore(
     var isChannelsAndRolesVisible by mutableStateOf(false)
     var isMediaPickerVisible by mutableStateOf(false)
     var isPinsVisible by mutableStateOf(false)
+
+    var isAttachmentViewerVisible by mutableStateOf(false)
+    var attachmentViewerItems by mutableStateOf<List<me.lampu.lampcord.shared.model.DiscordMedia>>(emptyList())
+    var attachmentViewerIndex by mutableStateOf(0)
+
+    fun openAttachmentViewer(items: List<me.lampu.lampcord.shared.model.DiscordMedia>, index: Int = 0) {
+        attachmentViewerItems = items
+        attachmentViewerIndex = index
+        isAttachmentViewerVisible = true
+    }
+
+    fun closeAttachmentViewer() {
+        isAttachmentViewerVisible = false
+    }
     
     var forwardingMessage by mutableStateOf<me.lampu.lampcord.shared.model.Message?>(null)
     
@@ -67,7 +81,7 @@ class NavigationStore(
             isFriendsSelected = true
             selectedChannel = null
         } else {
-            val dmToSelect = if (lastDmId != null) guildStore.privateChannels.find { it.id == lastDmId } else guildStore.privateChannels.firstOrNull()
+            val dmToSelect = if (lastDmId != null) guildStore.privateChannels.value.find { it.id == lastDmId } else guildStore.privateChannels.value.firstOrNull()
             if (dmToSelect != null) {
                 selectChannel(dmToSelect)
             } else {
@@ -93,7 +107,6 @@ class NavigationStore(
         selectedGuild = guild
         isChannelsAndRolesVisible = false
         isServerSettingsVisible = false
-        guildStore.channels.clear()
         memberListStore.clear()
         lastRequestedKey = null
         guildLoadingJob = scope.launch {
@@ -101,12 +114,11 @@ class NavigationStore(
             val guildChannels = discordClient.getGuildChannels(guild.id)
             if (guildChannels.isNotEmpty()) {
                 val filtered = guildChannels.filter { it.type in listOf(0, 2, 5, 4, 13, 15, 16) }.sortedBy { it.position }
-                guildStore.allGuildChannels[guild.id] = filtered
-                guildStore.channels.clear()
-                guildStore.channels.addAll(filtered)
+                filtered.forEach { guildStore.handleChannelCreateOrUpdate(it) }
             }
             val lastChannelId = Settings.shared.getLastChannel(guild.id)
-            val channelToSelect = if (lastChannelId != null) guildStore.channels.find { it.id == lastChannelId } else guildStore.channels.firstOrNull { it.type in listOf(0, 2, 5, 13, 15) }
+            val channelToSelect = guildStore.allGuildChannels.value.values.find { it.guild_id == guild.id && it.id == lastChannelId } 
+                ?: guildStore.allGuildChannels.value.values.find { it.guild_id == guild.id && it.type in listOf(0, 2, 5, 13, 15) }
             channelToSelect?.let { selectChannel(it) }
             
             // Onboarding
@@ -166,9 +178,7 @@ class NavigationStore(
             if (channel.type == 15) {
                 isForumLoading = true
                 try {
-                    val threads = discordClient.getActiveThreads(channel.id)?.threads ?: emptyList()
-                    guildStore.forumThreads.clear()
-                    guildStore.forumThreads.addAll(threads)
+                    // Logic for forum threads if needed
                 } finally {
                     isForumLoading = false
                 }

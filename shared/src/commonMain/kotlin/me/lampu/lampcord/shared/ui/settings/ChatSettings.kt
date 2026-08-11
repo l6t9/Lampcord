@@ -7,28 +7,29 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import me.lampu.lampcord.shared.state.ChatState
+import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.model.UserSettings
 import me.lampu.lampcord.shared.ui.components.settings.*
 import me.lampu.lampcord.shared.settings.ChatGestures
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.components.ExpressiveSwitch
+import org.koin.compose.koinInject
 
 @Composable
-fun ChatSettings(chatState: ChatState) {
-    val userSettings = chatState.userSettings
+fun ChatSettings(settingsStore: SettingsStore = koinInject()) {
+    val userSettings = settingsStore.userSettings
     val isMobile = me.lampu.lampcord.shared.utils.getPlatformName().let { it == "android" || it == "ios" }
 
     if (!isMobile) {
-        DesktopChatSettings(chatState, userSettings)
+        DesktopChatSettings(settingsStore, userSettings)
     } else {
-        MobileChatSettings(chatState, userSettings)
+        MobileChatSettings(settingsStore, userSettings)
     }
 }
 
 @Composable
-private fun DesktopChatSettings(chatState: ChatState, userSettings: UserSettings?) {
+private fun DesktopChatSettings(settingsStore: SettingsStore, userSettings: UserSettings?) {
     SettingsLayout {
         SettingsSection(
             title = "Gestures",
@@ -68,13 +69,13 @@ private fun DesktopChatSettings(chatState: ChatState, userSettings: UserSettings
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 ChatToggle("Auto-display uploads", userSettings?.inline_attachment_media ?: true, "Images and videos uploaded directly to Discord.") {
-                    chatState.updateUserSettings(UserSettings.Partial(inline_attachment_media = it))
+                    settingsStore.updateUserSettings(UserSettings.Partial(inline_attachment_media = it))
                 }
                 ChatToggle("Auto-display links", userSettings?.inline_embed_media ?: true, "Links to rich media from other websites.") {
-                    chatState.updateUserSettings(UserSettings.Partial(inline_embed_media = it))
+                    settingsStore.updateUserSettings(UserSettings.Partial(inline_embed_media = it))
                 }
                 ChatToggle("Show embeds", userSettings?.render_embeds ?: true, "Previews for website links pasted into chat.") {
-                    chatState.updateUserSettings(UserSettings.Partial(render_embeds = it))
+                    settingsStore.updateUserSettings(UserSettings.Partial(render_embeds = it))
                 }
             }
         }
@@ -85,7 +86,7 @@ private fun DesktopChatSettings(chatState: ChatState, userSettings: UserSettings
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 ChatToggle("Animate Emoji", userSettings?.animate_emoji ?: true) {
-                    chatState.updateUserSettings(UserSettings.Partial(animate_emoji = it))
+                    settingsStore.updateUserSettings(UserSettings.Partial(animate_emoji = it))
                 }
 
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -93,7 +94,7 @@ private fun DesktopChatSettings(chatState: ChatState, userSettings: UserSettings
                     SettingsButtonGroup(
                         options = listOf(0, 1, 2),
                         selectedOption = userSettings?.animate_stickers ?: 0,
-                        onOptionSelected = { chatState.updateUserSettings(UserSettings.Partial(animate_stickers = it)) },
+                        onOptionSelected = { settingsStore.updateUserSettings(UserSettings.Partial(animate_stickers = it)) },
                         iconProvider = { level: Int, isSelected ->
                             when (level) {
                                 0 -> if (isSelected) Icons.Filled.PlayArrow else Icons.Rounded.PlayArrow
@@ -155,7 +156,7 @@ private fun ChatToggle(label: String, checked: Boolean, description: String? = n
 }
 
 @Composable
-private fun MobileChatSettings(chatState: ChatState, userSettings: UserSettings?) {
+private fun MobileChatSettings(settingsStore: SettingsStore, userSettings: UserSettings?) {
     var gesturesExpanded by remember { mutableStateOf(false) }
     var nitroExpanded by remember { mutableStateOf(false) }
     var loggerExpanded by remember { mutableStateOf(false) }
@@ -215,7 +216,7 @@ private fun MobileChatSettings(chatState: ChatState, userSettings: UserSettings?
                     description = "Images and videos will be displayed when they are sent in chat.",
                     checked = userSettings?.inline_attachment_media ?: true,
                     onCheckedChange = { 
-                        chatState.updateUserSettings(UserSettings.Partial(inline_attachment_media = it))
+                        settingsStore.updateUserSettings(UserSettings.Partial(inline_attachment_media = it))
                     }
                 ),
                 switchSettingsItem(
@@ -223,7 +224,7 @@ private fun MobileChatSettings(chatState: ChatState, userSettings: UserSettings?
                     description = "Links to images and videos will be automatically converted to rich media.",
                     checked = userSettings?.inline_embed_media ?: true,
                     onCheckedChange = { 
-                        chatState.updateUserSettings(UserSettings.Partial(inline_embed_media = it))
+                        settingsStore.updateUserSettings(UserSettings.Partial(inline_embed_media = it))
                     }
                 )
             )
@@ -236,7 +237,7 @@ private fun MobileChatSettings(chatState: ChatState, userSettings: UserSettings?
                     title = "Show embeds and preview website links pasted into chat",
                     checked = userSettings?.render_embeds ?: true,
                     onCheckedChange = { 
-                        chatState.updateUserSettings(UserSettings.Partial(render_embeds = it))
+                        settingsStore.updateUserSettings(UserSettings.Partial(render_embeds = it))
                     }
                 )
             )
@@ -249,7 +250,7 @@ private fun MobileChatSettings(chatState: ChatState, userSettings: UserSettings?
                     title = "Animate Emoji",
                     checked = userSettings?.animate_emoji ?: true,
                     onCheckedChange = { 
-                        chatState.updateUserSettings(UserSettings.Partial(animate_emoji = it))
+                        settingsStore.updateUserSettings(UserSettings.Partial(animate_emoji = it))
                     }
                 ),
                 expandableSettingsItem(
@@ -311,7 +312,7 @@ private fun MobileChatSettings(chatState: ChatState, userSettings: UserSettings?
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable { 
-                                        chatState.updateUserSettings(UserSettings.Partial(animate_stickers = index))
+                                        settingsStore.updateUserSettings(UserSettings.Partial(animate_stickers = index))
                                         stickersExpanded = false
                                     }
                                     .padding(12.dp),

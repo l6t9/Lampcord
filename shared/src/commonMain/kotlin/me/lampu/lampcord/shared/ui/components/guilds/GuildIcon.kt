@@ -1,37 +1,66 @@
 package me.lampu.lampcord.shared.ui.components.guilds
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AlertDialogDefaults
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
-import androidx.compose.ui.unit.dp
-import me.lampu.lampcord.shared.model.Guild
-import me.lampu.lampcord.shared.state.ChatState
-import me.lampu.lampcord.shared.ui.icons.Icons
-import me.lampu.lampcord.shared.utils.setClipboardText
-import me.lampu.lampcord.shared.ui.baseplates.RegularGuildItem
-import me.lampu.lampcord.shared.ui.components.ContextMenu
-import me.lampu.lampcord.shared.ui.components.ContextMenuItem
-import me.lampu.lampcord.shared.ui.components.AsyncImage
-import me.lampu.lampcord.shared.ui.components.guilds.MuteServerDialog
-import androidx.compose.foundation.background
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import me.lampu.lampcord.shared.state.GuildStore
+import me.lampu.lampcord.shared.state.NavigationStore
+import me.lampu.lampcord.shared.state.ProfileStore
+import me.lampu.lampcord.shared.state.ReadStateStore
+import me.lampu.lampcord.shared.state.SettingsStore
+import me.lampu.lampcord.shared.state.UserGuildSettingsStore
+import me.lampu.lampcord.shared.state.UserStore
+import me.lampu.lampcord.shared.ui.baseplates.RegularGuildItem
+import me.lampu.lampcord.shared.ui.components.AsyncImage
+import me.lampu.lampcord.shared.ui.components.ContextMenu
+import me.lampu.lampcord.shared.ui.components.ContextMenuItem
+import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.utils.setClipboardText
+import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun GuildIcon(
-    guild: Guild,
+    guild: me.lampu.lampcord.shared.model.Guild,
     isSelected: Boolean,
-    chatState: ChatState,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    guildStore: GuildStore = koinInject(),
+    userGuildSettingsStore: UserGuildSettingsStore = koinInject(),
+    readStateStore: ReadStateStore = koinInject(),
+    settingsStore: SettingsStore = koinInject(),
+    navigationStore: NavigationStore = koinInject(),
+    profileStore: ProfileStore = koinInject(),
+    userStore: UserStore = koinInject()
 ) {
     val isAnimated = guild.icon?.startsWith("a_") == true
     val iconUrl = if (guild.icon != null) {
@@ -39,34 +68,38 @@ fun GuildIcon(
         "https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.$ext?size=96"
     } else null
 
-    val isMuted by remember(guild.id, chatState.userGuildSettingsStore.userGuildSettings[guild.id]) {
-        derivedStateOf { chatState.userGuildSettingsStore.isGuildMuted(guild.id) }
+    val userGuildSettings by userGuildSettingsStore.userGuildSettings.collectAsState()
+    val readStates by readStateStore.readStates.collectAsState()
+    val currentUser by userStore.currentUser.collectAsState()
+
+    val isMuted by remember(guild.id, userGuildSettings[guild.id]) {
+        derivedStateOf { userGuildSettingsStore.isGuildMuted(guild.id) }
     }
     
-    val isUnread by remember(guild.id, chatState.readStates, chatState.guildStore.allGuildChannels[guild.id], chatState.userGuildSettingsStore.userGuildSettings[guild.id]) {
-        derivedStateOf { chatState.isGuildUnread(guild.id) }
+    val isUnread by remember(guild.id, readStates.size, userGuildSettings[guild.id]) {
+        derivedStateOf { guildStore.isGuildUnread(guild.id) }
     }
-    val mentionCount by remember(guild.id, chatState.readStates, chatState.guildStore.allGuildChannels[guild.id]) {
-        derivedStateOf { chatState.getGuildMentionCount(guild.id) }
+    val mentionCount by remember(guild.id, readStates.size) {
+        derivedStateOf { guildStore.getGuildMentionCount(guild.id) }
     }
 
     var showMuteDialog by remember { mutableStateOf(false) }
     var showLeaveDialog by remember { mutableStateOf(false) }
 
-    val contextMenuItems = remember(guild, isSelected, chatState.userSettings, isMuted) {
+    val contextMenuItems = remember(guild, isSelected, settingsStore.userSettings, isMuted) {
         val items = mutableListOf(
             ContextMenuItem(if (isMuted) "Unmute Server" else "Mute Server", if (isMuted) Icons.Filled.Notifications else Icons.AutoMirrored.Filled.VolumeOff) {
                 if (isMuted) {
-                    chatState.unmuteGuild(guild.id)
+                    guildStore.unmuteGuild(guild.id)
                 } else {
                     showMuteDialog = true
                 }
             },
             ContextMenuItem("Mark as Read", Icons.Filled.Check) {
-                chatState.markGuildAsRead(guild.id)
+                guildStore.markGuildAsRead(guild.id)
             },
             ContextMenuItem("Server Profile", Icons.Filled.AccountCircle) {
-                chatState.currentUser?.let { chatState.showProfile(it.id) }
+                currentUser?.let { profileStore.showProfile(it.id, navigationStore.selectedGuild?.id) }
             }
         )
         if (!isSelected) {
@@ -74,7 +107,7 @@ fun GuildIcon(
                 showLeaveDialog = true
             })
         }
-        if (chatState.userSettings?.developer_mode == true) {
+        if (settingsStore.userSettings?.developer_mode == true) {
             items.add(ContextMenuItem("Copy ID", Icons.Filled.Dns) { setClipboardText(guild.id) })
         }
         items
@@ -142,7 +175,7 @@ fun GuildIcon(
             guildName = guild.name ?: "Server",
             onDismiss = { showMuteDialog = false },
             onConfirm = { duration ->
-                chatState.muteGuild(guild.id, duration)
+                guildStore.muteGuild(guild.id, duration)
                 showMuteDialog = false
             }
         )
@@ -180,7 +213,7 @@ fun GuildIcon(
             confirmButton = {
                 Button(
                     onClick = {
-                        chatState.leaveGuild(guild.id)
+                        guildStore.leaveGuild(guild.id) { if (navigationStore.selectedGuild?.id == guild.id) navigationStore.selectHome() }
                         showLeaveDialog = false
                     },
                     modifier = Modifier.fillMaxWidth(),

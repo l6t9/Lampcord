@@ -1,21 +1,38 @@
 package me.lampu.lampcord.shared.ui.components.guilds.settings
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import me.lampu.lampcord.shared.model.Guild
-import me.lampu.lampcord.shared.state.ChatState
-import me.lampu.lampcord.shared.ui.components.settings.*
-import me.lampu.lampcord.shared.ui.icons.Icons
 import kotlinx.coroutines.launch
+import me.lampu.lampcord.shared.model.Guild
+import me.lampu.lampcord.shared.state.GuildStore
+import me.lampu.lampcord.shared.ui.components.settings.SettingsButtonGroup
+import me.lampu.lampcord.shared.ui.components.settings.SettingsLayout
+import me.lampu.lampcord.shared.ui.components.settings.SettingsSection
+import me.lampu.lampcord.shared.ui.icons.Icons
+import org.koin.compose.koinInject
 
 @Composable
-fun ServerOverview(guild: Guild, chatState: ChatState) {
+fun ServerOverview(guild: Guild, guildStore: GuildStore = koinInject()) {
     val scope = rememberCoroutineScope()
     
     // Draft state for unsaved changes
@@ -37,7 +54,7 @@ fun ServerOverview(guild: Guild, chatState: ChatState) {
 
     ServerOverviewContent(
         guild = guild,
-        chatState = chatState,
+        guildStore = guildStore,
         draftName = draftName,
         onNameChange = { draftName = it },
         draftAfkChannelId = draftAfkChannelId,
@@ -55,7 +72,7 @@ fun ServerOverview(guild: Guild, chatState: ChatState) {
         hasChanges = hasChanges,
         onSave = {
             scope.launch {
-                chatState.updateGuild(guild.id, Guild.Partial(
+                guildStore.updateGuild(guild.id, Guild.Partial(
                     name = draftName,
                     afk_channel_id = draftAfkChannelId,
                     afk_timeout = draftAfkTimeout,
@@ -81,7 +98,7 @@ fun ServerOverview(guild: Guild, chatState: ChatState) {
 @Composable
 private fun ServerOverviewContent(
     guild: Guild,
-    chatState: ChatState,
+    guildStore: GuildStore,
     draftName: String,
     onNameChange: (String) -> Unit,
     draftAfkChannelId: String?,
@@ -127,10 +144,11 @@ private fun ServerOverviewContent(
             title = "Channels",
             icon = Icons.Filled.Tag
         ) {
+            val allChannels by guildStore.allGuildChannels.collectAsState()
             Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("AFK Channel", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
-                    val voiceChannels = chatState.channels.filter { it.guild_id == guild.id && it.type == 2 }
+                    val voiceChannels = allChannels.values.filter { it.guild_id == guild.id && it.type == 2 }
                     SettingsButtonGroup(
                         options = listOf(null) + voiceChannels.map { it.id },
                         selectedOption = draftAfkChannelId,
@@ -161,7 +179,7 @@ private fun ServerOverviewContent(
 
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("System Messages Channel", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
-                    val textChannels = chatState.channels.filter { it.guild_id == guild.id && it.type == 0 }
+                    val textChannels = allChannels.values.filter { it.guild_id == guild.id && it.type == 0 }
                     SettingsButtonGroup(
                         options = listOf(null) + textChannels.map { it.id },
                         selectedOption = draftSystemChannelId,

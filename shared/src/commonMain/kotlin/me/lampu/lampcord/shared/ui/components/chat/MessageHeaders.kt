@@ -1,13 +1,32 @@
 package me.lampu.lampcord.shared.ui.components.chat
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RichTooltip
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TooltipAnchorPosition
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.rememberTooltipState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
@@ -18,9 +37,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.Message
 import me.lampu.lampcord.shared.model.MessageInteraction
-import me.lampu.lampcord.shared.state.ChatState
-import me.lampu.lampcord.shared.ui.components.*
+import me.lampu.lampcord.shared.state.MessageStore
+import me.lampu.lampcord.shared.state.NavigationStore
+import me.lampu.lampcord.shared.state.SettingsStore
+import me.lampu.lampcord.shared.state.UserStore
+import me.lampu.lampcord.shared.ui.components.AsyncImage
+import me.lampu.lampcord.shared.ui.components.ClanTagView
+import me.lampu.lampcord.shared.ui.components.UserTagView
 import me.lampu.lampcord.shared.utils.DateTimeUtils
+import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -141,8 +166,14 @@ fun InteractionHeader(interaction: MessageInteraction) {
 }
 
 @Composable
-fun ReplyBar(referencedMessage: Message, chatState: ChatState) {
-    val lineColor = if (chatState.settingsStore.pureBlack) Color.DarkGray else MaterialTheme.colorScheme.outlineVariant
+fun ReplyBar(
+    referencedMessage: Message,
+    settingsStore: SettingsStore = koinInject(),
+    messageStore: MessageStore = koinInject(),
+    navigationStore: NavigationStore = koinInject(),
+    userStore: UserStore = koinInject()
+) {
+    val lineColor = if (settingsStore.pureBlack) Color.DarkGray else MaterialTheme.colorScheme.outlineVariant
     var isHovered by remember { mutableStateOf(false) }
 
     Row(
@@ -164,7 +195,7 @@ fun ReplyBar(referencedMessage: Message, chatState: ChatState) {
                 interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                 indication = null // Removed the highlight indication
             ) {
-                chatState.scrollToMessageId = referencedMessage.id
+                messageStore.scrollToMessageId = referencedMessage.id
             },
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -200,7 +231,7 @@ fun ReplyBar(referencedMessage: Message, chatState: ChatState) {
         Spacer(modifier = Modifier.width(4.dp))
 
         val avatarUrl = referencedMessage.member?.avatar?.let {
-            "https://cdn.discordapp.com/guilds/${referencedMessage.guild_id ?: chatState.selectedGuild?.id}/users/${referencedMessage.author?.id}/avatars/$it.png?size=48"
+            "https://cdn.discordapp.com/guilds/${referencedMessage.guild_id ?: navigationStore.selectedGuild?.id}/users/${referencedMessage.author?.id}/avatars/$it.png?size=48"
         } ?: referencedMessage.author?.avatar?.let {
             "https://cdn.discordapp.com/avatars/${referencedMessage.author.id}/$it.png?size=48"
         }
@@ -218,11 +249,11 @@ fun ReplyBar(referencedMessage: Message, chatState: ChatState) {
 
         Spacer(modifier = Modifier.width(4.dp))
 
-        val roleColor by remember(referencedMessage, chatState.selectedGuild) {
+        val roleColor by remember(referencedMessage, navigationStore.selectedGuild) {
             derivedStateOf {
-                val guild = chatState.selectedGuild ?: return@derivedStateOf Color.White
+                val guild = navigationStore.selectedGuild ?: return@derivedStateOf Color.White
                 val authorId = referencedMessage.author?.id ?: return@derivedStateOf Color.White
-                val member = referencedMessage.member ?: chatState.getMember(guild.id, authorId) ?: return@derivedStateOf Color.White
+                val member = referencedMessage.member ?: userStore.getMember(guild.id, authorId) ?: return@derivedStateOf Color.White
                 val memberRoles = member.roles.mapNotNull { roleId -> guild.roles.find { it.id == roleId } }
                 val highestRole = memberRoles.maxByOrNull { it.position }
                 if (highestRole != null && highestRole.color != 0) Color(highestRole.color or 0xFF000000.toInt()) else Color.White

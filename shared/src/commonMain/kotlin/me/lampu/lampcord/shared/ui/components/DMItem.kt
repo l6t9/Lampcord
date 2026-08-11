@@ -3,6 +3,8 @@ package me.lampu.lampcord.shared.ui.components
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -12,40 +14,61 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.Channel
-import me.lampu.lampcord.shared.state.ChatState
+import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.setClipboardText
+import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
 
 @Composable
-fun DMItem(channel: Channel, chatState: ChatState) {
-    val isSelected = chatState.selectedChannel?.id == channel.id
-    val recipient = remember(channel.recipients, chatState.userStore) {
+fun DMItem(
+    channel: Channel,
+    navigationStore: NavigationStore = koinInject(),
+    userStore: UserStore = koinInject(),
+    settingsStore: SettingsStore = koinInject(),
+    presenceStore: PresenceStore = koinInject(),
+    userGuildSettingsStore: UserGuildSettingsStore = koinInject(),
+    guildStore: GuildStore = koinInject(),
+    readStateStore: ReadStateStore = koinInject(),
+    profileStore: ProfileStore = koinInject()
+) {
+    val isSelected = navigationStore.selectedChannel?.id == channel.id
+    val recipient = remember(channel.recipients, userStore) {
         val first = channel.recipients?.firstOrNull() ?: return@remember null
-        chatState.userStore.getUser(first.id) ?: first
+        userStore.getUser(first.id) ?: first
     }
     val avatarUrl = recipient?.avatar?.let { 
         "https://cdn.discordapp.com/avatars/${recipient.id}/$it.png"
     }
     val name = recipient?.let { it.global_name ?: it.username } ?: "Unnamed DM"
 
-    val status = recipient?.let { chatState.getUserStatus(it.id) } ?: "offline"
+    val currentUser by userStore.currentUser.collectAsState()
+    val userSettings = settingsStore.userSettings
+    val status = recipient?.let { presenceStore.getUserStatus(it.id, currentUser?.id, userSettings?.status) } ?: "offline"
 
     var isHovered by remember { mutableStateOf(false) }
 
-    val isMuted by remember(channel, chatState.userGuildSettingsStore.userGuildSettings[null]) {
-        derivedStateOf { chatState.userGuildSettingsStore.isChannelMuted(null, channel.id) }
+    val userGuildSettings by userGuildSettingsStore.userGuildSettings.collectAsState()
+    val isMuted by remember(channel, userGuildSettings.get(null)) {
+        derivedStateOf { userGuildSettingsStore.isChannelMuted(null, channel.id) }
     }
 
-    val contextMenuItems = remember(channel, chatState.userSettings, isMuted) {
+    val scope = rememberCoroutineScope()
+
+    val contextMenuItems = remember(channel, userSettings, isMuted) {
         val items = mutableListOf(
             ContextMenuItem(if (isMuted) "Unmute" else "Mute", if (isMuted) Icons.Filled.Notifications else Icons.AutoMirrored.Filled.VolumeOff) {
-                chatState.toggleMuteChannel("@me", channel.id)
+                guildStore.toggleMuteChannel("@me", channel.id)
             },
-            ContextMenuItem("Mark as Read", Icons.Filled.Check) { /* TODO */ },
-            ContextMenuItem("Profile", Icons.Filled.AccountCircle) { recipient?.let { chatState.showProfile(it.id) } },
+            ContextMenuItem("Mark as Read", Icons.Filled.Check) {
+                scope.launch {
+                    readStateStore.ackMessage(channel.id, channel.lastMessageId() ?: "0")
+                }
+            },
+            ContextMenuItem("Profile", Icons.Filled.AccountCircle) { recipient?.let { profileStore.showProfile(it.id, navigationStore.selectedGuild?.id) } },
             ContextMenuItem("Close DM", Icons.Filled.Close, color = Color.Red) { /* TODO */ }
         )
-        if (chatState.userSettings?.developer_mode == true) {
+        if (userSettings?.developer_mode == true) {
             items.add(ContextMenuItem("Copy ID", Icons.Filled.Dns) { setClipboardText(channel.id) })
         }
         items
@@ -69,7 +92,7 @@ fun DMItem(channel: Channel, chatState: ChatState) {
                         }
                     }
                 },
-            onClick = { chatState.selectChannel(channel) },
+            onClick = { navigationStore.selectChannel(channel) },
             color = if (isSelected) 
                 MaterialTheme.colorScheme.surfaceVariant 
             else Color.Transparent,

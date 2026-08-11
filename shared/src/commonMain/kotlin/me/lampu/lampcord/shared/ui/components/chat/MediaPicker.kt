@@ -25,7 +25,7 @@ import androidx.compose.ui.zIndex
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import me.lampu.lampcord.shared.model.*
-import me.lampu.lampcord.shared.state.ChatState
+import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
 import me.lampu.lampcord.shared.ui.components.VideoThumbnail
@@ -33,12 +33,13 @@ import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun MediaPicker(
-    chatState: ChatState,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    messageStore: MessageStore = koinInject()
 ) {
     val isMobile = getPlatformName() == "android" || getPlatformName() == "ios"
     var selectedTab by remember { mutableStateOf(0) }
@@ -61,7 +62,7 @@ fun MediaPicker(
     FilePicker(
         show = showSystemFilePicker,
         onFileSelected = { files ->
-            chatState.pendingFiles.addAll(files.map { PendingFile(it.first, it.second) })
+            messageStore.pendingFiles.addAll(files.map { PendingFile(it.first, it.second) })
         },
         onDismiss = { showSystemFilePicker = false }
     )
@@ -78,11 +79,11 @@ fun MediaPicker(
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 MediaPickerContent(
-                    chatState = chatState,
                     onDismiss = onDismiss,
                     isMobile = true,
                     selectedTab = selectedTab,
-                    onTabSelected = { selectedTab = it }
+                    onTabSelected = { selectedTab = it },
+                    messageStore = messageStore
                 )
 
                 val transition = updateTransition(targetState = isToolbarVisible, label = "ToolbarTransition")
@@ -127,7 +128,6 @@ fun MediaPicker(
             color = MaterialTheme.colorScheme.surfaceContainerLow
         ) {
             MediaPickerContent(
-                chatState = chatState,
                 onDismiss = onDismiss,
                 isMobile = false,
                 selectedTab = selectedTab,
@@ -141,12 +141,12 @@ fun MediaPicker(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun MediaPickerContent(
-    chatState: ChatState,
     onDismiss: () -> Unit,
     isMobile: Boolean,
     selectedTab: Int,
     onTabSelected: (Int) -> Unit,
-    onSystemPickerClick: (() -> Unit)? = null
+    onSystemPickerClick: (() -> Unit)? = null,
+    messageStore: MessageStore = koinInject()
 ) {
     val tabs = listOf("Images", "Files", "Camera", "Thread", "Poll")
     
@@ -247,7 +247,7 @@ private fun MediaPickerContent(
                             verticalArrangement = Arrangement.spacedBy(1.dp)
                         ) {
                             items(mediaList, key = { it.id }) { media ->
-                                val isSelected = chatState.pendingFiles.any { it.name == media.name }
+                                val isSelected = messageStore.pendingFiles.any { it.name == media.name }
                                 
                                 Box(
                                     modifier = Modifier
@@ -255,11 +255,11 @@ private fun MediaPickerContent(
                                         .clickable {
                                             scope.launch {
                                                 if (isSelected) {
-                                                    chatState.pendingFiles.removeAll { it.name == media.name }
+                                                    messageStore.pendingFiles.removeAll { it.name == media.name }
                                                 } else {
                                                     val bytes = getLocalMediaBytes(media.uri)
                                                     if (bytes != null) {
-                                                        chatState.pendingFiles.add(PendingFile(media.name, bytes, media.uri))
+                                                        messageStore.pendingFiles.add(PendingFile(media.name, bytes, media.uri))
                                                     }
                                                 }
                                             }
@@ -354,7 +354,7 @@ private fun MediaPickerContent(
                         ) {
                             items(fileList.size, key = { fileList[it].id }) { index ->
                                 val file = fileList[index]
-                                val isSelected = chatState.pendingFiles.any { it.name == file.name }
+                                val isSelected = messageStore.pendingFiles.any { it.name == file.name }
                                 
                                 FileItem(
                                     file = file,
@@ -362,11 +362,11 @@ private fun MediaPickerContent(
                                     onClick = {
                                         scope.launch {
                                             if (isSelected) {
-                                                chatState.pendingFiles.removeAll { it.name == file.name }
+                                                messageStore.pendingFiles.removeAll { it.name == file.name }
                                             } else {
                                                 val bytes = getLocalMediaBytes(file.uri)
                                                 if (bytes != null) {
-                                                    chatState.pendingFiles.add(PendingFile(file.name, bytes, file.uri))
+                                                    messageStore.pendingFiles.add(PendingFile(file.name, bytes, file.uri))
                                                 }
                                             }
                                         }
@@ -485,7 +485,7 @@ private fun MediaPickerContent(
                                         },
                                         allow_multiselect = pollAllowMultiselect
                                     )
-                                    chatState.sendMessage("", poll = poll)
+                                    messageStore.sendMessageDraft("", poll = poll)
                                     onDismiss()
                                 },
                                 enabled = canPost,

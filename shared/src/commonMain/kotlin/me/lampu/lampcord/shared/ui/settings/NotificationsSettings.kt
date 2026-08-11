@@ -7,24 +7,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import me.lampu.lampcord.shared.state.ChatState
 import me.lampu.lampcord.shared.ui.components.settings.*
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.components.ExpressiveSwitch
 
 @Composable
-fun NotificationsSettings(chatState: ChatState) {
+fun NotificationsSettings() {
     val isMobile = me.lampu.lampcord.shared.utils.getPlatformName().let { it == "android" || it == "ios" }
 
     if (!isMobile) {
-        DesktopNotificationsSettings(chatState)
+        DesktopNotificationsSettings()
     } else {
-        MobileNotificationsSettings(chatState)
+        MobileNotificationsSettings()
     }
 }
 
 @Composable
-private fun DesktopNotificationsSettings(chatState: ChatState) {
+private fun DesktopNotificationsSettings() {
     SettingsLayout {
         SettingsSection(
             title = "Push Notifications",
@@ -76,7 +75,7 @@ private fun NotificationToggle(label: String, checked: Boolean, description: Str
 }
 
 @Composable
-private fun MobileNotificationsSettings(chatState: ChatState) {
+private fun MobileNotificationsSettings() {
     Column(modifier = Modifier.fillMaxWidth()) {
         Material3SettingsGroup(title = "Push Notifications") {
             var enablePush by remember { mutableStateOf(true) }

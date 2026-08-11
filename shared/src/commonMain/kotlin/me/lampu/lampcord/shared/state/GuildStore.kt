@@ -1,42 +1,87 @@
 package me.lampu.lampcord.shared.state
 
-import androidx.compose.runtime.*
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import me.lampu.lampcord.shared.api.DiscordClient
-import me.lampu.lampcord.shared.model.Channel
-import me.lampu.lampcord.shared.model.Guild
-import me.lampu.lampcord.shared.model.Role
-import kotlinx.serialization.json.*
+import me.lampu.lampcord.shared.model.*
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+import kotlin.time.Clock
+import kotlin.time.Duration
 
 class GuildStore(
     private val discordClient: DiscordClient,
     private val errorStore: AppErrorStore,
     private val selectionStore: SelectionStore,
+    private val entityStore: EntityStore,
+    private val userGuildSettingsStore: UserGuildSettingsStore,
+    private val readStateStore: ReadStateStore,
     private val scope: CoroutineScope
 ) {
-    val guilds = mutableStateListOf<Guild>()
-    val channels = mutableStateListOf<Channel>()
-    val privateChannels = mutableStateListOf<Channel>()
-    val forumThreads = mutableStateListOf<Channel>()
-    
-    var selectedGuild by selectionStore::selectedGuild
-    var selectedChannel by selectionStore::selectedChannel
-    var selectedThread by selectionStore::selectedThread
+    private val _guildIds = MutableStateFlow<List<String>>(emptyList())
+    val guilds: StateFlow<List<Guild>> = combine(_guildIds, entityStore.guilds) { ids, allGuilds ->
+        ids.mapNotNull { allGuilds[it] }
+    }.stateIn(scope, SharingStarted.Eagerly, emptyList())
 
-    val allGuildChannels = mutableStateMapOf<String, List<Channel>>()
+    private val _privateChannelIds = MutableStateFlow<List<String>>(emptyList())
+    val privateChannels: StateFlow<List<Channel>> = combine(_privateChannelIds, entityStore.channels) { ids, allChannels ->
+        ids.mapNotNull { allChannels[it] }
+    }.stateIn(scope, SharingStarted.Eagerly, emptyList())
 
-    fun leaveGuild(guildId: String, onLeave: () -> Unit) {
-        scope.launch {
-            try {
-                if (discordClient.leaveGuild(guildId)) {
-                    handleGuildDelete(guildId)
-                    onLeave()
-                } else {
-                    errorStore.pushError("Failed to leave guild.")
+    val allGuildChannels = entityStore.channels
+
+    fun setGuilds(newGuilds: List<Guild>, order: List<String>) {
+        newGuilds.forEach { entityStore.updateGuild(it) }
+        
+        val sortedIds = if (order.isNotEmpty()) {
+            newGuilds.map { it.id }.sortedBy { id ->
+                val pos = order.indexOf(id)
+                if (pos == -1) Int.MAX_VALUE else pos
+            }
+        } else {
+            newGuilds.map { it.id }
+        }
+        _guildIds.value = sortedIds
+    }
+
+    fun handleGuildCreate(guild: Guild, order: List<String>) {
+        entityStore.updateGuild(guild)
+        if (guild.id !in _guildIds.value) {
+            val newList = _guildIds.value + guild.id
+            _guildIds.value = if (order.isNotEmpty()) {
+                newList.sortedBy { id ->
+                    val pos = order.indexOf(id)
+                    if (pos == -1) Int.MAX_VALUE else pos
                 }
-            } catch (e: Exception) {
-                errorStore.pushError("Error leaving guild: ${e.message}")
+            } else newList
+        }
+    }
+
+    fun handleGuildDelete(guildId: String) {
+        _guildIds.value = _guildIds.value - guildId
+        entityStore.removeGuild(guildId)
+    }
+
+    fun setPrivateChannels(channels: List<Channel>) {
+        channels.forEach { entityStore.updateChannel(it) }
+        _privateChannelIds.value = channels.map { it.id }
+    }
+
+    fun handleChannelCreateOrUpdate(channel: Channel) {
+        entityStore.updateChannel(channel)
+    }
+
+    fun handleChannelDelete(channel: Channel) {
+        entityStore.removeChannel(channel.id)
+    }
+
+    fun updateGuild(guildId: String, partial: Guild.Partial) {
+        scope.launch {
+            if (discordClient.updateGuild(guildId, partial)) {
+                entityStore.guilds.value[guildId]?.let { g ->
+                    entityStore.updateGuild(g.merge(partial))
+                }
             }
         }
     }
@@ -53,212 +98,108 @@ class GuildStore(
         }
     }
 
-    fun markCategoryAsRead(categoryId: String, guildId: String?) {
-        // Implementation
-    }
-
-    fun updateGuild(guildId: String, partial: Guild.Partial) {
+    fun leaveGuild(guildId: String, onLeave: () -> Unit) {
         scope.launch {
-            if (discordClient.updateGuild(guildId, partial)) {
-                guilds.find { it.id == guildId }?.let { g ->
-                    val updated = g.merge(partial)
-                    val index = guilds.indexOf(g)
-                    if (index != -1) guilds[index] = updated
-                    if (selectedGuild?.id == guildId) selectedGuild = updated
+            try {
+                if (discordClient.leaveGuild(guildId)) {
+                    handleGuildDelete(guildId)
+                    onLeave()
+                } else {
+                    errorStore.pushError("Failed to leave guild.")
                 }
+            } catch (e: Exception) {
+                errorStore.pushError("Error leaving guild: ${e.message}")
             }
         }
     }
 
+    fun toggleMuteGuild(guildId: String) {
+        if (userGuildSettingsStore.isGuildMuted(guildId)) unmuteGuild(guildId)
+        else muteGuild(guildId, null)
+    }
 
-    fun setGuilds(newGuilds: List<me.lampu.lampcord.shared.model.Guild>, order: List<String>) {
-        println("GuildStore received ${newGuilds.size} guilds")
-        newGuilds.forEach { rawGuild ->
-            val newGuild = rawGuild.copy(emojis = rawGuild.emojis.map { it.copy(guild_id = rawGuild.id) })
-            val index = guilds.indexOfFirst { it.id == newGuild.id }
-            if (index != -1) {
-                val existing = guilds[index]
-                // Merge logic: Replicate 126.21 StoreGuilds.handleGuild
-                guilds[index] = existing.copy(
-                    name = newGuild.name ?: existing.name,
-                    icon = newGuild.icon ?: existing.icon,
-                    banner = newGuild.banner ?: existing.banner,
-                    roles = if (newGuild.roles.isNotEmpty()) newGuild.roles else existing.roles,
-                    features = newGuild.features ?: existing.features,
-                    owner_id = newGuild.owner_id ?: existing.owner_id,
-                    unavailable = newGuild.unavailable ?: existing.unavailable,
-                    channels = newGuild.channels ?: existing.channels,
-                    members = if (newGuild.members != null) newGuild.members else existing.members,
-                    emojis = newGuild.emojis
-                )
-            } else {
-                guilds.add(newGuild)
-            }
-            
-            // Sync initial channels to allGuildChannels cache
-            newGuild.channels?.let { guildChannels ->
-                allGuildChannels[newGuild.id] = guildChannels.filter { it.type in listOf(0, 2, 5, 4, 13, 15, 16) }.sortedBy { it.position }
-            }
+    fun unmuteGuild(guildId: String) {
+        scope.launch {
+            discordClient.updateUserGuildSettings(guildId, UserGuildSettings.Partial(muted = false, mute_config = null))
         }
+    }
+
+    fun muteGuild(guildId: String, duration: Duration?) {
+        val muteConfig = if (duration != null) {
+            val endTime = (Clock.System.now() + duration).toString()
+            MuteConfig(end_time = endTime)
+        } else MuteConfig(end_time = null)
+
+        scope.launch {
+            discordClient.updateUserGuildSettings(guildId, UserGuildSettings.Partial(muted = true, mute_config = muteConfig))
+        }
+    }
+
+    fun toggleMuteChannel(guildId: String, channelId: String) {
+        val guildSettings = userGuildSettingsStore.userGuildSettings.value[guildId] ?: return
+        val currentOverrides = guildSettings.channel_overrides.toMutableList()
+        val index = currentOverrides.indexOfFirst { it.channel_id == channelId }
         
-        // Re-sort based on user_settings order (matches StoreGuildsSorted in 126.21)
-        if (order.isNotEmpty()) {
-            val sorted = guilds.sortedBy { guild -> 
-                val pos = order.indexOf(guild.id)
-                if (pos == -1) Int.MAX_VALUE else pos 
-            }.toList()
-            guilds.clear()
-            guilds.addAll(sorted)
-        }
-    }
-
-    fun handleGuildCreate(guild: me.lampu.lampcord.shared.model.Guild, order: List<String>) {
-        println("GuildStore received GUILD_CREATE for ${guild.id}")
-        val processedGuild = guild.copy(emojis = guild.emojis.map { it.copy(guild_id = guild.id) })
-        val existingIndex = guilds.indexOfFirst { it.id == processedGuild.id }
-        if (existingIndex != -1) {
-            val existing = guilds[existingIndex]
-            guilds[existingIndex] = existing.copy(
-                name = processedGuild.name ?: existing.name,
-                icon = processedGuild.icon ?: existing.icon,
-                banner = processedGuild.banner ?: existing.banner,
-                roles = if (processedGuild.roles.isNotEmpty()) processedGuild.roles else existing.roles,
-                features = processedGuild.features ?: existing.features,
-                owner_id = processedGuild.owner_id ?: existing.owner_id,
-                unavailable = processedGuild.unavailable ?: existing.unavailable,
-                channels = processedGuild.channels ?: existing.channels,
-                members = processedGuild.members ?: existing.members,
-                emojis = processedGuild.emojis
-            )
-            if (selectedGuild?.id == processedGuild.id) {
-                selectedGuild = guilds[existingIndex]
-            }
+        val newOverride = if (index != -1) {
+            currentOverrides[index].copy(muted = !currentOverrides[index].muted)
         } else {
-            guilds.add(processedGuild)
+            ChannelOverride(channel_id = channelId, muted = true)
         }
         
-        // Sync channels to cache
-        processedGuild.channels?.let { guildChannels ->
-            allGuildChannels[processedGuild.id] = guildChannels.filter { it.type in listOf(0, 2, 5, 4, 13, 15, 16) }.sortedBy { it.position }
-            if (selectedGuild?.id == processedGuild.id) {
-                channels.clear()
-                channels.addAll(allGuildChannels[processedGuild.id] ?: emptyList())
-            }
-        }
-        
-        // Re-sort
-        if (order.isNotEmpty()) {
-            val sorted = guilds.sortedBy { g -> 
-                val pos = order.indexOf(g.id)
-                if (pos == -1) Int.MAX_VALUE else pos 
-            }
-            guilds.clear()
-            guilds.addAll(sorted)
+        if (index != -1) currentOverrides[index] = newOverride else currentOverrides.add(newOverride)
+
+        scope.launch {
+            discordClient.updateUserGuildSettings(guildId, UserGuildSettings.Partial(channel_overrides = currentOverrides))
         }
     }
 
-    fun handleGuildDelete(guildId: String) {
-        println("GuildStore received GUILD_DELETE for $guildId")
-        guilds.removeAll { it.id == guildId }
-        allGuildChannels.remove(guildId)
-        if (selectedGuild?.id == guildId) {
-            selectedGuild = null
-            selectedChannel = null
+    fun setServerDMsAllowed(guildId: String, allowed: Boolean) {
+        scope.launch {
+            discordClient.updateUserGuildSettings(guildId, UserGuildSettings.Partial(message_notifications = if (allowed) 0 else 2))
         }
     }
 
-    fun handleChannelCreateOrUpdate(channel: Channel) {
+    fun setHideMutedChannels(guildId: String, hide: Boolean) {
+        scope.launch {
+            discordClient.updateUserGuildSettings(guildId, UserGuildSettings.Partial(hide_muted_channels = hide))
+        }
+    }
+
+    fun markCategoryAsRead(categoryId: String) {
+        val channel = allGuildChannels.value[categoryId] ?: return
         val guildId = channel.guild_id ?: return
-        val currentChannels = allGuildChannels[guildId]?.toMutableList() ?: mutableListOf()
-        val index = currentChannels.indexOfFirst { it.id == channel.id }
-        if (index != -1) {
-            currentChannels[index] = channel
-        } else {
-            currentChannels.add(channel)
-        }
-        val sorted = currentChannels.filter { it.type in listOf(0, 2, 5, 4, 13, 15, 16) }.sortedBy { it.position }
-        allGuildChannels[guildId] = sorted
-        
-        if (selectedGuild?.id == guildId) {
-            channels.clear()
-            channels.addAll(sorted)
+        markGuildAsRead(guildId)
+    }
+
+    fun isFolderUnread(folder: GuildFolder): Boolean {
+        return folder.guild_ids.any { el ->
+            val id = el.jsonPrimitive.contentOrNull ?: return@any false
+            isGuildUnread(id)
         }
     }
 
-    fun handleChannelDelete(channel: Channel) {
-        val guildId = channel.guild_id ?: return
-        val currentChannels = allGuildChannels[guildId]?.toMutableList() ?: return
-        currentChannels.removeAll { it.id == channel.id }
-        allGuildChannels[guildId] = currentChannels
-        
-        if (selectedGuild?.id == guildId) {
-            channels.clear()
-            channels.addAll(currentChannels)
-            if (selectedChannel?.id == channel.id) {
-                selectedChannel = null
-            }
+    fun getFolderMentionCount(folder: GuildFolder): Int {
+        return folder.guild_ids.sumOf { el ->
+            val id = el.jsonPrimitive.contentOrNull ?: return@sumOf 0
+            getGuildMentionCount(id)
         }
     }
 
-    fun handleRoleCreateOrUpdate(guildId: String, role: Role) {
-        val guildIndex = guilds.indexOfFirst { it.id == guildId }
-        if (guildIndex != -1) {
-            val guild = guilds[guildIndex]
-            val currentRoles = guild.roles.toMutableList()
-            val roleIndex = currentRoles.indexOfFirst { it.id == role.id }
-            if (roleIndex != -1) {
-                currentRoles[roleIndex] = role
-            } else {
-                currentRoles.add(role)
-            }
-            guilds[guildIndex] = guild.copy(roles = currentRoles)
-            if (selectedGuild?.id == guildId) {
-                selectedGuild = guilds[guildIndex]
-            }
-        }
+    fun isGuildUnread(guildId: String): Boolean {
+        if (userGuildSettingsStore.isGuildMuted(guildId)) return false
+        return allGuildChannels.value.values.filter { it.guild_id == guildId }.any { readStateStore.isUnread(it) }
     }
 
-    fun handleRoleDelete(guildId: String, roleId: String) {
-        val guildIndex = guilds.indexOfFirst { it.id == guildId }
-        if (guildIndex != -1) {
-            val guild = guilds[guildIndex]
-            val currentRoles = guild.roles.toMutableList()
-            currentRoles.removeAll { it.id == roleId }
-            guilds[guildIndex] = guild.copy(roles = currentRoles)
-            if (selectedGuild?.id == guildId) {
-                selectedGuild = guilds[guildIndex]
-            }
-        }
+    fun getGuildMentionCount(guildId: String): Int {
+        return allGuildChannels.value.values.filter { it.guild_id == guildId }.sumOf { readStateStore.getMentionCount(it.id) }
     }
 
-    fun setPrivateChannels(newChannels: List<Channel>) {
-        println("GuildStore received ${newChannels.size} private channels")
-        privateChannels.clear()
-        privateChannels.addAll(newChannels.distinctBy { it.id })
+    fun getForumThreads(channelId: String): List<Channel> {
+        return allGuildChannels.value.values.filter { it.parent_id == channelId }
     }
-
-    fun upsertForumThread(thread: Channel) {
-        val index = forumThreads.indexOfFirst { it.id == thread.id }
-        if (index != -1) {
-            forumThreads[index] = thread
-        } else {
-            forumThreads.add(thread)
-        }
-        val sorted = forumThreads.sortedByDescending { it.forumSortKey() }
-        forumThreads.clear()
-        forumThreads.addAll(sorted)
-    }
-
-    private fun Channel.forumSortKey(): Long = last_message_id?.jsonPrimitive?.contentOrNull?.toLongOrNull() ?: id.toLong()
 
     fun clear() {
-        guilds.clear()
-        channels.clear()
-        privateChannels.clear()
-        forumThreads.clear()
-        allGuildChannels.clear()
-        selectedGuild = null
-        selectedChannel = null
-        selectedThread = null
+        _guildIds.value = emptyList()
+        _privateChannelIds.value = emptyList()
     }
 }

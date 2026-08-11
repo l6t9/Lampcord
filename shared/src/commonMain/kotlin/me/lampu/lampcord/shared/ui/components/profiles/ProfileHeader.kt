@@ -2,39 +2,70 @@ package me.lampu.lampcord.shared.ui.components.profiles
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ButtonGroup
+import androidx.compose.material3.ButtonGroupDefaults
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.layout.ContentScale
 import me.lampu.lampcord.shared.model.UserProfile
-import me.lampu.lampcord.shared.state.ChatState
-import me.lampu.lampcord.shared.ui.components.*
+import me.lampu.lampcord.shared.state.NavigationStore
+import me.lampu.lampcord.shared.state.PresenceStore
+import me.lampu.lampcord.shared.state.SettingsStore
+import me.lampu.lampcord.shared.state.UserStore
+import me.lampu.lampcord.shared.ui.components.AvatarWithDecoration
+import me.lampu.lampcord.shared.ui.components.ClanTagView
+import me.lampu.lampcord.shared.ui.components.UserActivity
+import me.lampu.lampcord.shared.ui.components.UserTagView
+import me.lampu.lampcord.shared.ui.components.UsernameView
 import me.lampu.lampcord.shared.ui.icons.Icons
+import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ProfileHeader(
     profile: UserProfile,
-    chatState: ChatState,
     theme: ProfileTheme,
     isExpanded: Boolean,
-    onExpand: (() -> Unit)? = null
+    onExpand: (() -> Unit)? = null,
+    userStore: UserStore = koinInject(),
+    navigationStore: NavigationStore = koinInject(),
+    presenceStore: PresenceStore = koinInject(),
+    settingsStore: SettingsStore = koinInject()
 ) {
     val user = profile.user
     val guildMeta = profile.guild_member_profile
     val userMeta = profile.user_profile
+    val currentUser by userStore.currentUser.collectAsState()
 
     // Avatar
     val avatarUrl = profile.guild_member?.avatar?.let {
-        "https://cdn.discordapp.com/guilds/${chatState.selectedGuild?.id}/users/${user.id}/avatars/$it.png?size=160"
+        "https://cdn.discordapp.com/guilds/${navigationStore.selectedGuild?.id}/users/${user.id}/avatars/$it.png?size=160"
     } ?: user.avatar?.let {
         "https://cdn.discordapp.com/avatars/${user.id}/$it.png?size=160"
     }
@@ -51,12 +82,13 @@ fun ProfileHeader(
                 avatarUrl = avatarUrl,
                 decorationData = profile.guild_member?.avatar_decoration_data ?: user.avatar_decoration_data,
                 size = if (isExpanded) 104.dp else 82.dp,
-                status = chatState.getUserStatus(user.id),
+                status = presenceStore.getUserStatus(user.id, currentUser?.id, settingsStore.userSettings?.status),
                 modifier = Modifier.clickable(enabled = !isExpanded) { onExpand?.invoke() }
             )
         }
 
-        val presence = profile.guild_member?.presence ?: chatState.presences[user.id]
+        val presences by presenceStore.presences.collectAsState()
+        val presence = profile.guild_member?.presence ?: presences[user.id]
         val customStatus = presence?.activities?.find { it.type == 4 }
 
         if (customStatus != null) {
@@ -96,9 +128,9 @@ fun ProfileHeader(
         UserBadges(badges = profile.badges + profile.guild_badges, flags = user.public_flags ?: 0)
         
         // Edit Profile Buttons
-        if (user.id == chatState.currentUser?.id) {
+        if (user.id == currentUser?.id) {
             Spacer(Modifier.height(12.dp))
-            val isServerProfile = profile.guild_member != null && chatState.selectedGuild != null
+            val isServerProfile = profile.guild_member != null && navigationStore.selectedGuild != null
             
             if (isServerProfile) {
                 ButtonGroup(

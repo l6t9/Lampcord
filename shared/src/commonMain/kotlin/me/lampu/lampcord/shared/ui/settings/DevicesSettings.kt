@@ -5,12 +5,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import me.lampu.lampcord.shared.state.ChatState
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.components.settings.*
 
 @Composable
-fun DevicesSettings(chatState: ChatState) {
+fun DevicesSettings() {
     val devices = emptyList<me.lampu.lampcord.shared.api.DiscordDevice>()
 
     Column(modifier = Modifier.fillMaxWidth()) {

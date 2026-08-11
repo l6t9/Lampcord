@@ -1,34 +1,94 @@
 package me.lampu.lampcord.shared.ui
 
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.*
-import androidx.compose.foundation.layout.*
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AlertDialogDefaults
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LargeTopAppBar
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.WideNavigationRail
+import androidx.compose.material3.WideNavigationRailDefaults
+import androidx.compose.material3.WideNavigationRailItem
+import androidx.compose.material3.WideNavigationRailState
+import androidx.compose.material3.WideNavigationRailValue
+import androidx.compose.material3.rememberWideNavigationRailState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import me.lampu.lampcord.shared.state.ChatState
-import me.lampu.lampcord.shared.ui.icons.Icons
-import me.lampu.lampcord.shared.ui.settings.*
 import kotlinx.coroutines.launch
-import me.lampu.lampcord.shared.ui.components.settings.*
+import me.lampu.lampcord.shared.state.SessionManager
+import me.lampu.lampcord.shared.state.UserStore
+import me.lampu.lampcord.shared.ui.components.settings.Material3SettingsGroup
+import me.lampu.lampcord.shared.ui.components.settings.Material3SettingsItem
+import me.lampu.lampcord.shared.ui.components.settings.SettingsSearchDestination
+import me.lampu.lampcord.shared.ui.components.settings.SettingsSearchEntry
+import me.lampu.lampcord.shared.ui.components.settings.SettingsSearchField
+import me.lampu.lampcord.shared.ui.components.settings.SettingsSearchResults
+import me.lampu.lampcord.shared.ui.components.settings.SettingsSubScreen
+import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.ui.settings.AccessibilitySettings
+import me.lampu.lampcord.shared.ui.settings.AccountSettings
+import me.lampu.lampcord.shared.ui.settings.AdvancedSettings
+import me.lampu.lampcord.shared.ui.settings.AppearanceSettings
+import me.lampu.lampcord.shared.ui.settings.ChatSettings
+import me.lampu.lampcord.shared.ui.settings.ConnectionsSettings
+import me.lampu.lampcord.shared.ui.settings.DevicesSettings
+import me.lampu.lampcord.shared.ui.settings.NotificationsSettings
+import me.lampu.lampcord.shared.ui.settings.PrivacySettings
+import me.lampu.lampcord.shared.ui.settings.ProfileSettings
+import org.koin.compose.koinInject
 
 enum class SettingsSection(val title: String, val icon: ImageVector, val selectedIcon: ImageVector) {
     ACCOUNT("Account", Icons.Rounded.AccountCircle, Icons.Filled.AccountCircle),
@@ -45,18 +105,17 @@ enum class SettingsSection(val title: String, val icon: ImageVector, val selecte
     ABOUT("About", Icons.Rounded.Info, Icons.Filled.Info),
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    chatState: ChatState,
+    sessionManager: SessionManager = koinInject(),
     onDismiss: () -> Unit
 ) {
+
     var selectedCategory by remember { mutableStateOf<SettingsSection?>(null) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var showLogoutConfirmation by remember { mutableStateOf(false) }
     val uriHandler = LocalUriHandler.current
-
-    val railState = rememberWideNavigationRailState(initialValue = WideNavigationRailValue.Expanded)
 
     if (showLogoutConfirmation) {
         AlertDialog(
@@ -91,7 +150,7 @@ fun SettingsScreen(
                 Button(
                     onClick = {
                         showLogoutConfirmation = false
-                        chatState.disconnect()
+                        sessionManager.disconnect()
                         onDismiss()
                     },
                     modifier = Modifier.fillMaxWidth(),
@@ -308,17 +367,17 @@ fun SettingsScreen(
                         contentScrollable = true
                     ) {
                         when (category) {
-                            SettingsSection.ACCOUNT -> AccountSettings(chatState)
-                            SettingsSection.PROFILES -> ProfileSettings(chatState)
-                            SettingsSection.PRIVACY -> PrivacySettings(chatState)
-                            SettingsSection.CONNECTIONS -> ConnectionsSettings(chatState)
-                            SettingsSection.DEVICES -> DevicesSettings(chatState)
-                            SettingsSection.APPEARANCE -> AppearanceSettings(chatState)
-                            SettingsSection.ACCESSIBILITY -> AccessibilitySettings(chatState)
+                            SettingsSection.ACCOUNT -> AccountSettings()
+                            SettingsSection.PROFILES -> ProfileSettings()
+                            SettingsSection.PRIVACY -> PrivacySettings()
+                            SettingsSection.CONNECTIONS -> ConnectionsSettings()
+                            SettingsSection.DEVICES -> DevicesSettings()
+                            SettingsSection.APPEARANCE -> AppearanceSettings()
+                            SettingsSection.ACCESSIBILITY -> AccessibilitySettings()
                             SettingsSection.VOICE_VIDEO -> { /* TODO */ }
-                            SettingsSection.CHAT -> ChatSettings(chatState)
-                            SettingsSection.NOTIFICATIONS -> NotificationsSettings(chatState)
-                            SettingsSection.ADVANCED -> AdvancedSettings(chatState)
+                            SettingsSection.CHAT -> ChatSettings()
+                            SettingsSection.NOTIFICATIONS -> NotificationsSettings()
+                            SettingsSection.ADVANCED -> AdvancedSettings()
                             SettingsSection.ABOUT -> AboutContent(version = "1.0.0", onOpenUrl = { uriHandler.openUri(it) })
                         }
                     }
@@ -331,7 +390,14 @@ fun SettingsScreen(
                 onDismissRequest = onDismiss,
                 properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
             ) {
-                SettingsDesktopOverlay(chatState, selectedCategory, onDismiss, { selectedCategory = it }, showLogoutConfirmation, { showLogoutConfirmation = it }, railState)
+                SettingsDesktopOverlay(
+                    selectedCategory = selectedCategory,
+                    onDismiss = onDismiss,
+                    onCategorySelected = { selectedCategory = it },
+                    showLogoutConfirmation = showLogoutConfirmation,
+                    onLogoutConfirmationChanged = { showLogoutConfirmation = it },
+                    railState = railState
+                )
             }
         }
     }
@@ -340,7 +406,7 @@ fun SettingsScreen(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SettingsDesktopOverlay(
-    chatState: ChatState,
+    userStore: UserStore = koinInject(),
     selectedCategory: SettingsSection?,
     onDismiss: () -> Unit,
     onCategorySelected: (SettingsSection) -> Unit,
@@ -350,7 +416,7 @@ fun SettingsDesktopOverlay(
 ) {
     val activeCategory = selectedCategory ?: SettingsSection.ACCOUNT
     val uriHandler = LocalUriHandler.current
-    
+
     Surface(
         modifier = Modifier
             .widthIn(max = 1200.dp)
@@ -501,16 +567,16 @@ fun SettingsDesktopOverlay(
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             when (section) {
-                                SettingsSection.ACCOUNT -> AccountSettings(chatState)
-                                SettingsSection.PROFILES -> ProfileSettings(chatState)
-                                SettingsSection.PRIVACY -> PrivacySettings(chatState)
-                                SettingsSection.CONNECTIONS -> ConnectionsSettings(chatState)
-                                SettingsSection.DEVICES -> DevicesSettings(chatState)
-                                SettingsSection.APPEARANCE -> AppearanceSettings(chatState)
-                                SettingsSection.ACCESSIBILITY -> AccessibilitySettings(chatState)
-                                SettingsSection.CHAT -> ChatSettings(chatState)
-                                SettingsSection.NOTIFICATIONS -> NotificationsSettings(chatState)
-                                SettingsSection.ADVANCED -> AdvancedSettings(chatState)
+                                SettingsSection.ACCOUNT -> AccountSettings()
+                                SettingsSection.PROFILES -> ProfileSettings()
+                                SettingsSection.PRIVACY -> PrivacySettings()
+                                SettingsSection.CONNECTIONS -> ConnectionsSettings()
+                                SettingsSection.DEVICES -> DevicesSettings()
+                                SettingsSection.APPEARANCE -> AppearanceSettings()
+                                SettingsSection.ACCESSIBILITY -> AccessibilitySettings()
+                                SettingsSection.CHAT -> ChatSettings()
+                                SettingsSection.NOTIFICATIONS -> NotificationsSettings()
+                                SettingsSection.ADVANCED -> AdvancedSettings()
                                 SettingsSection.ABOUT -> AboutContent(version = "1.0.0", onOpenUrl = { uriHandler.openUri(it) })
                                 else -> {
                                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

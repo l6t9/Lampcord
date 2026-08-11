@@ -17,18 +17,22 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import me.lampu.lampcord.shared.state.ChatState
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import me.lampu.lampcord.shared.state.SavedAccount
+import me.lampu.lampcord.shared.state.TokenStore
+import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.ui.icons.Icons
 
 @Composable
 fun AccountPicker(
-    chatState: ChatState,
+    tokenStore: TokenStore,
+    userStore: UserStore,
     onAccountSelected: (SavedAccount) -> Unit,
     onAddAccount: () -> Unit
 ) {
-    val accounts = chatState.tokenStore.getAccounts()
-    val currentUser = chatState.currentUser
+    val accounts = tokenStore.getAccounts()
+    val currentUser by userStore.currentUser.collectAsState()
 
     Surface(
         modifier = Modifier.width(360.dp).wrapContentHeight(),

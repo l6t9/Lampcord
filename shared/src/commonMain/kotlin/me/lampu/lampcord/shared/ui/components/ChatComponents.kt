@@ -1,56 +1,114 @@
 package me.lampu.lampcord.shared.ui.components
 
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.keyframes
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.FilterQuality
-import androidx.compose.ui.input.key.*
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isShiftPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.*
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import me.lampu.lampcord.shared.model.*
-import me.lampu.lampcord.shared.state.ChatState
+import me.lampu.lampcord.shared.model.AutocompleteType
+import me.lampu.lampcord.shared.model.InteractionOption
+import me.lampu.lampcord.shared.model.Member
+import me.lampu.lampcord.shared.model.PendingFile
+import me.lampu.lampcord.shared.state.AutocompleteStore
+import me.lampu.lampcord.shared.state.CommandStore
+import me.lampu.lampcord.shared.state.MessageStore
+import me.lampu.lampcord.shared.state.NavigationStore
+import me.lampu.lampcord.shared.state.TypingStore
+import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.ui.components.chat.MediaPicker
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.FilePicker
-import me.lampu.lampcord.shared.utils.getClipboardFiles
 import me.lampu.lampcord.shared.utils.Permission
+import me.lampu.lampcord.shared.utils.getClipboardFiles
 import me.lampu.lampcord.shared.utils.getPlatformName
+import org.koin.compose.koinInject
 
 @Composable
-fun TypingIndicator(chatState: ChatState, channelId: String) {
-    val typingMap = chatState.typingUsers[channelId] ?: return
+fun TypingIndicator(
+    typingStore: TypingStore = koinInject(),
+    userStore: UserStore = koinInject(),
+    navigationStore: NavigationStore = koinInject()
+) {
+    val typingUsers by typingStore.typingUsers.collectAsState()
+    val channelId = navigationStore.selectedChannel?.id ?: return
+    val typingMap = typingUsers[channelId] ?: return
     val userIds = typingMap.keys.toList()
     if (userIds.isEmpty()) return
     
     val names = userIds.map { id ->
-         val member = chatState.getMember(chatState.selectedGuild?.id ?: "", id)
-         val userFromStore = chatState.userStore.getUser(id)
-         val userFromChannel = chatState.selectedChannel?.recipients?.find { it.id == id }
+         val member = navigationStore.selectedGuild?.let { userStore.getMember(it.id, id) }
+         val userFromStore = userStore.getUser(id)
+         val userFromChannel = navigationStore.selectedChannel?.recipients?.find { it.id == id }
          
          member?.nick 
          ?: userFromStore?.global_name 
@@ -60,10 +118,10 @@ fun TypingIndicator(chatState: ChatState, channelId: String) {
          ?: "Someone"
     }
     
-    val text = when {
-        names.size == 1 -> "${names[0]} is typing..."
-        names.size == 2 -> "${names[0]} and ${names[1]} are typing..."
-        names.size == 3 -> "${names[0]}, ${names[1]} and ${names[2]} are typing..."
+    val text = when (names.size) {
+        1 -> "${names[0]} is typing..."
+        2 -> "${names[0]} and ${names[1]} are typing..."
+        3 -> "${names[0]}, ${names[1]} and ${names[2]} are typing..."
         else -> "Several people are typing..."
     }
 
@@ -128,7 +186,7 @@ fun TypingDots(modifier: Modifier = Modifier) {
 @Composable
 fun ChannelHeader(
     channel: me.lampu.lampcord.shared.model.Channel?,
-    chatState: ChatState
+    navigationStore: NavigationStore = koinInject()
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth().height(48.dp),
@@ -140,7 +198,7 @@ fun ChannelHeader(
             modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (chatState.isChannelsAndRolesVisible) {
+            if (navigationStore.isChannelsAndRolesVisible) {
                 Icon(
                     imageVector = Icons.Filled.Flag,
                     contentDescription = null,
@@ -209,7 +267,7 @@ fun ChannelHeader(
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     if (channel.type != 2 && channel.type != 13) {
-                        IconButton(onClick = { chatState.isPinsVisible = true }) {
+                        IconButton(onClick = { navigationStore.isPinsVisible = true }) {
                             Icon(Icons.Filled.PushPin, "Pins", modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
@@ -252,46 +310,69 @@ class DiscordInputVisualTransformation(val primaryColor: Color) : VisualTransfor
 @Composable
 fun ChatInputBar(
     channel: me.lampu.lampcord.shared.model.Channel,
-    chatState: ChatState
+    messageStore: MessageStore = koinInject(),
+    navigationStore: NavigationStore = koinInject(),
+    autocompleteStore: AutocompleteStore = koinInject(),
+    commandStore: CommandStore = koinInject(),
+    userStore: UserStore = koinInject()
 ) {
     var textFieldValue by remember(channel.id) { 
-        val draft = chatState.draftMessages[channel.id] ?: ""
+        val draft = messageStore.draftMessages[channel.id] ?: ""
         mutableStateOf(TextFieldValue(draft, TextRange(draft.length))) 
     }
     
     var showFilePicker by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
 
-    val canSend by remember(channel, chatState.currentUser) {
-        derivedStateOf { chatState.hasPermission(Permission.SEND_MESSAGES) }
+    val currentUser by userStore.currentUser.collectAsState()
+    val member = remember(navigationStore.selectedGuild, currentUser) {
+        val guild = navigationStore.selectedGuild ?: return@remember null
+        val user = currentUser ?: return@remember null
+        userStore.getMember(guild.id, user.id)
+    }
+
+    val canSend by remember(channel, currentUser, member, navigationStore.selectedGuild) {
+        derivedStateOf {
+            val guild = navigationStore.selectedGuild
+            val user = currentUser
+            if (user == null) true
+            else if (guild == null) true // DMs
+            else me.lampu.lampcord.shared.utils.PermissionHelper.hasPermission(
+                member ?: Member(user = user),
+                guild,
+                channel,
+                Permission.SEND_MESSAGES,
+                user.id
+            )
+        }
     }
 
     // Update draft whenever text changes
     LaunchedEffect(textFieldValue.text) {
-        chatState.draftMessages[channel.id] = textFieldValue.text
+        messageStore.draftMessages[channel.id] = textFieldValue.text
     }
 
     // Keep local messageText in sync with draft changes from outside
-    LaunchedEffect(chatState.draftMessages[channel.id]) {
-        val draft = chatState.draftMessages[channel.id] ?: ""
+    LaunchedEffect(messageStore.draftMessages[channel.id]) {
+        val draft = messageStore.draftMessages[channel.id] ?: ""
         if (draft != textFieldValue.text) {
             textFieldValue = TextFieldValue(draft, TextRange(draft.length))
         }
     }
 
     // Sync messageText when editing starts
-    LaunchedEffect(chatState.editingMessage) {
-        chatState.editingMessage?.let {
+    LaunchedEffect(messageStore.editingMessage) {
+        messageStore.editingMessage?.let {
             textFieldValue = TextFieldValue(it.content, TextRange(it.content.length))
-            chatState.pendingFiles.clear()
-            chatState.replyingTo = null
+            messageStore.pendingFiles.clear()
+            messageStore.replyingTo = null
             focusRequester.requestFocus()
         }
     }
 
-    LaunchedEffect(chatState.replyingTo) {
-        chatState.replyingTo?.let {
-            chatState.editingMessage = null
+    LaunchedEffect(messageStore.replyingTo) {
+        messageStore.replyingTo?.let {
+            messageStore.editingMessage = null
             focusRequester.requestFocus()
         }
     }
@@ -305,12 +386,12 @@ fun ChatInputBar(
             val lastWordStart = textBefore.lastIndexOfAny(charArrayOf(' ', '\n')) + 1
             
             // If it's a command, it's usually at the start
-            val actualStart = if (chatState.autocompleteType == AutocompleteType.COMMAND) 0 else lastWordStart
+            val actualStart = if (autocompleteStore.autocompleteType == AutocompleteType.COMMAND) 0 else lastWordStart
             
             val newText = text.replaceRange(actualStart, cursor, replacement)
             val newCursor = actualStart + replacement.length
             textFieldValue = TextFieldValue(newText, TextRange(newCursor))
-            chatState.updateAutocomplete(null, "")
+            autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild)
         }
     }
 
@@ -321,22 +402,21 @@ fun ChatInputBar(
             Column(modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter)) {
                 // Autocomplete Picker
                 AnimatedVisibility(
-                    visible = chatState.autocompleteType != null,
+                    visible = autocompleteStore.autocompleteType != null,
                     enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
                     exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
                 ) {
-                    chatState.autocompleteType?.let { type ->
+                    autocompleteStore.autocompleteType?.let { type ->
                         AutocompletePicker(
-                            chatState = chatState,
                             type = type,
-                            query = chatState.autocompleteQuery,
-                            selectedIndex = chatState.autocompleteSelectedIndex,
+                            query = autocompleteStore.autocompleteQuery,
+                            selectedIndex = autocompleteStore.autocompleteSelectedIndex,
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
                             onItemSelected = { item ->
                                 if (item.isCommand && item.commandObj != null) {
-                                    chatState.activeCommand = item.commandObj
+                                    commandStore.activeCommand = item.commandObj
                                     textFieldValue = TextFieldValue("")
-                                    chatState.updateAutocomplete(null, "")
+                                    autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild)
                                 } else {
                                     applyAutocomplete(item.replacement)
                                 }
@@ -353,13 +433,13 @@ fun ChatInputBar(
                         .imePadding()
                 ) {
                     Column {
-                        TypingIndicator(chatState, channel.id)
+                        TypingIndicator()
 
-                        if (chatState.activeCommand != null) {
-                            CommandParameterUI(chatState)
+                        if (commandStore.activeCommand != null) {
+                            CommandParameterUI()
                         }
 
-                        if (chatState.replyingTo != null || chatState.editingMessage != null) {
+                        if (messageStore.replyingTo != null || messageStore.editingMessage != null) {
                             Surface(
                                 modifier = Modifier.fillMaxWidth(),
                                 color = MaterialTheme.colorScheme.surfaceContainerLow
@@ -368,8 +448,8 @@ fun ChatInputBar(
                                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    val isEditing = chatState.editingMessage != null
-                                    val activeMsg = chatState.editingMessage ?: chatState.replyingTo
+                                    val isEditing = messageStore.editingMessage != null
+                                    val activeMsg = messageStore.editingMessage ?: messageStore.replyingTo
                                     
                                     Icon(
                                         imageVector = if (isEditing) Icons.Filled.Edit else Icons.Rounded.Reply,
@@ -386,10 +466,10 @@ fun ChatInputBar(
                                     IconButton(
                                         onClick = { 
                                             if (isEditing) {
-                                                chatState.editingMessage = null
+                                                messageStore.editingMessage = null
                                                 textFieldValue = TextFieldValue("")
                                             } else {
-                                                chatState.replyingTo = null 
+                                                messageStore.replyingTo = null 
                                             }
                                         },
                                         modifier = Modifier.size(24.dp)
@@ -400,7 +480,7 @@ fun ChatInputBar(
                             }
                         }
 
-                        if (chatState.pendingFiles.isNotEmpty()) {
+                        if (messageStore.pendingFiles.isNotEmpty()) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -408,7 +488,7 @@ fun ChatInputBar(
                                     .height(120.dp),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                chatState.pendingFiles.forEachIndexed { index, pendingFile ->
+                                messageStore.pendingFiles.forEachIndexed { index, pendingFile ->
                                     Surface(
                                         modifier = Modifier.size(100.dp),
                                         shape = RoundedCornerShape(8.dp),
@@ -438,7 +518,7 @@ fun ChatInputBar(
                                             }
                                             
                                             IconButton(
-                                                onClick = { chatState.pendingFiles.removeAt(index) },
+                                                onClick = { messageStore.pendingFiles.removeAt(index) },
                                                 modifier = Modifier.align(Alignment.TopEnd).size(24.dp).background(Color.Black.copy(alpha = 0.4f), CircleShape)
                                             ) {
                                                 Icon(Icons.Filled.Close, null, modifier = Modifier.size(16.dp), tint = Color.White)
@@ -451,20 +531,20 @@ fun ChatInputBar(
 
                         val isMobile = getPlatformName() == "android" || getPlatformName() == "ios"
                         if (isMobile) {
-                            if (chatState.isMediaPickerVisible) {
-                                MediaPicker(chatState) {
-                                    chatState.isMediaPickerVisible = false
-                                }
+                            if (navigationStore.isMediaPickerVisible) {
+                                MediaPicker(onDismiss = {
+                                    navigationStore.isMediaPickerVisible = false
+                                })
                             }
                         } else {
                             AnimatedVisibility(
-                                visible = chatState.isMediaPickerVisible,
+                                visible = navigationStore.isMediaPickerVisible,
                                 enter = expandVertically() + fadeIn(),
                                 exit = shrinkVertically() + fadeOut()
                             ) {
-                                MediaPicker(chatState) {
-                                    chatState.isMediaPickerVisible = false
-                                }
+                                MediaPicker(onDismiss = {
+                                    navigationStore.isMediaPickerVisible = false
+                                })
                             }
                         }
 
@@ -478,7 +558,7 @@ fun ChatInputBar(
                             if (getPlatformName() != "android") {
                                 FilePicker(
                                     show = showFilePicker,
-                                    onFileSelected = { chatState.pendingFiles.addAll(it.map { PendingFile(it.first, it.second) }) },
+                                    onFileSelected = { it -> messageStore.pendingFiles.addAll(it.map { PendingFile(it.first, it.second) }) },
                                     onDismiss = { showFilePicker = false }
                                 )
                             }
@@ -486,12 +566,12 @@ fun ChatInputBar(
                             IconButton(
                                 onClick = {
                                     if (getPlatformName() == "android") {
-                                        chatState.isMediaPickerVisible = !chatState.isMediaPickerVisible
+                                        navigationStore.isMediaPickerVisible = !navigationStore.isMediaPickerVisible
                                     } else {
                                         showFilePicker = true
                                     }
                                 },
-                                enabled = chatState.editingMessage == null && canSend,
+                                enabled = messageStore.editingMessage == null && canSend,
                                 colors = IconButtonDefaults.filledTonalIconButtonColors(
                                     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                                     contentColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -557,13 +637,13 @@ fun ChatInputBar(
                                                     AutocompleteType.EMOJI to lastWord.substring(1)
                                                 else -> null to ""
                                             }
-                                            chatState.updateAutocomplete(type, query)
+                                            autocompleteStore.updateAutocomplete(type, query, navigationStore.selectedGuild)
                                         } else {
-                                            chatState.updateAutocomplete(null, "")
+                                            autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild)
                                         }
 
                                         if (it.text.isNotEmpty()) {
-                                            chatState.sendTyping()
+                                            messageStore.sendTyping(channel.id)
                                         }
                                     }
                                 },
@@ -575,28 +655,28 @@ fun ChatInputBar(
                                     .onPreviewKeyEvent { event ->
                                         if (!canSend) return@onPreviewKeyEvent false
                                         if (event.type == KeyEventType.KeyDown) {
-                                            if (chatState.autocompleteType != null) {
-                                                val itemCount = chatState.autocompleteItems.size
+                                            if (autocompleteStore.autocompleteType != null) {
+                                                val itemCount = autocompleteStore.autocompleteItems.size
                                                 when (event.key) {
                                                     Key.DirectionUp -> {
                                                         if (itemCount > 0) {
-                                                            chatState.autocompleteSelectedIndex = (chatState.autocompleteSelectedIndex - 1 + itemCount) % itemCount
+                                                            autocompleteStore.autocompleteSelectedIndex = (autocompleteStore.autocompleteSelectedIndex - 1 + itemCount) % itemCount
                                                             return@onPreviewKeyEvent true
                                                         }
                                                     }
                                                     Key.DirectionDown -> {
                                                         if (itemCount > 0) {
-                                                            chatState.autocompleteSelectedIndex = (chatState.autocompleteSelectedIndex + 1) % itemCount
+                                                            autocompleteStore.autocompleteSelectedIndex = (autocompleteStore.autocompleteSelectedIndex + 1) % itemCount
                                                             return@onPreviewKeyEvent true
                                                         }
                                                     }
                                                     Key.Tab, Key.Enter -> {
-                                                        if (itemCount > 0 && chatState.autocompleteSelectedIndex in 0 until itemCount) {
-                                                            val item = chatState.autocompleteItems[chatState.autocompleteSelectedIndex]
+                                                        if (itemCount > 0 && autocompleteStore.autocompleteSelectedIndex in 0 until itemCount) {
+                                                            val item = autocompleteStore.autocompleteItems[autocompleteStore.autocompleteSelectedIndex]
                                                             if (item.isCommand && item.commandObj != null) {
-                                                                chatState.activeCommand = item.commandObj
+                                                                commandStore.activeCommand = item.commandObj
                                                                 textFieldValue = TextFieldValue("")
-                                                                chatState.updateAutocomplete(null, "")
+                                                                autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild)
                                                             } else {
                                                                 applyAutocomplete(item.replacement)
                                                             }
@@ -607,39 +687,49 @@ fun ChatInputBar(
                                             }
 
                                                     if (event.key == Key.Escape) {
-                                                        if (chatState.autocompleteType != null) {
-                                                            chatState.updateAutocomplete(null, "")
+                                                        if (autocompleteStore.autocompleteType != null) {
+                                                            autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild)
                                                             return@onPreviewKeyEvent true
                                                         }
-                                                        if (chatState.editingMessage != null) {
-                                                            chatState.editingMessage = null
+                                                        if (messageStore.editingMessage != null) {
+                                                            messageStore.editingMessage = null
                                                             textFieldValue = TextFieldValue("")
                                                             return@onPreviewKeyEvent true
                                                         }
-                                                        if (chatState.replyingTo != null) {
-                                                            chatState.replyingTo = null
+                                                        if (messageStore.replyingTo != null) {
+                                                            messageStore.replyingTo = null
                                                             return@onPreviewKeyEvent true
                                                         }
                                                     }
                                                     if (event.isCtrlPressed && event.key == Key.V) {
                                                             val files = getClipboardFiles()
                                                             if (files.isNotEmpty()) {
-                                                                chatState.pendingFiles.addAll(files.map { PendingFile(it.first, it.second) })
+                                                                messageStore.pendingFiles.addAll(files.map { PendingFile(it.first, it.second) })
                                                                 return@onPreviewKeyEvent true
                                                             }
                                                     }
                                                     if (event.key == Key.Enter && !event.isShiftPressed) {
-                                                        if (textFieldValue.text.startsWith('/') && !textFieldValue.text.contains(' ')) {
-                                                            val cmdName = textFieldValue.text.substring(1).trim()
-                                                            val command = chatState.availableCommands.find { it.name == cmdName }
+                                                        val currentText = textFieldValue.text
+                                                        if (currentText.startsWith('/') && !currentText.contains(' ')) {
+                                                            val cmdName = currentText.substring(1).trim()
+                                                            val command = commandStore.availableCommands.find { it.name == cmdName }
                                                             if (command != null) {
-                                                                chatState.sendInteraction(command)
+                                                                commandStore.sendInteraction(
+                                                                    command = command,
+                                                                    guildId = navigationStore.selectedGuild?.id,
+                                                                    channelId = channel.id
+                                                                )
                                                                 textFieldValue = TextFieldValue("")
                                                                 return@onPreviewKeyEvent true
                                                             }
                                                         }
-                                                        if (textFieldValue.text.isNotBlank() || chatState.pendingFiles.isNotEmpty()) {
-                                                            chatState.sendMessage(textFieldValue.text)
+                                                        if (currentText.isNotBlank() || messageStore.pendingFiles.isNotEmpty()) {
+                                                            if (messageStore.editingMessage != null) {
+                                                                messageStore.editMessage(messageStore.editingMessage!!, currentText)
+                                                                messageStore.editingMessage = null
+                                                            } else {
+                                                                messageStore.sendMessageDraft(currentText)
+                                                            }
                                                             textFieldValue = TextFieldValue("")
                                                             return@onPreviewKeyEvent true
                                                         }
@@ -681,9 +771,9 @@ fun ChatInputBar(
                                             offset = IntOffset(0, -48),
                                             onDismissRequest = { showEmojiPicker = false }
                                         ) {
-                                            EmojiPicker(chatState) { emoji ->
-                                                val isExternal = emoji.guild_id != null && emoji.guild_id != chatState.selectedGuild?.id
-                                                val hasNitro = (chatState.currentUser?.premium_type ?: 0) > 0
+                                            EmojiPicker { emoji ->
+                                                val isExternal = emoji.guild_id != null && emoji.guild_id != navigationStore.selectedGuild?.id
+                                                val hasNitro = (currentUser?.premium_type ?: 0) > 0
                                                 val freeNitro = me.lampu.lampcord.shared.settings.Settings.shared.freeNitroEmojis
                                                 
                                                 val emojiText = if (emoji.id != null) {
@@ -709,23 +799,33 @@ fun ChatInputBar(
                             }
                             
                             AnimatedVisibility(
-                                visible = textFieldValue.text.isNotBlank() || chatState.pendingFiles.isNotEmpty() || chatState.activeCommand != null,
+                                visible = textFieldValue.text.isNotBlank() || messageStore.pendingFiles.isNotEmpty() || commandStore.activeCommand != null,
                                 enter = fadeIn() + scaleIn(initialScale = 0.8f) + slideInHorizontally { it },
                                 exit = fadeOut() + scaleOut(targetScale = 0.8f) + slideOutHorizontally { it },
                                 modifier = Modifier.padding(start = 8.dp)
                             ) {
                                 IconButton(
                                     onClick = {
-                                        if (chatState.activeCommand != null) {
-                                            val interactionOptions = chatState.commandOptions.map { (name, value) ->
-                                                val optionType = chatState.activeCommand!!.options!!.find { it.name == name }?.type ?: 3
+                                        if (commandStore.activeCommand != null) {
+                                            val interactionOptions = commandStore.commandOptions.map { (name, value) ->
+                                                val optionType = commandStore.activeCommand!!.options!!.find { it.name == name }?.type ?: 3
                                                 InteractionOption(type = optionType, name = name, value = value)
                                             }
-                                            chatState.sendInteraction(chatState.activeCommand!!, interactionOptions)
-                                            chatState.activeCommand = null
-                                            chatState.commandOptions.clear()
+                                            commandStore.sendInteraction(
+                                                command = commandStore.activeCommand!!,
+                                                guildId = navigationStore.selectedGuild?.id,
+                                                channelId = channel.id,
+                                                options = interactionOptions
+                                            )
+                                            commandStore.activeCommand = null
+                                            commandStore.commandOptions.clear()
                                         } else {
-                                            chatState.sendMessage(textFieldValue.text)
+                                            if (messageStore.editingMessage != null) {
+                                                messageStore.editMessage(messageStore.editingMessage!!, textFieldValue.text)
+                                                messageStore.editingMessage = null
+                                            } else {
+                                                messageStore.sendMessageDraft(textFieldValue.text)
+                                            }
                                         }
                                         textFieldValue = TextFieldValue("")
                                     },

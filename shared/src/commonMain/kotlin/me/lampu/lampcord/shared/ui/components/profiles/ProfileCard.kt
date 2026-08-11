@@ -1,48 +1,61 @@
 package me.lampu.lampcord.shared.ui.components.profiles
 
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.graphics.FilterQuality
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
-import me.lampu.lampcord.shared.model.UserProfile
-import me.lampu.lampcord.shared.state.ChatState
-import me.lampu.lampcord.shared.model.ProfileBadge
-import me.lampu.lampcord.shared.ui.icons.Icons
-import me.lampu.lampcord.shared.ui.components.*
-import me.lampu.lampcord.shared.ui.theme.rememberPlatformColorScheme
 import com.materialkolor.PaletteStyle
+import me.lampu.lampcord.shared.model.UserProfile
+import me.lampu.lampcord.shared.state.ProfileStore
+import me.lampu.lampcord.shared.state.UserStore
+import me.lampu.lampcord.shared.ui.theme.rememberPlatformColorScheme
+import org.koin.compose.koinInject
 
 @Composable
 fun UserProfileDialog(
     profile: UserProfile?,
-    chatState: ChatState,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    profileStore: ProfileStore = koinInject()
 ) {
-    val popupPosition = chatState.profilePosition
-    val isExpanded = chatState.isProfileExpanded
+    val popupPosition = profileStore.profilePosition
+    val isExpanded = profileStore.isProfileExpanded
 
     Popup(
         alignment = if (popupPosition == null || isExpanded) Alignment.Center else Alignment.TopStart,
@@ -61,9 +74,8 @@ fun UserProfileDialog(
             if (profile != null) {
                 ProfileCard(
                     profile = profile,
-                    chatState = chatState,
                     isExpanded = isExpanded,
-                    onExpand = { chatState.isProfileExpanded = true },
+                    onExpand = { profileStore.isProfileExpanded = true },
                     modifier = Modifier.width(if (isExpanded) 600.dp else 300.dp).wrapContentHeight()
                 )
             }
@@ -74,17 +86,18 @@ fun UserProfileDialog(
 @Composable
 fun ProfileCard(
     profile: UserProfile, 
-    chatState: ChatState, 
     modifier: Modifier = Modifier,
     isExpanded: Boolean = false,
     isSidebar: Boolean = false,
     showMemberSince: Boolean = false,
     onExpand: (() -> Unit)? = null,
-    showBorder: Boolean = true
+    showBorder: Boolean = true,
+    userStore: UserStore = koinInject()
 ) {
     val user = profile.user
     val guildMeta = profile.guild_member_profile
     val userMeta = profile.user_profile
+    val currentUser by userStore.currentUser.collectAsState()
     
     val themeColors = remember(profile) {
         val rawColors = guildMeta?.theme_colors ?: userMeta?.theme_colors
@@ -231,12 +244,12 @@ fun ProfileCard(
                 ProfileBanner(profile, theme, isExpanded)
 
                 Column(modifier = Modifier.padding(start = if (isExpanded) 16.dp else 10.dp, end = 16.dp)) {
-                    ProfileHeader(profile, chatState, theme, isExpanded, onExpand)
-                    ProfileSections(profile, chatState, theme, isExpanded, showMemberSince)
+                    ProfileHeader(profile, theme, isExpanded, onExpand)
+                    ProfileSections(profile, theme, isExpanded, showMemberSince)
                 }
             }
 
-            if (!isExpanded && user.id != chatState.currentUser?.id) {
+            if (!isExpanded && user.id != currentUser?.id) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()

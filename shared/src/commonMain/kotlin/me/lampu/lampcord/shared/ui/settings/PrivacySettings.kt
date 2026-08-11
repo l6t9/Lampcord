@@ -7,27 +7,28 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import me.lampu.lampcord.shared.state.ChatState
+import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.model.UserSettings
 import me.lampu.lampcord.shared.ui.components.settings.*
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.components.ExpressiveSwitch
+import org.koin.compose.koinInject
 
 @Composable
-fun PrivacySettings(chatState: ChatState) {
-    val userSettings = chatState.userSettings
+fun PrivacySettings(settingsStore: SettingsStore = koinInject()) {
+    val userSettings = settingsStore.userSettings
     val isMobile = me.lampu.lampcord.shared.utils.getPlatformName().let { it == "android" || it == "ios" }
 
     if (!isMobile) {
-        DesktopPrivacySettings(chatState, userSettings)
+        DesktopPrivacySettings(settingsStore, userSettings)
     } else {
-        MobilePrivacySettings(chatState, userSettings)
+        MobilePrivacySettings(settingsStore, userSettings)
     }
 }
 
 @Composable
-private fun DesktopPrivacySettings(chatState: ChatState, userSettings: UserSettings?) {
+private fun DesktopPrivacySettings(settingsStore: SettingsStore, userSettings: UserSettings?) {
     SettingsLayout {
         SettingsSection(
             title = "Safe Direct Messaging",
@@ -38,7 +39,7 @@ private fun DesktopPrivacySettings(chatState: ChatState, userSettings: UserSetti
                 SettingsButtonGroup(
                     options = listOf(2, 1, 0),
                     selectedOption = userSettings?.explicit_content_filter ?: 1,
-                    onOptionSelected = { filter: Int -> chatState.updateUserSettings(UserSettings.Partial(explicit_content_filter = filter)) },
+                    onOptionSelected = { filter: Int -> settingsStore.updateUserSettings(UserSettings.Partial(explicit_content_filter = filter)) },
                     iconProvider = { filter: Int, isSelected ->
                         when (filter) {
                             2 -> if (isSelected) Icons.Filled.Security else Icons.Rounded.Security
@@ -71,7 +72,7 @@ private fun DesktopPrivacySettings(chatState: ChatState, userSettings: UserSetti
             icon = Icons.Filled.Public
         ) {
             PrivacyToggle("Allow direct messages from server members", userSettings?.default_guilds_restricted == false, "This setting is applied when you join a new server.") { 
-                chatState.updateUserSettings(UserSettings.Partial(default_guilds_restricted = !it))
+                settingsStore.updateUserSettings(UserSettings.Partial(default_guilds_restricted = !it))
             }
         }
 
@@ -83,13 +84,13 @@ private fun DesktopPrivacySettings(chatState: ChatState, userSettings: UserSetti
                 val flags = userSettings?.friend_source_flags
                 
                 PrivacyToggle("Everyone", flags?.all == true) {
-                    chatState.updateUserSettings(UserSettings.Partial(friend_source_flags = me.lampu.lampcord.shared.model.FriendSourceFlags(all = it)))
+                    settingsStore.updateUserSettings(UserSettings.Partial(friend_source_flags = me.lampu.lampcord.shared.model.FriendSourceFlags(all = it)))
                 }
                 PrivacyToggle("Friends of Friends", flags?.mutual_friends == true) {
-                    chatState.updateUserSettings(UserSettings.Partial(friend_source_flags = me.lampu.lampcord.shared.model.FriendSourceFlags(mutual_friends = it)))
+                    settingsStore.updateUserSettings(UserSettings.Partial(friend_source_flags = me.lampu.lampcord.shared.model.FriendSourceFlags(mutual_friends = it)))
                 }
                 PrivacyToggle("Server Members", flags?.mutual_guilds == true) {
-                    chatState.updateUserSettings(UserSettings.Partial(friend_source_flags = me.lampu.lampcord.shared.model.FriendSourceFlags(mutual_guilds = it)))
+                    settingsStore.updateUserSettings(UserSettings.Partial(friend_source_flags = me.lampu.lampcord.shared.model.FriendSourceFlags(mutual_guilds = it)))
                 }
             }
         }
@@ -124,7 +125,7 @@ private fun PrivacyToggle(label: String, checked: Boolean, description: String? 
 }
 
 @Composable
-private fun MobilePrivacySettings(chatState: ChatState, userSettings: UserSettings?) {
+private fun MobilePrivacySettings(settingsStore: SettingsStore, userSettings: UserSettings?) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Material3SettingsGroup(title = "Safe Direct Messaging") {
             Material3SettingsGroup(
@@ -132,19 +133,19 @@ private fun MobilePrivacySettings(chatState: ChatState, userSettings: UserSettin
                     Material3SettingsItem(
                         title = { Text("Keep me safe") },
                         description = { Text("Scan direct messages from everyone.") },
-                        onClick = { chatState.updateUserSettings(UserSettings.Partial(explicit_content_filter = 2)) },
+                        onClick = { settingsStore.updateUserSettings(UserSettings.Partial(explicit_content_filter = 2)) },
                         trailingContent = { RadioButton(selected = userSettings?.explicit_content_filter == 2, onClick = null) }
                     ),
                     Material3SettingsItem(
                         title = { Text("My friends are nice") },
                         description = { Text("Scan direct messages from everyone unless they are a friend.") },
-                        onClick = { chatState.updateUserSettings(UserSettings.Partial(explicit_content_filter = 1)) },
+                        onClick = { settingsStore.updateUserSettings(UserSettings.Partial(explicit_content_filter = 1)) },
                         trailingContent = { RadioButton(selected = userSettings?.explicit_content_filter == 1, onClick = null) }
                     ),
                     Material3SettingsItem(
                         title = { Text("I live on the edge") },
                         description = { Text("Don't scan any direct messages.") },
-                        onClick = { chatState.updateUserSettings(UserSettings.Partial(explicit_content_filter = 0)) },
+                        onClick = { settingsStore.updateUserSettings(UserSettings.Partial(explicit_content_filter = 0)) },
                         trailingContent = { RadioButton(selected = userSettings?.explicit_content_filter == 0, onClick = null) }
                     )
                 )
@@ -159,7 +160,7 @@ private fun MobilePrivacySettings(chatState: ChatState, userSettings: UserSettin
                         description = "This setting is applied when you join a new server. It does not affect existing servers.",
                         checked = userSettings?.default_guilds_restricted == false,
                         onCheckedChange = { 
-                            chatState.updateUserSettings(UserSettings.Partial(default_guilds_restricted = !it))
+                            settingsStore.updateUserSettings(UserSettings.Partial(default_guilds_restricted = !it))
                         }
                     )
                 )
@@ -174,21 +175,21 @@ private fun MobilePrivacySettings(chatState: ChatState, userSettings: UserSettin
                         title = "Everyone",
                         checked = flags?.all == true,
                         onCheckedChange = { 
-                            chatState.updateUserSettings(UserSettings.Partial(friend_source_flags = me.lampu.lampcord.shared.model.FriendSourceFlags(all = it)))
+                            settingsStore.updateUserSettings(UserSettings.Partial(friend_source_flags = me.lampu.lampcord.shared.model.FriendSourceFlags(all = it)))
                         }
                     ),
                     switchSettingsItem(
                         title = "Friends of Friends",
                         checked = flags?.mutual_friends == true,
                         onCheckedChange = { 
-                            chatState.updateUserSettings(UserSettings.Partial(friend_source_flags = me.lampu.lampcord.shared.model.FriendSourceFlags(mutual_friends = it)))
+                            settingsStore.updateUserSettings(UserSettings.Partial(friend_source_flags = me.lampu.lampcord.shared.model.FriendSourceFlags(mutual_friends = it)))
                         }
                     ),
                     switchSettingsItem(
                         title = "Server Members",
                         checked = flags?.mutual_guilds == true,
                         onCheckedChange = { 
-                            chatState.updateUserSettings(UserSettings.Partial(friend_source_flags = me.lampu.lampcord.shared.model.FriendSourceFlags(mutual_guilds = it)))
+                            settingsStore.updateUserSettings(UserSettings.Partial(friend_source_flags = me.lampu.lampcord.shared.model.FriendSourceFlags(mutual_guilds = it)))
                         }
                     )
                 )

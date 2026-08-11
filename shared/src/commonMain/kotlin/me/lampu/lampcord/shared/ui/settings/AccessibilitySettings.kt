@@ -5,7 +5,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import me.lampu.lampcord.shared.state.ChatState
+import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.ui.components.settings.*
 import me.lampu.lampcord.shared.model.UserSettings
 
@@ -13,21 +13,22 @@ import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.components.ExpressiveSwitch
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.Alignment
+import org.koin.compose.koinInject
 
 @Composable
-fun AccessibilitySettings(chatState: ChatState) {
-    val userSettings = chatState.userSettings
+fun AccessibilitySettings(settingsStore: SettingsStore = koinInject()) {
+    val userSettings = settingsStore.userSettings
     val isMobile = me.lampu.lampcord.shared.utils.getPlatformName().let { it == "android" || it == "ios" }
 
     if (!isMobile) {
-        DesktopAccessibilitySettings(chatState, userSettings)
+        DesktopAccessibilitySettings(settingsStore, userSettings)
     } else {
-        MobileAccessibilitySettings(chatState, userSettings)
+        MobileAccessibilitySettings(settingsStore, userSettings)
     }
 }
 
 @Composable
-private fun DesktopAccessibilitySettings(chatState: ChatState, userSettings: UserSettings?) {
+private fun DesktopAccessibilitySettings(settingsStore: SettingsStore, userSettings: UserSettings?) {
     SettingsLayout {
         SettingsSection(
             title = "Visual",
@@ -67,7 +68,7 @@ private fun DesktopAccessibilitySettings(chatState: ChatState, userSettings: Use
             icon = Icons.Filled.Accessibility
         ) {
             AccessibilityToggle("Allow Accessibility Detection", userSettings?.allow_accessibility_detection ?: false, "Allow Discord to detect if you are using accessibility tools.") {
-                chatState.updateUserSettings(UserSettings.Partial(allow_accessibility_detection = it))
+                settingsStore.updateUserSettings(UserSettings.Partial(allow_accessibility_detection = it))
             }
         }
     }
@@ -87,7 +88,7 @@ private fun AccessibilityToggle(label: String, checked: Boolean, description: St
 }
 
 @Composable
-private fun MobileAccessibilitySettings(chatState: ChatState, userSettings: UserSettings?) {
+private fun MobileAccessibilitySettings(settingsStore: SettingsStore, userSettings: UserSettings?) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Material3SettingsGroup(title = "Visual") {
             var saturation by remember { mutableStateOf(1f) }
@@ -139,7 +140,7 @@ private fun MobileAccessibilitySettings(chatState: ChatState, userSettings: User
                         description = "Allow Discord to detect if you are using a screen reader or other accessibility tools.",
                         checked = userSettings?.allow_accessibility_detection ?: false,
                         onCheckedChange = { 
-                            chatState.updateUserSettings(UserSettings.Partial(allow_accessibility_detection = it))
+                            settingsStore.updateUserSettings(UserSettings.Partial(allow_accessibility_detection = it))
                         }
                     )
                 )

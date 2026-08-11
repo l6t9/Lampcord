@@ -1,149 +1,131 @@
 package me.lampu.lampcord.shared.ui
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.input.key.*
-import me.lampu.lampcord.shared.state.ChatState
-import me.lampu.lampcord.shared.ui.baseplates.DesktopBaseplate
-import me.lampu.lampcord.shared.ui.baseplates.MobileBaseplate
+import me.lampu.lampcord.shared.state.*
+import me.lampu.lampcord.shared.ui.baseplates.*
 import me.lampu.lampcord.shared.ui.components.*
+import me.lampu.lampcord.shared.utils.getPlatformName
 import org.koin.compose.koinInject
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun MainScreen(
-    chatState: ChatState
+    navigationStore: NavigationStore = koinInject(),
+    messageStore: MessageStore = koinInject(),
+    errorStore: AppErrorStore = koinInject(),
+    profileStore: ProfileStore = koinInject()
 ) {
-    val quickEffectsSpec = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
-    val snackbarHostState = remember { SnackbarHostState() }
+    val isMobile = getPlatformName() == "android" || getPlatformName() == "ios"
 
-    val loadingMessage = remember(chatState.isConnecting, chatState.loadingMessages.size) {
-        if (chatState.isConnecting) {
-            if (chatState.loadingMessages.isNotEmpty()) {
-                chatState.loadingMessages.random()
-            } else {
-                "How"
-            }
+    val loadingMessage = remember(navigationStore.isConnecting, messageStore.loadingMessages.size) {
+        if (navigationStore.isConnecting) {
+            if (messageStore.loadingMessages.isNotEmpty()) {
+                messageStore.loadingMessages.random()
+            } else "Connecting to Discord..."
         } else ""
     }
 
-    LaunchedEffect(chatState.errorStore.errors.size) {
-        val error = chatState.errorStore.errors.firstOrNull()
-        if (error != null) {
-            snackbarHostState.showSnackbar(
-                message = error.message,
-                duration = SnackbarDuration.Short
-            )
-            chatState.errorStore.consumeError(error)
-        }
-    }
-
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        modifier = Modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.surface,
-        contentWindowInsets = WindowInsets(0, 0, 0, 0)
-    ) { _ ->
+    Box(modifier = Modifier.fillMaxSize()) {
         AnimatedContent(
-            targetState = chatState.isConnected to chatState.isConnecting,
-            modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface),
+            targetState = navigationStore.isConnected to navigationStore.isConnecting,
             transitionSpec = {
-                fadeIn(quickEffectsSpec) togetherWith fadeOut(quickEffectsSpec)
+                fadeIn(tween(300)).togetherWith(fadeOut(tween(300)))
             },
-            label = "MainScreenTransition"
+            label = "MainScreenContentTransition"
         ) { (isConnected, isConnecting) ->
-            if (!isConnected) {
-                if (isConnecting) {
-                    println(chatState.currentUser)
-                    Box(modifier = Modifier.fillMaxSize().systemBarsPadding(), contentAlignment = Alignment.Center) {
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            ContainedLoadingIndicator()
-                            Spacer(Modifier.height(8.dp))
+            when {
+                isConnected -> {
+                    if (isMobile) {
+                        MobileBaseplate(
+                            navigationStore = navigationStore,
+                            profileStore = profileStore,
+                            userStore = koinInject(),
+                        )
+                    } else {
+                        DesktopBaseplate(
+                            navigationStore = navigationStore,
+                            profileStore = profileStore,
+                            voiceStore = koinInject(),
+                        )
+                    }
+                }
+                isConnecting -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            ContainedLoadingIndicator(modifier = Modifier.size(48.dp))
+                            Spacer(Modifier.height(16.dp))
                             Text(
                                 text = loadingMessage,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                                modifier = Modifier.padding(horizontal = 32.dp)
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                        }   
-                    }
-                } else {
-                    LoginScreen(modifier = Modifier.systemBarsPadding(), onLoginSuccess = { })
-                }
-            } else {
-                BoxWithConstraints(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .onPreviewKeyEvent { event ->
-                            if (event.type == KeyEventType.KeyDown) {
-                                if (event.isCtrlPressed && event.key == Key.K) {
-                                    chatState.isQuickSwitcherVisible = true
-                                    return@onPreviewKeyEvent true
-                                }
-                                if (event.key == Key.Escape) {
-                                    if (chatState.isQuickSwitcherVisible) {
-                                        chatState.isQuickSwitcherVisible = false
-                                        return@onPreviewKeyEvent true
-                                    }
-                                    if (chatState.isSearchVisible) {
-                                        chatState.isSearchVisible = false
-                                        return@onPreviewKeyEvent true
-                                    }
-                                    if (chatState.isPinsVisible) {
-                                        chatState.isPinsVisible = false
-                                        return@onPreviewKeyEvent true
-                                    }
-                                    if (chatState.selectedProfile != null) {
-                                        chatState.selectedProfile = null
-                                        return@onPreviewKeyEvent true
-                                    }
-                                    if (chatState.isSettingsVisible) {
-                                        chatState.isSettingsVisible = false
-                                        return@onPreviewKeyEvent true
-                                    }
-                                    if (chatState.isServerSettingsVisible) {
-                                        chatState.isServerSettingsVisible = false
-                                        return@onPreviewKeyEvent true
-                                    }
-                                }
-                            }
-                            false
                         }
+                    }
+                }
+                else -> {
+                    LoginScreen(
+                        onLoginSuccess = { /* No-op, navigationStore updates will trigger re-compose */ }
+                    )
+                }
+            }
+        }
+
+        // Global Overlays
+        navigationStore.selectedThread?.let {
+            // Placeholder for thread overlay if needed on mobile
+        }
+
+        val errors = errorStore.errors
+        if (errors.isNotEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                contentAlignment = Alignment.BottomCenter
+            ) {
+                Surface(
+                    color = MaterialTheme.colorScheme.errorContainer,
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                    shape = RoundedCornerShape(8.dp),
+                    tonalElevation = 4.dp
                 ) {
-                    val isCompact = maxWidth < 600.dp
-                    if (isCompact) {
-                        MobileBaseplate(chatState)
-                    } else {
-                        DesktopBaseplate(chatState)
-                    }
-
-                    if (chatState.isQuickSwitcherVisible) {
-                        QuickSwitcher(
-                            chatState = chatState,
-                            onDismiss = { chatState.isQuickSwitcherVisible = false }
-                        )
-                    }
-
-                    chatState.forwardingMessage?.let { message ->
-                        ForwardDialog(
-                            message = message,
-                            chatState = chatState,
-                            onDismiss = { chatState.forwardingMessage = null }
-                        )
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(errors.first().message, modifier = Modifier.weight(1f))
+                        TextButton(onClick = { errorStore.clear() }) {
+                            Text("Dismiss")
+                        }
                     }
                 }
             }
+        }
+        
+        // Quick Switcher (Ctrl+K / Cmd+K)
+        if (navigationStore.isQuickSwitcherVisible) {
+            QuickSwitcher(
+                onDismiss = { navigationStore.isQuickSwitcherVisible = false }
+            )
+        }
+        
+        // Forwarding Dialog
+        navigationStore.forwardingMessage?.let { message ->
+            ForwardDialog(
+                message = message,
+                onDismiss = { navigationStore.forwardingMessage = null }
+            )
         }
     }
 }

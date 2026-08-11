@@ -20,10 +20,11 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.Embed
 import me.lampu.lampcord.shared.model.EmbedVideo
-import me.lampu.lampcord.shared.state.ChatState
+import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.DiscordMarkdownText
 import me.lampu.lampcord.shared.ui.components.VideoPlayer
+import org.koin.compose.koinInject
 
 @Composable
 fun GifvView(video: EmbedVideo, modifier: Modifier = Modifier) {
@@ -33,7 +34,10 @@ fun GifvView(video: EmbedVideo, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun EmbedView(embed: Embed, chatState: ChatState? = null) {
+fun EmbedView(
+    embed: Embed,
+    navigationStore: NavigationStore = koinInject()
+) {
     if (embed.type == "gifv" && embed.video != null) {
         GifvView(
             video = embed.video,
@@ -75,7 +79,7 @@ fun EmbedView(embed: Embed, chatState: ChatState? = null) {
                             Spacer(Modifier.height(8.dp))
                         }
                         embed.description?.let { desc ->
-                            DiscordMarkdownText(content = desc, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, chatState = null)
+                            DiscordMarkdownText(content = desc, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Spacer(Modifier.height(8.dp))
                         }
                     }
@@ -85,7 +89,7 @@ fun EmbedView(embed: Embed, chatState: ChatState? = null) {
                                 AttachmentImage(
                                     media = thumb,
                                     isMosaic = true,
-                                    onClick = { chatState?.openAttachmentViewer(listOf(thumb), 0) }
+                                    onClick = { navigationStore.openAttachmentViewer(listOf(thumb), 0) }
                                 )
                             }
                         }
@@ -98,7 +102,7 @@ fun EmbedView(embed: Embed, chatState: ChatState? = null) {
                                 rowFields.forEach { field ->
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(field.name, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-                                        DiscordMarkdownText(field.value, style = MaterialTheme.typography.bodySmall, chatState = null)
+                                        DiscordMarkdownText(field.value, style = MaterialTheme.typography.bodySmall)
                                     }
                                 }
                             }
@@ -109,7 +113,7 @@ fun EmbedView(embed: Embed, chatState: ChatState? = null) {
                 embed.image?.let { image ->
                     AttachmentImage(
                         media = image,
-                        onClick = { chatState?.openAttachmentViewer(listOf(image), 0) }
+                        onClick = { navigationStore.openAttachmentViewer(listOf(image), 0) }
                     )
                     Spacer(Modifier.height(8.dp))
                 }

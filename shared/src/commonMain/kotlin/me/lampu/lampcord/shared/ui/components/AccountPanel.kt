@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -20,13 +22,27 @@ import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import me.lampu.lampcord.shared.state.ChatState
+import kotlinx.coroutines.launch
+import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.theme.*
 import me.lampu.lampcord.shared.ui.icons.Icons
+import org.koin.compose.koinInject
 
 @Composable
-fun AccountPanel(chatState: ChatState) {
-    val user = chatState.currentUser ?: return
+fun AccountPanel(
+    userStore: UserStore = koinInject(),
+    settingsStore: SettingsStore = koinInject(),
+    voiceStore: VoiceStore = koinInject(),
+    presenceStore: PresenceStore = koinInject(),
+    navigationStore: NavigationStore = koinInject(),
+    profileStore: ProfileStore = koinInject(),
+    sessionManager: SessionManager = koinInject()
+) {
+    val currentUser by userStore.currentUser.collectAsState()
+    val user = currentUser ?: return
+    
+    val userSettings = settingsStore.userSettings
+    val scope = rememberCoroutineScope()
     
     var panelPosition by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
     var showStatusMenu by remember { mutableStateOf(false) }
@@ -34,15 +50,18 @@ fun AccountPanel(chatState: ChatState) {
     var showAddAccountDialog by remember { mutableStateOf(false) }
     var showCustomStatusDialog by remember { mutableStateOf(false) }
     
-    val isMuted = chatState.currentVoiceState?.self_mute ?: false
-    val isDeafened = chatState.currentVoiceState?.self_deaf ?: false
+    val currentVoiceState = voiceStore.currentVoiceState
+    val isMuted = currentVoiceState?.self_mute ?: false
+    val isDeafened = currentVoiceState?.self_deaf ?: false
 
     if (showCustomStatusDialog) {
         CustomStatusDialog(
-            initialText = chatState.userSettings?.custom_status?.text ?: "",
+            initialText = userSettings?.custom_status?.text ?: "",
             onDismiss = { showCustomStatusDialog = false },
             onSave = { text ->
-                chatState.updateCustomStatus(text.ifBlank { null })
+                scope.launch {
+                    presenceStore.updateCustomStatus(text.ifBlank { null })
+                }
                 showCustomStatusDialog = false
             }
         )
@@ -56,7 +75,8 @@ fun AccountPanel(chatState: ChatState) {
         color = MaterialTheme.colorScheme.surfaceContainer,
         tonalElevation = 4.dp
     ) {
-        val nameplate = chatState.currentMember?.collectibles?.nameplate ?: user.collectibles?.nameplate
+        val member = navigationStore.selectedGuild?.let { userStore.getMember(it.id, user.id) }
+        val nameplate = member?.collectibles?.nameplate ?: user.collectibles?.nameplate
         
         Box(modifier = Modifier.fillMaxSize()) {
             if (nameplate != null) {
@@ -77,15 +97,14 @@ fun AccountPanel(chatState: ChatState) {
                     .padding(horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                val member = chatState.currentMember
                 val avatarUrl = member?.avatar?.let {
-                    "https://cdn.discordapp.com/guilds/${chatState.selectedGuild?.id}/users/${user.id}/avatars/$it.png?size=160"
+                    "https://cdn.discordapp.com/guilds/${navigationStore.selectedGuild?.id}/users/${user.id}/avatars/$it.png?size=160"
                 } ?: user.avatar?.let {
                     "https://cdn.discordapp.com/avatars/${user.id}/$it.png?size=160"
                 }
 
                 Box(modifier = Modifier.size(32.dp)) {
-                    val status = chatState.userSettings?.status ?: "online"
+                    val status = userSettings?.status ?: "online"
                     AvatarWithDecoration(
                         avatarUrl = avatarUrl,
                         decorationData = member?.avatar_decoration_data ?: user.avatar_decoration_data ?: member?.collectibles?.avatar_decoration ?: user.collectibles?.avatar_decoration,
@@ -125,7 +144,7 @@ fun AccountPanel(chatState: ChatState) {
                         buttonGroupContent = {
                             ToggleButton(
                                 checked = isMuted, 
-                                onCheckedChange = { chatState.toggleVoiceMute() },
+                                onCheckedChange = { voiceStore.toggleVoiceMute() },
                                 shapes = ButtonGroupDefaults.connectedLeadingButtonShapes(),
                                 colors = ToggleButtonDefaults.tonalToggleButtonColors(),
                                 contentPadding = PaddingValues(0.dp),
@@ -141,7 +160,7 @@ fun AccountPanel(chatState: ChatState) {
                         menuContent = {
                             DropdownMenuItem(
                                 text = { Text(if (isMuted) "Unmute" else "Mute") },
-                                onClick = { chatState.toggleVoiceMute() },
+                                onClick = { voiceStore.toggleVoiceMute() },
                                 leadingIcon = { Icon(if (isMuted) Icons.Filled.MicOff else Icons.Rounded.Mic, null, modifier = Modifier.size(18.dp)) }
                             )
                         }
@@ -150,7 +169,7 @@ fun AccountPanel(chatState: ChatState) {
                         buttonGroupContent = {
                             ToggleButton(
                                 checked = isDeafened, 
-                                onCheckedChange = { chatState.toggleVoiceDeaf() },
+                                onCheckedChange = { voiceStore.toggleVoiceDeaf() },
                                 shapes = ButtonGroupDefaults.connectedMiddleButtonShapes(),
                                 colors = ToggleButtonDefaults.tonalToggleButtonColors(),
                                 contentPadding = PaddingValues(0.dp),
@@ -166,7 +185,7 @@ fun AccountPanel(chatState: ChatState) {
                         menuContent = {
                             DropdownMenuItem(
                                 text = { Text(if (isDeafened) "Undeafen" else "Deafen") },
-                                onClick = { chatState.toggleVoiceDeaf() },
+                                onClick = { voiceStore.toggleVoiceDeaf() },
                                 leadingIcon = { Icon(if (isDeafened) Icons.Filled.HeadsetOff else Icons.Rounded.Headphones, null, modifier = Modifier.size(18.dp)) }
                             )
                         }
@@ -175,7 +194,7 @@ fun AccountPanel(chatState: ChatState) {
                         buttonGroupContent = {
                             ToggleButton(
                                 checked = false,
-                                onCheckedChange = { chatState.isSettingsVisible = true },
+                                onCheckedChange = { navigationStore.isSettingsVisible = true },
                                 shapes = ButtonGroupDefaults.connectedTrailingButtonShapes(),
                                 colors = ToggleButtonDefaults.tonalToggleButtonColors(),
                                 contentPadding = PaddingValues(0.dp),
@@ -187,7 +206,7 @@ fun AccountPanel(chatState: ChatState) {
                         menuContent = {
                             DropdownMenuItem(
                                 text = { Text("Settings") },
-                                onClick = { chatState.isSettingsVisible = true },
+                                onClick = { navigationStore.isSettingsVisible = true },
                                 leadingIcon = { Icon(Icons.Rounded.Settings, null) }
                             )
                         }
@@ -204,7 +223,7 @@ fun AccountPanel(chatState: ChatState) {
                     text = { Text("View Profile") },
                     onClick = {
                         showStatusMenu = false
-                        chatState.showProfile(user.id, panelPosition)
+                        profileStore.showProfile(user.id, navigationStore.selectedGuild?.id, panelPosition)
                     },
                     leadingIcon = { Icon(Icons.Rounded.Person, null) }
                 )
@@ -231,7 +250,7 @@ fun AccountPanel(chatState: ChatState) {
                     text = { Text("Settings") },
                     onClick = {
                         showStatusMenu = false
-                        chatState.isSettingsVisible = true
+                        navigationStore.isSettingsVisible = true
                     },
                     leadingIcon = { Icon(Icons.Rounded.Settings, null) }
                 )
@@ -245,7 +264,7 @@ fun AccountPanel(chatState: ChatState) {
                         Text("Online")
                     }},
                     onClick = {
-                        chatState.updateStatus("online")
+                        scope.launch { presenceStore.updateStatus("online") }
                         showStatusMenu = false
                     }
                 )
@@ -256,7 +275,7 @@ fun AccountPanel(chatState: ChatState) {
                         Text("Idle")
                     }},
                     onClick = {
-                        chatState.updateStatus("idle")
+                        scope.launch { presenceStore.updateStatus("idle") }
                         showStatusMenu = false
                     }
                 )
@@ -267,7 +286,7 @@ fun AccountPanel(chatState: ChatState) {
                         Text("Do Not Disturb")
                     }},
                     onClick = {
-                        chatState.updateStatus("dnd")
+                        scope.launch { presenceStore.updateStatus("dnd") }
                         showStatusMenu = false
                     }
                 )
@@ -278,7 +297,7 @@ fun AccountPanel(chatState: ChatState) {
                         Text("Invisible")
                     }},
                     onClick = {
-                        chatState.updateStatus("invisible")
+                        scope.launch { presenceStore.updateStatus("invisible") }
                         showStatusMenu = false
                     }
                 )
@@ -292,11 +311,11 @@ fun AccountPanel(chatState: ChatState) {
                     properties = androidx.compose.ui.window.PopupProperties(focusable = true)
                 ) {
                     AccountPicker(
-                        chatState = chatState,
+                        tokenStore = sessionManager.tokenStore,
+                        userStore = userStore,
                         onAccountSelected = { account ->
                             if (account.user.id != user.id) {
-                                chatState.disconnect()
-                                chatState.connect(account.token)
+                                sessionManager.switchAccount(account.token)
                             }
                             showAccountPicker = false
                         },

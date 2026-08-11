@@ -9,6 +9,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -20,24 +22,32 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.Channel
-import me.lampu.lampcord.shared.settings.Settings
-import me.lampu.lampcord.shared.state.ChatState
+import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.components.ChannelItem
 import me.lampu.lampcord.shared.ui.components.ChannelSkeleton
-import me.lampu.lampcord.shared.ui.components.ContextMenu
-import me.lampu.lampcord.shared.ui.components.ContextMenuItem
 import me.lampu.lampcord.shared.ui.components.VerticalScrollbar
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.getPlatformName
 import me.lampu.lampcord.shared.utils.PermissionHelper
 import me.lampu.lampcord.shared.utils.setClipboardText
+import org.koin.compose.koinInject
 
 @Composable
-fun GuildChannelList(chatState: ChatState) {
-    val guild = chatState.selectedGuild
-    val member = chatState.currentMember
-    val showHidden = chatState.settingsStore.showHiddenChannels
+fun GuildChannelList(
+    navigationStore: NavigationStore = koinInject(),
+    settingsStore: SettingsStore = koinInject(),
+    userStore: UserStore = koinInject(),
+    guildStore: GuildStore = koinInject(),
+    profileStore: ProfileStore = koinInject()
+) {
+    val guild = navigationStore.selectedGuild
+    val currentUser by userStore.currentUser.collectAsState()
+    val member = remember(guild, currentUser) {
+        if (guild == null || currentUser == null) null
+        else userStore.getMember(guild.id, currentUser!!.id)
+    }
+    val showHidden = settingsStore.showHiddenChannels
 
     val bannerUrl = guild?.banner?.let { 
         "https://cdn.discordapp.com/banners/${guild.id}/$it.png?size=600" 
@@ -69,12 +79,13 @@ fun GuildChannelList(chatState: ChatState) {
                 }
             }
     ) {
-        val allChannels = chatState.channels
-        val visibleChannels by remember(guild, member, showHidden) {
+        val allGuildChannels by guildStore.allGuildChannels.collectAsState()
+        val allChannels = allGuildChannels.values
+        val visibleChannels by remember(guild, member, showHidden, allChannels.size) {
             derivedStateOf {
                 if (guild == null || member == null) allChannels.toList()
                 else allChannels.filter { channel ->
-                    PermissionHelper.canViewChannel(member, guild, channel, chatState.currentUser?.id) || showHidden
+                    PermissionHelper.canViewChannel(member, guild, channel, currentUser?.id) || showHidden
                 }
             }
         }
@@ -89,7 +100,7 @@ fun GuildChannelList(chatState: ChatState) {
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(top = if (bannerUrl == null) 48.dp else 0.dp, bottom = 68.dp)
         ) {
-            if (chatState.channels.isEmpty() && chatState.selectedGuild != null) {
+            if (allChannels.isEmpty() && navigationStore.selectedGuild != null) {
                 items(15) {
                     ChannelSkeleton()
                 }
@@ -111,13 +122,13 @@ fun GuildChannelList(chatState: ChatState) {
 
                 items(rootChannels, key = { it.id }) { channel ->
                     Box(Modifier.animateItem()) {
-                        ChannelItem(channel, chatState)
+                        ChannelItem(channel)
                     }
                 }
                 
                 items(categories, key = { it.id }) { category ->
                     Box(Modifier.animateItem()) {
-                        GuildCategoryItem(category, visibleChannels, chatState)
+                        GuildCategoryItem(category, visibleChannels)
                     }
                 }
             }
@@ -136,7 +147,7 @@ fun GuildChannelList(chatState: ChatState) {
             tonalElevation = 0.dp,
             onClick = { 
                 if (getPlatformName() == "android" || getPlatformName() == "ios") {
-                    chatState.isServerMenuVisible = true
+                    navigationStore.isServerMenuVisible = true
                 } else {
                     menuExpanded = true 
                 }
@@ -198,9 +209,9 @@ fun GuildChannelList(chatState: ChatState) {
                         DropdownMenuItem(
                             text = { Text("Channels & Roles") },
                             onClick = { 
-                                chatState.isChannelsAndRolesVisible = true
-                                chatState.selectedChannel = null
-                                chatState.selectedThread = null
+                                navigationStore.isChannelsAndRolesVisible = true
+                                navigationStore.selectedChannel = null
+                                navigationStore.selectedThread = null
                                 menuExpanded = false 
                             },
                             leadingIcon = { Icon(Icons.Filled.Flag, null, modifier = Modifier.size(18.dp)) }
@@ -211,7 +222,7 @@ fun GuildChannelList(chatState: ChatState) {
                     DropdownMenuItem(
                         text = { Text("Mark As Read") },
                         onClick = { 
-                            guild?.let { chatState.markGuildAsRead(it.id) }
+                            guild?.let { guildStore.markGuildAsRead(it.id) }
                             menuExpanded = false 
                         },
                         leadingIcon = { Icon(Icons.Filled.Check, null, modifier = Modifier.size(18.dp)) }
@@ -219,7 +230,7 @@ fun GuildChannelList(chatState: ChatState) {
                     DropdownMenuItem(
                         text = { Text("Server Profile") },
                         onClick = { 
-                            chatState.currentUser?.let { chatState.showProfile(it.id) }
+                            currentUser?.let { profileStore.showProfile(it.id, navigationStore.selectedGuild?.id) }
                             menuExpanded = false 
                         },
                         leadingIcon = { Icon(Icons.Filled.AccountCircle, null, modifier = Modifier.size(18.dp)) }
@@ -227,7 +238,7 @@ fun GuildChannelList(chatState: ChatState) {
                     DropdownMenuItem(
                         text = { Text("Server Settings") },
                         onClick = { 
-                            chatState.isServerSettingsVisible = true
+                            navigationStore.isServerSettingsVisible = true
                             menuExpanded = false 
                         },
                         leadingIcon = { Icon(Icons.Filled.Settings, null, modifier = Modifier.size(18.dp)) }
@@ -236,12 +247,12 @@ fun GuildChannelList(chatState: ChatState) {
                     DropdownMenuItem(
                         text = { Text("Leave Server", color = Color.Red) },
                         onClick = { 
-                            guild?.let { chatState.leaveGuild(it.id) }
+                            guild?.let { guildStore.leaveGuild(it.id) { if (navigationStore.selectedGuild?.id == it.id) navigationStore.selectHome() } }
                             menuExpanded = false 
                         },
                         leadingIcon = { Icon(Icons.Filled.Logout, null, tint = Color.Red, modifier = Modifier.size(18.dp)) }
                     )
-                    if (chatState.userSettings?.developer_mode == true) {
+                    if (settingsStore.userSettings?.developer_mode == true) {
                         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                         DropdownMenuItem(
                             text = { Text("Copy ID") },
@@ -257,4 +268,3 @@ fun GuildChannelList(chatState: ChatState) {
         }
     }
 }
-

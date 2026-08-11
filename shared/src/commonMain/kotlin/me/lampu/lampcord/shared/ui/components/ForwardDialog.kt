@@ -1,13 +1,40 @@
 package me.lampu.lampcord.shared.ui.components
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -17,29 +44,35 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import me.lampu.lampcord.shared.model.Channel
+import me.lampu.lampcord.shared.api.DiscordClient
 import me.lampu.lampcord.shared.model.Message
-import me.lampu.lampcord.shared.state.ChatState
 import me.lampu.lampcord.shared.state.FinderResult
+import me.lampu.lampcord.shared.state.FinderStore
+import me.lampu.lampcord.shared.state.MessageStore
+import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.ui.icons.Icons
+import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ForwardDialog(
     message: Message,
-    chatState: ChatState,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    finderStore: FinderStore = koinInject(),
+    messageStore: MessageStore = koinInject(),
+    userStore: UserStore = koinInject(),
+    discordClient: DiscordClient = koinInject()
 ) {
-    val finderStore = chatState.finderStore
     var comment by remember { mutableStateOf("") }
     
     LaunchedEffect(Unit) {
         finderStore.searchQuery = ""
     }
 
-    val results by remember(finderStore.searchQuery, finderStore.results) {
+    val resultsState by finderStore.results.collectAsState()
+    val results by remember(finderStore.searchQuery, resultsState) {
         derivedStateOf {
-            finderStore.results.filter { it !is FinderResult.Guild }
+            resultsState.filter { it !is FinderResult.Guild }
         }
     }
 
@@ -58,7 +91,6 @@ fun ForwardDialog(
             color = MaterialTheme.colorScheme.surfaceContainerLowest,
         ) {
             Column {
-                // Header / Titlebar
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -101,7 +133,7 @@ fun ForwardDialog(
                     ) {
                         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
                             AsyncImage(
-                                model = chatState.client.getUserAvatarUrl(message.author?.id ?: "", message.author?.avatar),
+                                model = discordClient.getUserAvatarUrl(message.author?.id ?: "", message.author?.avatar),
                                 contentDescription = null,
                                 modifier = Modifier.size(32.dp).clip(CircleShape)
                             )
@@ -220,25 +252,28 @@ fun ForwardDialog(
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             items(results) { result ->
-                                FinderResultItem(result) {
+                                FinderResultItem(result, onClick = {
                                     val targetChannel = when (result) {
                                         is FinderResult.Channel -> result.channel
                                         is FinderResult.DirectMessage -> result.channel
                                         else -> null
                                     }
                                     targetChannel?.let {
-                                        chatState.forwardMessage(it, message)
+                                        messageStore.forwardMessage(it, message)
                                         if (comment.isNotEmpty()) {
-                                            chatState.messageStore.sendMessage(
-                                                channelId = it.id,
-                                                content = comment,
-                                                currentUser = chatState.currentUser!!,
-                                                guildId = it.guild_id
-                                            )
+                                            val currentUser = userStore.currentUser.value
+                                            if (currentUser != null) {
+                                                messageStore.sendMessage(
+                                                    channelId = it.id,
+                                                    content = comment,
+                                                    currentUser = currentUser,
+                                                    guildId = it.guild_id
+                                                )
+                                            }
                                         }
                                         onDismiss()
                                     }
-                                }
+                                })
                             }
                             
                             if (results.isEmpty()) {

@@ -18,7 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import me.lampu.lampcord.shared.model.*
-import me.lampu.lampcord.shared.state.ChatState
+import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.components.chat.MessageItem
 import me.lampu.lampcord.shared.utils.DateTimeUtils
 import kotlinx.datetime.TimeZone
@@ -27,28 +27,39 @@ import kotlin.time.Clock
 import kotlin.time.Instant
 import kotlin.time.Duration.Companion.minutes
 import me.lampu.lampcord.shared.ui.icons.Icons
+import org.koin.compose.koinInject
 
 @Composable
 fun ChatArea(
     modifier: Modifier = Modifier,
-    chatState: ChatState,
+    messageStore: MessageStore = koinInject(),
+    relationshipStore: RelationshipStore = koinInject(),
+    navigationStore: NavigationStore = koinInject(),
+    settingsStore: SettingsStore = koinInject(),
+    voiceStore: VoiceStore = koinInject()
 ) {
     val scrollState = rememberLazyListState()
     var isHovered by remember { mutableStateOf(false) }
+    val messages by messageStore.messages.collectAsState()
+    val relationships by relationshipStore.relationships.collectAsState()
 
     LaunchedEffect(scrollState) {
         snapshotFlow { scrollState.layoutInfo.visibleItemsInfo }
             .collect { visibleItems ->
                 if (visibleItems.isNotEmpty()) {
                     val lastVisibleItem = visibleItems.last()
-                    if (lastVisibleItem.index >= chatState.messages.size - 5) {
-                        chatState.loadMoreMessages()
+                    if (lastVisibleItem.index >= messages.size - 5) {
+                        messageStore.loadMoreMessages(
+                            navigationStore.selectedChannel?.id ?: "",
+                            navigationStore.selectedGuild?.id,
+                            navigationStore.selectedThread?.id
+                        )
                     }
                 }
             }
     }
     
-    val latestMessageId = chatState.messages.firstOrNull()?.id
+    val latestMessageId = messages.firstOrNull()?.id
     
     LaunchedEffect(latestMessageId) {
         if (latestMessageId != null) {
@@ -58,11 +69,11 @@ fun ChatArea(
         }
     }
 
-    LaunchedEffect(chatState.scrollToMessageId) {
-        chatState.scrollToMessageId?.let { messageId ->
-            val index = chatState.messages.indexOfFirst { it.id == messageId }
+    LaunchedEffect(messageStore.scrollToMessageId) {
+        messageStore.scrollToMessageId?.let { messageId ->
+            val index = messages.indexOfFirst { it.id == messageId }
             if (index != -1) {
-                chatState.highlightedMessageId = messageId
+                messageStore.highlightedMessageId = messageId
                 
                 val visibleItems = scrollState.layoutInfo.visibleItemsInfo
                 val viewportHeight = scrollState.layoutInfo.viewportSize.height
@@ -76,7 +87,7 @@ fun ChatArea(
                     scrollState.animateScrollToItem(index)
                 }
             }
-            chatState.scrollToMessageId = null
+            messageStore.scrollToMessageId = null
         }
     }
     
@@ -96,9 +107,9 @@ fun ChatArea(
                 }
             }
     ) {
-        if (chatState.settingsStore.chatBackground.isNotEmpty()) {
+        if (settingsStore.chatBackground.isNotEmpty()) {
             AsyncImage(
-                model = chatState.settingsStore.chatBackground,
+                model = settingsStore.chatBackground,
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
@@ -111,15 +122,15 @@ fun ChatArea(
             )
         }
 
-        val filteredMessages = remember(chatState.messages.size, chatState.relationshipStore.relationships.size) {
+        val filteredMessages = remember(messages.size, relationships.size) {
             val hideBlocked = me.lampu.lampcord.shared.settings.Settings.shared.hideBlockedMessages
             if (hideBlocked) {
-                chatState.messages.filter { msg ->
+                messages.filter { msg ->
                     val authorId = msg.author?.id
                     if (authorId == null) true
-                    else chatState.relationshipStore.relationships.none { (it.id ?: it.user?.id ?: it.user_id) == authorId && it.type == 2 }
+                    else relationships.none { (it.id ?: it.user?.id ?: it.user_id) == authorId && it.type == 2 }
                 }
-            } else chatState.messages
+            } else messages
         }
 
         LazyColumn(
@@ -169,7 +180,7 @@ fun ChatArea(
                         DateSeparator(message.timestamp)
                     }
                     Box(Modifier.animateItem()) {
-                        MessageItem(message, chatState, if (isInline) priorMessage else null)
+                        MessageItem(message, priorMessage = if (isInline) priorMessage else null)
                     }
                 }
             }
@@ -190,7 +201,7 @@ fun ChatArea(
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
-                            imageVector = when(chatState.selectedChannel?.type ?: 0) {
+                            imageVector = when(navigationStore.selectedChannel?.type ?: 0) {
                                 1, 3 -> Icons.Rounded.AlternateEmail
                                 else -> Icons.Filled.Tag
                             },
@@ -203,18 +214,18 @@ fun ChatArea(
                     }
                     Spacer(modifier = Modifier.height(14.dp))
                     Text(
-                        text = when(chatState.selectedChannel?.type ?: 0) {
+                        text = when(navigationStore.selectedChannel?.type ?: 0) {
                             1, 3 -> "This is the start of your conversation."
-                            else -> "Welcome to #${chatState.selectedChannel?.name ?: "null"}"
+                            else -> "Welcome to #${navigationStore.selectedChannel?.name ?: "null"}"
                         },
                         fontSize = 24.sp,
                         color = Color.White
                     )
 
-                    if ((chatState.selectedChannel?.type == 2 || chatState.selectedChannel?.type == 13) && chatState.currentVoiceState?.channel_id != chatState.selectedChannel?.id) {
+                    if ((navigationStore.selectedChannel?.type == 2 || navigationStore.selectedChannel?.type == 13) && voiceStore.currentVoiceState?.channel_id != navigationStore.selectedChannel?.id) {
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(
-                            onClick = { chatState.selectedChannel?.let { chatState.connectToVoice(it) } },
+                            onClick = { navigationStore.selectedChannel?.let { voiceStore.connectToVoice(it) } },
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                         ) {
                             Icon(Icons.AutoMirrored.Filled.VolumeUp, null, modifier = Modifier.size(18.dp))

@@ -14,47 +14,76 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import kotlinx.coroutines.launch
 import me.lampu.lampcord.shared.model.Channel
-import me.lampu.lampcord.shared.state.ChatState
+import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.PermissionHelper
 import me.lampu.lampcord.shared.utils.setClipboardText
+import org.koin.compose.koinInject
 
 @Composable
-fun ChannelItem(channel: Channel, chatState: ChatState) {
-    val isSelected = chatState.selectedChannel?.id == channel.id
-    val isUnread by remember(channel, chatState.readStates[channel.id]) {
-        derivedStateOf { chatState.isUnread(channel) }
+fun ChannelItem(
+    channel: Channel,
+    navigationStore: NavigationStore = koinInject(),
+    readStateStore: ReadStateStore = koinInject(),
+    userGuildSettingsStore: UserGuildSettingsStore = koinInject(),
+    userStore: UserStore = koinInject(),
+    settingsStore: SettingsStore = koinInject(),
+    guildStore: GuildStore = koinInject(),
+    voiceStore: VoiceStore = koinInject(),
+    presenceStore: PresenceStore = koinInject()
+) {
+    val isSelected = navigationStore.selectedChannel?.id == channel.id
+    val readStates by readStateStore.readStates.collectAsState()
+    
+    val isUnread by remember(channel, readStates[channel.id]) {
+        derivedStateOf { readStateStore.isUnread(channel) }
     }
-    val mentionCount by remember(channel, chatState.readStates[channel.id]) {
-        derivedStateOf { chatState.getMentionCount(channel.id) }
+    val mentionCount by remember(channel, readStates[channel.id]) {
+        derivedStateOf { readStateStore.getMentionCount(channel.id) }
     }
     
-    val guildSettings = chatState.userGuildSettingsStore.userGuildSettings[channel.guild_id]
+    val userGuildSettings by userGuildSettingsStore.userGuildSettings.collectAsState()
+    val guildSettings = userGuildSettings[channel.guild_id]
     val isMuted by remember(channel, guildSettings) {
-        derivedStateOf { chatState.userGuildSettingsStore.isChannelMuted(channel.guild_id, channel.id) }
+        derivedStateOf { userGuildSettingsStore.isChannelMuted(channel.guild_id, channel.id) }
     }
 
-    val guild = chatState.selectedGuild
-    val member = chatState.currentMember
+    val guild = navigationStore.selectedGuild
+    val currentUser by userStore.currentUser.collectAsState()
+    val member = remember(guild, currentUser) {
+        if (guild == null || currentUser == null) null
+        else userStore.getMember(guild.id, currentUser!!.id)
+    }
+    
     val canView = remember(channel, guild, member) {
         if (guild == null || member == null) true
-        else PermissionHelper.canViewChannel(member, guild, channel, chatState.currentUser?.id)
+        else PermissionHelper.canViewChannel(member, guild, channel, currentUser?.id)
     }
 
-    val contextMenuItems = remember(channel, chatState.userSettings, isMuted) {
+    val userSettings = settingsStore.userSettings
+    val scope = rememberCoroutineScope()
+    
+    val contextMenuItems = remember(channel, userSettings, isMuted) {
         val items = mutableListOf<ContextMenuItem>()
         if (canView) {
             items.add(ContextMenuItem(if (isMuted) "Unmute Channel" else "Mute Channel", if (isMuted) Icons.Filled.Notifications else Icons.AutoMirrored.Filled.VolumeOff) {
-                chatState.toggleMuteChannel(channel.guild_id ?: "@me", channel.id)
+                guildStore.toggleMuteChannel(channel.guild_id ?: "@me", channel.id)
             })
-            items.add(ContextMenuItem("Mark as Read", Icons.Filled.Check) { /* TODO */ })
+            items.add(ContextMenuItem("Mark as Read", Icons.Filled.Check) { 
+                scope.launch {
+                    readStateStore.ackMessage(channel.id, channel.lastMessageId() ?: "0")
+                }
+            })
         }
         items.add(ContextMenuItem("Copy Link", Icons.Filled.Link) {
             val guildId = channel.guild_id ?: "@me"
             setClipboardText("https://discord.com/channels/$guildId/${channel.id}")
         })
-        if (chatState.userSettings?.developer_mode == true) {
+        if (userSettings?.developer_mode == true) {
             items.add(ContextMenuItem("Copy ID", Icons.Filled.Dns) { setClipboardText(channel.id) })
         }
         items
@@ -90,7 +119,7 @@ fun ChannelItem(channel: Channel, chatState: ChatState) {
                         .padding(horizontal = 8.dp, vertical = 2.dp),
                     onClick = { 
                         if (!canView) return@Surface
-                        chatState.selectChannel(channel)
+                        navigationStore.selectChannel(channel)
                     },
                     color = if (isSelected) 
                         MaterialTheme.colorScheme.surfaceContainerHigh 
@@ -154,14 +183,14 @@ fun ChannelItem(channel: Channel, chatState: ChatState) {
                         // Voice Chat Text Icon
                         if ((channel.type == 2 || channel.type == 13) && isSelected) {
                             IconButton(
-                                onClick = { chatState.isVoiceChatTextVisible = !chatState.isVoiceChatTextVisible },
+                                onClick = { voiceStore.isVoiceChatTextVisible = !voiceStore.isVoiceChatTextVisible },
                                 modifier = Modifier.size(24.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Filled.Chat,
                                     contentDescription = "Open Chat",
                                     modifier = Modifier.size(16.dp),
-                                    tint = if (chatState.isVoiceChatTextVisible) MaterialTheme.colorScheme.primary else contentColor
+                                    tint = if (voiceStore.isVoiceChatTextVisible) MaterialTheme.colorScheme.primary else contentColor
                                 )
                             }
                         }
@@ -171,7 +200,7 @@ fun ChannelItem(channel: Channel, chatState: ChatState) {
 
             // Voice Participants
             if (channel.type == 2 || channel.type == 13) {
-                val participants = chatState.voiceStates[channel.guild_id ?: "@me"]?.values?.filter { it.channel_id == channel.id } ?: emptyList()
+                val participants = voiceStore.voiceStates[channel.guild_id ?: "@me"]?.values?.filter { it.channel_id == channel.id } ?: emptyList()
                 if (participants.isNotEmpty()) {
                     Column(
                         modifier = Modifier
@@ -180,14 +209,15 @@ fun ChannelItem(channel: Channel, chatState: ChatState) {
                         verticalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
                         participants.forEach { state ->
-                            VoiceParticipantSidebarItem(state, chatState)
+                            VoiceParticipantSidebarItem(state, userStore = userStore, presenceStore = presenceStore, settingsStore = settingsStore)
                         }
                     }
                 }
             }
             
             // Threads (if any are associated with this channel)
-            val threads = chatState.guildStore.allGuildChannels[channel.guild_id]?.filter { it.parent_id == channel.id && it.isThread() } ?: emptyList()
+            val allChannels by guildStore.allGuildChannels.collectAsState()
+            val threads = allChannels.values.filter { it.guild_id == channel.guild_id && it.parent_id == channel.id && it.isThread() }
             if (threads.isNotEmpty() && isSelected) {
                 Column(
                     modifier = Modifier
@@ -195,7 +225,7 @@ fun ChannelItem(channel: Channel, chatState: ChatState) {
                         .padding(start = 32.dp)
                 ) {
                     threads.forEach { thread ->
-                        ChannelItem(thread, chatState)
+                        ChannelItem(thread)
                     }
                 }
             }
@@ -206,9 +236,15 @@ fun ChannelItem(channel: Channel, chatState: ChatState) {
 fun Channel.isThread() = type in listOf(10, 11, 12)
 
 @Composable
-fun VoiceParticipantSidebarItem(state: me.lampu.lampcord.shared.model.VoiceState, chatState: ChatState) {
-    val user = chatState.userStore.getUser(state.user_id)
-    val member = state.guild_id?.let { chatState.userStore.getMember(it, state.user_id) }
+fun VoiceParticipantSidebarItem(
+    state: me.lampu.lampcord.shared.model.VoiceState,
+    userStore: UserStore = koinInject(),
+    presenceStore: PresenceStore = koinInject(),
+    settingsStore: SettingsStore = koinInject()
+) {
+    val user = userStore.getUser(state.user_id)
+    val member = state.guild_id?.let { userStore.getMember(it, state.user_id) }
+    val currentUser by userStore.currentUser.collectAsState()
     val name = member?.nick ?: user?.global_name ?: user?.username ?: "Unknown"
     val avatarUrl = member?.avatar?.let {
         "https://cdn.discordapp.com/guilds/${state.guild_id}/users/${state.user_id}/avatars/$it.png?size=40"
@@ -225,7 +261,8 @@ fun VoiceParticipantSidebarItem(state: me.lampu.lampcord.shared.model.VoiceState
         AvatarWithDecoration(
             avatarUrl = avatarUrl,
             decorationData = member?.avatar_decoration_data ?: user?.avatar_decoration_data,
-            size = 18.dp
+            size = 18.dp,
+            status = presenceStore.getUserStatus(state.user_id, currentUser?.id, settingsStore.userSettings?.status)
         )
         Spacer(Modifier.width(8.dp))
         Text(

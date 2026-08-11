@@ -16,19 +16,22 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import me.lampu.lampcord.shared.gateway.GatewayManager
 import me.lampu.lampcord.shared.model.Channel
 import me.lampu.lampcord.shared.model.Guild
-import me.lampu.lampcord.shared.state.ChatState
-import me.lampu.lampcord.shared.state.FinderResult
+import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.icons.Icons
+import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QuickSwitcher(
-    chatState: ChatState,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    finderStore: FinderStore = koinInject(),
+    navigationStore: NavigationStore = koinInject(),
+    gatewayManager: GatewayManager = koinInject()
 ) {
-    val finderStore = chatState.finderStore
+    val results by finderStore.results.collectAsState()
     
     LaunchedEffect(Unit) {
         finderStore.searchQuery = ""
@@ -79,18 +82,18 @@ fun QuickSwitcher(
                             contentPadding = PaddingValues(8.dp),
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            items(finderStore.results) { result ->
-                                FinderResultItem(result) {
+                            items(results) { result ->
+                                FinderResultItem(result, onClick = {
                                     when (result) {
-                                        is FinderResult.Guild -> chatState.selectGuild(result.guild)
-                                        is FinderResult.Channel -> chatState.selectChannel(result.channel)
-                                        is FinderResult.DirectMessage -> chatState.selectChannel(result.channel)
+                                        is FinderResult.Guild -> navigationStore.selectGuild(result.guild) { gatewayManager.sendSubscription(it) }
+                                        is FinderResult.Channel -> navigationStore.selectChannel(result.channel)
+                                        is FinderResult.DirectMessage -> navigationStore.selectChannel(result.channel)
                                     }
                                     onDismiss()
-                                }
+                                })
                             }
 
-                            if (finderStore.results.isEmpty() && finderStore.searchQuery.isNotBlank()) {
+                            if (results.isEmpty() && finderStore.searchQuery.isNotBlank()) {
                                 item {
                                     Box(
                                         Modifier
@@ -126,7 +129,7 @@ private fun FinderResultItem(result: FinderResult, onClick: () -> Unit) {
         ) {
             val icon = when (result) {
                 is FinderResult.Guild -> Icons.Filled.Dns
-                is FinderResult.Channel -> if (result.channel.type == 5) Icons.Filled.Campaign else Icons.Filled.Tag
+                is FinderResult.Channel -> if (result.channel.type == 2 || result.channel.type == 13) Icons.Filled.VolumeUp else if (result.channel.type == 5) Icons.Filled.Campaign else Icons.Filled.Tag
                 is FinderResult.DirectMessage -> Icons.Filled.Person
             }
             

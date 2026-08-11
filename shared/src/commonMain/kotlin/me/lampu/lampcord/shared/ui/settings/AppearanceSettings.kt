@@ -31,7 +31,7 @@ import me.lampu.lampcord.shared.settings.ThemeMode
 import me.lampu.lampcord.shared.settings.ThemePaletteStyle
 import me.lampu.lampcord.shared.settings.FontOption
 import me.lampu.lampcord.shared.settings.Settings
-import me.lampu.lampcord.shared.state.ChatState
+import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.components.settings.*
 import me.lampu.lampcord.shared.ui.components.ExpressiveSwitch
@@ -39,6 +39,7 @@ import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.HsvColorPicker
 import me.lampu.lampcord.shared.model.UserSettings
 import me.lampu.lampcord.shared.utils.FilePicker
+import org.koin.compose.koinInject
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
@@ -46,11 +47,11 @@ private enum class PaletteOption { DYNAMIC, CUSTOM }
 
 @OptIn(ExperimentalEncodingApi::class)
 @Composable
-fun AppearanceSettings(chatState: ChatState) {
+fun AppearanceSettings(settingsStore: SettingsStore = koinInject()) {
     val colorScheme = MaterialTheme.colorScheme
 
     fun updateTheme(theme: String) {
-        chatState.updateUserSettings(UserSettings.Partial(theme = theme))
+        settingsStore.updateUserSettings(UserSettings.Partial(theme = theme))
     }
 
     SettingsLayout {
@@ -64,8 +65,8 @@ fun AppearanceSettings(chatState: ChatState) {
                     
                     if (isCompact) {
                         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                            AppearancePreview(chatState)
-                            ThemeControls(chatState, { updateTheme(it) })
+                            AppearancePreview(settingsStore)
+                            ThemeControls(settingsStore, { updateTheme(it) })
                         }
                     } else {
                         Row(
@@ -73,9 +74,9 @@ fun AppearanceSettings(chatState: ChatState) {
                             horizontalArrangement = Arrangement.spacedBy(20.dp)
                         ) {
                             Box(modifier = Modifier.weight(1f)) {
-                                AppearancePreview(chatState)
+                                AppearancePreview(settingsStore)
                             }
-                            ThemeControls(chatState, { updateTheme(it) }, modifier = Modifier.width(280.dp))
+                            ThemeControls(settingsStore, { updateTheme(it) }, modifier = Modifier.width(280.dp))
                         }
                     }
                 }
@@ -85,8 +86,8 @@ fun AppearanceSettings(chatState: ChatState) {
                     Text("Palette style", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = colorScheme.onSurface)
                     SettingsButtonGroup(
                         options = ThemePaletteStyle.entries.toList(),
-                        selectedOption = chatState.settingsStore.themePaletteStyle,
-                        onOptionSelected = { chatState.settingsStore.themePaletteStyle = it },
+                        selectedOption = settingsStore.themePaletteStyle,
+                        onOptionSelected = { settingsStore.themePaletteStyle = it },
                         iconProvider = { style: ThemePaletteStyle, isSelected ->
                             when (style) {
                                 ThemePaletteStyle.TONAL_SPOT -> if (isSelected) Icons.Filled.Palette else Icons.Rounded.Palette
@@ -115,13 +116,13 @@ fun AppearanceSettings(chatState: ChatState) {
                                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                val selectedOption = if (chatState.settingsStore.materialYou) PaletteOption.DYNAMIC else PaletteOption.CUSTOM
+                                val selectedOption = if (settingsStore.materialYou) PaletteOption.DYNAMIC else PaletteOption.CUSTOM
                                 
                                 SettingsButtonGroupCustomIcon(
                                     options = PaletteOption.entries,
                                     selectedOption = selectedOption,
                                     onOptionSelected = { option ->
-                                        chatState.settingsStore.materialYou = option == PaletteOption.DYNAMIC
+                                        settingsStore.materialYou = option == PaletteOption.DYNAMIC
                                     },
                                     iconProvider = { option, isSelected ->
                                         when (option) {
@@ -134,9 +135,9 @@ fun AppearanceSettings(chatState: ChatState) {
                                                 )
                                             }
                                             PaletteOption.CUSTOM -> {
-                                                val accentColor = remember(chatState.settingsStore.accentColor) {
+                                                val accentColor = remember(settingsStore.accentColor) {
                                                     try {
-                                                        Color(chatState.settingsStore.accentColor.removePrefix("#").toLong(16) or 0xFF000000)
+                                                        Color(settingsStore.accentColor.removePrefix("#").toLong(16) or 0xFF000000)
                                                     } catch (_: Exception) {
                                                         Color(0xFF6750A4)
                                                     }
@@ -159,13 +160,13 @@ fun AppearanceSettings(chatState: ChatState) {
                                     }
                                 )
 
-                                if (!chatState.settingsStore.materialYou && !isCompact) {
-                                    ColorHexPicker(chatState)
+                                if (!settingsStore.materialYou && !isCompact) {
+                                    ColorHexPicker(settingsStore)
                                 }
                             }
 
-                            if (!chatState.settingsStore.materialYou && isCompact) {
-                                ColorHexPicker(chatState)
+                            if (!settingsStore.materialYou && isCompact) {
+                                ColorHexPicker(settingsStore)
                             }
                         }
                     }
@@ -178,7 +179,7 @@ fun AppearanceSettings(chatState: ChatState) {
                         Text("Sync across clients", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                         Text("Sync your theme selection across all Discord clients.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    ExpressiveSwitch(checked = chatState.settingsStore.syncAppearance, onCheckedChange = { chatState.settingsStore.syncAppearance = it })
+                    ExpressiveSwitch(checked = settingsStore.syncAppearance, onCheckedChange = { settingsStore.syncAppearance = it })
                 }
             }
         }
@@ -192,8 +193,8 @@ fun AppearanceSettings(chatState: ChatState) {
                     Text("App Font", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = colorScheme.onSurfaceVariant)
                     SettingsButtonGroup(
                         options = FontOption.entries.toList(),
-                        selectedOption = chatState.settingsStore.appFont,
-                        onOptionSelected = { chatState.settingsStore.appFont = it },
+                        selectedOption = settingsStore.appFont,
+                        onOptionSelected = { settingsStore.appFont = it },
                         labelProvider = {
                             when (it) {
                                 FontOption.SYSTEM -> "System"
@@ -205,14 +206,14 @@ fun AppearanceSettings(chatState: ChatState) {
                         }
                     )
 
-                    if (chatState.settingsStore.appFont == FontOption.CUSTOM) {
+                    if (settingsStore.appFont == FontOption.CUSTOM) {
                         var showFontPicker by remember { mutableStateOf(false) }
 
                         FilePicker(
                             show = showFontPicker,
                             onFileSelected = { files ->
                                 files.firstOrNull()?.let { (path, _) ->
-                                    chatState.settingsStore.customFontPath = path
+                                    settingsStore.customFontPath = path
                                 }
                                 showFontPicker = false
                             },
@@ -234,13 +235,13 @@ fun AppearanceSettings(chatState: ChatState) {
                                 Icon(Icons.Rounded.FolderOpen, null, tint = MaterialTheme.colorScheme.primary)
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        if (chatState.settingsStore.customFontPath.isEmpty()) "Choose font file" else chatState.settingsStore.customFontPath.split("/").last(),
+                                        if (settingsStore.customFontPath.isEmpty()) "Choose font file" else settingsStore.customFontPath.split("/").last(),
                                         style = MaterialTheme.typography.bodyLarge,
                                         fontWeight = FontWeight.Bold
                                     )
-                                    if (chatState.settingsStore.customFontPath.isNotEmpty()) {
+                                    if (settingsStore.customFontPath.isNotEmpty()) {
                                         Text(
-                                            chatState.settingsStore.customFontPath,
+                                            settingsStore.customFontPath,
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             maxLines = 1,
@@ -248,8 +249,8 @@ fun AppearanceSettings(chatState: ChatState) {
                                         )
                                     }
                                 }
-                                if (chatState.settingsStore.customFontPath.isNotEmpty()) {
-                                    IconButton(onClick = { chatState.settingsStore.customFontPath = "" }) {
+                                if (settingsStore.customFontPath.isNotEmpty()) {
+                                    IconButton(onClick = { settingsStore.customFontPath = "" }) {
                                         Icon(Icons.Rounded.Close, null)
                                     }
                                 }
@@ -259,10 +260,10 @@ fun AppearanceSettings(chatState: ChatState) {
                 }
 
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Font Scale: ${(chatState.settingsStore.fontScale * 100).toInt()}%", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = colorScheme.onSurfaceVariant)
+                    Text("Font Scale: ${(settingsStore.fontScale * 100).toInt()}%", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = colorScheme.onSurfaceVariant)
                     Slider(
-                        value = chatState.settingsStore.fontScale,
-                        onValueChange = { chatState.settingsStore.fontScale = it },
+                        value = settingsStore.fontScale,
+                        onValueChange = { settingsStore.fontScale = it },
                         valueRange = 0.5f..2.0f,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -273,7 +274,7 @@ fun AppearanceSettings(chatState: ChatState) {
 }
 
 @Composable
-private fun AppearancePreview(chatState: ChatState) {
+private fun AppearancePreview(settingsStore: SettingsStore) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -281,9 +282,9 @@ private fun AppearancePreview(chatState: ChatState) {
             .background(MaterialTheme.colorScheme.surfaceContainerHigh),
         contentAlignment = Alignment.Center
     ) {
-        if (chatState.settingsStore.chatBackground.isNotEmpty()) {
+        if (settingsStore.chatBackground.isNotEmpty()) {
              AsyncImage(
-                model = chatState.settingsStore.chatBackground,
+                model = settingsStore.chatBackground,
                 contentDescription = "Chat Background Preview",
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
@@ -305,7 +306,7 @@ private fun AppearancePreview(chatState: ChatState) {
 
 @OptIn(ExperimentalEncodingApi::class)
 @Composable
-private fun ThemeControls(chatState: ChatState, updateTheme: (String) -> Unit, modifier: Modifier = Modifier) {
+private fun ThemeControls(settingsStore: SettingsStore, updateTheme: (String) -> Unit, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier.fillMaxHeight(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -313,16 +314,16 @@ private fun ThemeControls(chatState: ChatState, updateTheme: (String) -> Unit, m
         // Auto / Pure Black row
         SettingsButtonGroup(
             options = listOf(ThemeMode.AUTO, null),
-            selectedOption = if (chatState.settingsStore.themeMode == ThemeMode.AUTO) ThemeMode.AUTO else if (chatState.settingsStore.pureBlack) null else ThemeMode.AUTO,
+            selectedOption = if (settingsStore.themeMode == ThemeMode.AUTO) ThemeMode.AUTO else if (settingsStore.pureBlack) null else ThemeMode.AUTO,
             onOptionSelected = { mode: ThemeMode? ->
                 if (mode == null) {
-                    chatState.settingsStore.themeMode = ThemeMode.DARK
-                    chatState.settingsStore.pureBlack = true
-                    if (chatState.settingsStore.syncAppearance) updateTheme("dark")
+                    settingsStore.themeMode = ThemeMode.DARK
+                    settingsStore.pureBlack = true
+                    if (settingsStore.syncAppearance) updateTheme("dark")
                 } else {
-                    chatState.settingsStore.themeMode = mode
-                    chatState.settingsStore.pureBlack = false
-                    if (chatState.settingsStore.syncAppearance) updateTheme("dark")
+                    settingsStore.themeMode = mode
+                    settingsStore.pureBlack = false
+                    if (settingsStore.syncAppearance) updateTheme("dark")
                 }
             },
             iconProvider = { mode, isSelected ->
@@ -338,11 +339,11 @@ private fun ThemeControls(chatState: ChatState, updateTheme: (String) -> Unit, m
         // Light / Dark buttons
         SettingsLargeButtonGroup(
             options = listOf(ThemeMode.LIGHT, ThemeMode.DARK),
-            selectedOption = if (chatState.settingsStore.themeMode == ThemeMode.LIGHT) ThemeMode.LIGHT else ThemeMode.DARK,
+            selectedOption = if (settingsStore.themeMode == ThemeMode.LIGHT) ThemeMode.LIGHT else ThemeMode.DARK,
             onOptionSelected = { mode: ThemeMode ->
-                chatState.settingsStore.themeMode = mode
-                chatState.settingsStore.pureBlack = false
-                if (chatState.settingsStore.syncAppearance) updateTheme(if (mode == ThemeMode.LIGHT) "light" else "dark")
+                settingsStore.themeMode = mode
+                settingsStore.pureBlack = false
+                if (settingsStore.syncAppearance) updateTheme(if (mode == ThemeMode.LIGHT) "light" else "dark")
             },
             iconProvider = { mode: ThemeMode, isSelected -> 
                 when (mode) {
@@ -360,7 +361,7 @@ private fun ThemeControls(chatState: ChatState, updateTheme: (String) -> Unit, m
             onFileSelected = { files ->
                 files.firstOrNull()?.let { (_, data) ->
                     val base64 = Base64.encode(data)
-                    chatState.settingsStore.chatBackground = "data:image/png;base64,$base64"
+                    settingsStore.chatBackground = "data:image/png;base64,$base64"
                 }
                 showBackgroundPicker = false
             },
@@ -382,9 +383,9 @@ private fun ThemeControls(chatState: ChatState, updateTheme: (String) -> Unit, m
             Text("Choose background", fontWeight = FontWeight.ExtraBold)
         }
 
-        if (chatState.settingsStore.chatBackground.isNotEmpty()) {
+        if (settingsStore.chatBackground.isNotEmpty()) {
             OutlinedButton(
-                onClick = { chatState.settingsStore.chatBackground = "" },
+                onClick = { settingsStore.chatBackground = "" },
                 modifier = Modifier.fillMaxWidth(),
                 shape = CircleShape,
                 colors = ButtonDefaults.outlinedButtonColors(
@@ -402,7 +403,7 @@ private fun ThemeControls(chatState: ChatState, updateTheme: (String) -> Unit, m
 }
 
 @Composable
-private fun ColorHexPicker(chatState: ChatState) {
+private fun ColorHexPicker(settingsStore: SettingsStore) {
     var showPicker by remember { mutableStateOf(false) }
     
     Surface(
@@ -417,7 +418,7 @@ private fun ColorHexPicker(chatState: ChatState) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = chatState.settingsStore.accentColor.uppercase(),
+                text = settingsStore.accentColor.uppercase(),
                 style = MaterialTheme.typography.bodyLarge.copy(
                     color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Bold,
@@ -442,9 +443,9 @@ private fun ColorHexPicker(chatState: ChatState) {
             onDismissRequest = { showPicker = false },
             offset = IntOffset(0, 52)
         ) {
-            val currentAccent = remember(chatState.settingsStore.accentColor) {
+            val currentAccent = remember(settingsStore.accentColor) {
                 try {
-                    Color(chatState.settingsStore.accentColor.removePrefix("#").toLong(16) or 0xFF000000)
+                    Color(settingsStore.accentColor.removePrefix("#").toLong(16) or 0xFF000000)
                 } catch (_: Exception) {
                     Color(0xFF6750A4)
                 }
@@ -455,8 +456,8 @@ private fun ColorHexPicker(chatState: ChatState) {
                     val r = (it.red * 255).toInt().toString(16).padStart(2, '0')
                     val g = (it.green * 255).toInt().toString(16).padStart(2, '0')
                     val b = (it.blue * 255).toInt().toString(16).padStart(2, '0')
-                    chatState.settingsStore.accentColor = "#$r$g$b"
-                    chatState.settingsStore.materialYou = false
+                    settingsStore.accentColor = "#$r$g$b"
+                    settingsStore.materialYou = false
                     showPicker = false
                 },
                 onDismiss = { showPicker = false }
@@ -464,6 +465,3 @@ private fun ColorHexPicker(chatState: ChatState) {
         }
     }
 }
-
-
-

@@ -4,30 +4,38 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.Channel
 import me.lampu.lampcord.shared.settings.Settings
-import me.lampu.lampcord.shared.state.ChatState
+import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.components.ChannelItem
 import me.lampu.lampcord.shared.ui.components.ContextMenu
 import me.lampu.lampcord.shared.ui.components.ContextMenuItem
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.PermissionHelper
 import me.lampu.lampcord.shared.utils.setClipboardText
+import org.koin.compose.koinInject
 
 @Composable
 fun GuildCategoryItem(
     category: Channel,
     channels: List<Channel>,
-    chatState: ChatState
+    userStore: UserStore = koinInject(),
+    navigationStore: NavigationStore = koinInject(),
+    settingsStore: SettingsStore = koinInject(),
+    guildStore: GuildStore = koinInject()
 ) {
     var collapsed by remember { mutableStateOf(false) }
-    val guild = chatState.selectedGuild
-    val member = chatState.currentMember
-    val showHidden = chatState.settingsStore.showHiddenChannels
+    val guild = navigationStore.selectedGuild
+    val currentUser by userStore.currentUser.collectAsState()
+    val member = remember(guild?.id, currentUser) {
+        if (guild != null && currentUser != null) userStore.getMember(guild.id, currentUser!!.id) else null
+    }
+    val showHidden = settingsStore.showHiddenChannels
 
     val categoryChannels = remember(channels, category.id, guild, member, showHidden) {
         channels.filter { it.parent_id == category.id }.sortedBy { it.position ?: 0 }
@@ -35,13 +43,13 @@ fun GuildCategoryItem(
 
     if (categoryChannels.isEmpty() && !showHidden) return
 
-    val categoryContextMenuItems = remember(category, chatState.userSettings) {
+    val categoryContextMenuItems = remember(category, settingsStore.userSettings) {
         val items = mutableListOf(
             ContextMenuItem("Mark As Read", Icons.Filled.Check) {
-                chatState.markCategoryAsRead(category.id)
+                guildStore.markCategoryAsRead(category.id)
             }
         )
-        if (chatState.userSettings?.developer_mode == true) {
+        if (settingsStore.userSettings?.developer_mode == true) {
             items.add(ContextMenuItem("Copy ID", Icons.Filled.Dns) { setClipboardText(category.id) })
         }
         items
@@ -78,7 +86,7 @@ fun GuildCategoryItem(
                     .sortedWith(compareBy({ it.type == 2 || it.type == 13 }, { it.position ?: 0 }))
             Column {
                 sortedCategoryChannels.forEach { channel ->
-                    ChannelItem(channel, chatState)
+                    ChannelItem(channel)
                 }
             }
         }

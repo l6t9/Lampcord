@@ -15,6 +15,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -28,19 +30,25 @@ import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import me.lampu.lampcord.shared.gateway.GatewayManager
 import me.lampu.lampcord.shared.model.Guild
 import me.lampu.lampcord.shared.model.GuildFolder
-import me.lampu.lampcord.shared.state.ChatState
+import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.contentOrNull
+import org.koin.compose.koinInject
 
 @Composable
-fun FolderPreviewGrid(folder: GuildFolder, chatState: ChatState) {
-    val guilds = folder.guild_ids.mapNotNull { el -> 
+fun FolderPreviewGrid(
+    folder: GuildFolder,
+    guildStore: GuildStore = koinInject()
+) {
+    val guilds by guildStore.guilds.collectAsState()
+    val guildsInFolder = folder.guild_ids.mapNotNull { el -> 
         val id = el.jsonPrimitive.contentOrNull ?: return@mapNotNull null
-        chatState.guilds.find { it.id == id } 
+        guilds.find { it.id == id } 
     }.take(4)
     
     Column(
@@ -52,10 +60,10 @@ fun FolderPreviewGrid(folder: GuildFolder, chatState: ChatState) {
             horizontalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             Box(Modifier.weight(1f).fillMaxHeight()) {
-                if (guilds.size > 0) PreviewIcon(guilds[0])
+                if (guildsInFolder.isNotEmpty()) PreviewIcon(guildsInFolder[0])
             }
             Box(Modifier.weight(1f).fillMaxHeight()) {
-                if (guilds.size > 1) PreviewIcon(guilds[1])
+                if (guildsInFolder.size > 1) PreviewIcon(guildsInFolder[1])
             }
         }
         Row(
@@ -63,10 +71,10 @@ fun FolderPreviewGrid(folder: GuildFolder, chatState: ChatState) {
             horizontalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             Box(Modifier.weight(1f).fillMaxHeight()) {
-                if (guilds.size > 2) PreviewIcon(guilds[2])
+                if (guildsInFolder.size > 2) PreviewIcon(guildsInFolder[2])
             }
             Box(Modifier.weight(1f).fillMaxHeight()) {
-                if (guilds.size > 3) PreviewIcon(guilds[3])
+                if (guildsInFolder.size > 3) PreviewIcon(guildsInFolder[3])
             }
         }
     }
@@ -106,18 +114,28 @@ fun PreviewIcon(guild: Guild) {
 }
 
 @Composable
-fun GuildFolderItem(folder: GuildFolder, chatState: ChatState) {
+fun GuildFolderItem(
+    folder: GuildFolder,
+    navigationStore: NavigationStore = koinInject(),
+    guildStore: GuildStore = koinInject(),
+    readStateStore: ReadStateStore = koinInject(),
+    userGuildSettingsStore: UserGuildSettingsStore = koinInject(),
+    gatewayManager: GatewayManager = koinInject()
+) {
     var expanded by remember { mutableStateOf(false) }
     val folderColor = folder.color?.let { Color(it.toLong() or 0xFF000000L) } ?: MaterialTheme.colorScheme.primary
     
     val guildIds = remember(folder.guild_ids) { folder.guild_ids.mapNotNull { el -> el.jsonPrimitive.contentOrNull } }
-    val isAnyChildSelected = guildIds.any { id -> id == chatState.selectedGuild?.id }
+    val isAnyChildSelected = guildIds.any { id -> id == navigationStore.selectedGuild?.id }
     
-    val isUnread by remember(folder, chatState.readStates, chatState.userGuildSettingsStore.userGuildSettings) {
-        derivedStateOf { chatState.isFolderUnread(folder) }
+    val readStates by readStateStore.readStates.collectAsState()
+    val userGuildSettings by userGuildSettingsStore.userGuildSettings.collectAsState()
+
+    val isUnread by remember(folder, readStates, userGuildSettings) {
+        derivedStateOf { guildStore.isFolderUnread(folder) }
     }
-    val mentionCount by remember(folder, chatState.readStates, chatState.userGuildSettingsStore.userGuildSettings) {
-        derivedStateOf { chatState.getFolderMentionCount(folder) }
+    val mentionCount by remember(folder, readStates, userGuildSettings) {
+        derivedStateOf { guildStore.getFolderMentionCount(folder) }
     }
 
     val surfaceColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
@@ -147,7 +165,6 @@ fun GuildFolderItem(folder: GuildFolder, chatState: ChatState) {
                 .height(48.dp),
             contentAlignment = Alignment.Center
         ) {
-            // Indicator for COLLAPSED folder containing the selection or unreads
             val showIndicator = (!expanded && isAnyChildSelected) || (isUnread && !expanded)
             if (showIndicator) {
                 Box(
@@ -179,7 +196,7 @@ fun GuildFolderItem(folder: GuildFolder, chatState: ChatState) {
                         modifier = Modifier.size(28.dp)
                     )
                 } else {
-                    FolderPreviewGrid(folder, chatState)
+                    FolderPreviewGrid(folder)
                 }
             }
             
@@ -220,15 +237,15 @@ fun GuildFolderItem(folder: GuildFolder, chatState: ChatState) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                val guilds by guildStore.guilds.collectAsState()
                 folder.guild_ids.forEach { el ->
                     val guildId = el.jsonPrimitive.contentOrNull ?: return@forEach
-                    val guild = chatState.guilds.find { it.id == guildId }
+                    val guild = guilds.find { it.id == guildId }
                     if (guild != null) {
                         GuildIcon(
                             guild = guild,
-                            isSelected = chatState.selectedGuild?.id == guild.id,
-                            chatState = chatState,
-                            onClick = { chatState.selectGuild(guild) }
+                            isSelected = navigationStore.selectedGuild?.id == guild.id,
+                            onClick = { navigationStore.selectGuild(guild) { gatewayManager.sendSubscription(it) } }
                         )
                     }
                 }

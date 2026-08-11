@@ -8,19 +8,21 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import me.lampu.lampcord.shared.state.ChatState
+import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.icons.Icons
+import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PinnedMessagesScreen(
-    chatState: ChatState,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    navigationStore: NavigationStore = koinInject(),
+    messageStore: MessageStore = koinInject()
 ) {
-    val channel = chatState.selectedChannel ?: return
+    val channel = navigationStore.selectedChannel ?: return
     
     LaunchedEffect(channel.id) {
-        chatState.showPinnedMessages()
+        messageStore.showPinnedMessages()
     }
 
     Scaffold(
@@ -35,7 +37,7 @@ fun PinnedMessagesScreen(
             )
         }
     ) { padding ->
-        if (chatState.pinnedMessages.isEmpty()) {
+        if (messageStore.pinnedMessages.isEmpty()) {
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 Text("No pinned messages", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -45,8 +47,8 @@ fun PinnedMessagesScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                items(chatState.pinnedMessages, key = { it.id }) { message ->
-                    MessageItem(message, chatState)
+                items(messageStore.pinnedMessages, key = { it.id }) { message ->
+                    MessageItem(message)
                 }
             }
         }

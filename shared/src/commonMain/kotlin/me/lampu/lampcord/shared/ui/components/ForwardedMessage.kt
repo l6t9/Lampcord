@@ -1,9 +1,19 @@
 package me.lampu.lampcord.shared.ui.components
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -14,14 +24,22 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import me.lampu.lampcord.shared.model.*
-import me.lampu.lampcord.shared.state.ChatState
-import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.gateway.GatewayManager
+import me.lampu.lampcord.shared.model.Message
+import me.lampu.lampcord.shared.state.GuildStore
+import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.ui.components.messagebody.MessageAttachments
+import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.DateTimeUtils
+import org.koin.compose.koinInject
 
 @Composable
-fun ForwardedMessage(message: Message, chatState: ChatState) {
+fun ForwardedMessage(
+    message: Message,
+    guildStore: GuildStore = koinInject(),
+    navigationStore: NavigationStore = koinInject(),
+    gatewayManager: GatewayManager = koinInject()
+) {
     val snapshot = message.message_snapshots?.firstOrNull() ?: return
     val msg = snapshot.message
     
@@ -63,12 +81,11 @@ fun ForwardedMessage(message: Message, chatState: ChatState) {
         // Content
         DiscordMarkdownText(
             content = msg.content,
-            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp),
-            chatState = chatState
+            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp)
         )
 
         if (msg.attachments.isNotEmpty() || msg.embeds.isNotEmpty() || !msg.sticker_items.isNullOrEmpty() || !msg.components.isNullOrEmpty()) {
-            MessageAttachments(msg.attachments, msg.embeds, msg.sticker_items, components = msg.components, chatState = chatState)
+            MessageAttachments(msg.attachments, msg.embeds, msg.sticker_items, components = msg.components)
         }
 
         // Footer / Source Link
@@ -78,22 +95,26 @@ fun ForwardedMessage(message: Message, chatState: ChatState) {
             val channelId = reference.channel_id
             val canLink = channelId != null
             
-            val guild = guildId?.let { id -> chatState.guilds.find { it.id == id } }
+            val guilds by guildStore.guilds.collectAsState()
+            val allChannels by guildStore.allGuildChannels.collectAsState()
+            val privateChannels by guildStore.privateChannels.collectAsState()
+
+            val guild = guildId?.let { id -> guilds.firstOrNull { it.id == id } }
             
             Surface(
                 onClick = {
                     if (canLink) {
                         if (guildId != null) {
                             if (guild != null) {
-                                chatState.selectGuild(guild)
-                                val targetChannel = chatState.guildStore.allGuildChannels[guildId]?.find { it.id == channelId }
-                                targetChannel?.let { chatState.selectChannel(it) }
+                                navigationStore.selectGuild(guild) { gatewayManager.sendSubscription(it) }
+                                val targetChannel = allChannels[channelId]
+                                targetChannel?.let { navigationStore.selectChannel(it) }
                             }
                         } else {
-                            val dm = chatState.privateChannels.find { it.id == channelId }
+                            val dm = privateChannels.firstOrNull { it.id == channelId }
                             dm?.let { 
-                                chatState.selectHome()
-                                chatState.selectChannel(it) 
+                                navigationStore.selectHome()
+                                navigationStore.selectChannel(it)
                             }
                         }
                     }

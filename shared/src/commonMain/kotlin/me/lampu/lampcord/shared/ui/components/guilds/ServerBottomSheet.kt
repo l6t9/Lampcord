@@ -9,6 +9,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -20,19 +22,29 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import me.lampu.lampcord.shared.model.Guild
-import me.lampu.lampcord.shared.state.ChatState
+import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.components.settings.*
 import me.lampu.lampcord.shared.utils.setClipboardText
+import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ServerBottomSheet(
     guild: Guild,
-    chatState: ChatState,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    userGuildSettingsStore: UserGuildSettingsStore = koinInject(),
+    memberListStore: MemberListStore = koinInject(),
+    navigationStore: NavigationStore = koinInject(),
+    guildStore: GuildStore = koinInject(),
+    userStore: UserStore = koinInject(),
+    profileStore: ProfileStore = koinInject(),
+    settingsStore: SettingsStore = koinInject()
 ) {
+    val userGuildSettings by userGuildSettingsStore.userGuildSettings.collectAsState()
+    val currentUser by userStore.currentUser.collectAsState()
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -110,7 +122,7 @@ fun ServerBottomSheet(
                             Box(modifier = Modifier.size(8.dp).background(Color(0xFF23A559), CircleShape))
                             Spacer(Modifier.width(4.dp))
                             Text(
-                                "${chatState.onlineCount ?: 0} Online",
+                                "${memberListStore.onlineCount ?: 0} Online",
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -119,7 +131,7 @@ fun ServerBottomSheet(
                             Box(modifier = Modifier.size(8.dp).background(Color(0xFFB5BAC1), CircleShape))
                             Spacer(Modifier.width(4.dp))
                             Text(
-                                "${chatState.totalMemberCount ?: guild.member_count ?: 0} Members",
+                                "${memberListStore.memberCount ?: guild.member_count ?: 0} Members",
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -140,7 +152,7 @@ fun ServerBottomSheet(
                             Triple(Icons.Rounded.RocketLaunch, "${guild.premium_subscription_count ?: 0} Boosts", { /* TODO */ }),
                             Triple(Icons.Rounded.Notifications, "Notifications", { /* TODO */ }),
                             Triple(Icons.Rounded.Settings, "Settings", {
-                                chatState.isServerSettingsVisible = true
+                                navigationStore.isServerSettingsVisible = true
                                 onDismiss()
                             })
                         )
@@ -214,7 +226,7 @@ fun ServerBottomSheet(
                         Material3SettingsItem(
                             title = { Text("Mark As Read", fontWeight = FontWeight.Bold) },
                             onClick = {
-                                chatState.markGuildAsRead(guild.id)
+                                guildStore.markGuildAsRead(guild.id)
                                 onDismiss()
                             }
                         )
@@ -225,8 +237,8 @@ fun ServerBottomSheet(
 
                 // Options List in a single card
                 val showChannelsAndRoles = guild.features?.contains("COMMUNITY") == true
-                var allowDMs by remember { mutableStateOf(chatState.userGuildSettingsStore.userGuildSettings[guild.id]?.message_notifications != 2) }
-                var hideMuted by remember { mutableStateOf(chatState.userGuildSettingsStore.userGuildSettings[guild.id]?.hide_muted_channels == true) }
+                var allowDMs by remember { mutableStateOf(userGuildSettings.get(guild.id)?.message_notifications != 2) }
+                var hideMuted by remember { mutableStateOf(userGuildSettings.get(guild.id)?.hide_muted_channels == true) }
 
                 val dmItem = switchSettingsItem(
                     title = "Direct Messages",
@@ -234,7 +246,7 @@ fun ServerBottomSheet(
                     checked = allowDMs,
                     onCheckedChange = {
                         allowDMs = it
-                        chatState.setServerDMsAllowed(guild.id, it)
+                        guildStore.setServerDMsAllowed(guild.id, it)
                     }
                 )
 
@@ -243,7 +255,7 @@ fun ServerBottomSheet(
                     checked = hideMuted,
                     onCheckedChange = {
                         hideMuted = it
-                        chatState.setHideMutedChannels(guild.id, it)
+                        guildStore.setHideMutedChannels(guild.id, it)
                     }
                 )
 
@@ -253,9 +265,9 @@ fun ServerBottomSheet(
                             Material3SettingsItem(
                                 title = { Text("Browse Channels") },
                                 onClick = {
-                                    chatState.isChannelsAndRolesVisible = true
-                                    chatState.selectedChannel = null
-                                    chatState.selectedThread = null
+                                    navigationStore.isChannelsAndRolesVisible = true
+                                    navigationStore.selectedChannel = null
+                                    navigationStore.selectedThread = null
                                     onDismiss()
                                 }
                             )
@@ -263,9 +275,9 @@ fun ServerBottomSheet(
 
                         Material3SettingsItem(
                             title = { Text("Edit Server Profile") },
-                            description = { Text(chatState.currentUser?.global_name ?: chatState.currentUser?.username ?: "") },
+                            description = { Text(currentUser?.global_name ?: currentUser?.username ?: "") },
                             onClick = {
-                                chatState.currentUser?.let { chatState.showProfile(it.id) }
+                                currentUser?.let { profileStore.showProfile(it.id, navigationStore.selectedGuild?.id) }
                                 onDismiss()
                             }
                         ),
@@ -281,14 +293,14 @@ fun ServerBottomSheet(
                         Material3SettingsItem(
                             title = { Text("Leave Server", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold) },
                             onClick = {
-                                chatState.leaveGuild(guild.id)
+                                guildStore.leaveGuild(guild.id) { if (navigationStore.selectedGuild?.id == guild.id) navigationStore.selectHome() }
                                 onDismiss()
                             }
                         )
                     )
                 )
 
-                if (chatState.userSettings?.developer_mode == true) {
+                if (settingsStore.userSettings?.developer_mode == true) {
                     Spacer(Modifier.height(12.dp))
                     Material3SettingsGroup(
                         items = listOf(

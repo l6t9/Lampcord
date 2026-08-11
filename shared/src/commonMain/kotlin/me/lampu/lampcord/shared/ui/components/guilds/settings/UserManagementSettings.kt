@@ -1,35 +1,57 @@
 package me.lampu.lampcord.shared.ui.components.guilds.settings
 
-import androidx.compose.foundation.*
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import me.lampu.lampcord.shared.model.*
-import me.lampu.lampcord.shared.state.ChatState
+import kotlinx.coroutines.launch
+import me.lampu.lampcord.shared.api.DiscordClient
+import me.lampu.lampcord.shared.model.Ban
+import me.lampu.lampcord.shared.model.Guild
+import me.lampu.lampcord.shared.model.Invite
+import me.lampu.lampcord.shared.model.Member
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
-import me.lampu.lampcord.shared.ui.components.settings.*
+import me.lampu.lampcord.shared.ui.components.settings.SettingsLayout
+import me.lampu.lampcord.shared.ui.components.settings.SettingsSection
 import me.lampu.lampcord.shared.ui.icons.Icons
-import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
 
 @Composable
-fun ServerMembers(guild: Guild, chatState: ChatState) {
+fun ServerMembers(guild: Guild, discordClient: DiscordClient = koinInject()) {
     var members by remember { mutableStateOf<List<Member>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     
     LaunchedEffect(guild.id) {
         isLoading = true
-        members = chatState.client.searchGuildMembers(guild.id)
+        members = discordClient.searchGuildMembers(guild.id)
         isLoading = false
     }
 
@@ -87,14 +109,14 @@ fun ServerMembers(guild: Guild, chatState: ChatState) {
 }
 
 @Composable
-fun ServerInvites(guild: Guild, chatState: ChatState) {
+fun ServerInvites(guild: Guild, discordClient: DiscordClient = koinInject()) {
     var invites by remember { mutableStateOf<List<Invite>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     val scope = rememberCoroutineScope()
     
     LaunchedEffect(guild.id) {
         isLoading = true
-        invites = chatState.client.getGuildInvites(guild.id)
+        invites = discordClient.getGuildInvites(guild.id)
         isLoading = false
     }
 
@@ -122,7 +144,7 @@ fun ServerInvites(guild: Guild, chatState: ChatState) {
                         }
                         IconButton(onClick = {
                             scope.launch {
-                                if (chatState.client.deleteInvite(invite.code)) {
+                                if (discordClient.deleteInvite(invite.code)) {
                                     invites = invites.filter { it.code != invite.code }
                                 }
                             }
@@ -137,14 +159,14 @@ fun ServerInvites(guild: Guild, chatState: ChatState) {
 }
 
 @Composable
-fun ServerBans(guild: Guild, chatState: ChatState) {
+fun ServerBans(guild: Guild, discordClient: DiscordClient = koinInject()) {
     var bans by remember { mutableStateOf<List<Ban>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     val scope = rememberCoroutineScope()
     
     LaunchedEffect(guild.id) {
         isLoading = true
-        bans = chatState.client.getGuildBans(guild.id)
+        bans = discordClient.getGuildBans(guild.id)
         isLoading = false
     }
 
@@ -180,7 +202,7 @@ fun ServerBans(guild: Guild, chatState: ChatState) {
                         Button(
                             onClick = {
                                 scope.launch {
-                                    if (chatState.client.unbanUser(guild.id, user.id)) {
+                                    if (discordClient.unbanUser(guild.id, user.id)) {
                                         bans = bans.filter { it.user.id != user.id }
                                     }
                                 }

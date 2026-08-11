@@ -1,140 +1,154 @@
 package me.lampu.lampcord.shared.ui.settings
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import me.lampu.lampcord.shared.state.ChatState
+import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.ui.components.AsyncImage
-import me.lampu.lampcord.shared.ui.components.AvatarWithDecoration
 import me.lampu.lampcord.shared.ui.components.settings.*
+import me.lampu.lampcord.shared.ui.icons.Icons
+import org.koin.compose.koinInject
 
 @Composable
-fun ProfileSettings(chatState: ChatState) {
-    val user = chatState.currentUser ?: return
+fun ProfileSettings(userStore: UserStore = koinInject()) {
+    val user by userStore.currentUser.collectAsState()
+    val userVal = user ?: return
     
-    var displayName by remember { mutableStateOf(user.global_name ?: "") }
-    var pronouns by remember { mutableStateOf(user.pronouns ?: "") }
-    var bio by remember { mutableStateOf(user.bio ?: "") }
-
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Material3SettingsGroup(title = "Preview") {
-            Surface(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                color = MaterialTheme.colorScheme.surfaceContainer,
-                shape = RoundedCornerShape(24.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    SettingsLayout {
+        SettingsSection(
+            title = "User Profile",
+            icon = Icons.Filled.Person
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                Column {
-                    Box(modifier = Modifier.fillMaxWidth().height(100.dp).background(MaterialTheme.colorScheme.primaryContainer)) {
-                        if (user.banner != null) {
-                            AsyncImage(
-                                model = "https://cdn.discordapp.com/banners/${user.id}/${user.banner}.png?size=600",
-                                contentDescription = null,
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-                        }
-                    }
-                    
-                    Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                        Surface(
-                            modifier = Modifier
-                                .offset(y = (-40).dp)
-                                .size(80.dp),
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.surface,
-                            border = androidx.compose.foundation.BorderStroke(4.dp, MaterialTheme.colorScheme.surfaceContainer)
-                        ) {
-                            val avatarUrl = user.avatar?.let { "https://cdn.discordapp.com/avatars/${user.id}/$it.png?size=160" }
-                            AvatarWithDecoration(
-                                avatarUrl = avatarUrl,
-                                decorationData = user.avatar_decoration_data ?: user.collectibles?.avatar_decoration,
-                                size = 72.dp,
-                                status = "online"
-                            )
-                        }
-                        
-                        Column(modifier = Modifier.padding(top = 44.dp, bottom = 16.dp)) {
-                            Text(displayName.ifBlank { user.username ?: "" }, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                            Text(user.username ?: "", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            
-                            if (pronouns.isNotBlank()) {
-                                Spacer(Modifier.height(8.dp))
-                                Text(pronouns, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                            
-                            if (bio.isNotBlank()) {
-                                Spacer(Modifier.height(12.dp))
-                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                                Spacer(Modifier.height(12.dp))
-                                Text("ABOUT ME", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                                Text(bio, style = MaterialTheme.typography.bodyMedium)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        Spacer(Modifier.height(16.dp))
-
-        Material3SettingsGroup(title = "Edit Profile") {
-            Column(modifier = Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                OutlinedTextField(
-                    value = displayName,
-                    onValueChange = { displayName = it },
-                    label = { Text("Display Name") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-
-                OutlinedTextField(
-                    value = pronouns,
-                    onValueChange = { pronouns = it },
-                    label = { Text("Pronouns") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-
-                OutlinedTextField(
-                    value = bio,
-                    onValueChange = { bio = it },
-                    label = { Text("About Me") },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 3,
-                    maxLines = 5
-                )
-
-                Button(
-                    onClick = { /* TODO: Save profile via API */ },
-                    modifier = Modifier.align(Alignment.End)
+                // Banner & Avatar Preview
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(160.dp)
                 ) {
-                    Text("Save Changes")
+                    val bannerUrl = userVal.banner?.let { "https://cdn.discordapp.com/banners/${userVal.id}/$it.png?size=600" }
+                    if (bannerUrl != null) {
+                        AsyncImage(
+                            model = bannerUrl,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(8.dp))
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(
+                                    userVal.accent_color?.let { Color(it or 0xFF000000.toInt()) }
+                                        ?: MaterialTheme.colorScheme.primaryContainer,
+                                    RoundedCornerShape(8.dp)
+                                )
+                        )
+                    }
+
+                    Surface(
+                        modifier = Modifier
+                            .padding(start = 16.dp)
+                            .align(Alignment.BottomStart)
+                            .offset(y = 20.dp)
+                            .size(80.dp),
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.surface,
+                        border = BorderStroke(4.dp, MaterialTheme.colorScheme.surface)
+                    ) {
+                        val avatarUrl = userVal.avatar?.let { "https://cdn.discordapp.com/avatars/${userVal.id}/$it.png?size=160" }
+                        if (avatarUrl != null) {
+                            AsyncImage(model = avatarUrl, contentDescription = null, modifier = Modifier.fillMaxSize())
+                        } else {
+                            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.secondaryContainer))
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    var displayName by remember { mutableStateOf(userVal.global_name ?: "") }
+                    var pronouns by remember { mutableStateOf(userVal.pronouns ?: "") }
+                    var bio by remember { mutableStateOf(userVal.bio ?: "") }
+
+                    OutlinedTextField(
+                        value = displayName,
+                        onValueChange = { displayName = it },
+                        label = { Text("Display Name") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value = pronouns,
+                        onValueChange = { pronouns = it },
+                        label = { Text("Pronouns") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value = bio,
+                        onValueChange = { bio = it },
+                        label = { Text("About Me") },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 3
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        Button(onClick = { /* TODO */ }) {
+                            Text("Save Changes")
+                        }
+                    }
                 }
             }
         }
 
-        Material3SettingsGroup(title = "Enhancements") {
-            Material3SettingsGroup(
-                items = listOf(
-                    switchSettingsItem(
-                        title = "Show Permissions",
-                        description = "Display user permissions on their profile card.",
-                        checked = me.lampu.lampcord.shared.settings.Settings.shared.showPermissions,
-                        onCheckedChange = { me.lampu.lampcord.shared.settings.Settings.shared.showPermissions = it }
-                    )
-                )
-            )
+        SettingsSection(
+            title = "Avatar",
+            icon = Icons.Filled.AccountCircle
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Button(onClick = { /* TODO */ }) {
+                    Text("Change Avatar")
+                }
+                TextButton(onClick = { /* TODO */ }) {
+                    Text("Remove Avatar", color = MaterialTheme.colorScheme.error)
+                }
+            }
+        }
+
+        SettingsSection(
+            title = "Profile Themes",
+            icon = Icons.Filled.Palette
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text("Select colors for your profile banner and background.", style = MaterialTheme.typography.bodyMedium)
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    // Placeholder for color pickers
+                    Box(Modifier.size(40.dp).background(Color.Black, CircleShape))
+                    Box(Modifier.size(40.dp).background(Color.Gray, CircleShape))
+                }
+            }
         }
     }
 }

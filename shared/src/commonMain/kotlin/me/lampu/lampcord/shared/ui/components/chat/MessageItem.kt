@@ -2,27 +2,55 @@
 
 package me.lampu.lampcord.shared.ui.components.chat
 
-import androidx.compose.animation.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.ButtonGroup
+import androidx.compose.material3.ButtonGroupDefaults
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.ToggleButtonDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.zIndex
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
@@ -31,71 +59,100 @@ import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
-import kotlin.math.roundToInt
+import androidx.compose.ui.zIndex
+import kotlinx.coroutines.launch
+import me.lampu.lampcord.shared.api.DiscordClient
 import me.lampu.lampcord.shared.model.Message
-import me.lampu.lampcord.shared.state.ChatState
-import me.lampu.lampcord.shared.ui.icons.Icons
-import me.lampu.lampcord.shared.utils.setClipboardText
-import me.lampu.lampcord.shared.utils.DateTimeUtils
-import me.lampu.lampcord.shared.ui.theme.*
-import me.lampu.lampcord.shared.ui.components.*
+import me.lampu.lampcord.shared.state.GuildStore
+import me.lampu.lampcord.shared.state.MessageStore
+import me.lampu.lampcord.shared.state.NavigationStore
+import me.lampu.lampcord.shared.state.ProfileStore
+import me.lampu.lampcord.shared.state.SettingsStore
+import me.lampu.lampcord.shared.state.UserStore
+import me.lampu.lampcord.shared.ui.components.ClanTagView
+import me.lampu.lampcord.shared.ui.components.ContextMenu
+import me.lampu.lampcord.shared.ui.components.ContextMenuItem
+import me.lampu.lampcord.shared.ui.components.DiscordMarkdownText
+import me.lampu.lampcord.shared.ui.components.EmojiPicker
+import me.lampu.lampcord.shared.ui.components.ForwardedMessage
+import me.lampu.lampcord.shared.ui.components.UserTagView
+import me.lampu.lampcord.shared.ui.components.UsernameView
 import me.lampu.lampcord.shared.ui.components.messagebody.MessageBody
 import me.lampu.lampcord.shared.ui.components.messagebody.ReactionsView
+import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.ui.kit.UserAvatar
+import me.lampu.lampcord.shared.utils.setClipboardText
+import org.koin.compose.koinInject
+import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? = null) {
+fun MessageItem(
+    message: Message,
+    priorMessage: Message? = null,
+    messageStore: MessageStore = koinInject(),
+    userStore: UserStore = koinInject(),
+    navigationStore: NavigationStore = koinInject(),
+    settingsStore: SettingsStore = koinInject(),
+    guildStore: GuildStore = koinInject(),
+    profileStore: ProfileStore = koinInject(),
+    discordClient: DiscordClient = koinInject()
+) {
     if (message.type != null && message.type != 0 && message.type != 19 && message.type != 20) {
-        SystemMessage(message, chatState)
+        SystemMessage(message)
         return
     }
 
     var isHovered by remember { mutableStateOf(false) }
     var showReactionPicker by remember { mutableStateOf(false) }
-    
     var showDeleteDialog by remember { mutableStateOf(false) }
+    
+    val currentUser by userStore.currentUser.collectAsState()
+    val userSettings = settingsStore.userSettings
+    val scope = rememberCoroutineScope()
 
-    val contextMenuItems = remember(message, chatState.currentUser) {
+    val contextMenuItems = remember(message, currentUser, userSettings) {
         if (message.isPending) {
             return@remember listOf(
                 ContextMenuItem("Delete", Icons.Default.Delete) { 
-                    chatState.deletePendingMessage(message)
+                    messageStore.deletePendingMessage(message)
                 }
             )
         }
         
-        val isMe = message.author?.id == chatState.currentUser?.id
+        val isMe = message.author?.id == currentUser?.id
         val items = mutableListOf(
             ContextMenuItem("Add Reaction", Icons.Filled.AddReaction) { showReactionPicker = true },
-            ContextMenuItem("Reply", Icons.Rounded.Reply) { chatState.replyingTo = message },
-            ContextMenuItem("Forward", Icons.Filled.Forward) { chatState.forwardingMessage = message },
+            ContextMenuItem("Reply", Icons.Rounded.Reply) { messageStore.replyingTo = message },
+            ContextMenuItem("Forward", Icons.Filled.Forward) { navigationStore.forwardingMessage = message },
             ContextMenuItem("Copy Text", Icons.Filled.ContentCopy) { setClipboardText(message.content) },
             ContextMenuItem("Copy Link", Icons.Filled.Link) {
-                val guildId = message.guild_id ?: chatState.selectedGuild?.id ?: "@me"
+                val guildId = message.guild_id ?: navigationStore.selectedGuild?.id ?: "@me"
                 val channelId = message.channel_id
                 val messageId = message.id
                 setClipboardText("https://discord.com/channels/$guildId/$channelId/$messageId")
             },
             ContextMenuItem("Mention", Icons.Rounded.AlternateEmail) {
-                val current = chatState.draftMessages[message.channel_id] ?: ""
-                chatState.draftMessages[message.channel_id] = "$current <@${message.author?.id}> "
+                val channelId = message.channel_id
+                val current = messageStore.draftMessages[channelId] ?: ""
+                messageStore.draftMessages[channelId] = "$current <@${message.author?.id}> "
             }
         )
         
         if (isMe) {
             items.add(ContextMenuItem("Edit Message", Icons.Filled.Edit) { 
-                chatState.editingMessage = message 
+                messageStore.editingMessage = message 
             })
         }
         
         items.add(ContextMenuItem(if (message.pinned) "Unpin Message" else "Pin Message", Icons.Filled.PushPin) {
-            if (message.pinned) chatState.unpinMessage(message) else chatState.pinMessage(message)
+            if (message.pinned) messageStore.unpinMessage(message) else messageStore.pinMessage(message)
         })
 
-        if (chatState.userSettings?.developer_mode == true) {
+        if (userSettings?.developer_mode == true) {
             items.add(ContextMenuItem("Copy Message ID", Icons.Filled.Dns) { setClipboardText(message.id) })
             items.add(ContextMenuItem("Copy Author ID", Icons.Filled.Dns) { setClipboardText(message.author?.id ?: "") })
         }
@@ -107,16 +164,21 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
         items
     }
 
-    val isMentioned by remember(message, chatState.currentUser, chatState.selectedGuild) {
-        derivedStateOf { if (message.isPending) false else chatState.isMessageMentioningMe(message) }
+    val currentMember = remember(navigationStore.selectedGuild, currentUser) {
+        val guildId = navigationStore.selectedGuild?.id ?: return@remember null
+        val userId = currentUser?.id ?: return@remember null
+        userStore.getMember(guildId, userId)
+    }
+
+    val isMentioned by remember(message, currentUser, currentMember) {
+        derivedStateOf { if (message.isPending) false else messageStore.isMessageMentioningMe(message, currentUser, currentMember) }
     }
     
     val compactMode = me.lampu.lampcord.shared.settings.Settings.shared.compactMode
     val alpha by animateFloatAsState(if (message.isPending) 0.5f else 1f)
 
     val isInline = priorMessage != null
-
-    val isHighlighted = chatState.highlightedMessageId == message.id
+    val isHighlighted = messageStore.highlightedMessageId == message.id
     
     val tapTapEnabled = remember { me.lampu.lampcord.shared.settings.Settings.shared.tapTap }
     val gestureMode = remember { me.lampu.lampcord.shared.settings.Settings.shared.chatGestures }
@@ -124,8 +186,8 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
 
     LaunchedEffect(isHighlighted) {
         if (isHighlighted) {
-            kotlinx.coroutines.delay(2000)
-            chatState.highlightedMessageId = null
+            kotlinx.coroutines.delay(2000.milliseconds)
+            messageStore.highlightedMessageId = null
         }
     }
 
@@ -138,7 +200,7 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
                     detectHorizontalDragGestures(
                         onDragEnd = {
                             if (offsetX < -80f) {
-                                chatState.replyingTo = message
+                                messageStore.replyingTo = message
                             }
                             offsetX = 0f
                         },
@@ -156,11 +218,11 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
                 if (tapTapEnabled) {
                     detectTapGestures(
                         onDoubleTap = {
-                            val isMe = message.author?.id == chatState.currentUser?.id
+                            val isMe = message.author?.id == currentUser?.id
                             if (isMe) {
-                                chatState.editingMessage = message
+                                messageStore.editingMessage = message
                             } else {
-                                chatState.replyingTo = message
+                                messageStore.replyingTo = message
                             }
                         }
                     )
@@ -217,7 +279,7 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
             ) {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     if (message.referenced_message != null) {
-                        ReplyBar(message.referenced_message, chatState)
+                        ReplyBar(message.referenced_message)
                     }
                     
                     if (message.interaction != null) {
@@ -226,12 +288,6 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
 
                     Row(modifier = Modifier.fillMaxWidth()) {
                         if (!isInline && message.author != null && !compactMode) {
-                            val avatarUrl = message.member?.avatar?.let {
-                                "https://cdn.discordapp.com/guilds/${message.guild_id ?: chatState.selectedGuild?.id}/users/${message.author.id}/avatars/$it.png?size=160"
-                            } ?: message.author.avatar?.let {
-                                "https://cdn.discordapp.com/avatars/${message.author.id}/$it.png?size=160"
-                            }
-
                             var avatarPosition by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
 
                             Box(
@@ -239,29 +295,21 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
                                     .size(40.dp)
                                     .onGloballyPositioned { avatarPosition = it.positionInRoot() }
                             ) {
-                                AvatarWithDecoration(
-                                    avatarUrl = avatarUrl,
-                                    decorationData = message.member?.avatar_decoration_data ?: message.author.avatar_decoration_data ?: message.member?.collectibles?.avatar_decoration ?: message.author.collectibles?.avatar_decoration,
-                                    size = 40.dp
-                                )
-                                // Clickable overlay - circular hit area to match the avatar circle
-                                Box(
-                                    modifier = Modifier
-                                        .size(34.dp)
-                                        .align(Alignment.Center)
-                                        .clip(CircleShape)
-                                        .clickable { chatState.showProfile(message.author.id, avatarPosition) }
+                                UserAvatar(
+                                    user = message.author,
+                                    size = 40.dp,
+                                    modifier = Modifier.clickable { profileStore.showProfile(message.author.id, navigationStore.selectedGuild?.id, avatarPosition) }
                                 )
                             }
                         } else if (!compactMode || isInline) {
                             Spacer(modifier = Modifier.width(if (compactMode) 8.dp else 40.dp))
                         }
                         
-                        val roleColor by remember(message, chatState.selectedGuild) {
+                        val roleColor by remember(message, navigationStore.selectedGuild) {
                             derivedStateOf {
-                                val guild = chatState.selectedGuild ?: return@derivedStateOf Color.Unspecified
+                                val guild = navigationStore.selectedGuild ?: return@derivedStateOf Color.Unspecified
                                 val authorId = message.author?.id ?: return@derivedStateOf Color.Unspecified
-                                val member = message.member ?: chatState.getMember(guild.id, authorId) ?: return@derivedStateOf Color.Unspecified
+                                val member = message.member ?: userStore.getMember(guild.id, authorId) ?: return@derivedStateOf Color.Unspecified
                                 val memberRoles = member.roles.mapNotNull { roleId -> guild.roles.find { it.id == roleId } }
                                 val highestRole = memberRoles.maxByOrNull { it.position }
                                 if (highestRole != null && highestRole.color != 0) Color(highestRole.color or 0xFF000000.toInt()) else Color.Unspecified
@@ -274,7 +322,7 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
                         
                         Column {
                             if (!isInline && message.author != null) {
-                                val isDm = message.guild_id == null && chatState.selectedGuild == null
+                                val isDm = message.guild_id == null && navigationStore.selectedGuild == null
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     modifier = Modifier.padding(bottom = 2.dp)
@@ -287,7 +335,7 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
                                         color = if (isDm) Color.White else displayColor,
                                         modifier = Modifier
                                             .onGloballyPositioned { namePosition = it.positionInRoot() }
-                                            .clickable { chatState.showProfile(message.author.id, namePosition) },
+                                            .clickable { profileStore.showProfile(message.author.id, navigationStore.selectedGuild?.id, namePosition) },
                                         ignoreEffects = !isHovered,
                                         ignoreColors = if (isDm) !isHovered else true
                                     )
@@ -329,8 +377,7 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
                                     DiscordMarkdownText(
                                         content = message.content,
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = if (message.isDeleted) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
-                                        chatState = chatState
+                                        color = if (message.isDeleted) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
                                     )
                                 }
                             }
@@ -355,24 +402,24 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
                                         text = "Retry",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.clickable { chatState.retryMessage(message) }
+                                        modifier = Modifier.clickable { messageStore.retryMessage(message) }
                                     )
                                     Text(
                                         text = "Delete",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.error,
-                                        modifier = Modifier.clickable { chatState.deletePendingMessage(message) }
+                                        modifier = Modifier.clickable { messageStore.deletePendingMessage(message) }
                                     )
                                 }
                             }
 
-                            MessageBody(message, chatState)
+                            MessageBody(message)
 
-                            message.message_snapshots?.firstOrNull()?.let { snapshot ->
-                                ForwardedMessage(message, chatState)
+                            message.message_snapshots?.firstOrNull()?.let {
+                                ForwardedMessage(message)
                             }
 
-                            ReactionsView(message, chatState)
+                            ReactionsView(message)
                         }
                     }
                 }
@@ -380,17 +427,21 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
         }
 
         // Overlay Layer (Action Buttons)
-        val isMe = message.author?.id == chatState.currentUser?.id
+        val isMe = message.author?.id == currentUser?.id
         val actions = remember(message, isMe) {
             val list = mutableListOf(
-                Triple(Icons.Filled.AddReaction, "Add Reaction", { showReactionPicker = true }),
-                Triple(Icons.Rounded.Reply, "Reply", { chatState.replyingTo = message }),
-                Triple(Icons.Filled.Forward, "Forward", { chatState.forwardingMessage = message })
+                Triple(Icons.Filled.AddReaction, "Add Reaction") { showReactionPicker = true },
+                Triple(Icons.Rounded.Reply, "Reply") { messageStore.replyingTo = message },
+                Triple(Icons.Filled.Forward, "Forward") {
+                    navigationStore.forwardingMessage = message
+                }
             )
             if (isMe) {
-                list.add(Triple(Icons.Filled.Edit, "Edit", { chatState.editingMessage = message }))
+                list.add(Triple(Icons.Filled.Edit, "Edit") {
+                    messageStore.editingMessage = message
+                })
             }
-            list.add(Triple(Icons.Filled.MoreHoriz, "More", { /* TODO */ }))
+            list.add(Triple(Icons.Filled.MoreHoriz, "More") { /* TODO */ })
             list
         }
 
@@ -454,9 +505,15 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
                 onDismissRequest = { showReactionPicker = false },
                 properties = PopupProperties(focusable = true)
             ) {
-                EmojiPicker(chatState) { emoji ->
+                EmojiPicker(
+                    userStore = userStore,
+                    guildStore = guildStore,
+                    navigationStore = navigationStore
+                ) { emoji ->
                     val emojiStr = if (emoji.id != null) "${emoji.name}:${emoji.id}" else emoji.name ?: ""
-                    chatState.addReaction(message.channel_id, message.id, emojiStr)
+                    scope.launch {
+                        discordClient.addReaction(message.channel_id, message.id, emojiStr)
+                    }
                     showReactionPicker = false
                 }
             }
@@ -466,7 +523,7 @@ fun MessageItem(message: Message, chatState: ChatState, priorMessage: Message? =
             DeleteMessageDialog(
                 onDismiss = { showDeleteDialog = false },
                 onConfirm = {
-                    chatState.deleteMessage(message)
+                    messageStore.deleteMessage(message)
                     showDeleteDialog = false
                 }
             )

@@ -42,15 +42,16 @@ class AutocompleteStore(
                 }
 
                 val members = if (guildId != null) {
-                     memberListStore.memberListItems.filterNotNull().mapNotNull { it.member }.filter {
-                         val name = it.nick ?: it.user?.global_name ?: it.user?.username ?: ""
-                         name.contains(query, ignoreCase = true) || it.user?.username?.contains(query, ignoreCase = true) == true
+                     memberListStore.memberListItems.filterNotNull().mapNotNull { it.member }.filter { member ->
+                         val name = member.nick ?: member.user?.global_name ?: member.user?.username ?: ""
+                         name.contains(query, ignoreCase = true) || member.user?.username?.contains(query, ignoreCase = true) == true
                      }.take(10)
                 } else {
-                    relationshipStore.relationships.filter { 
-                        it.user?.global_name?.contains(query, ignoreCase = true) == true || 
-                        it.user?.username?.contains(query, ignoreCase = true) == true
-                    }.mapNotNull { it.user?.let { u -> Member(user = u) } }.take(10)
+                    relationshipStore.relationships.value.filter { rel ->
+                        val user = rel.user ?: rel.user_id?.let { id -> User(id = id) }
+                        user?.global_name?.contains(query, ignoreCase = true) == true || 
+                        user?.username?.contains(query, ignoreCase = true) == true
+                    }.mapNotNull { rel -> rel.user?.let { u -> Member(user = u) } }.take(10)
                 }
                 
                 results.addAll(members.map { member ->
@@ -67,8 +68,8 @@ class AutocompleteStore(
                 })
 
                 if (type == AutocompleteType.MENTION) {
-                    val roles = selectedGuild?.roles?.filter { 
-                        it.name.contains(query, ignoreCase = true) 
+                    val roles = selectedGuild?.roles?.filter { role ->
+                        role.name.contains(query, ignoreCase = true) 
                     }?.take(5) ?: emptyList()
                     results.addAll(roles.map { role ->
                         AutocompleteItem(
@@ -83,8 +84,10 @@ class AutocompleteStore(
                 }
             }
             AutocompleteType.CHANNEL -> {
-                val channels = guildStore.channels.filter { 
-                    it.type in listOf(0, 2, 4, 5, 13, 15, 16) && it.name?.contains(query, ignoreCase = true) == true 
+                val channels = guildStore.allGuildChannels.value.values.filter { channel ->
+                    channel.guild_id == selectedGuild?.id && 
+                    channel.type in listOf(0, 2, 4, 5, 13, 15, 16) && 
+                    channel.name?.contains(query, ignoreCase = true) == true 
                 }.take(10)
                 results.addAll(channels.map { channel ->
                     AutocompleteItem(
@@ -103,8 +106,8 @@ class AutocompleteStore(
                 })
             }
             AutocompleteType.COMMAND -> {
-                val commands = commandStore.availableCommands.filter { 
-                    it.name.contains(query, ignoreCase = true) 
+                val commands = commandStore.availableCommands.filter { cmd ->
+                    cmd.name.contains(query, ignoreCase = true) 
                 }.take(10)
                 results.addAll(commands.map { command ->
                     val app = commandStore.availableApplications.find { it.id == command.application_id }
@@ -120,8 +123,8 @@ class AutocompleteStore(
                 })
             }
             AutocompleteType.EMOJI -> {
-                val emojis = selectedGuild?.emojis?.filter { 
-                    it.name?.contains(query, ignoreCase = true) == true 
+                val emojis = selectedGuild?.emojis?.filter { emo ->
+                    emo.name?.contains(query, ignoreCase = true) == true 
                 }?.take(15) ?: emptyList()
                 results.addAll(emojis.map { emoji ->
                     AutocompleteItem(
@@ -134,8 +137,8 @@ class AutocompleteStore(
 
                 // Add standard emojis
                 if (results.size < 20) {
-                    val standardEmojis = EmojiIndex.getAllEmojis().filter {
-                        it.name?.contains(query, ignoreCase = true) == true
+                    val standardEmojis = EmojiIndex.getAllEmojis().filter { emo ->
+                        emo.name?.contains(query, ignoreCase = true) == true
                     }.take(20 - results.size)
                     results.addAll(standardEmojis.map { emoji ->
                         AutocompleteItem(

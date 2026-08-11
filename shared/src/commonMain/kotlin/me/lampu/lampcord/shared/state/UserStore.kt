@@ -1,40 +1,33 @@
 package me.lampu.lampcord.shared.state
 
-import androidx.compose.runtime.*
-import androidx.compose.runtime.snapshots.SnapshotStateMap
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import me.lampu.lampcord.shared.model.*
 
 class UserStore {
-    private var _currentUser by mutableStateOf<User?>(null)
-    var currentUser: User?
-        get() = _currentUser
-        set(value) {
-            _currentUser = value
-            currentUserStatic = value
-        }
+    private val _currentUser = MutableStateFlow<User?>(null)
+    val currentUser: StateFlow<User?> = _currentUser.asStateFlow()
 
-    companion object {
-        var currentUserStatic: User? = null
+    private val _users = MutableStateFlow<Map<String, User>>(emptyMap())
+    val users: StateFlow<Map<String, User>> = _users.asStateFlow()
+
+    private val _members = MutableStateFlow<Map<String, Map<String, Member>>>(emptyMap())
+    val members: StateFlow<Map<String, Map<String, Member>>> = _members.asStateFlow()
+
+    fun setCurrentUser(user: User?) {
+        _currentUser.value = user
+        if (user != null) handleUserUpdate(user)
     }
-    
-    // User Cache: userId -> User
-    private val userCache = mutableStateMapOf<String, User>()
-    
-    // Member Cache: guildId -> userId -> Member
-    private val memberCache = mutableStateMapOf<String, SnapshotStateMap<String, Member>>()
-
-    fun cacheUser(user: User) {
-        handleUserUpdate(user)
-    }
-
-    fun getUser(userId: String): User? = userCache[userId]
 
     fun handleUserUpdate(user: User) {
-        val existing = userCache[user.id]
-        if (existing == null) {
-            userCache[user.id] = user
+        val currentUsers = _users.value.toMutableMap()
+        val existing = currentUsers[user.id]
+        
+        val updatedUser = if (existing == null) {
+            user
         } else {
-            userCache[user.id] = existing.copy(
+            existing.copy(
                 username = user.username ?: existing.username,
                 global_name = user.global_name ?: existing.global_name,
                 avatar = user.avatar ?: existing.avatar,
@@ -49,18 +42,24 @@ class UserStore {
                 display_name_styles = user.display_name_styles ?: existing.display_name_styles
             )
         }
-        if (currentUser?.id == user.id) {
-            currentUser = userCache[user.id]
+        
+        currentUsers[user.id] = updatedUser
+        _users.value = currentUsers
+        
+        if (_currentUser.value?.id == user.id) {
+            _currentUser.value = updatedUser
         }
     }
 
     fun cacheMember(guildId: String, userId: String, member: Member) {
-        val guildMap = memberCache.getOrPut(guildId) { mutableStateMapOf() }
-        val existing = guildMap[userId]
-        if (existing == null) {
-            guildMap[userId] = member
+        val currentMembers = _members.value.toMutableMap()
+        val guildMembers = currentMembers[guildId]?.toMutableMap() ?: mutableMapOf()
+        
+        val existing = guildMembers[userId]
+        val updatedMember = if (existing == null) {
+            member
         } else {
-            guildMap[userId] = existing.copy(
+            existing.copy(
                 user = member.user ?: existing.user,
                 nick = member.nick ?: existing.nick,
                 avatar = member.avatar ?: existing.avatar,
@@ -68,16 +67,29 @@ class UserStore {
                 display_name_styles = member.display_name_styles ?: existing.display_name_styles
             )
         }
+        
+        guildMembers[userId] = updatedMember
+        currentMembers[guildId] = guildMembers
+        _members.value = currentMembers
+        
         member.user?.let { handleUserUpdate(it) }
     }
 
+    fun getUser(userId: String): User? = _users.value[userId]
+
     fun getMember(guildId: String, userId: String): Member? {
-        return memberCache[guildId]?.get(userId)
+        return _members.value[guildId]?.get(userId)
     }
 
     fun clear() {
-        userCache.clear()
-        memberCache.clear()
-        currentUser = null
+        _users.value = emptyMap()
+        _members.value = emptyMap()
+        _currentUser.value = null
+    }
+
+    fun getCurrentMember(guildId: String?): Member? {
+        val userId = _currentUser.value?.id ?: return null
+        if (guildId == null) return null
+        return getMember(guildId, userId)
     }
 }

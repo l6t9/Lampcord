@@ -14,7 +14,7 @@ import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import me.lampu.lampcord.shared.di.appModule
-import me.lampu.lampcord.shared.state.ChatState
+import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.ui.App
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.ui.WaylandDensityProvider
@@ -30,9 +30,9 @@ fun main() {
     }
 
     application {
-        val chatState: ChatState = koinInject()
+        val settingsStore: SettingsStore = koinInject()
         
-        val seedColorString = chatState.settingsStore.accentColor
+        val seedColorString = settingsStore.accentColor
         val targetSeedColor = remember(seedColorString) {
             try {
                 Color(seedColorString.removePrefix("#").toLong(16) or 0xFF000000)
