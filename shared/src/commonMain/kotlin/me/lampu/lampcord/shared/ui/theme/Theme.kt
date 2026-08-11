@@ -22,6 +22,7 @@ fun LampcordTheme(
     useMaterialYou: Boolean = Settings.shared.materialYou,
     appFont: FontOption = Settings.shared.appFont,
     fontScale: Float = Settings.shared.fontScale,
+    customFontPath: String = Settings.shared.customFontPath,
     content: @Composable () -> Unit
 ) {
     val dynamicSeed = rememberDynamicSeedColor()
@@ -59,7 +60,7 @@ fun LampcordTheme(
     }
 
     val animatedColorScheme = animateColorScheme(colorScheme = colorScheme)
-    val font = rememberAppFontFamily(appFont)
+    val font = rememberAppFontFamily(appFont, customFontPath)
 
     MaterialExpressiveTheme(
         colorScheme = animatedColorScheme,

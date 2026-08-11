@@ -1,8 +1,10 @@
 package me.lampu.lampcord.shared.ui.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -10,12 +12,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import me.lampu.lampcord.shared.model.Channel
 import me.lampu.lampcord.shared.model.Message
 import me.lampu.lampcord.shared.state.ChatState
+import me.lampu.lampcord.shared.state.FinderResult
 import me.lampu.lampcord.shared.ui.icons.Icons
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -25,25 +30,16 @@ fun ForwardDialog(
     chatState: ChatState,
     onDismiss: () -> Unit
 ) {
-    var query by remember { mutableStateOf("") }
+    val finderStore = chatState.finderStore
+    var comment by remember { mutableStateOf("") }
     
-    val results by remember(query, chatState.guilds, chatState.guildStore.allGuildChannels) {
-        derivedStateOf {
-            val q = query.lowercase()
-            val allChannels = chatState.guilds.flatMap { guild -> 
-                val channels = chatState.guildStore.allGuildChannels[guild.id] ?: emptyList()
-                channels.filter { it.type in listOf(0, 5) }.map { it to guild }
-            } + chatState.privateChannels.map { it to null }
+    LaunchedEffect(Unit) {
+        finderStore.searchQuery = ""
+    }
 
-            if (q.isBlank()) {
-                allChannels.take(10)
-            } else {
-                allChannels.filter { (channel, guild) ->
-                    channel.name?.lowercase()?.contains(q) == true || 
-                    guild?.name?.lowercase()?.contains(q) == true ||
-                    channel.recipients?.any { it.username?.lowercase()?.contains(q) == true || it.global_name?.lowercase()?.contains(q) == true } == true
-                }
-            }
+    val results by remember(finderStore.searchQuery, finderStore.results) {
+        derivedStateOf {
+            finderStore.results.filter { it !is FinderResult.Guild }
         }
     }
 
@@ -53,7 +49,7 @@ fun ForwardDialog(
     ) {
         Surface(
             modifier = Modifier
-                .widthIn(max = 1200.dp)
+                .widthIn(max = 600.dp)
                 .fillMaxWidth(0.95f)
                 .heightIn(max = 850.dp)
                 .fillMaxHeight(0.9f)
@@ -66,72 +62,195 @@ fun ForwardDialog(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 8.dp, start = 16.dp, end = 16.dp)
+                        .padding(16.dp)
                 ) {
                     Text(
                         text = "Forward Message",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.align(Alignment.Center)
+                        modifier = Modifier.align(Alignment.CenterStart)
                     )
                     IconButton(
                         onClick = onDismiss,
                         modifier = Modifier.align(Alignment.CenterEnd)
                     ) {
-                        Icon(Icons.Default.Close, "Close", tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(20.dp))
+                        Icon(Icons.Default.Close, "Close", tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(24.dp))
                     }
                 }
 
-                Surface(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
-                        .padding(8.dp),
-                    shape = MaterialTheme.shapes.medium,
-                    color = MaterialTheme.colorScheme.surfaceContainer
+                        .padding(horizontal = 16.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                    // Message Preview
+                    Text(
+                        "Message Preview",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceContainerLow,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        TextField(
-                            value = query,
-                            onValueChange = { query = it },
-                            modifier = Modifier.fillMaxWidth(),
-                            placeholder = { Text("Search for a channel or DM") },
-                            leadingIcon = { Icon(Icons.Filled.Search, null) },
-                            colors = TextFieldDefaults.colors(
-                                focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                                focusedIndicatorColor = Color.Transparent,
-                                unfocusedIndicatorColor = Color.Transparent
-                            ),
-                            shape = MaterialTheme.shapes.medium,
-                            singleLine = true
-                        )
-
-                        Spacer(Modifier.height(16.dp))
-
-                        Surface(
-                            shape = MaterialTheme.shapes.medium,
-                            color = MaterialTheme.colorScheme.surfaceContainerLow,
-                            modifier = Modifier.fillMaxWidth().weight(1f)
-                        ) {
-                            LazyColumn(
-                                modifier = Modifier.fillMaxWidth(),
-                                contentPadding = PaddingValues(8.dp),
-                                verticalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                items(results) { (channel, guild) ->
-                                    ForwardResultItem(channel, guild) {
-                                        chatState.forwardMessage(channel, message)
-                                        onDismiss()
+                        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
+                            AsyncImage(
+                                model = chatState.client.getUserAvatarUrl(message.author?.id ?: "", message.author?.avatar),
+                                contentDescription = null,
+                                modifier = Modifier.size(32.dp).clip(CircleShape)
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            Column {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        message.author?.global_name ?: message.author?.username ?: "Unknown User",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                                if (message.content.isNotEmpty()) {
+                                    Text(
+                                        message.content,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        maxLines = 3,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                                if (message.attachments.isNotEmpty()) {
+                                    Row(
+                                        modifier = Modifier.padding(top = 4.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        message.attachments.take(3).forEach { attachment ->
+                                            if (attachment.content_type?.startsWith("image/") == true) {
+                                                AsyncImage(
+                                                    model = attachment.proxy_url,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(48.dp).clip(RoundedCornerShape(4.dp)),
+                                                    contentScale = ContentScale.Crop
+                                                )
+                                            } else {
+                                                Surface(
+                                                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                                    shape = RoundedCornerShape(4.dp),
+                                                    modifier = Modifier.size(48.dp)
+                                                ) {
+                                                    Icon(
+                                                        Icons.Filled.Description,
+                                                        null,
+                                                        modifier = Modifier.padding(12.dp).size(24.dp),
+                                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    )
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
                         }
                     }
+
+                    Spacer(Modifier.height(16.dp))
+
+                    // Optional Message
+                    Text(
+                        "Optional Message",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    TextField(
+                        value = comment,
+                        onValueChange = { comment = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("Add a comment...") },
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent
+                        ),
+                        shape = MaterialTheme.shapes.medium,
+                    )
+
+                    Spacer(Modifier.height(16.dp))
+
+                    // Forward To
+                    Text(
+                        "FORWARD TO",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    TextField(
+                        value = finderStore.searchQuery,
+                        onValueChange = { finderStore.searchQuery = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("Search for a channel or DM") },
+                        leadingIcon = { Icon(Icons.Filled.Search, null) },
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent
+                        ),
+                        shape = MaterialTheme.shapes.medium,
+                        singleLine = true
+                    )
+
+                    Spacer(Modifier.height(8.dp))
+
+                    Surface(
+                        shape = MaterialTheme.shapes.medium,
+                        color = MaterialTheme.colorScheme.surfaceContainerLow,
+                        modifier = Modifier.fillMaxWidth().weight(1f)
+                    ) {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentPadding = PaddingValues(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            items(results) { result ->
+                                FinderResultItem(result) {
+                                    val targetChannel = when (result) {
+                                        is FinderResult.Channel -> result.channel
+                                        is FinderResult.DirectMessage -> result.channel
+                                        else -> null
+                                    }
+                                    targetChannel?.let {
+                                        chatState.forwardMessage(it, message)
+                                        if (comment.isNotEmpty()) {
+                                            chatState.messageStore.sendMessage(
+                                                channelId = it.id,
+                                                content = comment,
+                                                currentUser = chatState.currentUser!!,
+                                                guildId = it.guild_id
+                                            )
+                                        }
+                                        onDismiss()
+                                    }
+                                }
+                            }
+                            
+                            if (results.isEmpty()) {
+                                item {
+                                    Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                                        Text("No results found", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(16.dp))
                 }
             }
         }
@@ -139,7 +258,7 @@ fun ForwardDialog(
 }
 
 @Composable
-private fun ForwardResultItem(channel: Channel, guild: me.lampu.lampcord.shared.model.Guild?, onClick: () -> Unit) {
+private fun FinderResultItem(result: FinderResult, onClick: () -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         onClick = onClick,
@@ -150,10 +269,10 @@ private fun ForwardResultItem(channel: Channel, guild: me.lampu.lampcord.shared.
             modifier = Modifier.padding(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            val icon = if (guild != null) {
-                if (channel.type == 5) Icons.Filled.Campaign else Icons.Filled.Tag
-            } else {
-                Icons.Filled.Person
+            val icon = when (result) {
+                is FinderResult.Channel -> if (result.channel.type == 5) Icons.Filled.Campaign else Icons.Filled.Tag
+                is FinderResult.DirectMessage -> Icons.Filled.Person
+                else -> Icons.Filled.Tag
             }
             
             Icon(
@@ -166,14 +285,18 @@ private fun ForwardResultItem(channel: Channel, guild: me.lampu.lampcord.shared.
             Spacer(Modifier.width(12.dp))
             
             Column {
-                val title = if (guild != null) {
-                    channel.name ?: "unnamed-channel"
-                } else {
-                    channel.recipients?.firstOrNull()?.let { it.global_name ?: it.username } ?: "Direct Message"
+                val title = when (result) {
+                    is FinderResult.Channel -> result.channel.name ?: "unnamed-channel"
+                    is FinderResult.DirectMessage -> result.channel.recipients?.firstOrNull()?.let { it.global_name ?: it.username } ?: "Direct Message"
+                    is FinderResult.Guild -> result.guild.name ?: "Unnamed Server"
                 }
                 Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
                 
-                val subtitle = guild?.name ?: "Direct Message"
+                val subtitle = when (result) {
+                    is FinderResult.Channel -> result.guild?.name ?: "Server"
+                    is FinderResult.DirectMessage -> "Direct Message"
+                    is FinderResult.Guild -> "Server"
+                }
                 Text(subtitle, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }

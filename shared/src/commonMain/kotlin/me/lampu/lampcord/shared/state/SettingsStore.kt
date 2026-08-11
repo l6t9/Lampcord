@@ -88,6 +88,14 @@ class SettingsStore(
             me.lampu.lampcord.shared.settings.Settings.shared.fontScale = value
         }
 
+    private var _customFontPath by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.customFontPath)
+    var customFontPath: String
+        get() = _customFontPath
+        set(value) {
+            _customFontPath = value
+            me.lampu.lampcord.shared.settings.Settings.shared.customFontPath = value
+        }
+
     private var _chatBackground by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.chatBackground)
     var chatBackground: String
         get() = _chatBackground

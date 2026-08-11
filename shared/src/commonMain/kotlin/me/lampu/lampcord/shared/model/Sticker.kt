@@ -23,3 +23,27 @@ data class StickerItem(
     val name: String,
     val format_type: Int
 )
+
+@Serializable
+data class StickerPack(
+    val id: String,
+    val stickers: List<Sticker>,
+    val name: String,
+    val sku_id: String,
+    val cover_sticker_id: String? = null,
+    val description: String? = null,
+    val banner_asset_id: String? = null
+)
+
+@Serializable
+data class StickerPackStoreListing(
+    val id: String,
+    val sku: Sku,
+    val description: String,
+    val unpublished_at: String? = null
+)
+
+@Serializable
+data class StickerStoreDirectory(
+    val sticker_packs: List<StickerPack>
+)

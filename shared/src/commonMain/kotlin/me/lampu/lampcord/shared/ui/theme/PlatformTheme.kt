@@ -12,7 +12,7 @@ import androidx.compose.ui.text.font.FontFamily
 expect fun rememberDynamicSeedColor(): Color?
 
 @Composable
-expect fun rememberAppFontFamily(option: FontOption): FontFamily
+expect fun rememberAppFontFamily(option: FontOption, customFontPath: String): FontFamily
 
 @Composable
 expect fun rememberPlatformColorScheme(

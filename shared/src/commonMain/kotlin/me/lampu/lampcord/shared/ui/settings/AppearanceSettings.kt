@@ -200,9 +200,62 @@ fun AppearanceSettings(chatState: ChatState) {
                                 FontOption.INTER -> "Inter"
                                 FontOption.GOOGLE_SANS -> "Google Sans"
                                 FontOption.MAPLE_MONO -> "Maple Mono"
+                                FontOption.CUSTOM -> "Custom"
                             }
                         }
                     )
+
+                    if (chatState.settingsStore.appFont == FontOption.CUSTOM) {
+                        var showFontPicker by remember { mutableStateOf(false) }
+
+                        FilePicker(
+                            show = showFontPicker,
+                            onFileSelected = { files ->
+                                files.firstOrNull()?.let { (path, _) ->
+                                    chatState.settingsStore.customFontPath = path
+                                }
+                                showFontPicker = false
+                            },
+                            onDismiss = { showFontPicker = false }
+                        )
+
+                        Surface(
+                            onClick = { showFontPicker = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Icon(Icons.Rounded.FolderOpen, null, tint = MaterialTheme.colorScheme.primary)
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        if (chatState.settingsStore.customFontPath.isEmpty()) "Choose font file" else chatState.settingsStore.customFontPath.split("/").last(),
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    if (chatState.settingsStore.customFontPath.isNotEmpty()) {
+                                        Text(
+                                            chatState.settingsStore.customFontPath,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                }
+                                if (chatState.settingsStore.customFontPath.isNotEmpty()) {
+                                    IconButton(onClick = { chatState.settingsStore.customFontPath = "" }) {
+                                        Icon(Icons.Rounded.Close, null)
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
 
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -327,6 +380,23 @@ private fun ThemeControls(chatState: ChatState, updateTheme: (String) -> Unit, m
             Icon(Icons.Rounded.Image, null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(12.dp))
             Text("Choose background", fontWeight = FontWeight.ExtraBold)
+        }
+
+        if (chatState.settingsStore.chatBackground.isNotEmpty()) {
+            OutlinedButton(
+                onClick = { chatState.settingsStore.chatBackground = "" },
+                modifier = Modifier.fillMaxWidth(),
+                shape = CircleShape,
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error,
+                ),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f)),
+                contentPadding = PaddingValues(12.dp)
+            ) {
+                Icon(Icons.Rounded.Close, null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(12.dp))
+                Text("Remove background", fontWeight = FontWeight.ExtraBold)
+            }
         }
     }
 }

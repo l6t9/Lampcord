@@ -8,4 +8,8 @@ actual fun loadFont(
     path: String,
     weight: FontWeight,
     style: FontStyle
-): Font = Font(path, AndroidContextProvider.applicationContext.assets, weight, style)
+): Font = if (path.startsWith("/") || path.startsWith("content://")) {
+    Font(java.io.File(path), weight, style)
+} else {
+    Font(path, AndroidContextProvider.applicationContext.assets, weight, style)
+}

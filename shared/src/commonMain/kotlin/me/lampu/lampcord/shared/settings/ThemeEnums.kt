@@ -21,9 +21,16 @@ enum class FontOption {
     INTER,
     GOOGLE_SANS,
     MAPLE_MONO,
+    CUSTOM,
 }
 
 enum class ChatGestures {
     SWIPE_TO_MEMBERS,
     SWIPE_TO_REPLY,
+}
+
+enum class StickerAnimation {
+    ALWAYS,
+    ON_HOVER,
+    NEVER,
 }

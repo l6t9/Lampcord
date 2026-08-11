@@ -12,7 +12,7 @@ import me.lampu.lampcord.shared.settings.FontOption
 actual fun rememberDynamicSeedColor(): Color? = null
 
 @Composable
-actual fun rememberAppFontFamily(option: FontOption): FontFamily {
+actual fun rememberAppFontFamily(option: FontOption, customFontPath: String): FontFamily {
     return FontFamily.Default
 }
 

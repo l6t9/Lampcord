@@ -45,16 +45,17 @@ val storeModule = module {
     single { AutocompleteStore(get(), get(), get(), get()) }
     single { CommandStore() }
     single { ExperimentStore() }
+    single { FinderStore(get()) }
     single { TokenStore(get()) }
     single { SettingsStore(get()) }
-    single { NavigationStore(get(), get(), get(), get(), get(), get(), get(), get(), get(), CoroutineScope(Dispatchers.Main)) }
+    single { NavigationStore(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), CoroutineScope(Dispatchers.Main)) }
 }
 
 val gatewayModule = module {
     single {
         GatewayHandler(
             get(), get(), CoroutineScope(Dispatchers.Main),
-            get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()
+            get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()
         )
     }
 }
@@ -63,7 +64,7 @@ val chatModule = module {
     single { 
         ChatState(
             get(), get(), get(), get(),
-            get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()
+            get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()
         ) 
     }
 }

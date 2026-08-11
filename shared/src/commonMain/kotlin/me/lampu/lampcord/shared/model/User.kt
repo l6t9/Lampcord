@@ -198,3 +198,15 @@ data class UserNoteUpdate(
     val id: String,
     val note: String
 )
+
+@Serializable
+data class UserAffinity(
+    val user_id: String,
+    val affinity: Float
+)
+
+@Serializable
+data class UserAffinities(
+    val user_affinities: List<UserAffinity>,
+    val inverse_user_affinities: List<UserAffinity>
+)

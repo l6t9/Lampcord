@@ -37,15 +37,6 @@ fun DesktopBaseplate(chatState: ChatState) {
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surface)
-            .onPreviewKeyEvent { event ->
-                if (event.type == KeyEventType.KeyDown) {
-                    if (event.isCtrlPressed && event.key == Key.K) {
-                        chatState.isQuickSwitcherVisible = true
-                        return@onPreviewKeyEvent true
-                    }
-                }
-                false
-            }
     ) {
         Row(
             modifier = Modifier

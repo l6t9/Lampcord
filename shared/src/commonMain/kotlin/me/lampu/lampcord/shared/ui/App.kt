@@ -47,6 +47,8 @@ fun App() {
         paletteStyle = chatState.settingsStore.themePaletteStyle,
         useMaterialYou = chatState.settingsStore.materialYou,
         appFont = chatState.settingsStore.appFont,
+        fontScale = chatState.settingsStore.fontScale,
+        customFontPath = chatState.settingsStore.customFontPath,
         seedColor = seedColor
     ) {
         Surface(

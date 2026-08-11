@@ -19,6 +19,7 @@ import androidx.compose.ui.window.Dialog
 import me.lampu.lampcord.shared.model.Channel
 import me.lampu.lampcord.shared.model.Guild
 import me.lampu.lampcord.shared.state.ChatState
+import me.lampu.lampcord.shared.state.FinderResult
 import me.lampu.lampcord.shared.ui.icons.Icons
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -27,25 +28,10 @@ fun QuickSwitcher(
     chatState: ChatState,
     onDismiss: () -> Unit
 ) {
-    var query by remember { mutableStateOf("") }
+    val finderStore = chatState.finderStore
     
-    val results by remember(query, chatState.guilds, chatState.channels) {
-        derivedStateOf {
-            if (query.isBlank()) {
-                // TODO: Recently visited
-                emptyList<SwitcherResult>()
-            } else {
-                val q = query.lowercase()
-                val guildMatches = chatState.guilds.filter { it.name?.lowercase()?.contains(q) == true }
-                    .map { SwitcherResult.GuildResult(it) }
-                
-                val channelMatches = chatState.guildStore.allGuildChannels.values.flatten()
-                    .filter { it.name?.lowercase()?.contains(q) == true }
-                    .map { SwitcherResult.ChannelResult(it, chatState.guilds.find { g -> g.id == it.guild_id }) }
-                
-                guildMatches + channelMatches
-            }
-        }
+    LaunchedEffect(Unit) {
+        finderStore.searchQuery = ""
     }
 
     Dialog(
@@ -54,7 +40,7 @@ fun QuickSwitcher(
     ) {
         Surface(
             modifier = Modifier
-                .widthIn(max = 1200.dp)
+                .widthIn(max = 600.dp)
                 .fillMaxWidth(0.95f)
                 .heightIn(max = 850.dp)
                 .fillMaxHeight(0.9f)
@@ -73,8 +59,8 @@ fun QuickSwitcher(
                 ) {
                     Column {
                         TextField(
-                            value = query,
-                            onValueChange = { query = it },
+                            value = finderStore.searchQuery,
+                            onValueChange = { finderStore.searchQuery = it },
                             modifier = Modifier.fillMaxWidth(),
                             placeholder = { Text("Where would you like to go?") },
                             colors = TextFieldDefaults.colors(
@@ -93,17 +79,18 @@ fun QuickSwitcher(
                             contentPadding = PaddingValues(8.dp),
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            items(results) { result ->
-                                SwitcherResultItem(result) {
+                            items(finderStore.results) { result ->
+                                FinderResultItem(result) {
                                     when (result) {
-                                        is SwitcherResult.GuildResult -> chatState.selectGuild(result.guild)
-                                        is SwitcherResult.ChannelResult -> chatState.selectChannel(result.channel)
+                                        is FinderResult.Guild -> chatState.selectGuild(result.guild)
+                                        is FinderResult.Channel -> chatState.selectChannel(result.channel)
+                                        is FinderResult.DirectMessage -> chatState.selectChannel(result.channel)
                                     }
                                     onDismiss()
                                 }
                             }
 
-                            if (results.isEmpty() && query.isNotBlank()) {
+                            if (finderStore.results.isEmpty() && finderStore.searchQuery.isNotBlank()) {
                                 item {
                                     Box(
                                         Modifier
@@ -126,11 +113,11 @@ fun QuickSwitcher(
 }
 
 @Composable
-private fun SwitcherResultItem(result: SwitcherResult, onClick: () -> Unit) {
+private fun FinderResultItem(result: FinderResult, onClick: () -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         onClick = onClick,
-        shape = RoundedCornerShape(4.dp),
+        shape = RoundedCornerShape(8.dp),
         color = Color.Transparent
     ) {
         Row(
@@ -138,8 +125,9 @@ private fun SwitcherResultItem(result: SwitcherResult, onClick: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             val icon = when (result) {
-                is SwitcherResult.GuildResult -> Icons.Filled.Dns
-                is SwitcherResult.ChannelResult -> Icons.Filled.Tag
+                is FinderResult.Guild -> Icons.Filled.Dns
+                is FinderResult.Channel -> if (result.channel.type == 5) Icons.Filled.Campaign else Icons.Filled.Tag
+                is FinderResult.DirectMessage -> Icons.Filled.Person
             }
             
             Icon(
@@ -153,22 +141,19 @@ private fun SwitcherResultItem(result: SwitcherResult, onClick: () -> Unit) {
             
             Column {
                 val title = when (result) {
-                    is SwitcherResult.GuildResult -> result.guild.name ?: "Unnamed Guild"
-                    is SwitcherResult.ChannelResult -> result.channel.name ?: "unnamed-channel"
+                    is FinderResult.Guild -> result.guild.name ?: "Unnamed Guild"
+                    is FinderResult.Channel -> result.channel.name ?: "unnamed-channel"
+                    is FinderResult.DirectMessage -> result.channel.recipients?.firstOrNull()?.let { it.global_name ?: it.username } ?: "Direct Message"
                 }
                 Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
                 
                 val subtitle = when (result) {
-                    is SwitcherResult.GuildResult -> "Server"
-                    is SwitcherResult.ChannelResult -> result.guild?.name ?: "Channel"
+                    is FinderResult.Guild -> "Server"
+                    is FinderResult.Channel -> result.guild?.name ?: "Channel"
+                    is FinderResult.DirectMessage -> "Direct Message"
                 }
                 Text(subtitle, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
-}
-
-sealed class SwitcherResult {
-    data class GuildResult(val guild: Guild) : SwitcherResult()
-    data class ChannelResult(val channel: Channel, val guild: Guild?) : SwitcherResult()
 }

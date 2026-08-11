@@ -91,6 +91,32 @@ fun MainScreen(
                                     chatState.isQuickSwitcherVisible = true
                                     return@onPreviewKeyEvent true
                                 }
+                                if (event.key == Key.Escape) {
+                                    if (chatState.isQuickSwitcherVisible) {
+                                        chatState.isQuickSwitcherVisible = false
+                                        return@onPreviewKeyEvent true
+                                    }
+                                    if (chatState.isSearchVisible) {
+                                        chatState.isSearchVisible = false
+                                        return@onPreviewKeyEvent true
+                                    }
+                                    if (chatState.isPinsVisible) {
+                                        chatState.isPinsVisible = false
+                                        return@onPreviewKeyEvent true
+                                    }
+                                    if (chatState.selectedProfile != null) {
+                                        chatState.selectedProfile = null
+                                        return@onPreviewKeyEvent true
+                                    }
+                                    if (chatState.isSettingsVisible) {
+                                        chatState.isSettingsVisible = false
+                                        return@onPreviewKeyEvent true
+                                    }
+                                    if (chatState.isServerSettingsVisible) {
+                                        chatState.isServerSettingsVisible = false
+                                        return@onPreviewKeyEvent true
+                                    }
+                                }
                             }
                             false
                         }

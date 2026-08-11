@@ -18,10 +18,12 @@ class Settings(private val settings: KmpSettings) {
     var showHiddenChannels by preferenceBoolean("show_hidden_channels", false)
     var syncAppearance by preferenceBoolean("sync_appearance", true)
     var fontScale by preferenceFloat("font_scale", 1.0f)
+    var customFontPath by preference("custom_font_path", "")
     var chatBackground by preference("chat_background", "")
     var searchHistoryJson by preference("search_history", "[]")
     var tapTap by preferenceBoolean("tap_tap", true)
     var chatGestures by preferenceEnum("chat_gestures", ChatGestures.SWIPE_TO_MEMBERS)
+    var animateStickers by preferenceEnum("animate_stickers", StickerAnimation.ALWAYS)
 
     // Free Nitro Emojis
     var freeNitroEmojis by preferenceBoolean("free_nitro_emojis", true)

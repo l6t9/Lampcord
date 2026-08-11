@@ -907,6 +907,62 @@ class DiscordClient(
         return getUserSettings()?.guild_folders ?: emptyList()
     }
 
+    suspend fun getStickerPacks(): StickerStoreDirectory? {
+        return try {
+            val response = httpClient.get("$apiBase/sticker-packs") {
+                standardHeaders()
+            }
+            if (response.status.isSuccess()) response.body() else null
+        } catch (e: Exception) {
+            println("Error fetching sticker packs: ${e.message}")
+            null
+        }
+    }
+
+    suspend fun getStickerPack(packId: String): StickerPack? {
+        return try {
+            val response = httpClient.get("$apiBase/sticker-packs/$packId") {
+                standardHeaders()
+            }
+            if (response.status.isSuccess()) response.body() else null
+        } catch (e: Exception) {
+            println("Error fetching sticker pack: ${e.message}")
+            null
+        }
+    }
+
+    suspend fun getTrendingGifCategories(locale: String = "en-US"): TrendingGifCategoriesResponse? {
+        return try {
+            val response = httpClient.get("$apiBase/gifs/trending") {
+                standardHeaders()
+                parameter("provider", "klipy")
+                parameter("locale", locale)
+                parameter("media_format", "mp4")
+            }
+            if (response.status.isSuccess()) response.body() else null
+        } catch (e: Exception) {
+            println("Error fetching trending GIF categories: ${e.message}")
+            null
+        }
+    }
+
+    suspend fun searchGifs(query: String, locale: String = "en-US", limit: Int = 50): List<Gif> {
+        return try {
+            val response = httpClient.get("$apiBase/gifs/search") {
+                standardHeaders()
+                parameter("q", query)
+                parameter("provider", "klipy")
+                parameter("locale", locale)
+                parameter("media_format", "mp4")
+                parameter("limit", limit)
+            }
+            if (response.status.isSuccess()) response.body() else emptyList()
+        } catch (e: Exception) {
+            println("Error searching GIFs: ${e.message}")
+            emptyList()
+        }
+    }
+
     suspend fun updateUserSettings(partial: UserSettings.Partial): Boolean {
         return try {
             val response = httpClient.patch("$apiBase/users/@me/settings") {

@@ -25,6 +25,7 @@ class GatewayHandler(
     private val typingStore: TypingStore,
     private val voiceStore: VoiceStore,
     private val navigationStore: NavigationStore,
+    private val finderStore: FinderStore,
     private val gatewayManager: GatewayManager
 ) {
     fun handleGatewayEvent(payload: GatewayPayload) {
@@ -358,6 +359,7 @@ class GatewayHandler(
                     }
                 }
                 message.author?.let { userStore.handleUserUpdate(it) }
+                finderStore.addRecent(message.channel_id)
 
                 // Update DM order if it's a DM
                 if (message.guild_id == null) {

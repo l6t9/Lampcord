@@ -48,6 +48,7 @@ class ChatState(
     val profileStore: ProfileStore,
     val autocompleteStore: AutocompleteStore,
     val navigationStore: NavigationStore,
+    val finderStore: FinderStore,
     val gatewayHandler: GatewayHandler,
     val commandStore: CommandStore,
     val experimentStore: ExperimentStore,

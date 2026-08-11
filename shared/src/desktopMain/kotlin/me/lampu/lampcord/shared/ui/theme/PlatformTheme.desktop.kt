@@ -52,8 +52,21 @@ actual fun rememberDynamicSeedColor(): Color? {
 }
 
 @Composable
-actual fun rememberAppFontFamily(option: FontOption): FontFamily {
-    return FontFamily.Default // Simplified for now
+actual fun rememberAppFontFamily(option: FontOption, customFontPath: String): FontFamily {
+    return when (option) {
+        FontOption.CUSTOM -> {
+            if (customFontPath.isNotEmpty()) {
+                try {
+                    FontFamily(me.lampu.lampcord.shared.utils.loadFont(customFontPath))
+                } catch (e: Exception) {
+                    FontFamily.Default
+                }
+            } else {
+                FontFamily.Default
+            }
+        }
+        else -> FontFamily.Default
+    }
 }
 
 @Composable

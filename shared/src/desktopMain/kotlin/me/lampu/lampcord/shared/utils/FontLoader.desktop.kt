@@ -8,4 +8,11 @@ actual fun loadFont(
     path: String,
     weight: FontWeight,
     style: FontStyle
-): Font = androidx.compose.ui.text.platform.Font(path, weight, style)
+): Font {
+    val file = java.io.File(path)
+    return if (file.exists()) {
+        androidx.compose.ui.text.platform.Font(file, weight, style)
+    } else {
+        androidx.compose.ui.text.platform.Font(path, weight, style)
+    }
+}

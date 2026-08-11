@@ -21,6 +21,7 @@ class NavigationStore(
     private val profileStore: ProfileStore,
     private val commandStore: CommandStore,
     private val selectionStore: SelectionStore,
+    private val finderStore: FinderStore,
     private val scope: CoroutineScope
 ) {
     var selectedGuild by selectionStore::selectedGuild
@@ -42,7 +43,14 @@ class NavigationStore(
     var isMediaPickerVisible by mutableStateOf(false)
     var isPinsVisible by mutableStateOf(false)
     
+    var forwardingMessage by mutableStateOf<me.lampu.lampcord.shared.model.Message?>(null)
+    
     var isForumLoading by mutableStateOf(false)
+
+    fun startForwarding(message: me.lampu.lampcord.shared.model.Message) {
+        forwardingMessage = message
+        isQuickSwitcherVisible = true
+    }
 
     private var guildLoadingJob: Job? = null
     private var channelLoadingJob: Job? = null
@@ -139,6 +147,7 @@ class NavigationStore(
         messageStore.clear()
         lastRequestedKey = null
         Settings.shared.setLastChannel(selectedGuild?.id ?: "home", channel.id)
+        finderStore.addRecent(channel.id)
 
         channelLoadingJob = scope.launch {
             if (channel.type == 1) {
