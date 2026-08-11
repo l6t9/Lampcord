@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -146,24 +147,26 @@ fun GuildIcon(
             }
 
             if (mentionCount > 0) {
-                Surface(
-                    color = MaterialTheme.colorScheme.error,
-                    shape = CircleShape,
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(bottom = 2.dp, end = 2.dp)
-                        .height(20.dp)
-                        .widthIn(min = 20.dp),
-                    shadowElevation = 2.dp
-                ) {
-                    Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 4.dp)) {
-                        Text(
-                            text = mentionCount.toString(),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onError,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 10.sp
-                        )
+                Box(modifier = Modifier.size(48.dp)) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.error,
+                        shape = CircleShape,
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .offset(x = 3.dp, y = 3.dp)
+                            .height(18.dp)
+                            .widthIn(min = 18.dp),
+                        shadowElevation = 2.dp
+                    ) {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 2.dp)) {
+                            Text(
+                                text = mentionCount.toString(),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onError,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp
+                            )
+                        }
                     }
                 }
             }

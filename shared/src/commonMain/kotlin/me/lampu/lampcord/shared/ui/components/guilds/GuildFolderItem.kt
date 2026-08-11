@@ -10,6 +10,9 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,6 +31,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import me.lampu.lampcord.shared.gateway.GatewayManager
@@ -40,43 +44,49 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import org.koin.compose.koinInject
 
+private val FolderIconSize = 56.dp
+private val PreviewIconSize = 24.dp
+private val PreviewIconOffset = 14.dp
+
 @Composable
 fun FolderPreviewGrid(
     folder: GuildFolder,
     guildStore: GuildStore = koinInject()
 ) {
     val guilds by guildStore.guilds.collectAsState()
-    val guildsInFolder = folder.guild_ids.mapNotNull { el -> 
+    val guildsInFolder = folder.guild_ids.mapNotNull { el ->
         val id = el.jsonPrimitive.contentOrNull ?: return@mapNotNull null
-        guilds.find { it.id == id } 
+        guilds.find { it.id == id }
     }.take(4)
-    
-    Column(
-        modifier = Modifier.padding(4.dp).fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(2.dp)
-    ) {
-        Row(
-            modifier = Modifier.weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(2.dp)
-        ) {
-            Box(Modifier.weight(1f).fillMaxHeight()) {
-                if (guildsInFolder.isNotEmpty()) PreviewIcon(guildsInFolder[0])
+
+    val d = PreviewIconOffset
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        when (guildsInFolder.size) {
+            1 -> GridIcon(guildsInFolder[0], 0.dp, 0.dp)
+            2 -> {
+                GridIcon(guildsInFolder[0], -d, 0.dp)
+                GridIcon(guildsInFolder[1], d, 0.dp)
             }
-            Box(Modifier.weight(1f).fillMaxHeight()) {
-                if (guildsInFolder.size > 1) PreviewIcon(guildsInFolder[1])
+            3 -> {
+                GridIcon(guildsInFolder[0], 0.dp, -d)
+                GridIcon(guildsInFolder[1], -d, d)
+                GridIcon(guildsInFolder[2], d, d)
             }
-        }
-        Row(
-            modifier = Modifier.weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(2.dp)
-        ) {
-            Box(Modifier.weight(1f).fillMaxHeight()) {
-                if (guildsInFolder.size > 2) PreviewIcon(guildsInFolder[2])
-            }
-            Box(Modifier.weight(1f).fillMaxHeight()) {
-                if (guildsInFolder.size > 3) PreviewIcon(guildsInFolder[3])
+            4 -> {
+                GridIcon(guildsInFolder[0], -d, -d)
+                GridIcon(guildsInFolder[1], d, -d)
+                GridIcon(guildsInFolder[2], -d, d)
+                GridIcon(guildsInFolder[3], d, d)
             }
         }
+    }
+}
+
+@Composable
+private fun BoxScope.GridIcon(guild: Guild, x: Dp, y: Dp) {
+    Box(Modifier.align(Alignment.Center).offset(x = x, y = y).size(PreviewIconSize)) {
+        PreviewIcon(guild)
     }
 }
 
@@ -147,13 +157,13 @@ fun GuildFolderItem(
             .fillMaxWidth()
             .drawBehind {
                 if (expansionProgress > 0f) {
-                    val wellWidth = 48.dp.toPx()
+                    val wellWidth = FolderIconSize.toPx()
                     val x = (size.width - wellWidth) / 2
                     drawRoundRect(
                         color = surfaceColor,
                         topLeft = Offset(x, 0f),
                         size = Size(wellWidth, size.height * expansionProgress),
-                        cornerRadius = CornerRadius(12.dp.toPx())
+                        cornerRadius = CornerRadius(wellWidth / 2) // Semicircle rounding at top and bottom
                     )
                 }
             }
@@ -162,7 +172,7 @@ fun GuildFolderItem(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp),
+                .height(FolderIconSize),
             contentAlignment = Alignment.Center
         ) {
             val showIndicator = (!expanded && isAnyChildSelected) || (isUnread && !expanded)
@@ -177,17 +187,33 @@ fun GuildFolderItem(
                 )
             }
 
-            val folderCornerRadius = 12.dp // Folders are always rounded squares
-            val folderBgColor by animateColorAsState(targetValue = if (expanded) Color.Transparent else folderColor.copy(alpha = 0.2f))
+            val interactionSource = remember { MutableInteractionSource() }
+            val isHovered by interactionSource.collectIsHoveredAsState()
+
+            val folderBgColor by animateColorAsState(
+                targetValue = when {
+                    expanded -> folderColor.copy(alpha = if (isHovered) 0.2f else 0.1f)
+                    else -> folderColor.copy(alpha = if (isHovered) 0.35f else 0.2f)
+                }
+            )
 
             Box(
                 modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(folderCornerRadius))
-                    .background(if (expanded) folderColor.copy(alpha = 0.1f) else folderBgColor)
-                    .clickable { expanded = !expanded },
+                    .size(FolderIconSize)
+                    .hoverable(interactionSource)
+                    .clickable(
+                        interactionSource = interactionSource,
+                        indication = null,
+                        onClick = { expanded = !expanded }
+                    ),
                 contentAlignment = Alignment.Center
             ) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .clip(CircleShape)
+                        .background(folderBgColor)
+                )
                 if (expanded) {
                     Icon(
                         imageVector = Icons.Filled.FolderOpen,
@@ -201,24 +227,26 @@ fun GuildFolderItem(
             }
             
             if (mentionCount > 0 && !expanded) {
-                Surface(
-                    color = MaterialTheme.colorScheme.error,
-                    shape = CircleShape,
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(bottom = 2.dp, end = 2.dp)
-                        .height(20.dp)
-                        .widthIn(min = 20.dp),
-                    shadowElevation = 2.dp
-                ) {
-                    Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 4.dp)) {
-                        Text(
-                            text = mentionCount.toString(),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onError,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 10.sp
-                        )
+                Box(modifier = Modifier.size(FolderIconSize)) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.error,
+                        shape = CircleShape,
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .offset(x = 3.dp, y = 3.dp)
+                            .height(18.dp)
+                            .widthIn(min = 18.dp),
+                        shadowElevation = 2.dp
+                    ) {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 2.dp)) {
+                            Text(
+                                text = mentionCount.toString(),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onError,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp
+                            )
+                        }
                     }
                 }
             }
@@ -233,9 +261,9 @@ fun GuildFolderItem(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 12.dp),
+                    .padding(vertical = 4.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 val guilds by guildStore.guilds.collectAsState()
                 folder.guild_ids.forEach { el ->

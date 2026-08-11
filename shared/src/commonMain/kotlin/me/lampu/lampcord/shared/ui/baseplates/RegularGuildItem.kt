@@ -1,7 +1,6 @@
 package me.lampu.lampcord.shared.ui.baseplates
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -9,6 +8,7 @@ import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
@@ -50,7 +50,6 @@ fun RegularGuildItem(
         label = "indicatorAlpha"
     )
 
-    val imageCornerRadius by animateDpAsState(if (isSelected || isHovered) 12.dp else 24.dp)
     val backgroundColor by animateColorAsState(if (isSelected) selectedColor else unselectedColor)
     
     Box(
@@ -63,27 +62,30 @@ fun RegularGuildItem(
                 indication = null,
                 onClick = onClick
             ),
+        contentAlignment = Alignment.Center
     ) {
-        // Indicator
-        Box(
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .width(4.dp)
-                .fillMaxHeight(indicatorFraction)
-                .clip(RoundedCornerShape(topEnd = 4.dp, bottomEnd = 4.dp))
-                .background(MaterialTheme.colorScheme.onSurface)
-                .alpha(indicatorAlpha)
-        )
+        Box {
+            // Indicator
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .offset(x = (-12).dp)
+                    .width(4.dp)
+                    .fillMaxHeight(indicatorFraction)
+                    .clip(RoundedCornerShape(topEnd = 4.dp, bottomEnd = 4.dp))
+                    .background(MaterialTheme.colorScheme.onSurface)
+                    .alpha(indicatorAlpha)
+            )
 
-        Box(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .size(48.dp)
-                .clip(RoundedCornerShape(imageCornerRadius))
-                .background(backgroundColor),
-            contentAlignment = Alignment.Center
-        ) {
-            content()
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(backgroundColor),
+                contentAlignment = Alignment.Center
+            ) {
+                content()
+            }
         }
     }
 }
