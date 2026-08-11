@@ -6,10 +6,12 @@ import kotlinx.serialization.json.decodeFromJsonElement
 import me.lampu.lampcord.shared.model.PresenceUpdate
 import me.lampu.lampcord.shared.state.GatewayEventHandler
 import me.lampu.lampcord.shared.state.PresenceStore
+import me.lampu.lampcord.shared.state.UserStore
 
 class PresenceEventHandler(
     private val json: Json,
-    private val presenceStore: PresenceStore
+    private val presenceStore: PresenceStore,
+    private val userStore: UserStore
 ) : GatewayEventHandler {
     override val supportedEvents = setOf("PRESENCE_UPDATE")
 
@@ -24,6 +26,9 @@ class PresenceEventHandler(
         try {
             val presence = json.decodeFromJsonElement<PresenceUpdate>(data)
             presenceStore.handlePresenceUpdate(presence)
+            
+            // Sync user info if available in presence update
+            presence.user?.let { userStore.handleUserUpdate(it) }
         } catch (e: Exception) { }
     }
 }

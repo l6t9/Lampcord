@@ -43,9 +43,13 @@ fun GuildChannelList(
 ) {
     val guild = navigationStore.selectedGuild
     val currentUser by userStore.currentUser.collectAsState()
-    val member = remember(guild, currentUser) {
-        if (guild == null || currentUser == null) null
-        else userStore.getMember(guild.id, currentUser!!.id)
+    val allMembers by userStore.members.collectAsState()
+    
+    val member = remember(guild, currentUser, allMembers) {
+        val g = guild
+        val u = currentUser
+        if (g == null || u == null) null
+        else allMembers[g.id]?.get(u.id)
     }
     val showHidden = settingsStore.showHiddenChannels
 
@@ -80,14 +84,24 @@ fun GuildChannelList(
             }
     ) {
         val allGuildChannels by guildStore.allGuildChannels.collectAsState()
-        val allChannels = allGuildChannels.values
-        val visibleChannels by remember(guild, member, showHidden, allChannels.size) {
+        val visibleChannels by remember(guild, member, showHidden, allGuildChannels) {
             derivedStateOf {
-                if (guild == null || member == null) allChannels.toList()
-                else allChannels.filter { channel ->
-                    PermissionHelper.canViewChannel(member, guild, channel, currentUser?.id) || showHidden
+                val g = guild
+                val u = currentUser
+                if (g == null) emptyList()
+                else allGuildChannels.values.filter { channel ->
+                    if (channel.guild_id != g.id) return@filter false
+                    if (showHidden) return@filter true
+                    if (member == null) return@filter true 
+                    PermissionHelper.canViewChannel(member, g, channel, u?.id)
                 }
             }
+        }
+
+        val allChannelsForThisGuild = remember(guild, allGuildChannels) {
+            val g = guild
+            if (g == null) emptyList()
+            else allGuildChannels.values.filter { it.guild_id == g.id }
         }
 
         val categories = visibleChannels.filter { it.type == 4 }.distinctBy { it.id }.sortedBy { it.position ?: 0 }
@@ -100,7 +114,7 @@ fun GuildChannelList(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(top = if (bannerUrl == null) 48.dp else 0.dp, bottom = 68.dp)
         ) {
-            if (allChannels.isEmpty() && navigationStore.selectedGuild != null) {
+            if (allChannelsForThisGuild.isEmpty() && navigationStore.selectedGuild != null) {
                 items(15) {
                     ChannelSkeleton()
                 }
@@ -204,7 +218,9 @@ fun GuildChannelList(
                     onDismissRequest = { menuExpanded = false },
                     modifier = Modifier.width(220.dp)
                 ) {
-                    val showChannelsAndRoles = guild?.features?.contains("COMMUNITY") == true
+                    val g = guild
+                    val u = currentUser
+                    val showChannelsAndRoles = g?.features?.contains("COMMUNITY") == true
                     if (showChannelsAndRoles) {
                         DropdownMenuItem(
                             text = { Text("Channels & Roles") },
@@ -222,7 +238,7 @@ fun GuildChannelList(
                     DropdownMenuItem(
                         text = { Text("Mark As Read") },
                         onClick = { 
-                            guild?.let { guildStore.markGuildAsRead(it.id) }
+                            g?.let { guildStore.markGuildAsRead(it.id) }
                             menuExpanded = false 
                         },
                         leadingIcon = { Icon(Icons.Filled.Check, null, modifier = Modifier.size(18.dp)) }
@@ -230,7 +246,7 @@ fun GuildChannelList(
                     DropdownMenuItem(
                         text = { Text("Server Profile") },
                         onClick = { 
-                            currentUser?.let { profileStore.showProfile(it.id, navigationStore.selectedGuild?.id) }
+                            u?.let { profileStore.showProfile(it.id, g?.id) }
                             menuExpanded = false 
                         },
                         leadingIcon = { Icon(Icons.Filled.AccountCircle, null, modifier = Modifier.size(18.dp)) }
@@ -247,7 +263,7 @@ fun GuildChannelList(
                     DropdownMenuItem(
                         text = { Text("Leave Server", color = Color.Red) },
                         onClick = { 
-                            guild?.let { guildStore.leaveGuild(it.id) { if (navigationStore.selectedGuild?.id == it.id) navigationStore.selectHome() } }
+                            g?.let { guildStore.leaveGuild(it.id) { if (navigationStore.selectedGuild?.id == it.id) navigationStore.selectHome() } }
                             menuExpanded = false 
                         },
                         leadingIcon = { Icon(Icons.Filled.Logout, null, tint = Color.Red, modifier = Modifier.size(18.dp)) }
@@ -257,7 +273,7 @@ fun GuildChannelList(
                         DropdownMenuItem(
                             text = { Text("Copy ID") },
                             onClick = { 
-                                guild?.let { setClipboardText(it.id) }
+                                g?.let { setClipboardText(it.id) }
                                 menuExpanded = false 
                             },
                             leadingIcon = { Icon(Icons.Filled.Dns, null, modifier = Modifier.size(18.dp)) }

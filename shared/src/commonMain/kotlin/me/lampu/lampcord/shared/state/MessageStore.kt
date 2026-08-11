@@ -13,6 +13,7 @@ import me.lampu.lampcord.shared.model.*
 import me.lampu.lampcord.shared.utils.getCurrentTimeMillis
 import me.lampu.lampcord.shared.utils.ResourceLoader
 import me.lampu.lampcord.shared.settings.Settings
+import kotlin.time.Clock
 
 class MessageStore(
     private val discordClient: DiscordClient,
@@ -190,7 +191,7 @@ class MessageStore(
             channel_id = channelId,
             content = content,
             author = currentUser,
-            timestamp = "",
+            timestamp = Clock.System.now().toString(),
             nonce = nonce,
             isPending = true,
             guild_id = guildId,

@@ -54,14 +54,20 @@ fun ChannelItem(
 
     val guild = navigationStore.selectedGuild
     val currentUser by userStore.currentUser.collectAsState()
-    val member = remember(guild, currentUser) {
-        if (guild == null || currentUser == null) null
-        else userStore.getMember(guild.id, currentUser!!.id)
+    val allMembers by userStore.members.collectAsState()
+    
+    val member = remember(guild, currentUser, allMembers) {
+        val g = guild
+        val u = currentUser
+        if (g == null || u == null) null
+        else allMembers[g.id]?.get(u.id)
     }
     
     val canView = remember(channel, guild, member) {
-        if (guild == null || member == null) true
-        else PermissionHelper.canViewChannel(member, guild, channel, currentUser?.id)
+        val g = guild
+        val u = currentUser
+        if (g == null || member == null) true
+        else PermissionHelper.canViewChannel(member, g, channel, u?.id)
     }
 
     val userSettings = settingsStore.userSettings
@@ -258,11 +264,12 @@ fun VoiceParticipantSidebarItem(
             .height(24.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        val u = currentUser
         AvatarWithDecoration(
             avatarUrl = avatarUrl,
             decorationData = member?.avatar_decoration_data ?: user?.avatar_decoration_data,
             size = 18.dp,
-            status = presenceStore.getUserStatus(state.user_id, currentUser?.id, settingsStore.userSettings?.status)
+            status = presenceStore.getUserStatus(state.user_id, u?.id, settingsStore.userSettings?.status)
         )
         Spacer(Modifier.width(8.dp))
         Text(

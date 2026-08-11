@@ -33,10 +33,17 @@ fun DMItem(
     profileStore: ProfileStore = koinInject()
 ) {
     val isSelected = navigationStore.selectedChannel?.id == channel.id
-    val recipient = remember(channel.recipients, userStore) {
-        val first = channel.recipients?.firstOrNull() ?: return@remember null
-        userStore.getUser(first.id) ?: first
+    val allUsers by userStore.users.collectAsState()
+    
+    // Improved recipient resolution to avoid "Unnamed DM"
+    val recipient = remember(channel.recipients, channel.recipient_ids, allUsers) {
+        val recipientId = channel.recipients?.firstOrNull()?.id 
+            ?: channel.recipient_ids?.firstOrNull()
+            ?: return@remember null
+            
+        allUsers[recipientId] ?: channel.recipients?.firstOrNull()
     }
+    
     val avatarUrl = recipient?.avatar?.let { 
         "https://cdn.discordapp.com/avatars/${recipient.id}/$it.png"
     }
@@ -49,13 +56,13 @@ fun DMItem(
     var isHovered by remember { mutableStateOf(false) }
 
     val userGuildSettings by userGuildSettingsStore.userGuildSettings.collectAsState()
-    val isMuted by remember(channel, userGuildSettings.get(null)) {
+    val isMuted by remember(channel, userGuildSettings) {
         derivedStateOf { userGuildSettingsStore.isChannelMuted(null, channel.id) }
     }
 
     val scope = rememberCoroutineScope()
 
-    val contextMenuItems = remember(channel, userSettings, isMuted) {
+    val contextMenuItems = remember(channel, userSettings, isMuted, recipient) {
         val items = mutableListOf(
             ContextMenuItem(if (isMuted) "Unmute" else "Mute", if (isMuted) Icons.Filled.Notifications else Icons.AutoMirrored.Filled.VolumeOff) {
                 guildStore.toggleMuteChannel("@me", channel.id)
@@ -115,16 +122,12 @@ fun DMItem(
                     name = name,
                     style = recipient?.display_name_styles,
                     baseStyle = MaterialTheme.typography.bodyMedium,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     ignoreEffects = !isHovered,
                     ignoreColors = !isHovered
                 )
-                recipient?.primary_guild?.let {
-                    Spacer(Modifier.width(4.dp))
-                    ClanTagView(it)
-                }
                 recipient?.let { UserTagView(it, modifier = Modifier.padding(start = 4.dp)) }
             }
         }

@@ -4,13 +4,11 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.decodeFromJsonElement
 import me.lampu.lampcord.shared.model.TypingStart
-import me.lampu.lampcord.shared.state.EntityStore
-import me.lampu.lampcord.shared.state.GatewayEventHandler
-import me.lampu.lampcord.shared.state.TypingStore
+import me.lampu.lampcord.shared.state.*
 
 class TypingEventHandler(
     private val json: Json,
-    private val entityStore: EntityStore,
+    private val userStore: UserStore,
     private val typingStore: TypingStore,
     private val currentUserIdProvider: () -> String?
 ) : GatewayEventHandler {
@@ -30,7 +28,8 @@ class TypingEventHandler(
             // Cache member/user if provided
             typing.guild_id?.let { guildId ->
                 typing.member?.let { member ->
-                    entityStore.updateMember(guildId, member.copy(user = member.user))
+                    val userId = typing.user_id
+                    userStore.cacheMember(guildId, userId, member)
                 }
             }
 

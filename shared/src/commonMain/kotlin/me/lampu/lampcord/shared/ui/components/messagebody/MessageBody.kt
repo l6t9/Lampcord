@@ -14,8 +14,8 @@ import org.koin.compose.koinInject
 fun MessageBody(
     message: Message
 ) {
-    Column(modifier = Modifier.padding(top = 4.dp)) {
-        DiscordMarkdownText(message.content)
+    Column(modifier = Modifier.padding(top = 0.dp)) {
+        // Content is rendered by MessageItem to handle edits and highlights properly
         MessageAttachments(message.attachments, message.embeds, message.sticker_items, message.poll, message.components)
     }
 }

@@ -7,7 +7,6 @@ import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.compose.setSingletonImageLoaderFactory
 import coil3.request.crossfade
-import coil3.util.DebugLogger
 import me.lampu.lampcord.shared.settings.ThemeMode
 import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.theme.LampcordTheme
@@ -56,6 +55,5 @@ fun App() {
 fun newImageLoader(context: PlatformContext): ImageLoader {
     return ImageLoader.Builder(context)
         .crossfade(true)
-        .logger(DebugLogger())
         .build()
 }

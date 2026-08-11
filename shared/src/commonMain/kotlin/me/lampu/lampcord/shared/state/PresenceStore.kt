@@ -6,10 +6,26 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import me.lampu.lampcord.shared.api.DiscordClient
 import me.lampu.lampcord.shared.model.PresenceUpdate
+import me.lampu.lampcord.shared.model.ReadyPayload
 
 class PresenceStore(private val discordClient: DiscordClient) {
     private val _presences = MutableStateFlow<Map<String, PresenceUpdate>>(emptyMap())
     val presences: StateFlow<Map<String, PresenceUpdate>> = _presences.asStateFlow()
+
+    fun handleReady(ready: ReadyPayload) {
+        val newPresences = mutableMapOf<String, PresenceUpdate>()
+        ready.merged_presences?.friends?.forEach { update ->
+            val userId = update.user?.id ?: update.user_id ?: return@forEach
+            newPresences[userId] = update
+        }
+        ready.merged_presences?.guilds?.forEach { guildPresences ->
+            guildPresences.forEach { update ->
+                val userId = update.user?.id ?: update.user_id ?: return@forEach
+                newPresences[userId] = update
+            }
+        }
+        _presences.value = newPresences
+    }
 
     fun handlePresenceUpdate(update: PresenceUpdate) {
         val userId = update.user?.id ?: update.user_id ?: return

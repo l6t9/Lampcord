@@ -186,8 +186,11 @@ fun TypingDots(modifier: Modifier = Modifier) {
 @Composable
 fun ChannelHeader(
     channel: me.lampu.lampcord.shared.model.Channel?,
-    navigationStore: NavigationStore = koinInject()
+    navigationStore: NavigationStore = koinInject(),
+    userStore: UserStore = koinInject()
 ) {
+    val allUsers by userStore.users.collectAsState()
+    
     Surface(
         modifier = Modifier.fillMaxWidth().height(48.dp),
         color = MaterialTheme.colorScheme.surface,
@@ -214,7 +217,8 @@ fun ChannelHeader(
                 
                 if (isDm) {
                     // DM style
-                    val recipient = channel.recipients?.firstOrNull()
+                    val recipientId = channel.recipients?.firstOrNull()?.id ?: channel.recipient_ids?.firstOrNull()
+                    val recipient = recipientId?.let { allUsers[it] } ?: channel.recipients?.firstOrNull()
                     val name = recipient?.let { it.global_name ?: it.username } ?: "Unnamed DM"
                     Icon(
                         imageVector = Icons.Rounded.AlternateEmail,

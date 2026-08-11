@@ -24,9 +24,10 @@ class GuildStore(
         ids.mapNotNull { allGuilds[it] }
     }.stateIn(scope, SharingStarted.Eagerly, emptyList())
 
-    private val _privateChannelIds = MutableStateFlow<List<String>>(emptyList())
+    private val _privateChannelIds = MutableStateFlow<Set<String>>(emptySet())
     val privateChannels: StateFlow<List<Channel>> = combine(_privateChannelIds, entityStore.channels) { ids, allChannels ->
         ids.mapNotNull { allChannels[it] }
+            .sortedByDescending { it.lastMessageId() ?: "" }
     }.stateIn(scope, SharingStarted.Eagerly, emptyList())
 
     val allGuildChannels = entityStore.channels
@@ -65,14 +66,19 @@ class GuildStore(
 
     fun setPrivateChannels(channels: List<Channel>) {
         channels.forEach { entityStore.updateChannel(it) }
-        _privateChannelIds.value = channels.map { it.id }
+        _privateChannelIds.value = channels.map { it.id }.toSet()
     }
 
     fun handleChannelCreateOrUpdate(channel: Channel) {
         entityStore.updateChannel(channel)
+        val updated = entityStore.channels.value[channel.id] ?: channel
+        if (updated.guild_id == null && (updated.type == 1 || updated.type == 3)) {
+            _privateChannelIds.update { it + updated.id }
+        }
     }
 
     fun handleChannelDelete(channel: Channel) {
+        _privateChannelIds.update { it - channel.id }
         entityStore.removeChannel(channel.id)
     }
 
@@ -136,7 +142,8 @@ class GuildStore(
     }
 
     fun toggleMuteChannel(guildId: String, channelId: String) {
-        val guildSettings = userGuildSettingsStore.userGuildSettings.value[guildId] ?: return
+        val effectiveGuildId = if (guildId == "@me") null else guildId
+        val guildSettings = userGuildSettingsStore.userGuildSettings.value[effectiveGuildId] ?: return
         val currentOverrides = guildSettings.channel_overrides.toMutableList()
         val index = currentOverrides.indexOfFirst { it.channel_id == channelId }
         
@@ -200,6 +207,6 @@ class GuildStore(
 
     fun clear() {
         _guildIds.value = emptyList()
-        _privateChannelIds.value = emptyList()
+        _privateChannelIds.value = emptySet()
     }
 }

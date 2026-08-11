@@ -3,6 +3,7 @@ package me.lampu.lampcord.shared.state
 import androidx.compose.runtime.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import me.lampu.lampcord.shared.api.DiscordClient
 import me.lampu.lampcord.shared.model.Channel
@@ -76,17 +77,27 @@ class NavigationStore(
         isServerSettingsVisible = false
         memberListStore.clear()
         lastRequestedKey = null
-        val lastDmId = Settings.shared.getLastChannel("home")
-        if (lastDmId == "friends") {
-            isFriendsSelected = true
-            selectedChannel = null
-        } else {
-            val dmToSelect = if (lastDmId != null) guildStore.privateChannels.value.find { it.id == lastDmId } else guildStore.privateChannels.value.firstOrNull()
-            if (dmToSelect != null) {
-                selectChannel(dmToSelect)
+        
+        scope.launch {
+            // Wait for private channels to be populated if they are empty
+            val channels = if (guildStore.privateChannels.value.isEmpty()) {
+                guildStore.privateChannels.first { it.isNotEmpty() }
             } else {
+                guildStore.privateChannels.value
+            }
+
+            val lastDmId = Settings.shared.getLastChannel("home")
+            if (lastDmId == "friends") {
                 isFriendsSelected = true
                 selectedChannel = null
+            } else {
+                val dmToSelect = if (lastDmId != null) channels.find { it.id == lastDmId } else channels.firstOrNull()
+                if (dmToSelect != null) {
+                    selectChannel(dmToSelect)
+                } else {
+                    isFriendsSelected = true
+                    selectedChannel = null
+                }
             }
         }
     }
@@ -113,8 +124,8 @@ class NavigationStore(
             subscribeCallback(guild.id)
             val guildChannels = discordClient.getGuildChannels(guild.id)
             if (guildChannels.isNotEmpty()) {
-                val filtered = guildChannels.filter { it.type in listOf(0, 2, 5, 4, 13, 15, 16) }.sortedBy { it.position }
-                filtered.forEach { guildStore.handleChannelCreateOrUpdate(it) }
+                val filtered = guildChannels.filter { it.type in listOf(0, 1, 2, 3, 4, 5, 13, 15, 16) }.sortedBy { it.position }
+                filtered.forEach { guildStore.handleChannelCreateOrUpdate(it.copy(guild_id = guild.id)) }
             }
             val lastChannelId = Settings.shared.getLastChannel(guild.id)
             val channelToSelect = guildStore.allGuildChannels.value.values.find { it.guild_id == guild.id && it.id == lastChannelId } 
@@ -162,8 +173,8 @@ class NavigationStore(
         finderStore.addRecent(channel.id)
 
         channelLoadingJob = scope.launch {
-            if (channel.type == 1) {
-                val userId = channel.recipients?.firstOrNull()?.id
+            if (channel.type == 1 || channel.type == 3) {
+                val userId = channel.recipients?.firstOrNull()?.id ?: channel.recipient_ids?.firstOrNull()
                 if (userId != null) {
                     profileStore.sidebarProfile = null
                     profileStore.isSidebarProfileLoading = true

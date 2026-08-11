@@ -32,13 +32,21 @@ fun GuildCategoryItem(
     var collapsed by remember { mutableStateOf(false) }
     val guild = navigationStore.selectedGuild
     val currentUser by userStore.currentUser.collectAsState()
-    val member = remember(guild?.id, currentUser) {
-        if (guild != null && currentUser != null) userStore.getMember(guild.id, currentUser!!.id) else null
+    val allMembers by userStore.members.collectAsState()
+    
+    val member = remember(guild?.id, currentUser, allMembers) {
+        val g = guild
+        val u = currentUser
+        if (g != null && u != null) allMembers[g.id]?.get(u.id) else null
     }
     val showHidden = settingsStore.showHiddenChannels
 
-    val categoryChannels = remember(channels, category.id, guild, member, showHidden) {
-        channels.filter { it.parent_id == category.id }.sortedBy { it.position ?: 0 }
+    val currentUserId = currentUser?.id
+    val categoryChannels = remember(channels, category.id, guild, member, showHidden, currentUserId) {
+        val g = guild
+        channels.filter { channel -> 
+            channel.parent_id == category.id && (if (member == null || showHidden || g == null) true else PermissionHelper.canViewChannel(member, g, channel, currentUserId))
+        }.sortedBy { it.position ?: 0 }
     }
 
     if (categoryChannels.isEmpty() && !showHidden) return

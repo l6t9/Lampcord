@@ -11,7 +11,7 @@ import me.lampu.lampcord.shared.state.*
 
 class MessageEventHandler(
     private val json: Json,
-    private val entityStore: EntityStore,
+    private val userStore: UserStore,
     private val messageStore: MessageStore,
     private val readStateStore: ReadStateStore,
     private val navigationStore: NavigationStore,
@@ -33,13 +33,14 @@ class MessageEventHandler(
     private fun handleMessageCreate(data: JsonElement) {
         val message = json.decodeFromJsonElement<Message>(data)
         
-        // Cache in entity store
+        // Cache author and member in UserStore (StoreUsers / StoreMembers)
+        message.author?.let { userStore.handleUserUpdate(it) }
         message.guild_id?.let { guildId ->
             message.member?.let { member ->
-                entityStore.updateMember(guildId, member.copy(user = message.author))
+                val userId = message.author?.id ?: return@let
+                userStore.cacheMember(guildId, userId, member.copy(user = message.author))
             }
         }
-        message.author?.let { entityStore.updateUser(it) }
         
         finderStore.addRecent(message.channel_id)
 
@@ -49,9 +50,6 @@ class MessageEventHandler(
             scope.launch {
                 readStateStore.ackMessage(message.channel_id, message.id)
             }
-        } else {
-            // Mention handling logic (omitted for brevity, or moved to ReadStateStore)
-            // ...
         }
     }
 

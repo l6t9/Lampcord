@@ -19,6 +19,7 @@ class RelationshipStore(
 
     fun handleReady(rels: List<Relationship>) {
         println("RelationshipStore received ${rels.size} relationships")
+        rels.forEach { rel -> rel.user?.let { userStore.handleUserUpdate(it) } }
         _relationships.value = rels.map { hydrate(it) }.distinctBy { it.id ?: it.user?.id ?: it.user_id }
     }
 
@@ -37,6 +38,7 @@ class RelationshipStore(
     }
 
     fun handleRelationshipAdd(rel: Relationship) {
+        rel.user?.let { userStore.handleUserUpdate(it) }
         val hydrated = hydrate(rel)
         val id = hydrated.id ?: hydrated.user?.id ?: hydrated.user_id
         _relationships.update { current ->

@@ -1,19 +1,16 @@
 package me.lampu.lampcord.shared.state
 
 import androidx.compose.runtime.*
-import androidx.compose.runtime.snapshots.SnapshotStateList
 import me.lampu.lampcord.shared.gateway.GatewayManager
 import me.lampu.lampcord.shared.model.*
 
 class MemberListStore(
     private val gatewayManager: GatewayManager,
-    private val selectionStore: SelectionStore
+    private val selectionStore: SelectionStore,
+    private val userStore: UserStore
 ) {
-    // 126.21 Parity: Cache multiple member lists by their memberListId
-    // Map<memberListId, Entry>
     private val listCache = mutableMapOf<String, MemberListCacheEntry>()
 
-    // Exposed state for the currently active list
     val memberListItems = mutableStateListOf<MemberListListItem?>()
     val memberListGroups = mutableStateMapOf<String, MemberListGroup>()
     var onlineCount by mutableStateOf<Int?>(null)
@@ -23,7 +20,7 @@ class MemberListStore(
     
     val memberListRowCount get() = memberListItems.size
 
-    data class MemberListCacheEntry(
+    private class MemberListCacheEntry(
         val items: MutableList<MemberListListItem?>,
         val groups: MutableMap<String, MemberListGroup>
     )
@@ -41,14 +38,9 @@ class MemberListStore(
         gatewayManager.sendLazyRequest(guild.id, channel.id, ranges)
     }
 
-    /**
-     * 126.21 Parity: Pre-sizes the list based on the calculated member list ID.
-     * Restores cached members immediately if they exist.
-     */
     fun setExpectedId(id: String, initialSize: Int) {
         if (currentListId == id) return
         
-        // Save current list to cache before switching if it has data
         currentListId?.let { oldId ->
             if (memberListItems.isNotEmpty()) {
                 listCache[oldId] = MemberListCacheEntry(
@@ -66,7 +58,6 @@ class MemberListStore(
             memberListItems.addAll(cached.items)
             memberListGroups.putAll(cached.groups)
         } else if (initialSize > 0) {
-            // Pre-size with approximate count (126.21 StoreChannelMembers.getChannelMemberList)
             memberListItems.addAll(List(initialSize) { null })
         }
         
@@ -79,21 +70,13 @@ class MemberListStore(
             update.member_count?.let { memberCount = it }
         }
 
-        // If the update is for a list we haven't seen, create a cache entry
-        val entry = if (update.id == currentListId) {
-            // Update current visible state
-            null 
-        } else {
-            // Update background cache (Discord 126.21 updates all lists in parallel)
-            listCache.getOrPut(update.id) {
-                MemberListCacheEntry(mutableListOf(), mutableMapOf())
-            }
+        val entry = listCache.getOrPut(update.id) { 
+            MemberListCacheEntry(mutableListOf(), mutableMapOf()) 
         }
 
-        val targetItems: MutableList<MemberListListItem?> = entry?.items ?: memberListItems
-        val targetGroups: MutableMap<String, MemberListGroup> = entry?.groups ?: memberListGroups
+        val targetItems: MutableList<MemberListListItem?> = if (update.id == currentListId) memberListItems else entry.items
+        val targetGroups: MutableMap<String, MemberListGroup> = if (update.id == currentListId) memberListGroups else entry.groups
 
-        // 1. Handle Operations (Matches StoreChannelMembers.handleGuildMemberListUpdate order)
         for (op in update.ops) {
             when (op.op) {
                 "SYNC" -> {
@@ -102,67 +85,58 @@ class MemberListStore(
                     val items = op.items ?: emptyList()
                     for (i in items.indices) {
                         val index = start + i
+                        val item = items[i]
+                        
+                        item.member?.let { m ->
+                            val userId = m.userId()
+                            if (userId != null) userStore.cacheMember(update.guild_id, userId, m)
+                        }
+
                         if (index < targetItems.size) {
-                            targetItems[index] = items[i]
-                        } else if (index >= targetItems.size) {
-                            // Expand if SYNC goes beyond current size
+                            targetItems[index] = item
+                        } else {
                             while (targetItems.size <= index) targetItems.add(null)
-                            targetItems[index] = items[i]
+                            targetItems[index] = item
                         }
                     }
                 }
                 "INSERT" -> {
                     val index = op.index ?: continue
                     val item = op.item ?: continue
-                    if (index <= targetItems.size) {
-                        targetItems.add(index, item)
+                    item.member?.let { m ->
+                        val userId = m.userId()
+                        if (userId != null) userStore.cacheMember(update.guild_id, userId, m)
                     }
+                    if (index <= targetItems.size) targetItems.add(index, item)
                 }
                 "UPDATE" -> {
                     val index = op.index ?: continue
                     val item = op.item ?: continue
-                    if (index < targetItems.size) {
-                        targetItems[index] = item
+                    item.member?.let { m ->
+                        val userId = m.userId()
+                        if (userId != null) userStore.cacheMember(update.guild_id, userId, m)
                     }
+                    if (index < targetItems.size) targetItems[index] = item
                 }
                 "DELETE" -> {
                     val index = op.index ?: continue
-                    if (index < targetItems.size) {
-                        targetItems.removeAt(index)
-                    }
+                    if (index < targetItems.size) targetItems.removeAt(index)
                 }
                 "INVALIDATE" -> {
                     val range = op.range ?: continue
                     val start = range[0]
                     val end = range[1]
-                    for (i in start..end) {
-                        if (i < targetItems.size) {
-                            targetItems[i] = null
-                        }
-                    }
+                    for (i in start..end) if (i < targetItems.size) targetItems[i] = null
                 }
             }
         }
 
-        // 2. Handle Groups (Matches ChannelMemberList.setGroups)
         update.groups?.let { groups ->
             val totalSize = groups.sumOf { (it.count ?: it.member_count ?: 0) + 1 }
-            
-            // Resize list to match total size from groups
-            if (targetItems.size < totalSize) {
-                repeat(totalSize - targetItems.size) { targetItems.add(null) }
-            } else if (targetItems.size > totalSize) {
-                while (targetItems.size > totalSize) {
-                    targetItems.removeAt(targetItems.size - 1)
-                }
-            }
+            if (targetItems.size < totalSize) repeat(totalSize - targetItems.size) { targetItems.add(null) }
+            else if (targetItems.size > totalSize) while (targetItems.size > totalSize) targetItems.removeAt(targetItems.size - 1)
 
-            // Clear existing headers to avoid duplicates when shifts occur
-            for (i in targetItems.indices) {
-                if (targetItems[i]?.group != null) {
-                    targetItems[i] = null
-                }
-            }
+            for (i in targetItems.indices) if (targetItems[i]?.group != null) targetItems[i] = null
 
             targetGroups.clear()
             var currentOffset = 0

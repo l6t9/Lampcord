@@ -6,13 +6,13 @@ import kotlinx.serialization.json.decodeFromJsonElement
 import me.lampu.lampcord.shared.model.User
 import me.lampu.lampcord.shared.model.UserSettings
 import me.lampu.lampcord.shared.model.UserNoteUpdate
-import me.lampu.lampcord.shared.state.EntityStore
+import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.state.GatewayEventHandler
 import me.lampu.lampcord.shared.state.SettingsStore
 
 class UserEventHandler(
     private val json: Json,
-    private val entityStore: EntityStore,
+    private val userStore: UserStore,
     private val settingsStore: SettingsStore
 ) : GatewayEventHandler {
     override val supportedEvents = setOf("USER_UPDATE", "USER_SETTINGS_UPDATE", "USER_NOTE_UPDATE")
@@ -29,7 +29,7 @@ class UserEventHandler(
     private fun handleUserUpdate(data: JsonElement) {
         try {
             val user = json.decodeFromJsonElement<User>(data)
-            entityStore.updateUser(user)
+            userStore.handleUserUpdate(user)
         } catch (e: Exception) { }
     }
 
