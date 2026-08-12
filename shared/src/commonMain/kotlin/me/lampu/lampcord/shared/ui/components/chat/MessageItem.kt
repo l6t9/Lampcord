@@ -338,7 +338,6 @@ fun MessageItem(
                                         ignoreEffects = !isHovered,
                                         ignoreColors = if (isDm) !isHovered else true
                                     )
-                                    me.lampu.lampcord.shared.ui.components.CustomBadgesView(message.author.id)
                                     message.author.primary_guild?.let {
                                         Spacer(Modifier.width(4.dp))
                                         ClanTagView(it)

@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -26,6 +27,8 @@ import me.lampu.lampcord.shared.state.GuildStore
 import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.ui.baseplates.RegularGuildItem
+import me.lampu.lampcord.shared.ui.components.ExpressiveTooltip
+import me.lampu.lampcord.shared.ui.components.tooltipText
 import me.lampu.lampcord.shared.ui.icons.Icons
 import org.koin.compose.koinInject
 
@@ -52,19 +55,25 @@ fun GuildRail(
     ) {
         item {
             val isHomeSelected = navigationStore.selectedGuild == null
-            RegularGuildItem(
-                isSelected = isHomeSelected,
-                onClick = { navigationStore.selectHome() },
-                selectedColor = MaterialTheme.colorScheme.primary,
-                unselectedColor = MaterialTheme.colorScheme.surfaceVariant
-            ) {
-                Icon(
-                    imageVector = Icons.Brand.Discord,
-                    contentDescription = "Home",
-                    tint = if (isHomeSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(35.dp)
-                )
-            }
+            ExpressiveTooltip(
+                anchorPosition = TooltipAnchorPosition.End,
+                content = tooltipText("Direct Messages"),
+                anchor = {
+                    RegularGuildItem(
+                        isSelected = isHomeSelected,
+                        onClick = { navigationStore.selectHome() },
+                        selectedColor = MaterialTheme.colorScheme.primary,
+                        unselectedColor = MaterialTheme.colorScheme.surfaceVariant
+                    ) {
+                        Icon(
+                            imageVector = Icons.Brand.Discord,
+                            contentDescription = "Home",
+                            tint = if (isHomeSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(35.dp)
+                        )
+                    }
+                }
+            )
         }
 
         item {

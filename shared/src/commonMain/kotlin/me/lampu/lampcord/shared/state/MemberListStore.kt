@@ -92,12 +92,15 @@ class MemberListStore(
                             val userId = m.userId()
                             if (userId != null) {
                                 userStore.cacheMember(update.guild_id, userId, m)
-                                m.presence?.let { p ->
-                                    val pWithId = if (p.user?.id == null && p.user_id == null) {
-                                        p.copy(user_id = userId)
-                                    } else p
-                                    presenceStore.handlePresenceUpdate(pWithId)
+                                val pWithId = if (m.presence != null) {
+                                    val p = m.presence
+                                    if (p.user?.id == null && p.user_id == null) {
+                                        p.copy(user_id = userId, guild_id = update.guild_id)
+                                    } else p.copy(guild_id = update.guild_id)
+                                } else {
+                                    PresenceUpdate(user_id = userId, guild_id = update.guild_id, status = "offline")
                                 }
+                                presenceStore.handlePresenceUpdate(pWithId)
                             }
                         }
 
@@ -116,12 +119,15 @@ class MemberListStore(
                         val userId = m.userId()
                         if (userId != null) {
                             userStore.cacheMember(update.guild_id, userId, m)
-                            m.presence?.let { p ->
-                                val pWithId = if (p.user?.id == null && p.user_id == null) {
-                                    p.copy(user_id = userId)
-                                } else p
-                                presenceStore.handlePresenceUpdate(pWithId)
+                            val pWithId = if (m.presence != null) {
+                                val p = m.presence
+                                if (p.user?.id == null && p.user_id == null) {
+                                    p.copy(user_id = userId, guild_id = update.guild_id)
+                                } else p.copy(guild_id = update.guild_id)
+                            } else {
+                                PresenceUpdate(user_id = userId, guild_id = update.guild_id, status = "offline")
                             }
+                            presenceStore.handlePresenceUpdate(pWithId)
                         }
                     }
                     if (index <= targetItems.size) targetItems.add(index, item)
@@ -133,12 +139,15 @@ class MemberListStore(
                         val userId = m.userId()
                         if (userId != null) {
                             userStore.cacheMember(update.guild_id, userId, m)
-                            m.presence?.let { p ->
-                                val pWithId = if (p.user?.id == null && p.user_id == null) {
-                                    p.copy(user_id = userId)
-                                } else p
-                                presenceStore.handlePresenceUpdate(pWithId)
+                            val pWithId = if (m.presence != null) {
+                                val p = m.presence
+                                if (p.user?.id == null && p.user_id == null) {
+                                    p.copy(user_id = userId, guild_id = update.guild_id)
+                                } else p.copy(guild_id = update.guild_id)
+                            } else {
+                                PresenceUpdate(user_id = userId, guild_id = update.guild_id, status = "offline")
                             }
+                            presenceStore.handlePresenceUpdate(pWithId)
                         }
                     }
                     if (index < targetItems.size) targetItems[index] = item

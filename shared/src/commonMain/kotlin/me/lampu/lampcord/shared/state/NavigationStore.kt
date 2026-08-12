@@ -23,7 +23,8 @@ class NavigationStore(
     private val commandStore: CommandStore,
     private val selectionStore: SelectionStore,
     private val finderStore: FinderStore,
-    private val scope: CoroutineScope
+    private val scope: CoroutineScope,
+    val onChannelSelected: () -> Unit = {}
 ) {
     var selectedGuild by selectionStore::selectedGuild
     var selectedChannel by selectionStore::selectedChannel
@@ -156,8 +157,9 @@ class NavigationStore(
         isChannelsAndRolesVisible = false
         isServerSettingsVisible = false
         channelLoadingJob?.cancel()
-        selectedChannel = channel
+selectedChannel = channel
         selectedThread = null
+        onChannelSelected()
 
         // Pre-size the member list store based on expected list ID
         val guild = selectedGuild

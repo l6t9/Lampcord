@@ -150,7 +150,6 @@ fun DMItem(
                     }
                     recipient?.let { 
                         UserTagView(it, modifier = Modifier.padding(start = 4.dp)) 
-                        CustomBadgesView(it.id, modifier = Modifier.padding(start = 2.dp))
                     }
                 }
             }
