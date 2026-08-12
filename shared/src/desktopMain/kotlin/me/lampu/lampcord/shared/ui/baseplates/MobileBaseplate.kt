@@ -117,7 +117,7 @@ actual fun MobileBaseplate(
                 .background(MaterialTheme.colorScheme.surface),
             swipeEnabled = swipeEnabled,
             startPanel = {
-                Sidebar()
+                Sidebar(modifier = Modifier.systemBarsPadding())
             },
             centerPanel = {
                 Surface(
