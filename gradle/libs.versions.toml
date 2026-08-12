@@ -18,7 +18,6 @@ koin = "4.2.2"
 coil = "3.5.0"
 media3 = "1.5.1"
 materialKolor = "5.0.0"
-materiiPanels = "1.3.0"
 multiplatformSettings = "1.3.0"
 jna = "5.16.0"
 ffmpegPlatform = "8.0.1-1.5.13"
@@ -29,7 +28,6 @@ slf4j = "2.1.0-alpha1"
 multiplatform-settings = { module = "com.russhwolf:multiplatform-settings", version.ref = "multiplatformSettings" }
 multiplatform-settings-no-arg = { module = "com.russhwolf:multiplatform-settings-no-arg", version.ref = "multiplatformSettings" }
 materialKolor = { module = "com.materialkolor:material-kolor", version.ref = "materialKolor" }
-materii-panels = { group = "io.github.materiiapps.panels", name = "panels", version.ref = "materiiPanels" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
