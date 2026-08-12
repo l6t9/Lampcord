@@ -5,17 +5,20 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.*
 import me.lampu.lampcord.shared.ui.components.AsyncImage
+import me.lampu.lampcord.shared.ui.components.VideoPlayer
 import me.lampu.lampcord.shared.ui.icons.Icons
 
 @Composable
@@ -23,16 +26,21 @@ fun AttachmentImage(
     media: DiscordMedia,
     modifier: Modifier = Modifier,
     isMosaic: Boolean = false,
-    needsPoster: Boolean = false,
+    title: String? = null,
+    subtitle: String? = null,
     onClick: (() -> Unit)? = null
 ) {
+    val isVideo = media.isVideo()
+    val isGifv = media.isGifv()
+    var isInlinePlaying by remember { mutableStateOf(isGifv) }
+    
     val url = media.proxy_url ?: media.url ?: ""
     
     // Use the proxy URL as-is for images,
     // only append format=png for video posters. No width/height resizing.
-    val displayUrl = remember(url, needsPoster) {
+    val displayUrl = remember(url, isVideo) {
         var result = url
-        if (needsPoster && result.isNotEmpty() && !result.contains("format=")) {
+        if (isVideo && result.isNotEmpty() && !result.contains("format=")) {
             val sep = if (result.contains("?")) "&" else "?"
             result = "$result${sep}format=png"
         }
@@ -40,20 +48,63 @@ fun AttachmentImage(
     }
 
     val interactionSource = remember { MutableInteractionSource() }
-    val clickModifier = if (onClick != null) {
-        Modifier.clickable(interactionSource = interactionSource, indication = null) { onClick() }
+    val clickModifier = if (!isInlinePlaying && onClick != null) {
+        Modifier.clickable(interactionSource = interactionSource, indication = null) { 
+            if (isVideo && !isGifv) {
+                isInlinePlaying = true
+            } else {
+                onClick()
+            }
+        }
     } else {
         Modifier
     }
 
-    if (isMosaic) {
-        AsyncImage(
-            model = displayUrl,
-            contentDescription = null,
-            modifier = modifier.fillMaxSize().then(clickModifier),
-            contentScale = ContentScale.Crop,
-            placeholderHash = media.placeholder
+    if (isInlinePlaying && isVideo) {
+        val maxWidth = 500.dp
+        val maxHeight = 300.dp
+        val finalWidth = (media.width?.dp ?: maxWidth).coerceAtMost(maxWidth)
+        val finalHeight = (media.height?.dp ?: maxHeight).coerceAtMost(maxHeight)
+
+        VideoPlayer(
+            url = url,
+            loop = isGifv,
+            showControls = !isGifv,
+            title = title ?: (media as? Attachment)?.filename,
+            subtitle = subtitle ?: (media as? Attachment)?.content_type,
+            compact = true,
+            onFullscreenClick = if (!isGifv) onClick else null,
+            modifier = modifier
+                .sizeIn(maxWidth = finalWidth, maxHeight = finalHeight)
+                .aspectRatio(media.aspectRatio ?: (16f / 9f))
+                .clip(RoundedCornerShape(8.dp))
         )
+    } else if (isMosaic) {
+        Box(modifier = modifier.fillMaxSize().then(clickModifier), contentAlignment = Alignment.Center) {
+            AsyncImage(
+                model = displayUrl,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+                placeholderHash = media.placeholder
+            )
+            if (isVideo && !isGifv) {
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Filled.PlayArrow,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+            }
+        }
     } else {
         val maxWidth = 500.dp
         val maxHeight = 300.dp
@@ -71,7 +122,8 @@ fun AttachmentImage(
                 .sizeIn(maxWidth = finalWidth, maxHeight = finalHeight)
                 .aspectRatio(media.aspectRatio ?: 1f)
                 .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                .background(MaterialTheme.colorScheme.surfaceContainerLow),
+            contentAlignment = Alignment.Center
         ) {
             AsyncImage(
                 model = displayUrl,
@@ -80,6 +132,22 @@ fun AttachmentImage(
                 contentScale = ContentScale.Fit,
                 placeholderHash = media.placeholder
             )
+            if (isVideo && !isGifv) {
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Filled.PlayArrow,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+            }
         }
     }
 }

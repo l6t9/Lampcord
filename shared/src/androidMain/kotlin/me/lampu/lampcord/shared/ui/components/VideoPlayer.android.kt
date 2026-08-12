@@ -20,7 +20,11 @@ actual fun VideoPlayer(
     url: String,
     modifier: Modifier,
     loop: Boolean,
-    showControls: Boolean
+    showControls: Boolean,
+    title: String?,
+    subtitle: String?,
+    compact: Boolean,
+    onFullscreenClick: (() -> Unit)?
 ) {
     val context = LocalContext.current
     val exoPlayer = remember {

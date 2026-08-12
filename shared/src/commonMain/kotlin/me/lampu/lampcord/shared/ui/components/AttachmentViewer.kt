@@ -41,7 +41,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.Attachment
 import me.lampu.lampcord.shared.model.DiscordMedia
-import me.lampu.lampcord.shared.model.EmbedImage
 import me.lampu.lampcord.shared.model.EmbedVideo
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.setClipboardText
@@ -104,6 +103,9 @@ fun AttachmentViewer(
                         url = item.url ?: item.proxy_url ?: "",
                         loop = isGifv,
                         showControls = !isGifv,
+                        title = (item as? Attachment)?.filename,
+                        subtitle = (item as? Attachment)?.content_type,
+                        onFullscreenClick = onDismiss,
                         modifier = Modifier
                             .fillMaxWidth(0.95f)
                             .aspectRatio((item.aspectRatio ?: (16f / 9f)).coerceIn(0.3f, 4f))
@@ -344,23 +346,6 @@ private fun AttachmentCarousel(
             }
         }
     }
-}
-
-private fun DiscordMedia.isImage(): Boolean = when (this) {
-    is Attachment -> content_type?.startsWith("image/") == true
-    is EmbedImage -> true
-    else -> false
-}
-
-private fun DiscordMedia.isVideo(): Boolean = when (this) {
-    is Attachment -> content_type?.startsWith("video/") == true
-    is EmbedVideo -> true
-    else -> false
-}
-
-private fun DiscordMedia.isGifv(): Boolean {
-    val url = (url ?: proxy_url)?.lowercase() ?: return false
-    return url.contains("klipy.com") || url.contains(".gifv") || url.contains("tenor.com")
 }
 
 /** Raw proxy URL for images, format=png for video posters. */

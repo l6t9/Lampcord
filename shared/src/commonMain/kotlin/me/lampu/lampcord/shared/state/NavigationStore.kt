@@ -189,7 +189,16 @@ class NavigationStore(
             if (channel.type == 15) {
                 isForumLoading = true
                 try {
-                    // Logic for forum threads if needed
+                    val activeThreads = discordClient.getActiveThreads(channel.id)
+                    activeThreads?.threads?.forEach { 
+                        guildStore.handleChannelCreateOrUpdate(it.copy(guild_id = channel.guild_id))
+                    }
+                    val archivedThreads = discordClient.getArchivedPublicThreads(channel.id, 50)
+                    archivedThreads?.threads?.forEach {
+                        guildStore.handleChannelCreateOrUpdate(it.copy(guild_id = channel.guild_id))
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
                 } finally {
                     isForumLoading = false
                 }
