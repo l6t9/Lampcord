@@ -92,7 +92,9 @@ class FFmpegFrameGrabber : FrameGrabber {
                             size
                         }
                     } catch (t: Throwable) {
-                        System.err.println("Error on InputStream.read(): $t")
+                        if (t !is java.io.InterruptedIOException) {
+                            System.err.println("Error on InputStream.read(): $t")
+                        }
                         -1
                     }
                 }

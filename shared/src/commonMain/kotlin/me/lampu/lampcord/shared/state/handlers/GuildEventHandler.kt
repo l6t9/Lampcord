@@ -19,7 +19,8 @@ class GuildEventHandler(
 ) : GatewayEventHandler {
     override val supportedEvents = setOf(
         "GUILD_CREATE", "GUILD_UPDATE", "GUILD_DELETE",
-        "CHANNEL_CREATE", "CHANNEL_UPDATE", "CHANNEL_DELETE"
+        "CHANNEL_CREATE", "CHANNEL_UPDATE", "CHANNEL_DELETE",
+        "THREAD_CREATE", "THREAD_UPDATE", "THREAD_DELETE", "THREAD_LIST_SYNC"
     )
 
     override fun handleEvent(type: String, data: JsonElement?) {
@@ -28,9 +29,10 @@ class GuildEventHandler(
             "GUILD_CREATE" -> handleGuildCreate(data)
             "GUILD_UPDATE" -> handleGuildUpdate(data)
             "GUILD_DELETE" -> handleGuildDelete(data)
-            "CHANNEL_CREATE" -> handleChannelUpdate(data)
-            "CHANNEL_UPDATE" -> handleChannelUpdate(data)
-            "CHANNEL_DELETE" -> handleChannelDelete(data)
+            "CHANNEL_CREATE", "THREAD_CREATE" -> handleChannelUpdate(data)
+            "CHANNEL_UPDATE", "THREAD_UPDATE" -> handleChannelUpdate(data)
+            "CHANNEL_DELETE", "THREAD_DELETE" -> handleChannelDelete(data)
+            "THREAD_LIST_SYNC" -> handleThreadListSync(data)
         }
     }
 
@@ -75,5 +77,17 @@ class GuildEventHandler(
         val channel = json.decodeFromJsonElement<Channel>(data)
         entityStore.removeChannel(channel.id)
         guildStore.handleChannelDelete(channel)
+    }
+
+    private fun handleThreadListSync(data: JsonElement) {
+        val obj = data.jsonObject
+        val threads = obj["threads"]?.jsonArray?.map { json.decodeFromJsonElement<Channel>(it) } ?: emptyList()
+        val guildId = obj["guild_id"]?.jsonPrimitive?.content ?: return
+        
+        threads.forEach { 
+            val thread = it.copy(guild_id = guildId)
+            entityStore.updateChannel(thread)
+            guildStore.handleChannelCreateOrUpdate(thread)
+        }
     }
 }

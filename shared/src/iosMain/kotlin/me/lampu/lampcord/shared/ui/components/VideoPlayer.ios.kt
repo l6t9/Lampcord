@@ -15,7 +15,13 @@ import platform.UIKit.UIView
 @Composable
 actual fun VideoPlayer(
     url: String,
-    modifier: Modifier
+    modifier: Modifier,
+    loop: Boolean,
+    showControls: Boolean,
+    title: String?,
+    subtitle: String?,
+    compact: Boolean,
+    onFullscreenClick: (() -> Unit)?
 ) {
     val nsUrl = remember(url) { NSURL.URLWithString(url) }
     val player = remember(nsUrl) { nsUrl?.let { AVPlayer.playerWithURL(it) } }

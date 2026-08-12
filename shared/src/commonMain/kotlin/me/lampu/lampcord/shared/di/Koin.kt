@@ -23,7 +23,7 @@ val networkModule = module {
     single { createHttpClient() }
     single { DiscordClient(get(), get()) }
     single { RemoteAuthClient(get(), get()) }
-    single { GatewayManager(get(), get(), get()) }
+    single { GatewayManager(get(), get(), get(), get()) }
     single { VoiceGatewayManager(get(), get()) }
 }
 
@@ -37,7 +37,7 @@ val storeModule = module {
     single { PresenceStore(get()) }
     single { RelationshipStore(get(), get(), CoroutineScope(Dispatchers.Main)) }
     single { GuildStore(get(), get(), get(), get(), get(), get(), CoroutineScope(Dispatchers.Main)) }
-    single { MemberListStore(get(), get(), get()) }
+    single { MemberListStore(get(), get(), get(), get()) }
     single { MessageStore(get(), get(), get(), get(), CoroutineScope(Dispatchers.Main)) }
     single { TypingStore(CoroutineScope(Dispatchers.Main)) }
     single { VoiceStore(get(), get(), get(), CoroutineScope(Dispatchers.Main)) }
@@ -46,6 +46,7 @@ val storeModule = module {
     single { AutocompleteStore(get(), get(), get(), get()) }
     single { CommandStore(get(), get(), CoroutineScope(Dispatchers.Main)) }
     single { ExperimentStore() }
+    single { BadgeStore(get(), get(), CoroutineScope(Dispatchers.Main)) }
     single { FinderStore(get(), CoroutineScope(Dispatchers.Main)) }
     single { TokenStore(get()) }
     single { SettingsStore(get()) }
@@ -87,7 +88,7 @@ val gatewayModule = module {
     single {
         GatewayHandler(
             get(), get(), CoroutineScope(Dispatchers.Main),
-            get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()
+            get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()
         )
     }
 }

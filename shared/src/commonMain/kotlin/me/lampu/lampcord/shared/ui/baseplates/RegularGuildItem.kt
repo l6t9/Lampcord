@@ -49,7 +49,7 @@ fun RegularGuildItem(
         targetValue = if (isSelected || (isUnread && !isMuted) || showHoverIndicator) 1f else 0f,
         label = "indicatorAlpha"
     )
-
+    
     val backgroundColor by animateColorAsState(if (isSelected) selectedColor else unselectedColor)
     
     Box(

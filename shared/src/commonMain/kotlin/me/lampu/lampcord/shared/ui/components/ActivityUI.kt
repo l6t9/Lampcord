@@ -338,6 +338,19 @@ fun DefaultActivity(activity: Activity, modifier: Modifier = Modifier, compact: 
                     }
                 }
             }
+
+            activity.timestamps?.let { timestamps ->
+                val start = timestamps.start
+                val end = timestamps.end
+                if (start != null && end != null) {
+                    Spacer(Modifier.height(12.dp))
+                    MusicProgressBar(
+                        start = start,
+                        end = end,
+                        color = contentColor
+                    )
+                }
+            }
         }
     }
 }

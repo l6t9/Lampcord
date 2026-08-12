@@ -63,12 +63,14 @@ fun MemberItem(
         member.user ?: member.userId()?.let { userStore.getUser(it) }
     }
     
-    if (user == null) return
+    // Fallback if user object is still missing from Store
+    val displayUser = user ?: member.user ?: me.lampu.lampcord.shared.model.User(id = member.userId() ?: return)
+    
     val guildId = navigationStore.selectedGuild?.id
     val avatarUrl = member.avatar?.let {
-        "https://cdn.discordapp.com/guilds/$guildId/users/${user.id}/avatars/$it.png"
-    } ?: user.avatar?.let {
-        "https://cdn.discordapp.com/avatars/${user.id}/$it.png"
+        "https://cdn.discordapp.com/guilds/$guildId/users/${displayUser.id}/avatars/$it.png"
+    } ?: displayUser.avatar?.let {
+        "https://cdn.discordapp.com/avatars/${displayUser.id}/$it.png"
     }
 
     val roleColor = remember(member.roles, navigationStore.selectedGuild) {
@@ -78,18 +80,18 @@ fun MemberItem(
         if (highestRole != null && highestRole.color != 0) Color(highestRole.color or 0xFF000000.toInt()) else Color.Unspecified
     }
 
-    val contextMenuItems = remember(user, settingsStore.userSettings) {
+    val contextMenuItems = remember(displayUser, settingsStore.userSettings) {
         val items = mutableListOf(
-            ContextMenuItem("Profile", Icons.Filled.AccountCircle) { profileStore.showProfile(user.id, guildId) },
+            ContextMenuItem("Profile", Icons.Filled.AccountCircle) { profileStore.showProfile(displayUser.id, guildId) },
             ContextMenuItem("Mention", Icons.Rounded.AlternateEmail) {
                 val channelId = navigationStore.selectedChannel?.id ?: return@ContextMenuItem
                 val current = messageStore.draftMessages[channelId] ?: ""
-                messageStore.draftMessages[channelId] = "$current <@${user.id}> "
+                messageStore.draftMessages[channelId] = "$current <@${displayUser.id}> "
             },
             ContextMenuItem("Message", Icons.Filled.Share) { /* TODO */ }
         )
         if (settingsStore.userSettings?.developer_mode == true) {
-            items.add(ContextMenuItem("Copy User ID", Icons.Filled.Dns) { setClipboardText(user.id) })
+            items.add(ContextMenuItem("Copy User ID", Icons.Filled.Dns) { setClipboardText(displayUser.id) })
         }
         items
     }
@@ -98,16 +100,16 @@ fun MemberItem(
     var isHovered by remember { mutableStateOf(false) }
 
     val presences by presenceStore.presences.collectAsState()
-    val presence = remember(member.presence, presences[user.id]) {
-        member.presence ?: presences[user.id]
+    val presence = remember(member.presence, presences[displayUser.id]) {
+        member.presence ?: presences[displayUser.id]
     }
     val isStreaming = presence?.activities?.any { it.type == 1 } == true
     val isListening = presence?.activities?.any { it.type == 2 } == true
-    val isStatusVisible = presenceStore.isStatusVisible(user, presence, isStreaming)
+    val isStatusVisible = presenceStore.isStatusVisible(displayUser, presence, isStreaming)
     
     val isOffline = !isStatusVisible && !isListening
 
-    val nameplate = member.collectibles?.nameplate ?: user.collectibles?.nameplate
+    val nameplate = member.collectibles?.nameplate ?: displayUser.collectibles?.nameplate
 
     ContextMenu(
         items = contextMenuItems,
@@ -133,7 +135,7 @@ fun MemberItem(
     ) {
         Surface(
             modifier = Modifier.fillMaxWidth().height(44.dp),
-            onClick = { profileStore.showProfile(user.id, guildId, position = itemPosition) },
+            onClick = { profileStore.showProfile(displayUser.id, guildId, position = itemPosition) },
             color = Color.Transparent,
             shape = RoundedCornerShape(8.dp)
         ) {
@@ -157,17 +159,17 @@ fun MemberItem(
                         val currentUser by userStore.currentUser.collectAsState()
                         AvatarWithDecoration(
                             avatarUrl = avatarUrl,
-                            decorationData = member.avatar_decoration_data ?: user.avatar_decoration_data,
+                            decorationData = member.avatar_decoration_data ?: displayUser.avatar_decoration_data,
                             size = 32.dp,
-                            status = presenceStore.getUserStatus(user.id, currentUser?.id, settingsStore.userSettings?.status)
+                            status = presenceStore.getUserStatus(displayUser.id, currentUser?.id, settingsStore.userSettings?.status)
                         )
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             UsernameView(
-                                name = member.nick ?: user.global_name ?: user.username ?: "Unknown User",
-                                style = member.display_name_styles ?: user.display_name_styles,
+                                name = member.nick ?: displayUser.global_name ?: displayUser.username ?: "Unknown User",
+                                style = member.display_name_styles ?: displayUser.display_name_styles,
                                 baseStyle = MaterialTheme.typography.bodyMedium,
                                 color = if (roleColor != Color.Unspecified) roleColor else MaterialTheme.colorScheme.onSurface,
                                 maxLines = 1,
@@ -175,11 +177,11 @@ fun MemberItem(
                                 ignoreEffects = true,
                                 ignoreColors = true
                             )
-                            user.primary_guild?.let {
+                            displayUser.primary_guild?.let {
                                 Spacer(Modifier.width(4.dp))
                                 ClanTagView(it)
                             }
-                            UserTagView(user, modifier = Modifier.padding(start = 4.dp))
+                            UserTagView(displayUser, modifier = Modifier.padding(start = 4.dp))
                         }
                         
                         val activities = member.presence?.activities ?: emptyList()

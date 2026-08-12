@@ -274,6 +274,11 @@ fun ChannelHeader(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
+                    if (channel.type == 0 || channel.type == 5 || channel.type == 15) {
+                        IconButton(onClick = { navigationStore.isThreadPanelVisible = !navigationStore.isThreadPanelVisible }) {
+                            Icon(Icons.Filled.Tag, "Threads", modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
                     if (channel.type != 2 && channel.type != 13) {
                         IconButton(onClick = { navigationStore.isPinsVisible = true }) {
                             Icon(Icons.Filled.PushPin, "Pins", modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)

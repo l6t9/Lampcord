@@ -19,7 +19,13 @@ interface DiscordMedia {
 
     val mediaKind: MediaKind
         get() {
-            val type = (this as? Attachment)?.content_type ?: return MediaKind.OTHER
+            val type = when (this) {
+                is Attachment -> content_type
+                is EmbedVideo -> "video/"
+                is EmbedImage -> "image/"
+                else -> null
+            } ?: return MediaKind.OTHER
+            
             return when {
                 type.startsWith("image/") -> MediaKind.IMAGE
                 type.startsWith("video/") -> MediaKind.VIDEO
@@ -27,6 +33,13 @@ interface DiscordMedia {
                 else -> MediaKind.OTHER
             }
         }
+
+    fun isVideo(): Boolean = mediaKind == MediaKind.VIDEO
+    fun isImage(): Boolean = mediaKind == MediaKind.IMAGE
+    fun isGifv(): Boolean {
+        val u = (url ?: proxy_url)?.lowercase() ?: return false
+        return u.contains("klipy.com") || u.contains(".gifv") || u.contains("tenor.com")
+    }
 }
 
 enum class MediaKind {

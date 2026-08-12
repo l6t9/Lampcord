@@ -87,11 +87,21 @@ fun ProfileHeader(
 
         val presences by presenceStore.presences.collectAsState()
         val presence = profile.guild_member?.presence ?: presences[user.id]
-        val customStatus = presence?.activities?.find { it.type == 4 }
+        val activities = profile.activities.ifEmpty { presence?.activities ?: emptyList() }
+        val customStatus = activities.find { it.type == 4 }
+        val otherActivity = activities.find { it.type != 4 }
 
         if (customStatus != null) {
             UserActivity(
                 activity = customStatus,
+                compact = true,
+                modifier = Modifier
+                    .offset(y = if (isExpanded) (-50).dp else (-35).dp)
+                    .padding(start = 12.dp, bottom = 8.dp)
+            )
+        } else if (otherActivity != null) {
+            UserActivity(
+                activity = otherActivity,
                 compact = true,
                 modifier = Modifier
                     .offset(y = if (isExpanded) (-50).dp else (-35).dp)
@@ -123,7 +133,7 @@ fun ProfileHeader(
             }
         }
         Spacer(Modifier.height(8.dp))
-        UserBadges(badges = profile.badges + profile.guild_badges, flags = user.public_flags ?: 0)
+        UserBadges(userId = user.id, badges = profile.badges + profile.guild_badges)
         
         // Edit Profile Buttons
         if (user.id == currentUser?.id) {

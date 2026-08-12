@@ -51,12 +51,20 @@ data class ReadyPayload(
     val relationships: List<Relationship>? = null,
     val merged_members: List<List<Member>>? = null,
     val merged_presences: MergedPresences? = null,
-    val sessions: List<JsonElement>? = null,
+    val sessions: List<Session>? = null,
     val auth_token: String? = null,
     val analytics_token: String? = null,
     val country_code: String? = null,
     val friend_suggestion_count: Int? = null,
     val experiments: List<JsonElement>? = null
+)
+
+@Serializable
+data class Session(
+    val session_id: String,
+    val status: String? = null,
+    val activities: List<Activity> = emptyList(),
+    val active: Boolean = false
 )
 
 @Serializable
@@ -71,7 +79,9 @@ data class ReadState(
     var last_message_id: JsonElement? = null,
     var mention_count: Int = 0,
     val last_pin_timestamp: String? = null
-)
+) {
+    fun lastMessageId(): String? = last_message_id?.jsonPrimitive?.contentOrNull
+}
 
 @Serializable
 data class TypingStart(

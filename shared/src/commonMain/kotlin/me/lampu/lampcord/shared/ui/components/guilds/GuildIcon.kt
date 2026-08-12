@@ -19,6 +19,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -29,7 +30,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -42,9 +42,7 @@ import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.state.UserGuildSettingsStore
 import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.ui.baseplates.RegularGuildItem
-import me.lampu.lampcord.shared.ui.components.AsyncImage
-import me.lampu.lampcord.shared.ui.components.ContextMenu
-import me.lampu.lampcord.shared.ui.components.ContextMenuItem
+import me.lampu.lampcord.shared.ui.components.*
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.setClipboardText
 import org.koin.compose.koinInject
@@ -114,64 +112,69 @@ fun GuildIcon(
         items
     }
 
-    ContextMenu(items = contextMenuItems) {
-        Box(contentAlignment = Alignment.Center) {
-            RegularGuildItem(
-                isSelected = isSelected,
-                isUnread = isUnread,
-                isMuted = isMuted,
-                onClick = onClick,
-                selectedColor = if (iconUrl == null) MaterialTheme.colorScheme.primary else Color.Transparent,
-                unselectedColor = if (iconUrl == null) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent
-            ) {
-                if (iconUrl != null) {
-                    AsyncImage(
-                        model = iconUrl,
-                        contentDescription = guild.name,
-                        modifier = Modifier.fillMaxSize(),
-                        filterQuality = FilterQuality.Medium
-                    )
-                } else {
-                    val initials = remember(guild.name) {
-                        guild.name?.split(" ")?.mapNotNull { it.firstOrNull() }?.joinToString("") ?: "?"
-                    }
-                    Text(
-                        text = initials,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
-                        textAlign = TextAlign.Center,
-                        maxLines = 1,
-                        fontSize = if (initials.length > 3) 12.sp else 16.sp
-                    )
-                }
-            }
-
-            if (mentionCount > 0) {
-                Box(modifier = Modifier.size(48.dp)) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.error,
-                        shape = CircleShape,
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .offset(x = 3.dp, y = 3.dp)
-                            .height(18.dp)
-                            .widthIn(min = 18.dp),
-                        shadowElevation = 2.dp
+    ExpressiveTooltip(
+        anchorPosition = TooltipAnchorPosition.End,
+        content = tooltipText(guild.name ?: "Server"),
+        anchor = {
+            ContextMenu(items = contextMenuItems) {
+                Box(contentAlignment = Alignment.Center) {
+                    RegularGuildItem(
+                        isSelected = isSelected,
+                        isUnread = isUnread,
+                        isMuted = isMuted,
+                        onClick = onClick,
+                        selectedColor = if (iconUrl == null) MaterialTheme.colorScheme.primary else Color.Transparent,
+                        unselectedColor = if (iconUrl == null) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent
                     ) {
-                        Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 2.dp)) {
-                            Text(
-                                text = mentionCount.toString(),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onError,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp
+                        if (iconUrl != null) {
+                            AsyncImage(
+                                model = iconUrl,
+                                contentDescription = guild.name,
+                                modifier = Modifier.fillMaxSize()
                             )
+                        } else {
+                            val initials = remember(guild.name) {
+                                guild.name?.split(" ")?.mapNotNull { it.firstOrNull() }?.joinToString("") ?: "?"
+                            }
+                            Text(
+                                text = initials,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
+                                textAlign = TextAlign.Center,
+                                maxLines = 1,
+                                fontSize = if (initials.length > 3) 12.sp else 16.sp
+                            )
+                        }
+                    }
+
+                    if (mentionCount > 0) {
+                        Box(modifier = Modifier.size(48.dp)) {
+                            Surface(
+                                color = MaterialTheme.colorScheme.error,
+                                shape = CircleShape,
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .offset(x = 3.dp, y = 3.dp)
+                                    .height(18.dp)
+                                    .widthIn(min = 18.dp),
+                                shadowElevation = 2.dp
+                            ) {
+                                Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 2.dp)) {
+                                    Text(
+                                        text = mentionCount.toString(),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onError,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp
+                                    )
+                                }
+                            }
                         }
                     }
                 }
             }
         }
-    }
+    )
 
     if (showMuteDialog) {
         MuteServerDialog(

@@ -18,6 +18,7 @@ import me.lampu.lampcord.shared.model.UserProfile
 import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.DiscordMarkdownText
+import me.lampu.lampcord.shared.ui.components.UserActivity
 import org.koin.compose.koinInject
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -29,7 +30,8 @@ fun ProfileSections(
     theme: ProfileTheme,
     isExpanded: Boolean,
     showMemberSince: Boolean = false,
-    guildStore: GuildStore = koinInject()
+    guildStore: GuildStore = koinInject(),
+    presenceStore: PresenceStore = koinInject()
 ) {
     val user = profile.user
     val userMeta = profile.user_profile
@@ -81,6 +83,22 @@ fun ProfileSections(
                 }
             }
             Spacer(Modifier.height(16.dp))
+        }
+
+        val presences by presenceStore.presences.collectAsState()
+        val presence = profile.guild_member?.presence ?: presences[user.id]
+        val activities = (profile.activities.ifEmpty { presence?.activities ?: emptyList() }).filter { it.type != 4 }
+
+        if (activities.isNotEmpty()) {
+            Text("Activity", style = MaterialTheme.typography.labelSmall, color = theme.contentColor.copy(alpha = 0.8f))
+            Spacer(Modifier.height(8.dp))
+            activities.forEach { activity ->
+                UserActivity(
+                    activity = activity,
+                    compact = false
+                )
+                Spacer(Modifier.height(16.dp))
+            }
         }
 
         if (isExpanded) {

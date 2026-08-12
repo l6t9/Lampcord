@@ -1,23 +1,20 @@
 package me.lampu.lampcord.shared.ui.components.profiles
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.ProfileBadge
 import me.lampu.lampcord.shared.ui.components.AsyncImage
+import me.lampu.lampcord.shared.ui.components.ExpressiveTooltip
+import me.lampu.lampcord.shared.ui.components.tooltipText
 import kotlin.math.abs
 import kotlin.math.pow
-import kotlin.math.round
+import kotlin.math.roundToInt
 
 data class ProfileTheme(
     val backgroundBrush: Brush,
@@ -36,26 +33,28 @@ data class ProfileTheme(
 )
 
 @Composable
-fun UserBadges(badges: List<ProfileBadge>, flags: Int) {
-    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        if (badges.isNotEmpty()) {
-            badges.forEach { badge ->
-                val iconUrl = "https://cdn.discordapp.com/badge-icons/${badge.icon}.png"
-                AsyncImage(model = iconUrl, contentDescription = badge.description, modifier = Modifier.size(20.dp))
-            }
-        } else {
-            if (flags and (1 shl 0) != 0) Badge(Color(0xFF5865F2)) // Staff
-            if (flags and (1 shl 9) != 0) Badge(Color(0xFFFFCC00)) // Early Supporter
-            if (flags and (1 shl 17) != 0) Badge(Color(0xFF40C4FF)) // Developer
-            if (flags and (1 shl 22) != 0) Badge(Color(0xFF23A559)) // Active Developer
+fun UserBadges(userId: String, badges: List<ProfileBadge>) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(vertical = 4.dp)
+    ) {
+        badges.forEach { badge ->
+            val iconUrl = "https://cdn.discordapp.com/badge-icons/${badge.icon}.png?size=64"
+            ExpressiveTooltip(
+                anchorPosition = TooltipAnchorPosition.Above,
+                maxWidth = 150,
+                content = tooltipText(badge.description),
+                anchor = {
+                    AsyncImage(
+                        model = iconUrl,
+                        contentDescription = badge.description,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            )
         }
-    }
-}
-
-@Composable
-fun Badge(color: Color) {
-    Box(modifier = Modifier.size(18.dp).background(color.copy(alpha = 0.2f), CircleShape).padding(4.dp)) {
-        Box(modifier = Modifier.fillMaxSize().background(color, CircleShape))
+        me.lampu.lampcord.shared.ui.components.CustomBadgesView(userId, badgeSize = 22.dp, spacing = 4.dp)
     }
 }
 
@@ -107,9 +106,9 @@ object ModernProfileColors {
             else -> Triple(c, 0.0, x)
         }
         val m = l - c / 2.0
-        val rr = ((r1 + m) * 255.0).toInt().coerceIn(0, 255)
-        val rg = ((g1 + m) * 255.0).toInt().coerceIn(0, 255)
-        val rb = ((b1 + m) * 255.0).toInt().coerceIn(0, 255)
+        val rr = ((r1 + m) * 255.0).roundToInt().coerceIn(0, 255)
+        val rg = ((g1 + m) * 255.0).roundToInt().coerceIn(0, 255)
+        val rb = ((b1 + m) * 255.0).roundToInt().coerceIn(0, 255)
         return (0xFF shl 24) or (rr shl 16) or (rg shl 8) or rb
     }
 
@@ -120,9 +119,9 @@ object ModernProfileColors {
         val br = (b shr 16) and 0xFF
         val bg = (b shr 8) and 0xFF
         val bb = b and 0xFF
-        val rr = round(ar * (1 - t) + br * t).toInt().coerceIn(0, 255)
-        val rg = round(ag * (1 - t) + bg * t).toInt().coerceIn(0, 255)
-        val rb = round(ab * (1 - t) + bb * t).toInt().coerceIn(0, 255)
+        val rr = (ar * (1 - t) + br * t).roundToInt().coerceIn(0, 255)
+        val rg = (ag * (1 - t) + bg * t).roundToInt().coerceIn(0, 255)
+        val rb = (ab * (1 - t) + bb * t).roundToInt().coerceIn(0, 255)
         return 0xFF000000.toInt() or (rr shl 16) or (rg shl 8) or rb
     }
 }

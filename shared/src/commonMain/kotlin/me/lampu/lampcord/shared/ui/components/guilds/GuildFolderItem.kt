@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
+import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -39,7 +40,7 @@ import me.lampu.lampcord.shared.model.Guild
 import me.lampu.lampcord.shared.model.GuildFolder
 import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.icons.Icons
-import me.lampu.lampcord.shared.ui.components.AsyncImage
+import me.lampu.lampcord.shared.ui.components.*
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import org.koin.compose.koinInject
@@ -197,34 +198,40 @@ fun GuildFolderItem(
                 }
             )
 
-            Box(
-                modifier = Modifier
-                    .size(FolderIconSize)
-                    .hoverable(interactionSource)
-                    .clickable(
-                        interactionSource = interactionSource,
-                        indication = null,
-                        onClick = { expanded = !expanded }
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .clip(CircleShape)
-                        .background(folderBgColor)
-                )
-                if (expanded) {
-                    Icon(
-                        imageVector = Icons.Filled.FolderOpen,
-                        contentDescription = folder.name ?: "Folder",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(28.dp)
-                    )
-                } else {
-                    FolderPreviewGrid(folder)
+            ExpressiveTooltip(
+                anchorPosition = TooltipAnchorPosition.End,
+                content = tooltipText(folder.name ?: "Folder"),
+                interactionSource = interactionSource,
+                anchor = {
+                    Box(
+                        modifier = Modifier
+                            .size(FolderIconSize)
+                            .clickable(
+                                interactionSource = interactionSource,
+                                indication = null,
+                                onClick = { expanded = !expanded }
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clip(CircleShape)
+                                .background(folderBgColor)
+                        )
+                        if (expanded) {
+                            Icon(
+                                imageVector = Icons.Filled.FolderOpen,
+                                contentDescription = folder.name ?: "Folder",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(28.dp)
+                            )
+                        } else {
+                            FolderPreviewGrid(folder)
+                        }
+                    }
                 }
-            }
+            )
             
             if (mentionCount > 0 && !expanded) {
                 Box(modifier = Modifier.size(FolderIconSize)) {

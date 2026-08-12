@@ -25,7 +25,8 @@ class NavigationStore(
     private val selectionStore: SelectionStore,
     private val finderStore: FinderStore,
     private val notifier: MessageNotifier?,
-    private val scope: CoroutineScope
+    private val scope: CoroutineScope,
+    val onChannelSelected: () -> Unit = {}
 ) {
     var selectedGuild by selectionStore::selectedGuild
     var selectedChannel by selectionStore::selectedChannel
@@ -45,6 +46,7 @@ class NavigationStore(
     var isChannelsAndRolesVisible by mutableStateOf(false)
     var isMediaPickerVisible by mutableStateOf(false)
     var isPinsVisible by mutableStateOf(false)
+    var isThreadPanelVisible by mutableStateOf(false)
 
     var isAttachmentViewerVisible by mutableStateOf(false)
     var attachmentViewerItems by mutableStateOf<List<me.lampu.lampcord.shared.model.DiscordMedia>>(emptyList())
@@ -162,9 +164,10 @@ class NavigationStore(
         isChannelsAndRolesVisible = false
         isServerSettingsVisible = false
         channelLoadingJob?.cancel()
-        selectedChannel = channel
+selectedChannel = channel
         selectedThread = null
         notifier?.dismissChannelNotifications(channel.id)
+        onChannelSelected()
 
         // Pre-size the member list store based on expected list ID
         val guild = selectedGuild
@@ -197,7 +200,22 @@ class NavigationStore(
             if (channel.type == 15) {
                 isForumLoading = true
                 try {
-                    // Logic for forum threads if needed
+                    val searchThreads = discordClient.searchThreads(channel.id)
+                    searchThreads?.threads?.forEach { 
+                        guildStore.handleChannelCreateOrUpdate(it.copy(guild_id = channel.guild_id))
+                    }
+                    
+                    val activeThreads = discordClient.getActiveThreads(channel.id)
+                    activeThreads?.threads?.forEach { 
+                        guildStore.handleChannelCreateOrUpdate(it.copy(guild_id = channel.guild_id))
+                    }
+                    
+                    val archivedThreads = discordClient.getArchivedPublicThreads(channel.id, 50)
+                    archivedThreads?.threads?.forEach {
+                        guildStore.handleChannelCreateOrUpdate(it.copy(guild_id = channel.guild_id))
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
                 } finally {
                     isForumLoading = false
                 }
@@ -229,6 +247,29 @@ class NavigationStore(
             }
             messageStore.addMessages(channelMessages)
             channelMessages.firstOrNull()?.let { readStateStore.ackMessage(channel.id, it.id) }
+        }
+    }
+
+    fun selectChannelById(channelId: String) {
+        val existing = guildStore.allGuildChannels.value[channelId] ?: guildStore.privateChannels.value.find { it.id == channelId }
+        if (existing != null) {
+            if (existing.type in listOf(10, 11, 12)) {
+                selectThread(existing)
+            } else {
+                selectChannel(existing)
+            }
+        } else {
+            scope.launch {
+                val fetched = discordClient.getChannel(channelId)
+                if (fetched != null) {
+                    guildStore.handleChannelCreateOrUpdate(fetched)
+                    if (fetched.type in listOf(10, 11, 12)) {
+                        selectThread(fetched)
+                    } else {
+                        selectChannel(fetched)
+                    }
+                }
+            }
         }
     }
 

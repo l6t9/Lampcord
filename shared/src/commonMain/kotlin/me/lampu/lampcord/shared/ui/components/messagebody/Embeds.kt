@@ -44,7 +44,13 @@ import org.koin.compose.koinInject
 @Composable
 fun GifvView(video: EmbedVideo, modifier: Modifier = Modifier) {
     Box(modifier = modifier.clip(RoundedCornerShape(8.dp)).background(Color.Black)) {
-        VideoPlayer(url = video.url ?: "", modifier = Modifier.fillMaxSize())
+        VideoPlayer(
+            url = video.url ?: "",
+            loop = true,
+            showControls = false,
+            compact = true,
+            modifier = Modifier.fillMaxSize()
+        )
     }
 }
 
@@ -104,6 +110,8 @@ fun EmbedView(
                                 AttachmentImage(
                                     media = thumb,
                                     isMosaic = true,
+                                    title = embed.title,
+                                    subtitle = embed.provider?.name,
                                     onClick = { navigationStore.openAttachmentViewer(listOf(thumb), 0) }
                                 )
                             }
@@ -128,6 +136,8 @@ fun EmbedView(
                 embed.image?.let { image ->
                     AttachmentImage(
                         media = image,
+                        title = embed.title,
+                        subtitle = embed.provider?.name,
                         onClick = { navigationStore.openAttachmentViewer(listOf(image), 0) }
                     )
                     Spacer(Modifier.height(8.dp))

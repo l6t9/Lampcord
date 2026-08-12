@@ -8,5 +8,9 @@ expect fun VideoPlayer(
     url: String,
     modifier: Modifier = Modifier,
     loop: Boolean = false,
-    showControls: Boolean = true
+    showControls: Boolean = true,
+    title: String? = null,
+    subtitle: String? = null,
+    compact: Boolean = false,
+    onFullscreenClick: (() -> Unit)? = null
 )

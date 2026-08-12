@@ -47,6 +47,7 @@ import me.lampu.lampcord.shared.ui.components.FriendsList
 import me.lampu.lampcord.shared.ui.components.MemberList
 import me.lampu.lampcord.shared.ui.components.QuickSwitcher
 import me.lampu.lampcord.shared.ui.components.Sidebar
+import me.lampu.lampcord.shared.ui.components.ThreadPanel
 import me.lampu.lampcord.shared.ui.components.VoiceArea
 import me.lampu.lampcord.shared.ui.components.chat.SearchScreen
 import me.lampu.lampcord.shared.ui.components.guilds.ChannelsAndRoles
@@ -141,6 +142,17 @@ fun DesktopBaseplate(
             // Member List / Profile (End Panel)
             val showMemberList = activeChannel?.guild_id != null && activeChannel.type != 15
             val showDMProfile = activeChannel?.type == 1
+
+            if (navigationStore.isThreadPanelVisible) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxHeight(),
+                    shape = MaterialTheme.shapes.medium,
+                    tonalElevation = 2.dp
+                ) {
+                    ThreadPanel()
+                }
+            }
 
             if (showMemberList || showDMProfile) {
                 Column(

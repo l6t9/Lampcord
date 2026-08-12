@@ -7,7 +7,8 @@ import me.lampu.lampcord.shared.model.*
 class MemberListStore(
     private val gatewayManager: GatewayManager,
     private val selectionStore: SelectionStore,
-    private val userStore: UserStore
+    private val userStore: UserStore,
+    private val presenceStore: PresenceStore
 ) {
     private val listCache = mutableMapOf<String, MemberListCacheEntry>()
 
@@ -89,7 +90,18 @@ class MemberListStore(
                         
                         item.member?.let { m ->
                             val userId = m.userId()
-                            if (userId != null) userStore.cacheMember(update.guild_id, userId, m)
+                            if (userId != null) {
+                                userStore.cacheMember(update.guild_id, userId, m)
+                                val pWithId = if (m.presence != null) {
+                                    val p = m.presence
+                                    if (p.user?.id == null && p.user_id == null) {
+                                        p.copy(user_id = userId, guild_id = update.guild_id)
+                                    } else p.copy(guild_id = update.guild_id)
+                                } else {
+                                    PresenceUpdate(user_id = userId, guild_id = update.guild_id, status = "offline")
+                                }
+                                presenceStore.handlePresenceUpdate(pWithId)
+                            }
                         }
 
                         if (index < targetItems.size) {
@@ -105,7 +117,18 @@ class MemberListStore(
                     val item = op.item ?: continue
                     item.member?.let { m ->
                         val userId = m.userId()
-                        if (userId != null) userStore.cacheMember(update.guild_id, userId, m)
+                        if (userId != null) {
+                            userStore.cacheMember(update.guild_id, userId, m)
+                            val pWithId = if (m.presence != null) {
+                                val p = m.presence
+                                if (p.user?.id == null && p.user_id == null) {
+                                    p.copy(user_id = userId, guild_id = update.guild_id)
+                                } else p.copy(guild_id = update.guild_id)
+                            } else {
+                                PresenceUpdate(user_id = userId, guild_id = update.guild_id, status = "offline")
+                            }
+                            presenceStore.handlePresenceUpdate(pWithId)
+                        }
                     }
                     if (index <= targetItems.size) targetItems.add(index, item)
                 }
@@ -114,7 +137,18 @@ class MemberListStore(
                     val item = op.item ?: continue
                     item.member?.let { m ->
                         val userId = m.userId()
-                        if (userId != null) userStore.cacheMember(update.guild_id, userId, m)
+                        if (userId != null) {
+                            userStore.cacheMember(update.guild_id, userId, m)
+                            val pWithId = if (m.presence != null) {
+                                val p = m.presence
+                                if (p.user?.id == null && p.user_id == null) {
+                                    p.copy(user_id = userId, guild_id = update.guild_id)
+                                } else p.copy(guild_id = update.guild_id)
+                            } else {
+                                PresenceUpdate(user_id = userId, guild_id = update.guild_id, status = "offline")
+                            }
+                            presenceStore.handlePresenceUpdate(pWithId)
+                        }
                     }
                     if (index < targetItems.size) targetItems[index] = item
                 }
