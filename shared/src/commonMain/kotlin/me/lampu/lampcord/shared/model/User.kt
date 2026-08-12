@@ -70,6 +70,8 @@ data class UserProfile(
     val guild_id: String? = null,
     val guild_member: Member? = null,
     val guild_member_profile: UserProfileMetadata? = null,
+    val activities: List<Activity> = emptyList(),
+    val client_status: ClientStatus? = null,
     val badges: List<ProfileBadge> = emptyList(),
     val guild_badges: List<ProfileBadge> = emptyList(),
     val mutual_guilds: List<MutualGuild>? = null,

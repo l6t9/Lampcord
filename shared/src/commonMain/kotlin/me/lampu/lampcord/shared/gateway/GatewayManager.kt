@@ -51,6 +51,7 @@ import kotlin.time.Duration.Companion.seconds
 class GatewayManager(
     private val client: HttpClient,
     private val discordClient: DiscordClient,
+    private val readStateStore: me.lampu.lampcord.shared.state.ReadStateStore? = null,
     private val json: Json = Json { 
         ignoreUnknownKeys = true 
         explicitNulls = false
@@ -325,6 +326,11 @@ class GatewayManager(
             put("cpu_core_count", JsonPrimitive(getCpuCoreCount()))
         }
 
+        val highestLastMessageId = readStateStore?.readStates?.value?.values
+            ?.mapNotNull { it.lastMessageId() }
+            ?.maxByOrNull { it.toLongOrNull() ?: 0L }
+            ?.toLongOrNull() ?: 0L
+
         val identify = Identify(
             token = token,
             properties = properties,
@@ -333,7 +339,7 @@ class GatewayManager(
             compress = false, 
             client_state = IdentifyClientState(
                 guild_hashes = emptyMap(),
-                highest_last_message_id = 0,
+                highest_last_message_id = highestLastMessageId,
                 read_state_version = 0,
                 user_guild_settings_version = -1
             )

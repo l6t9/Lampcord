@@ -36,6 +36,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
+import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -161,13 +162,25 @@ fun AccountPanel(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Text(
-                        text = user.username ?: "",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    
+                    val presences by presenceStore.presences.collectAsState()
+                    val presence = presences[user.id]
+                    val activity = presence?.activities?.firstOrNull()
+
+                    if (activity != null) {
+                        UserActivity(
+                            activity = activity,
+                            compact = true
+                        )
+                    } else {
+                        Text(
+                            text = user.username ?: "",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
                 
                 ButtonGroup(
@@ -432,6 +445,13 @@ fun CustomStatusDialog(
             }
         },
         confirmButton = {
+            ExpressiveTooltip(
+                tooltipString = "Save changes",
+                anchorPosition = TooltipAnchorPosition.End,
+                content = {
+                    tooltipText("Save changes")
+                }
+            )
             Button(
                 onClick = { onSave(text) },
                 modifier = Modifier.fillMaxWidth(),
@@ -441,6 +461,13 @@ fun CustomStatusDialog(
             }
         },
         dismissButton = {
+            ExpressiveTooltip(
+                tooltipString = "Close without saving",
+                anchorPosition = TooltipAnchorPosition.End,
+                content = {
+                    tooltipText("Close without saving")
+                }
+            )
             TextButton(
                 onClick = onDismiss,
                 modifier = Modifier.fillMaxWidth()

@@ -27,6 +27,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -47,6 +48,7 @@ import me.lampu.lampcord.shared.state.ProfileStore
 import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.ui.theme.rememberPlatformColorScheme
 import org.koin.compose.koinInject
+import androidx.compose.material3.LocalContentColor
 
 @Composable
 fun UserProfileDialog(
@@ -192,7 +194,7 @@ fun ProfileCard(
                 bodyOverlayColor = bodyOverlayColor,
                 cardColor = cardColor,
                 tagColor = profileSeed.copy(alpha = 0.4f),
-                contentColor = if (isLightMode) Color.Black else Color.White,
+                contentColor = Color.White,
                 cutoutColor = bg1,
                 pfpBorderBrush = Brush.verticalGradient(listOf(Color(primary or 0xFF000000.toInt()), Color(accent or 0xFF000000.toInt()))),
                 primaryAccent = Color(primary or 0xFF000000.toInt()),
@@ -236,16 +238,18 @@ fun ProfileCard(
                 .background(theme.backgroundBrush)
         ) {
             // Scrollable Body
-            Column(
-                modifier = Modifier
-                    .then(if (isSidebar) Modifier.weight(1f) else Modifier.wrapContentHeight())
-                    .verticalScroll(rememberScrollState())
-            ) {
-                ProfileBanner(profile, theme, isExpanded)
+            CompositionLocalProvider(LocalContentColor provides theme.contentColor) {
+                Column(
+                    modifier = Modifier
+                        .then(if (isSidebar) Modifier.weight(1f) else Modifier.wrapContentHeight())
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    ProfileBanner(profile, theme, isExpanded)
 
-                Column(modifier = Modifier.padding(start = if (isExpanded) 16.dp else 10.dp, end = 16.dp)) {
-                    ProfileHeader(profile, theme, isExpanded, onExpand)
-                    ProfileSections(profile, theme, isExpanded, showMemberSince)
+                    Column(modifier = Modifier.padding(start = if (isExpanded) 16.dp else 10.dp, end = 16.dp)) {
+                        ProfileHeader(profile, theme, isExpanded, onExpand)
+                        ProfileSections(profile, theme, isExpanded, showMemberSince)
+                    }
                 }
             }
 

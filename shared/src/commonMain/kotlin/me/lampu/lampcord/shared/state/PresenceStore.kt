@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.update
 import me.lampu.lampcord.shared.api.DiscordClient
 import me.lampu.lampcord.shared.model.PresenceUpdate
 import me.lampu.lampcord.shared.model.ReadyPayload
+import me.lampu.lampcord.shared.model.Session
 
 class PresenceStore(private val discordClient: DiscordClient) {
     private val _presences = MutableStateFlow<Map<String, PresenceUpdate>>(emptyMap())
@@ -24,12 +25,33 @@ class PresenceStore(private val discordClient: DiscordClient) {
                 newPresences[userId] = update
             }
         }
+        ready.merged_members?.forEach { members ->
+            members.forEach { member ->
+                val userId = member.user?.id ?: member.userId() ?: return@forEach
+                member.presence?.let { p ->
+                    val pWithId = if (p.user?.id == null && p.user_id == null) {
+                        p.copy(user_id = userId)
+                    } else p
+                    newPresences[userId] = pWithId
+                }
+            }
+        }
         _presences.value = newPresences
     }
 
     fun handlePresenceUpdate(update: PresenceUpdate) {
         val userId = update.user?.id ?: update.user_id ?: return
         _presences.update { it + (userId to update) }
+    }
+
+    fun handleSessions(userId: String, sessions: List<Session>) {
+        val activeSession = sessions.find { it.active } ?: sessions.firstOrNull() ?: return
+        val existing = _presences.value[userId]
+        val newPresence = (existing ?: PresenceUpdate(user_id = userId)).copy(
+            status = activeSession.status ?: existing?.status ?: "online",
+            activities = activeSession.activities
+        )
+        _presences.update { it + (userId to newPresence) }
     }
 
     fun clear() {

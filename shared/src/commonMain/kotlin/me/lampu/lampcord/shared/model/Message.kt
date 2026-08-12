@@ -63,6 +63,7 @@ data class Message(
     val components: List<MessageComponent>? = null,
     val interaction: MessageInteraction? = null,
     val interaction_metadata: MessageInteractionMetadata? = null,
+    val thread: Channel? = null,
     val isPending: Boolean = false,
     val sendError: String? = null,
     val hit: Boolean = false,

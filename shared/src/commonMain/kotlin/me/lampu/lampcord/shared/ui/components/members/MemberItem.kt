@@ -180,6 +180,7 @@ fun MemberItem(
                                 ClanTagView(it)
                             }
                             UserTagView(user, modifier = Modifier.padding(start = 4.dp))
+                            me.lampu.lampcord.shared.ui.components.CustomBadgesView(user.id, modifier = Modifier.padding(start = 2.dp))
                         }
                         
                         val activities = member.presence?.activities ?: emptyList()

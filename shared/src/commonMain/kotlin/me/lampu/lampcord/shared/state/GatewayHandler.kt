@@ -15,6 +15,7 @@ class GatewayHandler(
     private val settingsStore: SettingsStore,
     private val userGuildSettingsStore: UserGuildSettingsStore,
     private val guildStore: GuildStore,
+    private val messageStore: MessageStore,
     private val readStateStore: ReadStateStore,
     private val experimentStore: ExperimentStore,
     private val relationshipStore: RelationshipStore,
@@ -30,6 +31,7 @@ class GatewayHandler(
             "RESUMED" -> {
                 navigationStore.isConnected = true
                 navigationStore.isConnecting = false
+                messageStore.handleConnected()
             }
             else -> dispatcher.dispatch(payload)
         }
@@ -75,6 +77,10 @@ class GatewayHandler(
                 ready.users?.forEach { userStore.handleUserUpdate(it) }
 
                 presenceStore.handleReady(ready)
+                ready.sessions?.let { sessions ->
+                    user?.id?.let { presenceStore.handleSessions(it, sessions) }
+                }
+
                 readStateStore.handleReady(ready)
                 experimentStore.handleReady(ready.experiments)
                 ready.relationships?.let { relationshipStore.handleReady(it) }
@@ -88,6 +94,7 @@ class GatewayHandler(
                 
                 navigationStore.isConnected = true
                 navigationStore.isConnecting = false
+                messageStore.handleConnected()
 
                 if (navigationStore.selectedGuild == null && navigationStore.selectedChannel == null && !navigationStore.isFriendsSelected) {
                     navigationStore.selectHome()

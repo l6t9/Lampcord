@@ -67,7 +67,8 @@ class UserStore {
                 communication_disabled_until = member.communication_disabled_until ?: existing.communication_disabled_until,
                 deaf = member.deaf,
                 mute = member.mute,
-                flags = member.flags
+                flags = member.flags,
+                presence = member.presence ?: existing.presence
             )
                 ?: member
             

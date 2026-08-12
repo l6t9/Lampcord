@@ -148,7 +148,10 @@ fun DMItem(
                         Spacer(Modifier.width(4.dp))
                         ClanTagView(it)
                     }
-                    recipient?.let { UserTagView(it, modifier = Modifier.padding(start = 4.dp)) }
+                    recipient?.let { 
+                        UserTagView(it, modifier = Modifier.padding(start = 4.dp)) 
+                        CustomBadgesView(it.id, modifier = Modifier.padding(start = 2.dp))
+                    }
                 }
             }
         }

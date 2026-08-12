@@ -9,7 +9,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -19,29 +21,45 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.number
+import kotlinx.datetime.toLocalDateTime
+import me.lampu.lampcord.shared.api.DiscordClient
 import me.lampu.lampcord.shared.model.Channel
 import me.lampu.lampcord.shared.state.GuildStore
 import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.ui.icons.Icons
 import org.koin.compose.koinInject
+import kotlin.time.Instant
 
 @Composable
 fun ForumPostList(
     navigationStore: NavigationStore = koinInject(),
-    guildStore: GuildStore = koinInject()
+    guildStore: GuildStore = koinInject(),
+    discordClient: DiscordClient = koinInject()
 ) {
     val forumChannel = navigationStore.selectedChannel ?: return
     val allChannels by guildStore.allGuildChannels.collectAsState()
-    val forumThreads = remember(forumChannel.id, allChannels.size) { guildStore.getForumThreads(forumChannel.id) }
+    val forumThreads = remember(forumChannel.id, allChannels.size) { 
+        guildStore.getForumThreads(forumChannel.id)
+            .sortedByDescending { it.lastMessageId() ?: it.id } 
+    }
+
+    var showNewPostDialog by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         // Forum Header
@@ -68,7 +86,7 @@ fun ForumPostList(
                 
                 Spacer(Modifier.height(16.dp))
                 
-                Button(onClick = { /* TODO: New Post */ }) {
+                Button(onClick = { showNewPostDialog = true }) {
                     Icon(Icons.Filled.Add, null)
                     Spacer(Modifier.width(8.dp))
                     Text("New Post")
@@ -91,6 +109,104 @@ fun ForumPostList(
                 ) {
                     items(forumThreads, key = { it.id }) { thread ->
                         ForumPostItem(thread, forumChannel, onClick = { navigationStore.selectThread(thread) })
+                    }
+                }
+            }
+        }
+    }
+
+    if (showNewPostDialog) {
+        NewPostDialog(
+            onDismiss = { showNewPostDialog = false },
+            forumChannelId = forumChannel.id
+        )
+    }
+}
+
+@Composable
+fun NewPostDialog(
+    onDismiss: () -> Unit,
+    forumChannelId: String,
+    discordClient: DiscordClient = koinInject(),
+    guildStore: GuildStore = koinInject(),
+    navigationStore: NavigationStore = koinInject()
+) {
+    var title by remember { mutableStateOf("") }
+    var content by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surface,
+            modifier = Modifier.fillMaxWidth().padding(16.dp)
+        ) {
+            Column(modifier = Modifier.padding(24.dp)) {
+                Text(
+                    text = "New Post",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                Spacer(Modifier.height(16.dp))
+                
+                TextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    label = { Text("Title") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    enabled = !isLoading
+                )
+                
+                Spacer(Modifier.height(12.dp))
+                
+                TextField(
+                    value = content,
+                    onValueChange = { content = it },
+                    label = { Text("Message") },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 100.dp),
+                    enabled = !isLoading
+                )
+                
+                Spacer(Modifier.height(24.dp))
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    androidx.compose.material3.TextButton(onClick = onDismiss, enabled = !isLoading) {
+                        Text("Cancel")
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Button(
+                        onClick = {
+                            if (title.isNotBlank() && content.isNotBlank()) {
+                                isLoading = true
+                                scope.launch {
+                                    val thread = discordClient.createThread(forumChannelId, title, content)
+                                    if (thread != null) {
+                                        guildStore.handleChannelCreateOrUpdate(thread)
+                                        navigationStore.selectThread(thread)
+                                        onDismiss()
+                                    } else {
+                                        isLoading = false
+                                    }
+                                }
+                            }
+                        },
+                        enabled = !isLoading && title.isNotBlank() && content.isNotBlank()
+                    ) {
+                        if (isLoading) {
+                            androidx.compose.material3.CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text("Post")
+                        }
                     }
                 }
             }
@@ -123,9 +239,20 @@ fun ForumPostItem(thread: Channel, forumChannel: Channel, onClick: () -> Unit) {
                 Spacer(Modifier.height(4.dp))
                 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    // This would normally show author and tags
+                    val lastActiveId = thread.lastMessageId()
+                    val lastActiveText = if (lastActiveId != null) {
+                        try {
+                            val timestamp = (lastActiveId.toLong() shr 22) + 1420070400000L
+                            val instant = Instant.fromEpochMilliseconds(timestamp)
+                            val local = instant.toLocalDateTime(TimeZone.currentSystemDefault())
+                            "Last active ${local.day}/${local.month.number}/${local.year}"
+                        } catch (e: Exception) {
+                            "Last active $lastActiveId"
+                        }
+                    } else "No activity"
+
                     Text(
-                        text = "Last active ${thread.last_message_id ?: "never"}",
+                        text = lastActiveText,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

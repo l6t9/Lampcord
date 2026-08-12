@@ -24,15 +24,9 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.ButtonGroup
-import androidx.compose.material3.ButtonGroupDefaults
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.ToggleButton
-import androidx.compose.material3.ToggleButtonDefaults
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -107,6 +101,7 @@ fun MessageItem(
     var isHovered by remember { mutableStateOf(false) }
     var showReactionPicker by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showCreateThreadDialog by remember { mutableStateOf(false) }
     
     val currentUser by userStore.currentUser.collectAsState()
     val userSettings = settingsStore.userSettings
@@ -137,6 +132,9 @@ fun MessageItem(
                 val channelId = message.channel_id
                 val current = messageStore.draftMessages[channelId] ?: ""
                 messageStore.draftMessages[channelId] = "$current <@${message.author?.id}> "
+            },
+            ContextMenuItem("Create Thread", Icons.Filled.Tag) {
+                showCreateThreadDialog = true
             }
         )
         
@@ -340,6 +338,7 @@ fun MessageItem(
                                         ignoreEffects = !isHovered,
                                         ignoreColors = if (isDm) !isHovered else true
                                     )
+                                    me.lampu.lampcord.shared.ui.components.CustomBadgesView(message.author.id)
                                     message.author.primary_guild?.let {
                                         Spacer(Modifier.width(4.dp))
                                         ClanTagView(it)
@@ -428,6 +427,10 @@ fun MessageItem(
                                 ForwardedMessage(message)
                             }
 
+                            if (message.thread != null) {
+                                ThreadStarterBar(message.thread)
+                            }
+
                             ReactionsView(message)
                         }
                     }
@@ -450,6 +453,7 @@ fun MessageItem(
                     messageStore.editingMessage = message
                 })
             }
+            list.add(Triple(Icons.Filled.Tag, "Create Thread") { showCreateThreadDialog = true })
             list.add(Triple(Icons.Filled.MoreHoriz, "More") { /* TODO */ })
             list
         }
@@ -553,6 +557,74 @@ fun MessageItem(
                     showDeleteDialog = false
                 }
             )
+        }
+
+        if (showCreateThreadDialog) {
+            CreateThreadDialog(
+                onDismiss = { showCreateThreadDialog = false },
+                onConfirm = { name ->
+                    scope.launch {
+                        val thread = discordClient.createThreadFromMessage(message.channel_id, message.id, name)
+                        if (thread != null) {
+                            guildStore.handleChannelCreateOrUpdate(thread)
+                            navigationStore.selectThread(thread)
+                            showCreateThreadDialog = false
+                        }
+                    }
+                }
+            )
+        }
+    }
+}
+
+@Composable
+fun CreateThreadDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    var name by remember { mutableStateOf("") }
+    
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surface,
+            modifier = Modifier.fillMaxWidth().padding(16.dp)
+        ) {
+            Column(modifier = Modifier.padding(24.dp)) {
+                Text(
+                    text = "Create Thread",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                Spacer(Modifier.height(16.dp))
+                
+                TextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Thread Name") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                
+                Spacer(Modifier.height(24.dp))
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancel")
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Button(
+                        onClick = { if (name.isNotBlank()) onConfirm(name) },
+                        enabled = name.isNotBlank()
+                    ) {
+                        Text("Create")
+                    }
+                }
+            }
         }
     }
 }

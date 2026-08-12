@@ -3,6 +3,7 @@ package me.lampu.lampcord.shared.api
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.cookies.HttpCookies
 import io.ktor.client.plugins.websocket.WebSockets
@@ -63,6 +64,7 @@ import me.lampu.lampcord.shared.model.TrendingGifCategoriesResponse
 import me.lampu.lampcord.shared.model.UserGuildSettings
 import me.lampu.lampcord.shared.model.UserProfile
 import me.lampu.lampcord.shared.model.UserSettings
+import me.lampu.lampcord.shared.utils.Logging
 import me.lampu.lampcord.shared.utils.getCurrentTimeMillis
 import me.lampu.lampcord.shared.utils.getDeviceName
 import me.lampu.lampcord.shared.utils.getOsVersion
@@ -197,7 +199,7 @@ class DiscordClient(
             }.body()
             response.fingerprint
         } catch (e: Exception) {
-            println("Error fetching fingerprint: ${e.message}")
+            Logging.e("Gateway", "Error fetching fingerprint: ${e.message}")
             null
         }
     }
@@ -214,11 +216,11 @@ class DiscordClient(
             if (response.status.isSuccess() || response.status.value == 400 || response.status.value == 401) {
                 json.decodeFromString<LoginResponse>(responseBody)
             } else {
-                println("Login failed with status: ${response.status}, body: $responseBody")
+                Logging.e("Auth", "Login failed with status: ${response.status}, body: $responseBody")
                 null
             }
         } catch (e: Exception) {
-            println("Error logging in: ${e.message}")
+            Logging.e("Auth", "Error logging in: ${e.message}")
             null
         }
     }
@@ -234,11 +236,11 @@ class DiscordClient(
                 response.body<LoginResponse>()
             } else {
                 val errorBody = response.bodyAsText()
-                println("MFA failed with status: ${response.status}, body: $errorBody")
+                Logging.e("Auth", "MFA failed with status: ${response.status}, body: $errorBody")
                 null
             }
         } catch (e: Exception) {
-            println("Error verifying MFA: ${e.message}")
+            Logging.e("Auth", "Error verifying MFA: ${e.message}")
             null
         }
     }
@@ -342,7 +344,7 @@ class DiscordClient(
                 response.status.isSuccess()
             }
         } catch (e: Exception) {
-            println("Error sending message: ${e.message}")
+            Logging.e("Messages", "Error sending message: ${e.message}")
             false
         }
     }
@@ -354,7 +356,7 @@ class DiscordClient(
             }
             if (response.status.isSuccess()) response.body() else null
         } catch (e: Exception) {
-            println("Error fetching guild: ${e.message}")
+            Logging.e("Guild", "Error fetching guild: ${e.message}")
             null
         }
     }
@@ -368,7 +370,7 @@ class DiscordClient(
             }
             response.status.isSuccess()
         } catch (e: Exception) {
-            println("Error updating guild: ${e.message}")
+            Logging.e("Guild", "Error updating guild: ${e.message}")
             false
         }
     }
@@ -520,13 +522,74 @@ class DiscordClient(
                 response.body()
             } else {
                 if (response.status.value == 429) {
-                    println("Rate limited while fetching channels for guild $guildId")
+                    Logging.w("RateLimit", "Rate limited while fetching channels for guild $guildId")
                 }
                 emptyList()
             }
         } catch (e: Exception) {
-            println("Error fetching channels: ${e.message}")
+            Logging.e("Guild", "Error fetching channels: ${e.message}")
             emptyList()
+        }
+    }
+
+    suspend fun getChannel(channelId: String): Channel? {
+        return try {
+            val response = httpClient.get("$apiBase/channels/$channelId") {
+                standardHeaders()
+            }
+            if (response.status.isSuccess()) response.body() else null
+        } catch (e: Exception) {
+            Logging.e("Channel", "Error fetching channel: ${e.message}")
+            null
+        }
+    }
+
+    suspend fun createThread(
+        channelId: String,
+        name: String,
+        content: String,
+        appliedTags: List<String> = emptyList()
+    ): Channel? {
+        return try {
+            val response = httpClient.post("$apiBase/channels/$channelId/threads") {
+                standardHeaders()
+                contentType(ContentType.Application.Json)
+                setBody(buildJsonObject {
+                    put("name", name)
+                    put("auto_archive_duration", 4320) // 3 days
+                    put("message", buildJsonObject {
+                        put("content", content)
+                    })
+                    put("applied_tags", buildJsonArray {
+                        appliedTags.forEach { add(it) }
+                    })
+                })
+            }
+            if (response.status.isSuccess()) response.body() else null
+        } catch (e: Exception) {
+            Logging.e("Thread", "Error creating thread: ${e.message}")
+            null
+        }
+    }
+
+    suspend fun createThreadFromMessage(
+        channelId: String,
+        messageId: String,
+        name: String
+    ): Channel? {
+        return try {
+            val response = httpClient.post("$apiBase/channels/$channelId/messages/$messageId/threads") {
+                standardHeaders()
+                contentType(ContentType.Application.Json)
+                setBody(buildJsonObject {
+                    put("name", name)
+                    put("auto_archive_duration", 4320)
+                })
+            }
+            if (response.status.isSuccess()) response.body() else null
+        } catch (e: Exception) {
+            Logging.e("Thread", "Error creating thread from message: ${e.message}")
+            null
         }
     }
 
@@ -564,7 +627,7 @@ class DiscordClient(
             }
             if (response.status.isSuccess()) response.body() else emptyList()
         } catch (e: Exception) {
-            println("Error fetching DMs: ${e.message}")
+            Logging.e("DM", "Error fetching DMs: ${e.message}")
             emptyList()
         }
     }
@@ -580,7 +643,7 @@ class DiscordClient(
             }
             if (response.status.isSuccess()) response.body() else emptyList()
         } catch (e: Exception) {
-            println("Error fetching messages: ${e.message}")
+            Logging.e("Messages", "Error fetching messages: ${e.message}")
             emptyList()
         }
     }
@@ -591,7 +654,21 @@ class DiscordClient(
                 standardHeaders()
             }.body()
         } catch (e: Exception) {
-            println("Error fetching active threads: ${e.message}")
+            Logging.e("Threads", "Error fetching active threads: ${e.message}")
+            null
+        }
+    }
+
+    suspend fun searchThreads(channelId: String, limit: Int = 25): ThreadListResponse? {
+        return try {
+            httpClient.get("$apiBase/channels/$channelId/threads/search") {
+                standardHeaders()
+                parameter("limit", limit)
+                parameter("sort_by", "last_message_at")
+                parameter("sort_order", "desc")
+            }.body()
+        } catch (e: Exception) {
+            Logging.e("Threads", "Error searching threads: ${e.message}")
             null
         }
     }
@@ -606,7 +683,7 @@ class DiscordClient(
                 }
             }.body()
         } catch (e: Exception) {
-            println("Error fetching archived threads: ${e.message}")
+            Logging.e("Threads", "Error fetching archived threads: ${e.message}")
             null
         }
     }
@@ -618,7 +695,7 @@ class DiscordClient(
             }
             if (response.status.isSuccess()) response.body() else null
         } catch (e: Exception) {
-            println("Error fetching guild onboarding: ${e.message}")
+            Logging.e("Guild", "Error fetching guild onboarding: ${e.message}")
             null
         }
     }
@@ -636,11 +713,11 @@ class DiscordClient(
                 response.body()
             } else {
                 val errorBody = response.bodyAsText()
-                println("Error fetching members: $errorBody")
+                Logging.e("Guild", "Error fetching members: $errorBody")
                 emptyList()
             }
         } catch (e: Exception) {
-            println("Error fetching members: ${e.message}")
+            Logging.e("Guild", "Error fetching members: ${e.message}")
             emptyList()
         }
     }
@@ -656,11 +733,11 @@ class DiscordClient(
                 response.body()
             } else {
                 val errorBody = response.bodyAsText()
-                println("Error searching members: $errorBody")
+                Logging.e("Members", "Error searching members: $errorBody")
                 emptyList()
             }
         } catch (e: Exception) {
-            println("Error searching members: ${e.message}")
+            Logging.e("Guild", "Error searching members: ${e.message}")
             emptyList()
         }
     }
@@ -672,7 +749,7 @@ class DiscordClient(
             }
             if (response.status.isSuccess()) response.body() else null
         } catch (e: Exception) {
-            println("Error fetching member: ${e.message}")
+            Logging.e("Guild", "Error fetching member: ${e.message}")
             null
         }
     }
@@ -691,11 +768,11 @@ class DiscordClient(
                 response.body()
             } else {
                 val errorBody = response.bodyAsText()
-                println("Error fetching user profile: ${response.status}, body: $errorBody")
+                Logging.e("Profile", "Error fetching user profile: ${response.status}, body: $errorBody")
                 null
             }
         } catch (e: Exception) {
-            println("Error fetching user profile: ${e.message}")
+            Logging.e("Profile", "Error fetching user profile: ${e.message}")
             null
         }
     }
@@ -709,7 +786,7 @@ class DiscordClient(
             }
             response.status.isSuccess()
         } catch (e: Exception) {
-            println("Error editing message: ${e.message}")
+            Logging.e("Message", "Error editing message: ${e.message}")
             false
         }
     }
@@ -721,7 +798,7 @@ class DiscordClient(
             }
             response.status.isSuccess()
         } catch (e: Exception) {
-            println("Error deleting message: ${e.message}")
+            Logging.e("Message", "Error deleting message: ${e.message}")
             false
         }
     }
@@ -733,7 +810,7 @@ class DiscordClient(
             }
             if (response.status.isSuccess()) response.body() else emptyList()
         } catch (e: Exception) {
-            println("Error fetching relationships: ${e.message}")
+            Logging.e("Relationship", "Error fetching relationships: ${e.message}")
             emptyList()
         }
     }
@@ -747,7 +824,7 @@ class DiscordClient(
             }
             response.status.isSuccess()
         } catch (e: Exception) {
-            println("Error adding relationship: ${e.message}")
+            Logging.e("Relationship", "Error adding relationship: ${e.message}")
             false
         }
     }
@@ -759,7 +836,7 @@ class DiscordClient(
             }
             response.status.isSuccess()
         } catch (e: Exception) {
-            println("Error deleting relationship: ${e.message}")
+            Logging.e("Relationship", "Error deleting relationship: ${e.message}")
             false
         }
     }
@@ -771,7 +848,7 @@ class DiscordClient(
             }
             response.status.isSuccess()
         } catch (e: Exception) {
-            println("Error adding reaction: ${e.message}")
+            Logging.e("Reaction", "Error adding reaction: ${e.message}")
             false
         }
     }
@@ -783,7 +860,7 @@ class DiscordClient(
             }
             response.status.isSuccess()
         } catch (e: Exception) {
-            println("Error removing reaction: ${e.message}")
+            Logging.e("Reaction", "Error removing reaction: ${e.message}")
             false
         }
     }
@@ -795,7 +872,7 @@ class DiscordClient(
             }
             response.status.isSuccess()
         } catch (e: Exception) {
-            println("Error pinning message: ${e.message}")
+            Logging.e("Message", "Error pinning message: ${e.message}")
             false
         }
     }
@@ -807,7 +884,7 @@ class DiscordClient(
             }
             response.status.isSuccess()
         } catch (e: Exception) {
-            println("Error unpinning message: ${e.message}")
+            Logging.e("Message", "Error unpinning message: ${e.message}")
             false
         }
     }
@@ -819,7 +896,7 @@ class DiscordClient(
             }
             if (response.status.isSuccess()) response.body() else emptyList()
         } catch (e: Exception) {
-            println("Error fetching pinned messages: ${e.message}")
+            Logging.e("Pinned", "Error fetching pinned messages: ${e.message}")
             emptyList()
         }
     }
@@ -844,7 +921,7 @@ class DiscordClient(
             }
             response.status.isSuccess()
         } catch (e: Exception) {
-            println("Error updating status: ${e.message}")
+            Logging.e("Status", "Error updating status: ${e.message}")
             false
         }
     }
@@ -864,7 +941,7 @@ class DiscordClient(
             }
             response.status.isSuccess()
         } catch (e: Exception) {
-            println("Error updating custom status: ${e.message}")
+            Logging.e("Status", "Error updating custom status: ${e.message}")
             false
         }
     }
@@ -878,7 +955,7 @@ class DiscordClient(
             }
             response.status.isSuccess()
         } catch (e: Exception) {
-            println("Error acking message: ${e.message}")
+            Logging.e("Message", "Error acking message: ${e.message}")
             false
         }
     }
@@ -907,7 +984,7 @@ class DiscordClient(
             }
             response.status.isSuccess()
         } catch (e: Exception) {
-            println("Error leaving guild: ${e.message}")
+            Logging.e("Auth", "Error leaving guild: ${e.message}")
             false
         }
     }
@@ -919,7 +996,7 @@ class DiscordClient(
             }
             if (response.status.isSuccess()) response.body() else null
         } catch (e: Exception) {
-            println("Error getting command index: ${e.message}")
+            Logging.e("Command", "Error getting command index: ${e.message}")
             null
         }
     }
@@ -933,7 +1010,7 @@ class DiscordClient(
             }
             response.status.isSuccess()
         } catch (e: Exception) {
-            println("Error sending interaction: ${e.message}")
+            Logging.e("Interaction", "Error sending interaction: ${e.message}")
             false
         }
     }
@@ -945,7 +1022,7 @@ class DiscordClient(
             }
             if (response.status.isSuccess()) response.body() else null
         } catch (e: Exception) {
-            println("Error fetching user settings: ${e.message}")
+            Logging.e("Settings", "Error fetching user settings: ${e.message}")
             null
         }
     }
@@ -961,7 +1038,7 @@ class DiscordClient(
             }
             if (response.status.isSuccess()) response.body() else null
         } catch (e: Exception) {
-            println("Error fetching sticker packs: ${e.message}")
+            Logging.e("Stickers", "Error fetching sticker packs: ${e.message}")
             null
         }
     }
@@ -973,7 +1050,7 @@ class DiscordClient(
             }
             if (response.status.isSuccess()) response.body() else null
         } catch (e: Exception) {
-            println("Error fetching sticker pack: ${e.message}")
+            Logging.e("Stickers", "Error fetching sticker pack: ${e.message}")
             null
         }
     }
@@ -988,7 +1065,7 @@ class DiscordClient(
             }
             if (response.status.isSuccess()) response.body() else null
         } catch (e: Exception) {
-            println("Error fetching trending GIF categories: ${e.message}")
+            Logging.e("Gifs", "Error fetching trending GIF categories: ${e.message}")
             null
         }
     }
@@ -1005,7 +1082,7 @@ class DiscordClient(
             }
             if (response.status.isSuccess()) response.body() else emptyList()
         } catch (e: Exception) {
-            println("Error searching GIFs: ${e.message}")
+            Logging.e("Gifs", "Error searching GIFs: ${e.message}")
             emptyList()
         }
     }
@@ -1019,7 +1096,7 @@ class DiscordClient(
             }
             response.status.isSuccess()
         } catch (e: Exception) {
-            println("Error updating user settings: ${e.message}")
+            Logging.e("Settings", "Error updating user settings: ${e.message}")
             false
         }
     }
@@ -1033,7 +1110,7 @@ class DiscordClient(
             }
             response.status.isSuccess()
         } catch (e: Exception) {
-            println("Error updating guild settings: ${e.message}")
+            Logging.e("Guild", "Error updating guild settings: ${e.message}")
             false
         }
     }
@@ -1051,7 +1128,7 @@ class DiscordClient(
             }
             response.status.isSuccess()
         } catch (e: Exception) {
-            println("Error onboarding channels: ${e.message}")
+            Logging.e("Guild", "Error onboarding channels: ${e.message}")
             false
         }
     }
@@ -1062,7 +1139,7 @@ class DiscordClient(
                 standardHeaders()
             }.body()
         } catch (e: Exception) {
-            println("Error fetching connections: ${e.message}")
+            Logging.e("Auth", "Error fetching connections: ${e.message}")
             emptyList()
         }
     }
@@ -1074,7 +1151,7 @@ class DiscordClient(
             }
             if (response.status.isSuccess()) response.body() else emptyList()
         } catch (e: Exception) {
-            println("Error fetching devices: ${e.message}")
+            Logging.e("Devices", "Error fetching devices: ${e.message}")
             emptyList()
         }
     }
@@ -1093,7 +1170,7 @@ class DiscordClient(
                 null
             }
         } catch (e: Exception) {
-            println("Error exchanging remote auth ticket: ${e.message}")
+            Logging.e("Auth", "Error exchanging remote auth ticket: ${e.message}")
             null
         }
     }
@@ -1148,7 +1225,7 @@ class DiscordClient(
             }
             if (response.status.isSuccess()) response.body() else null
         } catch (e: Exception) {
-            println("Error searching channel messages: ${e.message}")
+            Logging.e("Messages", "Error searching channel messages: ${e.message}")
             null
         }
     }
@@ -1182,7 +1259,7 @@ class DiscordClient(
             }
             if (response.status.isSuccess()) response.body() else null
         } catch (e: Exception) {
-            println("Error searching guild messages: ${e.message}")
+            Logging.e("Messages", "Error searching guild messages: ${e.message}")
             null
         }
     }
@@ -1202,6 +1279,11 @@ data class DiscordDevice(
 
 fun createHttpClient() = HttpClient(CIO) {
     install(HttpCookies)
+    install(HttpTimeout) {
+        requestTimeoutMillis = 15000
+        connectTimeoutMillis = 10000
+        socketTimeoutMillis = 15000
+    }
     install(ContentNegotiation) {
         json(Json {
             ignoreUnknownKeys = true

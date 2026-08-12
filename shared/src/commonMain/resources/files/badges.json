@@ -1,0 +1,12 @@
+{
+  "badges": {
+    "lampcord_contributor": {
+      "id": "lampcord_contributor",
+      "name": "lampcord contributor",
+      "icon": "file:///home/lampu/Downloads/blobcatcozystars.png"
+    }
+  },
+  "users": {
+    "650805815623680030": ["lampcord_contributor"]
+  }
+}

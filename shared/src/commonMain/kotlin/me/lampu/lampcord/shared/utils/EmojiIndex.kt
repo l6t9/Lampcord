@@ -5,12 +5,6 @@ import me.lampu.lampcord.shared.model.toTwemojiUrl
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
-@Serializable
-private data class EmojiEntry(
-    val n: List<String>,
-    val s: String
-)
-
 object EmojiIndex {
     private var charToNames = mapOf<String, List<String>>()
     private var nameToChar = mapOf<String, String>()
@@ -23,11 +17,11 @@ object EmojiIndex {
             val jsonBytes = ResourceLoader.readBytes("files/emojis.json")
             val jsonText = jsonBytes?.decodeToString() ?: ""
             val entries = Json.decodeFromString<List<EmojiEntry>>(jsonText)
-            
+
             val charMap = mutableMapOf<String, List<String>>()
             val nameMap = mutableMapOf<String, String>()
             val emojiList = mutableListOf<Emoji>()
-            
+
             entries.forEach { entry ->
                 charMap[entry.s] = entry.n
                 entry.n.forEach { name ->
@@ -41,7 +35,7 @@ object EmojiIndex {
                     )
                 )
             }
-            
+
             charToNames = charMap
             nameToChar = nameMap
             allEmojis = emojiList
@@ -58,7 +52,7 @@ object EmojiIndex {
     fun getNamesForChar(char: String): List<String>? = charToNames[char]
 
     fun getTwemojiUrl(char: String): String = char.toTwemojiUrl()
-    
+
     fun findEmojiInString(content: String, startIndex: Int): Pair<String, Int>? {
         // Search for the longest matching emoji string starting at startIndex
         // Most emojis are 1-2 chars, but ZWJ sequences can be longer
@@ -79,4 +73,9 @@ object EmojiIndex {
         }
         return null
     }
+
+    data class EmojiEntry(
+        val n: List<String>,
+        val s: String
+    )
 }

@@ -43,6 +43,7 @@ class NavigationStore(
     var isChannelsAndRolesVisible by mutableStateOf(false)
     var isMediaPickerVisible by mutableStateOf(false)
     var isPinsVisible by mutableStateOf(false)
+    var isThreadPanelVisible by mutableStateOf(false)
 
     var isAttachmentViewerVisible by mutableStateOf(false)
     var attachmentViewerItems by mutableStateOf<List<me.lampu.lampcord.shared.model.DiscordMedia>>(emptyList())
@@ -189,10 +190,16 @@ class NavigationStore(
             if (channel.type == 15) {
                 isForumLoading = true
                 try {
+                    val searchThreads = discordClient.searchThreads(channel.id)
+                    searchThreads?.threads?.forEach { 
+                        guildStore.handleChannelCreateOrUpdate(it.copy(guild_id = channel.guild_id))
+                    }
+                    
                     val activeThreads = discordClient.getActiveThreads(channel.id)
                     activeThreads?.threads?.forEach { 
                         guildStore.handleChannelCreateOrUpdate(it.copy(guild_id = channel.guild_id))
                     }
+                    
                     val archivedThreads = discordClient.getArchivedPublicThreads(channel.id, 50)
                     archivedThreads?.threads?.forEach {
                         guildStore.handleChannelCreateOrUpdate(it.copy(guild_id = channel.guild_id))
@@ -230,6 +237,29 @@ class NavigationStore(
             }
             messageStore.addMessages(channelMessages)
             channelMessages.firstOrNull()?.let { readStateStore.ackMessage(channel.id, it.id) }
+        }
+    }
+
+    fun selectChannelById(channelId: String) {
+        val existing = guildStore.allGuildChannels.value[channelId] ?: guildStore.privateChannels.value.find { it.id == channelId }
+        if (existing != null) {
+            if (existing.type in listOf(10, 11, 12)) {
+                selectThread(existing)
+            } else {
+                selectChannel(existing)
+            }
+        } else {
+            scope.launch {
+                val fetched = discordClient.getChannel(channelId)
+                if (fetched != null) {
+                    guildStore.handleChannelCreateOrUpdate(fetched)
+                    if (fetched.type in listOf(10, 11, 12)) {
+                        selectThread(fetched)
+                    } else {
+                        selectChannel(fetched)
+                    }
+                }
+            }
         }
     }
 
