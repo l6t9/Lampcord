@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.RectangleShape
@@ -270,10 +271,15 @@ private fun BottomVideoControls(
     onVolumeChange: (Float) -> Unit,
     onFullscreenClick: (() -> Unit)?
 ) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = Color.Black.copy(alpha = 0.5f), // Semi-translucent for better effect
-        shape = if (compact) RectangleShape else RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                Brush.verticalGradient(
+                    listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f), Color.Black.copy(alpha = 0.9f))
+                )
+            )
+            .padding(top = 48.dp) // Gradient starting area
     ) {
         Column(
             modifier = Modifier
