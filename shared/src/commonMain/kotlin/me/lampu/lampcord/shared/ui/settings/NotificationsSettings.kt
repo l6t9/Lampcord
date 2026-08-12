@@ -7,9 +7,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.ui.components.settings.*
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.components.ExpressiveSwitch
+import org.koin.compose.koinInject
 
 @Composable
 fun NotificationsSettings() {
@@ -23,21 +25,18 @@ fun NotificationsSettings() {
 }
 
 @Composable
-private fun DesktopNotificationsSettings() {
+private fun DesktopNotificationsSettings(settingsStore: SettingsStore = koinInject()) {
     SettingsLayout {
         SettingsSection(
             title = "Push Notifications",
             icon = Icons.Filled.Notifications
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                var enablePush by remember { mutableStateOf(true) }
-                var showPreview by remember { mutableStateOf(true) }
-
-                NotificationToggle("Enable Notifications", enablePush, "Receive push notifications on your device.") {
-                    enablePush = it
+                NotificationToggle("Enable Notifications", settingsStore.notificationsEnabled, "Receive push notifications on your device.") {
+                    settingsStore.notificationsEnabled = it
                 }
-                NotificationToggle("Show Message Preview", showPreview, "Include message content in notifications.") {
-                    showPreview = it
+                NotificationToggle("Show Message Preview", settingsStore.showMessagePreview, "Include message content in notifications.") {
+                    settingsStore.showMessagePreview = it
                 }
             }
         }
@@ -47,14 +46,24 @@ private fun DesktopNotificationsSettings() {
             icon = Icons.Filled.VolumeUp
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                var messageSound by remember { mutableStateOf(true) }
                 var callSound by remember { mutableStateOf(true) }
 
-                NotificationToggle("Message Sound", messageSound, "Play a sound when you receive a message.") {
-                    messageSound = it
+                NotificationToggle("Message Sound", settingsStore.notificationSound, "Play a sound when you receive a message.") {
+                    settingsStore.notificationSound = it
                 }
                 NotificationToggle("Incoming Call Sound", callSound, "Play a sound when you are being called.") {
                     callSound = it
+                }
+            }
+        }
+
+        SettingsSection(
+            title = "In-App Notifications",
+            icon = Icons.Filled.Notifications
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                NotificationToggle("Show In-App Notifications", settingsStore.showInAppNotifications, "Display banners for new messages while using the app.") {
+                    settingsStore.showInAppNotifications = it
                 }
             }
         }
@@ -75,32 +84,28 @@ private fun NotificationToggle(label: String, checked: Boolean, description: Str
 }
 
 @Composable
-private fun MobileNotificationsSettings() {
+private fun MobileNotificationsSettings(settingsStore: SettingsStore = koinInject()) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Material3SettingsGroup(title = "Push Notifications") {
-            var enablePush by remember { mutableStateOf(true) }
-            var showPreview by remember { mutableStateOf(true) }
-
             Material3SettingsGroup(
                 items = listOf(
                     switchSettingsItem(
                         title = "Enable Notifications",
                         description = "Receive push notifications on your device.",
-                        checked = enablePush,
-                        onCheckedChange = { enablePush = it }
+                        checked = settingsStore.notificationsEnabled,
+                        onCheckedChange = { settingsStore.notificationsEnabled = it }
                     ),
                     switchSettingsItem(
                         title = "Show Message Preview",
                         description = "Include message content in notifications.",
-                        checked = showPreview,
-                        onCheckedChange = { showPreview = it }
+                        checked = settingsStore.showMessagePreview,
+                        onCheckedChange = { settingsStore.showMessagePreview = it }
                     )
                 )
             )
         }
 
         Material3SettingsGroup(title = "Sounds") {
-            var messageSound by remember { mutableStateOf(true) }
             var callSound by remember { mutableStateOf(true) }
 
             Material3SettingsGroup(
@@ -108,8 +113,8 @@ private fun MobileNotificationsSettings() {
                     switchSettingsItem(
                         title = "Message Sound",
                         description = "Play a sound when you receive a message.",
-                        checked = messageSound,
-                        onCheckedChange = { messageSound = it }
+                        checked = settingsStore.notificationSound,
+                        onCheckedChange = { settingsStore.notificationSound = it }
                     ),
                     switchSettingsItem(
                         title = "Incoming Call Sound",
@@ -127,8 +132,8 @@ private fun MobileNotificationsSettings() {
                     switchSettingsItem(
                         title = "Show In-App Notifications",
                         description = "Display banners for new messages while using the app.",
-                        checked = true,
-                        onCheckedChange = { /* TODO: Local setting */ }
+                        checked = settingsStore.showInAppNotifications,
+                        onCheckedChange = { settingsStore.showInAppNotifications = it }
                     )
                 )
             )

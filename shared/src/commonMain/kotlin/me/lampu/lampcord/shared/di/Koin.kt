@@ -49,7 +49,9 @@ val storeModule = module {
     single { FinderStore(get(), CoroutineScope(Dispatchers.Main)) }
     single { TokenStore(get()) }
     single { SettingsStore(get()) }
-    single { NavigationStore(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), CoroutineScope(Dispatchers.Main)) }
+    single { NavigationStore(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), getOrNull<me.lampu.lampcord.shared.notifications.MessageNotifier>(), CoroutineScope(Dispatchers.Main)) }
+    single { NotificationStore(CoroutineScope(Dispatchers.Main)) }
+    single { ChannelNavigator(get(), get(), get(), CoroutineScope(Dispatchers.Main)) }
     single { 
         SessionManager(
             get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()
@@ -63,6 +65,7 @@ val storeModule = module {
     single { me.lampu.lampcord.shared.state.handlers.UserEventHandler(get(), get(), get()) }
     single { me.lampu.lampcord.shared.state.handlers.TypingEventHandler(get(), get(), get()) { get<UserStore>().currentUser.value?.id } }
     single { me.lampu.lampcord.shared.state.handlers.MemberListEventHandler(get(), get()) }
+    single { me.lampu.lampcord.shared.state.handlers.NotificationEventHandler(get(), get(), get(), get(), get(), get(), get(), get(), getOrNull<me.lampu.lampcord.shared.notifications.MessageNotifier>()) }
     
     single {
         GatewayEventDispatcher(
@@ -73,7 +76,8 @@ val storeModule = module {
                 get<me.lampu.lampcord.shared.state.handlers.RelationshipEventHandler>(),
                 get<me.lampu.lampcord.shared.state.handlers.UserEventHandler>(),
                 get<me.lampu.lampcord.shared.state.handlers.TypingEventHandler>(),
-                get<me.lampu.lampcord.shared.state.handlers.MemberListEventHandler>()
+                get<me.lampu.lampcord.shared.state.handlers.MemberListEventHandler>(),
+                get<me.lampu.lampcord.shared.state.handlers.NotificationEventHandler>()
             )
         )
     }

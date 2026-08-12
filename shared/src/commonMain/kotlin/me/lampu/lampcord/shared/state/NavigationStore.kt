@@ -10,6 +10,7 @@ import me.lampu.lampcord.shared.model.Channel
 import me.lampu.lampcord.shared.model.Guild
 import me.lampu.lampcord.shared.model.Onboarding
 import me.lampu.lampcord.shared.model.memberListId
+import me.lampu.lampcord.shared.notifications.MessageNotifier
 import me.lampu.lampcord.shared.settings.Settings
 
 class NavigationStore(
@@ -23,6 +24,7 @@ class NavigationStore(
     private val commandStore: CommandStore,
     private val selectionStore: SelectionStore,
     private val finderStore: FinderStore,
+    private val notifier: MessageNotifier?,
     private val scope: CoroutineScope
 ) {
     var selectedGuild by selectionStore::selectedGuild
@@ -112,7 +114,7 @@ class NavigationStore(
         Settings.shared.setLastChannel("home", "friends")
     }
 
-    fun selectGuild(guild: Guild, subscribeCallback: (String) -> Unit) {
+    fun selectGuild(guild: Guild, targetChannelId: String? = null, subscribeCallback: (String) -> Unit) {
         if (selectedGuild?.id == guild.id && !isChannelsAndRolesVisible) return
         guildLoadingJob?.cancel()
         selectedGuild = guild
@@ -127,9 +129,14 @@ class NavigationStore(
                 val filtered = guildChannels.filter { it.type in listOf(0, 1, 2, 3, 4, 5, 13, 15, 16) }.sortedBy { it.position }
                 filtered.forEach { guildStore.handleChannelCreateOrUpdate(it.copy(guild_id = guild.id)) }
             }
-            val lastChannelId = Settings.shared.getLastChannel(guild.id)
-            val channelToSelect = guildStore.allGuildChannels.value.values.find { it.guild_id == guild.id && it.id == lastChannelId } 
-                ?: guildStore.allGuildChannels.value.values.find { it.guild_id == guild.id && it.type in listOf(0, 2, 5, 13, 15) }
+            val channelToSelect = if (targetChannelId != null) {
+                guildStore.allGuildChannels.value.values.find { it.guild_id == guild.id && it.id == targetChannelId }
+                    ?: guildStore.allGuildChannels.value.values.find { it.guild_id == guild.id && it.type in listOf(0, 2, 5, 13, 15) }
+            } else {
+                val lastChannelId = Settings.shared.getLastChannel(guild.id)
+                guildStore.allGuildChannels.value.values.find { it.guild_id == guild.id && it.id == lastChannelId }
+                    ?: guildStore.allGuildChannels.value.values.find { it.guild_id == guild.id && it.type in listOf(0, 2, 5, 13, 15) }
+            }
             channelToSelect?.let { selectChannel(it) }
             
             // Onboarding
@@ -157,6 +164,7 @@ class NavigationStore(
         channelLoadingJob?.cancel()
         selectedChannel = channel
         selectedThread = null
+        notifier?.dismissChannelNotifications(channel.id)
 
         // Pre-size the member list store based on expected list ID
         val guild = selectedGuild

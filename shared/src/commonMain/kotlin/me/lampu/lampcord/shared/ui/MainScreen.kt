@@ -82,6 +82,12 @@ fun MainScreen(
         }
 
         // Global Overlays
+        if (navigationStore.isConnected) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+                InAppNotificationHost()
+            }
+        }
+
         val errors = errorStore.errors
         if (errors.isNotEmpty()) {
             Box(

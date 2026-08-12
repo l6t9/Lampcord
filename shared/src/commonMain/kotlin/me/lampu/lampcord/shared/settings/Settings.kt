@@ -42,6 +42,12 @@ class Settings(private val settings: KmpSettings) {
     var messageLoggerIgnoreBots by preferenceBoolean("message_logger_ignore_bots", false)
     var messageLoggerIgnoreSelf by preferenceBoolean("message_logger_ignore_self", false)
 
+    // Notifications
+    var notificationsEnabled by preferenceBoolean("notifications_enabled", true)
+    var showMessagePreview by preferenceBoolean("show_message_preview", true)
+    var showInAppNotifications by preferenceBoolean("show_in_app_notifications", true)
+    var notificationSound by preferenceBoolean("notification_sound", true)
+
     // Other Enhancements
     var bypassUploadLimit by preferenceBoolean("bypass_upload_limit", true)
     var compactMode by preferenceBoolean("compact_mode", false)

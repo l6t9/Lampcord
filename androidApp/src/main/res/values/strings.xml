@@ -1,3 +1,12 @@
 <resources>
     <string name="app_name">lampcord</string>
+    <string name="notification_channel_messages">Messages</string>
+    <string name="notification_channel_messages_description">Direct messages and channel mentions</string>
+    <string name="notification_channel_service">Background connection</string>
+    <string name="notification_channel_service_description">Keeps Lampcord connected while the app is in the background</string>
+    <string name="notification_service_title">Lampcord is running</string>
+    <string name="notification_service_text">Keeping you connected to Discord</string>
+    <string name="notification_action_reply">Reply</string>
+    <string name="notification_action_mark_read">Mark as Read</string>
+    <string name="notification_group_messages">Messages</string>
 </resources>

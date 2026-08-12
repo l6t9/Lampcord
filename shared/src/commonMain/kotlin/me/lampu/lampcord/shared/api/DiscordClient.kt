@@ -33,6 +33,7 @@ import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import kotlin.time.Duration.Companion.seconds
 import me.lampu.lampcord.shared.model.ApplicationCommandIndex
 import me.lampu.lampcord.shared.model.AuditLog
 import me.lampu.lampcord.shared.model.Ban
@@ -900,6 +901,34 @@ class DiscordClient(
         } catch (e: Exception) { false }
     }
 
+    suspend fun muteChannelForDuration(channelId: String, guildId: String?, durationSeconds: Long): Boolean {
+        return try {
+            val settingsGuildId = guildId ?: "@me"
+            val endTime = (kotlin.time.Clock.System.now() + durationSeconds.seconds).toString()
+            val response = httpClient.patch("$apiBase/users/@me/guilds/$settingsGuildId/settings") {
+                standardHeaders()
+                contentType(ContentType.Application.Json)
+                setBody(buildJsonObject {
+                    put("channel_overrides", buildJsonArray {
+                        add(buildJsonObject {
+                            put("channel_id", channelId)
+                            put("muted", true)
+                            put("mute_config", buildJsonObject {
+                                put("selected_time_window", durationSeconds)
+                                put("duration", durationSeconds)
+                                put("end_time", endTime)
+                            })
+                        })
+                    })
+                })
+            }
+            response.status.isSuccess()
+        } catch (e: Exception) {
+            println("Error muting channel: ${e.message}")
+            false
+        }
+    }
+
     suspend fun leaveGuild(guildId: String): Boolean {
         return try {
             val response = httpClient.delete("$apiBase/users/@me/guilds/$guildId") {
@@ -1115,10 +1144,15 @@ class DiscordClient(
         return "https://cdn.discordapp.com/icons/$guildId/$iconHash.webp?size=$size"
     }
 
-    fun getUserAvatarUrl(userId: String, avatarHash: String?, size: Int = 1024): String? {
-        if (avatarHash == null) return null
+    fun getUserAvatarUrl(userId: String, avatarHash: String?, size: Int = 1024): String {
+        if (avatarHash == null) return getDefaultAvatarUrl(userId)
         val extension = if (avatarHash.startsWith("a_")) "gif" else "webp"
         return "https://cdn.discordapp.com/avatars/$userId/$avatarHash.$extension?size=$size"
+    }
+
+    fun getDefaultAvatarUrl(userId: String): String {
+        val index = ((userId.toLongOrNull() ?: 0L) shr 22) % 6
+        return "https://cdn.discordapp.com/embed/avatars/$index.png"
     }
 
     suspend fun searchChannelMessages(

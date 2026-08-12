@@ -104,6 +104,38 @@ class SettingsStore(
             _chatBackground = value
             me.lampu.lampcord.shared.settings.Settings.shared.chatBackground = value
         }
+
+    private var _notificationsEnabled by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.notificationsEnabled)
+    var notificationsEnabled: Boolean
+        get() = _notificationsEnabled
+        set(value) {
+            _notificationsEnabled = value
+            me.lampu.lampcord.shared.settings.Settings.shared.notificationsEnabled = value
+        }
+
+    private var _showMessagePreview by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.showMessagePreview)
+    var showMessagePreview: Boolean
+        get() = _showMessagePreview
+        set(value) {
+            _showMessagePreview = value
+            me.lampu.lampcord.shared.settings.Settings.shared.showMessagePreview = value
+        }
+
+    private var _showInAppNotifications by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.showInAppNotifications)
+    var showInAppNotifications: Boolean
+        get() = _showInAppNotifications
+        set(value) {
+            _showInAppNotifications = value
+            me.lampu.lampcord.shared.settings.Settings.shared.showInAppNotifications = value
+        }
+
+    private var _notificationSound by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.notificationSound)
+    var notificationSound: Boolean
+        get() = _notificationSound
+        set(value) {
+            _notificationSound = value
+            me.lampu.lampcord.shared.settings.Settings.shared.notificationSound = value
+        }
     
     private val scope = CoroutineScope(Dispatchers.Main)
     private var pendingUpdateJob: Job? = null
