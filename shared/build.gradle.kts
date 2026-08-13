@@ -79,7 +79,6 @@ kotlin {
                 implementation(libs.androidx.activity.compose)
                 implementation(libs.androidx.media3.exoplayer)
                 implementation(libs.androidx.media3.ui)
-                implementation(libs.materii.panels)
                 implementation("androidx.security:security-crypto:1.1.0-alpha06")
             }
         }
