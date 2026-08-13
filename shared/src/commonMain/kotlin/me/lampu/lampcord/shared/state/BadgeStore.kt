@@ -27,7 +27,7 @@ class BadgeStore(
 
     private fun loadLocalBadges() {
         try {
-            val text = ResourceLoader.readText("files/badges.json")
+            val text = ResourceLoader.readText("badges/badges.json")
             if (text != null) {
                 val localBadges = json.decodeFromString<BadgeMapping>(text)
                 _lampcordBadges.value = localBadges

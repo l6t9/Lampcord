@@ -8,6 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.state.BadgeStore
+import me.lampu.lampcord.shared.utils.ResourceLoader
 import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -33,13 +34,22 @@ fun CustomBadgesView(
         modifier = modifier
     ) {
         badges.forEach { badge ->
-            badge.icon?.let { iconUrl ->
+            badge.icon?.let { icon ->
+                val model = remember(icon) {
+                    if (icon.startsWith("http://") || icon.startsWith("https://") ||
+                        icon.startsWith("file://") || icon.startsWith("content://")
+                    ) {
+                        icon
+                    } else {
+                        ResourceLoader.readBytes(icon)
+                    }
+                }
                 ExpressiveTooltip(
                     anchorPosition = TooltipAnchorPosition.Above,
                     content = tooltipText(badge.name),
                     anchor = {
                         AsyncImage(
-                            model = iconUrl,
+                            model = model,
                             contentDescription = badge.name,
                             modifier = Modifier.size(badgeSize)
                         )
