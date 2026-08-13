@@ -36,6 +36,7 @@ import org.koin.compose.koinInject
 @Composable
 fun ForwardedMessage(
     message: Message,
+    contentColor: Color = androidx.compose.material3.LocalContentColor.current,
     guildStore: GuildStore = koinInject(),
     navigationStore: NavigationStore = koinInject(),
     gatewayManager: GatewayManager = koinInject()
@@ -45,43 +46,45 @@ fun ForwardedMessage(
     
     Column(
         modifier = Modifier
-            .padding(start = 4.dp, top = 4.dp)
+            .padding(start = 4.dp, top = 6.dp, bottom = 4.dp)
             .drawBehind {
                 drawLine(
-                    color = Color.Gray.copy(alpha = 0.3f),
+                    color = contentColor.copy(alpha = 0.7f),
                     start = androidx.compose.ui.geometry.Offset(2.dp.toPx(), 4.dp.toPx()),
                     end = androidx.compose.ui.geometry.Offset(2.dp.toPx(), size.height - 4.dp.toPx()),
-                    strokeWidth = 4.dp.toPx(),
+                    strokeWidth = 3.dp.toPx(),
                     cap = StrokeCap.Round
                 )
             }
-            .padding(start = 16.dp)
+            .padding(start = 14.dp)
     ) {
         // Header
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.padding(bottom = 2.dp)
         ) {
             Icon(
                 imageVector = Icons.Filled.Forward,
                 contentDescription = null,
-                modifier = Modifier.size(12.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                modifier = Modifier.size(13.dp),
+                tint = contentColor
             )
             Text(
                 text = "Forwarded",
                 style = MaterialTheme.typography.labelSmall.copy(
                     fontStyle = FontStyle.Italic,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.ExtraBold
                 ),
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                color = contentColor
             )
         }
         
         // Content
         DiscordMarkdownText(
             content = msg.content,
-            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp)
+            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp),
+            color = contentColor
         )
 
         if (msg.attachments.isNotEmpty() || msg.embeds.isNotEmpty() || !msg.sticker_items.isNullOrEmpty() || !msg.components.isNullOrEmpty()) {

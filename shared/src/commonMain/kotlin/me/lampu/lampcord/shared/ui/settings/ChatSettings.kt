@@ -11,6 +11,7 @@ import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.model.UserSettings
 import me.lampu.lampcord.shared.ui.components.settings.*
 import me.lampu.lampcord.shared.settings.ChatGestures
+import me.lampu.lampcord.shared.settings.MessageStyle
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.components.ExpressiveSwitch
@@ -60,8 +61,38 @@ private fun DesktopChatSettings(settingsStore: SettingsStore, userSettings: User
                         }
                     )
                 }
+
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Message Style", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    SettingsButtonGroup(
+                        options = MessageStyle.entries.toList(),
+                        selectedOption = settingsStore.messageStyle,
+                        onOptionSelected = { settingsStore.messageStyle = it },
+                        iconProvider = { style: MessageStyle, isSelected ->
+                            when (style) {
+                                MessageStyle.EXPRESSIVE_BUBBLES -> if (isSelected) Icons.Filled.Chat else Icons.Rounded.Chat
+                                MessageStyle.FLAT -> if (isSelected) Icons.Filled.Forum else Icons.Rounded.Forum
+                            }
+                        },
+
+                        labelProvider = {
+                            when (it) {
+                                MessageStyle.EXPRESSIVE_BUBBLES -> "Expressive Bubbles"
+                                MessageStyle.FLAT -> "Flat / Cozy"
+                            }
+                        }
+                    )
+                    if (settingsStore.messageStyle == MessageStyle.EXPRESSIVE_BUBBLES) {
+                        Text(
+                            "Emulates Google Messages layout.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
             }
         }
+
 
         SettingsSection(
             title = "Media",
@@ -106,7 +137,8 @@ private fun DesktopChatSettings(settingsStore: SettingsStore, userSettings: User
                             when (it) {
                                 0 -> "Always"
                                 1 -> "On interaction"
-                                else -> "Never"
+                                2 -> "Never"
+                                else -> "Always"
                             }
                         }
                     )
@@ -157,43 +189,45 @@ private fun ChatToggle(label: String, checked: Boolean, description: String? = n
 
 @Composable
 private fun MobileChatSettings(settingsStore: SettingsStore, userSettings: UserSettings?) {
-    var gesturesExpanded by remember { mutableStateOf(false) }
-    var nitroExpanded by remember { mutableStateOf(false) }
-    var loggerExpanded by remember { mutableStateOf(false) }
-    
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        var gestureExpanded by remember { mutableStateOf(false) }
+        var nitroExpanded by remember { mutableStateOf(false) }
+        var loggerExpanded by remember { mutableStateOf(false) }
         Material3SettingsGroup(
             title = "Gestures",
             items = listOf(
                 switchSettingsItem(
                     title = "TapTap",
-                    description = "Double tap a message to edit or reply.",
+                    description = "Double tap a message to edit or reply",
                     checked = Settings.shared.tapTap,
-                    onCheckedChange = { 
-                        Settings.shared.tapTap = it
-                    }
+                    onCheckedChange = { Settings.shared.tapTap = it }
                 ),
                 expandableSettingsItem(
                     title = "Swipe Gesture",
                     description = when(Settings.shared.chatGestures) {
-                        ChatGestures.SWIPE_TO_MEMBERS -> "Swipe to view member list"
-                        ChatGestures.SWIPE_TO_REPLY -> "Swipe to reply"
+                        ChatGestures.SWIPE_TO_MEMBERS -> "View members"
+                        ChatGestures.SWIPE_TO_REPLY -> "Reply"
                     },
-                    expanded = gesturesExpanded,
-                    onToggle = { gesturesExpanded = !gesturesExpanded }
+                    expanded = gestureExpanded,
+                    onToggle = { gestureExpanded = !gestureExpanded }
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         ChatGestures.entries.forEach { gesture ->
                             val label = when(gesture) {
-                                ChatGestures.SWIPE_TO_REPLY -> "Swipe to reply"
-                                ChatGestures.SWIPE_TO_MEMBERS -> "Swipe to view member list"
+                                ChatGestures.SWIPE_TO_MEMBERS -> "View members"
+                                ChatGestures.SWIPE_TO_REPLY -> "Reply"
                             }
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable { 
                                         Settings.shared.chatGestures = gesture
-                                        gesturesExpanded = false
+                                        gestureExpanded = false
                                     }
                                     .padding(12.dp),
                                 verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
@@ -207,6 +241,50 @@ private fun MobileChatSettings(settingsStore: SettingsStore, userSettings: UserS
                 }
             )
         )
+
+        var messageStyleExpanded by remember { mutableStateOf(false) }
+        val appearanceItems = mutableListOf(
+            expandableSettingsItem(
+                title = "Message Style",
+                description = when(settingsStore.messageStyle) {
+                    MessageStyle.EXPRESSIVE_BUBBLES -> "Expressive Bubbles"
+                    MessageStyle.FLAT -> "Flat / Cozy"
+                },
+                expanded = messageStyleExpanded,
+                onToggle = { messageStyleExpanded = !messageStyleExpanded }
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    MessageStyle.entries.forEach { style ->
+                        val label = when(style) {
+                            MessageStyle.EXPRESSIVE_BUBBLES -> "Expressive Bubbles"
+                            MessageStyle.FLAT -> "Flat / Cozy"
+                        }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { 
+                                    settingsStore.messageStyle = style
+                                    messageStyleExpanded = false
+                                }
+                                .padding(12.dp),
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                        ) {
+                            RadioButton(selected = settingsStore.messageStyle == style, onClick = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text(label)
+                        }
+                    }
+                }
+            }
+        )
+
+
+
+        Material3SettingsGroup(
+            title = "Message Appearance",
+            items = appearanceItems
+        )
+
 
         Material3SettingsGroup(
             title = "Display images, videos, and lolcats",

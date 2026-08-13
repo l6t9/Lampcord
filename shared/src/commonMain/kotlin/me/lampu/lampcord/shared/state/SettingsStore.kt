@@ -136,6 +136,22 @@ class SettingsStore(
             _notificationSound = value
             me.lampu.lampcord.shared.settings.Settings.shared.notificationSound = value
         }
+
+    private var _messageStyle by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.messageStyle)
+    var messageStyle: me.lampu.lampcord.shared.settings.MessageStyle
+        get() = _messageStyle
+        set(value) {
+            _messageStyle = value
+            me.lampu.lampcord.shared.settings.Settings.shared.messageStyle = value
+        }
+
+    private var _rightAlignUserMessages by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.rightAlignUserMessages)
+    var rightAlignUserMessages: Boolean
+        get() = _rightAlignUserMessages
+        set(value) {
+            _rightAlignUserMessages = value
+            me.lampu.lampcord.shared.settings.Settings.shared.rightAlignUserMessages = value
+        }
     
     private val scope = CoroutineScope(Dispatchers.Main)
     private var pendingUpdateJob: Job? = null

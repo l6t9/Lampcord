@@ -24,6 +24,8 @@ class Settings(private val settings: KmpSettings) {
     var tapTap by preferenceBoolean("tap_tap", true)
     var chatGestures by preferenceEnum("chat_gestures", ChatGestures.SWIPE_TO_MEMBERS)
     var animateStickers by preferenceEnum("animate_stickers", StickerAnimation.ALWAYS)
+    var messageStyle by preferenceEnum("message_style", MessageStyle.EXPRESSIVE_BUBBLES)
+    var rightAlignUserMessages by preferenceBoolean("right_align_user_messages", true)
 
     // Free Nitro Emojis
     var freeNitroEmojis by preferenceBoolean("free_nitro_emojis", true)

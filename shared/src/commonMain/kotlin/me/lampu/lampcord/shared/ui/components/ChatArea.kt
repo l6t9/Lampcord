@@ -198,15 +198,40 @@ fun ChatArea(
                     }
                 }
 
+                val nextMessage = filteredMessages.getOrNull(index - 1)
+                val isFollowedBySameAuthor = remember(message, nextMessage) {
+                    if (nextMessage == null) return@remember false
+                    if (nextMessage.author?.id != message.author?.id) return@remember false
+                    if (nextMessage.referenced_message != null) return@remember false
+                    val nextType = nextMessage.type ?: 0
+                    if (nextType != 0) return@remember false
+                    
+                    try {
+                        val currentTs = Instant.parse(message.timestamp)
+                        val nextTs = Instant.parse(nextMessage.timestamp)
+                        val currentDay = currentTs.toLocalDateTime(TimeZone.currentSystemDefault()).date
+                        val nextDay = nextTs.toLocalDateTime(TimeZone.currentSystemDefault()).date
+                        if (currentDay != nextDay) return@remember false
+                        (nextTs - currentTs) < 7.minutes
+                    } catch (e: Exception) {
+                        false
+                    }
+                }
+
                 Column {
                     if (showDateSeparator) {
                         DateSeparator(message.timestamp)
                     }
                     Box(Modifier.animateItem()) {
-                        MessageItem(message, priorMessage = if (isInline) priorMessage else null)
+                        MessageItem(
+                            message = message,
+                            priorMessage = if (isInline) priorMessage else null,
+                            isFollowedBySameAuthor = isFollowedBySameAuthor
+                        )
                     }
                 }
             }
+
             item {
                 Spacer(modifier = Modifier.height(16.dp))
             }

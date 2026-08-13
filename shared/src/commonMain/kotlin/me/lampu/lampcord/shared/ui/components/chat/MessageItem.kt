@@ -24,8 +24,9 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -40,20 +41,25 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.changedToDown
+import androidx.compose.ui.input.pointer.isSecondaryPressed
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
-import androidx.compose.ui.zIndex
 import kotlinx.coroutines.launch
 import me.lampu.lampcord.shared.api.DiscordClient
 import me.lampu.lampcord.shared.model.Message
@@ -80,11 +86,93 @@ import org.koin.compose.koinInject
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 
+@Composable
+fun GoogleMessagesMenuItem(
+    icon: ImageVector,
+    label: String,
+    color: Color = MaterialTheme.colorScheme.onSurface,
+    onClick: () -> Unit
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = color,
+            modifier = Modifier.size(20.dp)
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+            color = color
+        )
+    }
+}
+
+@Composable
+fun CreateThreadDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    var name by remember { mutableStateOf("") }
+    
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surface,
+            modifier = Modifier.fillMaxWidth().padding(16.dp)
+        ) {
+            Column(modifier = Modifier.padding(24.dp)) {
+                Text(
+                    text = "Create Thread",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                Spacer(Modifier.height(16.dp))
+                
+                TextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Thread Name") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                
+                Spacer(Modifier.height(24.dp))
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancel")
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Button(
+                        onClick = { if (name.isNotBlank()) onConfirm(name) },
+                        enabled = name.isNotBlank()
+                    ) {
+                        Text("Create")
+                    }
+                }
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MessageItem(
     message: Message,
     priorMessage: Message? = null,
+    isFollowedBySameAuthor: Boolean = false,
     messageStore: MessageStore = koinInject(),
     userStore: UserStore = koinInject(),
     navigationStore: NavigationStore = koinInject(),
@@ -102,10 +190,17 @@ fun MessageItem(
     var showReactionPicker by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showCreateThreadDialog by remember { mutableStateOf(false) }
+    var showGoogleMessagesMenu by remember { mutableStateOf(false) }
     
     val currentUser by userStore.currentUser.collectAsState()
     val userSettings = settingsStore.userSettings
     val scope = rememberCoroutineScope()
+
+    val isMe = remember(message.author, currentUser) {
+        val myId = currentUser?.id ?: userStore.currentUser.value?.id
+        val authorId = message.author?.id
+        authorId != null && myId != null && authorId == myId
+    }
 
     val contextMenuItems = remember(message, currentUser, userSettings) {
         if (message.isPending) {
@@ -116,7 +211,6 @@ fun MessageItem(
             )
         }
         
-        val isMe = message.author?.id == currentUser?.id
         val items = mutableListOf(
             ContextMenuItem("Add Reaction", Icons.Filled.AddReaction) { showReactionPicker = true },
             ContextMenuItem("Reply", Icons.Rounded.Reply) { messageStore.replyingTo = message },
@@ -170,12 +264,11 @@ fun MessageItem(
         derivedStateOf { if (message.isPending) false else messageStore.isMessageMentioningMe(message, currentUser, currentMember) }
     }
     
-    val messageAlpha by animateFloatAsState(if (message.isPending) 0.5f else 1f)
+    val messageAlpha by animateFloatAsState(if (showGoogleMessagesMenu) 0f else (if (message.isPending) 0.5f else 1f))
 
     val isInline = priorMessage != null
     val isHighlighted = messageStore.highlightedMessageId == message.id
     
-    val tapTapEnabled = remember { me.lampu.lampcord.shared.settings.Settings.shared.tapTap }
     val gestureMode = remember { me.lampu.lampcord.shared.settings.Settings.shared.chatGestures }
     var offsetX by remember { mutableFloatStateOf(0f) }
 
@@ -186,9 +279,86 @@ fun MessageItem(
         }
     }
 
+    val messageStyle = settingsStore.messageStyle
+    val isExpressive = messageStyle == me.lampu.lampcord.shared.settings.MessageStyle.EXPRESSIVE_BUBBLES
+    val alignRight = isExpressive && isMe
+
+    var itemPositionInRoot by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+    var itemSizeInRoot by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
+
+    val bubbleShape = remember(isInline, isFollowedBySameAuthor, isExpressive, alignRight) {
+        if (!isExpressive) RoundedCornerShape(0.dp)
+        else if (alignRight) {
+            RoundedCornerShape(
+                topStart = 18.dp,
+                topEnd = if (isInline) 6.dp else 18.dp,
+                bottomStart = 18.dp,
+                bottomEnd = if (isFollowedBySameAuthor) 6.dp else 18.dp
+            )
+        } else {
+            RoundedCornerShape(
+                topStart = if (isInline) 6.dp else 18.dp,
+                topEnd = 18.dp,
+                bottomEnd = 18.dp,
+                bottomStart = if (isFollowedBySameAuthor) 6.dp else 18.dp
+            )
+        }
+    }
+
+    val bubbleContainerColor = when {
+        !isExpressive -> Color.Transparent
+        isHighlighted -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+        isMentioned -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+        message.isDeleted -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.25f)
+        alignRight && (isHovered || showReactionPicker) -> MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)
+        alignRight -> MaterialTheme.colorScheme.primary
+        isHovered || showReactionPicker -> MaterialTheme.colorScheme.surfaceContainerHighest
+        message.sendError != null -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f)
+        else -> MaterialTheme.colorScheme.surfaceContainerHigh
+    }
+
+    val actions = remember(message, isMe) {
+        val list = mutableListOf(
+            Triple(Icons.Filled.AddReaction, "Add Reaction") { showReactionPicker = true },
+            Triple(Icons.Rounded.Reply, "Reply") { messageStore.replyingTo = message },
+            Triple(Icons.Filled.Forward, "Forward") {
+                navigationStore.forwardingMessage = message
+            }
+        )
+        if (isMe) {
+            list.add(Triple(Icons.Filled.Edit, "Edit") {
+                messageStore.editingMessage = message
+            })
+        }
+        list.add(Triple(Icons.Filled.Tag, "Create Thread") { showCreateThreadDialog = true })
+        list.add(Triple(Icons.Filled.MoreHoriz, "More") { /* TODO */ })
+        list
+    }
+
+    val showActions = (isHovered || showReactionPicker) && !isExpressive
+    val actionAlpha by animateFloatAsState(
+        targetValue = if (showActions) 1f else 0f,
+        animationSpec = tween(durationMillis = 150),
+        label = "actionAlpha"
+    )
+    val actionScale by animateFloatAsState(
+        targetValue = if (showActions) 1f else 0.92f,
+        animationSpec = spring(dampingRatio = 0.7f, stiffness = 400f),
+        label = "actionScale"
+    )
+
+    val density = LocalDensity.current
+    var rowWidthPx by remember { mutableStateOf(0f) }
+    var bubbleLeftPx by remember { mutableStateOf(0f) }
+    var bubbleRightPx by remember { mutableStateOf(0f) }
+    var barWidthPx by remember { mutableStateOf(0f) }
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
+            .onGloballyPositioned { layoutCoordinates ->
+                rowWidthPx = layoutCoordinates.size.width.toFloat()
+            }
             .offset { IntOffset(offsetX.roundToInt(), 0) }
             .pointerInput(message.id, gestureMode) {
                 if (gestureMode == me.lampu.lampcord.shared.settings.ChatGestures.SWIPE_TO_REPLY) {
@@ -200,41 +370,15 @@ fun MessageItem(
                             offsetX = 0f
                         },
                         onHorizontalDrag = { change, dragAmount ->
-                            val newOffset = (offsetX + dragAmount).coerceIn(-150f, 0f)
-                            if (newOffset != offsetX) {
-                                offsetX = newOffset
-                                change.consume()
+                            change.consume()
+                            if (dragAmount < 0 || offsetX < 0) {
+                                offsetX = (offsetX + dragAmount).coerceIn(-100f, 0f)
                             }
                         }
                     )
                 }
             }
-            .pointerInput(message.id, tapTapEnabled) {
-                if (tapTapEnabled) {
-                    detectTapGestures(
-                        onDoubleTap = {
-                            val isMe = message.author?.id == currentUser?.id
-                            if (isMe) {
-                                messageStore.editingMessage = message
-                            } else {
-                                messageStore.replyingTo = message
-                            }
-                        }
-                    )
-                }
-            }
-            .pointerInput(Unit) {
-                awaitPointerEventScope {
-                    while (true) {
-                        val event = awaitPointerEvent()
-                        when (event.type) {
-                            PointerEventType.Enter -> isHovered = true
-                            PointerEventType.Exit -> isHovered = false
-                        }
-                    }
-                }
-            }
-            .graphicsLayer(clip = false) // Allow actions to draw outside if parent row allows
+            .graphicsLayer(clip = false)
     ) {
         val guildId = message.guild_id ?: navigationStore.selectedGuild?.id
 
@@ -244,6 +388,7 @@ fun MessageItem(
                 .fillMaxWidth()
                 .background(
                     color = when {
+                        isExpressive -> Color.Transparent
                         isHighlighted -> MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
                         isMentioned -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)
                         message.isDeleted -> MaterialTheme.colorScheme.error.copy(alpha = 0.15f)
@@ -256,7 +401,7 @@ fun MessageItem(
                 .animateContentSize()
                 .graphicsLayer(clip = false)
         ) {
-            if (isMentioned || message.isDeleted) {
+            if (!isExpressive && (isMentioned || message.isDeleted)) {
                 val barColor = if (message.isDeleted) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
                 Spacer(
                     modifier = Modifier
@@ -270,13 +415,17 @@ fun MessageItem(
                 )
             }
 
-            ContextMenu(
-                items = contextMenuItems,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = if (isInline) 1.5.dp else 8.dp)
-            ) {
-                Column(modifier = Modifier.fillMaxWidth()) {
+            @Composable
+            fun MessageContent() {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .graphicsLayer(clip = false)
+                        .onGloballyPositioned { coords ->
+                            itemPositionInRoot = coords.positionInRoot()
+                            itemSizeInRoot = coords.size
+                        }
+                ) {
                     if (message.referenced_message != null) {
                         ReplyBar(message.referenced_message)
                     }
@@ -285,25 +434,36 @@ fun MessageItem(
                         InteractionHeader(message.interaction)
                     }
 
-                    Row(modifier = Modifier.fillMaxWidth()) {
-                        if (!isInline && message.author != null) {
-                            var avatarPosition by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .graphicsLayer(clip = false),
+                        horizontalArrangement = if (alignRight) Arrangement.End else Arrangement.Start
+                    ) {
+                        if (!alignRight) {
+                            if (!isInline && message.author != null) {
+                                var avatarPosition by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+                                val avatarTopPadding = if (!isInline && message.author != null) 22.dp else 0.dp
 
-                            Box(
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .onGloballyPositioned { avatarPosition = it.positionInRoot() }
-                            ) {
-                                UserAvatar(
-                                    user = message.author,
-                                    size = 40.dp,
-                                    modifier = Modifier.clickable { profileStore.showProfile(message.author.id, guildId, avatarPosition) }
-                                )
+                                Box(
+                                    modifier = Modifier
+                                        .padding(top = avatarTopPadding)
+                                        .size(40.dp)
+                                        .onGloballyPositioned { avatarPosition = it.positionInRoot() }
+                                ) {
+                                    UserAvatar(
+                                        user = message.author,
+                                        size = 40.dp,
+                                        modifier = Modifier.clickable { profileStore.showProfile(message.author.id, guildId, avatarPosition) }
+                                    )
+                                }
+                            } else {
+                                Spacer(modifier = Modifier.width(40.dp))
                             }
-                        } else {
-                            Spacer(modifier = Modifier.width(40.dp))
+                            
+                            Spacer(modifier = Modifier.width(8.dp))
                         }
-                        
+
                         val roleColor by remember(message, navigationStore.selectedGuild) {
                             derivedStateOf {
                                 val guild = navigationStore.selectedGuild ?: return@derivedStateOf Color.Unspecified
@@ -315,312 +475,474 @@ fun MessageItem(
                             }
                         }
                         
-                        val displayColor = if (roleColor == Color.Unspecified) MaterialTheme.colorScheme.onSurface else roleColor
+                        val displayColor = if (alignRight) MaterialTheme.colorScheme.onPrimary else (if (roleColor == Color.Unspecified) MaterialTheme.colorScheme.onSurface else roleColor)
+                        val bubbleTextColor = if (alignRight) MaterialTheme.colorScheme.onPrimary else (if (message.isDeleted) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
 
-                        Spacer(modifier = Modifier.width(8.dp))
-                        
-                        Column {
-                            if (!isInline && message.author != null) {
-                                val isDm = message.guild_id == null && navigationStore.selectedGuild == null
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(bottom = 2.dp)
-                                ) {
-                                    var namePosition by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
-                                    UsernameView(
-                                        name = message.member?.nick ?: message.author.global_name ?: message.author.username ?: "Unknown User",
-                                        style = message.member?.display_name_styles ?: message.author.display_name_styles,
-                                        baseStyle = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                                        color = if (isDm) Color.White else displayColor,
-                                        modifier = Modifier
-                                            .onGloballyPositioned { namePosition = it.positionInRoot() }
-                                            .clickable { profileStore.showProfile(message.author.id, guildId, namePosition) },
-                                        ignoreEffects = !isHovered,
-                                        ignoreColors = if (isDm) !isHovered else true
-                                    )
-                                    message.author.primary_guild?.let {
-                                        Spacer(Modifier.width(4.dp))
-                                        ClanTagView(it)
-                                    }
-                                    UserTagView(message.author, modifier = Modifier.padding(start = 4.dp))
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    MessageTimestamp(
-                                        timestamp = message.timestamp,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                                    )
-                                    
-                                    if (message.isDeleted) {
-                                        Spacer(Modifier.width(8.dp))
-                                        Text(
-                                            "(deleted)",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.error,
-                                            fontWeight = FontWeight.Bold
+                        Box(
+                            modifier = (if (isExpressive) {
+                                Modifier.weight(1f, fill = false)
+                            } else {
+                                Modifier.weight(1f)
+                            })
+                            .graphicsLayer(clip = false)
+                            .onGloballyPositioned { coords ->
+                                val pos = coords.positionInParent()
+                                bubbleLeftPx = pos.x
+                                bubbleRightPx = pos.x + coords.size.width
+                            }
+                        ) {
+                            Column(
+                                horizontalAlignment = if (alignRight) Alignment.End else Alignment.Start
+                            ) {
+                                if (!isInline && message.author != null && !isMe) {
+                                    val isDm = message.guild_id == null && navigationStore.selectedGuild == null
+                                    Row(
+                                        horizontalArrangement = Arrangement.Start,
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(bottom = 2.dp, start = if (alignRight) 0.dp else 2.dp, end = if (alignRight) 2.dp else 0.dp)
+                                    ) {
+                                        var namePosition by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+                                        UsernameView(
+                                            name = message.member?.nick ?: message.author.global_name ?: message.author.username ?: "Unknown User",
+                                            style = message.member?.display_name_styles ?: message.author.display_name_styles,
+                                            baseStyle = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                            color = if (isDm) Color.White else displayColor,
+                                            modifier = Modifier
+                                                .onGloballyPositioned { namePosition = it.positionInRoot() }
+                                                .clickable { profileStore.showProfile(message.author.id, guildId, namePosition) },
+                                            ignoreEffects = !isHovered,
+                                            ignoreColors = if (isDm) !isHovered else true
                                         )
+                                        message.author.primary_guild?.let {
+                                            Spacer(Modifier.width(4.dp))
+                                            ClanTagView(it)
+                                        }
+                                        UserTagView(message.author, modifier = Modifier.padding(start = 4.dp))
                                     }
                                 }
-                            }
-                            
-                            val hasSnapshots = !message.message_snapshots.isNullOrEmpty()
-                            val snapshotContent = message.message_snapshots?.firstOrNull()?.message?.content
-                            // Logic: If forwarded, ONLY show outer content if it's not a duplicate of original message content
-                            val isDuplicateForward = hasSnapshots && message.content.trim() == snapshotContent?.trim()
-                            val shouldShowContent = !hasSnapshots || (message.content.isNotEmpty() && !isDuplicateForward)
 
-                            if (shouldShowContent) {
-                                Box(modifier = Modifier.fillMaxWidth()) {
+                                Box(
+                                    modifier = if (isExpressive) {
+                                        Modifier
+                                            .background(color = bubbleContainerColor, shape = bubbleShape)
+                                            .padding(horizontal = 14.dp, vertical = 10.dp)
+                                    } else {
+                                        Modifier.fillMaxWidth()
+                                    }
+                                ) {
                                     Column {
-                                        if (message.oldContent != null) {
+                                        val hasSnapshots = !message.message_snapshots.isNullOrEmpty()
+                                        val snapshotContent = message.message_snapshots?.firstOrNull()?.message?.content
+                                        val isDuplicateForward = hasSnapshots && message.content.trim() == snapshotContent?.trim()
+                                        val shouldShowContent = !hasSnapshots || (message.content.isNotEmpty() && !isDuplicateForward)
+
+                                        if (shouldShowContent) {
+                                            Box {
+                                                Column {
+                                                    if (message.oldContent != null) {
+                                                        Text(
+                                                            text = message.oldContent,
+                                                            style = MaterialTheme.typography.bodyMedium,
+                                                            color = bubbleTextColor.copy(alpha = 0.5f),
+                                                            modifier = Modifier.padding(bottom = 2.dp),
+                                                            textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
+                                                        )
+                                                    }
+                                                    DiscordMarkdownText(
+                                                        content = message.content,
+                                                        style = MaterialTheme.typography.bodyMedium,
+                                                        color = bubbleTextColor
+                                                    )
+                                                }
+                                            }
+                                        }
+
+                                        if (message.sendError != null) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+                                                Icon(
+                                                    Icons.Rounded.Error,
+                                                    null,
+                                                    tint = MaterialTheme.colorScheme.error,
+                                                    modifier = Modifier.size(14.dp)
+                                                )
+                                                Text(
+                                                    text = message.sendError,
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.error
+                                                )
+                                                Text(
+                                                    text = "Retry",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.clickable { messageStore.retryMessage(message) }
+                                                )
+                                                Text(
+                                                    text = "Delete",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.error,
+                                                    modifier = Modifier.clickable { messageStore.deletePendingMessage(message) }
+                                                )
+                                            }
+                                        }
+
+                                        MessageBody(message)
+
+                                        message.message_snapshots?.firstOrNull()?.let {
+                                            ForwardedMessage(message, contentColor = bubbleTextColor)
+                                        }
+
+                                        if (message.thread != null) {
+                                            ThreadStarterBar(message.thread)
+                                        }
+
+                                        ReactionsView(message)
+                                    }
+                                }
+
+                                val showTimestampUnderneath = !isFollowedBySameAuthor || isHovered || message.isDeleted
+                                if (showTimestampUnderneath) {
+                                    Row(
+                                        horizontalArrangement = if (alignRight) Arrangement.End else Arrangement.Start,
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier
+                                            .padding(top = 2.dp, start = if (alignRight) 0.dp else 4.dp, end = if (alignRight) 4.dp else 0.dp)
+                                    ) {
+                                        MessageTimestamp(
+                                            timestamp = message.timestamp,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f)
+                                        )
+                                        
+                                        if (message.isDeleted) {
+                                            Spacer(Modifier.width(6.dp))
                                             Text(
-                                                text = message.oldContent,
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                                modifier = Modifier.padding(bottom = 2.dp),
-                                                textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
+                                                "(deleted)",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.error,
+                                                fontWeight = FontWeight.Bold
                                             )
                                         }
-                                        DiscordMarkdownText(
-                                            content = message.content,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = if (message.isDeleted) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
-                                        )
+                                    }
+                                }
+
+                                if (actionAlpha > 0f) {
+                                    val leftBoundaryPx = bubbleLeftPx
+                                    val rightBoundaryPx = if (rowWidthPx > 0f) rowWidthPx - (density.density * 12f) else Float.MAX_VALUE
+                                    val barWidthOrDefaultPx = if (barWidthPx > 0f) barWidthPx else (density.density * 260f)
+
+                                    val idealRightPx = bubbleRightPx
+                                    val idealLeftPx = idealRightPx - barWidthOrDefaultPx
+
+                                    val clampRightShift = (rightBoundaryPx - idealRightPx).coerceAtMost(0f)
+                                    val rawLeftPx = idealLeftPx + clampRightShift
+                                    val clampLeftShift = (leftBoundaryPx - rawLeftPx).coerceAtLeast(0f)
+
+                                    val totalShiftPx = clampRightShift + clampLeftShift
+                                    val xShiftPx = totalShiftPx.roundToInt()
+
+                                    Popup(
+                                        alignment = Alignment.TopEnd,
+                                        offset = IntOffset(
+                                            x = xShiftPx,
+                                            y = (-14).dp.value.toInt()
+                                        ),
+                                        properties = PopupProperties(focusable = false, dismissOnClickOutside = false)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .onGloballyPositioned { barWidthPx = it.size.width.toFloat() }
+                                                .graphicsLayer {
+                                                    alpha = actionAlpha
+                                                    scaleX = actionScale
+                                                    scaleY = actionScale
+                                                }
+                                        ) {
+                                            ButtonGroup(
+                                                modifier = Modifier.height(32.dp)
+                                            ) {
+                                                actions.forEach { (icon, label, onClick) ->
+                                                    IconButton(
+                                                        onClick = onClick,
+                                                        modifier = Modifier.size(32.dp)
+                                                    ) {
+                                                        Icon(
+                                                            imageVector = icon,
+                                                            contentDescription = label,
+                                                            modifier = Modifier.size(16.dp),
+                                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
-
-                            if (message.sendError != null) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Icon(
-                                        Icons.Rounded.Error,
-                                        null,
-                                        tint = MaterialTheme.colorScheme.error,
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                    Text(
-                                        text = message.sendError,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.error
-                                    )
-                                    Text(
-                                        text = "Retry",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.clickable { messageStore.retryMessage(message) }
-                                    )
-                                    Text(
-                                        text = "Delete",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.error,
-                                        modifier = Modifier.clickable { messageStore.deletePendingMessage(message) }
-                                    )
-                                }
-                            }
-
-                            MessageBody(message)
-
-                            message.message_snapshots?.firstOrNull()?.let {
-                                ForwardedMessage(message)
-                            }
-
-                            if (message.thread != null) {
-                                ThreadStarterBar(message.thread)
-                            }
-
-                            ReactionsView(message)
                         }
                     }
                 }
             }
-        }
 
-        // Overlay Layer (Action Buttons)
-        val isMe = message.author?.id == currentUser?.id
-        val actions = remember(message, isMe) {
-            val list = mutableListOf(
-                Triple(Icons.Filled.AddReaction, "Add Reaction") { showReactionPicker = true },
-                Triple(Icons.Rounded.Reply, "Reply") { messageStore.replyingTo = message },
-                Triple(Icons.Filled.Forward, "Forward") {
-                    navigationStore.forwardingMessage = message
-                }
-            )
-            if (isMe) {
-                list.add(Triple(Icons.Filled.Edit, "Edit") {
-                    messageStore.editingMessage = message
-                })
-            }
-            list.add(Triple(Icons.Filled.Tag, "Create Thread") { showCreateThreadDialog = true })
-            list.add(Triple(Icons.Filled.MoreHoriz, "More") { /* TODO */ })
-            list
-        }
-
-        val showActions = isHovered || showReactionPicker
-        val actionAlpha by animateFloatAsState(
-            targetValue = if (showActions) 1f else 0f,
-            animationSpec = tween(durationMillis = 150),
-            label = "actionAlpha"
-        )
-        val actionScale by animateFloatAsState(
-            targetValue = if (showActions) 1f else 0.92f,
-            animationSpec = spring(dampingRatio = 0.7f, stiffness = 400f),
-            label = "actionScale"
-        )
-
-        if (actionAlpha > 0f) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(end = 16.dp)
-                    .zIndex(2f)
-                    .graphicsLayer {
-                        alpha = actionAlpha
-                        scaleX = actionScale
-                        scaleY = actionScale
-                        clip = false
-                        translationY = -16.dp.toPx() // Explicitly move up in graphics layer
-                    }
-                    .layout { measurable, constraints ->
-                        val placeable = measurable.measure(constraints)
-                        // Occupy 0 height in layout pass so it doesn't affect message spacing
-                        layout(placeable.width, 0) {
-                            placeable.placeRelative(0, 0)
-                        }
-                    }
-            ) {
-                ButtonGroup(
-                    modifier = Modifier.height(32.dp),
-                    overflowIndicator = { menuState -> ButtonGroupDefaults.OverflowIndicator(menuState) },
-                    horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
-                ) {
-                    actions.forEachIndexed { index, (icon, label, onClick) ->
-                        customItem(
-                            buttonGroupContent = {
-                                val shapes = when (index) {
-                                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                    actions.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                                }
-                                ToggleButton(
-                                    checked = false,
-                                    onCheckedChange = { onClick() },
-                                    shapes = shapes,
-                                    colors = ToggleButtonDefaults.tonalToggleButtonColors(),
-                                    contentPadding = PaddingValues(0.dp),
-                                    modifier = Modifier.fillMaxSize()
-                                ) {
-                                    Icon(icon, label, modifier = Modifier.size(18.dp))
-                                }
-                            },
-                            menuContent = {
-                                DropdownMenuItem(
-                                    text = { Text(label) },
-                                    onClick = { onClick() },
-                                    leadingIcon = { Icon(icon, null) }
-                                )
-                            }
+            if (isExpressive) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .graphicsLayer(clip = false)
+                        .padding(
+                            start = 8.dp,
+                            end = 8.dp,
+                            top = if (isInline) 1.5.dp else 8.dp,
+                            bottom = if (isFollowedBySameAuthor) 1.5.dp else 8.dp
                         )
+                        .pointerInput(message.id) {
+                            detectTapGestures(
+                                onLongPress = { showGoogleMessagesMenu = true }
+                            )
+                        }
+                        .pointerInput(message.id) {
+                            awaitPointerEventScope {
+                                while (true) {
+                                    val event = awaitPointerEvent(PointerEventPass.Initial)
+                                    val down = event.changes.find { it.changedToDown() }
+                                    if (down != null && event.buttons.isSecondaryPressed) {
+                                        showGoogleMessagesMenu = true
+                                        down.consume()
+                                    }
+                                }
+                            }
+                        }
+                ) {
+                    MessageContent()
+                }
+            } else {
+                ContextMenu(
+                    items = contextMenuItems,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .graphicsLayer(clip = false)
+                        .padding(
+                            start = 8.dp,
+                            end = 8.dp,
+                            top = if (isInline) 1.5.dp else 6.dp,
+                            bottom = if (isFollowedBySameAuthor) 1.5.dp else 6.dp
+                        )
+                ) {
+                    MessageContent()
+                }
+            }
+
+            if (showReactionPicker) {
+                Popup(
+                    alignment = Alignment.TopEnd,
+                    offset = IntOffset(0, (-500).dp.value.toInt()), 
+                    onDismissRequest = { showReactionPicker = false },
+                    properties = PopupProperties(focusable = true)
+                ) {
+                    EmojiPicker(
+                        userStore = userStore,
+                        guildStore = guildStore,
+                        navigationStore = navigationStore
+                    ) { emoji ->
+                        val emojiStr = if (emoji.id != null) "${emoji.name}:${emoji.id}" else emoji.name ?: ""
+                        scope.launch {
+                            discordClient.addReaction(message.channel_id, message.id, emojiStr)
+                        }
+                        showReactionPicker = false
                     }
                 }
             }
-        }
 
-        if (showReactionPicker) {
-            Popup(
-                alignment = Alignment.TopEnd,
-                offset = IntOffset(0, (-500).dp.value.toInt()), 
-                onDismissRequest = { showReactionPicker = false },
-                properties = PopupProperties(focusable = true)
-            ) {
-                EmojiPicker(
-                    userStore = userStore,
-                    guildStore = guildStore,
-                    navigationStore = navigationStore
-                ) { emoji ->
-                    val emojiStr = if (emoji.id != null) "${emoji.name}:${emoji.id}" else emoji.name ?: ""
-                    scope.launch {
-                        discordClient.addReaction(message.channel_id, message.id, emojiStr)
+            if (showDeleteDialog) {
+                DeleteMessageDialog(
+                    onDismiss = { showDeleteDialog = false },
+                    onConfirm = {
+                        messageStore.deleteMessage(message)
+                        showDeleteDialog = false
                     }
-                    showReactionPicker = false
-                }
+                )
             }
-        }
 
-        if (showDeleteDialog) {
-            DeleteMessageDialog(
-                onDismiss = { showDeleteDialog = false },
-                onConfirm = {
-                    messageStore.deleteMessage(message)
-                    showDeleteDialog = false
-                }
-            )
-        }
-
-        if (showCreateThreadDialog) {
-            CreateThreadDialog(
-                onDismiss = { showCreateThreadDialog = false },
-                onConfirm = { name ->
-                    scope.launch {
-                        val thread = discordClient.createThreadFromMessage(message.channel_id, message.id, name)
-                        if (thread != null) {
-                            guildStore.handleChannelCreateOrUpdate(thread)
-                            navigationStore.selectThread(thread)
-                            showCreateThreadDialog = false
+            if (showCreateThreadDialog) {
+                CreateThreadDialog(
+                    onDismiss = { showCreateThreadDialog = false },
+                    onConfirm = { name ->
+                        scope.launch {
+                            val thread = discordClient.createThreadFromMessage(message.channel_id, message.id, name)
+                            if (thread != null) {
+                                guildStore.handleChannelCreateOrUpdate(thread)
+                                navigationStore.selectThread(thread)
+                                showCreateThreadDialog = false
+                            }
                         }
                     }
-                }
-            )
-        }
-    }
-}
+                )
+            }
 
-@Composable
-fun CreateThreadDialog(
-    onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit
-) {
-    var name by remember { mutableStateOf("") }
-    
-    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surface,
-            modifier = Modifier.fillMaxWidth().padding(16.dp)
-        ) {
-            Column(modifier = Modifier.padding(24.dp)) {
-                Text(
-                    text = "Create Thread",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
-                
-                Spacer(Modifier.height(16.dp))
-                
-                TextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Thread Name") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-                
-                Spacer(Modifier.height(24.dp))
-                
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
+            if (showGoogleMessagesMenu) {
+                Popup(
+                    onDismissRequest = { showGoogleMessagesMenu = false },
+                    properties = PopupProperties(focusable = true)
                 ) {
-                    TextButton(onClick = onDismiss) {
-                        Text("Cancel")
-                    }
-                    Spacer(Modifier.width(8.dp))
-                    Button(
-                        onClick = { if (name.isNotBlank()) onConfirm(name) },
-                        enabled = name.isNotBlank()
+                    var windowWidth by remember { mutableStateOf(0.dp) }
+                    var windowHeight by remember { mutableStateOf(0.dp) }
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.6f))
+                            .onGloballyPositioned { coords ->
+                                windowWidth = with(density) { coords.size.width.toDp() }
+                                windowHeight = with(density) { coords.size.height.toDp() }
+                            }
+                            .clickable { showGoogleMessagesMenu = false }
                     ) {
-                        Text("Create")
+                        if (windowHeight > 0.dp) {
+                            val itemX = with(density) { itemPositionInRoot.x.toDp() }
+                            val itemY = with(density) { itemPositionInRoot.y.toDp() }
+                            val itemW = with(density) { itemSizeInRoot.width.toDp() }
+                            val itemH = with(density) { itemSizeInRoot.height.toDp() }
+
+                            val emojiBarH = 48.dp
+                            val menuCardH = if (isMe) 340.dp else 295.dp
+                            val gap = 10.dp
+
+                            val idealBottomY = itemY + itemH + gap + menuCardH
+                            val maxAllowedBottomY = windowHeight - 72.dp
+                            val overflowY = (idealBottomY - maxAllowedBottomY).coerceAtLeast(0.dp)
+
+                            val adjustedItemY = (itemY - overflowY).coerceAtLeast(16.dp + emojiBarH + gap)
+                            val startY = adjustedItemY - emojiBarH - gap
+
+                            val startX = itemX.coerceIn(16.dp, (windowWidth - itemW).coerceAtLeast(16.dp))
+
+                            Column(
+                                horizontalAlignment = if (alignRight) Alignment.End else Alignment.Start,
+                                verticalArrangement = Arrangement.spacedBy(gap),
+                                modifier = Modifier
+                                    .offset(x = startX, y = startY)
+                                    .width(if (itemW > 0.dp) itemW else 360.dp)
+                                    .clickable(enabled = false) {}
+                            ) {
+                                Surface(
+                                    shape = RoundedCornerShape(28.dp),
+                                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    shadowElevation = 8.dp
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                                    ) {
+                                        val quickEmojis = listOf("👍", "❤️", "😂", "😮", "😢", "😡")
+                                        quickEmojis.forEach { emojiStr ->
+                                            IconButton(
+                                                onClick = {
+                                                    scope.launch {
+                                                        discordClient.addReaction(message.channel_id, message.id, emojiStr)
+                                                    }
+                                                    showGoogleMessagesMenu = false
+                                                },
+                                                modifier = Modifier.size(36.dp)
+                                            ) {
+                                                Text(emojiStr, fontSize = 20.sp)
+                                            }
+                                        }
+                                        
+                                        Box(
+                                            modifier = Modifier
+                                                .size(36.dp)
+                                                .clip(CircleShape)
+                                                .background(MaterialTheme.colorScheme.primaryContainer)
+                                                .clickable {
+                                                    showGoogleMessagesMenu = false
+                                                    showReactionPicker = true
+                                                },
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                Icons.Filled.AddReaction,
+                                                contentDescription = "Add reaction",
+                                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                        }
+                                    }
+                                }
+
+                                MessageContent()
+
+                                Surface(
+                                    shape = RoundedCornerShape(20.dp),
+                                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    shadowElevation = 8.dp,
+                                    modifier = Modifier.width(220.dp)
+                                ) {
+                                    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                                        GoogleMessagesMenuItem(
+                                            icon = Icons.Rounded.Reply,
+                                            label = "Reply"
+                                        ) {
+                                            messageStore.replyingTo = message
+                                            showGoogleMessagesMenu = false
+                                        }
+                                        
+                                        GoogleMessagesMenuItem(
+                                            icon = Icons.Filled.Forward,
+                                            label = "Forward"
+                                        ) {
+                                            navigationStore.forwardingMessage = message
+                                            showGoogleMessagesMenu = false
+                                        }
+                                        
+                                        GoogleMessagesMenuItem(
+                                            icon = Icons.Filled.ContentCopy,
+                                            label = "Copy"
+                                        ) {
+                                            setClipboardText(message.content)
+                                            showGoogleMessagesMenu = false
+                                        }
+                                        
+                                        GoogleMessagesMenuItem(
+                                            icon = Icons.Filled.PushPin,
+                                            label = if (message.pinned) "Unpin" else "Pin"
+                                        ) {
+                                            if (message.pinned) messageStore.unpinMessage(message) else messageStore.pinMessage(message)
+                                            showGoogleMessagesMenu = false
+                                        }
+                                        
+                                        if (isMe) {
+                                            GoogleMessagesMenuItem(
+                                                icon = Icons.Filled.Edit,
+                                                label = "Edit"
+                                            ) {
+                                                messageStore.editingMessage = message
+                                                showGoogleMessagesMenu = false
+                                            }
+                                        }
+                                        
+                                        GoogleMessagesMenuItem(
+                                            icon = Icons.Filled.Delete,
+                                            label = "Delete",
+                                            color = MaterialTheme.colorScheme.error
+                                        ) {
+                                            showDeleteDialog = true
+                                            showGoogleMessagesMenu = false
+                                        }
+                                        
+                                        GoogleMessagesMenuItem(
+                                            icon = Icons.Filled.Info,
+                                            label = "Info"
+                                        ) {
+                                            setClipboardText(message.id)
+                                            showGoogleMessagesMenu = false
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }

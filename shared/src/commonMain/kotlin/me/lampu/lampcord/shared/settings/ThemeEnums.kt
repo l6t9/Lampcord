@@ -34,3 +34,9 @@ enum class StickerAnimation {
     ON_HOVER,
     NEVER,
 }
+
+enum class MessageStyle {
+    EXPRESSIVE_BUBBLES,
+    FLAT,
+}
+
