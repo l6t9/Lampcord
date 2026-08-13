@@ -13,6 +13,10 @@ import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import me.lampu.lampcord.shared.settings.Settings
 
+import android.os.UserManager
+import me.lampu.lampcord.shared.state.SessionManager
+import org.koin.core.context.GlobalContext
+
 class GatewayForegroundService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -24,10 +28,34 @@ class GatewayForegroundService : Service() {
                 stopSelf()
                 return START_NOT_STICKY
             }
-            else -> startInForeground()
+            else -> {
+                startInForeground()
+                connectGatewayIfNeeded()
+            }
         }
         return START_STICKY
     }
+
+    private fun connectGatewayIfNeeded() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            val userManager = getSystemService(Context.USER_SERVICE) as? UserManager
+            if (userManager != null && !userManager.isUserUnlocked) return
+        }
+
+        try {
+            val token = Settings.shared.discordToken
+            if (token.isNotBlank()) {
+                val koin = GlobalContext.getOrNull()
+                if (koin != null) {
+                    val sessionManager = koin.getOrNull<SessionManager>()
+                    sessionManager?.connect(token)
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
 
     private fun startInForeground() {
         ensureServiceChannel(this)
