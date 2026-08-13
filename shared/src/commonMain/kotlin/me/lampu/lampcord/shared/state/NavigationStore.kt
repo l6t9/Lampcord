@@ -38,6 +38,8 @@ class NavigationStore(
     var isConnected by mutableStateOf(false)
     var isConnecting by mutableStateOf(false)
 
+    var isBubble by mutableStateOf(false)
+
     var isSettingsVisible by mutableStateOf(false)
     var isQuickSwitcherVisible by mutableStateOf(false)
     var isSearchVisible by mutableStateOf(false)

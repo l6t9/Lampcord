@@ -28,22 +28,15 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:allowEmbedded="true"
             android:launchMode="singleTask"
+            android:resizeableActivity="true"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
-        <activity
-            android:name=".BubbleActivity"
-            android:exported="false"
-            android:allowEmbedded="true"
-            android:resizeableActivity="true"
-            android:documentLaunchMode="always"
-            android:theme="@style/Theme.Lampcord"
-            android:windowSoftInputMode="adjustResize" />
 
         <service
             android:name=".GatewayForegroundService"

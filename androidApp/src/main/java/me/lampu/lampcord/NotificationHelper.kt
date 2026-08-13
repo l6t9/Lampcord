@@ -29,6 +29,7 @@ object NotificationHelper {
     const val GROUP_SUMMARY_ID = -1
     const val EXTRA_CHANNEL_ID = "me.lampu.lampcord.extra.CHANNEL_ID"
     const val EXTRA_GUILD_ID = "me.lampu.lampcord.extra.GUILD_ID"
+    const val EXTRA_IS_BUBBLE = "me.lampu.lampcord.extra.IS_BUBBLE"
     const val EXTRA_MESSAGE_ID = "me.lampu.lampcord.extra.MESSAGE_ID"
     const val KEY_TEXT_REPLY = "me.lampu.lampcord.key.TEXT_REPLY"
 
@@ -221,10 +222,11 @@ object NotificationHelper {
 
     fun publishConversationShortcut(context: Context, data: IncomingNotificationData, avatar: Bitmap?) {
         val shortcutId = shortcutIdFor(data.message.channel_id)
-        val bubbleIntent = Intent(context, BubbleActivity::class.java).apply {
+        val bubbleIntent = Intent(context, MainActivity::class.java).apply {
             action = Intent.ACTION_VIEW
             putExtra(EXTRA_CHANNEL_ID, data.message.channel_id)
             putExtra(EXTRA_GUILD_ID, data.message.guild_id)
+            putExtra(EXTRA_IS_BUBBLE, true)
         }
         val person = buildPerson(conversationName(data), avatar)
         val shortcut = ShortcutInfoCompat.Builder(context, shortcutId)

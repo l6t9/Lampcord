@@ -117,7 +117,7 @@ actual fun MobileBaseplate(
     }
 
     Box(Modifier.fillMaxSize()) {
-        val swipeEnabled = me.lampu.lampcord.shared.settings.Settings.shared.chatGestures == me.lampu.lampcord.shared.settings.ChatGestures.SWIPE_TO_MEMBERS
+        val swipeEnabled = !navigationStore.isBubble && me.lampu.lampcord.shared.settings.Settings.shared.chatGestures == me.lampu.lampcord.shared.settings.ChatGestures.SWIPE_TO_MEMBERS
         DiscordPanels(
             state = panelState,
             modifier = Modifier
@@ -161,12 +161,14 @@ actual fun MobileBaseplate(
                                         }
                                     },
                                     navigationIcon = {
-                                        IconButton(onClick = { panelState.openStart() }) {
-                                            Icon(Icons.Filled.Menu, "Channels")
+                                        if (!navigationStore.isBubble) {
+                                            IconButton(onClick = { panelState.openStart() }) {
+                                                Icon(Icons.Filled.Menu, "Channels")
+                                            }
                                         }
                                     },
                                     actions = {
-                                        if (activeChannel.guild_id != null || activeChannel.type == 1 || activeChannel.type == 3) {
+                                        if (!navigationStore.isBubble && (activeChannel.guild_id != null || activeChannel.type == 1 || activeChannel.type == 3)) {
                                             IconButton(onClick = { panelState.openEnd() }) {
                                                 Icon(
                                                     imageVector = if (activeChannel.type == 1) Icons.Filled.Person else Icons.Filled.Group,

@@ -159,9 +159,10 @@ class AndroidMessageNotifier(
             val pendingBubble = PendingIntent.getActivity(
                 context,
                 NotificationHelper.notificationIdFor(channelId),
-                Intent(context, BubbleActivity::class.java).apply {
+                Intent(context, MainActivity::class.java).apply {
                     putExtra(NotificationHelper.EXTRA_CHANNEL_ID, channelId)
                     putExtra(NotificationHelper.EXTRA_GUILD_ID, meta.guildId)
+                    putExtra(NotificationHelper.EXTRA_IS_BUBBLE, true)
                 },
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
             )
@@ -270,9 +271,10 @@ class AndroidMessageNotifier(
     ) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
 
-        val bubbleIntent = Intent(context, BubbleActivity::class.java).apply {
+        val bubbleIntent = Intent(context, MainActivity::class.java).apply {
             putExtra(NotificationHelper.EXTRA_CHANNEL_ID, channelId)
             putExtra(NotificationHelper.EXTRA_GUILD_ID, data.message.guild_id)
+            putExtra(NotificationHelper.EXTRA_IS_BUBBLE, true)
         }
         val pendingIntent = PendingIntent.getActivity(
             context,

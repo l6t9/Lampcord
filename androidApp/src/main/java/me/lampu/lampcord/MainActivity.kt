@@ -11,6 +11,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import me.lampu.lampcord.shared.state.ChannelNavigator
+import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.ui.App
 import org.koin.core.context.GlobalContext
 
@@ -45,7 +46,12 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleNotificationIntent(intent: Intent?) {
-        val channelId = intent?.getStringExtra(NotificationHelper.EXTRA_CHANNEL_ID) ?: return
+        val navigationStore = GlobalContext.get().get<NavigationStore>()
+        navigationStore.isBubble = intent?.getBooleanExtra(NotificationHelper.EXTRA_IS_BUBBLE, false) == true
+        if (intent == null) return
+        intent.removeExtra(NotificationHelper.EXTRA_IS_BUBBLE)
+
+        val channelId = intent.getStringExtra(NotificationHelper.EXTRA_CHANNEL_ID) ?: return
         val guildId = intent.getStringExtra(NotificationHelper.EXTRA_GUILD_ID)
         intent.removeExtra(NotificationHelper.EXTRA_CHANNEL_ID)
         intent.removeExtra(NotificationHelper.EXTRA_GUILD_ID)
