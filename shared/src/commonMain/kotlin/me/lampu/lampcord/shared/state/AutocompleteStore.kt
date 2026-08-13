@@ -10,6 +10,7 @@ class AutocompleteStore(
     private val memberListStore: MemberListStore,
     private val relationshipStore: RelationshipStore,
     private val guildStore: GuildStore,
+    private val userStore: UserStore,
     private val commandStore: CommandStore
 ) {
     var autocompleteType by mutableStateOf<AutocompleteType?>(null)
@@ -123,20 +124,50 @@ class AutocompleteStore(
                 })
             }
             AutocompleteType.EMOJI -> {
-                val emojis = selectedGuild?.emojis?.filter { emo ->
+                val currentUser = userStore.currentUser.value
+                val hasNitro = (currentUser?.premium_type ?: 0) > 0
+                val freeNitro = me.lampu.lampcord.shared.settings.Settings.shared.freeNitroEmojis
+                val realmojis = me.lampu.lampcord.shared.settings.Settings.shared.realmojis
+
+                val guildEmojis = mutableListOf<Emoji>()
+                if (hasNitro || freeNitro) {
+                    guildStore.guilds.value.forEach { guild ->
+                        guildEmojis.addAll(guild.emojis)
+                    }
+                } else {
+                    selectedGuild?.emojis?.let { guildEmojis.addAll(it) }
+                }
+
+                val filteredEmojis = guildEmojis.filter { emo ->
                     emo.name?.contains(query, ignoreCase = true) == true 
-                }?.take(15) ?: emptyList()
-                results.addAll(emojis.map { emoji ->
+                }.distinctBy { it.id }.sortedBy { it.guild_id != selectedGuild?.id }.take(20)
+
+                results.addAll(filteredEmojis.map { emoji ->
+                    val isExternal = emoji.guild_id != null && emoji.guild_id != selectedGuild?.id
+                    val isAnimated = emoji.animated == true
+                    
+                    val replacement = if (emoji.id != null) {
+                        if (isExternal && !hasNitro && freeNitro) {
+                            if (realmojis) {
+                                "<${if (isAnimated) "a" else ""}:F_${emoji.name}:${emoji.id}>"
+                            } else {
+                                "https://cdn.discordapp.com/emojis/${emoji.id}.${if (isAnimated) "gif" else "png"}?size=48"
+                            }
+                        } else {
+                            "<${if (isAnimated) "a" else ""}:${emoji.name}:${emoji.id}>"
+                        }
+                    } else ":${emoji.name}:"
+
                     AutocompleteItem(
                         id = emoji.id ?: emoji.name ?: "",
                         title = ":${emoji.name}:",
                         icon = if (emoji.id != null) "https://cdn.discordapp.com/emojis/${emoji.id}.png?size=64" else null,
-                        replacement = if (emoji.id != null) "<:${emoji.name}:${emoji.id}>" else ":${emoji.name}:"
+                        replacement = replacement
                     )
                 })
 
                 // Add standard emojis
-                if (results.size < 20) {
+                if (results.size < 25) {
                     val standardEmojis = EmojiIndex.getAllEmojis().filter { emo ->
                         emo.name?.contains(query, ignoreCase = true) == true
                     }.take(20 - results.size)

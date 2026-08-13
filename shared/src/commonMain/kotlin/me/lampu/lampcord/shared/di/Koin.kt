@@ -43,7 +43,7 @@ val storeModule = module {
     single { VoiceStore(get(), get(), get(), CoroutineScope(Dispatchers.Main)) }
     single { SearchStore(get(), get(), get(), get(), CoroutineScope(Dispatchers.Main)) }
     single { ProfileStore(get(), CoroutineScope(Dispatchers.Main)) }
-    single { AutocompleteStore(get(), get(), get(), get()) }
+    single { AutocompleteStore(get(), get(), get(), get(), get()) }
     single { CommandStore(get(), get(), CoroutineScope(Dispatchers.Main)) }
     single { ExperimentStore() }
     single { BadgeStore(get(), get(), CoroutineScope(Dispatchers.Main)) }

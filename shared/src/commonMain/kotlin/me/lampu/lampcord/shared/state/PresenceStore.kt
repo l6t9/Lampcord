@@ -11,16 +11,10 @@ import me.lampu.lampcord.shared.model.Session
 
 class PresenceStore(private val discordClient: DiscordClient) {
     private val _presences = MutableStateFlow<Map<String, Map<String, PresenceUpdate>>>(emptyMap())
-    val presences: StateFlow<Map<String, PresenceUpdate>> = _presences.asStateFlow().let { flow ->
-        // Transform the nested map into a flat map of the "best" presence for each user
-        // In this simple implementation, we'll just pick any guild's presence if it's online
-        val result = MutableStateFlow<Map<String, PresenceUpdate>>(emptyMap())
-        // (This transformation is actually done on-demand in getUserStatus for simplicity)
-        result.asStateFlow()
-    }
-
+    
     // A simple cache for flattened presences to avoid recomputing too much
     private val flattenedPresences = MutableStateFlow<Map<String, PresenceUpdate>>(emptyMap())
+    val presences: StateFlow<Map<String, PresenceUpdate>> = flattenedPresences.asStateFlow()
     val allPresences: StateFlow<Map<String, PresenceUpdate>> = flattenedPresences.asStateFlow()
 
     private fun updateFlattened() {

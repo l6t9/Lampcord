@@ -56,6 +56,9 @@ object WaylandScale {
 
         applyCursorTheme()
 
+        // Sync refresh once before starting the async watcher to ensure detectScale() has cache
+        refreshMonitorCache()
+
         // Start async monitor watcher for dynamic scaling
         startMonitorWatcher()
 

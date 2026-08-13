@@ -61,6 +61,71 @@ class MessageStore(
     private val queuesMutex = Mutex()
     private var historyLoadingJob: Job? = null
 
+    private val emojiMarkdownRegexCompound = Regex(
+        """(?:\[(?:[a-zA-Z0-9_~]+|\u2236[a-zA-Z0-9_~]+\u2236)]\()?(https://cdn\.discordapp\.com/emojis/(\d+)\.(gif|png|webp)(?:\?[^)\s]*)?)\)?"""
+    )
+    private val emojiMarkdownRegexSingle = Regex(
+        """^(?:\[(?:[a-zA-Z0-9_~]+|\u2236[a-zA-Z0-9_~]+\u2236)]\()?(https://cdn\.discordapp\.com/emojis/(\d+)\.(gif|png|webp)(?:\?[^)\s]*)?)\)?$"""
+    )
+    private val fEmojiRegex = Regex("""<(a?):F_([a-zA-Z0-9_]+):(\d+)>""")
+
+    private fun preprocess(message: Message): Message {
+        val settings = me.lampu.lampcord.shared.settings.Settings.shared
+        if (!settings.freeNitroEmojis || !settings.realmojis) return message
+
+        val content = message.content
+        val embeds = message.embeds.toMutableList()
+        var newContent = content
+
+        val regex = if (settings.compoundRealmojis) emojiMarkdownRegexCompound else emojiMarkdownRegexSingle
+        val matches = regex.findAll(content)
+        var changed = false
+        matches.forEach { match ->
+            val fullMatch = match.value
+            val url = match.groupValues[1]
+            val id = match.groupValues[2]
+            val ext = match.groupValues[3]
+            
+            val embedIndex = embeds.indexOfFirst { 
+                it.url == url || it.thumbnail?.url == url || it.image?.url == url || 
+                it.thumbnail?.proxy_url == url || it.image?.proxy_url == url
+            }
+            if (embedIndex != -1) {
+                embeds.removeAt(embedIndex)
+                changed = true
+            }
+            
+            var name = "emoji"
+            val queryParams = url.substringAfter('?', "").split('&')
+            queryParams.forEach { param ->
+                val parts = param.split('=')
+                if (parts[0] == "name" && parts.size > 1) {
+                    name = parts[1]
+                }
+            }
+            
+            val animated = ext == "gif" || url.contains("animated=true")
+            val emojiTag = "<${if (animated) "a" else ""}:F_$name:$id>"
+            if (newContent.contains(fullMatch)) {
+                newContent = newContent.replace(fullMatch, emojiTag)
+                changed = true
+            }
+        }
+
+        return if (changed) message.copy(content = newContent, embeds = embeds) else message
+    }
+
+    private fun transformOutgoingContent(content: String): String {
+        return fEmojiRegex.replace(content) { match ->
+            val animated = match.groupValues[1] == "a"
+            val name = match.groupValues[2]
+            val id = match.groupValues[3]
+            val ext = if (animated) "gif" else "png"
+            val url = "https://cdn.discordapp.com/emojis/$id.$ext?size=48&name=$name"
+            "[$name]($url)"
+        }
+    }
+
     init {
         scope.launch {
             try {
@@ -106,17 +171,18 @@ class MessageStore(
     fun addMessages(newMessages: List<Message>) {
         _messages.update { current ->
             val existingIds = current.map { it.id }.toSet()
-            current + newMessages.filter { it.id !in existingIds }
+            current + newMessages.filter { it.id !in existingIds }.map { preprocess(it) }
         }
     }
 
     fun handleMessageCreate(message: Message) {
+        val preprocessed = preprocess(message)
         _messages.update { current ->
-            val index = current.indexOfFirst { it.id == message.id || (message.nonce != null && it.nonce == message.nonce) }
+            val index = current.indexOfFirst { it.id == preprocessed.id || (preprocessed.nonce != null && it.nonce == preprocessed.nonce) }
             if (index != -1) {
-                current.toMutableList().apply { set(index, message) }
+                current.toMutableList().apply { set(index, preprocessed) }
             } else {
-                listOf(message) + current
+                listOf(preprocessed) + current
             }
         }
     }
@@ -126,7 +192,8 @@ class MessageStore(
             val index = current.indexOfFirst { it.id == message.id }
             if (index != -1) {
                 val existing = current[index]
-                current.toMutableList().apply { set(index, existing.merge(dataObj)) }
+                val merged = existing.merge(dataObj)
+                current.toMutableList().apply { set(index, preprocess(merged)) }
             } else current
         }
     }
@@ -150,7 +217,8 @@ class MessageStore(
                             msg.member?.let { m -> userStore.cacheMember(guildId ?: "", author.id, m) }
                         }
                     }
-                    _messages.update { it + more }
+                    val preprocessed = more.map { preprocess(it) }
+                    _messages.update { it + preprocessed }
                 }
             } catch (e: Exception) {
                 println("Error loading history: ${e.message}")
@@ -221,9 +289,11 @@ class MessageStore(
             poll = poll
         )
         
+        val preprocessed = preprocess(tempMessage)
+        
         // Add to UI if it's the current channel
         if (selectionStore.selectedChannel?.id == channelId || selectionStore.selectedThread?.id == channelId) {
-            _messages.update { listOf(tempMessage) + it }
+            _messages.update { listOf(preprocessed) + it }
         }
         
         val task = MessageTask(nonce, channelId, content, replyTo, files, forwardFrom, stickerIds, allowedMentions, poll)
@@ -259,10 +329,15 @@ class MessageStore(
                         if (task == null) break
                         
                         try {
+                            val settings = me.lampu.lampcord.shared.settings.Settings.shared
+                            val contentToSend = if (settings.freeNitroEmojis && settings.realmojis) {
+                                transformOutgoingContent(task.content)
+                            } else task.content
+
                             val message = withTimeoutOrNull(60000.milliseconds) {
                                 discordClient.sendMessage(
                                     channelId = task.channelId,
-                                    content = task.content,
+                                    content = contentToSend,
                                     nonce = task.nonce,
                                     replyTo = task.replyTo,
                                     forwardFrom = task.forwardFrom,
@@ -367,7 +442,12 @@ class MessageStore(
     fun editMessage(message: Message, content: String) {
         scope.launch {
             try {
-                if (!discordClient.editMessage(message.channel_id, message.id, content)) {
+                val settings = me.lampu.lampcord.shared.settings.Settings.shared
+                val contentToSend = if (settings.freeNitroEmojis && settings.realmojis) {
+                    transformOutgoingContent(content)
+                } else content
+                
+                if (!discordClient.editMessage(message.channel_id, message.id, contentToSend)) {
                     errorStore.pushError("Failed to edit message.")
                 }
             } catch (e: Exception) {

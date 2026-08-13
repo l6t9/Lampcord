@@ -1,38 +1,14 @@
 package me.lampu.lampcord.shared.ui.components
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.*
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -63,6 +39,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextRange
@@ -336,6 +313,7 @@ fun ChatInputBar(
     
     var showFilePicker by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     val currentUser by userStore.currentUser.collectAsState()
     val member = remember(navigationStore.selectedGuild, currentUser) {
@@ -414,9 +392,11 @@ fun ChatInputBar(
 
     val primaryColor = MaterialTheme.colorScheme.primary
 
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Box(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter)) {
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val isMobile = getPlatformName() == "android" || getPlatformName() == "ios" || maxWidth < 600.dp
+        
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.fillMaxWidth()) {
                 // Autocomplete Picker
                 AnimatedVisibility(
                     visible = autocompleteStore.autocompleteType != null,
@@ -546,7 +526,6 @@ fun ChatInputBar(
                             }
                         }
 
-                        val isMobile = getPlatformName() == "android" || getPlatformName() == "ios"
                         if (isMobile) {
                             if (navigationStore.isMediaPickerVisible) {
                                 MediaPicker(onDismiss = {
@@ -619,6 +598,7 @@ fun ChatInputBar(
                             }
 
                             var showEmojiPicker by remember { mutableStateOf(false) }
+                            val isMobile = getPlatformName() == "android" || getPlatformName() == "ios"
 
                             Surface(
                                 modifier = Modifier
@@ -771,7 +751,12 @@ fun ChatInputBar(
                                     )
 
                                     IconButton(
-                                        onClick = { showEmojiPicker = !showEmojiPicker },
+                                        onClick = { 
+                                            showEmojiPicker = !showEmojiPicker
+                                            if (isMobile) {
+                                                keyboardController?.hide()
+                                            }
+                                        },
                                         modifier = Modifier.size(36.dp)
                                     ) {
                                         Icon(
@@ -782,7 +767,7 @@ fun ChatInputBar(
                                         )
                                     }
 
-                                    if (showEmojiPicker) {
+                                    if (showEmojiPicker && !isMobile) {
                                         androidx.compose.ui.window.Popup(
                                             alignment = Alignment.BottomEnd,
                                             offset = IntOffset(0, -48),
@@ -813,6 +798,34 @@ fun ChatInputBar(
                                         }
                                     }
                                 }
+                            }
+                            
+                            // Mobile Emoji Picker
+                            if (showEmojiPicker && isMobile) {
+                                EmojiPicker(
+                                    modifier = Modifier.fillMaxWidth().animateContentSize(),
+                                    onEmojiSelected = { emoji ->
+                                        val isExternal = emoji.guild_id != null && emoji.guild_id != navigationStore.selectedGuild?.id
+                                        val hasNitro = (currentUser?.premium_type ?: 0) > 0
+                                        val freeNitro = me.lampu.lampcord.shared.settings.Settings.shared.freeNitroEmojis
+                                        
+                                        val emojiText = if (emoji.id != null) {
+                                            if (isExternal && !hasNitro && freeNitro) {
+                                                if (me.lampu.lampcord.shared.settings.Settings.shared.realmojis) {
+                                                    "<${if (emoji.animated == true) "a" else ""}:F_${emoji.name}:${emoji.id}>"
+                                                } else {
+                                                    val ext = if (emoji.animated == true) "gif" else "png"
+                                                    "https://cdn.discordapp.com/emojis/${emoji.id}.$ext?size=48"
+                                                }
+                                            } else {
+                                                "<${if (emoji.animated == true) "a" else ""}:${emoji.name}:${emoji.id}>"
+                                            }
+                                        } else emoji.name ?: ""
+
+                                        val newText = textFieldValue.text.take(textFieldValue.selection.start) + emojiText + textFieldValue.text.drop(textFieldValue.selection.end)
+                                        textFieldValue = TextFieldValue(newText, TextRange(textFieldValue.selection.start + emojiText.length))
+                                    }
+                                )
                             }
                             
                             AnimatedVisibility(
