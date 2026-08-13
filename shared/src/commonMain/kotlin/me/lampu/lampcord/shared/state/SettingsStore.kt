@@ -105,6 +105,14 @@ class SettingsStore(
             me.lampu.lampcord.shared.settings.Settings.shared.chatBackground = value
         }
 
+    private var _chatBubbles by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.chatBubbles)
+    var chatBubbles: Boolean
+        get() = _chatBubbles
+        set(value) {
+            _chatBubbles = value
+            me.lampu.lampcord.shared.settings.Settings.shared.chatBubbles = value
+        }
+
     private var _notificationsEnabled by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.notificationsEnabled)
     var notificationsEnabled: Boolean
         get() = _notificationsEnabled

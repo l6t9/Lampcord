@@ -51,6 +51,7 @@ class Settings(private val settings: KmpSettings) {
     // Other Enhancements
     var bypassUploadLimit by preferenceBoolean("bypass_upload_limit", true)
     var compactMode by preferenceBoolean("compact_mode", false)
+    var chatBubbles by preferenceBoolean("chat_bubbles", false)
     var silentTyping by preferenceBoolean("silent_typing", false)
     var hideBlockedMessages by preferenceBoolean("hide_blocked_messages", false)
     var showPermissions by preferenceBoolean("show_permissions", true)

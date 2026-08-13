@@ -33,6 +33,8 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -167,6 +169,7 @@ fun ChatArea(
             ) { message ->
                 val index = filteredMessages.indexOf(message)
                 val priorMessage = filteredMessages.getOrNull(index + 1)
+                val nextMessage = filteredMessages.getOrNull(index - 1)
                 
                 val showDateSeparator = remember(message, priorMessage) {
                     if (priorMessage == null) return@remember true
@@ -186,7 +189,7 @@ fun ChatArea(
                     if (message.referenced_message != null) return@remember false
                     val currentType = message.type ?: 0
                     val priorType = priorMessage.type ?: 0
-                    if (currentType != 0) return@remember false
+                    if (currentType != 0 && currentType != 19) return@remember false
                     if (priorType != 0 && priorType != 19) return@remember false
                     
                     try {
@@ -198,12 +201,18 @@ fun ChatArea(
                     }
                 }
 
-                Column {
+                val itemZIndex = (filteredMessages.size - index).toFloat()
+
+                Column(modifier = Modifier.fillMaxWidth().zIndex(itemZIndex).graphicsLayer(clip = false)) {
                     if (showDateSeparator) {
                         DateSeparator(message.timestamp)
                     }
-                    Box(Modifier.animateItem()) {
-                        MessageItem(message, priorMessage = if (isInline) priorMessage else null)
+                    Box(Modifier.animateItem().graphicsLayer(clip = false)) {
+                        MessageItem(
+                            message = message,
+                            priorMessage = if (isInline) priorMessage else null,
+                            nextMessage = nextMessage
+                        )
                     }
                 }
             }

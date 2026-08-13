@@ -32,6 +32,17 @@ fun ChatSettings(settingsStore: SettingsStore = koinInject()) {
 private fun DesktopChatSettings(settingsStore: SettingsStore, userSettings: UserSettings?) {
     SettingsLayout {
         SettingsSection(
+            title = "Display",
+            icon = Icons.Rounded.Forum
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                ChatToggle("Chat Bubbles", settingsStore.chatBubbles, "Display messages inside rounded chat bubbles.") {
+                    settingsStore.chatBubbles = it
+                }
+            }
+        }
+
+        SettingsSection(
             title = "Gestures",
             icon = Icons.Filled.DragIndicator
         ) {
@@ -162,6 +173,20 @@ private fun MobileChatSettings(settingsStore: SettingsStore, userSettings: UserS
     var loggerExpanded by remember { mutableStateOf(false) }
     
     Column(modifier = Modifier.fillMaxWidth()) {
+        Material3SettingsGroup(
+            title = "Display",
+            items = listOf(
+                switchSettingsItem(
+                    title = "Chat Bubbles",
+                    description = "Display messages inside rounded chat bubbles.",
+                    checked = settingsStore.chatBubbles,
+                    onCheckedChange = {
+                        settingsStore.chatBubbles = it
+                    }
+                )
+            )
+        )
+
         Material3SettingsGroup(
             title = "Gestures",
             items = listOf(

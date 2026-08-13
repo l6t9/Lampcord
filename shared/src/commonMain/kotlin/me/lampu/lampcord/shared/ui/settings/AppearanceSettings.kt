@@ -206,6 +206,21 @@ fun AppearanceSettings(settingsStore: SettingsStore = koinInject()) {
         }
 
         SettingsSection(
+            title = "Message Display",
+            icon = Icons.Rounded.Forum
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Chat Bubbles", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                        Text("Display messages inside rounded chat bubbles.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    ExpressiveSwitch(checked = settingsStore.chatBubbles, onCheckedChange = { settingsStore.chatBubbles = it })
+                }
+            }
+        }
+
+        SettingsSection(
             title = "Typography",
             icon = Icons.Filled.TextFields
         ) {

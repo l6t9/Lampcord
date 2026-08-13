@@ -6,6 +6,7 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -76,15 +77,18 @@ import me.lampu.lampcord.shared.ui.components.messagebody.ReactionsView
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.kit.UserAvatar
 import me.lampu.lampcord.shared.utils.setClipboardText
+import kotlinx.datetime.Instant
 import org.koin.compose.koinInject
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MessageItem(
     message: Message,
     priorMessage: Message? = null,
+    nextMessage: Message? = null,
     messageStore: MessageStore = koinInject(),
     userStore: UserStore = koinInject(),
     navigationStore: NavigationStore = koinInject(),
@@ -173,6 +177,34 @@ fun MessageItem(
     val messageAlpha by animateFloatAsState(if (message.isPending) 0.5f else 1f)
 
     val isInline = priorMessage != null
+    val useBubbles = settingsStore.chatBubbles
+    val hasNextSameUser = remember(message, nextMessage) {
+        if (nextMessage == null) return@remember false
+        if (nextMessage.author?.id != message.author?.id) return@remember false
+        if (nextMessage.referenced_message != null) return@remember false
+        val currentType = message.type ?: 0
+        val nextType = nextMessage.type ?: 0
+        if ((currentType != 0 && currentType != 19) || (nextType != 0 && nextType != 19)) return@remember false
+        
+        try {
+            val currentTs = Instant.parse(message.timestamp)
+            val nextTs = Instant.parse(nextMessage.timestamp)
+            (nextTs - currentTs) < 7.minutes
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    val bubbleShape = remember(isInline, hasNextSameUser) {
+        val radiusOuter = 18.dp
+        val radiusInner = 4.dp
+        when {
+            !isInline && !hasNextSameUser -> RoundedCornerShape(radiusOuter)
+            !isInline && hasNextSameUser -> RoundedCornerShape(topStart = radiusOuter, topEnd = radiusOuter, bottomStart = radiusInner, bottomEnd = radiusInner)
+            isInline && hasNextSameUser -> RoundedCornerShape(radiusInner)
+            else -> RoundedCornerShape(topStart = radiusInner, topEnd = radiusInner, bottomStart = radiusOuter, bottomEnd = radiusOuter)
+        }
+    }
     val isHighlighted = messageStore.highlightedMessageId == message.id
     
     val tapTapEnabled = remember { me.lampu.lampcord.shared.settings.Settings.shared.tapTap }
@@ -189,6 +221,7 @@ fun MessageItem(
     Box(
         modifier = Modifier
             .fillMaxWidth()
+            .zIndex(if (isHovered || showReactionPicker) 10f else 1f)
             .offset { IntOffset(offsetX.roundToInt(), 0) }
             .pointerInput(message.id, gestureMode) {
                 if (gestureMode == me.lampu.lampcord.shared.settings.ChatGestures.SWIPE_TO_REPLY) {
@@ -270,167 +303,218 @@ fun MessageItem(
                 )
             }
 
+            val topPadding = if (useBubbles) (if (isInline) 1.5.dp else 6.dp) else (if (isInline) 1.5.dp else 8.dp)
+            val bottomPadding = if (useBubbles) (if (hasNextSameUser) 1.5.dp else 6.dp) else (if (isInline) 1.5.dp else 8.dp)
+
             ContextMenu(
                 items = contextMenuItems,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = if (isInline) 1.5.dp else 8.dp)
+                    .padding(start = 8.dp, end = 8.dp, top = topPadding, bottom = bottomPadding)
             ) {
+                val roleColor by remember(message, navigationStore.selectedGuild) {
+                    derivedStateOf {
+                        val guild = navigationStore.selectedGuild ?: return@derivedStateOf Color.Unspecified
+                        val authorId = message.author?.id ?: return@derivedStateOf Color.Unspecified
+                        val member = message.member ?: userStore.getMember(guild.id, authorId) ?: return@derivedStateOf Color.Unspecified
+                        val memberRoles = member.roles.mapNotNull { roleId -> guild.roles.find { it.id == roleId } }
+                        val highestRole = memberRoles.maxByOrNull { it.position }
+                        if (highestRole != null && highestRole.color != 0) Color(highestRole.color or 0xFF000000.toInt()) else Color.Unspecified
+                    }
+                }
+                
+                val displayColor = if (roleColor == Color.Unspecified) MaterialTheme.colorScheme.onSurface else roleColor
+
+                @Composable
+                fun MessageMainContent() {
+                    if (!isInline && message.author != null) {
+                        val isDm = message.guild_id == null && navigationStore.selectedGuild == null
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(bottom = 2.dp)
+                        ) {
+                            var namePosition by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+                            UsernameView(
+                                name = message.member?.nick ?: message.author.global_name ?: message.author.username ?: "Unknown User",
+                                style = message.member?.display_name_styles ?: message.author.display_name_styles,
+                                baseStyle = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                color = if (isDm) Color.White else displayColor,
+                                modifier = Modifier
+                                    .onGloballyPositioned { namePosition = it.positionInRoot() }
+                                    .clickable { profileStore.showProfile(message.author.id, guildId, namePosition) },
+                                ignoreEffects = !isHovered,
+                                ignoreColors = if (isDm) !isHovered else true
+                            )
+                            message.author.primary_guild?.let {
+                                Spacer(Modifier.width(4.dp))
+                                ClanTagView(it)
+                            }
+                            UserTagView(message.author, modifier = Modifier.padding(start = 4.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            MessageTimestamp(
+                                timestamp = message.timestamp,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                            )
+                            
+                            if (message.isDeleted) {
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    "(deleted)",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.error,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                    
+                    val hasSnapshots = !message.message_snapshots.isNullOrEmpty()
+                    val snapshotContent = message.message_snapshots?.firstOrNull()?.message?.content
+                    // Logic: If forwarded, ONLY show outer content if it's not a duplicate of original message content
+                    val isDuplicateForward = hasSnapshots && message.content.trim() == snapshotContent?.trim()
+                    val shouldShowContent = !hasSnapshots || (message.content.isNotEmpty() && !isDuplicateForward)
+
+                    if (shouldShowContent) {
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            Column {
+                                if (message.oldContent != null) {
+                                    Text(
+                                        text = message.oldContent,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                        modifier = Modifier.padding(bottom = 2.dp),
+                                        textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
+                                    )
+                                }
+                                DiscordMarkdownText(
+                                    content = message.content,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = if (message.isDeleted) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    }
+
+                    if (message.sendError != null) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                Icons.Rounded.Error,
+                                null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Text(
+                                text = message.sendError,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                            Text(
+                                text = "Retry",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.clickable { messageStore.retryMessage(message) }
+                            )
+                            Text(
+                                text = "Delete",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.clickable { messageStore.deletePendingMessage(message) }
+                            )
+                        }
+                    }
+
+                    MessageBody(message)
+
+                    message.message_snapshots?.firstOrNull()?.let {
+                        ForwardedMessage(message)
+                    }
+
+                    if (message.thread != null) {
+                        ThreadStarterBar(message.thread)
+                    }
+
+                    ReactionsView(message)
+                }
+
                 Column(modifier = Modifier.fillMaxWidth()) {
                     if (message.referenced_message != null) {
                         ReplyBar(message.referenced_message)
                     }
-                    
+
                     if (message.interaction != null) {
                         InteractionHeader(message.interaction)
                     }
 
-                    Row(modifier = Modifier.fillMaxWidth()) {
-                        if (!isInline && message.author != null) {
-                            var avatarPosition by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
-
-                            Box(
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .onGloballyPositioned { avatarPosition = it.positionInRoot() }
-                            ) {
-                                UserAvatar(
-                                    user = message.author,
-                                    size = 40.dp,
-                                    modifier = Modifier.clickable { profileStore.showProfile(message.author.id, guildId, avatarPosition) }
-                                )
-                            }
-                        } else {
-                            Spacer(modifier = Modifier.width(40.dp))
-                        }
-                        
-                        val roleColor by remember(message, navigationStore.selectedGuild) {
-                            derivedStateOf {
-                                val guild = navigationStore.selectedGuild ?: return@derivedStateOf Color.Unspecified
-                                val authorId = message.author?.id ?: return@derivedStateOf Color.Unspecified
-                                val member = message.member ?: userStore.getMember(guild.id, authorId) ?: return@derivedStateOf Color.Unspecified
-                                val memberRoles = member.roles.mapNotNull { roleId -> guild.roles.find { it.id == roleId } }
-                                val highestRole = memberRoles.maxByOrNull { it.position }
-                                if (highestRole != null && highestRole.color != 0) Color(highestRole.color or 0xFF000000.toInt()) else Color.Unspecified
-                            }
-                        }
-                        
-                        val displayColor = if (roleColor == Color.Unspecified) MaterialTheme.colorScheme.onSurface else roleColor
-
-                        Spacer(modifier = Modifier.width(8.dp))
-                        
-                        Column {
+                    if (useBubbles) {
+                        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
                             if (!isInline && message.author != null) {
-                                val isDm = message.guild_id == null && navigationStore.selectedGuild == null
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(bottom = 2.dp)
+                                var avatarPosition by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .onGloballyPositioned { avatarPosition = it.positionInRoot() }
                                 ) {
-                                    var namePosition by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
-                                    UsernameView(
-                                        name = message.member?.nick ?: message.author.global_name ?: message.author.username ?: "Unknown User",
-                                        style = message.member?.display_name_styles ?: message.author.display_name_styles,
-                                        baseStyle = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                                        color = if (isDm) Color.White else displayColor,
-                                        modifier = Modifier
-                                            .onGloballyPositioned { namePosition = it.positionInRoot() }
-                                            .clickable { profileStore.showProfile(message.author.id, guildId, namePosition) },
-                                        ignoreEffects = !isHovered,
-                                        ignoreColors = if (isDm) !isHovered else true
+                                    UserAvatar(
+                                        user = message.author,
+                                        size = 40.dp,
+                                        modifier = Modifier.clickable { profileStore.showProfile(message.author.id, guildId, avatarPosition) }
                                     )
-                                    message.author.primary_guild?.let {
-                                        Spacer(Modifier.width(4.dp))
-                                        ClanTagView(it)
-                                    }
-                                    UserTagView(message.author, modifier = Modifier.padding(start = 4.dp))
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    MessageTimestamp(
-                                        timestamp = message.timestamp,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                                    )
-                                    
-                                    if (message.isDeleted) {
-                                        Spacer(Modifier.width(8.dp))
-                                        Text(
-                                            "(deleted)",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.error,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
                                 }
-                            }
-                            
-                            val hasSnapshots = !message.message_snapshots.isNullOrEmpty()
-                            val snapshotContent = message.message_snapshots?.firstOrNull()?.message?.content
-                            // Logic: If forwarded, ONLY show outer content if it's not a duplicate of original message content
-                            val isDuplicateForward = hasSnapshots && message.content.trim() == snapshotContent?.trim()
-                            val shouldShowContent = !hasSnapshots || (message.content.isNotEmpty() && !isDuplicateForward)
-
-                            if (shouldShowContent) {
-                                Box(modifier = Modifier.fillMaxWidth()) {
-                                    Column {
-                                        if (message.oldContent != null) {
-                                            Text(
-                                                text = message.oldContent,
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                                modifier = Modifier.padding(bottom = 2.dp),
-                                                textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
-                                            )
-                                        }
-                                        DiscordMarkdownText(
-                                            content = message.content,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = if (message.isDeleted) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
-                                        )
-                                    }
-                                }
+                            } else {
+                                Spacer(modifier = Modifier.width(40.dp))
                             }
 
-                            if (message.sendError != null) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            Spacer(modifier = Modifier.width(8.dp))
+
+                            val bubbleColor = when {
+                                isHighlighted -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                                isMentioned -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+                                message.isDeleted -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f)
+                                message.sendError != null -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.25f)
+                                isHovered || showReactionPicker -> MaterialTheme.colorScheme.surfaceContainerHighest
+                                else -> MaterialTheme.colorScheme.surfaceContainerHigh
+                            }
+
+                            Surface(
+                                shape = bubbleShape,
+                                color = bubbleColor,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+                                    MessageMainContent()
+                                }
+                            }
+                        }
+                    } else {
+                        Row(modifier = Modifier.fillMaxWidth()) {
+                            if (!isInline && message.author != null) {
+                                var avatarPosition by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .onGloballyPositioned { avatarPosition = it.positionInRoot() }
                                 ) {
-                                    Icon(
-                                        Icons.Rounded.Error,
-                                        null,
-                                        tint = MaterialTheme.colorScheme.error,
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                    Text(
-                                        text = message.sendError,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.error
-                                    )
-                                    Text(
-                                        text = "Retry",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.clickable { messageStore.retryMessage(message) }
-                                    )
-                                    Text(
-                                        text = "Delete",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.error,
-                                        modifier = Modifier.clickable { messageStore.deletePendingMessage(message) }
+                                    UserAvatar(
+                                        user = message.author,
+                                        size = 40.dp,
+                                        modifier = Modifier.clickable { profileStore.showProfile(message.author.id, guildId, avatarPosition) }
                                     )
                                 }
+                            } else {
+                                Spacer(modifier = Modifier.width(40.dp))
                             }
 
-                            MessageBody(message)
+                            Spacer(modifier = Modifier.width(8.dp))
 
-                            message.message_snapshots?.firstOrNull()?.let {
-                                ForwardedMessage(message)
+                            Column {
+                                MessageMainContent()
                             }
-
-                            if (message.thread != null) {
-                                ThreadStarterBar(message.thread)
-                            }
-
-                            ReactionsView(message)
                         }
                     }
                 }
