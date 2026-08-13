@@ -132,7 +132,7 @@ class GatewayForegroundService : Service() {
                 val channel = NotificationChannel(
                     CHANNEL_ID_SERVICE,
                     context.getString(R.string.notification_channel_service),
-                    NotificationManager.IMPORTANCE_MIN
+                    NotificationManager.IMPORTANCE_LOW
                 ).apply {
                     description = context.getString(R.string.notification_channel_service_description)
                     setShowBadge(false)
