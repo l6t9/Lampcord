@@ -20,6 +20,8 @@ class LampcordApp : Application() {
 
         NotificationHelper.ensureMessageChannel(this)
         GatewayForegroundService.ensureServiceChannel(this)
+        PushRelayManager.registerCurrentDevice()
+
 
         AppLifecycleTracker.register(this)
         AppLifecycleTracker.onForegroundChanged = { isInForeground ->

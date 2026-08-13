@@ -49,6 +49,9 @@ class Settings(private val settings: KmpSettings) {
     var notificationSound by preferenceBoolean("notification_sound", true)
     var autoStartOnBoot by preferenceBoolean("auto_start_on_boot", true)
     var silentBackgroundService by preferenceBoolean("silent_background_service", true)
+    var pushRelayServerUrl by preference("push_relay_server_url", "")
+    var fcmToken by preference("fcm_token", "")
+
 
     // Other Enhancements
     var bypassUploadLimit by preferenceBoolean("bypass_upload_limit", true)
