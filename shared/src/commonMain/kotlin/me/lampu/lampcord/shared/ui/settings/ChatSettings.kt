@@ -39,6 +39,9 @@ private fun DesktopChatSettings(settingsStore: SettingsStore, userSettings: User
                 ChatToggle("Chat Bubbles", settingsStore.chatBubbles, "Display messages inside rounded chat bubbles.") {
                     settingsStore.chatBubbles = it
                 }
+                ChatToggle("Compact Mode", settingsStore.compactMode, "Display messages in a compact IRC-style layout.") {
+                    settingsStore.compactMode = it
+                }
             }
         }
 
@@ -182,6 +185,14 @@ private fun MobileChatSettings(settingsStore: SettingsStore, userSettings: UserS
                     checked = settingsStore.chatBubbles,
                     onCheckedChange = {
                         settingsStore.chatBubbles = it
+                    }
+                ),
+                switchSettingsItem(
+                    title = "Compact Mode",
+                    description = "Display messages in a compact IRC-style layout.",
+                    checked = settingsStore.compactMode,
+                    onCheckedChange = {
+                        settingsStore.compactMode = it
                     }
                 )
             )

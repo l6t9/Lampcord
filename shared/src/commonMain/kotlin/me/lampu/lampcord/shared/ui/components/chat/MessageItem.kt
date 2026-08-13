@@ -178,6 +178,7 @@ fun MessageItem(
 
     val isInline = priorMessage != null
     val useBubbles = settingsStore.chatBubbles
+    val isCompact = settingsStore.compactMode
     val hasNextSameUser = remember(message, nextMessage) {
         if (nextMessage == null) return@remember false
         if (nextMessage.author?.id != message.author?.id) return@remember false
@@ -303,8 +304,8 @@ fun MessageItem(
                 )
             }
 
-            val topPadding = if (useBubbles) (if (isInline) 1.5.dp else 6.dp) else (if (isInline) 1.5.dp else 8.dp)
-            val bottomPadding = if (useBubbles) (if (hasNextSameUser) 1.5.dp else 6.dp) else (if (isInline) 1.5.dp else 8.dp)
+            val topPadding = if (isCompact) 1.5.dp else (if (useBubbles) (if (isInline) 1.5.dp else 6.dp) else (if (isInline) 1.5.dp else 8.dp))
+            val bottomPadding = if (isCompact) 1.5.dp else (if (useBubbles) (if (hasNextSameUser) 1.5.dp else 6.dp) else (if (isInline) 1.5.dp else 8.dp))
 
             ContextMenu(
                 items = contextMenuItems,
@@ -449,7 +450,116 @@ fun MessageItem(
                         InteractionHeader(message.interaction)
                     }
 
-                    if (useBubbles) {
+                    if (isCompact) {
+                        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+                            if (message.author != null) {
+                                var avatarPosition by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+
+                                Box(
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .padding(top = 2.dp)
+                                        .onGloballyPositioned { avatarPosition = it.positionInRoot() }
+                                ) {
+                                    UserAvatar(
+                                        user = message.author,
+                                        size = 20.dp,
+                                        modifier = Modifier.clickable { profileStore.showProfile(message.author.id, guildId, avatarPosition) }
+                                    )
+                                }
+                            } else {
+                                Spacer(modifier = Modifier.width(20.dp))
+                            }
+
+                            Spacer(modifier = Modifier.width(6.dp))
+
+                            Column(modifier = Modifier.weight(1f)) {
+                                androidx.compose.foundation.layout.FlowRow(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    if (message.author != null) {
+                                        val isDm = message.guild_id == null && navigationStore.selectedGuild == null
+                                        var namePosition by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.padding(end = 4.dp)
+                                        ) {
+                                            UsernameView(
+                                                name = message.member?.nick ?: message.author.global_name ?: message.author.username ?: "Unknown User",
+                                                style = message.member?.display_name_styles ?: message.author.display_name_styles,
+                                                baseStyle = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                                color = if (isDm) Color.White else displayColor,
+                                                modifier = Modifier
+                                                    .onGloballyPositioned { namePosition = it.positionInRoot() }
+                                                    .clickable { profileStore.showProfile(message.author.id, guildId, namePosition) },
+                                                ignoreEffects = !isHovered,
+                                                ignoreColors = if (isDm) !isHovered else true
+                                            )
+                                            message.author.primary_guild?.let {
+                                                Spacer(Modifier.width(4.dp))
+                                                ClanTagView(it)
+                                            }
+                                            UserTagView(message.author, modifier = Modifier.padding(start = 4.dp))
+                                            Text(
+                                                ": ",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (isDm) Color.White else displayColor
+                                            )
+                                        }
+                                    }
+
+                                    val hasSnapshots = !message.message_snapshots.isNullOrEmpty()
+                                    val snapshotContent = message.message_snapshots?.firstOrNull()?.message?.content
+                                    val isDuplicateForward = hasSnapshots && message.content.trim() == snapshotContent?.trim()
+                                    val shouldShowContent = !hasSnapshots || (message.content.isNotEmpty() && !isDuplicateForward)
+
+                                    if (shouldShowContent) {
+                                        if (message.oldContent != null) {
+                                            Text(
+                                                text = message.oldContent,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                                modifier = Modifier.padding(end = 4.dp),
+                                                textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
+                                            )
+                                        }
+                                        DiscordMarkdownText(
+                                            content = message.content,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = if (message.isDeleted) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                }
+
+                                if (message.sendError != null) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Icon(Icons.Rounded.Error, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(14.dp))
+                                        Text(text = message.sendError, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
+                                        Text(text = "Retry", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.clickable { messageStore.retryMessage(message) })
+                                        Text(text = "Delete", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error, modifier = Modifier.clickable { messageStore.deletePendingMessage(message) })
+                                    }
+                                }
+
+                                MessageBody(message)
+
+                                message.message_snapshots?.firstOrNull()?.let {
+                                    ForwardedMessage(message)
+                                }
+
+                                if (message.thread != null) {
+                                    ThreadStarterBar(message.thread)
+                                }
+
+                                ReactionsView(message)
+                            }
+                        }
+                    } else if (useBubbles) {
                         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
                             if (!isInline && message.author != null) {
                                 var avatarPosition by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }

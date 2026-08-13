@@ -113,6 +113,14 @@ class SettingsStore(
             me.lampu.lampcord.shared.settings.Settings.shared.chatBubbles = value
         }
 
+    private var _compactMode by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.compactMode)
+    var compactMode: Boolean
+        get() = _compactMode
+        set(value) {
+            _compactMode = value
+            me.lampu.lampcord.shared.settings.Settings.shared.compactMode = value
+        }
+
     private var _notificationsEnabled by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.notificationsEnabled)
     var notificationsEnabled: Boolean
         get() = _notificationsEnabled
