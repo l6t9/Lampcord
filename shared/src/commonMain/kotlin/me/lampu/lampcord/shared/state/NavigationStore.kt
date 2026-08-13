@@ -4,6 +4,8 @@ import androidx.compose.runtime.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import me.lampu.lampcord.shared.api.DiscordClient
 import me.lampu.lampcord.shared.model.Channel
@@ -28,6 +30,14 @@ class NavigationStore(
     private val scope: CoroutineScope,
     val onChannelSelected: () -> Unit = {}
 ) {
+    private val _focusChatRequest = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val focusChatRequest = _focusChatRequest.asSharedFlow()
+
+    private fun triggerFocusChat() {
+        _focusChatRequest.tryEmit(Unit)
+        onChannelSelected()
+    }
+
     var selectedGuild by selectionStore::selectedGuild
     var selectedChannel by selectionStore::selectedChannel
     var selectedThread by selectionStore::selectedThread
@@ -141,7 +151,7 @@ class NavigationStore(
                 guildStore.allGuildChannels.value.values.find { it.guild_id == guild.id && it.id == lastChannelId }
                     ?: guildStore.allGuildChannels.value.values.find { it.guild_id == guild.id && it.type in listOf(0, 2, 5, 13, 15) }
             }
-            channelToSelect?.let { selectChannel(it) }
+            channelToSelect?.let { selectChannel(it, explicitlySelected = targetChannelId != null) }
             
             // Onboarding
             selectedGuildOnboarding = null
@@ -160,16 +170,16 @@ class NavigationStore(
         }
     }
 
-    fun selectChannel(channel: Channel) {
+    fun selectChannel(channel: Channel, explicitlySelected: Boolean = false) {
         if (selectedChannel?.id == channel.id) return
         isFriendsSelected = false
         isChannelsAndRolesVisible = false
         isServerSettingsVisible = false
         channelLoadingJob?.cancel()
-selectedChannel = channel
+        selectedChannel = channel
         selectedThread = null
         notifier?.dismissChannelNotifications(channel.id)
-        onChannelSelected()
+        if (explicitlySelected) triggerFocusChat()
 
         // Pre-size the member list store based on expected list ID
         val guild = selectedGuild
@@ -234,11 +244,12 @@ selectedChannel = channel
         }
     }
 
-    fun selectThread(channel: Channel) {
+    fun selectThread(channel: Channel, explicitlySelected: Boolean = false) {
         if (selectedThread?.id == channel.id) return
         isChannelsAndRolesVisible = false
         isServerSettingsVisible = false
         selectedThread = channel
+        if (explicitlySelected) triggerFocusChat()
         messageStore.clear()
         scope.launch {
             val channelMessages = discordClient.getChannelMessages(channel.id)
@@ -252,13 +263,13 @@ selectedChannel = channel
         }
     }
 
-    fun selectChannelById(channelId: String) {
+    fun selectChannelById(channelId: String, explicitlySelected: Boolean = false) {
         val existing = guildStore.allGuildChannels.value[channelId] ?: guildStore.privateChannels.value.find { it.id == channelId }
         if (existing != null) {
             if (existing.type in listOf(10, 11, 12)) {
-                selectThread(existing)
+                selectThread(existing, explicitlySelected = explicitlySelected)
             } else {
-                selectChannel(existing)
+                selectChannel(existing, explicitlySelected = explicitlySelected)
             }
         } else {
             scope.launch {
@@ -266,9 +277,9 @@ selectedChannel = channel
                 if (fetched != null) {
                     guildStore.handleChannelCreateOrUpdate(fetched)
                     if (fetched.type in listOf(10, 11, 12)) {
-                        selectThread(fetched)
+                        selectThread(fetched, explicitlySelected = explicitlySelected)
                     } else {
-                        selectChannel(fetched)
+                        selectChannel(fetched, explicitlySelected = explicitlySelected)
                     }
                 }
             }

@@ -105,7 +105,7 @@ fun ThreadPanel(
                 }
                 items(activeThreads, key = { it.id }) { thread ->
                     ThreadPanelItem(thread) {
-                        navigationStore.selectThread(thread)
+                        navigationStore.selectThread(thread, explicitlySelected = true)
                     }
                 }
             }
@@ -146,7 +146,7 @@ fun ThreadPanel(
             if (hasLoadedArchived && archivedThreads.isNotEmpty()) {
                 items(archivedThreads, key = { it.id }) { thread ->
                     ThreadPanelItem(thread) {
-                        navigationStore.selectThread(thread)
+                        navigationStore.selectThread(thread, explicitlySelected = true)
                     }
                 }
             } else if (hasLoadedArchived && archivedThreads.isEmpty() && activeThreads.isEmpty()) {

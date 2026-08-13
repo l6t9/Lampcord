@@ -40,14 +40,14 @@ class ChannelNavigator(
             if (channel.guild_id != null) {
                 val guild = entityStore.guilds.value[channel.guild_id] ?: return@launch
                 if (navigationStore.selectedGuild?.id == guild.id) {
-                    navigationStore.selectChannel(channel)
+                    navigationStore.selectChannel(channel, explicitlySelected = true)
                 } else {
                     navigationStore.selectGuild(guild, channelId) { gatewayManager.sendSubscription(it) }
                 }
             } else {
                 navigationStore.selectedGuild = null
                 navigationStore.isFriendsSelected = false
-                navigationStore.selectChannel(channel)
+                navigationStore.selectChannel(channel, explicitlySelected = true)
             }
         }
     }

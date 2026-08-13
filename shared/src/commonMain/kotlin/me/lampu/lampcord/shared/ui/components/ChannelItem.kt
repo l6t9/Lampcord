@@ -123,7 +123,7 @@ fun ChannelItem(
                         .padding(horizontal = 8.dp, vertical = 2.dp),
                     onClick = { 
                         if (!canView) return@Surface
-                        navigationStore.selectChannel(channel)
+                        navigationStore.selectChannel(channel, explicitlySelected = true)
                     },
                     color = if (isSelected) 
                         MaterialTheme.colorScheme.surfaceContainerHigh 

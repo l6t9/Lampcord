@@ -302,7 +302,7 @@ private fun SearchScreenContent(
                                                 navigationStore.selectGuild(guild) { gatewayManager.sendSubscription(it) }
                                             }
                                             if (channel != null) {
-                                                navigationStore.selectChannel(channel)
+                                                navigationStore.selectChannel(channel, explicitlySelected = true)
                                                 messageStore.scrollToMessageId = message.id
                                                 onDismiss()
                                             }

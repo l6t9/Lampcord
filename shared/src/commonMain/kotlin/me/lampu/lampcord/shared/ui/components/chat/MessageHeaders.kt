@@ -299,7 +299,7 @@ fun ThreadStarterBar(
     navigationStore: NavigationStore = koinInject()
 ) {
     Surface(
-        onClick = { navigationStore.selectThread(thread) },
+        onClick = { navigationStore.selectThread(thread, explicitlySelected = true) },
         modifier = Modifier
             .padding(top = 8.dp)
             .fillMaxWidth(0.8f),

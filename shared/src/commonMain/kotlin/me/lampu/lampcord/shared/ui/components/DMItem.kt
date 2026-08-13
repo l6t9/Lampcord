@@ -102,7 +102,7 @@ fun DMItem(
                         }
                     }
                 },
-            onClick = { navigationStore.selectChannel(channel) },
+            onClick = { navigationStore.selectChannel(channel, explicitlySelected = true) },
             color = if (isSelected) 
                 MaterialTheme.colorScheme.surfaceVariant 
             else Color.Transparent,

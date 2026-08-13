@@ -86,6 +86,12 @@ actual fun MobileBaseplate(
     val activeChannel = selectedThread ?: selectedChannel
     val keyboardController = LocalSoftwareKeyboardController.current
 
+    LaunchedEffect(Unit) {
+        navigationStore.focusChatRequest.collect {
+            panelState.close()
+        }
+    }
+
     LaunchedEffect(panelState.currentValue) {
         if (panelState.currentValue != DiscordPanelValue.Center) {
             keyboardController?.hide()

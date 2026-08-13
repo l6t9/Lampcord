@@ -108,7 +108,7 @@ fun ForumPostList(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(forumThreads, key = { it.id }) { thread ->
-                        ForumPostItem(thread, forumChannel, onClick = { navigationStore.selectThread(thread) })
+                        ForumPostItem(thread, forumChannel, onClick = { navigationStore.selectThread(thread, explicitlySelected = true) })
                     }
                 }
             }
@@ -188,7 +188,7 @@ fun NewPostDialog(
                                     val thread = discordClient.createThread(forumChannelId, title, content)
                                     if (thread != null) {
                                         guildStore.handleChannelCreateOrUpdate(thread)
-                                        navigationStore.selectThread(thread)
+                                        navigationStore.selectThread(thread, explicitlySelected = true)
                                         onDismiss()
                                     } else {
                                         isLoading = false

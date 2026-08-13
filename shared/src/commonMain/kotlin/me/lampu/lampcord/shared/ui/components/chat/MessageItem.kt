@@ -566,7 +566,7 @@ fun MessageItem(
                         val thread = discordClient.createThreadFromMessage(message.channel_id, message.id, name)
                         if (thread != null) {
                             guildStore.handleChannelCreateOrUpdate(thread)
-                            navigationStore.selectThread(thread)
+                            navigationStore.selectThread(thread, explicitlySelected = true)
                             showCreateThreadDialog = false
                         }
                     }
