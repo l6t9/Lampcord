@@ -47,6 +47,8 @@ class Settings(private val settings: KmpSettings) {
     var showMessagePreview by preferenceBoolean("show_message_preview", true)
     var showInAppNotifications by preferenceBoolean("show_in_app_notifications", true)
     var notificationSound by preferenceBoolean("notification_sound", true)
+    var autoStartOnBoot by preferenceBoolean("auto_start_on_boot", true)
+    var silentBackgroundService by preferenceBoolean("silent_background_service", true)
 
     // Other Enhancements
     var bypassUploadLimit by preferenceBoolean("bypass_upload_limit", true)

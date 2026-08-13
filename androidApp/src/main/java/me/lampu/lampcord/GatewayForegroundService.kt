@@ -11,6 +11,7 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import me.lampu.lampcord.shared.settings.Settings
 
 class GatewayForegroundService : Service() {
 
@@ -46,7 +47,8 @@ class GatewayForegroundService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        return NotificationCompat.Builder(this, CHANNEL_ID_SERVICE)
+        val isSilent = Settings.shared.silentBackgroundService
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID_SERVICE)
             .setSmallIcon(R.drawable.ic_stat_notify)
             .setContentTitle(getString(R.string.notification_service_title))
             .setContentText(getString(R.string.notification_service_text))
@@ -54,12 +56,28 @@ class GatewayForegroundService : Service() {
             .setSilent(true)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setContentIntent(contentIntent)
-            .build()
+
+        if (isSilent) {
+            builder.setPriority(NotificationCompat.PRIORITY_MIN)
+                .setVisibility(NotificationCompat.VISIBILITY_SECRET)
+        } else {
+            builder.setPriority(NotificationCompat.PRIORITY_LOW)
+        }
+
+        return builder.build()
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
-        stopSelf()
+        // Keep service running in background if notifications are enabled and user is logged in
+        val token = Settings.shared.discordToken
+        val notificationsEnabled = Settings.shared.notificationsEnabled
+        if (token.isBlank() || !notificationsEnabled) {
+            stopSelf()
+        } else {
+            // Re-trigger start to ensure service survives task dismissal
+            start(this)
+        }
     }
 
     companion object {
@@ -83,18 +101,18 @@ class GatewayForegroundService : Service() {
         fun ensureServiceChannel(context: Context) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 val manager = context.getSystemService(NotificationManager::class.java)
-                if (manager.getNotificationChannel(CHANNEL_ID_SERVICE) == null) {
-                    val channel = NotificationChannel(
-                        CHANNEL_ID_SERVICE,
-                        context.getString(R.string.notification_channel_service),
-                        NotificationManager.IMPORTANCE_MIN
-                    ).apply {
-                        description = context.getString(R.string.notification_channel_service_description)
-                        setShowBadge(false)
-                    }
-                    manager.createNotificationChannel(channel)
+                val channel = NotificationChannel(
+                    CHANNEL_ID_SERVICE,
+                    context.getString(R.string.notification_channel_service),
+                    NotificationManager.IMPORTANCE_MIN
+                ).apply {
+                    description = context.getString(R.string.notification_channel_service_description)
+                    setShowBadge(false)
+                    lockscreenVisibility = Notification.VISIBILITY_SECRET
                 }
+                manager.createNotificationChannel(channel)
             }
         }
     }
 }
+
