@@ -179,7 +179,8 @@ fun MessageItem(
     val isInline = priorMessage != null
     val useBubbles = settingsStore.chatBubbles
     val spacingMode = settingsStore.messageSpacingMode
-    val isCompact = spacingMode == me.lampu.lampcord.shared.settings.MessageSpacingMode.COMPACT
+    val isCompact = settingsStore.compactMode
+
     val hasNextSameUser = remember(message, nextMessage) {
         if (nextMessage == null) return@remember false
         if (nextMessage.author?.id != message.author?.id) return@remember false

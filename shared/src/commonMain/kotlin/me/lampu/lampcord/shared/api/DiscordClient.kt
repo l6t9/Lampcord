@@ -1122,6 +1122,21 @@ class DiscordClient(
         }
     }
 
+    suspend fun updateUserSettingsProto(base64Payload: String): Boolean {
+        return try {
+            val response = httpClient.patch("$apiBase/users/@me/settings-proto/1") {
+                standardHeaders()
+                contentType(ContentType.Application.Json)
+                setBody(mapOf("settings" to base64Payload))
+            }
+            response.status.isSuccess()
+        } catch (e: Exception) {
+            Logging.e("Settings", "Error updating user settings proto: ${e.message}")
+            false
+        }
+    }
+
+
     suspend fun updateUserGuildSettings(guildId: String, settings: UserGuildSettings.Partial): Boolean {
         return try {
             val response = httpClient.patch("$apiBase/users/@me/guilds/$guildId/settings") {

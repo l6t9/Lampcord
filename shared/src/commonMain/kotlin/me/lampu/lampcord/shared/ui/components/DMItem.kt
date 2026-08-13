@@ -84,12 +84,19 @@ fun DMItem(
     
     val nameplate = recipient?.collectibles?.nameplate
 
+    val itemHeight = when (settingsStore.messageSpacingMode) {
+        me.lampu.lampcord.shared.settings.MessageSpacingMode.COMPACT -> 38.dp
+        me.lampu.lampcord.shared.settings.MessageSpacingMode.DEFAULT -> 48.dp
+        me.lampu.lampcord.shared.settings.MessageSpacingMode.SPACIOUS -> 56.dp
+    }
+
     ContextMenu(items = contextMenuItems) {
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp)
+                .height(itemHeight)
                 .padding(horizontal = 8.dp)
+
                 .alpha(if (isMuted && !isSelected) 0.5f else 1f)
                 .pointerInput(Unit) {
                     awaitPointerEventScope {

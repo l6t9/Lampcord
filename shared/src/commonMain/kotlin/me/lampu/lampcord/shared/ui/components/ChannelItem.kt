@@ -101,10 +101,16 @@ fun ChannelItem(
                 .alpha(if (canView) 1f else 0.4f),
             verticalArrangement = Arrangement.Center
         ) {
+            val itemHeight = when (settingsStore.messageSpacingMode) {
+                me.lampu.lampcord.shared.settings.MessageSpacingMode.COMPACT -> 32.dp
+                me.lampu.lampcord.shared.settings.MessageSpacingMode.DEFAULT -> 40.dp
+                me.lampu.lampcord.shared.settings.MessageSpacingMode.SPACIOUS -> 48.dp
+            }
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(40.dp),
+                    .height(itemHeight),
                 contentAlignment = Alignment.CenterStart
             ) {
                 if (isUnread && !isSelected && canView) {
@@ -119,8 +125,9 @@ fun ChannelItem(
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(40.dp)
+                        .height(itemHeight)
                         .padding(horizontal = 8.dp, vertical = 2.dp),
+
                     onClick = { 
                         if (!canView) return@Surface
                         navigationStore.selectChannel(channel, explicitlySelected = true)

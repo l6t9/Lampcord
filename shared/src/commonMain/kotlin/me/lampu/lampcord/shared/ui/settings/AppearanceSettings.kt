@@ -206,6 +206,31 @@ fun AppearanceSettings(settingsStore: SettingsStore = koinInject()) {
         }
 
         SettingsSection(
+            title = "Visual Density",
+            icon = Icons.Rounded.Forum
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("UI Density", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = colorScheme.onSurface)
+                    Text("Adjust the space between server, channel, and member lists.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    SettingsButtonGroup(
+                        options = me.lampu.lampcord.shared.settings.MessageSpacingMode.entries.toList(),
+                        selectedOption = settingsStore.messageSpacingMode,
+                        onOptionSelected = { settingsStore.messageSpacingMode = it },
+                        iconProvider = null,
+                        labelProvider = {
+                            when (it) {
+                                me.lampu.lampcord.shared.settings.MessageSpacingMode.COMPACT -> "Compact"
+                                me.lampu.lampcord.shared.settings.MessageSpacingMode.DEFAULT -> "Default"
+                                me.lampu.lampcord.shared.settings.MessageSpacingMode.SPACIOUS -> "Spacious"
+                            }
+                        }
+                    )
+                }
+            }
+        }
+
+        SettingsSection(
             title = "Message Display",
             icon = Icons.Rounded.Forum
         ) {
@@ -219,6 +244,7 @@ fun AppearanceSettings(settingsStore: SettingsStore = koinInject()) {
                 }
             }
         }
+
 
         SettingsSection(
             title = "Typography",

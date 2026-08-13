@@ -119,6 +119,7 @@ class SettingsStore(
         set(value) {
             _compactMode = value
             me.lampu.lampcord.shared.settings.Settings.shared.compactMode = value
+            updateUserSettings(UserSettings.Partial(message_display_compact = value))
         }
 
     private var _messageSpacingMode by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.messageSpacingMode)
@@ -127,10 +128,18 @@ class SettingsStore(
         set(value) {
             _messageSpacingMode = value
             me.lampu.lampcord.shared.settings.Settings.shared.messageSpacingMode = value
-            val isCompact = (value == me.lampu.lampcord.shared.settings.MessageSpacingMode.COMPACT)
-            me.lampu.lampcord.shared.settings.Settings.shared.compactMode = isCompact
-            _compactMode = isCompact
+            val protoPayload = when (value) {
+                me.lampu.lampcord.shared.settings.MessageSpacingMode.COMPACT -> "agQQAWAB"
+                me.lampu.lampcord.shared.settings.MessageSpacingMode.DEFAULT -> "agQQAWAE"
+                me.lampu.lampcord.shared.settings.MessageSpacingMode.SPACIOUS -> "agQQAWAC"
+            }
+
+            scope.launch {
+                discordClient.updateUserSettingsProto(protoPayload)
+            }
         }
+
+
 
     private var _notificationsEnabled by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.notificationsEnabled)
     var notificationsEnabled: Boolean
@@ -195,8 +204,13 @@ class SettingsStore(
             default_guilds_restricted = newSettings.default_guilds_restricted ?: userSettings?.default_guilds_restricted,
             friend_discovery_flags = newSettings.friend_discovery_flags ?: userSettings?.friend_discovery_flags,
             show_current_game = newSettings.show_current_game ?: userSettings?.show_current_game,
-            blocked_message_bar = newSettings.blocked_message_bar ?: userSettings?.blocked_message_bar
+            blocked_message_bar = newSettings.blocked_message_bar ?: userSettings?.blocked_message_bar,
+            message_display_compact = newSettings.message_display_compact ?: userSettings?.message_display_compact
         ) ?: newSettings
+
+        newSettings.message_display_compact?.let { compact ->
+            compactMode = compact
+        }
     }
 
 
