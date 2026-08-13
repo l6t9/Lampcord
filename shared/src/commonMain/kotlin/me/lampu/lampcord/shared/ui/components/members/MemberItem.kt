@@ -1,5 +1,6 @@
 package me.lampu.lampcord.shared.ui.components.members
 
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -174,6 +175,7 @@ fun MemberItem(
                                 color = if (roleColor != Color.Unspecified) roleColor else MaterialTheme.colorScheme.onSurface,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
+                                marquee = true,
                                 ignoreEffects = true,
                                 ignoreColors = true
                             )

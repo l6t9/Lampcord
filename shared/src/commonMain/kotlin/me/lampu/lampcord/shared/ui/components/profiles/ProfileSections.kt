@@ -2,6 +2,7 @@ package me.lampu.lampcord.shared.ui.components.profiles
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -141,7 +142,13 @@ private fun RoleBadge(role: me.lampu.lampcord.shared.model.Role, theme: ProfileT
             val roleColor = if (role.color != 0) Color(role.color or 0xFF000000.toInt()) else theme.contentColor
             Box(modifier = Modifier.size(12.dp).background(roleColor, CircleShape))
             Spacer(Modifier.width(8.dp))
-            Text(role.name, style = MaterialTheme.typography.labelMedium, color = theme.contentColor)
+            Text(
+                text = role.name,
+                style = MaterialTheme.typography.labelMedium,
+                color = theme.contentColor,
+                maxLines = 1,
+                modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 3000, velocity = 30.dp)
+            )
         }
     }
 }

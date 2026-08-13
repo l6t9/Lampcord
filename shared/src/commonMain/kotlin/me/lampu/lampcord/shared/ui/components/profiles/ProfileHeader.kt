@@ -1,6 +1,7 @@
 package me.lampu.lampcord.shared.ui.components.profiles
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -117,7 +118,8 @@ fun ProfileHeader(
                 style = profile.guild_member?.display_name_styles ?: user.display_name_styles,
                 baseStyle = if (isExpanded) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = theme.contentColor
+                color = theme.contentColor,
+                marquee = true
             )
             user.primary_guild?.let {
                 Spacer(Modifier.width(4.dp))
@@ -129,7 +131,13 @@ fun ProfileHeader(
             Text(user.username ?: "", style = MaterialTheme.typography.bodyMedium, color = theme.contentColor.copy(alpha = 0.9f))
             val pronouns = guildMeta?.pronouns ?: userMeta?.pronouns ?: user.pronouns
             if (!pronouns.isNullOrBlank()) {
-                Text(" • $pronouns", style = MaterialTheme.typography.bodyMedium, color = theme.contentColor.copy(alpha = 0.7f), modifier = Modifier.padding(start = 4.dp))
+                Text(
+                    " • $pronouns",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = theme.contentColor.copy(alpha = 0.7f),
+                    modifier = Modifier.padding(start = 4.dp).basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 3000, velocity = 30.dp),
+                    maxLines = 1
+                )
             }
         }
         Spacer(Modifier.height(8.dp))

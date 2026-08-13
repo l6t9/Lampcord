@@ -1,5 +1,6 @@
 package me.lampu.lampcord.shared.ui.components
 
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -12,6 +13,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import me.lampu.lampcord.shared.model.DisplayNameStyles
 import me.lampu.lampcord.shared.utils.loadFont
@@ -78,6 +80,7 @@ fun UsernameView(
     fontWeight: FontWeight? = null,
     maxLines: Int = 1,
     overflow: TextOverflow = TextOverflow.Ellipsis,
+    marquee: Boolean = false,
     ignoreEffects: Boolean = false,
     ignoreColors: Boolean = false
 ) {
@@ -98,6 +101,10 @@ fun UsernameView(
     // If ignoreColors is true or style has no colors, we use the passed color (e.g. role color or default).
     val effectBaseColor = if (useStyleColors) styleColors.first() else if (color != Color.Unspecified) color else MaterialTheme.colorScheme.onSurface
 
+    val textModifier = if (marquee) {
+        Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 3000, velocity = 30.dp)
+    } else Modifier
+
     Box(modifier = modifier, contentAlignment = Alignment.CenterStart) {
         // Neon Effect: Double shadow layer for intense glow
         if (effectId == DisplayNameCatalog.Effect.NEON) {
@@ -111,7 +118,8 @@ fun UsernameView(
                     shadow = Shadow(color = neonColor, blurRadius = 16f, offset = androidx.compose.ui.geometry.Offset.Zero)
                 ),
                 maxLines = maxLines,
-                overflow = overflow
+                overflow = overflow,
+                modifier = textModifier
             )
         }
 
@@ -141,7 +149,8 @@ fun UsernameView(
                 )
             },
             maxLines = maxLines,
-            overflow = overflow
+            overflow = overflow,
+            modifier = textModifier
         )
     }
 }

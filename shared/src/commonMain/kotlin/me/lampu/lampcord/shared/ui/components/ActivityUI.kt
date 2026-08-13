@@ -1,6 +1,7 @@
 package me.lampu.lampcord.shared.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -73,7 +74,8 @@ fun CustomStatus(activity: Activity, modifier: Modifier = Modifier, compact: Boo
                 style = if (compact) MaterialTheme.typography.labelSmall else MaterialTheme.typography.bodyMedium,
                 color = LocalContentColor.current.copy(alpha = 0.8f),
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 3000, velocity = 30.dp)
             )
         }
     }
@@ -99,7 +101,8 @@ fun MusicActivity(activity: Activity, modifier: Modifier = Modifier, compact: Bo
                 style = MaterialTheme.typography.labelSmall,
                 color = contentColor.copy(alpha = 0.7f),
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 3000, velocity = 30.dp)
             )
         }
     } else {
@@ -162,14 +165,16 @@ fun MusicActivity(activity: Activity, modifier: Modifier = Modifier, compact: Bo
                         fontWeight = FontWeight.Bold,
                         color = contentColor,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 3000, velocity = 30.dp)
                     )
                     Text(
                         text = "by ${activity.state ?: "Unknown Artist"}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = contentColor.copy(alpha = 0.7f),
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 3000, velocity = 30.dp)
                     )
                     if (!activity.assets?.large_text.isNullOrBlank()) {
                         Text(
@@ -177,7 +182,8 @@ fun MusicActivity(activity: Activity, modifier: Modifier = Modifier, compact: Bo
                             style = MaterialTheme.typography.bodySmall,
                             color = contentColor.copy(alpha = 0.5f),
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 3000, velocity = 30.dp)
                         )
                     }
                 }
@@ -264,7 +270,7 @@ fun DefaultActivity(activity: Activity, modifier: Modifier = Modifier, compact: 
             color = contentColor.copy(alpha = 0.7f),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = modifier
+            modifier = modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 3000, velocity = 30.dp)
         )
     } else {
         Column(modifier = modifier.fillMaxWidth()) {
@@ -316,7 +322,8 @@ fun DefaultActivity(activity: Activity, modifier: Modifier = Modifier, compact: 
                         fontWeight = FontWeight.Bold,
                         color = contentColor,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 3000, velocity = 30.dp)
                     )
                     if (!activity.details.isNullOrBlank()) {
                         Text(
@@ -324,7 +331,8 @@ fun DefaultActivity(activity: Activity, modifier: Modifier = Modifier, compact: 
                             style = MaterialTheme.typography.bodyMedium,
                             color = contentColor.copy(alpha = 0.7f),
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 3000, velocity = 30.dp)
                         )
                     }
                     if (!activity.state.isNullOrBlank()) {
@@ -333,7 +341,8 @@ fun DefaultActivity(activity: Activity, modifier: Modifier = Modifier, compact: 
                             style = MaterialTheme.typography.bodySmall,
                             color = contentColor.copy(alpha = 0.5f),
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 3000, velocity = 30.dp)
                         )
                     }
                 }
