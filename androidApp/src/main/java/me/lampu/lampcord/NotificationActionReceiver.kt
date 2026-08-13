@@ -29,7 +29,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
                 CoroutineScope(Dispatchers.IO).launch {
                     try {
                         val sent = discordClient.sendMessage(channelId, text)
-                        if (sent) {
+                        if (sent != null) {
                             val userStore = koin.get<UserStore>()
                             val self = userStore.currentUser.value
                             NotificationMessageCache.addMessage(

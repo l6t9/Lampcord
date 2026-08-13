@@ -36,6 +36,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -135,12 +136,13 @@ private fun BubbleConversation(
     var isSending by remember { mutableStateOf(false) }
     var showMediaPicker by remember { mutableStateOf(false) }
 
-    val channel = entityStore.channels.value[channelId]
+    val channels by entityStore.channels.collectAsState()
+    val channel = channels[channelId]
     val recipients = channel?.recipients
     val title = when {
         guildId != null && channel?.name != null -> "#${channel.name}"
-        channel?.name != null -> channel.name!!
-        recipients != null && recipients.isNotEmpty() ->
+        channel?.name != null -> channel.name
+        !recipients.isNullOrEmpty() ->
             recipients.joinToString(", ") { it.global_name ?: it.username ?: "Unknown" }
         else -> "Conversation"
     }
@@ -366,7 +368,7 @@ private fun BubbleComposer(
         val name = recipient?.let { it.global_name ?: it.username } ?: "Unnamed DM"
         "Message @$name"
     } else {
-        "Message #${channel?.name ?: "unnamed"}"
+        "Message #${channel.name ?: "unnamed"}"
     }
 
     fun send() {
