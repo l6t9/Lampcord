@@ -57,6 +57,8 @@ android {
     buildFeatures {
         compose = true
     }
+
+    sourceSets["main"].assets.srcDir(rootProject.file("shared/src/commonMain/resources"))
 }
 
 dependencies {
