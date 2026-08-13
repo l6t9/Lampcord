@@ -2,7 +2,6 @@ package me.lampu.lampcord.shared.state
 
 import kotlinx.coroutines.*
 import kotlinx.serialization.json.*
-import me.lampu.lampcord.shared.api.DiscordClient
 import me.lampu.lampcord.shared.gateway.GatewayManager
 import me.lampu.lampcord.shared.model.*
 import me.lampu.lampcord.shared.settings.Settings
@@ -21,7 +20,6 @@ class GatewayHandler(
     private val relationshipStore: RelationshipStore,
     private val presenceStore: PresenceStore,
     private val navigationStore: NavigationStore,
-    private val discordClient: DiscordClient,
     private val gatewayManager: GatewayManager,
     private val tokenStore: TokenStore
 ) {

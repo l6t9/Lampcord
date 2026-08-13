@@ -33,7 +33,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
-import me.lampu.lampcord.shared.api.DiscordClient
+import me.lampu.lampcord.shared.api.ChannelApi
 import me.lampu.lampcord.shared.model.Channel
 import me.lampu.lampcord.shared.model.Guild
 import me.lampu.lampcord.shared.state.GuildStore
@@ -47,7 +47,7 @@ import org.koin.compose.koinInject
 fun ServerChannels(
     guild: Guild,
     guildStore: GuildStore = koinInject(),
-    discordClient: DiscordClient = koinInject()
+    channelApi: ChannelApi = koinInject()
 ) {
     val allGuildChannels by guildStore.allGuildChannels.collectAsState()
     val allChannels = allGuildChannels.values.filter { it.guild_id == guild.id }
@@ -58,7 +58,7 @@ fun ServerChannels(
     var editingChannel by remember { mutableStateOf<Channel?>(null) }
 
     if (editingChannel != null) {
-        ChannelEditor(editingChannel!!, discordClient, onDone = { editingChannel = null })
+        ChannelEditor(editingChannel!!, channelApi, onDone = { editingChannel = null })
     } else {
         SettingsLayout {
             SettingsSection(title = "Channels", icon = Icons.Filled.Tag) {
@@ -113,7 +113,7 @@ private fun ChannelRow(channel: Channel, onClick: () -> Unit) {
 }
 
 @Composable
-fun ChannelEditor(channel: Channel, discordClient: DiscordClient, onDone: () -> Unit) {
+fun ChannelEditor(channel: Channel, channelApi: ChannelApi, onDone: () -> Unit) {
     val scope = rememberCoroutineScope()
     var draftName by remember(channel.name) { mutableStateOf(channel.name ?: "") }
     var draftTopic by remember(channel.topic) { mutableStateOf(channel.topic ?: "") }
@@ -167,7 +167,7 @@ fun ChannelEditor(channel: Channel, discordClient: DiscordClient, onDone: () -> 
             if (hasChanges) {
                 Button(onClick = {
                     scope.launch {
-                        if (discordClient.updateChannel(channel.id, draftName, draftTopic, draftNsfw)) {
+                        if (channelApi.updateChannel(channel.id, draftName, draftTopic, draftNsfw)) {
                             onDone()
                         }
                     }
@@ -182,7 +182,7 @@ fun ChannelEditor(channel: Channel, discordClient: DiscordClient, onDone: () -> 
         Button(
             onClick = {
                 scope.launch {
-                    if (discordClient.deleteChannel(channel.id)) {
+                    if (channelApi.deleteChannel(channel.id)) {
                         onDone()
                     }
                 }

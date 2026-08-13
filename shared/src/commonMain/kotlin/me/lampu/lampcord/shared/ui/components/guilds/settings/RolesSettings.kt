@@ -31,7 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
-import me.lampu.lampcord.shared.api.DiscordClient
+import me.lampu.lampcord.shared.api.GuildApi
 import me.lampu.lampcord.shared.model.Guild
 import me.lampu.lampcord.shared.ui.components.ExpressiveSwitch
 import me.lampu.lampcord.shared.ui.components.HsvColorPicker
@@ -87,7 +87,7 @@ fun ServerRoles(guild: Guild, onRoleClick: (DiscordRole) -> Unit) {
 }
 
 @Composable
-fun RoleEditor(role: DiscordRole, guild: Guild, discordClient: DiscordClient = koinInject()) {
+fun RoleEditor(role: DiscordRole, guild: Guild, guildApi: GuildApi = koinInject()) {
     val scope = rememberCoroutineScope()
     var draftName by remember(role.name) { mutableStateOf(role.name) }
     var draftColor by remember(role.color) { mutableStateOf(role.color) }
@@ -198,7 +198,7 @@ fun RoleEditor(role: DiscordRole, guild: Guild, discordClient: DiscordClient = k
                 }
                 Button(onClick = {
                     scope.launch {
-                        discordClient.updateRole(guild.id, role.id, DiscordRole.Partial(
+                        guildApi.updateRole(guild.id, role.id, DiscordRole.Partial(
                             name = draftName,
                             color = draftColor,
                             hoist = draftHoist,

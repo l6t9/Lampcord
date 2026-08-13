@@ -59,7 +59,7 @@ sealed class RemoteAuthState {
 
 class RemoteAuthClient(
     private val httpClient: HttpClient,
-    private val discordClient: DiscordClient
+    private val authApi: AuthApi
 ) {
     private val json = Json {
         ignoreUnknownKeys = true
@@ -151,7 +151,7 @@ class RemoteAuthClient(
             "pending_login" -> {
                 payload.ticket?.let { ticket ->
                     scope.launch {
-                        val encryptedToken = discordClient.exchangeRemoteAuthTicket(ticket)
+                        val encryptedToken = authApi.exchangeRemoteAuthTicket(ticket)
                         if (encryptedToken != null) {
                             try {
                                 val encryptedData = Base64.decode(encryptedToken)

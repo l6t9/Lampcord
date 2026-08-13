@@ -32,7 +32,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
-import me.lampu.lampcord.shared.api.DiscordClient
+import me.lampu.lampcord.shared.api.GuildApi
 import me.lampu.lampcord.shared.model.Ban
 import me.lampu.lampcord.shared.model.Guild
 import me.lampu.lampcord.shared.model.Invite
@@ -45,13 +45,13 @@ import me.lampu.lampcord.shared.ui.icons.Icons
 import org.koin.compose.koinInject
 
 @Composable
-fun ServerMembers(guild: Guild, discordClient: DiscordClient = koinInject()) {
+fun ServerMembers(guild: Guild, guildApi: GuildApi = koinInject()) {
     var members by remember { mutableStateOf<List<Member>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     
     LaunchedEffect(guild.id) {
         isLoading = true
-        members = discordClient.searchGuildMembers(guild.id)
+        members = guildApi.searchGuildMembers(guild.id)
         isLoading = false
     }
 
@@ -109,14 +109,14 @@ fun ServerMembers(guild: Guild, discordClient: DiscordClient = koinInject()) {
 }
 
 @Composable
-fun ServerInvites(guild: Guild, discordClient: DiscordClient = koinInject()) {
+fun ServerInvites(guild: Guild, guildApi: GuildApi = koinInject()) {
     var invites by remember { mutableStateOf<List<Invite>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     val scope = rememberCoroutineScope()
     
     LaunchedEffect(guild.id) {
         isLoading = true
-        invites = discordClient.getGuildInvites(guild.id)
+        invites = guildApi.getGuildInvites(guild.id)
         isLoading = false
     }
 
@@ -144,7 +144,7 @@ fun ServerInvites(guild: Guild, discordClient: DiscordClient = koinInject()) {
                         }
                         IconButton(onClick = {
                             scope.launch {
-                                if (discordClient.deleteInvite(invite.code)) {
+                                if (guildApi.deleteInvite(invite.code)) {
                                     invites = invites.filter { it.code != invite.code }
                                 }
                             }
@@ -159,14 +159,14 @@ fun ServerInvites(guild: Guild, discordClient: DiscordClient = koinInject()) {
 }
 
 @Composable
-fun ServerBans(guild: Guild, discordClient: DiscordClient = koinInject()) {
+fun ServerBans(guild: Guild, guildApi: GuildApi = koinInject()) {
     var bans by remember { mutableStateOf<List<Ban>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     val scope = rememberCoroutineScope()
     
     LaunchedEffect(guild.id) {
         isLoading = true
-        bans = discordClient.getGuildBans(guild.id)
+        bans = guildApi.getGuildBans(guild.id)
         isLoading = false
     }
 
@@ -202,7 +202,7 @@ fun ServerBans(guild: Guild, discordClient: DiscordClient = koinInject()) {
                         Button(
                             onClick = {
                                 scope.launch {
-                                    if (discordClient.unbanUser(guild.id, user.id)) {
+                                    if (guildApi.unbanUser(guild.id, user.id)) {
                                         bans = bans.filter { it.user.id != user.id }
                                     }
                                 }

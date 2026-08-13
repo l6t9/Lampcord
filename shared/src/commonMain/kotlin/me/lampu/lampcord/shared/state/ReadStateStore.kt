@@ -4,11 +4,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import me.lampu.lampcord.shared.api.DiscordClient
+import me.lampu.lampcord.shared.api.ChannelApi
 import me.lampu.lampcord.shared.model.*
 import kotlinx.serialization.json.JsonPrimitive
 
-class ReadStateStore(private val discordClient: DiscordClient) {
+class ReadStateStore(private val channelApi: ChannelApi) {
     private val _readStates = MutableStateFlow<Map<String, ReadState>>(emptyMap())
     val readStates: StateFlow<Map<String, ReadState>> = _readStates.asStateFlow()
 
@@ -64,6 +64,6 @@ class ReadStateStore(private val discordClient: DiscordClient) {
                 current + (channelId to ReadState(id = channelId, last_message_id = JsonPrimitive(messageId), mention_count = 0))
             }
         }
-        discordClient.ackMessage(channelId, messageId)
+        channelApi.ackMessage(channelId, messageId)
     }
 }

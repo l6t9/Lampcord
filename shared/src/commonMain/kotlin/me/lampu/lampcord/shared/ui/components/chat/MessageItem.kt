@@ -56,7 +56,8 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.zIndex
 import kotlinx.coroutines.launch
-import me.lampu.lampcord.shared.api.DiscordClient
+import me.lampu.lampcord.shared.api.ChannelApi
+import me.lampu.lampcord.shared.api.MessageApi
 import me.lampu.lampcord.shared.model.Message
 import me.lampu.lampcord.shared.state.GuildStore
 import me.lampu.lampcord.shared.state.MessageStore
@@ -95,7 +96,8 @@ fun MessageItem(
     settingsStore: SettingsStore = koinInject(),
     guildStore: GuildStore = koinInject(),
     profileStore: ProfileStore = koinInject(),
-    discordClient: DiscordClient = koinInject()
+    messageApi: MessageApi = koinInject(),
+    channelApi: ChannelApi = koinInject()
 ) {
     if (message.type != null && message.type != 0 && message.type != 19 && message.type != 20) {
         SystemMessage(message)
@@ -745,7 +747,7 @@ fun MessageItem(
                 ) { emoji ->
                     val emojiStr = if (emoji.id != null) "${emoji.name}:${emoji.id}" else emoji.name ?: ""
                     scope.launch {
-                        discordClient.addReaction(message.channel_id, message.id, emojiStr)
+                        messageApi.addReaction(message.channel_id, message.id, emojiStr)
                     }
                     showReactionPicker = false
                 }
@@ -767,7 +769,7 @@ fun MessageItem(
                 onDismiss = { showCreateThreadDialog = false },
                 onConfirm = { name ->
                     scope.launch {
-                        val thread = discordClient.createThreadFromMessage(message.channel_id, message.id, name)
+                        val thread = channelApi.createThreadFromMessage(message.channel_id, message.id, name)
                         if (thread != null) {
                             guildStore.handleChannelCreateOrUpdate(thread)
                             navigationStore.selectThread(thread, explicitlySelected = true)

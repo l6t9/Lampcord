@@ -1,29 +1,60 @@
 package me.lampu.lampcord.shared.di
 
-import me.lampu.lampcord.shared.api.DiscordClient
-import me.lampu.lampcord.shared.api.RemoteAuthClient
-import me.lampu.lampcord.shared.api.createHttpClient
-import me.lampu.lampcord.shared.gateway.GatewayManager
-import me.lampu.lampcord.shared.gateway.VoiceGatewayManager
-import me.lampu.lampcord.shared.state.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.Json
+import me.lampu.lampcord.shared.api.AuthApi
+import me.lampu.lampcord.shared.api.ChannelApi
+import me.lampu.lampcord.shared.api.GuildApi
+import me.lampu.lampcord.shared.api.MediaApi
+import me.lampu.lampcord.shared.api.MessageApi
+import me.lampu.lampcord.shared.api.RemoteAuthClient
+import me.lampu.lampcord.shared.api.RestClient
+import me.lampu.lampcord.shared.api.UserApi
+import me.lampu.lampcord.shared.api.createHttpClient
+import me.lampu.lampcord.shared.database.AppDatabase
+import me.lampu.lampcord.shared.database.MessageDao
+import me.lampu.lampcord.shared.database.getRoomDatabase
+import me.lampu.lampcord.shared.gateway.GatewayManager
+import me.lampu.lampcord.shared.gateway.VoiceGatewayManager
+import me.lampu.lampcord.shared.notifications.MessageNotifier
+import me.lampu.lampcord.shared.state.*
+import me.lampu.lampcord.shared.state.handlers.*
+import me.lampu.lampcord.shared.utils.getDatabaseBuilder
 import org.koin.dsl.module
 
-val networkModule = module {
-    single { 
-        Json { 
-            ignoreUnknownKeys = true 
+val coreModule = module {
+    single {
+        Json {
+            ignoreUnknownKeys = true
             coerceInputValues = true
             isLenient = true
             explicitNulls = false
-        } 
+        }
     }
     single { createHttpClient() }
-    single { DiscordClient(get(), get()) }
+    single { RestClient(get(), get()) }
+    single { CoroutineScope(Dispatchers.Main) }
+}
+
+val apiModule = module {
+    single { AuthApi(get()) }
+    single { ChannelApi(get()) }
+    single { MessageApi(get()) }
+    single { GuildApi(get()) }
+    single { UserApi(get()) }
+    single { MediaApi(get()) }
+}
+
+val databaseModule = module {
+    single { getRoomDatabase(getDatabaseBuilder()) }
+    single<MessageDao> { get<AppDatabase>().messageDao() }
+    single { MessageLogger(get(), get(), get()) }
+}
+
+val networkModule = module {
     single { RemoteAuthClient(get(), get()) }
-    single { GatewayManager(get(), get(), get(), get()) }
+    single { GatewayManager(get(), get(), get(), getOrNull<ReadStateStore>()) }
     single { VoiceGatewayManager(get(), get()) }
 }
 
@@ -34,51 +65,121 @@ val storeModule = module {
     single { ReadStateStore(get()) }
     single { UserGuildSettingsStore() }
     single { AppErrorStore() }
-    single { PresenceStore(get()) }
-    single { RelationshipStore(get(), get(), CoroutineScope(Dispatchers.Main)) }
-    single { GuildStore(get(), get(), get(), get(), get(), get(), CoroutineScope(Dispatchers.Main)) }
-    single { MemberListStore(get(), get(), get(), get()) }
-    single { MessageStore(get(), get(), get(), get(), CoroutineScope(Dispatchers.Main)) }
-    single { TypingStore(CoroutineScope(Dispatchers.Main)) }
-    single { VoiceStore(get(), get(), get(), CoroutineScope(Dispatchers.Main)) }
-    single { SearchStore(get(), get(), get(), get(), CoroutineScope(Dispatchers.Main)) }
-    single { ProfileStore(get(), CoroutineScope(Dispatchers.Main)) }
-    single { AutocompleteStore(get(), get(), get(), get(), get()) }
-    single { CommandStore(get(), get(), CoroutineScope(Dispatchers.Main)) }
+    single { PresenceStore(userApi = get()) }
+    single { RelationshipStore(userApi = get(), userStore = get(), scope = get()) }
+    single {
+        GuildStore(
+            guildApi = get(), channelApi = get(), errorStore = get(), selectionStore = get(),
+            entityStore = get(), userGuildSettingsStore = get(), readStateStore = get(), scope = get()
+        )
+    }
+    single {
+        MemberListStore(
+            gatewayManager = get(), selectionStore = get(), userStore = get(), presenceStore = get()
+        )
+    }
+    single {
+        MessageStore(
+            messageApi = get(), channelApi = get(), userStore = get(), errorStore = get(),
+            selectionStore = get(), messageLogger = get(), scope = get()
+        )
+    }
+    single { TypingStore(scope = get()) }
+    single {
+        VoiceStore(
+            gatewayManager = get(), voiceGatewayManager = get(), json = get(), scope = get()
+        )
+    }
+    single {
+        SearchStore(
+            messageApi = get(), memberListStore = get(), guildStore = get(), json = get(), scope = get()
+        )
+    }
+    single { ProfileStore(userApi = get(), scope = get()) }
+    single {
+        AutocompleteStore(
+            memberListStore = get(), relationshipStore = get(), guildStore = get(),
+            userStore = get(), commandStore = get()
+        )
+    }
+    single { CommandStore(guildApi = get(), gatewayManager = get(), scope = get()) }
     single { ExperimentStore() }
-    single { BadgeStore(get(), get(), CoroutineScope(Dispatchers.Main)) }
-    single { FinderStore(get(), CoroutineScope(Dispatchers.Main)) }
-    single { TokenStore(get()) }
-    single { SettingsStore(get()) }
-    single { NavigationStore(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), getOrNull<me.lampu.lampcord.shared.notifications.MessageNotifier>(), CoroutineScope(Dispatchers.Main)) }
-    single { NotificationStore(CoroutineScope(Dispatchers.Main)) }
-    single { ChannelNavigator(get(), get(), get(), CoroutineScope(Dispatchers.Main)) }
-    single { 
+    single { BadgeStore(httpClient = get(), json = get(), scope = get()) }
+    single { FinderStore(guildStore = get(), scope = get()) }
+    single { TokenStore(json = get()) }
+    single { SettingsStore(userApi = get()) }
+    single {
+        NavigationStore(
+            channelApi = get(), guildApi = get(), messageApi = get(), userApi = get(),
+            guildStore = get(), memberListStore = get(), messageStore = get(), userStore = get(),
+            readStateStore = get(), profileStore = get(), commandStore = get(), selectionStore = get(),
+            finderStore = get(), notifier = getOrNull<MessageNotifier>(), scope = get()
+        )
+    }
+    single { NotificationStore(scope = get()) }
+    single {
+        ChannelNavigator(
+            navigationStore = get(), entityStore = get(), gatewayManager = get(), scope = get()
+        )
+    }
+    single {
         SessionManager(
-            get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()
+            gatewayManager = get(), voiceGatewayManager = get(), authApi = get(), navigationStore = get(),
+            tokenStore = get(), userStore = get(), gatewayHandler = get(), entityStore = get(),
+            readStateStore = get(), userGuildSettingsStore = get(), presenceStore = get(),
+            relationshipStore = get(), guildStore = get(), memberListStore = get(), messageStore = get(),
+            typingStore = get(), commandStore = get()
         )
     }
 
-    single { me.lampu.lampcord.shared.state.handlers.MessageEventHandler(get(), get(), get(), get(), get(), get(), CoroutineScope(Dispatchers.Main)) }
-    single { me.lampu.lampcord.shared.state.handlers.GuildEventHandler(get(), get(), get(), get(), get(), get()) }
-    single { me.lampu.lampcord.shared.state.handlers.PresenceEventHandler(get(), get(), get()) }
-    single { me.lampu.lampcord.shared.state.handlers.RelationshipEventHandler(get(), get()) }
-    single { me.lampu.lampcord.shared.state.handlers.UserEventHandler(get(), get(), get()) }
-    single { me.lampu.lampcord.shared.state.handlers.TypingEventHandler(get(), get(), get()) { get<UserStore>().currentUser.value?.id } }
-    single { me.lampu.lampcord.shared.state.handlers.MemberListEventHandler(get(), get()) }
-    single { me.lampu.lampcord.shared.state.handlers.NotificationEventHandler(get(), get(), get(), get(), get(), get(), get(), get(), getOrNull<me.lampu.lampcord.shared.notifications.MessageNotifier>()) }
-    
+    single {
+        MessageEventHandler(
+            json = get(), userStore = get(), messageStore = get(), messageLogger = get(),
+            readStateStore = get(), navigationStore = get(), finderStore = get(), scope = get()
+        )
+    }
+    single {
+        GuildEventHandler(
+            json = get(), entityStore = get(), guildStore = get(), navigationStore = get(),
+            settingsStore = get(), userStore = get()
+        )
+    }
+    single {
+        PresenceEventHandler(json = get(), presenceStore = get(), userStore = get())
+    }
+    single {
+        RelationshipEventHandler(json = get(), relationshipStore = get())
+    }
+    single {
+        UserEventHandler(json = get(), userStore = get(), settingsStore = get())
+    }
+    single {
+        TypingEventHandler(json = get(), userStore = get(), typingStore = get()) {
+            get<UserStore>().currentUser.value?.id
+        }
+    }
+    single {
+        MemberListEventHandler(json = get(), memberListStore = get())
+    }
+    single {
+        NotificationEventHandler(
+            json = get(), userStore = get(), messageStore = get(), navigationStore = get(),
+            userGuildSettingsStore = get(), relationshipStore = get(), entityStore = get(),
+            notifier = getOrNull<MessageNotifier>()
+        )
+    }
+
     single {
         GatewayEventDispatcher(
             listOf(
-                get<me.lampu.lampcord.shared.state.handlers.MessageEventHandler>(),
-                get<me.lampu.lampcord.shared.state.handlers.GuildEventHandler>(),
-                get<me.lampu.lampcord.shared.state.handlers.PresenceEventHandler>(),
-                get<me.lampu.lampcord.shared.state.handlers.RelationshipEventHandler>(),
-                get<me.lampu.lampcord.shared.state.handlers.UserEventHandler>(),
-                get<me.lampu.lampcord.shared.state.handlers.TypingEventHandler>(),
-                get<me.lampu.lampcord.shared.state.handlers.MemberListEventHandler>(),
-                get<me.lampu.lampcord.shared.state.handlers.NotificationEventHandler>()
+                get<MessageEventHandler>(),
+                get<GuildEventHandler>(),
+                get<PresenceEventHandler>(),
+                get<RelationshipEventHandler>(),
+                get<UserEventHandler>(),
+                get<TypingEventHandler>(),
+                get<MemberListEventHandler>(),
+                get<NotificationEventHandler>()
             )
         )
     }
@@ -87,12 +188,18 @@ val storeModule = module {
 val gatewayModule = module {
     single {
         GatewayHandler(
-            get(), get(), CoroutineScope(Dispatchers.Main),
-            get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()
+            json = get(), dispatcher = get(), scope = get(),
+            userStore = get(), settingsStore = get(), userGuildSettingsStore = get(),
+            guildStore = get(), messageStore = get(), readStateStore = get(),
+            experimentStore = get(), relationshipStore = get(), presenceStore = get(),
+            navigationStore = get(), gatewayManager = get(), tokenStore = get()
         )
     }
 }
 
 val appModule = module {
-    includes(networkModule, storeModule, gatewayModule)
+    includes(
+        coreModule, apiModule, databaseModule, networkModule,
+        storeModule, gatewayModule
+    )
 }

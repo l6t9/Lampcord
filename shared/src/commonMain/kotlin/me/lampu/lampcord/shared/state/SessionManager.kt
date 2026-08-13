@@ -3,7 +3,7 @@ package me.lampu.lampcord.shared.state
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import me.lampu.lampcord.shared.api.DiscordClient
+import me.lampu.lampcord.shared.api.AuthApi
 import me.lampu.lampcord.shared.gateway.GatewayManager
 import me.lampu.lampcord.shared.gateway.VoiceGatewayManager
 import me.lampu.lampcord.shared.model.LoginRequest
@@ -14,7 +14,7 @@ import me.lampu.lampcord.shared.settings.Settings
 class SessionManager(
     val gatewayManager: GatewayManager,
     val voiceGatewayManager: VoiceGatewayManager,
-    val discordClient: DiscordClient,
+    val authApi: AuthApi,
     val navigationStore: NavigationStore,
     val tokenStore: TokenStore,
     val userStore: UserStore,
@@ -42,7 +42,7 @@ class SessionManager(
     }
 
     fun connect(token: String) {
-        discordClient.setToken(token)
+        authApi.setToken(token)
         Settings.shared.discordToken = token
         navigationStore.isConnecting = true
         gatewayManager.connect(token)
@@ -53,7 +53,7 @@ class SessionManager(
         voiceGatewayManager.disconnect()
         navigationStore.isConnected = false
         navigationStore.isConnecting = false
-        discordClient.setToken(null)
+        authApi.setToken(null)
         Settings.shared.discordToken = ""
         clearAllStores()
     }
@@ -86,13 +86,13 @@ class SessionManager(
     }
 
     suspend fun login(email: String, pass: String): LoginResponse? {
-        val fingerprint = discordClient.getFingerprint() ?: ""
-        return discordClient.login(LoginRequest(email, pass), fingerprint)
+        val fingerprint = authApi.getFingerprint() ?: ""
+        return authApi.login(LoginRequest(email, pass), fingerprint)
     }
 
     suspend fun verifyMFA(ticket: String, code: String, type: String): Boolean {
-        val fingerprint = discordClient.getFingerprint() ?: ""
-        val res = discordClient.loginMFA(MFALoginRequest(ticket, code), fingerprint, type)
+        val fingerprint = authApi.getFingerprint() ?: ""
+        val res = authApi.loginMFA(MFALoginRequest(ticket, code), fingerprint, type)
         return if (res?.token != null) {
             connect(res.token)
             true

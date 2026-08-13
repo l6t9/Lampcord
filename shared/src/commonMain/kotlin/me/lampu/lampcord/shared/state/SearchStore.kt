@@ -4,14 +4,14 @@ import androidx.compose.runtime.*
 import kotlinx.coroutines.*
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import me.lampu.lampcord.shared.api.DiscordClient
+import me.lampu.lampcord.shared.api.MessageApi
 import me.lampu.lampcord.shared.model.Channel
 import me.lampu.lampcord.shared.model.Guild
 import me.lampu.lampcord.shared.model.Message
 import me.lampu.lampcord.shared.settings.Settings
 
 class SearchStore(
-    private val discordClient: DiscordClient,
+    private val messageApi: MessageApi,
     private val memberListStore: MemberListStore,
     private val guildStore: GuildStore,
     private val json: Json,
@@ -93,7 +93,7 @@ class SearchStore(
             val content = contentWords.joinToString(" ").takeIf { it.isNotBlank() }
             
             val response = if (selectedGuild != null) {
-                discordClient.searchGuildMessages(
+                messageApi.searchGuildMessages(
                     guildId = selectedGuild.id,
                     content = content,
                     authorId = filters["from"],
@@ -107,7 +107,7 @@ class SearchStore(
                     authorType = filters["authortype"]
                 )
             } else if (selectedChannel != null) {
-                discordClient.searchChannelMessages(
+                messageApi.searchChannelMessages(
                     channelId = selectedChannel.id,
                     content = content,
                     authorId = filters["from"],

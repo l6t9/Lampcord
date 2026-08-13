@@ -33,7 +33,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
-import me.lampu.lampcord.shared.api.DiscordClient
+import me.lampu.lampcord.shared.api.GuildApi
 import me.lampu.lampcord.shared.model.Emoji
 import me.lampu.lampcord.shared.model.Guild
 import me.lampu.lampcord.shared.ui.components.AsyncImage
@@ -48,7 +48,7 @@ import kotlin.io.encoding.ExperimentalEncodingApi
 
 @OptIn(ExperimentalEncodingApi::class)
 @Composable
-fun ServerEmoji(guild: Guild, discordClient: DiscordClient = koinInject()) {
+fun ServerEmoji(guild: Guild, guildApi: GuildApi = koinInject()) {
     var emojis by remember { mutableStateOf(guild.emojis) }
     var isLoading by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -59,7 +59,7 @@ fun ServerEmoji(guild: Guild, discordClient: DiscordClient = koinInject()) {
 
     LaunchedEffect(guild.id) {
         isLoading = true
-        emojis = discordClient.getGuildEmojis(guild.id)
+        emojis = guildApi.getGuildEmojis(guild.id)
         isLoading = false
     }
 
@@ -73,7 +73,7 @@ fun ServerEmoji(guild: Guild, discordClient: DiscordClient = koinInject()) {
                 val mimeType = if (extension == "gif") "image/gif" else "image/png"
                 val base64Data = Base64.encode(file.second)
                 val dataUrl = "data:$mimeType;base64,$base64Data"
-                val newEmoji = discordClient.createEmoji(guild.id, file.first.substringBeforeLast("."), dataUrl)
+                val newEmoji = guildApi.createEmoji(guild.id, file.first.substringBeforeLast("."), dataUrl)
                 if (newEmoji != null) {
                     emojis = emojis + newEmoji
                 }
@@ -97,7 +97,7 @@ fun ServerEmoji(guild: Guild, discordClient: DiscordClient = koinInject()) {
             confirmButton = {
                 Button(onClick = {
                     scope.launch {
-                        val updated = discordClient.updateEmoji(guild.id, emojiToRename!!.id!!, newEmojiName)
+                        val updated = guildApi.updateEmoji(guild.id, emojiToRename!!.id!!, newEmojiName)
                         if (updated != null) {
                             emojis = emojis.map { if (it.id == updated.id) updated else it }
                         }
@@ -159,7 +159,7 @@ fun ServerEmoji(guild: Guild, discordClient: DiscordClient = koinInject()) {
                             }
                             IconButton(onClick = {
                                 scope.launch {
-                                    if (discordClient.deleteEmoji(guild.id, emoji.id!!)) {
+                                    if (guildApi.deleteEmoji(guild.id, emoji.id!!)) {
                                         emojis = emojis.filter { it.id != emoji.id }
                                     }
                                 }

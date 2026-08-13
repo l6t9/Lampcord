@@ -3,11 +3,11 @@ package me.lampu.lampcord.shared.state
 import androidx.compose.runtime.*
 import androidx.compose.ui.geometry.Offset
 import kotlinx.coroutines.*
-import me.lampu.lampcord.shared.api.DiscordClient
+import me.lampu.lampcord.shared.api.UserApi
 import me.lampu.lampcord.shared.model.UserProfile
 
 class ProfileStore(
-    private val discordClient: DiscordClient,
+    private val userApi: UserApi,
     private val scope: CoroutineScope
 ) {
     var selectedProfile by mutableStateOf<UserProfile?>(null)
@@ -23,7 +23,7 @@ class ProfileStore(
         profilePosition = position
         isProfileLoading = true
         scope.launch {
-            selectedProfile = discordClient.getUserProfile(userId, guildId)?.copy(guild_id = guildId)
+            selectedProfile = userApi.getUserProfile(userId, guildId)?.copy(guild_id = guildId)
             isProfileLoading = false
         }
     }

@@ -3,7 +3,7 @@ package me.lampu.lampcord.shared.state
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import me.lampu.lampcord.shared.api.DiscordClient
+import me.lampu.lampcord.shared.api.UserApi
 import me.lampu.lampcord.shared.model.UserSettings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -13,7 +13,7 @@ import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
 
 class SettingsStore(
-    private val discordClient: DiscordClient
+    private val userApi: UserApi
 ) {
     var userSettings by mutableStateOf<UserSettings?>(null)
     
@@ -135,7 +135,7 @@ class SettingsStore(
             }
 
             scope.launch {
-                discordClient.updateUserSettingsProto(protoPayload)
+                userApi.updateUserSettingsProto(protoPayload)
             }
         }
 
@@ -243,7 +243,7 @@ class SettingsStore(
 
     fun updateUserSettings(partial: UserSettings.Partial) {
         scope.launch {
-            if (discordClient.updateUserSettings(partial)) {
+            if (userApi.updateUserSettings(partial)) {
                 userSettings = userSettings?.merge(partial)
             }
         }
@@ -261,7 +261,7 @@ class SettingsStore(
         
         scope.launch {
             try {
-                discordClient.updateUserSettings(UserSettings.Partial(
+                userApi.updateUserSettings(UserSettings.Partial(
                     theme = settings.theme,
                     developer_mode = settings.developer_mode,
                     render_embeds = settings.render_embeds,

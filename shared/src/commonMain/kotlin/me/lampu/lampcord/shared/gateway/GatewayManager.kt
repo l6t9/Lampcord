@@ -32,7 +32,8 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
-import me.lampu.lampcord.shared.api.DiscordClient
+import me.lampu.lampcord.shared.api.AuthApi
+import me.lampu.lampcord.shared.api.RestClient
 import me.lampu.lampcord.shared.model.GatewayPayload
 import me.lampu.lampcord.shared.model.Identify
 import me.lampu.lampcord.shared.model.IdentifyClientState
@@ -50,7 +51,8 @@ import kotlin.time.Duration.Companion.seconds
 
 class GatewayManager(
     private val client: HttpClient,
-    private val discordClient: DiscordClient,
+    private val authApi: AuthApi,
+    private val rest: RestClient,
     private val readStateStore: me.lampu.lampcord.shared.state.ReadStateStore? = null,
     private val json: Json = Json { 
         ignoreUnknownKeys = true 
@@ -92,7 +94,7 @@ class GatewayManager(
         disconnect()
         connectionJob = scope.launch {
             try {
-                val gatewayUrl = discordClient.getGatewayUrl() ?: "wss://gateway.discord.gg"
+                val gatewayUrl = authApi.getGatewayUrl() ?: "wss://gateway.discord.gg"
                 val url = (resumeGatewayUrl ?: gatewayUrl).removeSuffix("/") + "/?v=9&encoding=json"
 
                 val userAgent = when (val platform = getPlatformName()) {
@@ -308,7 +310,7 @@ class GatewayManager(
             put("has_client_mods", JsonPrimitive(false))
             put("client_version", JsonPrimitive("341.0 - rn"))
             put("release_channel", JsonPrimitive("canaryRelease"))
-            put("device_vendor_id", JsonPrimitive(discordClient.vendorId))
+            put("device_vendor_id", JsonPrimitive(rest.vendorId))
             put("design_id", JsonPrimitive(2))
             put("browser_user_agent", JsonPrimitive(""))
             put("browser_version", JsonPrimitive(""))

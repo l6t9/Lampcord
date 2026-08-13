@@ -38,7 +38,7 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.number
 import kotlinx.datetime.toLocalDateTime
-import me.lampu.lampcord.shared.api.DiscordClient
+import me.lampu.lampcord.shared.api.ChannelApi
 import me.lampu.lampcord.shared.model.Channel
 import me.lampu.lampcord.shared.state.GuildStore
 import me.lampu.lampcord.shared.state.NavigationStore
@@ -49,8 +49,7 @@ import kotlin.time.Instant
 @Composable
 fun ForumPostList(
     navigationStore: NavigationStore = koinInject(),
-    guildStore: GuildStore = koinInject(),
-    discordClient: DiscordClient = koinInject()
+    guildStore: GuildStore = koinInject()
 ) {
     val forumChannel = navigationStore.selectedChannel ?: return
     val allChannels by guildStore.allGuildChannels.collectAsState()
@@ -127,7 +126,7 @@ fun ForumPostList(
 fun NewPostDialog(
     onDismiss: () -> Unit,
     forumChannelId: String,
-    discordClient: DiscordClient = koinInject(),
+    channelApi: ChannelApi = koinInject(),
     guildStore: GuildStore = koinInject(),
     navigationStore: NavigationStore = koinInject()
 ) {
@@ -185,7 +184,7 @@ fun NewPostDialog(
                             if (title.isNotBlank() && content.isNotBlank()) {
                                 isLoading = true
                                 scope.launch {
-                                    val thread = discordClient.createThread(forumChannelId, title, content)
+                                    val thread = channelApi.createThread(forumChannelId, title, content)
                                     if (thread != null) {
                                         guildStore.handleChannelCreateOrUpdate(thread)
                                         navigationStore.selectThread(thread, explicitlySelected = true)

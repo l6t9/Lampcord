@@ -11,6 +11,9 @@ import me.lampu.lampcord.shared.model.LocalMedia
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import android.content.Context
+import androidx.room.Room
+import androidx.room.RoomDatabase
+import me.lampu.lampcord.shared.database.AppDatabase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -211,6 +214,28 @@ actual suspend fun getLocalMediaBytes(uri: String): ByteArray? = withContext(Dis
     } catch (e: Exception) {
         null
     }
+}
+
+actual fun getDatabaseBuilder(): RoomDatabase.Builder<AppDatabase> {
+    val appContext = AndroidContext.context.applicationContext
+    val dbFile = appContext.getDatabasePath("lampcord.db")
+    return Room.databaseBuilder<AppDatabase>(
+        context = appContext,
+        name = dbFile.absolutePath
+    )
+}
+
+actual fun getAppStoragePath(): String = AndroidContext.context.filesDir.absolutePath
+
+actual fun writeInternalFile(name: String, content: String) {
+    val dir = AndroidContext.context.filesDir
+    if (!dir.exists()) dir.mkdirs()
+    java.io.File(dir, name).writeText(content)
+}
+
+actual fun readInternalFile(name: String): String? {
+    val file = java.io.File(AndroidContext.context.filesDir, name)
+    return if (file.exists()) file.readText() else null
 }
 
 @Composable

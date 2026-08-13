@@ -3,7 +3,8 @@ package me.lampu.lampcord.shared.state
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import me.lampu.lampcord.shared.api.DiscordClient
+import me.lampu.lampcord.shared.api.ChannelApi
+import me.lampu.lampcord.shared.api.GuildApi
 import me.lampu.lampcord.shared.model.*
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -11,7 +12,8 @@ import kotlin.time.Clock
 import kotlin.time.Duration
 
 class GuildStore(
-    private val discordClient: DiscordClient,
+    private val guildApi: GuildApi,
+    private val channelApi: ChannelApi,
     private val errorStore: AppErrorStore,
     private val selectionStore: SelectionStore,
     private val entityStore: EntityStore,
@@ -84,7 +86,7 @@ class GuildStore(
 
     fun updateGuild(guildId: String, partial: Guild.Partial) {
         scope.launch {
-            if (discordClient.updateGuild(guildId, partial)) {
+            if (guildApi.updateGuild(guildId, partial)) {
                 entityStore.guilds.value[guildId]?.let { g ->
                     entityStore.updateGuild(g.merge(partial))
                 }
@@ -95,7 +97,7 @@ class GuildStore(
     fun markGuildAsRead(guildId: String) {
         scope.launch {
             try {
-                if (!discordClient.ackBulk(listOf(guildId))) {
+                if (!channelApi.ackBulk(listOf(guildId))) {
                     errorStore.pushError("Failed to mark guild as read.")
                 }
             } catch (e: Exception) {
@@ -107,7 +109,7 @@ class GuildStore(
     fun leaveGuild(guildId: String, onLeave: () -> Unit) {
         scope.launch {
             try {
-                if (discordClient.leaveGuild(guildId)) {
+                if (guildApi.leaveGuild(guildId)) {
                     handleGuildDelete(guildId)
                     onLeave()
                 } else {
@@ -126,7 +128,7 @@ class GuildStore(
 
     fun unmuteGuild(guildId: String) {
         scope.launch {
-            discordClient.updateUserGuildSettings(guildId, UserGuildSettings.Partial(muted = false, mute_config = null))
+            guildApi.updateUserGuildSettings(guildId, UserGuildSettings.Partial(muted = false, mute_config = null))
         }
     }
 
@@ -137,7 +139,7 @@ class GuildStore(
         } else MuteConfig(end_time = null)
 
         scope.launch {
-            discordClient.updateUserGuildSettings(guildId, UserGuildSettings.Partial(muted = true, mute_config = muteConfig))
+            guildApi.updateUserGuildSettings(guildId, UserGuildSettings.Partial(muted = true, mute_config = muteConfig))
         }
     }
 
@@ -156,19 +158,19 @@ class GuildStore(
         if (index != -1) currentOverrides[index] = newOverride else currentOverrides.add(newOverride)
 
         scope.launch {
-            discordClient.updateUserGuildSettings(guildId, UserGuildSettings.Partial(channel_overrides = currentOverrides))
+            guildApi.updateUserGuildSettings(guildId, UserGuildSettings.Partial(channel_overrides = currentOverrides))
         }
     }
 
     fun setServerDMsAllowed(guildId: String, allowed: Boolean) {
         scope.launch {
-            discordClient.updateUserGuildSettings(guildId, UserGuildSettings.Partial(message_notifications = if (allowed) 0 else 2))
+            guildApi.updateUserGuildSettings(guildId, UserGuildSettings.Partial(message_notifications = if (allowed) 0 else 2))
         }
     }
 
     fun setHideMutedChannels(guildId: String, hide: Boolean) {
         scope.launch {
-            discordClient.updateUserGuildSettings(guildId, UserGuildSettings.Partial(hide_muted_channels = hide))
+            guildApi.updateUserGuildSettings(guildId, UserGuildSettings.Partial(hide_muted_channels = hide))
         }
     }
 

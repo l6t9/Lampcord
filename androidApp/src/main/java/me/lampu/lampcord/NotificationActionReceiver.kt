@@ -7,7 +7,8 @@ import androidx.core.app.RemoteInput
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import me.lampu.lampcord.shared.api.DiscordClient
+import me.lampu.lampcord.shared.api.ChannelApi
+import me.lampu.lampcord.shared.api.MessageApi
 import me.lampu.lampcord.shared.notifications.MessageNotifier
 import me.lampu.lampcord.shared.state.UserStore
 import org.koin.core.context.GlobalContext
@@ -16,7 +17,8 @@ class NotificationActionReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         val koin = GlobalContext.get()
-        val discordClient = koin.get<DiscordClient>()
+        val messageApi = koin.get<MessageApi>()
+        val channelApi = koin.get<ChannelApi>()
         val channelId = intent.getStringExtra(NotificationHelper.EXTRA_CHANNEL_ID) ?: return
         val guildId = intent.getStringExtra(NotificationHelper.EXTRA_GUILD_ID)
 
@@ -28,7 +30,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
                 val pendingResult = goAsync()
                 CoroutineScope(Dispatchers.IO).launch {
                     try {
-                        val sent = discordClient.sendMessage(channelId, text)
+                        val sent = messageApi.sendMessage(channelId, text)
                         if (sent != null) {
                             val userStore = koin.get<UserStore>()
                             val self = userStore.currentUser.value
@@ -56,7 +58,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
                 val pendingResult = goAsync()
                 CoroutineScope(Dispatchers.IO).launch {
                     try {
-                        discordClient.ackMessage(channelId, messageId)
+                        channelApi.ackMessage(channelId, messageId)
                         try {
                             koin.get<MessageNotifier>().dismissChannelNotifications(channelId)
                         } catch (e: Exception) {

@@ -8,6 +8,9 @@ import platform.UIKit.UIDevice
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import me.lampu.lampcord.shared.model.LocalMedia
+import androidx.room.Room
+import androidx.room.RoomDatabase
+import me.lampu.lampcord.shared.database.AppDatabase
 
 actual fun getPlatformName(): String = "ios"
 
@@ -32,6 +35,20 @@ actual suspend fun getLocalMedia(): List<LocalMedia> = emptyList()
 actual suspend fun getLocalFiles(): List<LocalMedia> = emptyList()
 
 actual suspend fun getLocalMediaBytes(uri: String): ByteArray? = null
+
+actual fun getDatabaseBuilder(): RoomDatabase.Builder<AppDatabase> {
+    val dbFile = NSHomeDirectory() + "/Documents/lampcord.db"
+    return Room.databaseBuilder<AppDatabase>(
+        name = dbFile,
+        factory = { AppDatabase::class.instantiateImpl() }
+    )
+}
+
+actual fun getAppStoragePath(): String = "" // Placeholder for iOS
+
+actual fun writeInternalFile(name: String, content: String) {}
+
+actual fun readInternalFile(name: String): String? = null
 
 @Composable
 actual fun RequestMediaPermissions(onResult: (Boolean) -> Unit) {

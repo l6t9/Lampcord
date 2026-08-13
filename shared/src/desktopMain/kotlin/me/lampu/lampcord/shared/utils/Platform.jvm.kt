@@ -3,6 +3,10 @@ package me.lampu.lampcord.shared.utils
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import me.lampu.lampcord.shared.model.LocalMedia
+import androidx.room.Room
+import androidx.room.RoomDatabase
+import me.lampu.lampcord.shared.database.AppDatabase
+import java.io.File
 
 actual fun getPlatformName(): String {
     val os = System.getProperty("os.name").lowercase()
@@ -35,6 +39,33 @@ actual suspend fun getLocalMedia(): List<LocalMedia> = emptyList()
 actual suspend fun getLocalFiles(): List<LocalMedia> = emptyList()
 
 actual suspend fun getLocalMediaBytes(uri: String): ByteArray? = null
+
+actual fun getDatabaseBuilder(): RoomDatabase.Builder<AppDatabase> {
+    val dbFile = File(getAppStoragePath(), "lampcord.db")
+    return Room.databaseBuilder<AppDatabase>(
+        name = dbFile.absolutePath,
+    )
+}
+
+actual fun getAppStoragePath(): String {
+    val os = getPlatformName()
+    return when (os) {
+        "windows" -> System.getenv("APPDATA") ?: System.getProperty("user.home")
+        "macos" -> System.getProperty("user.home") + "/Library/Application Support"
+        else -> System.getProperty("user.home") + "/.config"
+    } + "/lampcord"
+}
+
+actual fun writeInternalFile(name: String, content: String) {
+    val dir = java.io.File(getAppStoragePath())
+    if (!dir.exists()) dir.mkdirs()
+    java.io.File(dir, name).writeText(content)
+}
+
+actual fun readInternalFile(name: String): String? {
+    val file = java.io.File(getAppStoragePath(), name)
+    return if (file.exists()) file.readText() else null
+}
 
 @Composable
 actual fun RequestMediaPermissions(onResult: (Boolean) -> Unit) {

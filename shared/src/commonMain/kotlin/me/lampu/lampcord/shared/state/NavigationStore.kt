@@ -7,7 +7,10 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
-import me.lampu.lampcord.shared.api.DiscordClient
+import me.lampu.lampcord.shared.api.ChannelApi
+import me.lampu.lampcord.shared.api.GuildApi
+import me.lampu.lampcord.shared.api.MessageApi
+import me.lampu.lampcord.shared.api.UserApi
 import me.lampu.lampcord.shared.model.Channel
 import me.lampu.lampcord.shared.model.Guild
 import me.lampu.lampcord.shared.model.Onboarding
@@ -16,7 +19,10 @@ import me.lampu.lampcord.shared.notifications.MessageNotifier
 import me.lampu.lampcord.shared.settings.Settings
 
 class NavigationStore(
-    private val discordClient: DiscordClient,
+    private val channelApi: ChannelApi,
+    private val guildApi: GuildApi,
+    private val messageApi: MessageApi,
+    private val userApi: UserApi,
     private val guildStore: GuildStore,
     private val memberListStore: MemberListStore,
     private val messageStore: MessageStore,
@@ -138,7 +144,7 @@ class NavigationStore(
         lastRequestedKey = null
         guildLoadingJob = scope.launch {
             subscribeCallback(guild.id)
-            val guildChannels = discordClient.getGuildChannels(guild.id)
+            val guildChannels = channelApi.getGuildChannels(guild.id)
             if (guildChannels.isNotEmpty()) {
                 val filtered = guildChannels.filter { it.type in listOf(0, 1, 2, 3, 4, 5, 13, 15, 16) }.sortedBy { it.position }
                 filtered.forEach { guildStore.handleChannelCreateOrUpdate(it.copy(guild_id = guild.id)) }
@@ -156,12 +162,12 @@ class NavigationStore(
             // Onboarding
             selectedGuildOnboarding = null
             if (guild.features?.contains("ONBOARDING") == true) {
-                selectedGuildOnboarding = discordClient.getGuildOnboarding(guild.id)
+                selectedGuildOnboarding = channelApi.getGuildOnboarding(guild.id)
             }
             
             // Fetch commands
             try {
-                val index = discordClient.getCommandIndex(guild.id)
+                val index = guildApi.getCommandIndex(guild.id)
                 commandStore.clear()
                 index?.let {
                     commandStore.setCommands(it.application_commands, it.applications)
@@ -191,6 +197,7 @@ class NavigationStore(
         }
 
         messageStore.clear()
+        messageStore.loadLoggedMessages(channel.id)
         lastRequestedKey = null
         Settings.shared.setLastChannel(selectedGuild?.id ?: "home", channel.id)
         finderStore.addRecent(channel.id)
@@ -201,7 +208,7 @@ class NavigationStore(
                 if (userId != null) {
                     profileStore.sidebarProfile = null
                     profileStore.isSidebarProfileLoading = true
-                    profileStore.sidebarProfile = discordClient.getUserProfile(userId)
+                    profileStore.sidebarProfile = userApi.getUserProfile(userId)
                     profileStore.isSidebarProfileLoading = false
                 }
             } else {
@@ -212,17 +219,17 @@ class NavigationStore(
             if (channel.type == 15) {
                 isForumLoading = true
                 try {
-                    val searchThreads = discordClient.searchThreads(channel.id)
+                    val searchThreads = channelApi.searchThreads(channel.id)
                     searchThreads?.threads?.forEach { 
                         guildStore.handleChannelCreateOrUpdate(it.copy(guild_id = channel.guild_id))
                     }
                     
-                    val activeThreads = discordClient.getActiveThreads(channel.id)
+                    val activeThreads = channelApi.getActiveThreads(channel.id)
                     activeThreads?.threads?.forEach { 
                         guildStore.handleChannelCreateOrUpdate(it.copy(guild_id = channel.guild_id))
                     }
                     
-                    val archivedThreads = discordClient.getArchivedPublicThreads(channel.id, 50)
+                    val archivedThreads = channelApi.getArchivedPublicThreads(channel.id, 50)
                     archivedThreads?.threads?.forEach {
                         guildStore.handleChannelCreateOrUpdate(it.copy(guild_id = channel.guild_id))
                     }
@@ -232,7 +239,7 @@ class NavigationStore(
                     isForumLoading = false
                 }
             } else {
-                val channelMessages = discordClient.getChannelMessages(channel.id)
+                val channelMessages = messageApi.getChannelMessages(channel.id)
                 channelMessages.forEach { msg -> 
                     msg.author?.let { author ->
                         msg.member?.let { m -> userStore.cacheMember(channel.guild_id ?: selectedGuild?.id ?: "", author.id, m) }
@@ -251,8 +258,9 @@ class NavigationStore(
         selectedThread = channel
         if (explicitlySelected) triggerFocusChat()
         messageStore.clear()
+        messageStore.loadLoggedMessages(channel.id)
         scope.launch {
-            val channelMessages = discordClient.getChannelMessages(channel.id)
+            val channelMessages = messageApi.getChannelMessages(channel.id)
             channelMessages.forEach { msg -> 
                 msg.author?.let { author ->
                     msg.member?.let { m -> userStore.cacheMember(channel.guild_id ?: selectedGuild?.id ?: "", author.id, m) }
@@ -273,7 +281,7 @@ class NavigationStore(
             }
         } else {
             scope.launch {
-                val fetched = discordClient.getChannel(channelId)
+                val fetched = channelApi.getChannel(channelId)
                 if (fetched != null) {
                     guildStore.handleChannelCreateOrUpdate(fetched)
                     if (fetched.type in listOf(10, 11, 12)) {

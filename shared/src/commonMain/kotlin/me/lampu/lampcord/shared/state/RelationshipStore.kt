@@ -6,11 +6,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import me.lampu.lampcord.shared.api.DiscordClient
+import me.lampu.lampcord.shared.api.UserApi
 import me.lampu.lampcord.shared.model.Relationship
 
 class RelationshipStore(
-    private val discordClient: DiscordClient,
+    private val userApi: UserApi,
     private val userStore: UserStore,
     private val scope: CoroutineScope
 ) {
@@ -31,7 +31,7 @@ class RelationshipStore(
 
     fun fetchRelationships() {
         scope.launch {
-            val friends = discordClient.getRelationships()
+            val friends = userApi.getRelationships()
             _relationships.value = friends.map { hydrate(it) }.distinctBy { it.id ?: it.user?.id ?: it.user_id }
         }
     }
@@ -53,25 +53,25 @@ class RelationshipStore(
 
     fun addFriend(userId: String) {
         scope.launch {
-            discordClient.addRelationship(userId, 1)
+            userApi.addRelationship(userId, 1)
         }
     }
 
     fun removeFriend(userId: String) {
         scope.launch {
-            discordClient.deleteRelationship(userId)
+            userApi.deleteRelationship(userId)
         }
     }
 
     fun blockUser(userId: String) {
         scope.launch {
-            discordClient.addRelationship(userId, 2)
+            userApi.addRelationship(userId, 2)
         }
     }
 
     fun unblockUser(userId: String) {
         scope.launch {
-            discordClient.deleteRelationship(userId)
+            userApi.deleteRelationship(userId)
         }
     }
 

@@ -1,0 +1,21 @@
+package me.lampu.lampcord.shared.database
+
+import androidx.room.Database
+import androidx.room.RoomDatabase
+import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+
+@Database(entities = [MessageEntity::class], version = 1)
+abstract class AppDatabase : RoomDatabase() {
+    abstract fun messageDao(): MessageDao
+}
+
+fun getRoomDatabase(
+    builder: RoomDatabase.Builder<AppDatabase>
+): AppDatabase {
+    return builder
+        .setDriver(BundledSQLiteDriver())
+        .setQueryCoroutineContext(Dispatchers.IO)
+        .build()
+}

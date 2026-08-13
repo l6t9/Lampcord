@@ -37,7 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
-import me.lampu.lampcord.shared.api.DiscordClient
+import me.lampu.lampcord.shared.api.ChannelApi
 import me.lampu.lampcord.shared.model.Channel
 import me.lampu.lampcord.shared.state.GuildStore
 import me.lampu.lampcord.shared.state.NavigationStore
@@ -48,7 +48,7 @@ import org.koin.compose.koinInject
 fun ThreadPanel(
     navigationStore: NavigationStore = koinInject(),
     guildStore: GuildStore = koinInject(),
-    discordClient: DiscordClient = koinInject()
+    channelApi: ChannelApi = koinInject()
 ) {
     val parentChannel = navigationStore.selectedChannel ?: return
     val allChannels by guildStore.allGuildChannels.collectAsState()
@@ -117,7 +117,7 @@ fun ThreadPanel(
                         onClick = {
                             isLoadingArchived = true
                             scope.launch {
-                                val result = discordClient.getArchivedPublicThreads(parentChannel.id)
+                                val result = channelApi.getArchivedPublicThreads(parentChannel.id)
                                 archivedThreads = result?.threads ?: emptyList()
                                 isLoadingArchived = false
                                 hasLoadedArchived = true

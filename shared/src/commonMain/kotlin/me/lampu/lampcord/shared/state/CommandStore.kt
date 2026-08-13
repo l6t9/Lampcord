@@ -3,7 +3,7 @@ package me.lampu.lampcord.shared.state
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.*
-import me.lampu.lampcord.shared.api.DiscordClient
+import me.lampu.lampcord.shared.api.GuildApi
 import me.lampu.lampcord.shared.gateway.GatewayManager
 import me.lampu.lampcord.shared.model.*
 import me.lampu.lampcord.shared.utils.getCurrentTimeMillis
@@ -13,7 +13,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlin.random.Random
 
 class CommandStore(
-    private val discordClient: DiscordClient,
+    private val guildApi: GuildApi,
     private val gatewayManager: GatewayManager,
     private val scope: CoroutineScope
 ) {
@@ -32,7 +32,7 @@ class CommandStore(
 
     fun sendInteraction(command: ApplicationCommand, guildId: String?, channelId: String, options: List<InteractionOption>? = null) {
         scope.launch {
-            discordClient.sendInteraction(
+            guildApi.sendInteraction(
                 InteractionRequest(
                     type = 2,
                     application_id = command.application_id,

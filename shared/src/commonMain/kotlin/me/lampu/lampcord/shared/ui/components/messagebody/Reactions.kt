@@ -26,7 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
-import me.lampu.lampcord.shared.api.DiscordClient
+import me.lampu.lampcord.shared.api.MessageApi
 import me.lampu.lampcord.shared.model.Message
 import me.lampu.lampcord.shared.model.getDisplayUrl
 import me.lampu.lampcord.shared.ui.components.AsyncImage
@@ -36,7 +36,7 @@ import org.koin.compose.koinInject
 @Composable
 fun ReactionsView(
     message: Message,
-    discordClient: DiscordClient = koinInject()
+    messageApi: MessageApi = koinInject()
 ) {
     val reactions = message.reactions ?: return
     if (reactions.isEmpty()) return
@@ -58,9 +58,9 @@ fun ReactionsView(
                     onClick = {
                         scope.launch {
                             if (isMe) {
-                                discordClient.removeReaction(message.channel_id, message.id, emojiStr)
+                                messageApi.removeReaction(message.channel_id, message.id, emojiStr)
                             } else {
-                                discordClient.addReaction(message.channel_id, message.id, emojiStr)
+                                messageApi.addReaction(message.channel_id, message.id, emojiStr)
                             }
                         }
                     },

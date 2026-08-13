@@ -15,7 +15,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 import me.lampu.lampcord.shared.model.AllowedMentions
-import me.lampu.lampcord.shared.api.DiscordClient
+import me.lampu.lampcord.shared.api.ChannelApi
+import me.lampu.lampcord.shared.api.MessageApi
 import me.lampu.lampcord.shared.model.Channel
 import me.lampu.lampcord.shared.model.Member
 import me.lampu.lampcord.shared.model.Message
@@ -32,10 +33,12 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 
 class MessageStore(
-    private val discordClient: DiscordClient,
+    private val messageApi: MessageApi,
+    private val channelApi: ChannelApi,
     private val userStore: UserStore,
     private val errorStore: AppErrorStore,
     private val selectionStore: SelectionStore,
+    private val messageLogger: MessageLogger,
     private val scope: CoroutineScope
 ) {
     private val _messages = MutableStateFlow<List<Message>>(emptyList())
@@ -146,7 +149,7 @@ class MessageStore(
         val channel = selectionStore.selectedChannel ?: return
         scope.launch {
             try {
-                val msgs = discordClient.getPinnedMessages(channel.id)
+                val msgs = channelApi.getPinnedMessages(channel.id)
                 pinnedMessages.clear()
                 pinnedMessages.addAll(msgs)
             } catch (e: Exception) { }
@@ -168,10 +171,21 @@ class MessageStore(
         historyLoadingJob?.cancel()
     }
 
+    fun loadLoggedMessages(channelId: String) {
+        scope.launch {
+            val logged = messageLogger.getLoggedMessages(channelId)
+            if (logged.isNotEmpty()) {
+                addMessages(logged)
+            }
+        }
+    }
+
     fun addMessages(newMessages: List<Message>) {
         _messages.update { current ->
             val existingIds = current.map { it.id }.toSet()
-            current + newMessages.filter { it.id !in existingIds }.map { preprocess(it) }
+            val filtered = newMessages.filter { it.id !in existingIds }.map { preprocess(it) }
+            filtered.forEach { messageLogger.logMessage(it) }
+            current + filtered
         }
     }
 
@@ -193,13 +207,23 @@ class MessageStore(
             if (index != -1) {
                 val existing = current[index]
                 val merged = existing.merge(dataObj)
-                current.toMutableList().apply { set(index, preprocess(merged)) }
+                val preprocessed = preprocess(merged)
+                messageLogger.logUpdate(preprocessed)
+                current.toMutableList().apply { set(index, preprocessed) }
             } else current
         }
     }
 
     fun handleMessageDelete(id: String) {
-        _messages.update { it.filter { msg -> msg.id != id } }
+        if (me.lampu.lampcord.shared.settings.Settings.shared.messageLoggerEnabled) {
+            _messages.update { current ->
+                current.map {
+                    if (it.id == id) it.copy(isDeleted = true) else it
+                }
+            }
+        } else {
+            _messages.update { it.filter { msg -> msg.id != id } }
+        }
     }
 
     fun loadMoreMessages(channelId: String, guildId: String?, threadId: String?) {
@@ -208,7 +232,7 @@ class MessageStore(
         _isLoadingHistory.value = true
         historyLoadingJob = scope.launch {
             try {
-                val more = discordClient.getChannelMessages(threadId ?: channelId, before = before)
+                val more = messageApi.getChannelMessages(threadId ?: channelId, before = before)
                 if (more.isEmpty()) {
                     _hasMoreHistory.value = false
                 } else {
@@ -335,7 +359,7 @@ class MessageStore(
                             } else task.content
 
                             val message = withTimeoutOrNull(60000.milliseconds) {
-                                discordClient.sendMessage(
+                                messageApi.sendMessage(
                                     channelId = task.channelId,
                                     content = contentToSend,
                                     nonce = task.nonce,
@@ -434,7 +458,7 @@ class MessageStore(
     fun sendTyping(channelId: String) {
         scope.launch {
             try {
-                discordClient.triggerTyping(channelId)
+                channelApi.triggerTyping(channelId)
             } catch (e: Exception) { }
         }
     }
@@ -447,7 +471,7 @@ class MessageStore(
                     transformOutgoingContent(content)
                 } else content
                 
-                if (!discordClient.editMessage(message.channel_id, message.id, contentToSend)) {
+                if (!messageApi.editMessage(message.channel_id, message.id, contentToSend)) {
                     errorStore.pushError("Failed to edit message.")
                 }
             } catch (e: Exception) {
@@ -459,20 +483,20 @@ class MessageStore(
     fun deleteMessage(message: Message) {
         scope.launch {
             try {
-                discordClient.deleteMessage(message.channel_id, message.id)
+                messageApi.deleteMessage(message.channel_id, message.id)
             } catch (e: Exception) { }
         }
     }
 
     fun pinMessage(message: Message) {
         scope.launch {
-            discordClient.pinMessage(message.channel_id, message.id)
+            channelApi.pinMessage(message.channel_id, message.id)
         }
     }
 
     fun unpinMessage(message: Message) {
         scope.launch {
-            discordClient.unpinMessage(message.channel_id, message.id)
+            channelApi.unpinMessage(message.channel_id, message.id)
         }
     }
 

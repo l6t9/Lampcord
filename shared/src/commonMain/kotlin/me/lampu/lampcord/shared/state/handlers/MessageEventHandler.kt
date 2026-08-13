@@ -5,6 +5,8 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import me.lampu.lampcord.shared.model.Message
 import me.lampu.lampcord.shared.model.MessageAcknowledge
 import me.lampu.lampcord.shared.state.*
@@ -13,6 +15,7 @@ class MessageEventHandler(
     private val json: Json,
     private val userStore: UserStore,
     private val messageStore: MessageStore,
+    private val messageLogger: MessageLogger,
     private val readStateStore: ReadStateStore,
     private val navigationStore: NavigationStore,
     private val finderStore: FinderStore,
@@ -32,6 +35,7 @@ class MessageEventHandler(
 
     private fun handleMessageCreate(data: JsonElement) {
         val message = json.decodeFromJsonElement<Message>(data)
+        messageLogger.logMessage(message)
         
         // Cache author and member in UserStore (StoreUsers / StoreMembers)
         message.author?.let { userStore.handleUserUpdate(it) }
@@ -65,7 +69,11 @@ class MessageEventHandler(
     }
 
     private fun handleMessageDelete(data: JsonElement) {
-        // ...
+        val obj = data as? kotlinx.serialization.json.JsonObject ?: return
+        val id = obj["id"]?.jsonPrimitive?.content ?: return
+        val channelId = obj["channel_id"]?.jsonPrimitive?.content ?: return
+        messageLogger.logDelete(channelId, id)
+        messageStore.handleMessageDelete(id)
     }
 
     private fun handleMessageAck(data: JsonElement) {

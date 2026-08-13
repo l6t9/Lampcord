@@ -4,12 +4,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import me.lampu.lampcord.shared.api.DiscordClient
+import me.lampu.lampcord.shared.api.UserApi
 import me.lampu.lampcord.shared.model.PresenceUpdate
 import me.lampu.lampcord.shared.model.ReadyPayload
 import me.lampu.lampcord.shared.model.Session
 
-class PresenceStore(private val discordClient: DiscordClient) {
+class PresenceStore(private val userApi: UserApi) {
     private val _presences = MutableStateFlow<Map<String, Map<String, PresenceUpdate>>>(emptyMap())
     
     // A simple cache for flattened presences to avoid recomputing too much
@@ -106,11 +106,11 @@ class PresenceStore(private val discordClient: DiscordClient) {
     }
 
     suspend fun updateStatus(status: String): Boolean {
-        return discordClient.updateStatus(status)
+        return userApi.updateStatus(status)
     }
 
     suspend fun updateCustomStatus(text: String?): Boolean {
-        return discordClient.updateCustomStatus(text)
+        return userApi.updateCustomStatus(text)
     }
 
     fun isStatusVisible(user: me.lampu.lampcord.shared.model.User, presence: PresenceUpdate?, isStreaming: Boolean): Boolean {

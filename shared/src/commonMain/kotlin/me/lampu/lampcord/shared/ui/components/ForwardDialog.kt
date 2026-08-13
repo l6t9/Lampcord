@@ -44,7 +44,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import me.lampu.lampcord.shared.api.DiscordClient
+import me.lampu.lampcord.shared.api.CdnUrls
 import me.lampu.lampcord.shared.model.Message
 import me.lampu.lampcord.shared.state.FinderResult
 import me.lampu.lampcord.shared.state.FinderStore
@@ -60,8 +60,7 @@ fun ForwardDialog(
     onDismiss: () -> Unit,
     finderStore: FinderStore = koinInject(),
     messageStore: MessageStore = koinInject(),
-    userStore: UserStore = koinInject(),
-    discordClient: DiscordClient = koinInject()
+    userStore: UserStore = koinInject()
 ) {
     var comment by remember { mutableStateOf("") }
     
@@ -133,7 +132,7 @@ fun ForwardDialog(
                     ) {
                         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
                             AsyncImage(
-                                model = discordClient.getUserAvatarUrl(message.author?.id ?: "", message.author?.avatar),
+                                model = CdnUrls.getUserAvatarUrl(message.author?.id ?: "", message.author?.avatar),
                                 contentDescription = null,
                                 modifier = Modifier.size(32.dp).clip(CircleShape)
                             )

@@ -3,7 +3,7 @@ package me.lampu.lampcord.shared.state.handlers
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.decodeFromJsonElement
-import me.lampu.lampcord.shared.api.DiscordClient
+import me.lampu.lampcord.shared.api.CdnUrls
 import me.lampu.lampcord.shared.model.Message
 import me.lampu.lampcord.shared.model.UserGuildSettings
 import me.lampu.lampcord.shared.notifications.IncomingNotificationData
@@ -18,7 +18,6 @@ import me.lampu.lampcord.shared.state.UserStore
 
 class NotificationEventHandler(
     private val json: Json,
-    private val discordClient: DiscordClient,
     private val userStore: UserStore,
     private val messageStore: MessageStore,
     private val navigationStore: NavigationStore,
@@ -114,7 +113,7 @@ class NotificationEventHandler(
                 channel = channel,
                 guild = guild,
                 authorDisplayName = displayName,
-                authorAvatarUrl = discordClient.getUserAvatarUrl(author.id, author.avatar, 128),
+                authorAvatarUrl = CdnUrls.getUserAvatarUrl(author.id, author.avatar, 128),
                 channelLabel = channelLabel,
                 isDm = isDm,
                 isMention = isMention

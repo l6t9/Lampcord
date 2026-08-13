@@ -23,7 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import me.lampu.lampcord.shared.api.DiscordClient
+import me.lampu.lampcord.shared.api.GuildApi
 import me.lampu.lampcord.shared.model.AuditLog
 import me.lampu.lampcord.shared.model.AuditLogEntry
 import me.lampu.lampcord.shared.model.Guild
@@ -35,13 +35,13 @@ import me.lampu.lampcord.shared.ui.icons.Icons
 import org.koin.compose.koinInject
 
 @Composable
-fun ServerAuditLog(guild: Guild, discordClient: DiscordClient = koinInject()) {
+fun ServerAuditLog(guild: Guild, guildApi: GuildApi = koinInject()) {
     var auditLog by remember { mutableStateOf<AuditLog?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     
     LaunchedEffect(guild.id) {
         isLoading = true
-        auditLog = discordClient.getGuildAuditLog(guild.id)
+        auditLog = guildApi.getGuildAuditLog(guild.id)
         isLoading = false
     }
 
