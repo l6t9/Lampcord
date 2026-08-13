@@ -176,6 +176,13 @@ data class Member(
     val display_name_styles: DisplayNameStyles? = null
 ) {
     fun userId(): String? = user?.id ?: presence?.user?.id
+
+    fun getRoleIcon(guild: Guild?): Role? {
+        if (guild == null) return null
+        return roles.mapNotNull { roleId -> guild.roles.find { it.id == roleId } }
+            .filter { it.icon != null || it.unicode_emoji != null }
+            .maxByOrNull { it.position }
+    }
 }
 
 @Serializable

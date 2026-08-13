@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.*
@@ -52,13 +53,18 @@ import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.zIndex
 import kotlinx.coroutines.launch
 import me.lampu.lampcord.shared.api.ChannelApi
 import me.lampu.lampcord.shared.api.MessageApi
+import me.lampu.lampcord.shared.model.Emoji
 import me.lampu.lampcord.shared.model.Message
+import me.lampu.lampcord.shared.model.toTwemojiUrl
+import me.lampu.lampcord.shared.state.ChannelNavigator
+import me.lampu.lampcord.shared.state.EmojiStore
 import me.lampu.lampcord.shared.state.GuildStore
 import me.lampu.lampcord.shared.state.MessageStore
 import me.lampu.lampcord.shared.state.NavigationStore
@@ -70,15 +76,18 @@ import me.lampu.lampcord.shared.ui.components.ContextMenu
 import me.lampu.lampcord.shared.ui.components.ContextMenuItem
 import me.lampu.lampcord.shared.ui.components.DiscordMarkdownText
 import me.lampu.lampcord.shared.ui.components.EmojiPicker
+import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.ForwardedMessage
+import me.lampu.lampcord.shared.ui.components.RoleIcon
 import me.lampu.lampcord.shared.ui.components.UserTagView
 import me.lampu.lampcord.shared.ui.components.UsernameView
 import me.lampu.lampcord.shared.ui.components.messagebody.MessageBody
 import me.lampu.lampcord.shared.ui.components.messagebody.ReactionsView
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.kit.UserAvatar
+import me.lampu.lampcord.shared.utils.EmojiIndex
 import me.lampu.lampcord.shared.utils.setClipboardText
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import org.koin.compose.koinInject
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
@@ -96,6 +105,7 @@ fun MessageItem(
     settingsStore: SettingsStore = koinInject(),
     guildStore: GuildStore = koinInject(),
     profileStore: ProfileStore = koinInject(),
+    emojiStore: EmojiStore = koinInject(),
     messageApi: MessageApi = koinInject(),
     channelApi: ChannelApi = koinInject()
 ) {
@@ -323,7 +333,72 @@ fun MessageItem(
                 items = contextMenuItems,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 8.dp, end = 8.dp, top = topPadding, bottom = bottomPadding)
+                    .padding(start = 8.dp, end = 8.dp, top = topPadding, bottom = bottomPadding),
+                header = if (settingsStore.showContextMenuMessage) {
+                    {
+                        Column(modifier = Modifier.padding(horizontal = 4.dp)) {
+                            Text(
+                                text = message.author?.global_name ?: message.author?.username ?: "Unknown",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = message.content,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                } else null,
+                reactions = { onDismiss ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        val commonReactions = emojiStore.frequentEmojis.take(5)
+                        commonReactions.forEach { emojiKey ->
+                            IconButton(
+                                onClick = {
+                                    scope.launch {
+                                        messageApi.addReaction(message.channel_id, message.id, emojiKey)
+                                    }
+                                    onDismiss()
+                                },
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .background(MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape)
+                            ) {
+                                val url = remember(emojiKey) {
+                                    if (emojiKey.contains(":")) {
+                                        val id = emojiKey.split(":")[1]
+                                        "https://cdn.discordapp.com/emojis/$id.png?size=48"
+                                    } else {
+                                        val unicode = EmojiIndex.getCharForName(emojiKey) ?: emojiKey
+                                        unicode.toTwemojiUrl()
+                                    }
+                                }
+                                AsyncImage(
+                                    model = url,
+                                    contentDescription = emojiKey,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
+                        IconButton(
+                            onClick = { 
+                                showReactionPicker = true
+                                onDismiss()
+                            },
+                            modifier = Modifier
+                                .size(48.dp)
+                                .background(MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape)
+                        ) {
+                            Icon(Icons.Filled.AddReaction, null, modifier = Modifier.size(24.dp))
+                        }
+                    }
+                }
             ) {
                 val roleColor by remember(message, navigationStore.selectedGuild) {
                     derivedStateOf {
@@ -358,6 +433,11 @@ fun MessageItem(
                                 ignoreEffects = !isHovered,
                                 ignoreColors = if (isDm) !isHovered else true
                             )
+                            val guild = navigationStore.selectedGuild
+                            val roleIcon = message.member?.getRoleIcon(guild) ?: userStore.getMember(guild?.id ?: "", message.author.id)?.getRoleIcon(guild)
+                            if (roleIcon != null) {
+                                RoleIcon(roleIcon, modifier = Modifier.padding(start = 4.dp))
+                            }
                             message.author.primary_guild?.let {
                                 Spacer(Modifier.width(4.dp))
                                 ClanTagView(it)
@@ -384,7 +464,6 @@ fun MessageItem(
                     
                     val hasSnapshots = !message.message_snapshots.isNullOrEmpty()
                     val snapshotContent = message.message_snapshots?.firstOrNull()?.message?.content
-                    // Logic: If forwarded, ONLY show outer content if it's not a duplicate of original message content
                     val isDuplicateForward = hasSnapshots && message.content.trim() == snapshotContent?.trim()
                     val shouldShowContent = !hasSnapshots || (message.content.isNotEmpty() && !isDuplicateForward)
 
@@ -509,6 +588,11 @@ fun MessageItem(
                                                 ignoreEffects = !isHovered,
                                                 ignoreColors = if (isDm) !isHovered else true
                                             )
+                                            val guild = navigationStore.selectedGuild
+                                            val roleIcon = message.member?.getRoleIcon(guild) ?: userStore.getMember(guild?.id ?: "", message.author.id)?.getRoleIcon(guild)
+                                            if (roleIcon != null) {
+                                                RoleIcon(roleIcon, modifier = Modifier.padding(start = 4.dp))
+                                            }
                                             message.author.primary_guild?.let {
                                                 Spacer(Modifier.width(4.dp))
                                                 ClanTagView(it)

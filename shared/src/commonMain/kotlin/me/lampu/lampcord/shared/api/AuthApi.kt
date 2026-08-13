@@ -22,7 +22,7 @@ import me.lampu.lampcord.shared.utils.Logging
  * Authentication endpoints: fingerprint, password/MFA login and remote-auth
  * ticket exchange. Also the entry point for setting the session token.
  */
-class AuthApi(private val rest: RestClient) {
+class AuthApi(val rest: RestClient) {
 
     fun setToken(token: String?) {
         rest.setToken(token)

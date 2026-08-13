@@ -58,9 +58,18 @@ fun GuildCategoryItem(
     val currentUserId = currentUser?.id
     val categoryChannels = remember(channels, category.id, guild, member, showHidden, currentUserId) {
         val g = guild
-        channels.filter { channel -> 
-            channel.parent_id == category.id && (if (member == null || showHidden || g == null) true else PermissionHelper.canViewChannel(member, g, channel, currentUserId))
-        }.sortedBy { it.position ?: 0 }
+        val u = currentUser
+        channels.filter { channel ->
+            if (channel.parent_id != category.id) return@filter false
+            if (showHidden) return@filter true
+            if (g == null) return@filter true
+
+            val effectiveMember = member ?: me.lampu.lampcord.shared.model.Member(user = u)
+            PermissionHelper.canViewChannel(effectiveMember, g, channel, currentUserId)
+        }.sortedWith(compareBy<Channel> { 
+            // Put voice and stage channels at the bottom (priority 1), others at the top (priority 0)
+            if (it.type == 2 || it.type == 13) 1 else 0 
+        }.thenBy { it.position ?: 0 })
     }
 
     if (categoryChannels.isEmpty() && !showHidden) return
@@ -102,12 +111,8 @@ fun GuildCategoryItem(
             }
         }
         if (!collapsed) {
-            val sortedCategoryChannels =
-                channels.filter { it.parent_id == category.id }
-                    .distinctBy { it.id }
-                    .sortedWith(compareBy({ it.type == 2 || it.type == 13 }, { it.position ?: 0 }))
             Column {
-                sortedCategoryChannels.forEach { channel ->
+                categoryChannels.forEach { channel ->
                     ChannelItem(channel)
                 }
             }

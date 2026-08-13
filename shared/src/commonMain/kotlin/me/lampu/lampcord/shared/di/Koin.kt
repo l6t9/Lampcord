@@ -106,6 +106,7 @@ val storeModule = module {
     single { ExperimentStore() }
     single { BadgeStore(httpClient = get(), json = get(), scope = get()) }
     single { FinderStore(guildStore = get(), scope = get()) }
+    single { EmojiStore() }
     single { TokenStore(json = get()) }
     single { SettingsStore(userApi = get()) }
     single {

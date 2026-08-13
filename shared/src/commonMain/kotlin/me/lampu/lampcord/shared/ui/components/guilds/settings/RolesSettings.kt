@@ -35,6 +35,7 @@ import me.lampu.lampcord.shared.api.GuildApi
 import me.lampu.lampcord.shared.model.Guild
 import me.lampu.lampcord.shared.ui.components.ExpressiveSwitch
 import me.lampu.lampcord.shared.ui.components.HsvColorPicker
+import me.lampu.lampcord.shared.ui.components.RoleIcon
 import me.lampu.lampcord.shared.ui.components.settings.SettingsLayout
 import me.lampu.lampcord.shared.ui.components.settings.SettingsSection
 import me.lampu.lampcord.shared.ui.components.settings.SettingsSubScreen
@@ -70,6 +71,7 @@ fun ServerRoles(guild: Guild, onRoleClick: (DiscordRole) -> Unit) {
                                     CircleShape
                                 )
                         )
+                        RoleIcon(role, size = 16.dp)
                         Text(role.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
                         if (role.managed) {
                             Icon(

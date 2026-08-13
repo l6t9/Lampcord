@@ -12,6 +12,8 @@ expect fun ContextMenu(
     items: List<ContextMenuItem>,
     modifier: Modifier = Modifier,
     shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(0.dp),
+    header: (@Composable () -> Unit)? = null,
+    reactions: (@Composable (onDismiss: () -> Unit) -> Unit)? = null,
     content: @Composable () -> Unit
 )
 

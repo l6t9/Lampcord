@@ -20,6 +20,8 @@ actual fun ContextMenu(
     items: List<ContextMenuItem>,
     modifier: Modifier,
     shape: androidx.compose.ui.graphics.Shape,
+    header: (@Composable () -> Unit)?,
+    reactions: (@Composable (onDismiss: () -> Unit) -> Unit)?,
     content: @Composable () -> Unit
 ) {
     var showSheet by remember { mutableStateOf(false) }
@@ -75,6 +77,18 @@ actual fun ContextMenu(
                     .padding(bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
+                if (header != null) {
+                    Box(modifier = Modifier.padding(bottom = 8.dp)) {
+                        header()
+                    }
+                }
+                
+                if (reactions != null) {
+                    Box(modifier = Modifier.padding(bottom = 16.dp)) {
+                        reactions { showSheet = false }
+                    }
+                }
+
                 items.forEachIndexed { index, item ->
                     val cornerRadius = 12.dp
                     val reducedRadius = 2.dp

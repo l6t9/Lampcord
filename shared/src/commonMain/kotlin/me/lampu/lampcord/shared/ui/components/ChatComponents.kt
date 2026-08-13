@@ -597,7 +597,6 @@ fun ChatInputBar(
                                 else -> "Message #${channel.name ?: "unnamed"}"
                             }
 
-                            var showEmojiPicker by remember { mutableStateOf(false) }
                             val isMobile = getPlatformName() == "android" || getPlatformName() == "ios"
 
                             Surface(
@@ -752,7 +751,7 @@ fun ChatInputBar(
 
                                     IconButton(
                                         onClick = { 
-                                            showEmojiPicker = !showEmojiPicker
+                                            navigationStore.isEmojiPickerVisible = !navigationStore.isEmojiPickerVisible
                                             if (isMobile) {
                                                 keyboardController?.hide()
                                             }
@@ -763,15 +762,16 @@ fun ChatInputBar(
                                             imageVector = Icons.Filled.SentimentSatisfied,
                                             contentDescription = "Emojis",
                                             modifier = Modifier.size(22.dp),
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                            tint = if (navigationStore.isEmojiPickerVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
 
-                                    if (showEmojiPicker && !isMobile) {
+                                    if (navigationStore.isEmojiPickerVisible && !isMobile) {
                                         androidx.compose.ui.window.Popup(
                                             alignment = Alignment.BottomEnd,
                                             offset = IntOffset(0, -48),
-                                            onDismissRequest = { showEmojiPicker = false }
+                                            onDismissRequest = { navigationStore.isEmojiPickerVisible = false },
+                                            properties = androidx.compose.ui.window.PopupProperties(focusable = true)
                                         ) {
                                             EmojiPicker { emoji ->
                                                 val isExternal = emoji.guild_id != null && emoji.guild_id != navigationStore.selectedGuild?.id
@@ -793,41 +793,14 @@ fun ChatInputBar(
 
                                                 val newText = textFieldValue.text.take(textFieldValue.selection.start) + emojiText + textFieldValue.text.drop(textFieldValue.selection.end)
                                                 textFieldValue = TextFieldValue(newText, TextRange(textFieldValue.selection.start + emojiText.length))
-                                                showEmojiPicker = false
+                                                navigationStore.isEmojiPickerVisible = false
                                             }
                                         }
                                     }
                                 }
                             }
                             
-                            // Mobile Emoji Picker
-                            if (showEmojiPicker && isMobile) {
-                                EmojiPicker(
-                                    modifier = Modifier.fillMaxWidth().animateContentSize(),
-                                    onEmojiSelected = { emoji ->
-                                        val isExternal = emoji.guild_id != null && emoji.guild_id != navigationStore.selectedGuild?.id
-                                        val hasNitro = (currentUser?.premium_type ?: 0) > 0
-                                        val freeNitro = me.lampu.lampcord.shared.settings.Settings.shared.freeNitroEmojis
-                                        
-                                        val emojiText = if (emoji.id != null) {
-                                            if (isExternal && !hasNitro && freeNitro) {
-                                                if (me.lampu.lampcord.shared.settings.Settings.shared.realmojis) {
-                                                    "<${if (emoji.animated == true) "a" else ""}:F_${emoji.name}:${emoji.id}>"
-                                                } else {
-                                                    val ext = if (emoji.animated == true) "gif" else "png"
-                                                    "https://cdn.discordapp.com/emojis/${emoji.id}.$ext?size=48"
-                                                }
-                                            } else {
-                                                "<${if (emoji.animated == true) "a" else ""}:${emoji.name}:${emoji.id}>"
-                                            }
-                                        } else emoji.name ?: ""
-
-                                        val newText = textFieldValue.text.take(textFieldValue.selection.start) + emojiText + textFieldValue.text.drop(textFieldValue.selection.end)
-                                        textFieldValue = TextFieldValue(newText, TextRange(textFieldValue.selection.start + emojiText.length))
-                                    }
-                                )
-                            }
-                            
+                            // Send Button
                             AnimatedVisibility(
                                 visible = textFieldValue.text.isNotBlank() || messageStore.pendingFiles.isNotEmpty() || commandStore.activeCommand != null,
                                 enter = fadeIn() + scaleIn(initialScale = 0.8f) + slideInHorizontally { it },
@@ -873,9 +846,42 @@ fun ChatInputBar(
                                 }
                             }
                         }
+
+                        // Mobile Emoji Picker - Moved below input row
+                        AnimatedVisibility(
+                            visible = navigationStore.isEmojiPickerVisible && isMobile,
+                            enter = expandVertically() + fadeIn(),
+                            exit = shrinkVertically() + fadeOut()
+                        ) {
+                            EmojiPicker(
+                                modifier = Modifier.fillMaxWidth(),
+                                onEmojiSelected = { emoji ->
+                                    val isExternal = emoji.guild_id != null && emoji.guild_id != navigationStore.selectedGuild?.id
+                                    val hasNitro = (currentUser?.premium_type ?: 0) > 0
+                                    val freeNitro = me.lampu.lampcord.shared.settings.Settings.shared.freeNitroEmojis
+                                    
+                                    val emojiText = if (emoji.id != null) {
+                                        if (isExternal && !hasNitro && freeNitro) {
+                                            if (me.lampu.lampcord.shared.settings.Settings.shared.realmojis) {
+                                                "<${if (emoji.animated == true) "a" else ""}:F_${emoji.name}:${emoji.id}>"
+                                            } else {
+                                                val ext = if (emoji.animated == true) "gif" else "png"
+                                                "https://cdn.discordapp.com/emojis/${emoji.id}.$ext?size=48"
+                                            }
+                                        } else {
+                                            "<${if (emoji.animated == true) "a" else ""}:${emoji.name}:${emoji.id}>"
+                                        }
+                                    } else emoji.name ?: ""
+
+                                    val newText = textFieldValue.text.take(textFieldValue.selection.start) + emojiText + textFieldValue.text.drop(textFieldValue.selection.end)
+                                    textFieldValue = TextFieldValue(newText, TextRange(textFieldValue.selection.start + emojiText.length))
+                                }
+                            )
+                        }
                     }
                 }
             }
         }
     }
 }
+

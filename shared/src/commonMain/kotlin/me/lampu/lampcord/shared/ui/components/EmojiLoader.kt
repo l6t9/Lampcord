@@ -8,4 +8,9 @@ object EmojiLoader {
         EmojiIndex.initialize()
         return EmojiIndex.getAllEmojis()
     }
+
+    suspend fun getCategorizedEmojis(): Map<String, List<Emoji>> {
+        EmojiIndex.initialize()
+        return EmojiIndex.getCategorizedEmojis()
+    }
 }

@@ -43,6 +43,10 @@ private fun DesktopChatSettings(settingsStore: SettingsStore, userSettings: User
                 ChatToggle("Compact Mode", settingsStore.compactMode, "Display messages in a compact IRC-style layout.") {
                     settingsStore.compactMode = it
                 }
+
+                ChatToggle("Show Message in Context Menu", settingsStore.showContextMenuMessage, "View the message and quick reactions inside the context menu.") {
+                    settingsStore.showContextMenuMessage = it
+                }
             }
         }
 
@@ -193,6 +197,14 @@ private fun MobileChatSettings(settingsStore: SettingsStore, userSettings: UserS
                     checked = settingsStore.compactMode,
                     onCheckedChange = {
                         settingsStore.compactMode = it
+                    }
+                ),
+                switchSettingsItem(
+                    title = "Show Message in Context Menu",
+                    description = "View the message and quick reactions inside the context menu.",
+                    checked = settingsStore.showContextMenuMessage,
+                    onCheckedChange = {
+                        settingsStore.showContextMenuMessage = it
                     }
                 )
             )

@@ -99,7 +99,7 @@ fun MuteServerDialog(
             ButtonGroup(
                 overflowIndicator = { menuState -> ButtonGroupDefaults.OverflowIndicator(menuState) },
                 horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().height(64.dp)
             ) {
                 customItem(
                     buttonGroupContent = {
@@ -118,7 +118,10 @@ fun MuteServerDialog(
                     menuContent = { menuState ->
                         DropdownMenuItem(
                             text = { Text("Cancel") },
-                            onClick = { menuState.dismiss() }
+                            onClick = { 
+                                onDismiss()
+                                menuState.dismiss() 
+                            }
                         )
                     }
                 )
@@ -138,7 +141,10 @@ fun MuteServerDialog(
                     menuContent = { menuState ->
                         DropdownMenuItem(
                             text = { Text("Mute") },
-                            onClick = { menuState.dismiss() }
+                            onClick = { 
+                                onConfirm(selectedOption)
+                                menuState.dismiss() 
+                            }
                         )
                     }
                 )

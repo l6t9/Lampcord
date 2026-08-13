@@ -39,6 +39,7 @@ import me.lampu.lampcord.shared.model.Invite
 import me.lampu.lampcord.shared.model.Member
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
+import me.lampu.lampcord.shared.ui.components.RoleIcon
 import me.lampu.lampcord.shared.ui.components.settings.SettingsLayout
 import me.lampu.lampcord.shared.ui.components.settings.SettingsSection
 import me.lampu.lampcord.shared.ui.icons.Icons
@@ -94,7 +95,10 @@ fun ServerMembers(guild: Guild, guildApi: GuildApi = koinInject()) {
                                         .border(1.dp, if (role.color != 0) Color(role.color.toLong() or 0xFF000000L) else MaterialTheme.colorScheme.outline, CircleShape)
                                         .padding(horizontal = 8.dp, vertical = 2.dp)
                                 ) {
-                                    Text(role.name, style = MaterialTheme.typography.labelSmall, color = if (role.color != 0) Color(role.color.toLong() or 0xFF000000L) else MaterialTheme.colorScheme.onSurface)
+                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        RoleIcon(role, size = 12.dp)
+                                        Text(role.name, style = MaterialTheme.typography.labelSmall, color = if (role.color != 0) Color(role.color.toLong() or 0xFF000000L) else MaterialTheme.colorScheme.onSurface)
+                                    }
                                 }
                             }
                             if (memberRoles.size > 3) {

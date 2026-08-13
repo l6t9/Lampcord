@@ -65,30 +65,37 @@ fun LoginScreen(
         scope.launch {
             isLoading = true
             errorMessage = null
-            if (mfaTicket == null) {
-                val response = sessionManager.login(login, password)
-                if (response == null) {
-                    errorMessage = "Login failed"
-                } else if (response.token != null) {
-                    sessionManager.connect(response.token)
-                    onLoginSuccess()
-                } else if (response.mfa == true && response.ticket != null) {
-                    mfaTicket = response.ticket
-                } else if (response.message != null) {
-                    errorMessage = response.message
-                }
-            } else {
-                val currentTicket: String? = mfaTicket
-                if (currentTicket != null) {
-                    val res = sessionManager.verifyMFA(mfaCode.trim(), currentTicket, mfaType)
-                    if (res) {
+            try {
+                if (mfaTicket == null) {
+                    val response = sessionManager.login(login, password)
+                    if (response == null) {
+                        errorMessage = "Login failed (check your connection)"
+                    } else if (response.token != null) {
+                        sessionManager.connect(response.token)
                         onLoginSuccess()
+                    } else if (response.mfa == true && response.ticket != null) {
+                        mfaTicket = response.ticket
+                    } else if (response.message != null) {
+                        errorMessage = response.message
                     } else {
-                        errorMessage = "Invalid code or expired ticket"
+                        errorMessage = "Invalid login or password"
+                    }
+                } else {
+                    val currentTicket: String? = mfaTicket
+                    if (currentTicket != null) {
+                        val res = sessionManager.verifyMFA(mfaCode.trim(), currentTicket, mfaType)
+                        if (res) {
+                            onLoginSuccess()
+                        } else {
+                            errorMessage = "Invalid code or expired ticket"
+                        }
                     }
                 }
+            } catch (e: Exception) {
+                errorMessage = e.message ?: "An unexpected error occurred"
+            } finally {
+                isLoading = false
             }
-            isLoading = false
         }
     }
 

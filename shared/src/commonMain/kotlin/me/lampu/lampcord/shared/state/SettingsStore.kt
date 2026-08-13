@@ -122,6 +122,14 @@ class SettingsStore(
             updateUserSettings(UserSettings.Partial(message_display_compact = value))
         }
 
+    private var _showContextMenuMessage by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.showContextMenuMessage)
+    var showContextMenuMessage: Boolean
+        get() = _showContextMenuMessage
+        set(value) {
+            _showContextMenuMessage = value
+            me.lampu.lampcord.shared.settings.Settings.shared.showContextMenuMessage = value
+        }
+
     private var _messageSpacingMode by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.messageSpacingMode)
     var messageSpacingMode: me.lampu.lampcord.shared.settings.MessageSpacingMode
         get() = _messageSpacingMode

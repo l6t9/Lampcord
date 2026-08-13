@@ -130,17 +130,32 @@ class GatewayManager(
                     reconnectAttempt = 0
                     
                     while (isActive) {
-                        val frame = incoming.receive()
-                        if (frame is Frame.Text) {
-                            val text = frame.readText()
-                            val payload = json.decodeFromString<GatewayPayload>(text)
-                            lastSequence = payload.s ?: lastSequence
-                            handlePayload(payload, token)
-                            _events.emit(payload)
+                        try {
+                            val frame = incoming.receive()
+                            if (frame is Frame.Text) {
+                                val text = frame.readText()
+                                val payload = json.decodeFromString<GatewayPayload>(text)
+                                lastSequence = payload.s ?: lastSequence
+                                handlePayload(payload, token)
+                                _events.emit(payload)
+                            } else if (frame is Frame.Close) {
+                                val reason = closeReason.await()
+                                val code = reason?.code?.toInt() ?: 0
+                                // 4004: Authentication failed
+                                // 4003: Not authenticated
+                                if (code == 4004 || code == 4003) {
+                                    _events.emit(GatewayPayload(op = -1, t = "AUTH_FAILED"))
+                                    disconnect()
+                                    return@webSocket
+                                }
+                            }
+                        } catch (e: Exception) {
+                            break
                         }
                     }
                 }
             } catch (e: Exception) {
+                // Check if it's a 401 Unauthorized if it's an HTTP exception during handshake
             } finally {
                 session = null
                 stopHeartbeat()

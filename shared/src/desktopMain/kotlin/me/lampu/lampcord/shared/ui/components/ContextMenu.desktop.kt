@@ -17,6 +17,8 @@ actual fun ContextMenu(
     items: List<ContextMenuItem>,
     modifier: Modifier,
     shape: androidx.compose.ui.graphics.Shape,
+    header: (@Composable () -> Unit)?,
+    reactions: (@Composable (onDismiss: () -> Unit) -> Unit)?,
     content: @Composable () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }

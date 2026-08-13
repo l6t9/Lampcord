@@ -8,37 +8,48 @@ import kotlinx.serialization.json.Json
 object EmojiIndex {
     private var charToNames = mapOf<String, List<String>>()
     private var nameToChar = mapOf<String, String>()
+    private var categorizedEmojis = mapOf<String, List<Emoji>>()
     private var allEmojis = listOf<Emoji>()
     private var initialized = false
+
+    private val json = Json {
+        ignoreUnknownKeys = true
+    }
 
     fun initialize() {
         if (initialized) return
         try {
             val jsonBytes = ResourceLoader.readBytes("files/emojis.json")
             val jsonText = jsonBytes?.decodeToString() ?: ""
-            val entries = Json.decodeFromString<List<EmojiEntry>>(jsonText)
+            val categories = json.decodeFromString<Map<String, List<EmojiEntry>>>(jsonText)
 
             val charMap = mutableMapOf<String, List<String>>()
             val nameMap = mutableMapOf<String, String>()
             val emojiList = mutableListOf<Emoji>()
+            val categorized = mutableMapOf<String, List<Emoji>>()
 
-            entries.forEach { entry ->
-                charMap[entry.s] = entry.n
-                entry.n.forEach { name ->
-                    nameMap[name] = entry.s
-                }
-                emojiList.add(
-                    Emoji(
+            categories.forEach { (category, entries) ->
+                val categoryEmojis = mutableListOf<Emoji>()
+                entries.forEach { entry ->
+                    charMap[entry.surrogates] = entry.names
+                    entry.names.forEach { name ->
+                        nameMap[name] = entry.surrogates
+                    }
+                    val emoji = Emoji(
                         id = null,
-                        name = entry.n.firstOrNull() ?: entry.s,
-                        url = entry.s.toTwemojiUrl()
+                        name = entry.names.firstOrNull() ?: entry.surrogates,
+                        url = entry.surrogates.toTwemojiUrl()
                     )
-                )
+                    categoryEmojis.add(emoji)
+                    emojiList.add(emoji)
+                }
+                categorized[category] = categoryEmojis
             }
 
             charToNames = charMap
             nameToChar = nameMap
             allEmojis = emojiList
+            categorizedEmojis = categorized
             initialized = true
         } catch (e: Exception) {
             println("EmojiIndex initialization failed: ${e.message}")
@@ -46,6 +57,8 @@ object EmojiIndex {
     }
 
     fun getAllEmojis(): List<Emoji> = allEmojis
+
+    fun getCategorizedEmojis(): Map<String, List<Emoji>> = categorizedEmojis
 
     fun getCharForName(name: String): String? = nameToChar[name.removeSurrounding(":")]
 
@@ -74,8 +87,10 @@ object EmojiIndex {
         return null
     }
 
+    @Serializable
     data class EmojiEntry(
-        val n: List<String>,
-        val s: String
+        val names: List<String>,
+        val surrogates: String,
+        val unicodeVersion: Double
     )
 }

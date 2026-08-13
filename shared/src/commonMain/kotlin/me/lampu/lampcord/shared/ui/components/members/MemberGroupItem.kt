@@ -1,8 +1,12 @@
 package me.lampu.lampcord.shared.ui.components.members
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -14,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import me.lampu.lampcord.shared.model.MemberListGroup
 import me.lampu.lampcord.shared.state.*
+import me.lampu.lampcord.shared.ui.components.RoleIcon
 import org.koin.compose.koinInject
 
 @Composable
@@ -50,12 +55,18 @@ fun MemberGroupItem(
             .padding(top = 8.dp),
         contentAlignment = Alignment.CenterStart
     ) {
-        Text(
-            text = "$roleName — $displayCount",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 0.5.sp
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (role != null && (role.icon != null || role.unicode_emoji != null)) {
+                RoleIcon(role, size = 16.dp)
+                Spacer(Modifier.width(8.dp))
+            }
+            Text(
+                text = "$roleName — $displayCount",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.5.sp
+            )
+        }
     }
 }

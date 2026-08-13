@@ -34,7 +34,19 @@ class SessionManager(
 
     init {
         scope.launch {
-            gatewayManager.events.collect { gatewayHandler.handleGatewayEvent(it) }
+            gatewayManager.events.collect { 
+                if (it.op == -1 && it.t == "AUTH_FAILED") {
+                    logout(Settings.shared.discordToken)
+                } else {
+                    gatewayHandler.handleGatewayEvent(it)
+                }
+            }
+        }
+
+        scope.launch {
+            authApi.rest.unauthorizedEvents.collect {
+                logout(Settings.shared.discordToken)
+            }
         }
 
         val savedToken = Settings.shared.discordToken
@@ -64,8 +76,9 @@ class SessionManager(
     }
 
     fun logout(token: String) {
-        tokenStore.removeAccount(token)
-        if (Settings.shared.discordToken == token) {
+        val cleanToken = token.trim()
+        tokenStore.removeAccount(cleanToken)
+        if (Settings.shared.discordToken.trim() == cleanToken) {
             disconnect()
         }
     }

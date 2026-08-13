@@ -23,7 +23,8 @@ fun Emoji.getDisplayUrl(): String? {
         val ext = if (animated == true) "gif" else "png"
         return "https://cdn.discordapp.com/emojis/$id.$ext?size=48"
     }
-    return name?.let { EmojiIndex.getTwemojiUrl(it) } ?: name?.toTwemojiUrl()
+    val unicode = name?.let { EmojiIndex.getCharForName(it) } ?: name
+    return unicode?.toTwemojiUrl()
 }
 
 fun String.toTwemojiUrl(): String {
@@ -40,9 +41,6 @@ fun String.toTwemojiUrl(): String {
                 continue
             }
         }
-        // Variation Selector-16 (U+FE0F) is stripped in Twemoji filenames
-        // but only if it's not part of a sequence that requires it?
-        // Actually, Twemoji's standard is to strip all FE0F.
         if (c1.code == 0xFE0F) {
             i++
             continue

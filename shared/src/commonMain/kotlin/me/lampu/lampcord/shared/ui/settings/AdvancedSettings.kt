@@ -83,30 +83,29 @@ private fun AdvancedToggle(label: String, checked: Boolean, description: String?
 @Composable
 private fun MobileAdvancedSettings(settingsStore: SettingsStore) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        Material3SettingsGroup(title = "Developer Settings") {
-            val devMode = settingsStore.userSettings?.developer_mode ?: false
-            
-            Material3SettingsGroup(
-                items = listOf(
-                    switchSettingsItem(
-                        title = "Developer Mode",
-                        description = "Exposes ID copying and other advanced debug tools.",
-                        checked = devMode,
-                        onCheckedChange = { 
-                            settingsStore.updateUserSettings(UserSettings.Partial(developer_mode = it))
-                        }
-                    ),
-                    switchSettingsItem(
-                        title = "Show Hidden Channels",
-                        description = "Display channels you don't have permission to view as locked and greyed out.",
-                        checked = settingsStore.showHiddenChannels,
-                        onCheckedChange = { 
-                            settingsStore.showHiddenChannels = it
-                        }
-                    )
+        val devMode = settingsStore.userSettings?.developer_mode ?: false
+
+        Material3SettingsGroup(
+            title = "Developer Settings",
+            items = listOf(
+                switchSettingsItem(
+                    title = "Developer Mode",
+                    description = "Exposes ID copying and other advanced debug tools.",
+                    checked = devMode,
+                    onCheckedChange = {
+                        settingsStore.updateUserSettings(UserSettings.Partial(developer_mode = it))
+                    }
+                ),
+                switchSettingsItem(
+                    title = "Show Hidden Channels",
+                    description = "Display channels you don't have permission to view as locked and greyed out.",
+                    checked = settingsStore.showHiddenChannels,
+                    onCheckedChange = {
+                        settingsStore.showHiddenChannels = it
+                    }
                 )
             )
-        }
+        )
 
         Material3SettingsGroup(title = "Data Management") {
             Material3SettingsGroup(

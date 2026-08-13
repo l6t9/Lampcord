@@ -99,8 +99,28 @@ actual fun MobileBaseplate(
         }
     }
 
-    BackHandler(enabled = panelState.currentValue != DiscordPanelValue.Center) {
+    BackHandler(enabled = panelState.currentValue == DiscordPanelValue.End) {
         panelState.close()
+    }
+
+    BackHandler(enabled = panelState.currentValue == DiscordPanelValue.Center) {
+        if (navigationStore.selectedThread != null) {
+            navigationStore.selectedThread = null
+        } else {
+            panelState.openStart()
+        }
+    }
+
+    BackHandler(enabled = navigationStore.isMediaPickerVisible) {
+        navigationStore.isMediaPickerVisible = false
+    }
+
+    BackHandler(enabled = navigationStore.isChannelsAndRolesVisible) {
+        navigationStore.isChannelsAndRolesVisible = false
+    }
+
+    BackHandler(enabled = navigationStore.isEmojiPickerVisible) {
+        navigationStore.isEmojiPickerVisible = false
     }
 
     BackHandler(enabled = navigationStore.isSearchVisible) {
@@ -113,14 +133,19 @@ actual fun MobileBaseplate(
 
     BackHandler(enabled = profileStore.selectedProfile != null) {
         profileStore.selectedProfile = null
+        profileStore.isProfileLoading = false
     }
-    
+
     BackHandler(enabled = navigationStore.isSettingsVisible) {
         navigationStore.isSettingsVisible = false
     }
 
     BackHandler(enabled = navigationStore.isServerSettingsVisible) {
         navigationStore.isServerSettingsVisible = false
+    }
+
+    BackHandler(enabled = navigationStore.isAttachmentViewerVisible) {
+        navigationStore.closeAttachmentViewer()
     }
 
     Box(Modifier.fillMaxSize()) {
@@ -173,8 +198,18 @@ actual fun MobileBaseplate(
                                     },
                                     navigationIcon = {
                                         if (!navigationStore.isBubble) {
-                                            IconButton(onClick = { panelState.openStart() }) {
-                                                Icon(Icons.Filled.Menu, "Channels")
+                                            val isThread = navigationStore.selectedThread != null
+                                            IconButton(onClick = { 
+                                                if (isThread) {
+                                                    navigationStore.selectedThread = null
+                                                } else {
+                                                    panelState.openStart() 
+                                                }
+                                            }) {
+                                                Icon(
+                                                    imageVector = if (isThread) Icons.AutoMirrored.Filled.ArrowBack else Icons.Filled.Menu,
+                                                    contentDescription = if (isThread) "Back" else "Channels"
+                                                )
                                             }
                                         }
                                     },

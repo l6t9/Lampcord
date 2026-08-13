@@ -6,10 +6,15 @@ import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.cookies.HttpCookies
 import io.ktor.client.plugins.websocket.WebSockets
+import io.ktor.client.plugins.observer.ResponseObserver
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.header
+import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.HttpReceivePipeline
 import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
@@ -36,6 +41,19 @@ class RestClient(
 ) {
     var token: String? = null
         private set
+
+    val unauthorizedEvents = MutableSharedFlow<Unit>()
+
+    init {
+        httpClient.receivePipeline.intercept(HttpReceivePipeline.Before) { response ->
+            if (response is HttpResponse && response.status == HttpStatusCode.Unauthorized) {
+                if (token != null) {
+                    unauthorizedEvents.emit(Unit)
+                }
+            }
+            proceedWith(response)
+        }
+    }
 
     private val apiVersion = 9
     val apiBase = "https://discord.com/api/v$apiVersion"
@@ -140,4 +158,6 @@ fun createHttpClient() = HttpClient(CIO) {
         })
     }
     install(WebSockets)
+    
+    expectSuccess = false
 }

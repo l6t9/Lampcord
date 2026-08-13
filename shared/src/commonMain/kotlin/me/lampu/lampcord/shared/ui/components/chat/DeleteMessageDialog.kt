@@ -3,6 +3,7 @@ package me.lampu.lampcord.shared.ui.components.chat
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AlertDialogDefaults
@@ -60,7 +61,7 @@ fun DeleteMessageDialog(
             ButtonGroup(
                 overflowIndicator = { menuState -> ButtonGroupDefaults.OverflowIndicator(menuState) },
                 horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().height(64.dp)
             ) {
                 customItem(
                     buttonGroupContent = {
@@ -79,7 +80,10 @@ fun DeleteMessageDialog(
                     menuContent = { menuState ->
                         DropdownMenuItem(
                             text = { Text("Cancel") },
-                            onClick = { menuState.dismiss() }
+                            onClick = { 
+                                onDismiss()
+                                menuState.dismiss() 
+                            }
                         )
                     }
                 )
@@ -103,7 +107,10 @@ fun DeleteMessageDialog(
                     menuContent = { menuState ->
                         DropdownMenuItem(
                             text = { Text("Delete") },
-                            onClick = { menuState.dismiss() }
+                            onClick = { 
+                                onConfirm()
+                                menuState.dismiss() 
+                            }
                         )
                     }
                 )

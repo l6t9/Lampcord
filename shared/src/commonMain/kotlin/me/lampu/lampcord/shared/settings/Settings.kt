@@ -52,12 +52,14 @@ class Settings(private val settings: KmpSettings) {
 
     // Other Enhancements
     var bypassUploadLimit by preferenceBoolean("bypass_upload_limit", true)
+    var showContextMenuMessage by preferenceBoolean("show_context_menu_message", false)
     var messageSpacingMode by preferenceEnum("message_spacing_mode", MessageSpacingMode.DEFAULT)
     var compactMode by preferenceBoolean("compact_mode", false)
     var chatBubbles by preferenceBoolean("chat_bubbles", false)
     var silentTyping by preferenceBoolean("silent_typing", false)
     var hideBlockedMessages by preferenceBoolean("hide_blocked_messages", false)
     var showPermissions by preferenceBoolean("show_permissions", true)
+    var emojiUsageJson by preference("emoji_usage_v4", "{}")
 
     fun getLastChannel(guildId: String): String? {
         val id = settings.getString("last_channel_$guildId", "")
