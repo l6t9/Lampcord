@@ -50,6 +50,7 @@ class Settings(private val settings: KmpSettings) {
 
     // Other Enhancements
     var bypassUploadLimit by preferenceBoolean("bypass_upload_limit", true)
+    var messageSpacingMode by preferenceEnum("message_spacing_mode", MessageSpacingMode.DEFAULT)
     var compactMode by preferenceBoolean("compact_mode", false)
     var chatBubbles by preferenceBoolean("chat_bubbles", false)
     var silentTyping by preferenceBoolean("silent_typing", false)
@@ -111,3 +112,10 @@ class Settings(private val settings: KmpSettings) {
         val shared: Settings by lazy { Settings(createSettings()) }
     }
 }
+
+enum class MessageSpacingMode {
+    COMPACT,
+    DEFAULT,
+    SPACIOUS
+}
+

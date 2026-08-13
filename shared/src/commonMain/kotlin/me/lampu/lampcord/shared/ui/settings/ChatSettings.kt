@@ -39,9 +39,26 @@ private fun DesktopChatSettings(settingsStore: SettingsStore, userSettings: User
                 ChatToggle("Chat Bubbles", settingsStore.chatBubbles, "Display messages inside rounded chat bubbles.") {
                     settingsStore.chatBubbles = it
                 }
-                ChatToggle("Compact Mode", settingsStore.compactMode, "Display messages in a compact IRC-style layout.") {
-                    settingsStore.compactMode = it
+
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Message Spacing & Display", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    SettingsButtonGroup(
+                        options = me.lampu.lampcord.shared.settings.MessageSpacingMode.entries.toList(),
+                        selectedOption = settingsStore.messageSpacingMode,
+                        onOptionSelected = { mode ->
+                            settingsStore.messageSpacingMode = mode
+                        },
+                        iconProvider = null,
+                        labelProvider = {
+                            when (it) {
+                                me.lampu.lampcord.shared.settings.MessageSpacingMode.COMPACT -> "Compact"
+                                me.lampu.lampcord.shared.settings.MessageSpacingMode.DEFAULT -> "Default"
+                                me.lampu.lampcord.shared.settings.MessageSpacingMode.SPACIOUS -> "Spacious"
+                            }
+                        }
+                    )
                 }
+
             }
         }
 
@@ -174,8 +191,8 @@ private fun MobileChatSettings(settingsStore: SettingsStore, userSettings: UserS
     var gesturesExpanded by remember { mutableStateOf(false) }
     var nitroExpanded by remember { mutableStateOf(false) }
     var loggerExpanded by remember { mutableStateOf(false) }
-    
     Column(modifier = Modifier.fillMaxWidth()) {
+        var spacingExpanded by remember { mutableStateOf(false) }
         Material3SettingsGroup(
             title = "Display",
             items = listOf(
@@ -187,14 +204,40 @@ private fun MobileChatSettings(settingsStore: SettingsStore, userSettings: UserS
                         settingsStore.chatBubbles = it
                     }
                 ),
-                switchSettingsItem(
-                    title = "Compact Mode",
-                    description = "Display messages in a compact IRC-style layout.",
-                    checked = settingsStore.compactMode,
-                    onCheckedChange = {
-                        settingsStore.compactMode = it
+                expandableSettingsItem(
+                    title = "Message Spacing",
+                    description = when (settingsStore.messageSpacingMode) {
+                        me.lampu.lampcord.shared.settings.MessageSpacingMode.COMPACT -> "Compact (IRC inline)"
+                        me.lampu.lampcord.shared.settings.MessageSpacingMode.DEFAULT -> "Default (Cozy)"
+                        me.lampu.lampcord.shared.settings.MessageSpacingMode.SPACIOUS -> "Spacious (Expanded Cozy)"
+                    },
+                    expanded = spacingExpanded,
+                    onToggle = { spacingExpanded = !spacingExpanded }
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        me.lampu.lampcord.shared.settings.MessageSpacingMode.entries.forEach { mode ->
+                            val label = when (mode) {
+                                me.lampu.lampcord.shared.settings.MessageSpacingMode.COMPACT -> "Compact"
+                                me.lampu.lampcord.shared.settings.MessageSpacingMode.DEFAULT -> "Default"
+                                me.lampu.lampcord.shared.settings.MessageSpacingMode.SPACIOUS -> "Spacious"
+                            }
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        settingsStore.messageSpacingMode = mode
+                                        spacingExpanded = false
+                                    }
+                                    .padding(12.dp),
+                                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                            ) {
+                                RadioButton(selected = settingsStore.messageSpacingMode == mode, onClick = null)
+                                Spacer(Modifier.width(8.dp))
+                                Text(label)
+                            }
+                        }
                     }
-                )
+                }
             )
         )
 

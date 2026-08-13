@@ -178,7 +178,8 @@ fun MessageItem(
 
     val isInline = priorMessage != null
     val useBubbles = settingsStore.chatBubbles
-    val isCompact = settingsStore.compactMode
+    val spacingMode = settingsStore.messageSpacingMode
+    val isCompact = spacingMode == me.lampu.lampcord.shared.settings.MessageSpacingMode.COMPACT
     val hasNextSameUser = remember(message, nextMessage) {
         if (nextMessage == null) return@remember false
         if (nextMessage.author?.id != message.author?.id) return@remember false
@@ -304,8 +305,16 @@ fun MessageItem(
                 )
             }
 
-            val topPadding = if (isCompact) 1.5.dp else (if (useBubbles) (if (isInline) 1.5.dp else 6.dp) else (if (isInline) 1.5.dp else 8.dp))
-            val bottomPadding = if (isCompact) 1.5.dp else (if (useBubbles) (if (hasNextSameUser) 1.5.dp else 6.dp) else (if (isInline) 1.5.dp else 8.dp))
+            val topPadding = when (spacingMode) {
+                me.lampu.lampcord.shared.settings.MessageSpacingMode.COMPACT -> 1.5.dp
+                me.lampu.lampcord.shared.settings.MessageSpacingMode.DEFAULT -> if (isInline) 1.5.dp else (if (useBubbles) 6.dp else 8.dp)
+                me.lampu.lampcord.shared.settings.MessageSpacingMode.SPACIOUS -> if (isInline) 3.dp else (if (useBubbles) 12.dp else 14.dp)
+            }
+            val bottomPadding = when (spacingMode) {
+                me.lampu.lampcord.shared.settings.MessageSpacingMode.COMPACT -> 1.5.dp
+                me.lampu.lampcord.shared.settings.MessageSpacingMode.DEFAULT -> if (hasNextSameUser) 1.5.dp else (if (useBubbles) 6.dp else 8.dp)
+                me.lampu.lampcord.shared.settings.MessageSpacingMode.SPACIOUS -> if (hasNextSameUser) 3.dp else (if (useBubbles) 12.dp else 14.dp)
+            }
 
             ContextMenu(
                 items = contextMenuItems,

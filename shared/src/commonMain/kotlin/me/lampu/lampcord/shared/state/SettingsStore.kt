@@ -121,6 +121,17 @@ class SettingsStore(
             me.lampu.lampcord.shared.settings.Settings.shared.compactMode = value
         }
 
+    private var _messageSpacingMode by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.messageSpacingMode)
+    var messageSpacingMode: me.lampu.lampcord.shared.settings.MessageSpacingMode
+        get() = _messageSpacingMode
+        set(value) {
+            _messageSpacingMode = value
+            me.lampu.lampcord.shared.settings.Settings.shared.messageSpacingMode = value
+            val isCompact = (value == me.lampu.lampcord.shared.settings.MessageSpacingMode.COMPACT)
+            me.lampu.lampcord.shared.settings.Settings.shared.compactMode = isCompact
+            _compactMode = isCompact
+        }
+
     private var _notificationsEnabled by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.notificationsEnabled)
     var notificationsEnabled: Boolean
         get() = _notificationsEnabled
@@ -188,6 +199,7 @@ class SettingsStore(
         ) ?: newSettings
     }
 
+
     fun updateUserSetting(update: (UserSettings) -> UserSettings, type: UpdateType = UpdateType.FREQUENT) {
         val current = userSettings ?: return
         userSettings = update(current)
@@ -252,6 +264,7 @@ class SettingsStore(
                     friend_discovery_flags = settings.friend_discovery_flags,
                     custom_status = settings.custom_status
                 ))
+
             } catch (e: Exception) {
                 println("Failed to update user settings: ${e.message}")
             }

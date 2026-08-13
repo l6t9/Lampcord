@@ -133,7 +133,8 @@ data class UserSettings(
     val friend_discovery_flags: Int? = null,
     val restricted_guilds: List<String> = emptyList(),
     val show_current_game: Boolean? = null,
-    val blocked_message_bar: Boolean? = null
+    val blocked_message_bar: Boolean? = null,
+    val message_display_compact: Boolean? = null
 ) {
     fun merge(partial: Partial): UserSettings {
         return copy(
@@ -143,6 +144,7 @@ data class UserSettings(
             inline_embed_media = partial.inline_embed_media ?: inline_embed_media,
             inline_attachment_media = partial.inline_attachment_media ?: inline_attachment_media,
             blocked_message_bar = partial.blocked_message_bar ?: blocked_message_bar,
+            message_display_compact = partial.message_display_compact ?: message_display_compact,
             locale = partial.locale ?: locale,
             restricted_guilds = partial.restricted_guilds ?: restricted_guilds,
             status = partial.status ?: status,
@@ -168,6 +170,7 @@ data class UserSettings(
         val inline_embed_media: Boolean? = null,
         val inline_attachment_media: Boolean? = null,
         val blocked_message_bar: Boolean? = null,
+        val message_display_compact: Boolean? = null,
         val locale: String? = null,
         val restricted_guilds: List<String>? = null,
         val status: String? = null,
