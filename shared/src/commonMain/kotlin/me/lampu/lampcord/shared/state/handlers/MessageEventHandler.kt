@@ -44,6 +44,11 @@ class MessageEventHandler(
         
         finderStore.addRecent(message.channel_id)
 
+        // Clear draft if message is from us
+        if (message.author?.id == userStore.currentUser.value?.id) {
+            messageStore.draftMessages.remove(message.channel_id)
+        }
+
         if (navigationStore.selectedChannel?.id == message.channel_id || 
             navigationStore.selectedThread?.id == message.channel_id) {
             messageStore.handleMessageCreate(message)

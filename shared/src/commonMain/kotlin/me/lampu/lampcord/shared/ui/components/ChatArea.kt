@@ -145,7 +145,7 @@ fun ChatArea(
             )
         }
 
-        val filteredMessages = remember(messages.size, relationships.size) {
+        val filteredMessages = remember(messages, relationships) {
             val hideBlocked = me.lampu.lampcord.shared.settings.Settings.shared.hideBlockedMessages
             if (hideBlocked) {
                 messages.filter { msg ->

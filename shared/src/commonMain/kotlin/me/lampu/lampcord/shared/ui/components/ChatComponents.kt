@@ -362,7 +362,11 @@ fun ChatInputBar(
 
     // Update draft whenever text changes
     LaunchedEffect(textFieldValue.text) {
-        messageStore.draftMessages[channel.id] = textFieldValue.text
+        if (textFieldValue.text.isEmpty()) {
+            messageStore.draftMessages.remove(channel.id)
+        } else {
+            messageStore.draftMessages[channel.id] = textFieldValue.text
+        }
     }
 
     // Keep local messageText in sync with draft changes from outside

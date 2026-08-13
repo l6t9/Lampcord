@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
-import me.lampu.lampcord.shared.api.AllowedMentions
+import me.lampu.lampcord.shared.model.AllowedMentions
 import me.lampu.lampcord.shared.api.DiscordClient
 import me.lampu.lampcord.shared.model.Channel
 import me.lampu.lampcord.shared.model.Member
@@ -259,7 +259,7 @@ class MessageStore(
                         if (task == null) break
                         
                         try {
-                            val success = withTimeoutOrNull(60000.milliseconds) {
+                            val message = withTimeoutOrNull(60000.milliseconds) {
                                 discordClient.sendMessage(
                                     channelId = task.channelId,
                                     content = task.content,
@@ -271,9 +271,10 @@ class MessageStore(
                                     allowedMentions = task.allowedMentions,
                                     poll = task.poll
                                 )
-                            } ?: false
+                            }
 
-                            if (success) {
+                            if (message != null) {
+                                handleMessageCreate(message)
                                 if (queue.isNotEmpty() && queue[0].nonce == task.nonce) queue.removeAt(0)
                                 backoff.succeed()
                             } else {
@@ -299,7 +300,7 @@ class MessageStore(
                 val index = current.indexOfFirst { it.nonce == task.nonce }
                 if (index != -1) {
                     current.toMutableList().apply { 
-                        set(index, get(index).copy(sendError = error, isPending = false))
+                        set(index, get(index).copy(sendError = error, isPending = true))
                     }
                 } else current
             }
@@ -358,7 +359,7 @@ class MessageStore(
     fun sendTyping(channelId: String) {
         scope.launch {
             try {
-                discordClient.sendTyping(channelId)
+                discordClient.triggerTyping(channelId)
             } catch (e: Exception) { }
         }
     }

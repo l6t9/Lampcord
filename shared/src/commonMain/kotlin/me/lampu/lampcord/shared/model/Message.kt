@@ -80,6 +80,14 @@ data class Message(
 }
 
 @Serializable
+data class AllowedMentions(
+    val parse: List<String> = emptyList(),
+    val roles: List<String> = emptyList(),
+    val users: List<String> = emptyList(),
+    val replied_user: Boolean = true
+)
+
+@Serializable
 data class MessageReference(
     val message_id: String? = null,
     val channel_id: String? = null,

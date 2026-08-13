@@ -82,16 +82,8 @@ data class MessageRequest(
     val nonce: String? = null,
     val attachments: List<AttachmentRequest>? = null,
     val sticker_ids: List<String>? = null,
-    val allowed_mentions: AllowedMentions? = null,
+    val allowed_mentions: me.lampu.lampcord.shared.model.AllowedMentions? = null,
     val poll: Poll? = null
-)
-
-@Serializable
-data class AllowedMentions(
-    val parse: List<String>? = null,
-    val roles: List<String>? = null,
-    val users: List<String>? = null,
-    val replied_user: Boolean? = null
 )
 
 @Serializable
@@ -254,9 +246,9 @@ class DiscordClient(
         files: List<Pair<String, ByteArray>> = emptyList(),
         nonce: String? = null,
         stickerIds: List<String>? = null,
-        allowedMentions: AllowedMentions? = null,
+        allowedMentions: me.lampu.lampcord.shared.model.AllowedMentions? = null,
         poll: Poll? = null
-    ): Boolean {
+    ): Message? {
         val processedContent = if (me.lampu.lampcord.shared.settings.Settings.shared.freeNitroEmojis) {
             val emojiRegex = Regex("""<(a)?:F_([a-zA-Z0-9_]+):(\d+)>""")
             content.replace(emojiRegex) { match ->
@@ -301,7 +293,7 @@ class DiscordClient(
                     )
                     setBody(request)
                 }
-                response.status.isSuccess()
+                if (response.status.isSuccess()) response.body() else null
             } else {
                 val response = httpClient.post("$apiBase/channels/$channelId/messages") {
                     standardHeaders()
@@ -342,11 +334,11 @@ class DiscordClient(
                         }
                     ))
                 }
-                response.status.isSuccess()
+                if (response.status.isSuccess()) response.body() else null
             }
         } catch (e: Exception) {
             Logging.e("Messages", "Error sending message: ${e.message}")
-            false
+            null
         }
     }
 
@@ -902,7 +894,7 @@ class DiscordClient(
         }
     }
 
-    suspend fun sendTyping(channelId: String): Boolean {
+    suspend fun triggerTyping(channelId: String): Boolean {
         return try {
             val response = httpClient.post("$apiBase/channels/$channelId/typing") {
                 standardHeaders()
