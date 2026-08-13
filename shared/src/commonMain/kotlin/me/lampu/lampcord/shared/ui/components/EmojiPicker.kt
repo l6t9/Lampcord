@@ -11,13 +11,15 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -80,6 +82,31 @@ fun EmojiPicker(
     val coroutineScope = rememberCoroutineScope()
     val isMobile = getPlatformName() == "android" || getPlatformName() == "ios"
 
+    var selectedGroupIndex by remember(emojiGroups) { mutableStateOf(0) }
+    val groupOffsets = remember(emojiGroups) {
+        val offsets = mutableListOf<Int>()
+        var acc = 0
+        emojiGroups.forEach { group ->
+            offsets.add(acc)
+            acc += 1 + group.emojis.size
+        }
+        offsets
+    }
+    fun groupForIndex(index: Int): Int {
+        for (i in groupOffsets.indices) {
+            val end = if (i + 1 < groupOffsets.size) groupOffsets[i + 1] else Int.MAX_VALUE
+            if (index < end) return i
+        }
+        return 0
+    }
+
+    LaunchedEffect(gridState, groupOffsets) {
+        snapshotFlow { gridState.firstVisibleItemIndex }.collect { index ->
+            val group = groupForIndex(index)
+            if (group != selectedGroupIndex) selectedGroupIndex = group
+        }
+    }
+
     Surface(
         modifier = if (isMobile) modifier.fillMaxWidth().height(400.dp) else modifier.width(400.dp).height(500.dp),
         shape = if (isMobile) RoundedCornerShape(0.dp) else RoundedCornerShape(12.dp),
@@ -87,59 +114,6 @@ fun EmojiPicker(
         shadowElevation = if (isMobile) 0.dp else 8.dp
     ) {
         Row(modifier = Modifier.fillMaxSize()) {
-            // Guild Navigation Bar
-            if (isMobile && emojiGroups.size > 1) {
-                Surface(
-                    modifier = Modifier.width(56.dp).fillMaxHeight(),
-                    color = MaterialTheme.colorScheme.surfaceContainerLowest,
-                    tonalElevation = 1.dp
-                ) {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        contentPadding = PaddingValues(vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(emojiGroups) { group ->
-                            Box(
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                                    .clickable {
-                                        val index = emojiGroups.indexOf(group)
-                                        // Calculate grid index: each group has a header + emojis
-                                        var gridIndex = 0
-                                        for (i in 0 until index) {
-                                            gridIndex += 1 // Header
-                                            gridIndex += emojiGroups[i].emojis.size
-                                        }
-                                        coroutineScope.launch {
-                                            gridState.animateScrollToItem(gridIndex)
-                                        }
-                                    },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (group.iconUrl != null) {
-                                    AsyncImage(
-                                        model = group.iconUrl,
-                                        contentDescription = group.guildName,
-                                        modifier = Modifier.fillMaxSize()
-                                    )
-                                } else {
-                                    Icon(
-                                        imageVector = if (group.id == "standard") Icons.Filled.SentimentSatisfied else Icons.Filled.Group,
-                                        contentDescription = group.guildName,
-                                        modifier = Modifier.size(20.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
             Column(modifier = Modifier.weight(1f)) {
                 SecondaryTabRow(
                     selectedTabIndex = selectedTab,
@@ -174,7 +148,26 @@ fun EmojiPicker(
                         label = "EmojiPickerTabTransition"
                     ) { targetTab ->
                         when (targetTab) {
-                            0 -> EmojiGrid(emojiGroups, gridState, onEmojiSelected)
+                            0 -> Column {
+                                EmojiGrid(
+                                    groups = emojiGroups,
+                                    state = gridState,
+                                    onEmojiSelected = onEmojiSelected,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                if (emojiGroups.size > 1) {
+                                    EmojiServerBar(
+                                        groups = emojiGroups,
+                                        selectedIndex = selectedGroupIndex,
+                                        onSelect = { index ->
+                                            selectedGroupIndex = index
+                                            coroutineScope.launch {
+                                                gridState.animateScrollToItem(groupOffsets[index])
+                                            }
+                                        }
+                                    )
+                                }
+                            }
                             1 -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                 Text("GIFs coming soon", style = MaterialTheme.typography.bodyMedium)
                             }
@@ -192,15 +185,21 @@ fun EmojiPicker(
 data class EmojiGroup(val id: String?, val guildName: String?, val emojis: List<Emoji>, val iconUrl: String?)
 
 @Composable
-fun EmojiGrid(groups: List<EmojiGroup>, state: LazyGridState, onEmojiSelected: (Emoji) -> Unit) {
+fun EmojiGrid(
+    groups: List<EmojiGroup>,
+    state: LazyGridState,
+    onEmojiSelected: (Emoji) -> Unit,
+    modifier: Modifier = Modifier
+) {
     if (groups.all { it.emojis.isEmpty() }) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("No custom emojis available", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     } else {
         LazyVerticalGrid(
             columns = GridCells.Adaptive(40.dp),
             state = state,
+            modifier = modifier,
             contentPadding = PaddingValues(4.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -247,6 +246,59 @@ fun EmojiGrid(groups: List<EmojiGroup>, state: LazyGridState, onEmojiSelected: (
                                     fontSize = 24.sp
                                 )
                             }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmojiServerBar(
+    groups: List<EmojiGroup>,
+    selectedIndex: Int,
+    onSelect: (Int) -> Unit
+) {
+    Column {
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            itemsIndexed(groups) { index, group ->
+                val selected = selectedIndex == index
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(
+                        modifier = Modifier
+                            .width(36.dp)
+                            .height(3.dp)
+                            .clip(RoundedCornerShape(1.5.dp))
+                            .background(if (selected) MaterialTheme.colorScheme.primary else Color.Transparent)
+                    )
+                    Box(
+                        modifier = Modifier
+                            .padding(top = 4.dp, bottom = 4.dp)
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant)
+                            .clickable { onSelect(index) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (group.iconUrl != null) {
+                            AsyncImage(
+                                model = group.iconUrl,
+                                contentDescription = group.guildName,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Icon(
+                                imageVector = if (group.id == "standard") Icons.Filled.SentimentSatisfied else Icons.Filled.Group,
+                                contentDescription = group.guildName,
+                                modifier = Modifier.size(20.dp),
+                                tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }

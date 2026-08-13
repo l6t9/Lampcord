@@ -96,20 +96,52 @@ fun MuteServerDialog(
             }
         },
         confirmButton = {
-            Button(
-                onClick = { onConfirm(selectedOption) },
-                modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.medium
-            ) {
-                Text("Mute")
-            }
-        },
-        dismissButton = {
-            TextButton(
-                onClick = onDismiss,
+            ButtonGroup(
+                overflowIndicator = { menuState -> ButtonGroupDefaults.OverflowIndicator(menuState) },
+                horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Cancel")
+                customItem(
+                    buttonGroupContent = {
+                        Button(
+                            onClick = onDismiss,
+                            shapes = ButtonDefaults.shapes(
+                                shape = ButtonGroupDefaults.connectedLeadingButtonShape,
+                                pressedShape = ButtonGroupDefaults.connectedLeadingButtonPressShape,
+                            ),
+                            colors = ButtonDefaults.filledTonalButtonColors(),
+                            modifier = Modifier.weight(1f).fillMaxHeight()
+                        ) {
+                            Text("Cancel")
+                        }
+                    },
+                    menuContent = { menuState ->
+                        DropdownMenuItem(
+                            text = { Text("Cancel") },
+                            onClick = { menuState.dismiss() }
+                        )
+                    }
+                )
+                customItem(
+                    buttonGroupContent = {
+                        Button(
+                            onClick = { onConfirm(selectedOption) },
+                            shapes = ButtonDefaults.shapes(
+                                shape = ButtonGroupDefaults.connectedTrailingButtonShape,
+                                pressedShape = ButtonGroupDefaults.connectedTrailingButtonPressShape,
+                            ),
+                            modifier = Modifier.weight(1f).fillMaxHeight()
+                        ) {
+                            Text("Mute")
+                        }
+                    },
+                    menuContent = { menuState ->
+                        DropdownMenuItem(
+                            text = { Text("Mute") },
+                            onClick = { menuState.dismiss() }
+                        )
+                    }
+                )
             }
         },
         shape = MaterialTheme.shapes.extraLarge,

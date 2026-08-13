@@ -705,7 +705,7 @@ fun ChatInputBar(
                                                                 return@onPreviewKeyEvent true
                                                             }
                                                     }
-                                                    if (event.key == Key.Enter && !event.isShiftPressed) {
+                                                    if (event.key == Key.Enter && !event.isShiftPressed && !isMobile) {
                                                         val currentText = textFieldValue.text
                                                         if (currentText.startsWith('/') && !currentText.contains(' ')) {
                                                             val cmdName = currentText.substring(1).trim()

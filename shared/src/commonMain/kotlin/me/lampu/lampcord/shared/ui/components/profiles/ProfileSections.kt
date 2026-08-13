@@ -10,16 +10,22 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import me.lampu.lampcord.shared.model.Member
 import me.lampu.lampcord.shared.model.UserProfile
 import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.DiscordMarkdownText
 import me.lampu.lampcord.shared.ui.components.UserActivity
+import me.lampu.lampcord.shared.utils.Permission
+import me.lampu.lampcord.shared.utils.PermissionHelper
 import org.koin.compose.koinInject
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -32,11 +38,15 @@ fun ProfileSections(
     isExpanded: Boolean,
     showMemberSince: Boolean = false,
     guildStore: GuildStore = koinInject(),
-    presenceStore: PresenceStore = koinInject()
+    presenceStore: PresenceStore = koinInject(),
+    userStore: UserStore = koinInject()
 ) {
     val user = profile.user
     val userMeta = profile.user_profile
     val guildMeta = profile.guild_member_profile
+    val guilds by guildStore.guilds.collectAsState()
+    val guild = profile.guild_id?.let { gid -> guilds.find { it.id == gid } }
+    val currentUser by userStore.currentUser.collectAsState()
 
     Column(modifier = Modifier.padding(bottom = 12.dp)) {
         // Bio Priority: Guild Member Bio -> User Profile Bio -> Base User Bio
@@ -105,22 +115,51 @@ fun ProfileSections(
         if (isExpanded) {
             // Roles
             val roles = profile.guild_member?.roles
-            if (!roles.isNullOrEmpty()) {
-                val guilds by guildStore.guilds.collectAsState()
-                val guild = profile.guild_id?.let { gid -> guilds.find { it.id == gid } }
-                
-                if (guild != null) {
-                    Text("Roles", style = MaterialTheme.typography.labelSmall, color = theme.contentColor.copy(alpha = 0.8f))
-                    Spacer(Modifier.height(8.dp))
-                    androidx.compose.foundation.layout.FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+            if (!roles.isNullOrEmpty() && guild != null) {
+                Text("Roles", style = MaterialTheme.typography.labelSmall, color = theme.contentColor.copy(alpha = 0.8f))
+                Spacer(Modifier.height(8.dp))
+                androidx.compose.foundation.layout.FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    roles.mapNotNull { id -> guild.roles.find { it.id == id } }
+                        .sortedByDescending { it.position }
+                        .forEach { role ->
+                            RoleBadge(role, theme)
+                        }
+                }
+            }
+
+            // Manage User (add/remove roles)
+            if (guild != null && profile.guild_member != null && profile.user.id != currentUser?.id) {
+                val me = currentUser
+                val myMember = remember(guild.id, me) {
+                    me?.id?.let { userStore.getMember(guild.id, it) }
+                }
+                val canManage = me != null && PermissionHelper.hasPermission(
+                    myMember ?: Member(user = me),
+                    guild,
+                    null,
+                    Permission.MANAGE_ROLES,
+                    me.id
+                )
+                if (canManage) {
+                    Spacer(Modifier.height(16.dp))
+                    var showManageRoles by remember(profile.user.id, guild.id) { mutableStateOf(false) }
+                    Button(
+                        onClick = { showManageRoles = true },
+                        modifier = Modifier.fillMaxWidth().height(36.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = theme.buttonColor,
+                            contentColor = theme.buttonTextColor
+                        ),
+                        shape = CircleShape,
+                        contentPadding = PaddingValues(horizontal = 12.dp)
                     ) {
-                        roles.mapNotNull { id -> guild.roles.find { it.id == id } }
-                            .sortedByDescending { it.position }
-                            .forEach { role ->
-                                RoleBadge(role, theme)
-                            }
+                        Text("Manage User", style = MaterialTheme.typography.labelLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium)
+                    }
+                    if (showManageRoles) {
+                        ManageRolesSheet(profile = profile, guild = guild, onDismiss = { showManageRoles = false })
                     }
                 }
             }

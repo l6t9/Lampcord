@@ -3,15 +3,13 @@ package me.lampu.lampcord.shared.ui.components
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -19,6 +17,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.carousel.HorizontalUncontainedCarousel
+import androidx.compose.material3.carousel.rememberCarouselState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -312,37 +312,48 @@ private fun AttachmentCarousel(
     selectedIndex: Int,
     onSelect: (Int) -> Unit
 ) {
-    Row(
+    val carouselState = rememberCarouselState(
+        initialItem = selectedIndex,
+        itemCount = { items.size }
+    )
+    LaunchedEffect(selectedIndex) {
+        carouselState.animateScrollToItem(selectedIndex.coerceIn(0, items.lastIndex))
+    }
+    HorizontalUncontainedCarousel(
+        state = carouselState,
+        itemWidth = 57.dp,
+        itemSpacing = 8.dp,
         modifier = Modifier
             .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(vertical = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
-    ) {
-        items.forEachIndexed { index, media ->
-            val thumbUrl = media.thumbnailUrl(isPoster = true)
-            Box(
-                modifier = Modifier
-                    .size(57.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(Color.White.copy(alpha = 0.1f))
-                    .border(
-                        width = 2.dp,
-                        color = if (index == selectedIndex) Color.White else Color.Transparent,
-                        shape = RoundedCornerShape(4.dp)
-                    )
-                    .clickable { onSelect(index) }
-            ) {
-                if (thumbUrl != null) {
-                    AsyncImage(
-                        model = thumbUrl,
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop,
-                        showPlaceholder = false,
-                        placeholderHash = media.placeholder
-                    )
-                }
+            .padding(vertical = 16.dp)
+            .height(57.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp)
+    ) { index ->
+        val media = items[index]
+        val thumbUrl = media.thumbnailUrl(isPoster = true)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .maskClip(RoundedCornerShape(4.dp))
+                .background(Color.White.copy(alpha = 0.1f))
+                .clickable { onSelect(index) }
+        ) {
+            if (thumbUrl != null) {
+                AsyncImage(
+                    model = thumbUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                    showPlaceholder = false,
+                    placeholderHash = media.placeholder
+                )
+            }
+            if (index == selectedIndex) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .maskBorder(BorderStroke(2.dp, Color.White), RoundedCornerShape(4.dp))
+                )
             }
         }
     }

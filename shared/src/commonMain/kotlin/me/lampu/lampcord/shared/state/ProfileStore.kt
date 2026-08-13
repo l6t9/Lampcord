@@ -28,6 +28,19 @@ class ProfileStore(
         }
     }
 
+    fun updateMemberRoles(userId: String, roles: List<String>) {
+        selectedProfile?.let { p ->
+            if (p.user.id == userId) {
+                selectedProfile = p.copy(guild_member = p.guild_member?.copy(roles = roles))
+            }
+        }
+        sidebarProfile?.let { p ->
+            if (p.user.id == userId) {
+                sidebarProfile = p.copy(guild_member = p.guild_member?.copy(roles = roles))
+            }
+        }
+    }
+
     fun clear() {
         selectedProfile = null
         sidebarProfile = null

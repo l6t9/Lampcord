@@ -1,16 +1,20 @@
 package me.lampu.lampcord.shared.ui.components.chat
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ButtonGroup
+import androidx.compose.material3.ButtonGroupDefaults
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -53,24 +57,56 @@ fun DeleteMessageDialog(
             )
         },
         confirmButton = {
-            Button(
-                onClick = onConfirm,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.error,
-                    contentColor = MaterialTheme.colorScheme.onError
-                ),
-                shape = MaterialTheme.shapes.medium
-            ) {
-                Text("Delete")
-            }
-        },
-        dismissButton = {
-            TextButton(
-                onClick = onDismiss,
+            ButtonGroup(
+                overflowIndicator = { menuState -> ButtonGroupDefaults.OverflowIndicator(menuState) },
+                horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Cancel")
+                customItem(
+                    buttonGroupContent = {
+                        Button(
+                            onClick = onDismiss,
+                            shapes = ButtonDefaults.shapes(
+                                shape = ButtonGroupDefaults.connectedLeadingButtonShape,
+                                pressedShape = ButtonGroupDefaults.connectedLeadingButtonPressShape,
+                            ),
+                            colors = ButtonDefaults.filledTonalButtonColors(),
+                            modifier = Modifier.weight(1f).fillMaxHeight()
+                        ) {
+                            Text("Cancel")
+                        }
+                    },
+                    menuContent = { menuState ->
+                        DropdownMenuItem(
+                            text = { Text("Cancel") },
+                            onClick = { menuState.dismiss() }
+                        )
+                    }
+                )
+                customItem(
+                    buttonGroupContent = {
+                        Button(
+                            onClick = onConfirm,
+                            shapes = ButtonDefaults.shapes(
+                                shape = ButtonGroupDefaults.connectedTrailingButtonShape,
+                                pressedShape = ButtonGroupDefaults.connectedTrailingButtonPressShape,
+                            ),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error,
+                                contentColor = MaterialTheme.colorScheme.onError
+                            ),
+                            modifier = Modifier.weight(1f).fillMaxHeight()
+                        ) {
+                            Text("Delete")
+                        }
+                    },
+                    menuContent = { menuState ->
+                        DropdownMenuItem(
+                            text = { Text("Delete") },
+                            onClick = { menuState.dismiss() }
+                        )
+                    }
+                )
             }
         },
         shape = MaterialTheme.shapes.extraLarge,

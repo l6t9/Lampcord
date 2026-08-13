@@ -320,4 +320,18 @@ class GuildApi(private val rest: RestClient) {
             false
         }
     }
+
+    suspend fun modifyGuildMemberRoles(guildId: String, userId: String, roles: List<String>): Boolean {
+        return try {
+            val response = rest.httpClient.patch("${rest.apiBase}/guilds/$guildId/members/$userId") {
+                standardHeaders(rest)
+                contentType(ContentType.Application.Json)
+                setBody(mapOf("roles" to roles))
+            }
+            response.status.isSuccess()
+        } catch (e: Exception) {
+            Logging.e("Guild", "Error updating member roles: ${e.message}")
+            false
+        }
+    }
 }
