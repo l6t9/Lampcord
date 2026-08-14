@@ -23,11 +23,60 @@ class CommandStore(
     var activeCommand by mutableStateOf<ApplicationCommand?>(null)
     val commandOptions = mutableStateMapOf<String, JsonElement>()
 
+    var selectedGroup by mutableStateOf<ApplicationCommandOption?>(null)
+    var selectedSubCommand by mutableStateOf<ApplicationCommandOption?>(null)
+
     fun setCommands(commands: List<ApplicationCommand>, applications: List<Application>) {
         availableCommands.clear()
         availableCommands.addAll(commands)
         availableApplications.clear()
         availableApplications.addAll(applications)
+    }
+
+    fun resetSubCommand() {
+        selectedGroup = null
+        selectedSubCommand = null
+    }
+
+    private fun leafOptions(): List<ApplicationCommandOption> {
+        val cmd = activeCommand ?: return emptyList()
+        val opts = selectedGroup?.options
+            ?: selectedSubCommand?.options
+            ?: cmd.options.orEmpty()
+        return opts.filter { it.type != 1 && it.type != 2 }
+    }
+
+    fun hasSubcommands(): Boolean {
+        val cmd = activeCommand ?: return false
+        return cmd.options.orEmpty().any { it.type == 1 || it.type == 2 }
+    }
+
+    fun isCommandValid(): Boolean {
+        val cmd = activeCommand ?: return false
+        val hasSubs = cmd.options.orEmpty().any { it.type == 1 || it.type == 2 }
+        if (hasSubs && selectedSubCommand == null) return false
+        return leafOptions().all { opt ->
+            !opt.required || commandOptions[opt.name] != null
+        }
+    }
+
+    fun buildInteractionOptions(): List<InteractionOption>? {
+        val cmd = activeCommand ?: return null
+        val leaf = leafOptions().mapNotNull { opt ->
+            val value = commandOptions[opt.name] ?: return@mapNotNull null
+            InteractionOption(type = opt.type, name = opt.name, value = value)
+        }
+        return when {
+            selectedGroup != null && selectedSubCommand != null -> listOf(
+                InteractionOption(type = 2, name = selectedGroup!!.name, options = listOf(
+                    InteractionOption(type = 1, name = selectedSubCommand!!.name, options = leaf)
+                ))
+            )
+            selectedSubCommand != null -> listOf(
+                InteractionOption(type = 1, name = selectedSubCommand!!.name, options = leaf)
+            )
+            else -> leaf.ifEmpty { null }
+        }
     }
 
     fun sendInteraction(command: ApplicationCommand, guildId: String?, channelId: String, options: List<InteractionOption>? = null) {
@@ -55,5 +104,6 @@ class CommandStore(
     fun clear() {
         availableCommands.clear()
         availableApplications.clear()
+        resetSubCommand()
     }
 }

@@ -34,7 +34,7 @@ fun MemberGroupItem(
         when (group.id) {
             "online" -> "Online"
             "offline" -> "Offline"
-            else -> role?.name ?: group.id
+            else -> role?.name ?: "Loading..."
         }
     }
     

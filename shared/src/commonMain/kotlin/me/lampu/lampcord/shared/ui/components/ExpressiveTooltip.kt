@@ -12,10 +12,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.ui.icons.Icons
 
-/**
- * Expressive tooltip using Material3 Expressive API opt-ins.
- * Shows a rich tooltip on hover with custom content and styling.
- */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun ExpressiveTooltip(
@@ -53,10 +49,6 @@ fun ExpressiveTooltip(
     }
 }
 
-/**
- * Tooltip that shows on hover with the expressive API opt-in.
- * Uses the expressive tooltip pattern with custom thumb/content.
- */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun ExpressiveHoverTooltip(
@@ -87,7 +79,6 @@ fun ExpressiveHoverTooltip(
                  Box(Modifier.matchParentSize())
             }
         }
-        // Draw expressive thumb/indicator when hovered
         if (isHovered) {
             Icon(
                 imageVector = Icons.Filled.Info,

@@ -3,6 +3,7 @@ package me.lampu.lampcord.shared.ui.components.profiles
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -63,7 +64,6 @@ fun ProfileHeader(
     val userMeta = profile.user_profile
     val currentUser by userStore.currentUser.collectAsState()
 
-    // Avatar
     val avatarUrl = profile.guild_member?.avatar?.let {
         "https://cdn.discordapp.com/guilds/${profile.guild_id}/users/${user.id}/avatars/$it.png?size=160"
     } ?: user.avatar?.let {
@@ -93,7 +93,11 @@ fun ProfileHeader(
                 decorationData = profile.guild_member?.avatar_decoration_data ?: user.avatar_decoration_data,
                 size = if (isExpanded) 104.dp else 82.dp,
                 status = status,
-                modifier = Modifier.clickable(enabled = !isExpanded) { onExpand?.invoke() }
+                modifier = Modifier.clickable(
+                    enabled = !isExpanded,
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }
+                ) { onExpand?.invoke() }
             )
         }
 
@@ -138,7 +142,7 @@ fun ProfileHeader(
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(user.username ?: "", style = MaterialTheme.typography.bodyMedium, color = theme.contentColor.copy(alpha = 0.9f))
-            val pronouns = guildMeta?.pronouns ?: userMeta?.pronouns ?: user.pronouns
+            val pronouns = guildMeta?.pronouns.takeIf { !it.isNullOrBlank() } ?: userMeta?.pronouns.takeIf { !it.isNullOrBlank() } ?: user.pronouns
             if (!pronouns.isNullOrBlank()) {
                 Text(
                     " • $pronouns",
@@ -152,7 +156,6 @@ fun ProfileHeader(
         Spacer(Modifier.height(8.dp))
         UserBadges(userId = user.id, badges = profile.badges + profile.guild_badges)
         
-        // Edit Profile Buttons
         if (user.id == currentUser?.id) {
             Spacer(Modifier.height(8.dp))
             val isServerProfile = profile.guild_member != null && profile.guild_id != null

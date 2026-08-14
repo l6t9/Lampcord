@@ -21,7 +21,8 @@ class GatewayHandler(
     private val presenceStore: PresenceStore,
     private val navigationStore: NavigationStore,
     private val gatewayManager: GatewayManager,
-    private val tokenStore: TokenStore
+    private val tokenStore: TokenStore,
+    private val memberListStore: MemberListStore
 ) {
     fun handleGatewayEvent(payload: GatewayPayload) {
         when (payload.t) {
@@ -30,6 +31,7 @@ class GatewayHandler(
                 navigationStore.isConnected = true
                 navigationStore.isConnecting = false
                 messageStore.handleConnected()
+                memberListStore.resubscribe()
             }
             else -> dispatcher.dispatch(payload)
         }
@@ -97,6 +99,8 @@ class GatewayHandler(
                 if (navigationStore.selectedGuild == null && navigationStore.selectedChannel == null && !navigationStore.isFriendsSelected) {
                     navigationStore.selectHome()
                 }
+
+                memberListStore.resubscribe()
             } catch (e: Exception) { }
         }
     }

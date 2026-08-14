@@ -98,7 +98,6 @@ class NavigationStore(
         selectedGuild = null
         isChannelsAndRolesVisible = false
         isServerSettingsVisible = false
-        memberListStore.clear()
         lastRequestedKey = null
         
         scope.launch {
@@ -141,7 +140,6 @@ class NavigationStore(
         selectedGuild = guild
         isChannelsAndRolesVisible = false
         isServerSettingsVisible = false
-        memberListStore.clear()
         lastRequestedKey = null
         guildLoadingJob = scope.launch {
             subscribeCallback(guild.id)
@@ -192,9 +190,7 @@ class NavigationStore(
         val guild = selectedGuild
         if (guild != null) {
             val expectedId = channel.member_list_id ?: channel.memberListId(guild)
-            memberListStore.setExpectedId(expectedId, guild.member_count ?: 0)
-        } else {
-            memberListStore.clear()
+            memberListStore.setExpectedId(guild.id, expectedId, guild.member_count ?: 0)
         }
 
         messageStore.clear()

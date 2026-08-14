@@ -10,73 +10,116 @@ class MemberListStore(
     private val userStore: UserStore,
     private val presenceStore: PresenceStore
 ) {
-    private val listCache = mutableMapOf<String, MemberListCacheEntry>()
+    // Member lists are cached per (guildId, listId) and kept alive across guild
+    // switches, matching discord-jadx's StoreChannelMembers. Only logout clears them.
+    private val guildCaches = mutableMapOf<String, MutableMap<String, MemberListCacheEntry>>()
 
     val memberListItems = mutableStateListOf<MemberListListItem?>()
     val memberListGroups = mutableStateMapOf<String, MemberListGroup>()
     var onlineCount by mutableStateOf<Int?>(null)
     var memberCount by mutableStateOf<Int?>(null)
     
+    private var currentGuildId: String? = null
     private var currentListId: String? = null
+    private var lastRanges: List<List<Int>> = emptyList()
     
     val memberListRowCount get() = memberListItems.size
 
     private class MemberListCacheEntry(
         val items: MutableList<MemberListListItem?>,
-        val groups: MutableMap<String, MemberListGroup>
+        val groups: MutableMap<String, MemberListGroup>,
+        var onlineCount: Int? = null,
+        var memberCount: Int? = null
     )
+
+    private fun cacheFor(guildId: String): MutableMap<String, MemberListCacheEntry> =
+        guildCaches.getOrPut(guildId) { mutableMapOf() }
 
     fun clear() {
         memberListItems.clear()
         memberListGroups.clear()
-        listCache.clear()
+        guildCaches.clear()
+        currentGuildId = null
         currentListId = null
+        onlineCount = null
+        memberCount = null
+        lastRanges = emptyList()
     }
 
     fun requestMemberListRange(ranges: List<List<Int>>) {
         val guild = selectionStore.selectedGuild ?: return
         val channel = selectionStore.selectedChannel ?: return
+        if (ranges.isNotEmpty()) lastRanges = ranges
         gatewayManager.sendLazyRequest(guild.id, channel.id, ranges)
     }
 
-    fun setExpectedId(id: String, initialSize: Int) {
-        if (currentListId == id) return
+    // Re-send the subscription for the current channel after a reconnect. A fresh
+    // gateway session starts with no server-side subscriptions, so the previously
+    // cached list would otherwise go stale.
+    fun resubscribe() {
+        val guild = selectionStore.selectedGuild ?: return
+        val channel = selectionStore.selectedChannel ?: return
+        gatewayManager.sendLazyRequest(guild.id, channel.id, lastRanges.ifEmpty { listOf(listOf(0, 99)) })
+    }
+
+    fun setExpectedId(guildId: String, id: String, initialSize: Int) {
+        // Already displaying this guild's list.
+        if (currentGuildId == guildId && currentListId == id) return
         
-        currentListId?.let { oldId ->
+        // Persist the currently displayed list into its per-guild cache entry.
+        if (currentGuildId != null && currentListId != null) {
+            val old = cacheFor(currentGuildId!!).getOrPut(currentListId!!) {
+                MemberListCacheEntry(mutableListOf(), mutableMapOf())
+            }
             if (memberListItems.isNotEmpty()) {
-                listCache[oldId] = MemberListCacheEntry(
-                    items = memberListItems.toMutableList(),
-                    groups = memberListGroups.toMutableMap()
-                )
+                old.items.clear()
+                old.items.addAll(memberListItems)
+                old.groups.clear()
+                old.groups.putAll(memberListGroups)
+                old.onlineCount = onlineCount
+                old.memberCount = memberCount
             }
         }
 
+        currentGuildId = guildId
+        currentListId = id
+
         memberListItems.clear()
         memberListGroups.clear()
+        onlineCount = null
+        memberCount = null
 
-        val cached = listCache[id]
+        val cached = cacheFor(guildId)[id]
         if (cached != null) {
             memberListItems.addAll(cached.items)
             memberListGroups.putAll(cached.groups)
+            onlineCount = cached.onlineCount
+            memberCount = cached.memberCount
         } else if (initialSize > 0) {
             memberListItems.addAll(List(initialSize) { null })
         }
-        
-        currentListId = id
     }
 
     fun handleMemberListUpdate(update: MemberListUpdate) {
-        if (update.id == currentListId) {
+        // An update only touches the live list when it belongs to the guild/list
+        // currently on screen. Everything else goes to that list's cache entry so
+        // background guilds keep their own data (list ids like "everyone" repeat
+        // across every guild).
+        val isCurrent = update.guild_id == currentGuildId && update.id == currentListId
+
+        val entry = cacheFor(update.guild_id).getOrPut(update.id) {
+            MemberListCacheEntry(mutableListOf(), mutableMapOf(), update.online_count, update.member_count)
+        }
+
+        if (isCurrent) {
             update.online_count?.let { onlineCount = it }
             update.member_count?.let { memberCount = it }
         }
+        update.online_count?.let { entry.onlineCount = it }
+        update.member_count?.let { entry.memberCount = it }
 
-        val entry = listCache.getOrPut(update.id) { 
-            MemberListCacheEntry(mutableListOf(), mutableMapOf()) 
-        }
-
-        val targetItems: MutableList<MemberListListItem?> = if (update.id == currentListId) memberListItems else entry.items
-        val targetGroups: MutableMap<String, MemberListGroup> = if (update.id == currentListId) memberListGroups else entry.groups
+        val targetItems: MutableList<MemberListListItem?> = if (isCurrent) memberListItems else entry.items
+        val targetGroups: MutableMap<String, MemberListGroup> = if (isCurrent) memberListGroups else entry.groups
 
         for (op in update.ops) {
             when (op.op) {
@@ -84,9 +127,12 @@ class MemberListStore(
                     val range = op.range ?: continue
                     val start = range[0]
                     val items = op.items ?: emptyList()
-                    for (i in items.indices) {
+                    
+                    val end = start + items.size
+                    while (targetItems.size < end) targetItems.add(null)
+
+                    items.forEachIndexed { i, item ->
                         val index = start + i
-                        val item = items[i]
                         
                         item.member?.let { m ->
                             val userId = m.userId()
@@ -105,9 +151,6 @@ class MemberListStore(
                         }
 
                         if (index < targetItems.size) {
-                            targetItems[index] = item
-                        } else {
-                            while (targetItems.size <= index) targetItems.add(null)
                             targetItems[index] = item
                         }
                     }
@@ -167,9 +210,15 @@ class MemberListStore(
 
         update.groups?.let { groups ->
             val totalSize = groups.sumOf { (it.count ?: it.member_count ?: 0) + 1 }
-            if (targetItems.size < totalSize) repeat(totalSize - targetItems.size) { targetItems.add(null) }
-            else if (targetItems.size > totalSize) while (targetItems.size > totalSize) targetItems.removeAt(targetItems.size - 1)
+            
+            // 126.21 Parity: Re-size the list to match the new group structure
+            if (targetItems.size < totalSize) {
+                repeat(totalSize - targetItems.size) { targetItems.add(null) }
+            } else if (targetItems.size > totalSize) {
+                while (targetItems.size > totalSize) targetItems.removeAt(targetItems.size - 1)
+            }
 
+            // Clear old group headers
             for (i in targetItems.indices) if (targetItems[i]?.group != null) targetItems[i] = null
 
             targetGroups.clear()

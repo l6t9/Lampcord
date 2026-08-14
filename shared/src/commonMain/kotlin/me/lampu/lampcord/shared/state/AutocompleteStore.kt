@@ -35,10 +35,10 @@ class AutocompleteStore(
                 val guildId = selectedGuild?.id
                 if (type == AutocompleteType.MENTION) {
                     if (query.isEmpty() || "everyone".contains(query, ignoreCase = true)) {
-                        results.add(AutocompleteItem(id = "everyone", title = "everyone", replacement = "@everyone", searchReplacement = "everyone", iconType = Icons.Filled.Group))
+                        results.add(AutocompleteItem(id = "everyone", title = "everyone", replacement = "@everyone", searchReplacement = "everyone", iconType = Icons.Filled.Group, inputText = "@everyone"))
                     }
                     if (query.isEmpty() || "here".contains(query, ignoreCase = true)) {
-                        results.add(AutocompleteItem(id = "here", title = "here", replacement = "@here", searchReplacement = "here", iconType = Icons.Filled.Group))
+                        results.add(AutocompleteItem(id = "here", title = "here", replacement = "@here", searchReplacement = "here", iconType = Icons.Filled.Group, inputText = "@here"))
                     }
                 }
 
@@ -64,7 +64,8 @@ class AutocompleteStore(
                         subtitle = user.username,
                         icon = user.avatar?.let { "https://cdn.discordapp.com/avatars/${user.id}/$it.png?size=64" },
                         replacement = "<@${user.id}>",
-                        searchReplacement = user.username
+                        searchReplacement = user.username,
+                        inputText = "@$name"
                     )
                 })
 
@@ -79,7 +80,8 @@ class AutocompleteStore(
                             iconType = Icons.Filled.Group,
                             replacement = "<@&${role.id}>",
                             searchReplacement = role.name,
-                            color = if (role.color != 0) Color(role.color or 0xFF000000.toInt()) else null
+                            color = if (role.color != 0) Color(role.color or 0xFF000000.toInt()) else null,
+                            inputText = "@${role.name}"
                         )
                     })
                 }
@@ -102,7 +104,8 @@ class AutocompleteStore(
                             else -> Icons.Filled.Tag
                         },
                         replacement = if (channel.type == 4) channel.name ?: "" else "<#${channel.id}>",
-                        searchReplacement = channel.name ?: "unnamed"
+                        searchReplacement = channel.name ?: "unnamed",
+                        inputText = "#${channel.name ?: ""}"
                     )
                 })
             }
@@ -124,6 +127,10 @@ class AutocompleteStore(
                 })
             }
             AutocompleteType.EMOJI -> {
+                // Standard (unicode) emojis come from EmojiIndex, which is loaded
+                // lazily. Make sure it is initialized before we filter below.
+                EmojiIndex.initialize()
+
                 val currentUser = userStore.currentUser.value
                 val hasNitro = (currentUser?.premium_type ?: 0) > 0
                 val freeNitro = me.lampu.lampcord.shared.settings.Settings.shared.freeNitroEmojis

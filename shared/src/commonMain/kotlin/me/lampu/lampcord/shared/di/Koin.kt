@@ -193,7 +193,8 @@ val gatewayModule = module {
             userStore = get(), settingsStore = get(), userGuildSettingsStore = get(),
             guildStore = get(), messageStore = get(), readStateStore = get(),
             experimentStore = get(), relationshipStore = get(), presenceStore = get(),
-            navigationStore = get(), gatewayManager = get(), tokenStore = get()
+            navigationStore = get(), gatewayManager = get(), tokenStore = get(),
+            memberListStore = get()
         )
     }
 }

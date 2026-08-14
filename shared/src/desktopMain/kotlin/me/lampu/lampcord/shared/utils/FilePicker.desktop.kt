@@ -22,7 +22,6 @@ actual fun FilePicker(
                 if (os.contains("linux")) {
                     val zenityFiles = tryOpenZenity()
                     if (zenityFiles != null) {
-                        // Zenity was present and executed
                         if (zenityFiles.isNotEmpty()) {
                             onFileSelected(zenityFiles)
                         }
@@ -30,8 +29,7 @@ actual fun FilePicker(
                         return@withContext
                     }
                 }
-                
-                // Fallback to AWT FileDialog only if Zenity was missing or failed to start
+
                 val fileDialog = FileDialog(null as Frame?, "Select Files", FileDialog.LOAD)
                 fileDialog.isMultipleMode = true
                 fileDialog.isVisible = true
@@ -47,16 +45,12 @@ actual fun FilePicker(
     }
 }
 
-/**
- * Returns null if zenity is not installed, otherwise returns the list of selected files 
- * (which may be empty if the user cancelled).
- */
 private fun tryOpenZenity(): List<Pair<String, ByteArray>>? {
     val process = try {
         ProcessBuilder("zenity", "--file-selection", "--multiple", "--separator=|", "--title=Select Files")
             .start()
     } catch (e: Exception) {
-        return null // zenity not found, fallback to AWT
+        return null
     }
     
     val output = process.inputStream.bufferedReader().use { it.readText() }.trim()
@@ -68,6 +62,6 @@ private fun tryOpenZenity(): List<Pair<String, ByteArray>>? {
             file.name to Files.readAllBytes(file.toPath())
         }
     } else {
-        emptyList() // User cancelled or closed the window
+        emptyList()
     }
 }

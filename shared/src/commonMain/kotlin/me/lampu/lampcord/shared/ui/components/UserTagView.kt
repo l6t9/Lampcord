@@ -42,7 +42,6 @@ fun UserTagView(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (isVerifiedBot && !isSystem) {
-                // Official Parity: Verified bots show a small checkmark in the tag
                 Icon(
                     imageVector = Icons.Filled.Check,
                     contentDescription = null,

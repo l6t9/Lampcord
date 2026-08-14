@@ -97,8 +97,6 @@ fun UsernameView(
 
     val finalColor = if (useStyleColors) styleColors.first() else color
     
-    // For effects like Neon/Glow, we need a base color.
-    // If ignoreColors is true or style has no colors, we use the passed color (e.g. role color or default).
     val effectBaseColor = if (useStyleColors) styleColors.first() else if (color != Color.Unspecified) color else MaterialTheme.colorScheme.onSurface
 
     val textModifier = if (marquee) {
@@ -106,7 +104,6 @@ fun UsernameView(
     } else Modifier
 
     Box(modifier = modifier, contentAlignment = Alignment.CenterStart) {
-        // Neon Effect: Double shadow layer for intense glow
         if (effectId == DisplayNameCatalog.Effect.NEON) {
             val neonColor = effectBaseColor.copy(alpha = 0.6f)
             Text(

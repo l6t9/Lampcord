@@ -14,7 +14,6 @@ import kotlin.time.Duration.Companion.milliseconds
 @Composable
 actual fun rememberDynamicSeedColor(): Color? {
     val home = remember { System.getProperty("user.home") }
-    // These paths are based on the illogical-impulse dotfiles on CachyOS
     val colorFile = remember(home) { File("$home/.local/state/quickshell/user/generated/color.txt") }
     val alternativeColorFile = remember(home) { File("$home/.cache/wal/colors") } // common fallback for pywal
     

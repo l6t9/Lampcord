@@ -21,7 +21,6 @@ fun AvatarWithDecoration(
     status: String? = null
 ) {
     Box(modifier = modifier.size(size)) {
-        // Base Avatar
         Surface(
             modifier = Modifier.fillMaxSize(),
             shape = CircleShape,
@@ -38,7 +37,6 @@ fun AvatarWithDecoration(
             }
         }
 
-        // Decoration
         if (decorationData != null) {
             val decorationUrl = "https://cdn.discordapp.com/avatar-decoration-presets/${decorationData.asset}.png"
             AsyncImage(
@@ -51,7 +49,6 @@ fun AvatarWithDecoration(
             )
         }
 
-        // Status
         if (status != null) {
             StatusIndicator(
                 status = status,

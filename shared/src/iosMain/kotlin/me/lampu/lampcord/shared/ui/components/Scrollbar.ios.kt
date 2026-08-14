@@ -11,5 +11,4 @@ actual fun VerticalScrollbar(
     isVisible: Boolean,
     reverseLayout: Boolean
 ) {
-    // iOS has native scrollbars, no-op for custom component
 }

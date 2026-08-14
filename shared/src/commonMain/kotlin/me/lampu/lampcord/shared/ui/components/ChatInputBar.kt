@@ -30,11 +30,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import me.lampu.lampcord.shared.model.AutocompleteItem
 import me.lampu.lampcord.shared.model.AutocompleteType
 import me.lampu.lampcord.shared.model.Channel
 import me.lampu.lampcord.shared.model.InteractionOption
 import me.lampu.lampcord.shared.model.Member
 import me.lampu.lampcord.shared.model.PendingFile
+import me.lampu.lampcord.shared.model.Role
 import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.components.chat.MediaPicker
 import me.lampu.lampcord.shared.ui.icons.Icons
@@ -81,12 +83,19 @@ fun ChatInputBar(
     navigationStore: NavigationStore = koinInject(),
     autocompleteStore: AutocompleteStore = koinInject(),
     commandStore: CommandStore = koinInject(),
-    userStore: UserStore = koinInject()
+    userStore: UserStore = koinInject(),
+    guildStore: GuildStore = koinInject(),
+    memberListStore: MemberListStore = koinInject(),
+    relationshipStore: RelationshipStore = koinInject()
 ) {
     var textFieldValue by remember(channel.id) { 
         val draft = messageStore.draftMessages[channel.id] ?: ""
         mutableStateOf(TextFieldValue(draft, TextRange(draft.length))) 
     }
+    
+    // Tracks autocompleted mentions/channels/roles as ranges in the raw input
+    // text that map to the server values to send (e.g. "#general" -> "<#id>").
+    var mentionRanges by remember(channel.id) { mutableStateOf<Map<IntRange, String>>(emptyMap()) }
     
     var showFilePicker by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
@@ -115,6 +124,51 @@ fun ChatInputBar(
         }
     }
 
+    fun applyAutocomplete(item: AutocompleteItem) {
+        val text = textFieldValue.text
+        val selection = textFieldValue.selection
+        if (selection.collapsed) {
+            val cursor = selection.start
+            val textBefore = text.take(cursor)
+            val lastWordStart = textBefore.lastIndexOfAny(charArrayOf(' ', '\n')) + 1
+
+            // If it's a command, it's usually at the start
+            val actualStart = if (item.isCommand) 0 else lastWordStart
+
+            val inputText = item.inputText ?: item.replacement
+            val newText = text.replaceRange(actualStart, cursor, inputText)
+            val newCursor = actualStart + inputText.length
+            textFieldValue = TextFieldValue(newText, TextRange(newCursor))
+
+            // Shift existing mention ranges across the replaced span, then record
+            // the new range when the friendly text differs from the server value.
+            val removedLen = cursor - actualStart
+            val delta = inputText.length - removedLen
+            var shifted = shiftMentionRanges(mentionRanges, actualStart, cursor, delta)
+            if (item.inputText != null && item.inputText != item.replacement) {
+                shifted = shifted + (actualStart until newCursor to item.replacement)
+            }
+            mentionRanges = shifted
+
+            autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild)
+        }
+    }
+
+    fun resolveContent(content: String): String {
+        val guildId = navigationStore.selectedGuild?.id
+        val channels = guildId?.let { gid ->
+            guildStore.allGuildChannels.value.values.filter { it.guild_id == gid }
+        } ?: emptyList()
+        val members = memberListStore.memberListItems.mapNotNull { it?.member } +
+            relationshipStore.relationships.value.mapNotNull { rel -> rel.user?.let { Member(user = it) } }
+        val roles = navigationStore.selectedGuild?.roles ?: emptyList()
+        return resolveServerContent(content, mentionRanges, channels, members, roles)
+    }
+
+    fun clearMentions() {
+        mentionRanges = emptyMap()
+    }
+
     // Update draft whenever text changes
     LaunchedEffect(textFieldValue.text) {
         if (textFieldValue.text.isEmpty()) {
@@ -136,6 +190,7 @@ fun ChatInputBar(
     LaunchedEffect(messageStore.editingMessage) {
         messageStore.editingMessage?.let {
             textFieldValue = TextFieldValue(it.content, TextRange(it.content.length))
+            clearMentions()
             messageStore.pendingFiles.clear()
             messageStore.replyingTo = null
             focusRequester.requestFocus()
@@ -146,24 +201,6 @@ fun ChatInputBar(
         messageStore.replyingTo?.let {
             messageStore.editingMessage = null
             focusRequester.requestFocus()
-        }
-    }
-
-    fun applyAutocomplete(replacement: String) {
-        val text = textFieldValue.text
-        val selection = textFieldValue.selection
-        if (selection.collapsed) {
-            val cursor = selection.start
-            val textBefore = text.take(cursor)
-            val lastWordStart = textBefore.lastIndexOfAny(charArrayOf(' ', '\n')) + 1
-            
-            // If it's a command, it's usually at the start
-            val actualStart = if (autocompleteStore.autocompleteType == AutocompleteType.COMMAND) 0 else lastWordStart
-            
-            val newText = text.replaceRange(actualStart, cursor, replacement)
-            val newCursor = actualStart + replacement.length
-            textFieldValue = TextFieldValue(newText, TextRange(newCursor))
-            autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild)
         }
     }
 
@@ -192,10 +229,12 @@ fun ChatInputBar(
                             onItemSelected = { item ->
                                 if (item.isCommand && item.commandObj != null) {
                                     commandStore.activeCommand = item.commandObj
+                                    commandStore.resetSubCommand()
                                     textFieldValue = TextFieldValue("")
+                                    clearMentions()
                                     autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild)
                                 } else {
-                                    applyAutocomplete(item.replacement)
+                                    applyAutocomplete(item)
                                 }
                             }
                         )
@@ -393,7 +432,9 @@ fun ChatInputBar(
                                 value = textFieldValue,
                                 onValueChange = { 
                                     if (canSend) {
+                                        val oldText = textFieldValue.text
                                         textFieldValue = it
+                                        mentionRanges = shiftMentionRanges(mentionRanges, oldText, it.text)
                                         
                                         // Simplified autocomplete trigger check
                                         if (it.selection.collapsed) {
@@ -450,10 +491,12 @@ fun ChatInputBar(
                                                             val item = autocompleteStore.autocompleteItems[autocompleteStore.autocompleteSelectedIndex]
                                                             if (item.isCommand && item.commandObj != null) {
                                                                 commandStore.activeCommand = item.commandObj
+                                                                commandStore.resetSubCommand()
                                                                 textFieldValue = TextFieldValue("")
+                                                                clearMentions()
                                                                 autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild)
                                                             } else {
-                                                                applyAutocomplete(item.replacement)
+                                                                applyAutocomplete(item)
                                                             }
                                                             return@onPreviewKeyEvent true
                                                         }
@@ -489,23 +532,22 @@ fun ChatInputBar(
                                                             val cmdName = currentText.substring(1).trim()
                                                             val command = commandStore.availableCommands.find { it.name == cmdName }
                                                             if (command != null) {
-                                                                commandStore.sendInteraction(
-                                                                    command = command,
-                                                                    guildId = navigationStore.selectedGuild?.id,
-                                                                    channelId = channel.id
-                                                                )
+                                                                commandStore.activeCommand = command
+                                                                commandStore.resetSubCommand()
                                                                 textFieldValue = TextFieldValue("")
+                                                                clearMentions()
                                                                 return@onPreviewKeyEvent true
                                                             }
                                                         }
                                                         if (currentText.isNotBlank() || messageStore.pendingFiles.isNotEmpty()) {
                                                             if (messageStore.editingMessage != null) {
-                                                                messageStore.editMessage(messageStore.editingMessage!!, currentText)
+                                                                messageStore.editMessage(messageStore.editingMessage!!, resolveContent(currentText))
                                                                 messageStore.editingMessage = null
                                                             } else {
-                                                                messageStore.sendMessageDraft(currentText)
+                                                                messageStore.sendMessageDraft(resolveContent(currentText))
                                                             }
                                                             textFieldValue = TextFieldValue("")
+                                                            clearMentions()
                                                             return@onPreviewKeyEvent true
                                                         }
                                                     }
@@ -589,28 +631,28 @@ fun ChatInputBar(
                                 IconButton(
                                     onClick = {
                                         if (commandStore.activeCommand != null) {
-                                            val interactionOptions = commandStore.commandOptions.map { (name, value) ->
-                                                val optionType = commandStore.activeCommand!!.options!!.find { it.name == name }?.type ?: 3
-                                                InteractionOption(type = optionType, name = name, value = value)
-                                            }
+                                            val options = commandStore.buildInteractionOptions()
                                             commandStore.sendInteraction(
                                                 command = commandStore.activeCommand!!,
                                                 guildId = navigationStore.selectedGuild?.id,
                                                 channelId = channel.id,
-                                                options = interactionOptions
+                                                options = options
                                             )
                                             commandStore.activeCommand = null
                                             commandStore.commandOptions.clear()
+                                            commandStore.resetSubCommand()
                                         } else {
                                             if (messageStore.editingMessage != null) {
-                                                messageStore.editMessage(messageStore.editingMessage!!, textFieldValue.text)
+                                                messageStore.editMessage(messageStore.editingMessage!!, resolveContent(textFieldValue.text))
                                                 messageStore.editingMessage = null
                                             } else {
-                                                messageStore.sendMessageDraft(textFieldValue.text)
+                                                messageStore.sendMessageDraft(resolveContent(textFieldValue.text))
                                             }
                                         }
                                         textFieldValue = TextFieldValue("")
+                                        clearMentions()
                                     },
+                                    enabled = commandStore.activeCommand == null || commandStore.isCommandValid(),
                                     colors = IconButtonDefaults.filledIconButtonColors(
                                         containerColor = MaterialTheme.colorScheme.primary,
                                         contentColor = MaterialTheme.colorScheme.onPrimary
@@ -662,4 +704,92 @@ fun ChatInputBar(
             }
         }
     }
+}
+
+/**
+ * Shifts [ranges] across an edit that replaced the span [editStart, editOldEnd)
+ * with new text whose length differs by [delta]. Ranges entirely after the edit
+ * are shifted; ranges overlapping it are dropped.
+ */
+private fun shiftMentionRanges(
+    ranges: Map<IntRange, String>,
+    editStart: Int,
+    editOldEnd: Int,
+    delta: Int
+): Map<IntRange, String> {
+    return ranges.mapNotNull { (range, value) ->
+        when {
+            range.last < editStart -> range to value
+            range.first >= editOldEnd -> (range.first + delta)..(range.last + delta) to value
+            else -> null
+        }
+    }.toMap()
+}
+
+/**
+ * Rebuilds the mention ranges after any text-field edit by comparing the old and
+ * new texts (common prefix/suffix gives the edited span).
+ */
+private fun shiftMentionRanges(ranges: Map<IntRange, String>, oldText: String, newText: String): Map<IntRange, String> {
+    val editStart = oldText.commonPrefixWith(newText).length
+    val commonSuffixLen = oldText.commonSuffixWith(newText).length
+    val editOldEnd = oldText.length - commonSuffixLen
+    val delta = newText.length - oldText.length
+    return shiftMentionRanges(ranges, editStart, editOldEnd, delta)
+}
+
+/**
+ * Discord resolves autocompleted mentions only at send time: the input keeps the
+ * friendly text ("#general", "@username") and the outgoing content carries the
+ * server values ("<#id>", "<@id>"). Typed (or draft-restored) tokens that match a
+ * known channel/member/role are resolved the same way, like Discord does.
+ */
+private fun resolveServerContent(
+    content: String,
+    ranges: Map<IntRange, String>,
+    channels: List<Channel>,
+    members: List<Member>,
+    roles: List<Role>
+): String {
+    var result = content
+
+    for ((range, value) in ranges.entries.sortedByDescending { it.key.first }) {
+        if (range.first >= 0 && range.last < result.length && range.first <= range.last) {
+            result = result.replaceRange(range.first, range.last + 1, value)
+        }
+    }
+
+    val roleNames = roles.map { it.name }
+    val pattern = Regex("""(?<![\p{L}\p{N}_])([#@])([^\s]+)""")
+    val subs = pattern.findAll(result).mapNotNull { m ->
+        val trigger = m.groupValues[1]
+        val token = m.groupValues[2].trimEnd(',', '.', '!', '?', ';', ':', '"', '\'', ')', ']', '}')
+        val replacement = when (trigger) {
+            "#" -> channels.firstOrNull { it.name?.equals(token, ignoreCase = true) == true }
+                ?.let { "<#${it.id}>" }
+            "@" -> when {
+                token == "everyone" || token == "here" -> null
+                else -> {
+                    val role = roles.firstOrNull { it.name.equals(token, ignoreCase = true) }
+                    if (role != null) {
+                        "<@&${role.id}>"
+                    } else {
+                        val member = members.firstOrNull { mem ->
+                            mem.nick?.equals(token, ignoreCase = true) == true ||
+                            mem.user?.global_name?.equals(token, ignoreCase = true) == true ||
+                            mem.user?.username?.equals(token, ignoreCase = true) == true
+                        }
+                        member?.user?.id?.let { "<@$it>" }
+                    }
+                }
+            }
+            else -> null
+        }
+        if (replacement != null) m.range to replacement else null
+    }.toList()
+    subs.sortedByDescending { it.first.first }.forEach { (range, value) ->
+        result = result.replaceRange(range.first, range.last + 1, value)
+    }
+
+    return result
 }

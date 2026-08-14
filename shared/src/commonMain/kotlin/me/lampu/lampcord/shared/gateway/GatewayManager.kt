@@ -82,13 +82,24 @@ class GatewayManager(
 
     private val guildSubscriptions = mutableMapOf<String, GuildSubscriptionState>()
 
-    private data class GuildSubscriptionState(
-        val typing: Boolean = true,
-        val threads: Boolean = true,
-        val activities: Boolean = true,
-        val members: List<String> = emptyList(),
-        val channels: MutableMap<String, List<List<Int>>> = mutableMapOf()
-    )
+    private class GuildSubscriptionState {
+        var typing: Boolean = true
+        var threads: Boolean = true
+        var activities: Boolean = true
+        val members = mutableSetOf<String>()
+        val channels = mutableMapOf<String, List<List<Int>>>()
+        private val channelOrder = mutableListOf<String>()
+
+        fun updateChannel(channelId: String, ranges: List<List<Int>>) {
+            channels[channelId] = ranges
+            channelOrder.remove(channelId)
+            channelOrder.add(channelId)
+            if (channelOrder.size > 5) {
+                val oldest = channelOrder.removeAt(0)
+                channels.remove(oldest)
+            }
+        }
+    }
 
     fun connect(token: String) {
         disconnect()
@@ -141,8 +152,6 @@ class GatewayManager(
                             } else if (frame is Frame.Close) {
                                 val reason = closeReason.await()
                                 val code = reason?.code?.toInt() ?: 0
-                                // 4004: Authentication failed
-                                // 4003: Not authenticated
                                 if (code == 4004 || code == 4003) {
                                     _events.emit(GatewayPayload(op = -1, t = "AUTH_FAILED"))
                                     disconnect()
@@ -155,7 +164,6 @@ class GatewayManager(
                     }
                 }
             } catch (e: Exception) {
-                // Check if it's a 401 Unauthorized if it's an HTTP exception during handshake
             } finally {
                 session = null
                 stopHeartbeat()
@@ -351,7 +359,7 @@ class GatewayManager(
         val identify = Identify(
             token = token,
             properties = properties,
-            capabilities = 351, 
+            capabilities = 351,
             large_threshold = 100,
             compress = false, 
             client_state = IdentifyClientState(
@@ -412,8 +420,7 @@ class GatewayManager(
     fun sendLazyRequest(guildId: String, channelId: String, ranges: List<List<Int>>) {
         val state = guildSubscriptions.getOrPut(guildId) { GuildSubscriptionState() }
         
-        state.channels.clear() 
-        state.channels[channelId] = ranges
+        state.updateChannel(channelId, ranges)
 
         val payload = GatewayPayload(
             op = 14,

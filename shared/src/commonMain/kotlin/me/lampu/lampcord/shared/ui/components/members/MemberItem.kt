@@ -66,7 +66,6 @@ fun MemberItem(
         member.user ?: member.userId()?.let { userStore.getUser(it) }
     }
     
-    // Fallback if user object is still missing from Store
     val displayUser = user ?: member.user ?: me.lampu.lampcord.shared.model.User(id = member.userId() ?: return)
     
     val guildId = navigationStore.selectedGuild?.id
@@ -194,7 +193,7 @@ fun MemberItem(
                                     imageVector = Icons.Filled.Crown,
                                     contentDescription = "Owner",
                                     modifier = Modifier.size(14.dp),
-                                    tint = Color(0xFFF9A825) // Gold color
+                                    tint = Color(0xFFF9A825)
                                 )
                             }
                         }

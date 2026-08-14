@@ -51,28 +51,30 @@ fun MemberList(
     val rowCount = memberListStore.memberListRowCount
     val ranges = remember(firstVisible, rowCount) {
         val currentBlock = (firstVisible / 100) * 100
-        val blocks = mutableSetOf(0) // Always keep top members
+        val blocks = mutableSetOf(0)
         
         blocks.add(currentBlock)
         if (currentBlock >= 100) blocks.add(currentBlock - 100)
         blocks.add(currentBlock + 100)
         blocks.add(currentBlock + 200)
         
-        blocks.filter { it < rowCount }.sorted().map { listOf(it, it + 99) }
+        val filtered = blocks.filter { it < rowCount }.sorted()
+        if (filtered.isEmpty()) {
+            listOf(listOf(0, 99))
+        } else {
+            filtered.map { listOf(it, it + 99) }
+        }
     }
 
-    // 126.21 Parity: Initial request is immediate, subsequent scrolls are debounced.
     val channelId = navigationStore.selectedChannel?.id
     var lastRequestedChannelId by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(ranges, channelId) {
-        if (ranges.isNotEmpty() && channelId != null) {
+        if (channelId != null) {
             if (channelId != lastRequestedChannelId) {
-                // Immediate request for new channel selection
                 memberListStore.requestMemberListRange(ranges)
                 lastRequestedChannelId = channelId
             } else {
-                // Debounce for scrolling
                 kotlinx.coroutines.delay(300)
                 memberListStore.requestMemberListRange(ranges)
             }
