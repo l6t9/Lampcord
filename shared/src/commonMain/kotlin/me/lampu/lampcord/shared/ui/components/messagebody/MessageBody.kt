@@ -21,7 +21,14 @@ fun MessageBody(
 ) {
     Column(modifier = Modifier.padding(top = 0.dp)) {
         // Content is rendered by MessageItem to handle edits and highlights properly
-        MessageAttachments(message.attachments, message.embeds, message.sticker_items, message.poll, message.components)
+        MessageAttachments(
+            attachments = message.attachments,
+            embeds = message.embeds,
+            stickerItems = message.sticker_items,
+            stickers = message.stickers,
+            poll = message.poll,
+            components = message.components
+        )
     }
 }
 
@@ -30,6 +37,7 @@ fun MessageAttachments(
     attachments: List<Attachment>,
     embeds: List<Embed>,
     stickerItems: List<StickerItem>? = null,
+    stickers: List<me.lampu.lampcord.shared.model.Sticker>? = null,
     poll: Poll? = null,
     components: List<MessageComponent>? = null,
     navigationStore: NavigationStore = koinInject()
@@ -50,8 +58,10 @@ fun MessageAttachments(
         FileAttachmentView(file)
     }
 
-    stickerItems?.let { 
-        StickersView(it)
+    if (!stickerItems.isNullOrEmpty()) {
+        StickersView(stickerItems)
+    } else if (!stickers.isNullOrEmpty()) {
+        StickersView(stickers.map { StickerItem(it.id, it.name, it.format_type) })
     }
 
     poll?.let { PollView(it) }

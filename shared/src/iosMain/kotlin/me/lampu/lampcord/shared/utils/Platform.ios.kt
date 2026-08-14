@@ -50,6 +50,10 @@ actual fun writeInternalFile(name: String, content: String) {}
 
 actual fun readInternalFile(name: String): String? = null
 
+actual fun showToast(text: String) {
+    println("Toast: $text")
+}
+
 @Composable
 actual fun RequestMediaPermissions(onResult: (Boolean) -> Unit) {
     LaunchedEffect(Unit) {

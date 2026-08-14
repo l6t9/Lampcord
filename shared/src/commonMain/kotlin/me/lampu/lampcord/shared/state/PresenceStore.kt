@@ -101,8 +101,27 @@ class PresenceStore(private val userApi: UserApi) {
 
     fun getUserStatus(userId: String, currentUserId: String?, currentUserStatus: String?): String {
         if (userId == currentUserId) return currentUserStatus ?: "online"
-        val p = flattenedPresences.value[userId]
-        return p?.status ?: "offline"
+        val p = flattenedPresences.value[userId] ?: return "offline"
+        return presenceStatus(p)
+    }
+
+    fun getUserStatus(userId: String, presence: PresenceUpdate?, currentUserId: String?, currentUserStatus: String?): String {
+        if (userId == currentUserId) return currentUserStatus ?: "online"
+        val p = presence ?: flattenedPresences.value[userId] ?: return "offline"
+        return presenceStatus(p)
+    }
+
+    private fun presenceStatus(p: PresenceUpdate): String {
+        if (p.activities.any { it.type == 1 }) return "streaming"
+
+        if (p.status == "online") {
+            val cs = p.client_status
+            if (cs.mobile == "online" && cs.desktop != "online" && cs.web != "online") {
+                return "mobile"
+            }
+        }
+
+        return p.status
     }
 
     suspend fun updateStatus(status: String): Boolean {
@@ -113,9 +132,10 @@ class PresenceStore(private val userApi: UserApi) {
         return userApi.updateCustomStatus(text)
     }
 
-    fun isStatusVisible(user: me.lampu.lampcord.shared.model.User, presence: PresenceUpdate?, isStreaming: Boolean): Boolean {
+    fun isStatusVisible(user: me.lampu.lampcord.shared.model.User, presence: PresenceUpdate?): Boolean {
         val flags = (user.public_flags ?: 0) or (user.flags ?: 0)
         val status = presence?.status ?: "offline"
+        val isStreaming = presence?.activities?.any { it.type == 1 } == true
         val isOnline = status != "offline" && status != "invisible"
         
         return if ((flags and 524288) != 0) { // FLAG_OFFLINE_VISIBLE

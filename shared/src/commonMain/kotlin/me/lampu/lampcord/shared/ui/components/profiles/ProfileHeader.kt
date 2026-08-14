@@ -70,6 +70,9 @@ fun ProfileHeader(
         "https://cdn.discordapp.com/avatars/${user.id}/$it.png?size=160"
     }
 
+    val presences by presenceStore.presences.collectAsState()
+    val presence = profile.guild_member?.presence ?: profile.presence ?: presences[user.id]
+
     Row(verticalAlignment = Alignment.Bottom) {
         Box(
             modifier = Modifier
@@ -78,17 +81,22 @@ fun ProfileHeader(
                 .background(theme.cutoutColor, CircleShape)
                 .padding(if (isExpanded) 8.dp else 6.dp)
         ) {
+            val status = remember(presence, user.id, currentUser?.id, settingsStore.userSettings?.status) {
+                if (user.id == currentUser?.id) {
+                    settingsStore.userSettings?.status ?: "online"
+                } else {
+                    presenceStore.getUserStatus(user.id, presence, currentUser?.id, settingsStore.userSettings?.status)
+                }
+            }
             AvatarWithDecoration(
                 avatarUrl = avatarUrl,
                 decorationData = profile.guild_member?.avatar_decoration_data ?: user.avatar_decoration_data,
                 size = if (isExpanded) 104.dp else 82.dp,
-                status = presenceStore.getUserStatus(user.id, currentUser?.id, settingsStore.userSettings?.status),
+                status = status,
                 modifier = Modifier.clickable(enabled = !isExpanded) { onExpand?.invoke() }
             )
         }
 
-        val presences by presenceStore.presences.collectAsState()
-        val presence = profile.guild_member?.presence ?: presences[user.id]
         val activities = profile.activities.ifEmpty { presence?.activities ?: emptyList() }
         val customStatus = activities.find { it.type == 4 }
         val otherActivity = activities.find { it.type != 4 }

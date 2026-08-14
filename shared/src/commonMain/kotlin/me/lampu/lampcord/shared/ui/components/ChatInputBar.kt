@@ -1,43 +1,21 @@
 package me.lampu.lampcord.shared.ui.components
 
 import androidx.compose.animation.*
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.keyframes
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.isCtrlPressed
-import androidx.compose.ui.input.key.isShiftPressed
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.key.type
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.key.*
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.AnnotatedString
@@ -53,15 +31,11 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.AutocompleteType
+import me.lampu.lampcord.shared.model.Channel
 import me.lampu.lampcord.shared.model.InteractionOption
 import me.lampu.lampcord.shared.model.Member
 import me.lampu.lampcord.shared.model.PendingFile
-import me.lampu.lampcord.shared.state.AutocompleteStore
-import me.lampu.lampcord.shared.state.CommandStore
-import me.lampu.lampcord.shared.state.MessageStore
-import me.lampu.lampcord.shared.state.NavigationStore
-import me.lampu.lampcord.shared.state.TypingStore
-import me.lampu.lampcord.shared.state.UserStore
+import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.components.chat.MediaPicker
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.FilePicker
@@ -69,203 +43,6 @@ import me.lampu.lampcord.shared.utils.Permission
 import me.lampu.lampcord.shared.utils.getClipboardFiles
 import me.lampu.lampcord.shared.utils.getPlatformName
 import org.koin.compose.koinInject
-
-@Composable
-fun TypingIndicator(
-    typingStore: TypingStore = koinInject(),
-    userStore: UserStore = koinInject(),
-    navigationStore: NavigationStore = koinInject()
-) {
-    val typingUsers by typingStore.typingUsers.collectAsState()
-    val channelId = navigationStore.selectedChannel?.id ?: return
-    val typingMap = typingUsers[channelId] ?: return
-    val userIds = typingMap.keys.toList()
-    if (userIds.isEmpty()) return
-    
-    val names = userIds.map { id ->
-         val member = navigationStore.selectedGuild?.let { userStore.getMember(it.id, id) }
-         val userFromStore = userStore.getUser(id)
-         val userFromChannel = navigationStore.selectedChannel?.recipients?.find { it.id == id }
-         
-         member?.nick 
-         ?: userFromStore?.global_name 
-         ?: userFromStore?.username 
-         ?: userFromChannel?.global_name
-         ?: userFromChannel?.username
-         ?: "Someone"
-    }
-    
-    val text = when (names.size) {
-        1 -> "${names[0]} is typing..."
-        2 -> "${names[0]} and ${names[1]} are typing..."
-        3 -> "${names[0]}, ${names[1]} and ${names[2]} are typing..."
-        else -> "Several people are typing..."
-    }
-
-    Surface(
-        modifier = Modifier.fillMaxWidth().height(24.dp),
-        color = Color.Transparent
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            TypingDots()
-            Spacer(Modifier.width(8.dp))
-            Text(
-                text = text,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = FontWeight.Medium
-            )
-        }
-    }
-}
-
-@Composable
-fun TypingDots(modifier: Modifier = Modifier) {
-    val infiniteTransition = rememberInfiniteTransition(label = "typingDots")
-    val alpha1 by infiniteTransition.animateFloat(
-        initialValue = 0.2f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = keyframes { durationMillis = 600; 0.2f at 0; 1f at 300; 0.2f at 600 },
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "alpha1"
-    )
-    val alpha2 by infiniteTransition.animateFloat(
-        initialValue = 0.2f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = keyframes { durationMillis = 600; 0.2f at 150; 1f at 450; 0.2f at 600 },
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "alpha2"
-    )
-    val alpha3 by infiniteTransition.animateFloat(
-        initialValue = 0.2f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = keyframes { durationMillis = 600; 0.2f at 300; 1f at 600; 0.2f at 600 },
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "alpha3"
-    )
-
-    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-        Box(Modifier.size(4.dp).background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha1), CircleShape))
-        Box(Modifier.size(4.dp).background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha2), CircleShape))
-        Box(Modifier.size(4.dp).background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha3), CircleShape))
-    }
-}
-
-@Composable
-fun ChannelHeader(
-    channel: me.lampu.lampcord.shared.model.Channel?,
-    navigationStore: NavigationStore = koinInject(),
-    userStore: UserStore = koinInject()
-) {
-    val allUsers by userStore.users.collectAsState()
-    
-    Surface(
-        modifier = Modifier.fillMaxWidth().height(48.dp),
-        color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 0.dp,
-        tonalElevation = 0.dp
-    ) {
-        Row(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (navigationStore.isChannelsAndRolesVisible) {
-                Icon(
-                    imageVector = Icons.Filled.Flag,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(text = "Channels & Roles", style = MaterialTheme.typography.titleSmall)
-                Spacer(modifier = Modifier.weight(1f))
-            } else if (channel != null) {
-                val isDm = channel.type == 1 || channel.type == 3 || channel.guild_id == null
-                val isThread = channel.type == 10 || channel.type == 11 || channel.type == 12
-                
-                if (isDm) {
-                    val name = if (channel.name?.isNotBlank() == true) {
-                        channel.name
-                    } else {
-                        val recipientId = channel.recipients?.firstOrNull()?.id ?: channel.recipient_ids?.firstOrNull()
-                        val recipient = recipientId?.let { allUsers[it] } ?: channel.recipients?.firstOrNull()
-                        recipient?.let { it.global_name ?: it.username } ?: "Unnamed DM"
-                    }
-
-                    Icon(
-                        imageVector = Icons.Rounded.AlternateEmail,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = name, style = MaterialTheme.typography.titleSmall)
-                } else {
-                    val icon = when (channel.type) {
-                        15 -> Icons.Rounded.Forum
-                        2, 13 -> Icons.AutoMirrored.Filled.VolumeUp
-                        5 -> Icons.Filled.Campaign
-                        else -> Icons.Filled.Tag
-                    }
-                    if (isThread) {
-                        Text(">", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) // Thread
-                    } else {
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = me.lampu.lampcord.shared.utils.CleanUtils.cleanChannelName(channel.name ?: "unnamed"), style = MaterialTheme.typography.titleSmall)
-                }
-                
-                if (channel.topic?.isNotBlank() == true) {
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text("•", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = channel.topic,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
-                    )
-                } else {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-                
-                // Search bar (Far Right)
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    if (channel.type == 0 || channel.type == 5 || channel.type == 15) {
-                        IconButton(onClick = { navigationStore.isThreadPanelVisible = !navigationStore.isThreadPanelVisible }) {
-                            Icon(Icons.Filled.Tag, "Threads", modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                    if (channel.type != 2 && channel.type != 13) {
-                        IconButton(onClick = { navigationStore.isPinsVisible = true }) {
-                            Icon(Icons.Filled.PushPin, "Pins", modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
 
 class DiscordInputVisualTransformation(val primaryColor: Color) : VisualTransformation {
     override fun filter(text: AnnotatedString): TransformedText {
@@ -299,7 +76,7 @@ class DiscordInputVisualTransformation(val primaryColor: Color) : VisualTransfor
 
 @Composable
 fun ChatInputBar(
-    channel: me.lampu.lampcord.shared.model.Channel,
+    channel: Channel,
     messageStore: MessageStore = koinInject(),
     navigationStore: NavigationStore = koinInject(),
     autocompleteStore: AutocompleteStore = koinInject(),
@@ -393,7 +170,10 @@ fun ChatInputBar(
     val primaryColor = MaterialTheme.colorScheme.primary
 
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-        val isMobile = getPlatformName() == "android" || getPlatformName() == "ios" || maxWidth < 600.dp
+        val platform = getPlatformName()
+        val isMobileDevice = platform == "android" || platform == "ios"
+        val isMobileView = isMobileDevice || maxWidth < 600.dp
+        val isDesktopTarget = platform == "desktop" || platform == "macos" || platform == "windows" || platform == "linux"
         
         Column(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.fillMaxWidth()) {
@@ -526,7 +306,7 @@ fun ChatInputBar(
                             }
                         }
 
-                        if (isMobile) {
+                        if (isMobileView) {
                             if (navigationStore.isMediaPickerVisible) {
                                 MediaPicker(onDismiss = {
                                     navigationStore.isMediaPickerVisible = false
@@ -590,14 +370,13 @@ fun ChatInputBar(
                                 !canSend -> "You do not have permission to send messages."
                                 isThread -> "Reply to thread..."
                                 isDm -> {
-                                    val recipient = channel.recipients?.firstOrNull()
-                                    val name = recipient?.let { it.global_name ?: it.username } ?: "Unnamed DM"
+                                    val recipientId = channel.recipients?.firstOrNull()?.id ?: channel.recipient_ids?.firstOrNull()
+                                    val recipient = recipientId?.let { userStore.getUser(it) } ?: channel.recipients?.firstOrNull()
+                                    val name = recipient?.let { it.global_name ?: it.username } ?: "Unknown"
                                     "Message @$name"
                                 }
                                 else -> "Message #${channel.name ?: "unnamed"}"
                             }
-
-                            val isMobile = getPlatformName() == "android" || getPlatformName() == "ios"
 
                             Surface(
                                 modifier = Modifier
@@ -704,7 +483,7 @@ fun ChatInputBar(
                                                                 return@onPreviewKeyEvent true
                                                             }
                                                     }
-                                                    if (event.key == Key.Enter && !event.isShiftPressed && !isMobile) {
+                                                    if (event.key == Key.Enter && !event.isShiftPressed && !isMobileView) {
                                                         val currentText = textFieldValue.text
                                                         if (currentText.startsWith('/') && !currentText.contains(' ')) {
                                                             val cmdName = currentText.substring(1).trim()
@@ -734,7 +513,7 @@ fun ChatInputBar(
                                                 false
                                             },
                                         textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
-                                        cursorBrush = androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.primary),
+                                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                                         decorationBox = { innerTextField: @Composable () -> Unit ->
                                             Box(modifier = Modifier.fillMaxWidth()) {
                                                 if (textFieldValue.text.isEmpty()) {
@@ -752,7 +531,7 @@ fun ChatInputBar(
                                     IconButton(
                                         onClick = { 
                                             navigationStore.isEmojiPickerVisible = !navigationStore.isEmojiPickerVisible
-                                            if (isMobile) {
+                                            if (isMobileView) {
                                                 keyboardController?.hide()
                                             }
                                         },
@@ -766,7 +545,7 @@ fun ChatInputBar(
                                         )
                                     }
 
-                                    if (navigationStore.isEmojiPickerVisible && !isMobile) {
+                                    if (navigationStore.isEmojiPickerVisible && !isMobileView) {
                                         androidx.compose.ui.window.Popup(
                                             alignment = Alignment.BottomEnd,
                                             offset = IntOffset(0, -48),
@@ -849,7 +628,7 @@ fun ChatInputBar(
 
                         // Mobile Emoji Picker - Moved below input row
                         AnimatedVisibility(
-                            visible = navigationStore.isEmojiPickerVisible && isMobile,
+                            visible = navigationStore.isEmojiPickerVisible && !isDesktopTarget,
                             enter = expandVertically() + fadeIn(),
                             exit = shrinkVertically() + fadeOut()
                         ) {
@@ -884,4 +663,3 @@ fun ChatInputBar(
         }
     }
 }
-

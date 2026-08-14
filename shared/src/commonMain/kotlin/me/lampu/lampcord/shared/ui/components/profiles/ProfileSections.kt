@@ -97,7 +97,7 @@ fun ProfileSections(
         }
 
         val presences by presenceStore.presences.collectAsState()
-        val presence = profile.guild_member?.presence ?: presences[user.id]
+        val presence = profile.guild_member?.presence ?: profile.presence ?: presences[user.id]
         val activities = (profile.activities.ifEmpty { presence?.activities ?: emptyList() }).filter { it.type != 4 }
 
         if (activities.isNotEmpty()) {

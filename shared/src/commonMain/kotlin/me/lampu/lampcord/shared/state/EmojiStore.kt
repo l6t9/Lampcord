@@ -12,12 +12,17 @@ class EmojiStore {
     private val minScoreThreshold = 10
     
     private var usageMap = mutableMapOf<String, List<Long>>()
+    private var stickerUsageMap = mutableMapOf<String, List<Long>>()
+
     var frequentEmojis by mutableStateOf<List<String>>(emptyList())
+        private set
+    var frequentStickers by mutableStateOf<List<String>>(emptyList())
         private set
 
     init {
         loadUsage()
         updateFrequentEmojis()
+        updateFrequentStickers()
     }
 
     fun onEmojiUsed(emojiKey: String) {
@@ -30,6 +35,17 @@ class EmojiStore {
         
         saveUsage()
         updateFrequentEmojis()
+    }
+
+    fun onStickerUsed(stickerId: String) {
+        val now = Clock.System.now().toEpochMilliseconds()
+        val currentUsage = stickerUsageMap[stickerId]?.toMutableList() ?: mutableListOf()
+        currentUsage.add(now)
+        
+        stickerUsageMap[stickerId] = currentUsage.takeLast(maxSamples)
+        
+        saveUsage()
+        updateFrequentStickers()
     }
 
     private fun updateFrequentEmojis() {
@@ -48,6 +64,17 @@ class EmojiStore {
         } else {
             sorted
         }
+    }
+
+    private fun updateFrequentStickers() {
+        val now = Clock.System.now().toEpochMilliseconds()
+        val scores = stickerUsageMap.mapValues { (_, times) ->
+            times.sumOf { time -> getWeight(getDaysDiff(time, now)) }
+        }.filter { it.value > minScoreThreshold }
+
+        frequentStickers = scores.entries.sortedByDescending { it.value }
+            .map { it.key }
+            .take(40)
     }
 
     private fun getDaysDiff(then: Long, now: Long): Int {
@@ -72,12 +99,24 @@ class EmojiStore {
         } catch (e: Exception) {
             usageMap = mutableMapOf()
         }
+        try {
+            val json = Settings.shared.stickerUsageJson
+            stickerUsageMap = Json.decodeFromString<Map<String, List<Long>>>(json).toMutableMap()
+        } catch (e: Exception) {
+            stickerUsageMap = mutableMapOf()
+        }
     }
 
     private fun saveUsage() {
         try {
             val json = Json.encodeToString(usageMap)
             Settings.shared.emojiUsageJson = json
+        } catch (e: Exception) {
+            // Ignore
+        }
+        try {
+            val json = Json.encodeToString(stickerUsageMap)
+            Settings.shared.stickerUsageJson = json
         } catch (e: Exception) {
             // Ignore
         }

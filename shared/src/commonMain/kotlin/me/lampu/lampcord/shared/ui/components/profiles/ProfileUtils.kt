@@ -1,5 +1,6 @@
 package me.lampu.lampcord.shared.ui.components.profiles
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -12,6 +13,7 @@ import me.lampu.lampcord.shared.model.ProfileBadge
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.ExpressiveTooltip
 import me.lampu.lampcord.shared.ui.components.tooltipText
+import me.lampu.lampcord.shared.utils.showToast
 import kotlin.math.abs
 import kotlin.math.pow
 import kotlin.math.roundToInt
@@ -49,7 +51,9 @@ fun UserBadges(userId: String, badges: List<ProfileBadge>) {
                     AsyncImage(
                         model = iconUrl,
                         contentDescription = badge.description,
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier
+                            .size(22.dp)
+                            .clickable { showToast(badge.description) }
                     )
                 }
             )

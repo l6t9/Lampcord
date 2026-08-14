@@ -1,16 +1,19 @@
 package me.lampu.lampcord.shared.ui.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import me.lampu.lampcord.shared.ui.theme.*
+import me.lampu.lampcord.shared.ui.icons.StatusIcons
 
 @Composable
 fun StatusIndicator(
@@ -18,52 +21,32 @@ fun StatusIndicator(
     modifier: Modifier = Modifier,
     size: Dp = 14.dp,
     borderColor: Color = Color.Transparent,
-    borderWidth: Dp = 2.dp,
-    backgroundColor: Color = Color.Black
+    borderWidth: Dp? = null,
 ) {
-    val statusColor = when (status) {
-        "online" -> DiscordGreen
-        "idle" -> DiscordYellow
-        "dnd" -> DiscordRed
-        else -> DiscordGray
-    }
+    // Discord's StatusView draws a background circle (rounded rect for mobile)
+    // in the app surface color, then insets the status glyph by a border,
+    // which creates the "cutout" notch around the avatar.
+    // The glyph stays a fixed fraction of the bubble, so the border must be
+    // proportional to the size (a fixed dp would swallow the glyph on big
+    // profile bubbles). 0.18 keeps the 2dp look on the 11.2dp member/DM bubble.
+    // The mobile phone is 8x12, so its bubble is portrait, not square.
+    val effectiveBorderWidth = borderWidth ?: size * 0.18f
+    val isMobile = status == "mobile"
+    val shape = if (isMobile) RoundedCornerShape(size * 0.2f) else CircleShape
+    val boxHeight = if (isMobile) size * (12f / 8f) else size
 
     Box(
         modifier = modifier
-            .size(size)
-            .background(borderColor, CircleShape)
-            .padding(borderWidth)
-            .clip(CircleShape)
-            .background(statusColor),
-        contentAlignment = Alignment.Center
+            .size(width = size, height = boxHeight)
+            .clip(shape)
+            .background(borderColor)
+            .padding(effectiveBorderWidth)
     ) {
-        when (status) {
-            "dnd" -> {
-                // Modern Discord DND dash
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(0.65f)
-                        .height(size * 0.18f)
-                        .background(backgroundColor)
-                )
-            }
-            "idle" -> {
-                // Modern Discord Idle Moon cutout
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .offset(x = (-size * 0.25f), y = (-size * 0.25f))
-                        .background(backgroundColor, CircleShape)
-                )
-            }
-            "offline", "invisible" -> {
-                // Hollow ring for offline
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize(0.6f)
-                        .background(backgroundColor, CircleShape)
-                )
-            }
-        }
+        Image(
+            painter = rememberVectorPainter(StatusIcons.fromStatus(status)),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Fit
+        )
     }
 }

@@ -238,6 +238,14 @@ actual fun readInternalFile(name: String): String? {
     return if (file.exists()) file.readText() else null
 }
 
+actual fun showToast(text: String) {
+    val context = AndroidContext.context
+    val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    mainHandler.post {
+        android.widget.Toast.makeText(context, text, android.widget.Toast.LENGTH_SHORT).show()
+    }
+}
+
 @Composable
 actual fun RequestMediaPermissions(onResult: (Boolean) -> Unit) {
     val launcher = rememberLauncherForActivityResult(

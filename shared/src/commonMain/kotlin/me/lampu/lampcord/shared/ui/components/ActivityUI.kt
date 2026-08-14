@@ -22,6 +22,8 @@ import me.lampu.lampcord.shared.utils.getCurrentTimeMillis
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 
+import me.lampu.lampcord.shared.model.toTwemojiUrl
+
 private fun getAssetUrl(applicationId: String?, assetId: String?): String? {
     if (assetId == null) return null
     if (assetId.startsWith("spotify:")) {
@@ -64,7 +66,11 @@ fun CustomStatus(activity: Activity, modifier: Modifier = Modifier, compact: Boo
                     modifier = Modifier.size(20.dp)
                 )
             } else if (activity.emoji.name != null) {
-                Text(activity.emoji.name, fontSize = 16.sp)
+                AsyncImage(
+                    model = activity.emoji.name.toTwemojiUrl(),
+                    contentDescription = activity.emoji.name,
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
         

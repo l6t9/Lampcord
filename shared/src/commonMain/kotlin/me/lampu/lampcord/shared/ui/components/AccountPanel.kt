@@ -4,7 +4,6 @@ package me.lampu.lampcord.shared.ui.components
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.spring
-import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -19,7 +18,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.Button
@@ -61,10 +59,6 @@ import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.state.VoiceStore
 import me.lampu.lampcord.shared.ui.icons.Icons
-import me.lampu.lampcord.shared.ui.theme.DiscordGray
-import me.lampu.lampcord.shared.ui.theme.DiscordGreen
-import me.lampu.lampcord.shared.ui.theme.DiscordRed
-import me.lampu.lampcord.shared.ui.theme.DiscordYellow
 import org.koin.compose.koinInject
 
 @Composable
@@ -312,7 +306,7 @@ fun AccountPanel(
                 
                 DropdownMenuItem(
                     text = { Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(10.dp).background(DiscordGreen, CircleShape))
+                        StatusIndicator(status = "online", size = 12.dp, borderWidth = 0.dp)
                         Spacer(Modifier.width(8.dp))
                         Text("Online")
                     }},
@@ -323,7 +317,7 @@ fun AccountPanel(
                 )
                 DropdownMenuItem(
                     text = { Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(10.dp).background(DiscordYellow, CircleShape))
+                        StatusIndicator(status = "idle", size = 12.dp, borderWidth = 0.dp)
                         Spacer(Modifier.width(8.dp))
                         Text("Idle")
                     }},
@@ -334,7 +328,7 @@ fun AccountPanel(
                 )
                 DropdownMenuItem(
                     text = { Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(10.dp).background(DiscordRed, CircleShape))
+                        StatusIndicator(status = "dnd", size = 12.dp, borderWidth = 0.dp)
                         Spacer(Modifier.width(8.dp))
                         Text("Do Not Disturb")
                     }},
@@ -345,7 +339,7 @@ fun AccountPanel(
                 )
                 DropdownMenuItem(
                     text = { Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(10.dp).background(DiscordGray, CircleShape))
+                        StatusIndicator(status = "invisible", size = 12.dp, borderWidth = 0.dp)
                         Spacer(Modifier.width(8.dp))
                         Text("Invisible")
                     }},

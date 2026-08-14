@@ -1,6 +1,5 @@
 package me.lampu.lampcord.shared.ui.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -190,19 +189,12 @@ fun FriendItem(
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize().clip(CircleShape)
                 )
-                Box(
-                    modifier = Modifier
-                        .size(14.dp)
-                        .align(Alignment.BottomEnd)
-                        .background(MaterialTheme.colorScheme.surface, CircleShape)
-                        .padding(2.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(getStatusColor(status), CircleShape)
-                    )
-                }
+                StatusIndicator(
+                    status = status,
+                    size = 14.dp,
+                    modifier = Modifier.align(Alignment.BottomEnd),
+                    borderColor = MaterialTheme.colorScheme.surface
+                )
             }
             
             Spacer(Modifier.width(16.dp))
@@ -271,13 +263,6 @@ fun AddFriendUI() {
             }
         )
     }
-}
-
-private fun getStatusColor(status: String): Color = when (status) {
-    "online" -> Color(0xFF23A559)
-    "idle" -> Color(0xFFF0B232)
-    "dnd" -> Color(0xFFF23F43)
-    else -> Color(0xFF80848E)
 }
 
 private fun String.capitalize() = replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }

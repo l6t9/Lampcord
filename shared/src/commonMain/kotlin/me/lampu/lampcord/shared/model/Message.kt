@@ -58,6 +58,7 @@ data class Message(
     val referenced_message: Message? = null,
     val message_reference: MessageReference? = null,
     val sticker_items: List<StickerItem>? = null,
+    val stickers: List<Sticker>? = null,
     val message_snapshots: List<MessageSnapshot>? = null,
     val poll: Poll? = null,
     val components: List<MessageComponent>? = null,

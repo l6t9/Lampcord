@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -22,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventType
@@ -106,7 +108,7 @@ fun MemberItem(
     }
     val isStreaming = presence?.activities?.any { it.type == 1 } == true
     val isListening = presence?.activities?.any { it.type == 2 } == true
-    val isStatusVisible = presenceStore.isStatusVisible(displayUser, presence, isStreaming)
+    val isStatusVisible = presenceStore.isStatusVisible(displayUser, presence)
     
     val isOffline = !isStatusVisible && !isListening
 
@@ -184,6 +186,17 @@ fun MemberItem(
                                 ClanTagView(it)
                             }
                             UserTagView(displayUser, modifier = Modifier.padding(start = 4.dp))
+                            
+                            val guild = navigationStore.selectedGuild
+                            if (displayUser.id == guild?.owner_id) {
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Icon(
+                                    imageVector = Icons.Filled.Crown,
+                                    contentDescription = "Owner",
+                                    modifier = Modifier.size(14.dp),
+                                    tint = Color(0xFFF9A825) // Gold color
+                                )
+                            }
                         }
                         
                         val activities = member.presence?.activities ?: emptyList()
@@ -191,9 +204,9 @@ fun MemberItem(
                         val otherActivity = activities.find { it.type != 4 }
                         
                         if (customStatus != null) {
-                            UserActivity(customStatus, compact = true)
+                            UserActivity(customStatus, compact = true, modifier = Modifier.alpha(0.7f))
                         } else if (otherActivity != null) {
-                            UserActivity(otherActivity, compact = true)
+                            UserActivity(otherActivity, compact = true, modifier = Modifier.alpha(0.7f))
                         }
                     }
                 }

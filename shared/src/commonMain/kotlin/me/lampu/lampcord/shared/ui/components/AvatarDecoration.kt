@@ -59,8 +59,7 @@ fun AvatarWithDecoration(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .offset(x = 2.dp, y = 2.dp),
-                borderColor = MaterialTheme.colorScheme.surface,
-                backgroundColor = MaterialTheme.colorScheme.surface
+                borderColor = MaterialTheme.colorScheme.surface
             )
         }
     }

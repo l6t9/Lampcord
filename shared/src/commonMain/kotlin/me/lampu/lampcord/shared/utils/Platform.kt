@@ -37,5 +37,7 @@ expect fun writeInternalFile(name: String, content: String)
 
 expect fun readInternalFile(name: String): String?
 
+expect fun showToast(text: String)
+
 @Composable
 expect fun RequestMediaPermissions(onResult: (Boolean) -> Unit)

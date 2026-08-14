@@ -18,13 +18,19 @@ import me.lampu.lampcord.shared.ui.components.AsyncImage
 fun StickersView(stickers: List<StickerItem>) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         stickers.forEach { sticker ->
+            val stickerUrl = when (sticker.format_type) {
+                4 -> "https://cdn.discordapp.com/stickers/${sticker.id}.gif?size=320"
+                3 -> "https://cdn.discordapp.com/stickers/${sticker.id}.json" // Lottie, needs special handling for full animation
+                else -> "https://cdn.discordapp.com/stickers/${sticker.id}.png?size=320"
+            }
+
             Surface(
                 color = Color.Transparent,
                 shape = RoundedCornerShape(8.dp),
                 onClick = { /* TODO: Sticker Info */ }
             ) {
                 AsyncImage(
-                    model = "https://cdn.discordapp.com/stickers/${sticker.id}.png?size=320",
+                    model = stickerUrl,
                     contentDescription = sticker.name,
                     modifier = Modifier.size(160.dp).clip(RoundedCornerShape(8.dp)),
                     contentScale = ContentScale.Fit,

@@ -1,4 +1,4 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 
 package me.lampu.lampcord.shared.ui.components
 
@@ -13,7 +13,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.*
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,13 +29,21 @@ import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.coerceAtMost
+import androidx.compose.ui.zIndex
+import kotlin.time.Duration.Companion.milliseconds
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import me.lampu.lampcord.shared.api.MediaApi
 import me.lampu.lampcord.shared.model.Emoji
+import me.lampu.lampcord.shared.model.Gif
 import me.lampu.lampcord.shared.model.getDisplayUrl
 import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.getPlatformName
 import org.koin.compose.koinInject
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 
 @Composable
 fun EmojiPicker(
@@ -44,6 +51,8 @@ fun EmojiPicker(
     guildStore: GuildStore = koinInject(),
     navigationStore: NavigationStore = koinInject(),
     emojiStore: EmojiStore = koinInject(),
+    messageStore: MessageStore = koinInject(),
+    mediaApi: MediaApi = koinInject(),
     modifier: Modifier = Modifier,
     onEmojiSelected: (Emoji) -> Unit
 ) {
@@ -110,6 +119,11 @@ fun EmojiPicker(
     val isMobile = getPlatformName() == "android" || getPlatformName() == "ios"
     val searchFocusRequester = remember { FocusRequester() }
 
+    val imeHeight = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
+    val keyboardHeight = remember(imeHeight) { 
+        if (imeHeight > 0.dp) imeHeight else 360.dp
+    }
+
     var searchQuery by remember { mutableStateOf("") }
     
     LaunchedEffect(navigationStore.isEmojiPickerVisible) {
@@ -155,7 +169,13 @@ fun EmojiPicker(
     }
 
     Surface(
-        modifier = if (isMobile) modifier.fillMaxWidth().fillMaxHeight(0.8f) else modifier.width(400.dp).height(500.dp),
+        modifier = if (isMobile) {
+            modifier
+                .fillMaxWidth()
+                .height(keyboardHeight.coerceAtMost(600.dp))
+        } else {
+            modifier.width(400.dp).height(500.dp)
+        },
         shape = if (isMobile) RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp) else RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         shadowElevation = if (isMobile) 0.dp else 8.dp
@@ -200,7 +220,7 @@ fun EmojiPicker(
                     }
                 }
 
-                if (selectedTab == 0) {
+                if (selectedTab == 0 || selectedTab == 1) {
                     TextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
@@ -209,7 +229,13 @@ fun EmojiPicker(
                             .padding(horizontal = 12.dp, vertical = 4.dp)
                             .heightIn(min = 44.dp)
                             .focusRequester(searchFocusRequester),
-                        placeholder = { Text("Find the perfect emoji", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)) },
+                        placeholder = { 
+                            Text(
+                                if (selectedTab == 0) "Find the perfect emoji" else "Search GIFs (Klipy)", 
+                                style = MaterialTheme.typography.bodyMedium, 
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            ) 
+                        },
                         leadingIcon = { Icon(Icons.Filled.Search, null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)) },
                         trailingIcon = if (searchQuery.isNotEmpty()) {
                             {
@@ -262,12 +288,22 @@ fun EmojiPicker(
                                     )
                                 }
                             }
-                            1 -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text("GIFs coming soon", style = MaterialTheme.typography.bodyMedium)
-                            }
-                            2 -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text("Stickers coming soon", style = MaterialTheme.typography.bodyMedium)
-                            }
+                            1 -> GifPicker(
+                                query = searchQuery,
+                                onQueryChange = { searchQuery = it },
+                                mediaApi = mediaApi,
+                                onGifSelected = { gif ->
+                                    messageStore.sendMessageDraft(gif.url)
+                                    navigationStore.isEmojiPickerVisible = false
+                                }
+                            )
+                            2 -> StickerPicker(
+                                mediaApi = mediaApi,
+                                onStickerSelected = { sticker ->
+                                    messageStore.sendMessageDraft("", stickerIds = listOf(sticker.id))
+                                    navigationStore.isEmojiPickerVisible = false
+                                }
+                            )
                         }
                     }
                 }
@@ -321,7 +357,7 @@ fun EmojiGrid(
                                     .size(40.dp)
                                     .clip(RoundedCornerShape(4.dp))
                                     .clickable { 
-                                        val emojiStr = if (emoji.id != null) "${emoji.name}:${emoji.id}" else emoji.name ?: ""
+                                        val emojiStr = if (emoji.id != null) "${emoji.name}:${emoji.id}" else emoji.name.orEmpty()
                                         emojiStore.onEmojiUsed(emojiStr)
                                         onEmojiSelected(emoji) 
                                     }
@@ -334,7 +370,8 @@ fun EmojiGrid(
                                     .size(40.dp)
                                     .clip(RoundedCornerShape(4.dp))
                                     .clickable { 
-                                        val emojiStr = if (emoji.id != null) "${emoji.name}:${emoji.id}" else emoji.name ?: ""
+                                        val emojiName = emoji.name
+                                        val emojiStr = if (emoji.id != null) "${emojiName}:${emoji.id}" else emojiName
                                         emojiStore.onEmojiUsed(emojiStr)
                                         onEmojiSelected(emoji) 
                                     }
@@ -394,16 +431,16 @@ private fun EmojiServerBar(
                             )
                         } else {
                             Icon(
-                                imageVector = when {
-                                    group.id == "frequent" -> Icons.Filled.History
-                                    group.id == "standard_people" -> Icons.Filled.SentimentSatisfied
-                                    group.id == "standard_nature" -> Icons.Filled.EmojiNature
-                                    group.id == "standard_food" -> Icons.Filled.EmojiFoodBeverage
-                                    group.id == "standard_activity" -> Icons.Filled.SportsEsports
-                                    group.id == "standard_travel" -> Icons.Filled.EmojiTransportation
-                                    group.id == "standard_objects" -> Icons.Filled.EmojiObjects
-                                    group.id == "standard_symbols" -> Icons.Filled.EmojiSymbols
-                                    group.id == "standard_flags" -> Icons.Filled.Flag
+                                imageVector = when (group.id) {
+                                    "frequent" -> Icons.Filled.History
+                                    "standard_people" -> Icons.Filled.SentimentSatisfied
+                                    "standard_nature" -> Icons.Filled.EmojiNature
+                                    "standard_food" -> Icons.Filled.EmojiFoodBeverage
+                                    "standard_activity" -> Icons.Filled.SportsEsports
+                                    "standard_travel" -> Icons.Filled.EmojiTransportation
+                                    "standard_objects" -> Icons.Filled.EmojiObjects
+                                    "standard_symbols" -> Icons.Filled.EmojiSymbols
+                                    "standard_flags" -> Icons.Filled.Flag
                                     else -> Icons.Filled.Group
                                 },
                                 contentDescription = group.guildName,

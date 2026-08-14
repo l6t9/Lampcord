@@ -15,11 +15,9 @@ import io.ktor.http.ContentType
 import io.ktor.http.Headers
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
+import io.ktor.http.encodeURLQueryComponent
 import io.ktor.http.isSuccess
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.buildJsonArray
-import kotlinx.serialization.json.add
-import kotlinx.serialization.json.buildJsonObject
 import me.lampu.lampcord.shared.model.AllowedMentions
 import me.lampu.lampcord.shared.model.Message
 import me.lampu.lampcord.shared.model.MessageReference
@@ -245,7 +243,8 @@ class MessageApi(private val rest: RestClient) {
 
     suspend fun addReaction(channelId: String, messageId: String, emoji: String): Boolean {
         return try {
-            val response = rest.httpClient.put("${rest.apiBase}/channels/$channelId/messages/$messageId/reactions/$emoji/@me") {
+            val encodedEmoji = emoji.encodeURLQueryComponent()
+            val response = rest.httpClient.put("${rest.apiBase}/channels/$channelId/messages/$messageId/reactions/$encodedEmoji/@me") {
                 standardHeaders(rest)
             }
             response.status.isSuccess()
@@ -257,13 +256,26 @@ class MessageApi(private val rest: RestClient) {
 
     suspend fun removeReaction(channelId: String, messageId: String, emoji: String): Boolean {
         return try {
-            val response = rest.httpClient.delete("${rest.apiBase}/channels/$channelId/messages/$messageId/reactions/$emoji/@me") {
+            val encodedEmoji = emoji.encodeURLQueryComponent()
+            val response = rest.httpClient.delete("${rest.apiBase}/channels/$channelId/messages/$messageId/reactions/$encodedEmoji/@me") {
                 standardHeaders(rest)
             }
             response.status.isSuccess()
         } catch (e: Exception) {
             Logging.e("Reaction", "Error removing reaction: ${e.message}")
             false
+        }
+    }
+
+    suspend fun getReactionUsers(channelId: String, messageId: String, emoji: String): List<me.lampu.lampcord.shared.model.User> {
+        return try {
+            val response = rest.httpClient.get("${rest.apiBase}/channels/$channelId/messages/$messageId/reactions/$emoji") {
+                standardHeaders(rest)
+            }
+            if (response.status.isSuccess()) response.body() else emptyList()
+        } catch (e: Exception) {
+            Logging.e("Reaction", "Error fetching reaction users: ${e.message}")
+            emptyList()
         }
     }
 

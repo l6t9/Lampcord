@@ -67,6 +67,10 @@ actual fun readInternalFile(name: String): String? {
     return if (file.exists()) file.readText() else null
 }
 
+actual fun showToast(text: String) {
+    println("Toast: $text")
+}
+
 @Composable
 actual fun RequestMediaPermissions(onResult: (Boolean) -> Unit) {
     LaunchedEffect(Unit) {

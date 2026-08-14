@@ -11,21 +11,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.systemBarsPadding
-import androidx.compose.foundation.layout.union
-import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -41,7 +27,11 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,9 +43,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.state.ProfileStore
+import me.lampu.lampcord.shared.state.PresenceStore
+import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.ui.SettingsScreen
 import me.lampu.lampcord.shared.ui.components.AttachmentViewer
+import me.lampu.lampcord.shared.ui.components.AvatarWithDecoration
 import me.lampu.lampcord.shared.ui.components.ChatArea
 import me.lampu.lampcord.shared.ui.components.ChatInputBar
 import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
@@ -73,6 +66,7 @@ import me.lampu.lampcord.shared.ui.components.members.MemberHeader
 import me.lampu.lampcord.shared.ui.components.profiles.ProfileCard
 import me.lampu.lampcord.shared.ui.components.rememberDiscordPanelsState
 import me.lampu.lampcord.shared.ui.icons.Icons
+import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -81,6 +75,11 @@ actual fun MobileBaseplate(
     profileStore: ProfileStore,
     userStore: UserStore
 ) {
+    val presenceStore: PresenceStore = koinInject()
+    val settingsStore: SettingsStore = koinInject()
+    val allUsers by userStore.users.collectAsState()
+    val currentUser by userStore.currentUser.collectAsState()
+
     val panelState = rememberDiscordPanelsState()
     val selectedChannel = navigationStore.selectedChannel
     val selectedThread = navigationStore.selectedThread
@@ -172,27 +171,47 @@ actual fun MobileBaseplate(
                                 TopAppBar(
                                     windowInsets = TopAppBarDefaults.windowInsets.union(WindowInsets.statusBars),
                                     title = {
-                                        Column {
-                                            Text(
-                                                text = if (activeChannel.type == 1) {
-                                                    val recipient = activeChannel.recipients?.firstOrNull()
-                                                    recipient?.let { it.global_name ?: it.username } ?: "Chat"
-                                                } else activeChannel.name ?: "Chat",
-                                                style = MaterialTheme.typography.titleMedium,
-                                                fontWeight = FontWeight.Bold,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis,
-                                                modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 3000, velocity = 30.dp)
-                                            )
-                                            if (activeChannel.topic?.isNotBlank() == true) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            if (activeChannel.type == 1) {
+                                                val recipientId = activeChannel.recipients?.firstOrNull()?.id ?: activeChannel.recipient_ids?.firstOrNull()
+                                                val recipient = recipientId?.let { allUsers[it] } ?: activeChannel.recipients?.firstOrNull()
+                                                
+                                                if (recipient != null) {
+                                                    Box(modifier = Modifier.size(24.dp)) {
+                                                        AvatarWithDecoration(
+                                                            avatarUrl = recipient.avatar?.let { "https://cdn.discordapp.com/avatars/${recipient.id}/$it.png?size=64" },
+                                                            decorationData = recipient.avatar_decoration_data,
+                                                            size = 24.dp,
+                                                            status = presenceStore.getUserStatus(recipient.id, currentUser?.id, settingsStore.userSettings?.status)
+                                                        )
+                                                    }
+                                                    Spacer(Modifier.width(12.dp))
+                                                }
+                                            }
+
+                                            Column {
                                                 Text(
-                                                    text = activeChannel.topic,
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    text = if (activeChannel.type == 1) {
+                                                        val recipientId = activeChannel.recipients?.firstOrNull()?.id ?: activeChannel.recipient_ids?.firstOrNull()
+                                                        val recipient = recipientId?.let { allUsers[it] } ?: activeChannel.recipients?.firstOrNull()
+                                                        recipient?.let { it.global_name ?: it.username } ?: "Chat"
+                                                    } else activeChannel.name ?: "Chat",
+                                                    style = MaterialTheme.typography.titleMedium,
+                                                    fontWeight = FontWeight.Bold,
                                                     maxLines = 1,
                                                     overflow = TextOverflow.Ellipsis,
                                                     modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 3000, velocity = 30.dp)
                                                 )
+                                                if (activeChannel.topic?.isNotBlank() == true) {
+                                                    Text(
+                                                        text = activeChannel.topic,
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis,
+                                                        modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 3000, velocity = 30.dp)
+                                                    )
+                                                }
                                             }
                                         }
                                     },

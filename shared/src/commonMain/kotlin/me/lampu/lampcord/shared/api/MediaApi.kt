@@ -54,6 +54,23 @@ class MediaApi(private val rest: RestClient) {
         }
     }
 
+    suspend fun getTrendingGifCategory(category: String, locale: String = "en-US", limit: Int = 50): List<Gif> {
+        return try {
+            val response = rest.httpClient.get("${rest.apiBase}/gifs/trending-gifs") {
+                standardHeaders(rest)
+                parameter("q", category)
+                parameter("provider", "klipy")
+                parameter("locale", locale)
+                parameter("media_format", "mp4")
+                parameter("limit", limit)
+            }
+            if (response.status.isSuccess()) response.body() else emptyList()
+        } catch (e: Exception) {
+            Logging.e("Gifs", "Error fetching trending GIF category: ${e.message}")
+            emptyList()
+        }
+    }
+
     suspend fun searchGifs(query: String, locale: String = "en-US", limit: Int = 50): List<Gif> {
         return try {
             val response = rest.httpClient.get("${rest.apiBase}/gifs/search") {

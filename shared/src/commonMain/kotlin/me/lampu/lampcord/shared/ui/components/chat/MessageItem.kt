@@ -77,6 +77,7 @@ import me.lampu.lampcord.shared.ui.components.ContextMenuItem
 import me.lampu.lampcord.shared.ui.components.DiscordMarkdownText
 import me.lampu.lampcord.shared.ui.components.EmojiPicker
 import me.lampu.lampcord.shared.ui.components.AsyncImage
+import me.lampu.lampcord.shared.ui.components.chat.ReactionPickerSheet
 import me.lampu.lampcord.shared.ui.components.ForwardedMessage
 import me.lampu.lampcord.shared.ui.components.RoleIcon
 import me.lampu.lampcord.shared.ui.components.UserTagView
@@ -86,6 +87,7 @@ import me.lampu.lampcord.shared.ui.components.messagebody.ReactionsView
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.kit.UserAvatar
 import me.lampu.lampcord.shared.utils.EmojiIndex
+import me.lampu.lampcord.shared.utils.getPlatformName
 import me.lampu.lampcord.shared.utils.setClipboardText
 import kotlin.time.Instant
 import org.koin.compose.koinInject
@@ -818,22 +820,35 @@ fun MessageItem(
         }
 
         if (showReactionPicker) {
-            Popup(
-                alignment = Alignment.TopEnd,
-                offset = IntOffset(0, (-500).dp.value.toInt()), 
-                onDismissRequest = { showReactionPicker = false },
-                properties = PopupProperties(focusable = true)
-            ) {
-                EmojiPicker(
-                    userStore = userStore,
-                    guildStore = guildStore,
-                    navigationStore = navigationStore
-                ) { emoji ->
-                    val emojiStr = if (emoji.id != null) "${emoji.name}:${emoji.id}" else emoji.name ?: ""
-                    scope.launch {
-                        messageApi.addReaction(message.channel_id, message.id, emojiStr)
+            val isMobile = getPlatformName() == "android" || getPlatformName() == "ios"
+            if (isMobile) {
+                ReactionPickerSheet(
+                    onDismiss = { showReactionPicker = false },
+                    onEmojiSelected = { emoji ->
+                        val emojiStr = if (emoji.id != null) "${emoji.name}:${emoji.id}" else emoji.name ?: ""
+                        scope.launch {
+                            messageApi.addReaction(message.channel_id, message.id, emojiStr)
+                        }
                     }
-                    showReactionPicker = false
+                )
+            } else {
+                Popup(
+                    alignment = Alignment.TopEnd,
+                    offset = IntOffset(0, (-500).dp.value.toInt()),
+                    onDismissRequest = { showReactionPicker = false },
+                    properties = PopupProperties(focusable = true)
+                ) {
+                    EmojiPicker(
+                        userStore = userStore,
+                        guildStore = guildStore,
+                        navigationStore = navigationStore
+                    ) { emoji ->
+                        val emojiStr = if (emoji.id != null) "${emoji.name}:${emoji.id}" else emoji.name ?: ""
+                        scope.launch {
+                            messageApi.addReaction(message.channel_id, message.id, emojiStr)
+                        }
+                        showReactionPicker = false
+                    }
                 }
             }
         }
