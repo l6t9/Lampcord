@@ -20,3 +20,5 @@ build/
 # Packaging outputs
 /dist/
 /tools/
+
+**/__pycache__
