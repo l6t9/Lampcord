@@ -123,7 +123,7 @@ val storeModule = module {
             navigationStore = get(), entityStore = get(), gatewayManager = get(), scope = get()
         )
     }
-    single {
+    single(createdAtStart = true) {
         SessionManager(
             gatewayManager = get(), voiceGatewayManager = get(), authApi = get(), navigationStore = get(),
             tokenStore = get(), userStore = get(), gatewayHandler = get(), entityStore = get(),

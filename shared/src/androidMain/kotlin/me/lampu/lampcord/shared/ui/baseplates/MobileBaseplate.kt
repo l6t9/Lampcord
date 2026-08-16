@@ -25,6 +25,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -35,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -218,22 +220,66 @@ actual fun MobileBaseplate(
                                     navigationIcon = {
                                         if (!navigationStore.isBubble) {
                                             val isThread = navigationStore.selectedThread != null
-                                            IconButton(onClick = { 
-                                                if (isThread) {
+                                            if (isThread) {
+                                                IconButton(onClick = {
                                                     navigationStore.selectedThread = null
-                                                } else {
-                                                    panelState.openStart() 
+                                                }) {
+                                                    Icon(
+                                                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                                        contentDescription = "Back"
+                                                    )
                                                 }
-                                            }) {
-                                                Icon(
-                                                    imageVector = if (isThread) Icons.AutoMirrored.Filled.ArrowBack else Icons.Filled.Menu,
-                                                    contentDescription = if (isThread) "Back" else "Channels"
-                                                )
+                                            } else if (activeChannel.type == 1 || activeChannel.type == 3 || activeChannel.guild_id == null) {
+                                                IconButton(onClick = { panelState.openStart() }) {
+                                                    Icon(
+                                                        imageVector = Icons.Filled.Menu,
+                                                        contentDescription = "Channels"
+                                                    )
+                                                }
+                                            } else {
+                                                val channelIcon = when (activeChannel.type) {
+                                                    15 -> Icons.Rounded.Forum
+                                                    2, 13 -> Icons.AutoMirrored.Filled.VolumeUp
+                                                    5 -> Icons.Filled.Campaign
+                                                    else -> Icons.Filled.Tag
+                                                }
+                                                Box(
+                                                    modifier = Modifier
+                                                        .padding(start = 8.dp)
+                                                        .size(36.dp)
+                                                        .clip(RoundedCornerShape(10.dp))
+                                                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                                                        .clickable { panelState.openStart() },
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Icon(
+                                                        imageVector = channelIcon,
+                                                        contentDescription = "Channels",
+                                                        modifier = Modifier.size(20.dp),
+                                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    )
+                                                }
                                             }
                                         }
                                     },
                                     actions = {
                                         if (!navigationStore.isBubble && (activeChannel.guild_id != null || activeChannel.type == 1 || activeChannel.type == 3)) {
+                                            IconButton(onClick = { navigationStore.isSearchVisible = true }) {
+                                                Icon(
+                                                    imageVector = Icons.Filled.Search,
+                                                    contentDescription = "Search",
+                                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                            if (activeChannel.type != 2 && activeChannel.type != 13) {
+                                                IconButton(onClick = { navigationStore.isPinsVisible = true }) {
+                                                    Icon(
+                                                        imageVector = Icons.Filled.PushPin,
+                                                        contentDescription = "Pins",
+                                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    )
+                                                }
+                                            }
                                             IconButton(onClick = { panelState.openEnd() }) {
                                                 Icon(
                                                     imageVector = if (activeChannel.type == 1) Icons.Filled.Person else Icons.Filled.Group,
@@ -374,21 +420,43 @@ actual fun MobileBaseplate(
 
         // User Profile Sheet
         if (profileStore.isProfileLoading || profileStore.selectedProfile != null) {
+            val isProfileExpanded = profileStore.isProfileExpanded
+            val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+            LaunchedEffect(isProfileExpanded) {
+                if (isProfileExpanded) sheetState.expand()
+            }
+
             ModalBottomSheet(
                 onDismissRequest = {
                     profileStore.selectedProfile = null
+                    profileStore.isProfileExpanded = false
                     profileStore.isProfileLoading = false
                 },
-                shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
-                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                dragHandle = {
-                    Box(
-                        modifier = Modifier
-                            .padding(vertical = 12.dp)
-                            .size(width = 40.dp, height = 4.dp)
-                            .clip(RoundedCornerShape(2.dp))
-                            .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)),
-                    )
+                sheetState = sheetState,
+                shape = if (isProfileExpanded) {
+                    RoundedCornerShape(0.dp)
+                } else {
+                    RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)
+                },
+                containerColor = if (isProfileExpanded) {
+                    Color.Transparent
+                } else {
+                    MaterialTheme.colorScheme.surfaceContainerLow
+                },
+                contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
+                dragHandle = if (isProfileExpanded) {
+                    {}
+                } else {
+                    {
+                        Box(
+                            modifier = Modifier
+                                .padding(top = 8.dp, bottom = 8.dp)
+                                .size(width = 36.dp, height = 4.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)),
+                        )
+                    }
                 }
             ) {
                 if (profileStore.selectedProfile != null) {
@@ -396,14 +464,17 @@ actual fun MobileBaseplate(
                         profile = profileStore.selectedProfile!!,
                         modifier = Modifier.fillMaxWidth().wrapContentHeight(),
                         showBorder = false,
-                        isExpanded = true
+                        isExpanded = isProfileExpanded,
+                        onExpand = { profileStore.isProfileExpanded = true }
                     )
                 } else {
                     Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
                         ContainedLoadingIndicator()
                     }
                 }
-                Spacer(Modifier.navigationBarsPadding().height(16.dp))
+                if (!isProfileExpanded) {
+                    Spacer(Modifier.navigationBarsPadding())
+                }
             }
         }
 

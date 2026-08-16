@@ -14,6 +14,7 @@ import androidx.core.app.NotificationCompat
 import me.lampu.lampcord.shared.settings.Settings
 
 import android.os.UserManager
+import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.state.SessionManager
 import org.koin.core.context.GlobalContext
 
@@ -47,8 +48,15 @@ class GatewayForegroundService : Service() {
             if (token.isNotBlank()) {
                 val koin = GlobalContext.getOrNull()
                 if (koin != null) {
+                    val navigationStore = koin.getOrNull<NavigationStore>()
                     val sessionManager = koin.getOrNull<SessionManager>()
-                    sessionManager?.connect(token)
+                    // Keep the existing gateway connection alive instead of tearing it
+                    // down and reconnecting (matches the reference client behavior).
+                    if (sessionManager != null) {
+                        if (navigationStore == null || !navigationStore.isConnected) {
+                            sessionManager.connect(token)
+                        }
+                    }
                 }
             }
         } catch (e: Exception) {

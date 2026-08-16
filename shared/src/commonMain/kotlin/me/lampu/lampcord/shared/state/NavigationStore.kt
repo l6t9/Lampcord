@@ -99,6 +99,7 @@ class NavigationStore(
         isChannelsAndRolesVisible = false
         isServerSettingsVisible = false
         lastRequestedKey = null
+        Settings.shared.clearLastGuild()
         
         scope.launch {
             // Wait for private channels to be populated if they are empty
@@ -131,7 +132,18 @@ class NavigationStore(
         isFriendsSelected = true
         isChannelsAndRolesVisible = false
         isServerSettingsVisible = false
+        Settings.shared.clearLastGuild()
         Settings.shared.setLastChannel("home", "friends")
+    }
+
+    fun restoreLastState(subscribeCallback: (String) -> Unit) {
+        val lastGuildId = Settings.shared.getLastGuild()
+        val guild = lastGuildId?.let { id -> guildStore.guilds.value.find { it.id == id } }
+        if (guild != null) {
+            selectGuild(guild, subscribeCallback = subscribeCallback)
+        } else {
+            selectHome()
+        }
     }
 
     fun selectGuild(guild: Guild, targetChannelId: String? = null, subscribeCallback: (String) -> Unit) {
@@ -141,8 +153,13 @@ class NavigationStore(
         isChannelsAndRolesVisible = false
         isServerSettingsVisible = false
         lastRequestedKey = null
+        Settings.shared.setLastGuild(guild.id)
         guildLoadingJob = scope.launch {
             subscribeCallback(guild.id)
+            userStore.currentUser.value?.id?.let { userId ->
+                val member = guildApi.getGuildMember(guild.id, userId)
+                if (member != null) userStore.cacheMember(guild.id, userId, member)
+            }
             val guildChannels = channelApi.getGuildChannels(guild.id)
             if (guildChannels.isNotEmpty()) {
                 val filtered = guildChannels.filter { it.type in listOf(0, 1, 2, 3, 4, 5, 13, 15, 16) }.sortedBy { it.position }

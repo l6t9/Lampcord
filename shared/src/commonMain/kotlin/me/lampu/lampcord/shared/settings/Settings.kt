@@ -71,6 +71,19 @@ class Settings(private val settings: KmpSettings) {
         settings["last_channel_$guildId"] = channelId
     }
 
+    fun getLastGuild(): String? {
+        val id = settings.getString("last_guild", "")
+        return if (id.isBlank()) null else id
+    }
+
+    fun setLastGuild(guildId: String) {
+        settings["last_guild"] = guildId
+    }
+
+    fun clearLastGuild() {
+        settings.remove("last_guild")
+    }
+
     private inline fun <reified T : Enum<T>> preferenceEnum(key: String, defaultValue: T): ReadWriteProperty<Any?, T> =
         object : ReadWriteProperty<Any?, T> {
             override fun getValue(thisRef: Any?, property: KProperty<*>): T {

@@ -356,11 +356,11 @@ fun EmojiGrid(
                                 modifier = Modifier
                                     .size(40.dp)
                                     .clip(RoundedCornerShape(4.dp))
-                                    .clickable { 
-                                        val emojiStr = if (emoji.id != null) "${emoji.name}:${emoji.id}" else emoji.name.orEmpty()
-                                        emojiStore.onEmojiUsed(emojiStr)
-                                        onEmojiSelected(emoji) 
-                                    }
+.clickable { 
+                                                        val emojiStr = if (emoji.id != null) "${emoji.name}:${emoji.id}" else ":${emoji.name}:"
+                                                        emojiStore.onEmojiUsed(emojiStr)
+                                                        onEmojiSelected(emoji) 
+                                                    }
                                     .padding(4.dp),
                                 filterQuality = FilterQuality.Medium
                             )
@@ -369,12 +369,12 @@ fun EmojiGrid(
                                 modifier = Modifier
                                     .size(40.dp)
                                     .clip(RoundedCornerShape(4.dp))
-                                    .clickable { 
-                                        val emojiName = emoji.name
-                                        val emojiStr = if (emoji.id != null) "${emojiName}:${emoji.id}" else emojiName
-                                        emojiStore.onEmojiUsed(emojiStr)
-                                        onEmojiSelected(emoji) 
-                                    }
+.clickable { 
+                                                        val emojiName = emoji.name
+                                                        val emojiStr = if (emoji.id != null) "${emojiName}:${emoji.id}" else ":${emojiName}:"
+                                                        emojiStore.onEmojiUsed(emojiStr)
+                                                        onEmojiSelected(emoji) 
+                                                    }
                                     .padding(4.dp),
                                 contentAlignment = Alignment.Center
                             ) {

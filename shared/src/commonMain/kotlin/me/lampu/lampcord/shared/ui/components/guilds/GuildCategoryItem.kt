@@ -64,8 +64,9 @@ fun GuildCategoryItem(
             if (showHidden) return@filter true
             if (g == null) return@filter true
 
-            val effectiveMember = member ?: me.lampu.lampcord.shared.model.Member(user = u)
-            PermissionHelper.canViewChannel(effectiveMember, g, channel, currentUserId)
+            val currentMember = member
+            if (currentMember == null) return@filter true
+            PermissionHelper.canViewChannel(currentMember, g, channel, currentUserId)
         }.sortedWith(compareBy<Channel> { 
             // Put voice and stage channels at the bottom (priority 1), others at the top (priority 0)
             if (it.type == 2 || it.type == 13) 1 else 0 

@@ -112,9 +112,10 @@ fun GuildChannelList(
                 else allGuildChannels.values.filter { channel ->
                     if (channel.guild_id != g.id) return@filter false
                     if (showHidden) return@filter true
-                    
-                    val effectiveMember = member ?: me.lampu.lampcord.shared.model.Member(user = u)
-                    PermissionHelper.canViewChannel(effectiveMember, g, channel, u?.id)
+
+                    val currentMember = member
+                    if (currentMember == null) return@filter true
+                    PermissionHelper.canViewChannel(currentMember, g, channel, u?.id)
                 }
             }
         }

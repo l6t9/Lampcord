@@ -114,8 +114,9 @@ fun ChatInputBar(
             val user = currentUser
             if (user == null) true
             else if (guild == null) true // DMs
+            else if (member == null) true // Member not loaded yet; don't block sending
             else me.lampu.lampcord.shared.utils.PermissionHelper.hasPermission(
-                member ?: Member(user = user),
+                member,
                 guild,
                 channel,
                 Permission.SEND_MESSAGES,

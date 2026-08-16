@@ -57,7 +57,7 @@ fun MainScreen(
                         )
                     }
                 }
-                isConnecting -> {
+                isConnecting || me.lampu.lampcord.shared.settings.Settings.shared.discordToken.isNotBlank() -> {
                     Box(
                         modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface),
                         contentAlignment = Alignment.Center

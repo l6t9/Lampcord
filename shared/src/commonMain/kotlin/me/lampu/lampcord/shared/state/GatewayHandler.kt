@@ -97,7 +97,7 @@ class GatewayHandler(
                 messageStore.handleConnected()
 
                 if (navigationStore.selectedGuild == null && navigationStore.selectedChannel == null && !navigationStore.isFriendsSelected) {
-                    navigationStore.selectHome()
+                    navigationStore.restoreLastState { gatewayManager.sendSubscription(it) }
                 }
 
                 memberListStore.resubscribe()

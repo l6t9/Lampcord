@@ -50,6 +50,7 @@ fun DiscordMarkdownText(
     userStore: UserStore = koinInject(),
     profileStore: ProfileStore = koinInject()
 ) {
+    remember { EmojiIndex.initialize() }
     var revealedSpoilers by remember { mutableStateOf(setOf<Int>()) }
     val primaryColor = MaterialTheme.colorScheme.primary
     
