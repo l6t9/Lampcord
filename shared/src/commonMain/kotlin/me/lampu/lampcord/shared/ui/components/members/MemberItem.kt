@@ -1,6 +1,7 @@
 package me.lampu.lampcord.shared.ui.components.members
 
 import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -38,6 +39,7 @@ import me.lampu.lampcord.shared.state.MessageStore
 import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.state.PresenceStore
 import me.lampu.lampcord.shared.state.ProfileStore
+import me.lampu.lampcord.shared.state.RelationshipStore
 import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.ui.components.AsyncImage
@@ -78,11 +80,19 @@ fun MemberItem(
     val roleColor = remember(member.roles, navigationStore.selectedGuild) {
         val guild = navigationStore.selectedGuild ?: return@remember Color.Unspecified
         val memberRoles = member.roles.mapNotNull { roleId -> guild.roles.find { it.id == roleId } }
-        val highestRole = memberRoles.maxByOrNull { it.position }
-        if (highestRole != null && highestRole.color != 0) Color(highestRole.color or 0xFF000000.toInt()) else Color.Unspecified
+        val colorRole = memberRoles.filter { it.color != 0 }.maxByOrNull { it.position }
+        if (colorRole != null) Color(colorRole.color or 0xFF000000.toInt()) else Color.Unspecified
     }
 
-    val contextMenuItems = remember(displayUser, settingsStore.userSettings) {
+    val relationshipStore = koinInject<RelationshipStore>()
+    val relationships by relationshipStore.relationships.collectAsState()
+    val currentUserId = userStore.currentUser.collectAsState().value?.id
+    val relationshipType = remember(relationships, displayUser.id) {
+        relationships.find { (it.id ?: it.user?.id ?: it.user_id) == displayUser.id }?.type
+    }
+
+    val contextMenuItems = remember(displayUser, settingsStore.userSettings, relationshipType, currentUserId) {
+        val isMe = displayUser.id == currentUserId
         val items = mutableListOf(
             ContextMenuItem("Profile", Icons.Filled.AccountCircle) { profileStore.showProfile(displayUser.id, guildId) },
             ContextMenuItem("Mention", Icons.Rounded.AlternateEmail) {
@@ -90,8 +100,29 @@ fun MemberItem(
                 val current = messageStore.draftMessages[channelId] ?: ""
                 messageStore.draftMessages[channelId] = "$current <@${displayUser.id}> "
             },
-            ContextMenuItem("Message", Icons.Filled.Share) { /* TODO */ }
+            ContextMenuItem("Message", Icons.Filled.Chat) {
+                navigationStore.openDm(displayUser.id)
+            }
         )
+        if (!isMe) {
+            when (relationshipType) {
+                1 -> items.add(ContextMenuItem("Remove Friend", Icons.Filled.PersonRemove) {
+                    relationshipStore.removeFriend(displayUser.id)
+                })
+                2 -> items.add(ContextMenuItem("Unblock", Icons.Filled.Block) {
+                    relationshipStore.unblockUser(displayUser.id)
+                })
+                3 -> items.add(ContextMenuItem("Accept Friend Request", Icons.Filled.PersonAdd) {
+                    relationshipStore.addFriend(displayUser.id)
+                })
+                else -> items.add(ContextMenuItem("Add Friend", Icons.Filled.PersonAdd) {
+                    relationshipStore.addFriend(displayUser.id)
+                })
+            }
+            items.add(ContextMenuItem("Block", Icons.Filled.Block, color = Color.Red) {
+                relationshipStore.blockUser(displayUser.id)
+            })
+        }
         if (settingsStore.userSettings?.developer_mode == true) {
             items.add(ContextMenuItem("Copy User ID", Icons.Filled.Dns) { setClipboardText(displayUser.id) })
         }
@@ -168,7 +199,10 @@ fun MemberItem(
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
                             UsernameView(
                                 name = member.nick ?: displayUser.global_name ?: displayUser.username ?: "Unknown User",
                                 style = member.display_name_styles ?: displayUser.display_name_styles,
@@ -181,10 +215,9 @@ fun MemberItem(
                                 ignoreColors = true
                             )
                             displayUser.primary_guild?.let {
-                                Spacer(Modifier.width(4.dp))
                                 ClanTagView(it)
                             }
-                            UserTagView(displayUser, modifier = Modifier.padding(start = 4.dp))
+                            UserTagView(displayUser)
                             
                             val guild = navigationStore.selectedGuild
                             if (displayUser.id == guild?.owner_id) {
@@ -198,7 +231,7 @@ fun MemberItem(
                             }
                         }
                         
-                        val activities = member.presence?.activities ?: emptyList()
+                        val activities = (member.presence ?: presence)?.activities ?: emptyList()
                         val customStatus = activities.find { it.type == 4 }
                         val otherActivity = activities.find { it.type != 4 }
                         

@@ -77,6 +77,7 @@ import me.lampu.lampcord.shared.ui.components.settings.SettingsSearchEntry
 import me.lampu.lampcord.shared.ui.components.settings.SettingsSearchField
 import me.lampu.lampcord.shared.ui.components.settings.SettingsSearchResults
 import me.lampu.lampcord.shared.ui.components.settings.SettingsSubScreen
+import me.lampu.lampcord.shared.ui.components.PlatformBackHandler
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.settings.AccessibilitySettings
 import me.lampu.lampcord.shared.ui.settings.AccountSettings
@@ -116,6 +117,14 @@ fun SettingsScreen(
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var showLogoutConfirmation by remember { mutableStateOf(false) }
     val uriHandler = LocalUriHandler.current
+
+    PlatformBackHandler(enabled = selectedCategory != null || searchQuery.isNotEmpty()) {
+        if (searchQuery.isNotEmpty()) {
+            searchQuery = ""
+        } else {
+            selectedCategory = null
+        }
+    }
 
     if (showLogoutConfirmation) {
         AlertDialog(

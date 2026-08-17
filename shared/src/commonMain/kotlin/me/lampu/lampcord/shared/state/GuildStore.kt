@@ -162,6 +162,59 @@ class GuildStore(
         }
     }
 
+    fun muteChannelForDuration(guildId: String, channelId: String, duration: Duration?) {
+        val effectiveGuildId = if (guildId == "@me") null else guildId
+        val guildSettings = userGuildSettingsStore.userGuildSettings.value[effectiveGuildId]
+        val currentOverrides = guildSettings?.channel_overrides?.toMutableList() ?: mutableListOf()
+        val index = currentOverrides.indexOfFirst { it.channel_id == channelId }
+        val muteConfig = if (duration != null) {
+            MuteConfig(end_time = (Clock.System.now() + duration).toString())
+        } else null
+
+        val newOverride = if (index != -1) {
+            currentOverrides[index].copy(muted = true, mute_config = muteConfig)
+        } else {
+            ChannelOverride(channel_id = channelId, muted = true, mute_config = muteConfig)
+        }
+        if (index != -1) currentOverrides[index] = newOverride else currentOverrides.add(newOverride)
+
+        scope.launch {
+            guildApi.updateUserGuildSettings(guildId, UserGuildSettings.Partial(channel_overrides = currentOverrides))
+        }
+    }
+
+    fun unmuteChannel(guildId: String, channelId: String) {
+        val effectiveGuildId = if (guildId == "@me") null else guildId
+        val guildSettings = userGuildSettingsStore.userGuildSettings.value[effectiveGuildId] ?: return
+        val currentOverrides = guildSettings.channel_overrides.toMutableList()
+        val index = currentOverrides.indexOfFirst { it.channel_id == channelId }
+        if (index == -1) return
+
+        currentOverrides[index] = currentOverrides[index].copy(muted = false, mute_config = null)
+
+        scope.launch {
+            guildApi.updateUserGuildSettings(guildId, UserGuildSettings.Partial(channel_overrides = currentOverrides))
+        }
+    }
+
+    fun setChannelNotificationMode(guildId: String, channelId: String, mode: Int) {
+        val effectiveGuildId = if (guildId == "@me") null else guildId
+        val guildSettings = userGuildSettingsStore.userGuildSettings.value[effectiveGuildId]
+        val currentOverrides = guildSettings?.channel_overrides?.toMutableList() ?: mutableListOf()
+        val index = currentOverrides.indexOfFirst { it.channel_id == channelId }
+
+        val newOverride = if (index != -1) {
+            currentOverrides[index].copy(message_notifications = mode)
+        } else {
+            ChannelOverride(channel_id = channelId, message_notifications = mode)
+        }
+        if (index != -1) currentOverrides[index] = newOverride else currentOverrides.add(newOverride)
+
+        scope.launch {
+            guildApi.updateUserGuildSettings(guildId, UserGuildSettings.Partial(channel_overrides = currentOverrides))
+        }
+    }
+
     fun setServerDMsAllowed(guildId: String, allowed: Boolean) {
         scope.launch {
             guildApi.updateUserGuildSettings(guildId, UserGuildSettings.Partial(message_notifications = if (allowed) 0 else 2))

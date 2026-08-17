@@ -51,6 +51,7 @@ import me.lampu.lampcord.shared.ui.components.ThreadPanel
 import me.lampu.lampcord.shared.ui.components.VoiceArea
 import me.lampu.lampcord.shared.ui.components.chat.SearchScreen
 import me.lampu.lampcord.shared.ui.components.guilds.ChannelsAndRoles
+import me.lampu.lampcord.shared.ui.components.chat.ChannelSettingsScreen
 import me.lampu.lampcord.shared.ui.components.guilds.ServerSettings
 import me.lampu.lampcord.shared.ui.components.profiles.ProfileCard
 import me.lampu.lampcord.shared.ui.components.profiles.UserProfileDialog
@@ -141,7 +142,7 @@ fun DesktopBaseplate(
 
             // Member List / Profile (End Panel)
             val showMemberList = activeChannel?.guild_id != null && activeChannel.type != 15
-            val showDMProfile = activeChannel?.type == 1
+            val showDMProfile = activeChannel?.type == 1 && navigationStore.isProfilePanelVisible
 
             if (navigationStore.isThreadPanelVisible) {
                 Surface(
@@ -230,6 +231,10 @@ fun DesktopBaseplate(
 
         if (navigationStore.isServerSettingsVisible) {
             ServerSettings(onDismiss = { navigationStore.isServerSettingsVisible = false })
+        }
+
+        if (navigationStore.channelSettingsChannel != null) {
+            ChannelSettingsScreen(onDismiss = { navigationStore.closeChannelSettings() })
         }
 
         if (navigationStore.isQuickSwitcherVisible) {

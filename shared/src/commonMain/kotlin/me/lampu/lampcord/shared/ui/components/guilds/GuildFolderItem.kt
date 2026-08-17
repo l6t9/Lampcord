@@ -131,9 +131,11 @@ fun GuildFolderItem(
     guildStore: GuildStore = koinInject(),
     readStateStore: ReadStateStore = koinInject(),
     userGuildSettingsStore: UserGuildSettingsStore = koinInject(),
+    settingsStore: SettingsStore = koinInject(),
     gatewayManager: GatewayManager = koinInject()
 ) {
     var expanded by remember { mutableStateOf(false) }
+    var showFolderSettings by remember { mutableStateOf(false) }
     val folderColor = folder.color?.let { Color(it.toLong() or 0xFF000000L) } ?: MaterialTheme.colorScheme.primary
     
     val guildIds = remember(folder.guild_ids) { folder.guild_ids.mapNotNull { el -> el.jsonPrimitive.contentOrNull } }
@@ -147,6 +149,17 @@ fun GuildFolderItem(
     }
     val mentionCount by remember(folder, readStates, userGuildSettings) {
         derivedStateOf { guildStore.getFolderMentionCount(folder) }
+    }
+
+    val contextMenuItems = remember(folder, guildIds) {
+        listOf(
+            ContextMenuItem("Mark as Read", Icons.Filled.Check) {
+                guildIds.forEach { guildStore.markGuildAsRead(it) }
+            },
+            ContextMenuItem("Folder Settings", Icons.Filled.Settings) {
+                showFolderSettings = true
+            }
+        )
     }
 
     val surfaceColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
@@ -173,7 +186,7 @@ fun GuildFolderItem(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(FolderIconSize),
+                .height(FolderIconSize + 8.dp),
             contentAlignment = Alignment.Center
         ) {
             val showIndicator = (!expanded && isAnyChildSelected) || (isUnread && !expanded)
@@ -203,31 +216,33 @@ fun GuildFolderItem(
                 content = tooltipText(folder.name ?: "Folder"),
                 interactionSource = interactionSource,
                 anchor = {
-                    Box(
-                        modifier = Modifier
-                            .size(FolderIconSize)
-                            .clickable(
-                                interactionSource = interactionSource,
-                                indication = null,
-                                onClick = { expanded = !expanded }
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
+                    ContextMenu(items = contextMenuItems) {
                         Box(
                             modifier = Modifier
-                                .matchParentSize()
-                                .clip(CircleShape)
-                                .background(folderBgColor)
-                        )
-                        if (expanded) {
-                            Icon(
-                                imageVector = Icons.Filled.FolderOpen,
-                                contentDescription = folder.name ?: "Folder",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(28.dp)
+                                .size(FolderIconSize)
+                                .clickable(
+                                    interactionSource = interactionSource,
+                                    indication = null,
+                                    onClick = { expanded = !expanded }
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .clip(CircleShape)
+                                    .background(folderBgColor)
                             )
-                        } else {
-                            FolderPreviewGrid(folder)
+                            if (expanded) {
+                                Icon(
+                                    imageVector = Icons.Filled.FolderOpen,
+                                    contentDescription = folder.name ?: "Folder",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            } else {
+                                FolderPreviewGrid(folder)
+                            }
                         }
                     }
                 }
@@ -241,17 +256,19 @@ fun GuildFolderItem(
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
                             .offset(x = 3.dp, y = 3.dp)
-                            .height(18.dp)
-                            .widthIn(min = 18.dp),
-                        shadowElevation = 2.dp
+                            .height(20.dp)
+                            .widthIn(min = 20.dp),
+                        shadowElevation = 2.dp,
+                        border = androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.surface)
                     ) {
-                        Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 2.dp)) {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 5.dp)) {
                             Text(
-                                text = mentionCount.toString(),
+                                text = if (mentionCount > 99) "99+" else mentionCount.toString(),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onError,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 11.sp,
+                                maxLines = 1
                             )
                         }
                     }
@@ -286,5 +303,12 @@ fun GuildFolderItem(
                 }
             }
         }
+    }
+
+    if (showFolderSettings) {
+        FolderSettingsDialog(
+            folder = folder,
+            onDismiss = { showFolderSettings = false }
+        )
     }
 }

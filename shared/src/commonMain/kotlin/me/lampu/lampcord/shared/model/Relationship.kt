@@ -7,5 +7,6 @@ data class Relationship(
     val id: String? = null,
     val type: Int? = null,
     val user: User? = null,
-    val user_id: String? = null
+    val user_id: String? = null,
+    val nickname: String? = null
 )

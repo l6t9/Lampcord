@@ -26,7 +26,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -36,7 +35,6 @@ import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -72,6 +70,7 @@ import me.lampu.lampcord.shared.model.PollAnswer
 import me.lampu.lampcord.shared.model.PollMedia
 import me.lampu.lampcord.shared.state.MessageStore
 import me.lampu.lampcord.shared.ui.components.AsyncImage
+import me.lampu.lampcord.shared.ui.components.AdaptiveModalBottomSheet
 import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
 import me.lampu.lampcord.shared.ui.components.VideoThumbnail
 import me.lampu.lampcord.shared.ui.icons.Icons
@@ -117,14 +116,9 @@ fun MediaPicker(
     )
 
     if (isMobile) {
-        ModalBottomSheet(
+        AdaptiveModalBottomSheet(
             onDismissRequest = { animatedDismiss() },
-            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false),
-            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-            dragHandle = {
-                BottomSheetDefaults.DragHandle()
-            }
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 MediaPickerContent(

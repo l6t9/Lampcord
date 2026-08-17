@@ -64,6 +64,7 @@ import me.lampu.lampcord.shared.model.Member
 import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.ui.components.AsyncImage
+import me.lampu.lampcord.shared.ui.components.PlatformBackHandler
 import me.lampu.lampcord.shared.ui.components.guilds.settings.RoleEditor
 import me.lampu.lampcord.shared.ui.components.guilds.settings.RoleEditorSubScreen
 import me.lampu.lampcord.shared.ui.components.guilds.settings.ServerAuditLog
@@ -143,6 +144,14 @@ fun ServerSettings(
 
     var selectedCategory by remember { mutableStateOf<ServerSettingsSection?>(null) }
     var selectedRole by remember { mutableStateOf<DiscordRole?>(null) }
+
+    PlatformBackHandler(enabled = selectedRole != null || selectedCategory != null) {
+        if (selectedRole != null) {
+            selectedRole = null
+        } else {
+            selectedCategory = null
+        }
+    }
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val isCompact = maxWidth < 600.dp

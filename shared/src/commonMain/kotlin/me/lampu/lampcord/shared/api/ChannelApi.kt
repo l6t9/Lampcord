@@ -147,6 +147,38 @@ class ChannelApi(private val rest: RestClient) {
         }
     }
 
+    suspend fun openDm(userId: String): Channel? {
+        return try {
+            val response = rest.httpClient.post("${rest.apiBase}/users/@me/channels") {
+                standardHeaders(rest)
+                contentType(ContentType.Application.Json)
+                setBody(buildJsonObject { put("recipient_id", userId) })
+            }
+            if (response.status.isSuccess()) response.body() else null
+        } catch (e: Exception) {
+            Logging.e("DM", "Error opening DM: ${e.message}")
+            null
+        }
+    }
+
+    suspend fun createInvite(channelId: String): me.lampu.lampcord.shared.model.Invite? {
+        return try {
+            val response = rest.httpClient.post("${rest.apiBase}/channels/$channelId/invites") {
+                standardHeaders(rest)
+                contentType(ContentType.Application.Json)
+                setBody(buildJsonObject {
+                    put("max_age", 604800)
+                    put("max_uses", 0)
+                    put("unique", true)
+                })
+            }
+            if (response.status.isSuccess()) response.body() else null
+        } catch (e: Exception) {
+            Logging.e("Invite", "Error creating invite: ${e.message}")
+            null
+        }
+    }
+
     suspend fun getActiveThreads(channelId: String): ThreadListResponse? {
         return try {
             rest.httpClient.get("${rest.apiBase}/channels/$channelId/threads/active") {

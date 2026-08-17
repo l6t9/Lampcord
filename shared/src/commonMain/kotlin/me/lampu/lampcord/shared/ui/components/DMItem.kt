@@ -14,6 +14,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import me.lampu.lampcord.shared.model.Channel
 import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.icons.Icons
@@ -35,6 +38,7 @@ fun DMItem(
 ) {
     val isSelected = navigationStore.selectedChannel?.id == channel.id
     val allUsers by userStore.users.collectAsState()
+    val readStates by readStateStore.readStates.collectAsState()
     
     // Improved recipient resolution to avoid "Unnamed DM"
     val recipient = remember(channel.recipients, channel.recipient_ids, allUsers) {
@@ -63,6 +67,10 @@ fun DMItem(
 
     val scope = rememberCoroutineScope()
 
+    val mentionCount by remember(channel.id, readStates) {
+        derivedStateOf { readStateStore.getMentionCount(channel.id) }
+    }
+
     val contextMenuItems = remember(channel, userSettings, isMuted, recipient) {
         val items = mutableListOf(
             ContextMenuItem(if (isMuted) "Unmute" else "Mute", if (isMuted) Icons.Filled.Notifications else Icons.AutoMirrored.Filled.VolumeOff) {
@@ -73,8 +81,13 @@ fun DMItem(
                     readStateStore.ackMessage(channel.id, channel.lastMessageId() ?: "0")
                 }
             },
+            ContextMenuItem("Pinned Messages", Icons.Filled.PushPin) {
+                navigationStore.isPinsVisible = true
+            },
             ContextMenuItem("Profile", Icons.Filled.AccountCircle) { recipient?.let { profileStore.showProfile(it.id) } },
-            ContextMenuItem("Close DM", Icons.Filled.Close, color = Color.Red) { /* TODO */ }
+            ContextMenuItem("Close DM", Icons.Filled.Close, color = Color.Red) {
+                navigationStore.closeDm(channel.id)
+            }
         )
         if (userSettings?.developer_mode == true) {
             items.add(ContextMenuItem("Copy ID", Icons.Filled.Dns) { setClipboardText(channel.id) })
@@ -157,6 +170,25 @@ fun DMItem(
                     }
                     recipient?.let { 
                         UserTagView(it, modifier = Modifier.padding(start = 4.dp)) 
+                    }
+
+                    if (mentionCount > 0) {
+                        Spacer(Modifier.weight(1f))
+                        Surface(
+                            color = MaterialTheme.colorScheme.error,
+                            shape = CircleShape,
+                            modifier = Modifier.height(16.dp).widthIn(min = 16.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 4.dp)) {
+                                Text(
+                                    text = mentionCount.toString(),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onError,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 10.sp
+                                )
+                            }
+                        }
                     }
                 }
             }

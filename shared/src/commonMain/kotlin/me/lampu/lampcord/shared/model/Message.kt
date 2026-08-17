@@ -219,7 +219,8 @@ data class MessageReactionAdd(
     val message_id: String,
     val guild_id: String? = null,
     val member: Member? = null,
-    val emoji: Emoji
+    val emoji: Emoji,
+    val burst: Boolean = false
 )
 
 @Serializable
@@ -228,7 +229,8 @@ data class MessageReactionRemove(
     val channel_id: String,
     val message_id: String,
     val guild_id: String? = null,
-    val emoji: Emoji
+    val emoji: Emoji,
+    val burst: Boolean = false
 )
 
 @Serializable

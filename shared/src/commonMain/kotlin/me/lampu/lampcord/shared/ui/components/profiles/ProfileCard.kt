@@ -30,7 +30,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -78,6 +80,7 @@ fun UserProfileDialog(
                     profile = profile,
                     isExpanded = isExpanded,
                     onExpand = { profileStore.isProfileExpanded = true },
+                    onDismiss = onDismiss,
                     modifier = Modifier.width(if (isExpanded) 600.dp else 300.dp).wrapContentHeight()
                 )
             }
@@ -93,6 +96,7 @@ fun ProfileCard(
     isSidebar: Boolean = false,
     showMemberSince: Boolean = false,
     onExpand: (() -> Unit)? = null,
+    onDismiss: (() -> Unit)? = null,
     showBorder: Boolean = true,
     userStore: UserStore = koinInject()
 ) {
@@ -100,6 +104,11 @@ fun ProfileCard(
     val guildMeta = profile.guild_member_profile
     val userMeta = profile.user_profile
     val currentUser by userStore.currentUser.collectAsState()
+
+    // 126.21 Parity: Selected tabs should be independent across different profile displays.
+    // We use isExpanded and isSidebar as part of the key to ensure that a user's profile
+    // in the sidebar doesn't sync its tab state with their profile in a dialog.
+    var selectedTab by remember(profile.user.id, isExpanded, isSidebar) { mutableIntStateOf(0) }
     
     val themeColors = remember(profile) {
         val rawColors = guildMeta?.theme_colors ?: userMeta?.theme_colors
@@ -194,7 +203,7 @@ fun ProfileCard(
                 bodyOverlayColor = bodyOverlayColor,
                 cardColor = cardColor,
                 tagColor = profileSeed.copy(alpha = 0.4f),
-                contentColor = Color.White,
+                contentColor = profileScheme.onSurface,
                 cutoutColor = bg1,
                 pfpBorderBrush = Brush.verticalGradient(listOf(Color(primary or 0xFF000000.toInt()), Color(accent or 0xFF000000.toInt()))),
                 primaryAccent = Color(primary or 0xFF000000.toInt()),
@@ -214,7 +223,7 @@ fun ProfileCard(
                 bodyOverlayColor = Color.Black.copy(alpha = 0.45f),
                 cardColor = profileScheme.surfaceContainerHigh,
                 tagColor = profileSeed.copy(alpha = 0.4f),
-                contentColor = Color.White,
+                contentColor = profileScheme.onSurface,
                 cutoutColor = surface,
                 pfpBorderBrush = Brush.verticalGradient(listOf(primary, primary)),
                 primaryAccent = primary,
@@ -247,8 +256,22 @@ fun ProfileCard(
                     ProfileBanner(profile, theme, isExpanded)
 
                     Column(modifier = Modifier.padding(start = if (isExpanded) 16.dp else 10.dp, end = 16.dp)) {
-                        ProfileHeader(profile, theme, isExpanded, onExpand)
-                        ProfileSections(profile, theme, isExpanded, showMemberSince)
+                        ProfileHeader(
+                            profile = profile,
+                            theme = theme,
+                            isExpanded = isExpanded,
+                            selectedTab = selectedTab,
+                            onTabSelected = { selectedTab = it },
+                            onExpand = onExpand,
+                            onDismiss = onDismiss
+                        )
+                        ProfileSections(
+                            profile = profile,
+                            theme = theme,
+                            isExpanded = isExpanded,
+                            selectedTab = selectedTab,
+                            showMemberSince = showMemberSince
+                        )
                     }
                 }
             }

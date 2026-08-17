@@ -18,6 +18,12 @@ class MemberListStore(
     val memberListGroups = mutableStateMapOf<String, MemberListGroup>()
     var onlineCount by mutableStateOf<Int?>(null)
     var memberCount by mutableStateOf<Int?>(null)
+
+    private val guildOnlineCounts = mutableStateMapOf<String, Int>()
+    private val guildMemberCounts = mutableStateMapOf<String, Int>()
+
+    fun getOnlineCount(guildId: String): Int = guildOnlineCounts[guildId] ?: 0
+    fun getMemberCount(guildId: String): Int = guildMemberCounts[guildId] ?: 0
     
     private var currentGuildId: String? = null
     private var currentListId: String? = null
@@ -39,6 +45,8 @@ class MemberListStore(
         memberListItems.clear()
         memberListGroups.clear()
         guildCaches.clear()
+        guildOnlineCounts.clear()
+        guildMemberCounts.clear()
         currentGuildId = null
         currentListId = null
         onlineCount = null
@@ -115,8 +123,14 @@ class MemberListStore(
             update.online_count?.let { onlineCount = it }
             update.member_count?.let { memberCount = it }
         }
-        update.online_count?.let { entry.onlineCount = it }
-        update.member_count?.let { entry.memberCount = it }
+        update.online_count?.let { 
+            entry.onlineCount = it
+            guildOnlineCounts[update.guild_id] = it
+        }
+        update.member_count?.let { 
+            entry.memberCount = it
+            guildMemberCounts[update.guild_id] = it
+        }
 
         val targetItems: MutableList<MemberListListItem?> = if (isCurrent) memberListItems else entry.items
         val targetGroups: MutableMap<String, MemberListGroup> = if (isCurrent) memberListGroups else entry.groups

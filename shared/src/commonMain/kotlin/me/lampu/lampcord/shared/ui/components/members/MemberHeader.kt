@@ -22,6 +22,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -31,16 +34,33 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import me.lampu.lampcord.shared.model.Channel
+import me.lampu.lampcord.shared.state.GuildStore
 import me.lampu.lampcord.shared.state.NavigationStore
+import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.utils.Permission
+import me.lampu.lampcord.shared.utils.PermissionHelper
 import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun MemberHeader(
     channel: Channel,
-    navigationStore: NavigationStore = koinInject()
+    navigationStore: NavigationStore = koinInject(),
+    userStore: UserStore = koinInject(),
+    guildStore: GuildStore = koinInject()
 ) {
+    val currentUser by userStore.currentUser.collectAsState()
+    val guild = navigationStore.selectedGuild
+    val member = remember(guild?.id, currentUser) {
+        if (guild != null && currentUser != null) userStore.getMember(guild.id, currentUser!!.id) else null
+    }
+
+    val canManageChannel = remember(channel, guild, member) {
+        if (guild == null || member == null) false
+        else PermissionHelper.hasPermission(member, guild, channel, Permission.MANAGE_CHANNELS, currentUser?.id)
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -125,8 +145,8 @@ fun MemberHeader(
                 HeaderButtonData(
                     icon = Icons.Filled.Settings,
                     label = "Settings",
-                    onClick = { },
-                    enabled = false
+                    onClick = { navigationStore.openChannelSettings(channel) },
+                    enabled = channel.type != 1 && channel.type != 3 && channel.guild_id != null && canManageChannel
                 )
             )
 

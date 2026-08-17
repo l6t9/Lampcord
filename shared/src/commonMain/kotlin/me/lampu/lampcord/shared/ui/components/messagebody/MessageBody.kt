@@ -66,8 +66,20 @@ fun MessageAttachments(
 
     poll?.let { PollView(it) }
 
+    val inviteRegex = Regex("""discord(?:\.com/invite|\.gg)/([a-zA-Z0-9\-]+)""")
+    val processedInvites = mutableSetOf<String>()
+
     embeds.forEach { embed ->
         EmbedView(embed)
+        
+        // Extract and show native invite preview if it's an invite link
+        embed.url?.let { url ->
+            inviteRegex.find(url)?.groupValues?.get(1)?.let { code ->
+                if (processedInvites.add(code)) {
+                    InviteEmbedView(code)
+                }
+            }
+        }
     }
 
     components?.let {

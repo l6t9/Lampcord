@@ -135,40 +135,44 @@ fun DiscordPanels(
                 )
         ) {
             // Start Panel (Left)
-            if (progress > 0) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .width(sidePanelWidth)
-                        .graphicsLayer {
-                            translationX = (progress - 1f) * (sidePanelWidthPx * 0.3f)
-                            alpha = (0.4f + (progress * 0.6f)).coerceIn(0f, 1f)
-                            val scale = 0.92f + (progress * 0.08f)
-                            scaleX = scale
-                            scaleY = scale
-                        }
-                        .zIndex(0f)
-                ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(sidePanelWidth)
+                    .graphicsLayer {
+                        translationX = (progress - 1f) * (sidePanelWidthPx * 0.3f)
+                        alpha = (0.4f + (progress * 0.6f)).coerceIn(0f, 1f)
+                        val scale = 0.92f + (progress * 0.08f)
+                        scaleX = scale
+                        scaleY = scale
+                    }
+                    .zIndex(0f)
+            ) {
+                // To keep state (scroll position, etc.), it MUST stay in composition. 
+                // We keep it composed but only visible when relevant.
+                val isEffectivelyVisible = progress > 0.001f || state.currentValue == DiscordPanelValue.Start
+                Box(modifier = Modifier.fillMaxSize().graphicsLayer { alpha = if (isEffectivelyVisible) 1f else 0f }) {
                     startPanel()
                 }
             }
 
             // End Panel (Right)
-            if (progress < 0) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .width(sidePanelWidth)
-                        .align(Alignment.CenterEnd)
-                        .graphicsLayer {
-                            translationX = (progress + 1f) * (sidePanelWidthPx * 0.3f)
-                            alpha = (0.4f + (absProgress * 0.6f)).coerceIn(0f, 1f)
-                            val scale = 0.92f + (absProgress * 0.08f)
-                            scaleX = scale
-                            scaleY = scale
-                        }
-                        .zIndex(0f)
-                ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(sidePanelWidth)
+                    .align(Alignment.CenterEnd)
+                    .graphicsLayer {
+                        translationX = (progress + 1f) * (sidePanelWidthPx * 0.3f)
+                        alpha = (0.4f + (absProgress * 0.6f)).coerceIn(0f, 1f)
+                        val scale = 0.92f + (absProgress * 0.08f)
+                        scaleX = scale
+                        scaleY = scale
+                    }
+                    .zIndex(0f)
+            ) {
+                val isEffectivelyVisible = progress < -0.001f || state.currentValue == DiscordPanelValue.End
+                Box(modifier = Modifier.fillMaxSize().graphicsLayer { alpha = if (isEffectivelyVisible) 1f else 0f }) {
                     endPanel()
                 }
             }

@@ -29,6 +29,10 @@ fun ChannelHeader(
 ) {
     val currentUser by userStore.currentUser.collectAsState()
     val isChannelsAndRoles = navigationStore.isChannelsAndRolesVisible
+    val isDesktop = me.lampu.lampcord.shared.utils.getPlatformName() == "desktop" || 
+                    me.lampu.lampcord.shared.utils.getPlatformName() == "macos" || 
+                    me.lampu.lampcord.shared.utils.getPlatformName() == "windows" || 
+                    me.lampu.lampcord.shared.utils.getPlatformName() == "linux"
 
     TopAppBar(
         title = {
@@ -90,7 +94,7 @@ fun ChannelHeader(
                             AvatarWithDecoration(
                                 avatarUrl = recipient.avatar?.let { "https://cdn.discordapp.com/avatars/${recipient.id}/$it.png?size=64" },
                                 decorationData = recipient.avatar_decoration_data,
-                                size = 24.dp,
+                                size = 32.dp,
                                 status = presenceStore.getUserStatus(
                                     recipient.id,
                                     currentUser?.id,
@@ -141,17 +145,28 @@ fun ChannelHeader(
                             Icons.Filled.Tag,
                             "Threads",
                             modifier = Modifier.size(20.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = if (navigationStore.isThreadPanelVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
                 if (channel.type != 2 && channel.type != 13) {
-                    IconButton(onClick = { navigationStore.isPinsVisible = true }) {
+                    IconButton(onClick = { navigationStore.isPinsVisible = !navigationStore.isPinsVisible }) {
                         Icon(
                             Icons.Filled.PushPin,
                             "Pins",
                             modifier = Modifier.size(20.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = if (navigationStore.isPinsVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                
+                if (isDesktop && channel.type == 1) {
+                    IconButton(onClick = { navigationStore.isProfilePanelVisible = !navigationStore.isProfilePanelVisible }) {
+                        Icon(
+                            Icons.Filled.AccountCircle,
+                            "User Profile",
+                            modifier = Modifier.size(20.dp),
+                            tint = if (navigationStore.isProfilePanelVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }

@@ -2,23 +2,17 @@ package me.lampu.lampcord.shared.ui.components.guilds
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AlertDialogDefaults
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -75,10 +69,10 @@ fun GuildIcon(
         derivedStateOf { userGuildSettingsStore.isGuildMuted(guild.id) }
     }
     
-    val isUnread by remember(guild.id, readStates.size, userGuildSettings[guild.id]) {
+    val isUnread by remember(guild.id, readStates, userGuildSettings[guild.id]) {
         derivedStateOf { guildStore.isGuildUnread(guild.id) }
     }
-    val mentionCount by remember(guild.id, readStates.size) {
+    val mentionCount by remember(guild.id, readStates) {
         derivedStateOf { guildStore.getGuildMentionCount(guild.id) }
     }
 
@@ -117,7 +111,10 @@ fun GuildIcon(
         content = tooltipText(guild.name ?: "Server"),
         anchor = {
             ContextMenu(items = contextMenuItems) {
-                Box(contentAlignment = Alignment.Center) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.padding(vertical = 4.dp)
+                ) {
                     RegularGuildItem(
                         isSelected = isSelected,
                         isUnread = isUnread,
@@ -148,24 +145,32 @@ fun GuildIcon(
                     }
 
                     if (mentionCount > 0) {
-                        Box(modifier = Modifier.size(48.dp)) {
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                        ) {
                             Surface(
                                 color = MaterialTheme.colorScheme.error,
                                 shape = CircleShape,
                                 modifier = Modifier
                                     .align(Alignment.BottomEnd)
                                     .offset(x = 3.dp, y = 3.dp)
-                                    .height(18.dp)
-                                    .widthIn(min = 18.dp),
-                                shadowElevation = 2.dp
+                                    .height(20.dp)
+                                    .widthIn(min = 20.dp),
+                                shadowElevation = 2.dp,
+                                border = if (isSelected) null else androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.surface)
                             ) {
-                                Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 2.dp)) {
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier.padding(horizontal = 5.dp)
+                                ) {
                                     Text(
-                                        text = mentionCount.toString(),
+                                        text = if (mentionCount > 99) "99+" else mentionCount.toString(),
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onError,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 13.sp
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 11.sp,
+                                        maxLines = 1
                                     )
                                 }
                             }
@@ -188,60 +193,13 @@ fun GuildIcon(
     }
 
     if (showLeaveDialog) {
-        AlertDialog(
-            onDismissRequest = { showLeaveDialog = false },
-            icon = {
-                Icon(
-                    Icons.Filled.Logout,
-                    contentDescription = null,
-                    modifier = Modifier.size(32.dp),
-                    tint = MaterialTheme.colorScheme.error
-                )
-            },
-            title = {
-                Text(
-                    text = "Leave '${guild.name}'",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            },
-            text = {
-                Text(
-                    text = "Are you sure you want to leave '${guild.name}'? You will need an invite to join back.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        guildStore.leaveGuild(guild.id) { if (navigationStore.selectedGuild?.id == guild.id) navigationStore.selectHome() }
-                        showLeaveDialog = false
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error,
-                        contentColor = MaterialTheme.colorScheme.onError
-                    ),
-                    shape = MaterialTheme.shapes.medium
-                ) {
-                    Text("Leave Server")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { showLeaveDialog = false },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Cancel")
-                }
-            },
-            shape = MaterialTheme.shapes.extraLarge,
-            tonalElevation = AlertDialogDefaults.TonalElevation
+        LeaveServerDialog(
+            guildName = guild.name ?: "Server",
+            onDismiss = { showLeaveDialog = false },
+            onConfirm = {
+                guildStore.leaveGuild(guild.id) { if (navigationStore.selectedGuild?.id == guild.id) navigationStore.selectHome() }
+                showLeaveDialog = false
+            }
         )
     }
 }

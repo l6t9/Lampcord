@@ -23,7 +23,10 @@ data class Guild(
     val premium_tier: Int? = null,
     val premium_subscription_count: Int? = null,
     val member_count: Int? = null,
+    val approximate_member_count: Int? = null,
+    val approximate_presence_count: Int? = null,
     val large: Boolean? = null,
+    val presences: List<PresenceUpdate>? = null,
     
     // Server Settings (126.21 alignment)
     val afk_channel_id: String? = null,

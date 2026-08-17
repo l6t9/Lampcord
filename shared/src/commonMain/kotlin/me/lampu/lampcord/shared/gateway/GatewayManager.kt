@@ -34,6 +34,7 @@ import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
 import me.lampu.lampcord.shared.api.AuthApi
 import me.lampu.lampcord.shared.api.RestClient
+import me.lampu.lampcord.shared.model.Activity
 import me.lampu.lampcord.shared.model.GatewayPayload
 import me.lampu.lampcord.shared.model.Identify
 import me.lampu.lampcord.shared.model.IdentifyClientState
@@ -376,6 +377,23 @@ class GatewayManager(
     suspend fun sendPayload(payload: GatewayPayload) {
         val jsonString = json.encodeToString(payload)
         session?.send(jsonString)
+    }
+
+    fun updatePresence(status: String?, activities: List<Activity>?) {
+        val payload = GatewayPayload(
+            op = 3,
+            d = buildJsonObject {
+                put("status", status?.let { JsonPrimitive(it) } ?: JsonNull)
+                put("activities", buildJsonArray {
+                    activities?.forEach { activity ->
+                        add(json.encodeToJsonElement<Activity>(activity))
+                    }
+                })
+                put("afk", JsonPrimitive(false))
+                put("since", JsonPrimitive(0))
+            }
+        )
+        scope.launch { sendPayload(payload) }
     }
 
     fun sendSubscription(guildId: String) {

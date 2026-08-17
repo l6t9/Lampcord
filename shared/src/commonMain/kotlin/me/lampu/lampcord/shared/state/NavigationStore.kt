@@ -44,9 +44,17 @@ class NavigationStore(
         onChannelSelected()
     }
 
-    var selectedGuild by selectionStore::selectedGuild
-    var selectedChannel by selectionStore::selectedChannel
-    var selectedThread by selectionStore::selectedThread
+    var selectedGuild: me.lampu.lampcord.shared.model.Guild?
+        get() = selectionStore.selectedGuild
+        set(value) { selectionStore.selectedGuild = value }
+
+    var selectedChannel: me.lampu.lampcord.shared.model.Channel?
+        get() = selectionStore.selectedChannel
+        set(value) { selectionStore.selectedChannel = value }
+
+    var selectedThread: me.lampu.lampcord.shared.model.Channel?
+        get() = selectionStore.selectedThread
+        set(value) { selectionStore.selectedThread = value }
 
     var selectedGuildOnboarding by mutableStateOf<Onboarding?>(null)
     var isFriendsSelected by mutableStateOf(false)
@@ -66,6 +74,52 @@ class NavigationStore(
     var isEmojiPickerVisible by mutableStateOf(false)
     var isPinsVisible by mutableStateOf(false)
     var isThreadPanelVisible by mutableStateOf(false)
+    var isProfilePanelVisible by mutableStateOf(true)
+
+    var channelSettingsChannel by mutableStateOf<Channel?>(null)
+
+    fun openChannelSettings(channel: Channel) {
+        channelSettingsChannel = channel
+    }
+
+    fun closeChannelSettings() {
+        channelSettingsChannel = null
+    }
+
+    fun openDm(userId: String) {
+        val existing = guildStore.privateChannels.value.find { channel ->
+            channel.recipients?.any { it.id == userId } == true ||
+                channel.recipient_ids?.contains(userId) == true
+        }
+        if (existing != null) {
+            selectedGuild = null
+            Settings.shared.clearLastGuild()
+            selectChannel(existing, explicitlySelected = true)
+            return
+        }
+        scope.launch {
+            val dm = channelApi.openDm(userId)
+            if (dm != null) {
+                guildStore.handleChannelCreateOrUpdate(dm)
+                selectedGuild = null
+                Settings.shared.clearLastGuild()
+                selectChannel(dm, explicitlySelected = true)
+            }
+        }
+    }
+
+    fun closeDm(channelId: String) {
+        scope.launch {
+            val closed = channelApi.deleteChannel(channelId)
+            if (closed) {
+                guildStore.handleChannelDelete(
+                    guildStore.privateChannels.value.find { it.id == channelId }?.copy(type = 1)
+                        ?: Channel(id = channelId, type = 1)
+                )
+                if (selectedChannel?.id == channelId) selectHome()
+            }
+        }
+    }
 
     var isAttachmentViewerVisible by mutableStateOf(false)
     var attachmentViewerItems by mutableStateOf<List<me.lampu.lampcord.shared.model.DiscordMedia>>(emptyList())
@@ -95,6 +149,7 @@ class NavigationStore(
     var lastRequestedKey: String? = null
 
     fun selectHome() {
+        guildLoadingJob?.cancel()
         selectedGuild = null
         isChannelsAndRolesVisible = false
         isServerSettingsVisible = false
@@ -148,12 +203,37 @@ class NavigationStore(
 
     fun selectGuild(guild: Guild, targetChannelId: String? = null, subscribeCallback: (String) -> Unit) {
         if (selectedGuild?.id == guild.id && !isChannelsAndRolesVisible) return
+        
         guildLoadingJob?.cancel()
+        
+        // Optimistic state update
         selectedGuild = guild
         isChannelsAndRolesVisible = false
         isServerSettingsVisible = false
         lastRequestedKey = null
         Settings.shared.setLastGuild(guild.id)
+
+        // Optimistic channel resolution from EntityStore
+        val lastChannelId = targetChannelId ?: Settings.shared.getLastChannel(guild.id)
+        val allChannels = guildStore.allGuildChannels.value.values
+        val optimisticChannel = if (lastChannelId != null) {
+            allChannels.find { it.guild_id == guild.id && it.id == lastChannelId }
+        } else {
+            allChannels.filter { it.guild_id == guild.id && it.type in listOf(0, 2, 5, 13, 15) }
+                .minByOrNull { it.position ?: 0 }
+        }
+
+        if (optimisticChannel != null) {
+            selectChannel(optimisticChannel, explicitlySelected = targetChannelId != null)
+        } else {
+            isFriendsSelected = false
+            selectedChannel = null
+            selectedThread = null
+            memberListStore.memberListItems.clear()
+            memberListStore.onlineCount = null
+            memberListStore.memberCount = null
+        }
+
         guildLoadingJob = scope.launch {
             subscribeCallback(guild.id)
             userStore.currentUser.value?.id?.let { userId ->
@@ -165,15 +245,19 @@ class NavigationStore(
                 val filtered = guildChannels.filter { it.type in listOf(0, 1, 2, 3, 4, 5, 13, 15, 16) }.sortedBy { it.position }
                 filtered.forEach { guildStore.handleChannelCreateOrUpdate(it.copy(guild_id = guild.id)) }
             }
-            val channelToSelect = if (targetChannelId != null) {
+            
+            val finalChannelToSelect = if (targetChannelId != null) {
                 guildStore.allGuildChannels.value.values.find { it.guild_id == guild.id && it.id == targetChannelId }
                     ?: guildStore.allGuildChannels.value.values.find { it.guild_id == guild.id && it.type in listOf(0, 2, 5, 13, 15) }
             } else {
-                val lastChannelId = Settings.shared.getLastChannel(guild.id)
-                guildStore.allGuildChannels.value.values.find { it.guild_id == guild.id && it.id == lastChannelId }
+                val lastId = Settings.shared.getLastChannel(guild.id)
+                guildStore.allGuildChannels.value.values.find { it.guild_id == guild.id && it.id == lastId }
                     ?: guildStore.allGuildChannels.value.values.find { it.guild_id == guild.id && it.type in listOf(0, 2, 5, 13, 15) }
             }
-            channelToSelect?.let { selectChannel(it, explicitlySelected = targetChannelId != null) }
+            
+            if (finalChannelToSelect != null && finalChannelToSelect.id != selectedChannel?.id) {
+                selectChannel(finalChannelToSelect, explicitlySelected = targetChannelId != null)
+            }
             
             // Onboarding
             selectedGuildOnboarding = null
@@ -193,7 +277,9 @@ class NavigationStore(
     }
 
     fun selectChannel(channel: Channel, explicitlySelected: Boolean = false) {
-        if (selectedChannel?.id == channel.id) return
+        val sameChannel = selectedChannel?.id == channel.id
+        if (sameChannel && selectedThread == null) return
+        
         isFriendsSelected = false
         isChannelsAndRolesVisible = false
         isServerSettingsVisible = false
@@ -210,8 +296,9 @@ class NavigationStore(
             memberListStore.setExpectedId(guild.id, expectedId, guild.member_count ?: 0)
         }
 
-        messageStore.clear()
-        messageStore.loadLoggedMessages(channel.id)
+        if (!sameChannel) {
+            messageStore.loadLoggedMessages(channel.id)
+        }
         lastRequestedKey = null
         Settings.shared.setLastChannel(selectedGuild?.id ?: "home", channel.id)
         finderStore.addRecent(channel.id)
@@ -259,7 +346,7 @@ class NavigationStore(
                         msg.member?.let { m -> userStore.cacheMember(channel.guild_id ?: selectedGuild?.id ?: "", author.id, m) }
                     }
                 }
-                messageStore.addMessages(channelMessages)
+                messageStore.addMessages(channel.id, channelMessages)
                 channelMessages.firstOrNull()?.let { readStateStore.ackMessage(channel.id, it.id) }
             }
         }
@@ -271,7 +358,6 @@ class NavigationStore(
         isServerSettingsVisible = false
         selectedThread = channel
         if (explicitlySelected) triggerFocusChat()
-        messageStore.clear()
         messageStore.loadLoggedMessages(channel.id)
         scope.launch {
             val channelMessages = messageApi.getChannelMessages(channel.id)
@@ -280,7 +366,7 @@ class NavigationStore(
                     msg.member?.let { m -> userStore.cacheMember(channel.guild_id ?: selectedGuild?.id ?: "", author.id, m) }
                 }
             }
-            messageStore.addMessages(channelMessages)
+            messageStore.addMessages(channel.id, channelMessages)
             channelMessages.firstOrNull()?.let { readStateStore.ackMessage(channel.id, it.id) }
         }
     }

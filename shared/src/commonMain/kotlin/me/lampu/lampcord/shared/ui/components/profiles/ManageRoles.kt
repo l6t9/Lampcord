@@ -23,6 +23,7 @@ import me.lampu.lampcord.shared.model.Role
 import me.lampu.lampcord.shared.model.UserProfile
 import me.lampu.lampcord.shared.state.ProfileStore
 import me.lampu.lampcord.shared.state.UserStore
+import me.lampu.lampcord.shared.ui.components.AdaptiveModalBottomSheet
 import me.lampu.lampcord.shared.ui.components.settings.Material3SettingsGroup
 import me.lampu.lampcord.shared.ui.components.settings.Material3SettingsItem
 import me.lampu.lampcord.shared.utils.getPlatformName
@@ -41,10 +42,9 @@ fun ManageRolesSheet(
 
     if (isMobile) {
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-        ModalBottomSheet(
+        AdaptiveModalBottomSheet(
             onDismissRequest = onDismiss,
-            sheetState = sheetState,
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+            sheetState = sheetState
         ) {
             ManageRolesContent(profile, guild, onDismiss, profileStore, guildApi, userStore)
         }

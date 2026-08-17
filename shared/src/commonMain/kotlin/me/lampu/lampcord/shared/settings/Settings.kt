@@ -57,6 +57,7 @@ class Settings(private val settings: KmpSettings) {
     var compactMode by preferenceBoolean("compact_mode", false)
     var chatBubbles by preferenceBoolean("chat_bubbles", false)
     var silentTyping by preferenceBoolean("silent_typing", false)
+    var musicPresenceEnabled by preferenceBoolean("music_presence_enabled", true)
     var hideBlockedMessages by preferenceBoolean("hide_blocked_messages", false)
     var showPermissions by preferenceBoolean("show_permissions", true)
     var emojiUsageJson by preference("emoji_usage_v4", "{}")

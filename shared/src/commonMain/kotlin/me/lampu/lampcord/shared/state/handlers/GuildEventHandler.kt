@@ -15,7 +15,8 @@ class GuildEventHandler(
     private val guildStore: GuildStore,
     private val navigationStore: NavigationStore,
     private val settingsStore: SettingsStore,
-    private val userStore: UserStore
+    private val userStore: UserStore,
+    private val presenceStore: PresenceStore
 ) : GatewayEventHandler {
     override val supportedEvents = setOf(
         "GUILD_CREATE", "GUILD_UPDATE", "GUILD_DELETE",
@@ -48,6 +49,11 @@ class GuildEventHandler(
         guild.members?.forEach { member ->
             val userId = member.userId() ?: return@forEach
             userStore.cacheMember(guild.id, userId, member)
+        }
+
+        // Presences go to PresenceStore
+        guild.presences?.forEach { presence ->
+            presenceStore.handlePresenceUpdate(presence.copy(guild_id = guild.id))
         }
     }
 

@@ -17,17 +17,33 @@ class AutocompleteStore(
     var autocompleteQuery by mutableStateOf("")
     var autocompleteSelectedIndex by mutableStateOf(0)
     val autocompleteItems = mutableStateListOf<AutocompleteItem>()
+    
+    var searchAutocompleteType by mutableStateOf<AutocompleteType?>(null)
+    var searchAutocompleteQuery by mutableStateOf("")
+    var searchAutocompleteSelectedIndex by mutableStateOf(0)
+    val searchAutocompleteItems = mutableStateListOf<AutocompleteItem>()
 
-    fun updateAutocomplete(type: AutocompleteType?, query: String, selectedGuild: Guild?) {
+    fun updateAutocomplete(type: AutocompleteType?, query: String, selectedGuild: Guild?, isSearch: Boolean = false) {
         if (type == null) {
-            autocompleteType = null
-            autocompleteQuery = ""
-            autocompleteItems.clear()
+            if (isSearch) {
+                searchAutocompleteType = null
+                searchAutocompleteQuery = ""
+                searchAutocompleteItems.clear()
+            } else {
+                autocompleteType = null
+                autocompleteQuery = ""
+                autocompleteItems.clear()
+            }
             return
         }
 
-        autocompleteType = type
-        autocompleteQuery = query
+        if (isSearch) {
+            searchAutocompleteType = type
+            searchAutocompleteQuery = query
+        } else {
+            autocompleteType = type
+            autocompleteQuery = query
+        }
         
         val results = mutableListOf<AutocompleteItem>()
         when (type) {
@@ -58,14 +74,22 @@ class AutocompleteStore(
                 results.addAll(members.map { member ->
                     val user = member.user!!
                     val name = member.nick ?: user.global_name ?: user.username ?: "Unknown User"
+                    
+                    val roleColor = if (selectedGuild != null) {
+                        val memberRoles = member.roles.mapNotNull { roleId -> selectedGuild.roles.find { it.id == roleId } }
+                        val colorRole = memberRoles.filter { it.color != 0 }.maxByOrNull { it.position }
+                        if (colorRole != null) Color(colorRole.color or 0xFF000000.toInt()) else null
+                    } else null
+
                     AutocompleteItem(
                         id = user.id,
                         title = name,
                         subtitle = user.username,
                         icon = user.avatar?.let { "https://cdn.discordapp.com/avatars/${user.id}/$it.png?size=64" },
-                        replacement = "<@${user.id}>",
+                        replacement = if (isSearch) user.id else "<@${user.id}>",
                         searchReplacement = user.username,
-                        inputText = "@$name"
+                        color = roleColor,
+                        inputText = if (isSearch) user.id else "@$name"
                     )
                 })
 
@@ -103,9 +127,9 @@ class AutocompleteStore(
                             5 -> Icons.Filled.Campaign
                             else -> Icons.Filled.Tag
                         },
-                        replacement = if (channel.type == 4) channel.name ?: "" else "<#${channel.id}>",
+                        replacement = if (isSearch) channel.id else if (channel.type == 4) channel.name ?: "" else "<#${channel.id}>",
                         searchReplacement = channel.name ?: "unnamed",
-                        inputText = "#${channel.name ?: ""}"
+                        inputText = if (isSearch) channel.id else "#${channel.name ?: ""}"
                     )
                 })
             }
@@ -191,15 +215,28 @@ class AutocompleteStore(
             AutocompleteType.ROLE -> { }
         }
 
-        autocompleteItems.clear()
-        autocompleteItems.addAll(results)
-        autocompleteSelectedIndex = 0
+        if (isSearch) {
+            searchAutocompleteItems.clear()
+            searchAutocompleteItems.addAll(results)
+            searchAutocompleteSelectedIndex = 0
+        } else {
+            autocompleteItems.clear()
+            autocompleteItems.addAll(results)
+            autocompleteSelectedIndex = 0
+        }
     }
 
-    fun clear() {
-        autocompleteType = null
-        autocompleteQuery = ""
-        autocompleteItems.clear()
-        autocompleteSelectedIndex = 0
+    fun clear(isSearch: Boolean = false) {
+        if (isSearch) {
+            searchAutocompleteType = null
+            searchAutocompleteQuery = ""
+            searchAutocompleteItems.clear()
+            searchAutocompleteSelectedIndex = 0
+        } else {
+            autocompleteType = null
+            autocompleteQuery = ""
+            autocompleteItems.clear()
+            autocompleteSelectedIndex = 0
+        }
     }
 }

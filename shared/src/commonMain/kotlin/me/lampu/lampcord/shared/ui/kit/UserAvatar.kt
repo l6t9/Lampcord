@@ -7,14 +7,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import me.lampu.lampcord.shared.model.AvatarDecorationData
 import me.lampu.lampcord.shared.model.User
-import me.lampu.lampcord.shared.ui.components.AsyncImage
+import me.lampu.lampcord.shared.ui.components.AvatarWithDecoration
 
 @Composable
 fun UserAvatar(
     user: User?,
     size: Dp = 40.dp,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    decorationData: AvatarDecorationData? = null
 ) {
     val avatarUrl = user?.avatar?.let {
         val extension = if (it.startsWith("a_")) "gif" else "webp"
@@ -24,9 +26,10 @@ fun UserAvatar(
         "https://cdn.discordapp.com/embed/avatars/$index.png"
     }
 
-    AsyncImage(
-        model = avatarUrl,
-        contentDescription = user?.username,
-        modifier = modifier.size(size).clip(CircleShape)
+    AvatarWithDecoration(
+        avatarUrl = avatarUrl,
+        decorationData = decorationData ?: user?.avatar_decoration_data,
+        size = size,
+        modifier = modifier
     )
 }

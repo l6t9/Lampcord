@@ -25,8 +25,11 @@ jna = "5.16.0"
 ffmpegPlatform = "8.0.1-1.5.13"
 vlcj = "4.8.2"
 slf4j = "2.1.0-alpha1"
+navigation3 = "1.2.0-alpha07"
 
 [libraries]
+androidx-navigation3-runtime = { module = "androidx.navigation3:navigation3-runtime", version.ref = "navigation3" }
+androidx-navigation3-ui = { module = "androidx.navigation3:navigation3-ui", version.ref = "navigation3" }
 multiplatform-settings = { module = "com.russhwolf:multiplatform-settings", version.ref = "multiplatformSettings" }
 multiplatform-settings-no-arg = { module = "com.russhwolf:multiplatform-settings-no-arg", version.ref = "multiplatformSettings" }
 materialKolor = { module = "com.materialkolor:material-kolor", version.ref = "materialKolor" }

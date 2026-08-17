@@ -31,7 +31,6 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -61,6 +60,7 @@ import me.lampu.lampcord.shared.state.ProfileStore
 import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.ui.SettingsScreen
 import me.lampu.lampcord.shared.ui.components.AttachmentViewer
+import me.lampu.lampcord.shared.ui.components.AdaptiveModalBottomSheet
 import me.lampu.lampcord.shared.ui.components.ChatArea
 import me.lampu.lampcord.shared.ui.components.ChatInputBar
 import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
@@ -73,6 +73,7 @@ import me.lampu.lampcord.shared.ui.components.VoiceArea
 import me.lampu.lampcord.shared.ui.components.chat.PinnedMessagesScreen
 import me.lampu.lampcord.shared.ui.components.chat.SearchScreen
 import me.lampu.lampcord.shared.ui.components.guilds.ServerBottomSheet
+import me.lampu.lampcord.shared.ui.components.chat.ChannelSettingsScreen
 import me.lampu.lampcord.shared.ui.components.guilds.ServerSettings
 import me.lampu.lampcord.shared.ui.components.members.MemberHeader
 import me.lampu.lampcord.shared.ui.components.profiles.ProfileCard
@@ -130,67 +131,76 @@ actual fun MobileBaseplate(
                     Scaffold(
                         contentWindowInsets = WindowInsets(0, 0, 0, 0),
                         topBar = {
-                            if (activeChannel != null) {
+                            if (activeChannel != null || navigationStore.isChannelsAndRolesVisible) {
                                 TopAppBar(
                                     windowInsets = TopAppBarDefaults.windowInsets.union(WindowInsets.statusBars),
                                     title = {
-                                        Column {
-                                            Text(
-                                                text = if (activeChannel.type == 1) {
-                                                    val recipient = activeChannel.recipients?.firstOrNull()
-                                                    recipient?.let { it.global_name ?: it.username } ?: "Chat"
-                                                } else activeChannel.name ?: "Chat",
-                                                style = MaterialTheme.typography.titleMedium,
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                            if (activeChannel.topic?.isNotBlank() == true) {
+                                        if (navigationStore.isChannelsAndRolesVisible) {
+                                            Column {
+                                                Text("Channels & Roles", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                                navigationStore.selectedGuild?.name?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                            }
+                                        } else if (activeChannel != null) {
+                                            Column {
                                                 Text(
-                                                    text = activeChannel.topic,
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis
+                                                    text = if (activeChannel.type == 1) {
+                                                        val recipient = activeChannel.recipients?.firstOrNull()
+                                                        recipient?.let { it.global_name ?: it.username } ?: "Chat"
+                                                    } else activeChannel.name ?: "Chat",
+                                                    style = MaterialTheme.typography.titleMedium,
+                                                    fontWeight = FontWeight.Bold
                                                 )
+                                                if (activeChannel.topic?.isNotBlank() == true) {
+                                                    Text(
+                                                        text = activeChannel.topic,
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
+                                                }
                                             }
                                         }
                                     },
                                     navigationIcon = {
-                                        val isThread = navigationStore.selectedThread != null
-                                        if (isThread) {
-                                            IconButton(onClick = { navigationStore.selectedThread = null }) {
+                                        if (navigationStore.isChannelsAndRolesVisible) {
+                                            IconButton(onClick = { navigationStore.isChannelsAndRolesVisible = false }) {
                                                 Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
                                             }
-                                        } else if (activeChannel.type == 1 || activeChannel.type == 3 || activeChannel.guild_id == null) {
-                                            IconButton(onClick = { panelState.openStart() }) {
-                                                Icon(Icons.Filled.Menu, "Channels")
-                                            }
-                                        } else {
-                                            val channelIcon = when (activeChannel.type) {
-                                                15 -> Icons.Rounded.Forum
-                                                2, 13 -> Icons.AutoMirrored.Filled.VolumeUp
-                                                5 -> Icons.Filled.Campaign
-                                                else -> Icons.Filled.Tag
-                                            }
-                                            Box(
-                                                modifier = Modifier
-                                                    .padding(start = 8.dp)
-                                                    .size(36.dp)
-                                                    .clip(RoundedCornerShape(10.dp))
-                                                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                                                    .clickable { panelState.openStart() },
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                Icon(
-                                                    imageVector = channelIcon,
-                                                    contentDescription = "Channels",
-                                                    modifier = Modifier.size(20.dp),
-                                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
+                                        } else if (activeChannel != null) {
+                                            val isThread = navigationStore.selectedThread != null
+                                            if (isThread) {
+                                                IconButton(onClick = { navigationStore.selectedThread = null }) {
+                                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                                                }
+                                            } else if (activeChannel.type != 1 && activeChannel.type != 3 && activeChannel.guild_id != null) {
+                                                val channelIcon = when (activeChannel.type) {
+                                                    15 -> Icons.Rounded.Forum
+                                                    2, 13 -> Icons.AutoMirrored.Filled.VolumeUp
+                                                    5 -> Icons.Filled.Campaign
+                                                    else -> Icons.Filled.Tag
+                                                }
+                                                Box(
+                                                    modifier = Modifier
+                                                        .padding(start = 8.dp)
+                                                        .size(36.dp)
+                                                        .clip(RoundedCornerShape(10.dp))
+                                                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                                                        .clickable { panelState.openStart() },
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Icon(
+                                                        imageVector = channelIcon,
+                                                        contentDescription = "Channels",
+                                                        modifier = Modifier.size(20.dp),
+                                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    )
+                                                }
                                             }
                                         }
                                     },
                                     actions = {
-                                        if (activeChannel.guild_id != null || activeChannel.type == 1 || activeChannel.type == 3) {
+                                        if (activeChannel != null && (activeChannel.guild_id != null || activeChannel.type == 1 || activeChannel.type == 3)) {
                                             IconButton(onClick = { navigationStore.isSearchVisible = true }) {
                                                 Icon(
                                                     imageVector = Icons.Filled.Search,
@@ -207,12 +217,6 @@ actual fun MobileBaseplate(
                                                     )
                                                 }
                                             }
-                                            IconButton(onClick = { panelState.openEnd() }) {
-                                                Icon(
-                                                    imageVector = if (activeChannel.type == 1) Icons.Filled.Person else Icons.Filled.Group,
-                                                    contentDescription = if (activeChannel.type == 1) "Profile" else "Members"
-                                                )
-                                            }
                                         }
                                     },
                                     colors = TopAppBarDefaults.topAppBarColors(
@@ -226,7 +230,10 @@ actual fun MobileBaseplate(
                         val quickEffectsSpec = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
 
                         AnimatedContent(
-                            targetState = if (activeChannel != null) activeChannel.id else if (navigationStore.isFriendsSelected) "friends" else "none",
+                            targetState = if (activeChannel != null) activeChannel.id 
+                                else if (navigationStore.isChannelsAndRolesVisible) "roles" 
+                                else if (navigationStore.isFriendsSelected) "friends" 
+                                else "none",
                             transitionSpec = {
                                 (fadeIn(quickEffectsSpec) + slideInHorizontally(quickSpatialSpec) { it / 8 }).togetherWith(
                                     fadeOut(quickEffectsSpec) + slideOutHorizontally(quickSpatialSpec) { -it / 8 }
@@ -253,6 +260,8 @@ actual fun MobileBaseplate(
                                             ChatInputBar(activeChannel)
                                         }
                                     }
+                                } else if (target == "roles") {
+                                    me.lampu.lampcord.shared.ui.components.guilds.ChannelsAndRoles()
                                 } else if (target == "friends") {
                                     FriendsList()
                                 } else {
@@ -347,61 +356,37 @@ actual fun MobileBaseplate(
 
         // User Profile Sheet
         if (profileStore.isProfileLoading || profileStore.selectedProfile != null) {
-            val isProfileExpanded = profileStore.isProfileExpanded
             val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-            LaunchedEffect(isProfileExpanded) {
-                if (isProfileExpanded) sheetState.expand()
+            LaunchedEffect(Unit) {
+                sheetState.expand()
             }
 
-            ModalBottomSheet(
+            AdaptiveModalBottomSheet(
                 onDismissRequest = {
                     profileStore.selectedProfile = null
                     profileStore.isProfileExpanded = false
                     profileStore.isProfileLoading = false
                 },
                 sheetState = sheetState,
-                shape = if (isProfileExpanded) {
-                    RoundedCornerShape(0.dp)
-                } else {
-                    RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)
-                },
-                containerColor = if (isProfileExpanded) {
-                    Color.Transparent
-                } else {
-                    MaterialTheme.colorScheme.surfaceContainerLow
-                },
-                contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
-                dragHandle = if (isProfileExpanded) {
-                    {}
-                } else {
-                    {
-                        Box(
-                            modifier = Modifier
-                                .padding(top = 8.dp, bottom = 8.dp)
-                                .size(width = 36.dp, height = 4.dp)
-                                .clip(RoundedCornerShape(2.dp))
-                                .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)),
-                        )
-                    }
-                }
+                shape = RoundedCornerShape(0.dp),
+                containerColor = Color.Transparent,
+                contentWindowInsets = { WindowInsets(0, 0, 0, 0) }
             ) {
                 if (profileStore.selectedProfile != null) {
                     ProfileCard(
                         profile = profileStore.selectedProfile!!,
                         modifier = Modifier.fillMaxWidth().wrapContentHeight(),
                         showBorder = false,
-                        isExpanded = isProfileExpanded,
-                        onExpand = { profileStore.isProfileExpanded = true }
+                        isExpanded = true,
+                        onExpand = null
                     )
                 } else {
                     Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
                         ContainedLoadingIndicator()
                     }
                 }
-                if (!isProfileExpanded) {
-                    Spacer(Modifier.navigationBarsPadding())
-                }
+                Spacer(Modifier.navigationBarsPadding())
             }
         }
 
@@ -413,6 +398,11 @@ actual fun MobileBaseplate(
         // Server Settings
         if (navigationStore.isServerSettingsVisible) {
             ServerSettings(onDismiss = { navigationStore.isServerSettingsVisible = false })
+        }
+
+        // Channel Settings
+        if (navigationStore.channelSettingsChannel != null) {
+            ChannelSettingsScreen(onDismiss = { navigationStore.closeChannelSettings() })
         }
 
         // Server Menu Bottom Sheet

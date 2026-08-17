@@ -64,7 +64,15 @@ data class Session(
     val session_id: String,
     val status: String? = null,
     val activities: List<Activity> = emptyList(),
-    val active: Boolean = false
+    val active: Boolean = false,
+    val client_info: SessionClientInfo? = null
+)
+
+@Serializable
+data class SessionClientInfo(
+    val client: String? = null,
+    val os: String? = null,
+    val version: Int? = null
 )
 
 @Serializable

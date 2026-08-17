@@ -4,6 +4,7 @@ import io.ktor.client.call.body
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.patch
+import io.ktor.client.request.post
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
@@ -74,6 +75,23 @@ class UserApi(private val rest: RestClient) {
         }
     }
 
+    suspend fun addRelationshipByUsername(username: String, discriminator: String? = null): Boolean {
+        return try {
+            val response = rest.httpClient.post("${rest.apiBase}/users/@me/relationships") {
+                standardHeaders(rest)
+                contentType(ContentType.Application.Json)
+                setBody(buildJsonObject {
+                    put("username", username)
+                    if (discriminator != null) put("discriminator", discriminator)
+                })
+            }
+            response.status.isSuccess()
+        } catch (e: Exception) {
+            Logging.e("Relationship", "Error sending friend request by username: ${e.message}")
+            false
+        }
+    }
+
     suspend fun deleteRelationship(userId: String): Boolean {
         return try {
             val response = rest.httpClient.delete("${rest.apiBase}/users/@me/relationships/$userId") {
@@ -82,6 +100,22 @@ class UserApi(private val rest: RestClient) {
             response.status.isSuccess()
         } catch (e: Exception) {
             Logging.e("Relationship", "Error deleting relationship: ${e.message}")
+            false
+        }
+    }
+
+    suspend fun updateRelationship(userId: String, nickname: String?): Boolean {
+        return try {
+            val response = rest.httpClient.patch("${rest.apiBase}/users/@me/relationships/$userId") {
+                standardHeaders(rest)
+                contentType(ContentType.Application.Json)
+                setBody(buildJsonObject {
+                    if (nickname != null) put("nickname", nickname)
+                })
+            }
+            response.status.isSuccess()
+        } catch (e: Exception) {
+            Logging.e("Relationship", "Error updating relationship: ${e.message}")
             false
         }
     }

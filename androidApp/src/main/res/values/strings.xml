@@ -9,4 +9,5 @@
     <string name="notification_action_reply">Reply</string>
     <string name="notification_action_mark_read">Mark as Read</string>
     <string name="notification_group_messages">Messages</string>
+    <string name="music_presence_label">Music Presence</string>
 </resources>

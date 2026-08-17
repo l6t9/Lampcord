@@ -20,7 +20,10 @@ import androidx.compose.runtime.getValue
 import kotlinx.coroutines.launch
 import me.lampu.lampcord.shared.model.Channel
 import me.lampu.lampcord.shared.state.*
+import me.lampu.lampcord.shared.ui.components.chat.ChannelNotificationsSheet
+import me.lampu.lampcord.shared.ui.components.chat.InviteDialog
 import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.utils.Permission
 import me.lampu.lampcord.shared.utils.PermissionHelper
 import me.lampu.lampcord.shared.utils.setClipboardText
 import org.koin.compose.koinInject
@@ -71,8 +74,17 @@ fun ChannelItem(
 
     val userSettings = settingsStore.userSettings
     val scope = rememberCoroutineScope()
-    
-    val contextMenuItems = remember(channel, userSettings, isMuted) {
+
+    var showNotificationsSheet by remember { mutableStateOf(false) }
+    var showInviteDialog by remember { mutableStateOf(false) }
+    val isDmChannel = channel.guild_id == null || channel.type == 1 || channel.type == 3
+
+    val canManageChannel = remember(channel, guild, member) {
+        if (guild == null || member == null) false
+        else PermissionHelper.hasPermission(member, guild, channel, Permission.MANAGE_CHANNELS, currentUser?.id)
+    }
+
+    val contextMenuItems = remember(channel, userSettings, isMuted, canView, canManageChannel) {
         val items = mutableListOf<ContextMenuItem>()
         if (canView) {
             items.add(ContextMenuItem(if (isMuted) "Unmute Channel" else "Mute Channel", if (isMuted) Icons.Filled.Notifications else Icons.AutoMirrored.Filled.VolumeOff) {
@@ -83,6 +95,33 @@ fun ChannelItem(
                     readStateStore.ackMessage(channel.id, channel.lastMessageId() ?: "0")
                 }
             })
+            
+            val canManageThreads = if (guild == null || member == null) false 
+                else PermissionHelper.hasPermission(member, guild, channel, Permission.MANAGE_THREADS, currentUser?.id)
+            
+            if (canManageThreads) {
+                items.add(ContextMenuItem("Threads", Icons.Rounded.Forum) {
+                    navigationStore.isThreadPanelVisible = true
+                })
+            }
+
+            items.add(ContextMenuItem("Notification Settings", Icons.Filled.Notifications) {
+                showNotificationsSheet = true
+            })
+            
+            val canCreateInvite = if (guild == null || member == null) true
+                else PermissionHelper.hasPermission(member, guild, channel, Permission.CREATE_INSTANT_INVITE, currentUser?.id)
+
+            if (canCreateInvite && channel.type != 4 && channel.type != 2 && channel.type != 13) {
+                items.add(ContextMenuItem("Invite People", Icons.Filled.PersonAdd) {
+                    showInviteDialog = true
+                })
+            }
+            if (!isDmChannel && canManageChannel) {
+                items.add(ContextMenuItem("Channel Settings", Icons.Filled.Settings) {
+                    navigationStore.openChannelSettings(channel)
+                })
+            }
         }
         items.add(ContextMenuItem("Copy Link", Icons.Filled.Link) {
             val guildId = channel.guild_id ?: "@me"
@@ -242,6 +281,20 @@ fun ChannelItem(
                 }
             }
         }
+    }
+
+    if (showNotificationsSheet) {
+        ChannelNotificationsSheet(
+            channel = channel,
+            onDismiss = { showNotificationsSheet = false }
+        )
+    }
+
+    if (showInviteDialog) {
+        InviteDialog(
+            channel = channel,
+            onDismiss = { showInviteDialog = false }
+        )
     }
 }
 

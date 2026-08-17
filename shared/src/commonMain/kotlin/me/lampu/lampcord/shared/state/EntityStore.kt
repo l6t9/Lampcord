@@ -41,7 +41,9 @@ class EntityStore(
                 mfa_level = guild.mfa_level ?: existing.mfa_level,
                 nsfw_level = guild.nsfw_level ?: existing.nsfw_level,
                 unavailable = guild.unavailable ?: existing.unavailable,
-                member_count = guild.member_count ?: existing.member_count,
+                member_count = guild.member_count ?: guild.approximate_member_count ?: existing.member_count,
+                approximate_member_count = guild.approximate_member_count ?: existing.approximate_member_count,
+                approximate_presence_count = guild.approximate_presence_count ?: existing.approximate_presence_count,
                 premium_tier = guild.premium_tier ?: existing.premium_tier,
                 premium_subscription_count = guild.premium_subscription_count ?: existing.premium_subscription_count
             )

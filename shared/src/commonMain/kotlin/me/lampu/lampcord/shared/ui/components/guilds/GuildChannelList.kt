@@ -48,6 +48,7 @@ import me.lampu.lampcord.shared.ui.components.ChannelItem
 import me.lampu.lampcord.shared.ui.components.ChannelSkeleton
 import me.lampu.lampcord.shared.ui.components.VerticalScrollbar
 import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.utils.Permission
 import me.lampu.lampcord.shared.utils.PermissionHelper
 import me.lampu.lampcord.shared.utils.getPlatformName
 import me.lampu.lampcord.shared.utils.setClipboardText
@@ -79,6 +80,20 @@ fun GuildChannelList(
     val scrollState = rememberLazyListState()
     var isHovered by remember { mutableStateOf(false) }
     var menuExpanded by remember { mutableStateOf(false) }
+    var showLeaveDialog by remember { mutableStateOf(false) }
+
+    if (showLeaveDialog) {
+        LeaveServerDialog(
+            guildName = guild?.name ?: "this server",
+            onDismiss = { showLeaveDialog = false },
+            onConfirm = {
+                guild?.let { g ->
+                    guildStore.leaveGuild(g.id) { if (navigationStore.selectedGuild?.id == g.id) navigationStore.selectHome() }
+                }
+                showLeaveDialog = false
+            }
+        )
+    }
 
     val alpha by remember(bannerUrl) {
         derivedStateOf {
@@ -273,19 +288,27 @@ fun GuildChannelList(
                         },
                         leadingIcon = { Icon(Icons.Filled.AccountCircle, null, modifier = Modifier.size(18.dp)) }
                     )
-                    DropdownMenuItem(
-                        text = { Text("Server Settings") },
-                        onClick = { 
-                            navigationStore.isServerSettingsVisible = true
-                            menuExpanded = false 
-                        },
-                        leadingIcon = { Icon(Icons.Filled.Settings, null, modifier = Modifier.size(18.dp)) }
-                    )
+                    
+                    val canManageGuild = remember(g, member) {
+                        if (g == null || member == null) false
+                        else PermissionHelper.hasPermission(member, g, null, Permission.MANAGE_GUILD, u?.id)
+                    }
+
+                    if (canManageGuild) {
+                        DropdownMenuItem(
+                            text = { Text("Server Settings") },
+                            onClick = { 
+                                navigationStore.isServerSettingsVisible = true
+                                menuExpanded = false 
+                            },
+                            leadingIcon = { Icon(Icons.Filled.Settings, null, modifier = Modifier.size(18.dp)) }
+                        )
+                    }
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                     DropdownMenuItem(
                         text = { Text("Leave Server", color = Color.Red) },
                         onClick = { 
-                            g?.let { guildStore.leaveGuild(it.id) { if (navigationStore.selectedGuild?.id == it.id) navigationStore.selectHome() } }
+                            showLeaveDialog = true
                             menuExpanded = false 
                         },
                         leadingIcon = { Icon(Icons.Filled.Logout, null, tint = Color.Red, modifier = Modifier.size(18.dp)) }

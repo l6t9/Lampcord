@@ -1,11 +1,12 @@
 package me.lampu.lampcord.shared.ui.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -13,6 +14,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
+import me.lampu.lampcord.shared.ui.components.settings.Material3SettingsGroup
+import me.lampu.lampcord.shared.ui.components.settings.Material3SettingsItem
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -28,7 +31,6 @@ actual fun ContextMenu(
 
     Box(
         modifier = modifier
-            .clip(shape)
             .pointerInput(items) {
                 awaitPointerEventScope {
                     while (true) {
@@ -56,78 +58,43 @@ actual fun ContextMenu(
     }
 
     if (showSheet) {
-        ModalBottomSheet(
+        AdaptiveModalBottomSheet(
             onDismissRequest = { showSheet = false },
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-            dragHandle = {
-                Box(
-                    modifier = Modifier
-                        .padding(vertical = 12.dp)
-                        .size(width = 40.dp, height = 4.dp)
-                        .clip(MaterialTheme.shapes.extraSmall)
-                        .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)),
-                )
-            }
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
                     .navigationBarsPadding()
-                    .padding(horizontal = 16.dp)
-                    .padding(bottom = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(2.dp)
+                    .padding(bottom = 32.dp),
             ) {
                 if (header != null) {
-                    Box(modifier = Modifier.padding(bottom = 8.dp)) {
+                    Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                         header()
                     }
                 }
                 
                 if (reactions != null) {
-                    Box(modifier = Modifier.padding(bottom = 16.dp)) {
+                    Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                         reactions { showSheet = false }
                     }
+                    Spacer(Modifier.height(8.dp))
                 }
 
-                items.forEachIndexed { index, item ->
-                    val cornerRadius = 12.dp
-                    val reducedRadius = 2.dp
-                    val shape = when {
-                        items.size == 1 -> RoundedCornerShape(cornerRadius)
-                        index == 0 -> RoundedCornerShape(topStart = cornerRadius, topEnd = cornerRadius, bottomStart = reducedRadius, bottomEnd = reducedRadius)
-                        index == items.lastIndex -> RoundedCornerShape(topStart = reducedRadius, topEnd = reducedRadius, bottomStart = cornerRadius, bottomEnd = cornerRadius)
-                        else -> RoundedCornerShape(reducedRadius)
-                    }
-
-                    Surface(
-                        onClick = {
-                            item.onClick()
-                            showSheet = false
-                        },
-                        shape = shape,
-                        color = MaterialTheme.colorScheme.surfaceContainerLowest
-                    ) {
-                        ListItem(
-                            headlineContent = {
-                                Text(
-                                    text = item.label,
-                                    color = item.color ?: MaterialTheme.colorScheme.onSurface,
-                                    style = MaterialTheme.typography.titleMedium
-                                )
-                            },
-                            leadingContent = item.icon?.let {
-                                {
-                                    Icon(
-                                        imageVector = it,
-                                        contentDescription = null,
-                                        tint = item.color ?: MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            },
-                            colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
+                Material3SettingsGroup(
+                    items = items.map { item ->
+                        Material3SettingsItem(
+                            title = { Text(item.label) },
+                            icon = item.icon,
+                            iconTint = item.color,
+                            onClick = {
+                                item.onClick()
+                                showSheet = false
+                            }
                         )
                     }
-                }
+                )
             }
         }
     }

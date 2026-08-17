@@ -256,8 +256,8 @@ fun ReplyBar(
                 val authorId = referencedMessage.author?.id ?: return@derivedStateOf Color.White
                 val member = referencedMessage.member ?: userStore.getMember(guild.id, authorId) ?: return@derivedStateOf Color.White
                 val memberRoles = member.roles.mapNotNull { roleId -> guild.roles.find { it.id == roleId } }
-                val highestRole = memberRoles.maxByOrNull { it.position }
-                if (highestRole != null && highestRole.color != 0) Color(highestRole.color or 0xFF000000.toInt()) else Color.White
+                val colorRole = memberRoles.filter { it.color != 0 }.maxByOrNull { it.position }
+                if (colorRole != null) Color(colorRole.color or 0xFF000000.toInt()) else Color.White
             }
         }
 

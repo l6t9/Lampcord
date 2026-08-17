@@ -26,6 +26,9 @@ import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
 import me.lampu.lampcord.shared.utils.getPlatformName
 import me.lampu.lampcord.shared.model.AutocompleteType
 import me.lampu.lampcord.shared.ui.components.AutocompletePicker
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.TextRange
+import me.lampu.lampcord.shared.ui.components.PlatformBackHandler
 import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -85,6 +88,15 @@ private fun SearchScreenContent(
     gatewayManager: GatewayManager = koinInject(),
     messageStore: MessageStore = koinInject()
 ) {
+    var textFieldValue by remember {
+        mutableStateOf(TextFieldValue(searchStore.searchQuery, TextRange(searchStore.searchQuery.length)))
+    }
+
+    LaunchedEffect(searchStore.searchQuery) {
+        if (searchStore.searchQuery != textFieldValue.text) {
+            textFieldValue = TextFieldValue(searchStore.searchQuery, TextRange(searchStore.searchQuery.length))
+        }
+    }
     val searchOptions = remember {
         listOf(
             SearchOption("from", Icons.Filled.Person, "user"),
@@ -98,6 +110,18 @@ private fun SearchScreenContent(
             SearchOption("during", Icons.Filled.History, "specific date"),
             SearchOption("after", Icons.Filled.History, "specific date")
         )
+    }
+
+    PlatformBackHandler(enabled = autocompleteStore.searchAutocompleteType != null || searchStore.searchResults.isNotEmpty() || searchStore.searchQuery.isNotEmpty()) {
+        if (autocompleteStore.searchAutocompleteType != null) {
+            autocompleteStore.clear(isSearch = true)
+        } else if (searchStore.searchResults.isNotEmpty() || searchStore.searchQuery.isNotEmpty()) {
+            searchStore.searchQuery = ""
+            searchStore.searchResults.clear()
+            autocompleteStore.clear(isSearch = true)
+        } else {
+            onDismiss()
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -115,7 +139,7 @@ private fun SearchScreenContent(
                             .padding(horizontal = 12.dp),
                         contentAlignment = Alignment.CenterStart
                     ) {
-                        if (searchStore.searchQuery.isEmpty()) {
+                        if (textFieldValue.text.isEmpty()) {
                             val targetName = navigationStore.selectedGuild?.name ?: navigationStore.selectedChannel?.name ?: "Discord"
                             Text(
                                 "Search in $targetName",
@@ -124,11 +148,12 @@ private fun SearchScreenContent(
                             )
                         }
                         BasicTextField(
-                            value = searchStore.searchQuery,
+                            value = textFieldValue,
                             onValueChange = {
-                                searchStore.searchQuery = it
-                                if (it.isNotBlank()) {
-                                    val lastPart = it.split(" ").last()
+                                textFieldValue = it
+                                searchStore.searchQuery = it.text
+                                if (it.text.isNotBlank()) {
+                                    val lastPart = it.text.split(" ").last()
                                     val (type, query) = when {
                                         lastPart.startsWith("from:", ignoreCase = true) -> AutocompleteType.USER to lastPart.substring(5)
                                         lastPart.startsWith("mentions:", ignoreCase = true) -> AutocompleteType.USER to lastPart.substring(9)
@@ -137,9 +162,9 @@ private fun SearchScreenContent(
                                         lastPart.startsWith("#") -> AutocompleteType.CHANNEL to lastPart.substring(1)
                                         else -> null to ""
                                     }
-                                    autocompleteStore.updateAutocomplete(type, query, navigationStore.selectedGuild)
+                                    autocompleteStore.updateAutocomplete(type, query, navigationStore.selectedGuild, isSearch = true)
                                 } else {
-                                    autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild)
+                                    autocompleteStore.clear(isSearch = true)
                                 }
                             },
                             modifier = Modifier.fillMaxWidth(),
@@ -159,11 +184,11 @@ private fun SearchScreenContent(
                     }
                 },
                 actions = {
-                    if (searchStore.searchQuery.isNotEmpty()) {
+                    if (textFieldValue.text.isNotEmpty()) {
                         IconButton(onClick = {
                             searchStore.searchQuery = ""
                             searchStore.searchResults.clear()
-                            autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild)
+                            autocompleteStore.clear(isSearch = true)
                         }) {
                             Icon(Icons.Filled.Close, contentDescription = "Clear")
                         }
@@ -191,14 +216,18 @@ private fun SearchScreenContent(
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clickable {
-                                            searchStore.searchQuery += "${option.key}:"
+                                    .clickable {
+                                            val prefix = "${option.key}:"
+                                            val newText = if (textFieldValue.text.isEmpty()) prefix else "${textFieldValue.text} $prefix"
+                                            textFieldValue = TextFieldValue(newText, TextRange(newText.length))
+                                            searchStore.searchQuery = newText
+                                            
                                             val type = when (option.key) {
                                                 "from", "mentions" -> AutocompleteType.USER
                                                 "in" -> AutocompleteType.CHANNEL
                                                 else -> null
                                             }
-                                            autocompleteStore.updateAutocomplete(type, "", navigationStore.selectedGuild)
+                                            autocompleteStore.updateAutocomplete(type, "", navigationStore.selectedGuild, isSearch = true)
                                         }
                                         .padding(horizontal = 16.dp, vertical = 12.dp),
                                     verticalAlignment = Alignment.CenterVertically
@@ -341,23 +370,26 @@ private fun SearchScreenContent(
                 }
 
                 // Autocomplete Overlay
-                if (autocompleteStore.autocompleteType != null) {
+                if (autocompleteStore.searchAutocompleteType != null) {
                     AutocompletePicker(
-                        type = autocompleteStore.autocompleteType!!,
-                        query = autocompleteStore.autocompleteQuery,
-                        selectedIndex = autocompleteStore.autocompleteSelectedIndex,
+                        type = autocompleteStore.searchAutocompleteType!!,
+                        query = autocompleteStore.searchAutocompleteQuery,
+                        selectedIndex = autocompleteStore.searchAutocompleteSelectedIndex,
+                        isSearch = true,
                         modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(horizontal = 8.dp),
                         onItemSelected = { item ->
-                            val currentQuery = searchStore.searchQuery
+                            val currentQuery = textFieldValue.text
                             val parts = currentQuery.split(" ").toMutableList()
                             if (parts.isNotEmpty()) {
                                 val lastPart = parts.last()
                                 val prefix = if (lastPart.contains(":")) lastPart.substringBefore(":") + ":" else ""
                                 val replacement = item.searchReplacement ?: item.replacement
                                 parts[parts.lastIndex] = prefix + replacement
-                                searchStore.searchQuery = parts.joinToString(" ") + " "
+                                val newText = parts.joinToString(" ") + " "
+                                textFieldValue = TextFieldValue(newText, TextRange(newText.length))
+                                searchStore.searchQuery = newText
                             }
-                            autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild)
+                            autocompleteStore.clear(isSearch = true)
                         }
                     )
                 }

@@ -49,7 +49,7 @@ val apiModule = module {
 val databaseModule = module {
     single { getRoomDatabase(getDatabaseBuilder()) }
     single<MessageDao> { get<AppDatabase>().messageDao() }
-    single { MessageLogger(get(), get(), get()) }
+    single { MessageLogger(get<Json>(), get<MessageDao>(), get<UserStore>(), get<CoroutineScope>()) }
 }
 
 val networkModule = module {
@@ -136,13 +136,14 @@ val storeModule = module {
     single {
         MessageEventHandler(
             json = get(), userStore = get(), messageStore = get(), messageLogger = get(),
-            readStateStore = get(), navigationStore = get(), finderStore = get(), scope = get()
+            readStateStore = get(), entityStore = get(), guildStore = get(),
+            navigationStore = get(), finderStore = get(), scope = get()
         )
     }
     single {
         GuildEventHandler(
             json = get(), entityStore = get(), guildStore = get(), navigationStore = get(),
-            settingsStore = get(), userStore = get()
+            settingsStore = get(), userStore = get(), presenceStore = get()
         )
     }
     single {

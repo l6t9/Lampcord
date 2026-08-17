@@ -10,8 +10,10 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -26,6 +28,7 @@ import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -42,6 +45,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.Relationship
+import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.state.PresenceStore
 import me.lampu.lampcord.shared.state.RelationshipStore
 import me.lampu.lampcord.shared.state.SettingsStore
@@ -81,6 +85,8 @@ fun FriendsList(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .statusBarsPadding()
+            .navigationBarsPadding()
             .pointerInput(Unit) {
                 awaitPointerEventScope {
                     while (true) {
@@ -162,19 +168,18 @@ fun FriendItem(
     relationship: Relationship,
     userStore: UserStore = koinInject(),
     settingsStore: SettingsStore = koinInject(),
-    presenceStore: PresenceStore = koinInject()
+    presenceStore: PresenceStore = koinInject(),
+    relationshipStore: RelationshipStore = koinInject(),
+    navigationStore: NavigationStore = koinInject()
 ) {
     val user = relationship.user ?: return
     val currentUser by userStore.currentUser.collectAsState()
     val userSettings = settingsStore.userSettings
     
     val status = presenceStore.getUserStatus(user.id, currentUser?.id, userSettings?.status)
+    val relationshipType = relationship.type
 
     Surface(
-        onClick = { 
-            // In a real app, this would open a DM or profile
-            // navigationStore.selectChannel(...)
-        },
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
@@ -212,12 +217,49 @@ fun FriendItem(
                 )
             }
             
-            Row {
-                IconButton(onClick = { /* Message */ }) {
-                    Icon(Icons.Filled.Chat, null, modifier = Modifier.size(20.dp))
+            when (relationshipType) {
+                2 -> {
+                    TextButton(onClick = { relationshipStore.unblockUser(user.id) }) {
+                        Text("Unblock")
+                    }
                 }
-                IconButton(onClick = { /* More */ }) {
-                    Icon(Icons.Filled.MoreVert, null, modifier = Modifier.size(20.dp))
+                3 -> {
+                    Button(
+                        onClick = { relationshipStore.addFriend(user.id) },
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text("Accept")
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    TextButton(onClick = { relationshipStore.removeFriend(user.id) }) {
+                        Text("Ignore")
+                    }
+                }
+                4 -> {
+                    TextButton(onClick = { relationshipStore.removeFriend(user.id) }) {
+                        Text("Cancel")
+                    }
+                }
+                else -> {
+                    Row {
+                        IconButton(onClick = { navigationStore.openDm(user.id) }) {
+                            Icon(Icons.Filled.Chat, "Message", modifier = Modifier.size(20.dp))
+                        }
+                        ContextMenu(
+                            items = listOf(
+                                ContextMenuItem("Remove Friend", Icons.Filled.PersonRemove) {
+                                    relationshipStore.removeFriend(user.id)
+                                },
+                                ContextMenuItem("Block", Icons.Filled.Block, color = Color.Red) {
+                                    relationshipStore.blockUser(user.id)
+                                }
+                            )
+                        ) {
+                            IconButton(onClick = {}) {
+                                Icon(Icons.Filled.MoreVert, "More", modifier = Modifier.size(20.dp))
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -225,8 +267,9 @@ fun FriendItem(
 }
 
 @Composable
-fun AddFriendUI() {
+fun AddFriendUI(relationshipStore: RelationshipStore = koinInject()) {
     var query by remember { mutableStateOf("") }
+    var statusText by remember { mutableStateOf<String?>(null) }
     
     Column(
         modifier = Modifier
@@ -253,7 +296,13 @@ fun AddFriendUI() {
             placeholder = { Text("Enter a username") },
             trailingIcon = {
                 Button(
-                    onClick = { /* TODO */ },
+                    onClick = {
+                        val name = query.trim()
+                        if (name.isBlank()) return@Button
+                        relationshipStore.sendFriendRequest(name, null) { success ->
+                            statusText = if (success) "Friend request sent!" else "Couldn't find that user."
+                        }
+                    },
                     enabled = query.isNotBlank(),
                     modifier = Modifier.padding(end = 8.dp),
                     shape = RoundedCornerShape(8.dp)
@@ -262,6 +311,15 @@ fun AddFriendUI() {
                 }
             }
         )
+        
+        statusText?.let {
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = it,
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (it == "Friend request sent!") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+            )
+        }
     }
 }
 

@@ -40,6 +40,7 @@ import me.lampu.lampcord.shared.model.Role
 import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.components.chat.MediaPicker
 import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.ui.components.PlatformBackHandler
 import me.lampu.lampcord.shared.utils.FilePicker
 import me.lampu.lampcord.shared.utils.Permission
 import me.lampu.lampcord.shared.utils.getClipboardFiles
@@ -675,6 +676,9 @@ fun ChatInputBar(
                             enter = expandVertically() + fadeIn(),
                             exit = shrinkVertically() + fadeOut()
                         ) {
+                            PlatformBackHandler(enabled = navigationStore.isEmojiPickerVisible) {
+                                navigationStore.isEmojiPickerVisible = false
+                            }
                             EmojiPicker(
                                 modifier = Modifier.fillMaxWidth(),
                                 onEmojiSelected = { emoji ->

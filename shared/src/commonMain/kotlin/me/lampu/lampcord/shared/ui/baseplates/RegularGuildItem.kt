@@ -8,7 +8,6 @@ import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
@@ -52,6 +51,12 @@ fun RegularGuildItem(
     
     val backgroundColor by animateColorAsState(if (isSelected) selectedColor else unselectedColor)
     
+    val cornerRadius by animateFloatAsState(
+        targetValue = if (isSelected) 16f else 24f,
+        label = "cornerRadius"
+    )
+    val shape = RoundedCornerShape(cornerRadius.dp)
+    
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -64,12 +69,11 @@ fun RegularGuildItem(
             ),
         contentAlignment = Alignment.Center
     ) {
-        Box {
-            // Indicator
+        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            // Indicator - Fixed to avoid clipping on mobile
             Box(
                 modifier = Modifier
                     .align(Alignment.CenterStart)
-                    .offset(x = (-12).dp)
                     .width(4.dp)
                     .fillMaxHeight(indicatorFraction)
                     .clip(RoundedCornerShape(topEnd = 4.dp, bottomEnd = 4.dp))
@@ -80,7 +84,7 @@ fun RegularGuildItem(
             Box(
                 modifier = Modifier
                     .size(48.dp)
-                    .clip(CircleShape)
+                    .clip(shape)
                     .background(backgroundColor),
                 contentAlignment = Alignment.Center
             ) {

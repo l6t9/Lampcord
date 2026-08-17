@@ -187,6 +187,32 @@ class GuildApi(private val rest: RestClient) {
         }
     }
 
+    suspend fun resolveInvite(code: String): Invite? {
+        return try {
+            val response = rest.httpClient.get("${rest.apiBase}/invites/$code") {
+                standardHeaders(rest)
+                parameter("with_counts", true)
+                parameter("with_expiration", true)
+            }
+            if (response.status.isSuccess()) response.body() else null
+        } catch (e: Exception) {
+            Logging.e("Invite", "Error resolving invite $code: ${e.message}")
+            null
+        }
+    }
+
+    suspend fun joinGuild(inviteCode: String): Guild? {
+        return try {
+            val response = rest.httpClient.post("${rest.apiBase}/invites/$inviteCode") {
+                standardHeaders(rest)
+            }
+            if (response.status.isSuccess()) response.body<Invite>()?.guild else null
+        } catch (e: Exception) {
+            Logging.e("Invite", "Error joining with code $inviteCode: ${e.message}")
+            null
+        }
+    }
+
     suspend fun getGuildAuditLog(guildId: String): AuditLog? {
         return try {
             rest.httpClient.get("${rest.apiBase}/guilds/$guildId/audit-logs") {

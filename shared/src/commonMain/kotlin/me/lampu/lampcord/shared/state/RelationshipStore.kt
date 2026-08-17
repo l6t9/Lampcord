@@ -57,9 +57,25 @@ class RelationshipStore(
         }
     }
 
+    fun sendFriendRequest(username: String, discriminator: String?, onResult: (Boolean) -> Unit = {}) {
+        scope.launch {
+            val success = userApi.addRelationshipByUsername(username, discriminator)
+            if (success) fetchRelationships()
+            onResult(success)
+        }
+    }
+
     fun removeFriend(userId: String) {
         scope.launch {
             userApi.deleteRelationship(userId)
+        }
+    }
+
+    fun updateNickname(userId: String, nickname: String?) {
+        scope.launch {
+            if (userApi.updateRelationship(userId, nickname)) {
+                fetchRelationships()
+            }
         }
     }
 

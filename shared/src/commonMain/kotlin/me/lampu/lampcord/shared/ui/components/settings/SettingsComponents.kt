@@ -115,10 +115,10 @@ fun Material3SettingsItemRow(
     val isPressed by interactionSource.collectIsPressedAsState()
 
     val backgroundColor by animateColorAsState(
-        targetValue = if (isPressed) {
-            MaterialTheme.colorScheme.surfaceContainerHigh
-        } else {
-            MaterialTheme.colorScheme.surfaceContainer
+        targetValue = when {
+            !item.enabled -> (item.containerColor ?: MaterialTheme.colorScheme.surfaceContainer).copy(alpha = 0.38f)
+            isPressed -> item.containerColor?.let { it.copy(alpha = it.alpha * 1.2f) } ?: MaterialTheme.colorScheme.surfaceContainerHigh
+            else -> item.containerColor ?: MaterialTheme.colorScheme.surfaceContainer
         },
         label = "backgroundColor",
     )
@@ -265,6 +265,7 @@ data class Material3SettingsItem(
     val enabled: Boolean = true,
     val iconContainerColor: Color? = null,
     val iconTint: Color? = null,
+    val containerColor: Color? = null,
     val modifier: Modifier = Modifier,
     val onClick: (() -> Unit)? = null,
     val expanded: Boolean = false,

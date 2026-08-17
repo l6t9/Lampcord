@@ -73,7 +73,7 @@ fun CustomStatus(activity: Activity, modifier: Modifier = Modifier, compact: Boo
                 )
             }
         }
-        
+
         if (!activity.state.isNullOrBlank()) {
             Text(
                 text = activity.state,
@@ -142,7 +142,7 @@ fun MusicActivity(activity: Activity, modifier: Modifier = Modifier, compact: Bo
                             Icon(Icons.Filled.Album, null, tint = contentColor.copy(alpha = 0.5f))
                         }
                     }
-                    
+
                     if (smallImageUrl != null) {
                         Box(
                             modifier = Modifier

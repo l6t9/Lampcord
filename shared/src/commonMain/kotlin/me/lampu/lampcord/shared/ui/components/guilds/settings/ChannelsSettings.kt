@@ -113,7 +113,7 @@ private fun ChannelRow(channel: Channel, onClick: () -> Unit) {
 }
 
 @Composable
-fun ChannelEditor(channel: Channel, channelApi: ChannelApi, onDone: () -> Unit) {
+fun ChannelEditor(channel: Channel, channelApi: ChannelApi, onDone: () -> Unit, guildStore: GuildStore = koinInject()) {
     val scope = rememberCoroutineScope()
     var draftName by remember(channel.name) { mutableStateOf(channel.name ?: "") }
     var draftTopic by remember(channel.topic) { mutableStateOf(channel.topic ?: "") }
@@ -183,6 +183,7 @@ fun ChannelEditor(channel: Channel, channelApi: ChannelApi, onDone: () -> Unit) 
             onClick = {
                 scope.launch {
                     if (channelApi.deleteChannel(channel.id)) {
+                        guildStore.handleChannelDelete(channel)
                         onDone()
                     }
                 }

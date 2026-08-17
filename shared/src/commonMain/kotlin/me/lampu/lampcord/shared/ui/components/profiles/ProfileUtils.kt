@@ -9,7 +9,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.vector.ImageVector
 import me.lampu.lampcord.shared.model.ProfileBadge
+import me.lampu.lampcord.shared.ui.icons.IconsBrand
+import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.ExpressiveTooltip
 import me.lampu.lampcord.shared.ui.components.tooltipText
@@ -59,6 +62,65 @@ fun UserBadges(userId: String, badges: List<ProfileBadge>) {
             )
         }
         me.lampu.lampcord.shared.ui.components.CustomBadgesView(userId, badgeSize = 22.dp, spacing = 4.dp)
+    }
+}
+
+fun getConnectionIcon(type: String, name: String? = null): ImageVector {
+    val normalizedType = type.lowercase()
+    if (normalizedType == "website" || normalizedType == "domain") return Icons.Rounded.Language
+    
+    // Check name if type is unknown or generic
+    if (name != null && name.contains(".") && !name.contains(" ")) return Icons.Rounded.Language
+
+    return when (normalizedType) {
+        "github" -> IconsBrand.Github
+        "spotify" -> IconsBrand.Spotify
+        "steam" -> IconsBrand.Steam
+        "twitch" -> IconsBrand.Twitch
+        "reddit" -> IconsBrand.Reddit
+        "twitter" -> IconsBrand.Twitter
+        "xbox" -> IconsBrand.Xbox
+        "playstation" -> IconsBrand.PlayStation
+        "youtube" -> IconsBrand.Youtube
+        "instagram" -> IconsBrand.Instagram
+        "telegram" -> IconsBrand.Telegram
+        "battlenet" -> IconsBrand.BuyMeACoffee // Placeholder
+        "facebook" -> Icons.Rounded.Public // Placeholder
+        "mastodon" -> Icons.Rounded.Public // Placeholder
+        "tiktok" -> Icons.Rounded.Public // Placeholder
+        else -> Icons.Rounded.Link
+    }
+}
+
+fun getConnectionUrl(type: String, name: String, id: String): String? {
+    val normalizedType = type.lowercase()
+    return when (normalizedType) {
+        "github" -> "https://github.com/$name"
+        "spotify" -> "https://open.spotify.com/user/$id"
+        "steam" -> "https://steamcommunity.com/profiles/$id"
+        "twitch" -> "https://twitch.tv/$name"
+        "reddit" -> "https://reddit.com/u/$name"
+        "twitter" -> "https://twitter.com/$name"
+        "youtube" -> "https://youtube.com/channel/$id"
+        "instagram" -> "https://instagram.com/$name"
+        "telegram" -> "https://t.me/$name"
+        "facebook" -> "https://facebook.com/$id"
+        "tiktok" -> "https://tiktok.com/@$name"
+        "mastodon" -> if (name.contains("@")) {
+            val parts = name.split("@")
+            if (parts.size >= 3) "https://${parts[2]}/@${parts[1]}" else null
+        } else null
+        "website", "domain" -> if (name.startsWith("http")) name else "https://$name"
+        else -> {
+            // Fallback: If it looks like a URL or a domain, try to link it
+            if (name.startsWith("http")) {
+                name
+            } else if (name.contains(".") && !name.contains(" ")) {
+                "https://$name"
+            } else {
+                null
+            }
+        }
     }
 }
 

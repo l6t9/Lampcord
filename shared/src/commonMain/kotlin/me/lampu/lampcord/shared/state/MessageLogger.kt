@@ -11,12 +11,14 @@ import me.lampu.lampcord.shared.model.Message
 class MessageLogger(
     private val json: Json,
     private val messageDao: MessageDao,
+    private val userStore: UserStore,
     private val scope: CoroutineScope
 ) {
     fun logMessage(message: Message) {
         if (!me.lampu.lampcord.shared.settings.Settings.shared.messageLoggerEnabled) return
         val settings = me.lampu.lampcord.shared.settings.Settings.shared
         if (settings.messageLoggerIgnoreBots && message.author?.bot == true) return
+        if (settings.messageLoggerIgnoreSelf && message.author?.id == userStore.currentUser.value?.id) return
         
         scope.launch {
             try {
@@ -40,6 +42,10 @@ class MessageLogger(
 
     fun logUpdate(message: Message) {
         if (!me.lampu.lampcord.shared.settings.Settings.shared.messageLoggerEnabled) return
+        val settings = me.lampu.lampcord.shared.settings.Settings.shared
+        if (settings.messageLoggerIgnoreBots && message.author?.bot == true) return
+        if (settings.messageLoggerIgnoreSelf && message.author?.id == userStore.currentUser.value?.id) return
+
         scope.launch {
             try {
                 val existing = messageDao.getMessageById(message.id)

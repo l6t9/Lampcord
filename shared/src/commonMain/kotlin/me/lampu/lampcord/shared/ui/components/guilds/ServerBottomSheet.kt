@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,7 +20,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroup
 import androidx.compose.material3.ButtonGroupDefaults
@@ -29,9 +29,9 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -55,11 +55,14 @@ import me.lampu.lampcord.shared.state.ProfileStore
 import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.state.UserGuildSettingsStore
 import me.lampu.lampcord.shared.state.UserStore
+import me.lampu.lampcord.shared.ui.components.AdaptiveModalBottomSheet
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.settings.Material3SettingsGroup
 import me.lampu.lampcord.shared.ui.components.settings.Material3SettingsItem
 import me.lampu.lampcord.shared.ui.components.settings.switchSettingsItem
 import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.utils.Permission
+import me.lampu.lampcord.shared.utils.PermissionHelper
 import me.lampu.lampcord.shared.utils.setClipboardText
 import org.koin.compose.koinInject
 
@@ -78,12 +81,23 @@ fun ServerBottomSheet(
 ) {
     val userGuildSettings by userGuildSettingsStore.userGuildSettings.collectAsState()
     val currentUser by userStore.currentUser.collectAsState()
+    var showLeaveDialog by remember { mutableStateOf(false) }
 
-    ModalBottomSheet(
+    if (showLeaveDialog) {
+        LeaveServerDialog(
+            guildName = guild.name ?: "this server",
+            onDismiss = { showLeaveDialog = false },
+            onConfirm = {
+                guildStore.leaveGuild(guild.id) { if (navigationStore.selectedGuild?.id == guild.id) navigationStore.selectHome() }
+                showLeaveDialog = false
+                onDismiss()
+            }
+        )
+    }
+
+    AdaptiveModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-        dragHandle = { BottomSheetDefaults.DragHandle() }
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
     ) {
         Column(
             modifier = Modifier
@@ -101,16 +115,22 @@ fun ServerBottomSheet(
                         contentScale = ContentScale.Crop,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(120.dp)
+                            .aspectRatio(16f / 9f)
                     )
                 } else {
-                    Box(modifier = Modifier.fillMaxWidth().height(80.dp).background(MaterialTheme.colorScheme.primaryContainer))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(80.dp)
+                            .background(MaterialTheme.colorScheme.primaryContainer)
+                    )
                 }
 
                 Surface(
                     modifier = Modifier
                         .padding(start = 16.dp)
-                        .offset(y = if (bannerUrl != null) 80.dp else 40.dp)
+                        .align(Alignment.BottomStart)
+                        .offset(y = 40.dp)
                         .size(80.dp),
                     shape = RoundedCornerShape(24.dp),
                     color = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -127,7 +147,7 @@ fun ServerBottomSheet(
                 }
             }
 
-            Spacer(Modifier.height(if (guild.banner != null) 48.dp else 48.dp))
+            Spacer(Modifier.height(48.dp))
 
             Column(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(horizontal = 16.dp)) {
@@ -152,20 +172,26 @@ fun ServerBottomSheet(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         // Online count if available, otherwise just member count
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(modifier = Modifier.size(8.dp).background(Color(0xFF23A559), CircleShape))
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                "${memberListStore.onlineCount ?: 0} Online",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                        val onlineCount = remember(guild, memberListStore.getOnlineCount(guild.id)) {
+                            guild.approximate_presence_count ?: memberListStore.getOnlineCount(guild.id)
+                        }
+                        if (onlineCount > 0) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(modifier = Modifier.size(8.dp).background(Color(0xFF23A559), CircleShape))
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    "$onlineCount Online",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(modifier = Modifier.size(8.dp).background(Color(0xFFB5BAC1), CircleShape))
                             Spacer(Modifier.width(4.dp))
+                            val memberCount = guild.approximate_member_count ?: guild.member_count ?: memberListStore.getMemberCount(guild.id)
                             Text(
-                                "${memberListStore.memberCount ?: guild.member_count ?: 0} Members",
+                                "${memberCount.takeIf { it > 0 } ?: 0} Members",
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -175,6 +201,14 @@ fun ServerBottomSheet(
                     Spacer(Modifier.height(24.dp))
 
                     // Top Horizontal Actions (Boost, Notifications, Settings)
+                    val member = remember(guild.id, currentUser) {
+                        currentUser?.id?.let { userStore.getMember(guild.id, it) }
+                    }
+                    val canManageGuild = remember(guild, member) {
+                        if (member == null) false
+                        else PermissionHelper.hasPermission(member, guild, null, Permission.MANAGE_GUILD, currentUser?.id)
+                    }
+
                     ButtonGroup(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -182,14 +216,17 @@ fun ServerBottomSheet(
                         overflowIndicator = { menuState -> ButtonGroupDefaults.OverflowIndicator(menuState) },
                         horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
                     ) {
-                        val actions = listOf(
+                        val actions = mutableListOf(
                             Triple(Icons.Rounded.RocketLaunch, "${guild.premium_subscription_count ?: 0} Boosts") { /* TODO */ },
-                            Triple(Icons.Rounded.Notifications, "Notifications") { /* TODO */ },
-                            Triple(Icons.Rounded.Settings, "Settings") {
+                            Triple(Icons.Rounded.Notifications, "Notifications") { /* TODO */ }
+                        )
+                        
+                        if (canManageGuild) {
+                            actions.add(Triple(Icons.Rounded.Settings, "Settings") {
                                 navigationStore.isServerSettingsVisible = true
                                 onDismiss()
-                            }
-                        )
+                            })
+                        }
 
                         actions.forEachIndexed { index, (icon, label, onClick) ->
                             customItem(
@@ -327,8 +364,7 @@ fun ServerBottomSheet(
                         Material3SettingsItem(
                             title = { Text("Leave Server", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold) },
                             onClick = {
-                                guildStore.leaveGuild(guild.id) { if (navigationStore.selectedGuild?.id == guild.id) navigationStore.selectHome() }
-                                onDismiss()
+                                showLeaveDialog = true
                             }
                         )
                     )

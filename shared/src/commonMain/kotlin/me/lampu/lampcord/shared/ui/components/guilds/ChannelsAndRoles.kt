@@ -153,13 +153,40 @@ fun BrowseChannelsTab(navigationStore: NavigationStore, guildStore: GuildStore) 
     val allChannels = allGuildChannels.values.filter { it.guild_id == guildId }
     val categories = allChannels.filter { it.type == 4 }.sortedBy { it.position ?: 0 }
     
+    val rootChannels = allChannels.filter { it.parent_id == null && it.type != 4 }
+        .sortedWith(compareBy<me.lampu.lampcord.shared.model.Channel> { 
+            if (it.type == 2 || it.type == 13) 1 else 0 
+        }.thenBy { it.position ?: 0 })
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        if (rootChannels.isNotEmpty()) {
+            item {
+                Column {
+                    Text(
+                        text = "CHANNELS",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        rootChannels.forEach { channel ->
+                            BrowseChannelItem(channel)
+                        }
+                    }
+                }
+            }
+        }
+
         items(categories) { category ->
-            val categoryChannels = allChannels.filter { it.parent_id == category.id }.sortedBy { it.position ?: 0 }
+            val categoryChannels = allChannels.filter { it.parent_id == category.id }.sortedWith(compareBy<me.lampu.lampcord.shared.model.Channel> { 
+                // Put voice and stage channels at the bottom (priority 1), others at the top (priority 0)
+                if (it.type == 2 || it.type == 13) 1 else 0 
+            }.thenBy { it.position ?: 0 })
             if (categoryChannels.isNotEmpty()) {
                 Column {
                     Text(

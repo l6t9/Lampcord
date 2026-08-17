@@ -61,6 +61,12 @@ class PresenceStore(private val userApi: UserApi) {
         }
         
         _presences.value = newPresences
+        
+        ready.sessions?.let { sessions ->
+            val userId = ready.user?.id ?: return@let
+            handleSessions(userId, sessions)
+        }
+
         updateFlattened()
     }
 
@@ -82,9 +88,17 @@ class PresenceStore(private val userApi: UserApi) {
     fun handleSessions(userId: String, sessions: List<Session>) {
         val activeSession = sessions.find { it.active } ?: sessions.firstOrNull() ?: return
         val existing = _presences.value[userId]?.get("global")
+        
+        val clientStatus = me.lampu.lampcord.shared.model.ClientStatus(
+            desktop = sessions.find { it.client_info?.client == "desktop" }?.status,
+            mobile = sessions.find { it.client_info?.client == "mobile" }?.status,
+            web = sessions.find { it.client_info?.client == "web" }?.status
+        )
+
         val newPresence = (existing ?: PresenceUpdate(user_id = userId)).copy(
             status = activeSession.status ?: existing?.status ?: "online",
-            activities = activeSession.activities
+            activities = activeSession.activities,
+            client_status = clientStatus
         )
         _presences.update { current ->
             val userMap = current[userId]?.toMutableMap() ?: mutableMapOf()
@@ -100,14 +114,21 @@ class PresenceStore(private val userApi: UserApi) {
     }
 
     fun getUserStatus(userId: String, currentUserId: String?, currentUserStatus: String?): String {
-        if (userId == currentUserId) return currentUserStatus ?: "online"
-        val p = flattenedPresences.value[userId] ?: return "offline"
-        return presenceStatus(p)
+        return getUserStatus(userId, null, currentUserId, currentUserStatus)
     }
 
     fun getUserStatus(userId: String, presence: PresenceUpdate?, currentUserId: String?, currentUserStatus: String?): String {
+        val p = presence ?: flattenedPresences.value[userId]
+        
+        if (p != null) {
+            val status = presenceStatus(p)
+            if (userId == currentUserId && (status == "streaming" || status == "mobile")) {
+                return status
+            }
+        }
+        
         if (userId == currentUserId) return currentUserStatus ?: "online"
-        val p = presence ?: flattenedPresences.value[userId] ?: return "offline"
+        if (p == null) return "offline"
         return presenceStatus(p)
     }
 

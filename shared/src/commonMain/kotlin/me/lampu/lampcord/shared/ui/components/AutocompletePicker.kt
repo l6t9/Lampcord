@@ -40,11 +40,12 @@ fun AutocompletePicker(
     type: AutocompleteType,
     query: String,
     selectedIndex: Int,
+    isSearch: Boolean = false,
     autocompleteStore: AutocompleteStore = koinInject(),
     modifier: Modifier = Modifier,
     onItemSelected: (AutocompleteItem) -> Unit
 ) {
-    val items = autocompleteStore.autocompleteItems
+    val items = if (isSearch) autocompleteStore.searchAutocompleteItems else autocompleteStore.autocompleteItems
 
     if (items.isEmpty()) return
 
@@ -104,10 +105,15 @@ fun AutocompletePicker(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             if (item.icon != null) {
+                                val imageShape = when(type) {
+                                    AutocompleteType.MENTION, AutocompleteType.USER -> CircleShape
+                                    AutocompleteType.EMOJI -> androidx.compose.ui.graphics.RectangleShape
+                                    else -> MaterialTheme.shapes.extraSmall
+                                }
                                 AsyncImage(
                                     model = item.icon,
                                     contentDescription = null,
-                                    modifier = Modifier.size(24.dp).clip(if (type == AutocompleteType.MENTION) CircleShape else MaterialTheme.shapes.extraSmall)
+                                    modifier = Modifier.size(24.dp).clip(imageShape)
                                 )
                             } else if (item.iconType != null) {
                                 Icon(

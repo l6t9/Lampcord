@@ -9,8 +9,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
@@ -20,8 +23,14 @@ import me.lampu.lampcord.shared.api.MessageApi
 import me.lampu.lampcord.shared.model.Channel
 import me.lampu.lampcord.shared.model.Member
 import me.lampu.lampcord.shared.model.Message
+import me.lampu.lampcord.shared.model.MessageReactionAdd
+import me.lampu.lampcord.shared.model.MessageReactionRemove
+import me.lampu.lampcord.shared.model.MessageReactionRemoveAll
+import me.lampu.lampcord.shared.model.MessageReactionRemoveEmoji
+import me.lampu.lampcord.shared.model.MessageReaction
 import me.lampu.lampcord.shared.model.PendingFile
 import me.lampu.lampcord.shared.model.Poll
+import me.lampu.lampcord.shared.model.ReactionCountDetails
 import me.lampu.lampcord.shared.model.User
 import me.lampu.lampcord.shared.utils.Backoff
 import me.lampu.lampcord.shared.utils.ResourceLoader
@@ -41,14 +50,30 @@ class MessageStore(
     private val messageLogger: MessageLogger,
     private val scope: CoroutineScope
 ) {
-    private val _messages = MutableStateFlow<List<Message>>(emptyList())
-    val messages: StateFlow<List<Message>> = _messages.asStateFlow()
+    private companion object {
+        const val CACHE_MAX_CHANNELS = 8
+        const val MAX_MESSAGES_PER_CHANNEL = 200
+        const val MAX_MESSAGES_PER_CHANNEL_TRIM = 100
+    }
+
+    // Exact replica of Discord's internal message storage philosophy:
+    // LRU channel access + sorted lists (TreeMap equivalent) for messages
+    private val channelAccessOrder = mutableListOf<String>()
+    private val messageCache = mutableMapOf<String, List<Message>>()
+    
+    private val _allMessages = MutableStateFlow<Map<String, List<Message>>>(emptyMap())
+    
+    val messages: StateFlow<List<Message>> = combine(_allMessages, selectionStore.activeChannelIdFlow) { all, activeId ->
+        if (activeId == null) emptyList() else all[activeId] ?: emptyList()
+    }.stateIn(scope, SharingStarted.Eagerly, emptyList())
 
     private val _isLoadingHistory = MutableStateFlow(false)
     val isLoadingHistory: StateFlow<Boolean> = _isLoadingHistory.asStateFlow()
 
-    private val _hasMoreHistory = MutableStateFlow(true)
-    val hasMoreHistory: StateFlow<Boolean> = _hasMoreHistory.asStateFlow()
+    private val _hasMoreHistory = MutableStateFlow<Map<String, Boolean>>(emptyMap())
+    val hasMoreHistory: StateFlow<Boolean> = combine(_hasMoreHistory, selectionStore.activeChannelIdFlow) { map, activeId ->
+        if (activeId == null) true else map[activeId] ?: true
+    }.stateIn(scope, SharingStarted.Eagerly, true)
 
     val draftMessages = mutableStateMapOf<String, String>()
     var replyingTo by mutableStateOf<Message?>(null)
@@ -64,8 +89,11 @@ class MessageStore(
     private val queuesMutex = Mutex()
     private var historyLoadingJob: Job? = null
 
+    // Nonce tracking to replace local messages with server ones (Discord logic)
+    private val messageNonceIds = mutableMapOf<String, String>()
+
     private val emojiMarkdownRegexCompound = Regex(
-        """(?:\[(?:[a-zA-Z0-9_~]+|\u2236[a-zA-Z0-9_~]+\u2236)]\()?(https://cdn\.discordapp\.com/emojis/(\d+)\.(gif|png|webp)(?:\?[^)\s]*)?)\)?"""
+        """(?:\[(?:[a-zA-Z0-9_~]+|\u2236[a-zA-Z0-9_~]+\u2236)]\()?(https://cdn\.discordapp.com/emojis/(\d+)\.(gif|png|webp)(?:\?[^)\s]*)?)\)?"""
     )
     private val emojiMarkdownRegexSingle = Regex(
         """^(?:\[(?:[a-zA-Z0-9_~]+|\u2236[a-zA-Z0-9_~]+\u2236)]\()?(https://cdn\.discordapp\.com/emojis/(\d+)\.(gif|png|webp)(?:\?[^)\s]*)?)\)?$"""
@@ -165,8 +193,11 @@ class MessageStore(
     }
 
     fun clear() {
-        _messages.value = emptyList()
-        _hasMoreHistory.value = true
+        messageCache.clear()
+        channelAccessOrder.clear()
+        _allMessages.value = emptyMap()
+        messageNonceIds.clear()
+        _hasMoreHistory.value = emptyMap()
         _isLoadingHistory.value = false
         historyLoadingJob?.cancel()
     }
@@ -175,74 +206,261 @@ class MessageStore(
         scope.launch {
             val logged = messageLogger.getLoggedMessages(channelId)
             if (logged.isNotEmpty()) {
-                addMessages(logged)
+                addMessages(channelId, logged)
             }
         }
     }
 
-    fun addMessages(newMessages: List<Message>) {
-        _messages.update { current ->
-            val existingIds = current.map { it.id }.toSet()
-            val filtered = newMessages.filter { it.id !in existingIds }.map { preprocess(it) }
-            filtered.forEach { messageLogger.logMessage(it) }
-            current + filtered
+    private fun trimMessages(list: List<Message>): List<Message> {
+        if (list.size <= MAX_MESSAGES_PER_CHANNEL) return list
+        return list.take(MAX_MESSAGES_PER_CHANNEL_TRIM)
+    }
+
+    private fun updateAllMessagesFlow() {
+        _allMessages.value = messageCache.toMap()
+    }
+
+    private fun recordAccess(channelId: String) {
+        channelAccessOrder.remove(channelId)
+        channelAccessOrder.add(channelId)
+        if (channelAccessOrder.size > CACHE_MAX_CHANNELS) {
+            val oldest = channelAccessOrder.removeAt(0)
+            messageCache.remove(oldest)
+        }
+    }
+
+    fun addMessages(channelId: String, newMessages: List<Message>) {
+        val channelMessages = messageCache[channelId]?.toMutableList() ?: mutableListOf()
+        val existingIds = channelMessages.map { it.id }.toSet()
+        
+        var changed = false
+        newMessages.forEach { msg ->
+            if (msg.id !in existingIds) {
+                val preprocessed = preprocess(msg)
+                channelMessages.add(preprocessed)
+                messageLogger.logMessage(preprocessed)
+                changed = true
+            }
+        }
+
+        if (changed) {
+            val sorted = channelMessages.sortedByDescending { it.id }
+            val trimmed = trimMessages(sorted)
+            messageCache[channelId] = trimmed
+            recordAccess(channelId)
+            updateAllMessagesFlow()
         }
     }
 
     fun handleMessageCreate(message: Message) {
         val preprocessed = preprocess(message)
-        _messages.update { current ->
-            val index = current.indexOfFirst { it.id == preprocessed.id || (preprocessed.nonce != null && it.nonce == preprocessed.nonce) }
-            if (index != -1) {
-                current.toMutableList().apply { set(index, preprocessed) }
+        val channelId = message.channel_id
+        val channelMessages = messageCache[channelId]?.toMutableList() ?: mutableListOf()
+        
+        val nonce = preprocessed.nonce
+        var replaced = false
+        
+        if (nonce != null) {
+            if (preprocessed.isPending) {
+                messageNonceIds[nonce] = preprocessed.id
             } else {
-                listOf(preprocessed) + current
+                val localId = messageNonceIds.remove(nonce)
+                if (localId != null) {
+                    val idx = channelMessages.indexOfFirst { it.id == localId }
+                    if (idx != -1) {
+                        channelMessages[idx] = preprocessed
+                        replaced = true
+                    }
+                }
             }
         }
+
+        if (!replaced) {
+            val existingIdx = channelMessages.indexOfFirst { it.id == preprocessed.id }
+            if (existingIdx != -1) {
+                channelMessages[existingIdx] = preprocessed
+            } else {
+                channelMessages.add(0, preprocessed)
+            }
+        }
+        
+        val sorted = channelMessages.sortedByDescending { it.id }
+        val trimmed = trimMessages(sorted)
+        messageCache[channelId] = trimmed
+        recordAccess(channelId)
+        updateAllMessagesFlow()
     }
 
     fun handleMessageUpdate(message: Message, dataObj: JsonObject) {
-        _messages.update { current ->
-            val index = current.indexOfFirst { it.id == message.id }
-            if (index != -1) {
-                val existing = current[index]
-                val merged = existing.merge(dataObj)
-                val preprocessed = preprocess(merged)
-                messageLogger.logUpdate(preprocessed)
-                current.toMutableList().apply { set(index, preprocessed) }
-            } else current
+        val channelId = message.channel_id
+        val channelMessages = messageCache[channelId]?.toMutableList() ?: return
+        val index = channelMessages.indexOfFirst { it.id == message.id }
+        if (index != -1) {
+            val existing = channelMessages[index]
+            val merged = existing.merge(dataObj)
+            val preprocessed = preprocess(merged)
+            messageLogger.logUpdate(preprocessed)
+            channelMessages[index] = preprocessed
+            messageCache[channelId] = channelMessages
+            updateAllMessagesFlow()
         }
     }
 
     fun handleMessageDelete(id: String) {
-        if (me.lampu.lampcord.shared.settings.Settings.shared.messageLoggerEnabled) {
-            _messages.update { current ->
-                current.map {
-                    if (it.id == id) it.copy(isDeleted = true) else it
+        var changed = false
+        messageCache.forEach { (chanId, channelMessages) ->
+            val newList = if (me.lampu.lampcord.shared.settings.Settings.shared.messageLoggerEnabled) {
+                channelMessages.map {
+                    if (it.id == id) { changed = true; it.copy(isDeleted = true) } else it
                 }
+            } else {
+                val filtered = channelMessages.filter { msg -> msg.id != id }
+                if (filtered.size != channelMessages.size) changed = true
+                filtered
             }
-        } else {
-            _messages.update { it.filter { msg -> msg.id != id } }
+            if (changed) messageCache[chanId] = newList
+        }
+        if (changed) updateAllMessagesFlow()
+    }
+
+    fun handleReactionAdd(update: MessageReactionAdd) {
+        val channelId = update.channel_id
+        val channelMessages = messageCache[channelId]?.toMutableList() ?: return
+        var msgChanged = false
+        val newList = channelMessages.map { msg ->
+            if (msg.id == update.message_id) {
+                msgChanged = true
+                val reactions = msg.reactions?.toMutableList() ?: mutableListOf()
+                val index = reactions.indexOfFirst { 
+                    (it.emoji.id != null && it.emoji.id == update.emoji.id) || 
+                    (it.emoji.id == null && it.emoji.name == update.emoji.name) 
+                }
+                val currentUserId = userStore.currentUser.value?.id
+                val isMe = update.user_id == currentUserId
+                
+                if (index != -1) {
+                    val reaction = reactions[index]
+                    reactions[index] = reaction.copy(
+                        count = if (update.burst) reaction.count else reaction.count + 1,
+                        count_details = if (update.burst) {
+                            reaction.count_details.copy(burst = reaction.count_details.burst + 1)
+                        } else {
+                            reaction.count_details.copy(normal = reaction.count_details.normal + 1)
+                        },
+                        me = if (!update.burst) reaction.me || isMe else reaction.me,
+                        me_burst = if (update.burst) reaction.me_burst || isMe else reaction.me_burst,
+                        burst_count = if (update.burst) (reaction.burst_count ?: 0) + 1 else reaction.burst_count
+                    )
+                } else {
+                    reactions.add(MessageReaction(
+                        emoji = update.emoji,
+                        count = if (update.burst) 0 else 1,
+                        count_details = if (update.burst) {
+                            ReactionCountDetails(burst = 1, normal = 0)
+                        } else {
+                            ReactionCountDetails(burst = 0, normal = 1)
+                        },
+                        me = if (!update.burst) isMe else false,
+                        me_burst = if (update.burst) isMe else false,
+                        burst_count = if (update.burst) 1 else 0
+                    ))
+                }
+                msg.copy(reactions = reactions)
+            } else msg
+        }
+        if (msgChanged) {
+            messageCache[channelId] = newList
+            updateAllMessagesFlow()
         }
     }
 
+    fun handleReactionRemove(update: MessageReactionRemove) {
+        val channelId = update.channel_id
+        val channelMessages = messageCache[channelId]?.toMutableList() ?: return
+        var msgChanged = false
+        val newList = channelMessages.map { msg ->
+            if (msg.id == update.message_id) {
+                msgChanged = true
+                val reactions = msg.reactions?.toMutableList() ?: return@map msg
+                val index = reactions.indexOfFirst { 
+                    (it.emoji.id != null && it.emoji.id == update.emoji.id) || 
+                    (it.emoji.id == null && it.emoji.name == update.emoji.name) 
+                }
+                if (index != -1) {
+                    val reaction = reactions[index]
+                    val currentUserId = userStore.currentUser.value?.id
+                    val isMe = update.user_id == currentUserId
+                    
+                    val newNormalCount = if (!update.burst) (reaction.count_details.normal - 1).coerceAtLeast(0) else reaction.count_details.normal
+                    val newBurstCount = if (update.burst) (reaction.count_details.burst - 1).coerceAtLeast(0) else reaction.count_details.burst
+                    
+                    if (newNormalCount == 0 && newBurstCount == 0) {
+                        reactions.removeAt(index)
+                    } else {
+                        reactions[index] = reaction.copy(
+                            count = newNormalCount,
+                            count_details = ReactionCountDetails(burst = newBurstCount, normal = newNormalCount),
+                            me = if (!update.burst && isMe) false else reaction.me,
+                            me_burst = if (update.burst && isMe) false else reaction.me_burst,
+                            burst_count = newBurstCount
+                        )
+                    }
+                }
+                msg.copy(reactions = reactions)
+            } else msg
+        }
+        if (msgChanged) {
+            messageCache[channelId] = newList
+            updateAllMessagesFlow()
+        }
+    }
+
+    fun handleReactionRemoveAll(update: MessageReactionRemoveAll) {
+        val channelId = update.channel_id
+        val channelMessages = messageCache[channelId]?.toMutableList() ?: return
+        val newList = channelMessages.map { msg ->
+            if (msg.id == update.message_id) msg.copy(reactions = emptyList()) else msg
+        }
+        messageCache[channelId] = newList
+        updateAllMessagesFlow()
+    }
+
+    fun handleReactionRemoveEmoji(update: MessageReactionRemoveEmoji) {
+        val channelId = update.channel_id
+        val channelMessages = messageCache[channelId]?.toMutableList() ?: return
+        val newList = channelMessages.map { msg ->
+            if (msg.id == update.message_id) {
+                val reactions = msg.reactions?.filter { 
+                    !((it.emoji.id != null && it.emoji.id == update.emoji.id) || 
+                      (it.emoji.id == null && it.emoji.name == update.emoji.name)) 
+                }
+                msg.copy(reactions = reactions)
+            } else msg
+        }
+        messageCache[channelId] = newList
+        updateAllMessagesFlow()
+    }
+
     fun loadMoreMessages(channelId: String, guildId: String?, threadId: String?) {
-        if (_isLoadingHistory.value || !_hasMoreHistory.value) return
-        val before = _messages.value.lastOrNull()?.id ?: return
+        if (_isLoadingHistory.value) return
+        val currentChannelMessages = messageCache[channelId] ?: emptyList()
+        val hasMore = _hasMoreHistory.value[channelId] ?: true
+        if (!hasMore) return
+        
+        val before = currentChannelMessages.lastOrNull()?.id ?: return
         _isLoadingHistory.value = true
         historyLoadingJob = scope.launch {
             try {
                 val more = messageApi.getChannelMessages(threadId ?: channelId, before = before)
                 if (more.isEmpty()) {
-                    _hasMoreHistory.value = false
+                    _hasMoreHistory.update { it + (channelId to false) }
                 } else {
                     more.forEach { msg -> 
                         msg.author?.let { author ->
                             msg.member?.let { m -> userStore.cacheMember(guildId ?: "", author.id, m) }
                         }
                     }
-                    val preprocessed = more.map { preprocess(it) }
-                    _messages.update { it + preprocessed }
+                    addMessages(channelId, more)
                 }
             } catch (e: Exception) {
                 println("Error loading history: ${e.message}")
@@ -313,12 +531,7 @@ class MessageStore(
             poll = poll
         )
         
-        val preprocessed = preprocess(tempMessage)
-        
-        // Add to UI if it's the current channel
-        if (selectionStore.selectedChannel?.id == channelId || selectionStore.selectedThread?.id == channelId) {
-            _messages.update { listOf(preprocessed) + it }
-        }
+        handleMessageCreate(tempMessage)
         
         val task = MessageTask(nonce, channelId, content, replyTo, files, forwardFrom, stickerIds, allowedMentions, poll)
         
@@ -395,13 +608,12 @@ class MessageStore(
         }
 
         private fun handleFailure(task: MessageTask, error: String) {
-            _messages.update { current ->
-                val index = current.indexOfFirst { it.nonce == task.nonce }
-                if (index != -1) {
-                    current.toMutableList().apply { 
-                        set(index, get(index).copy(sendError = error, isPending = true))
-                    }
-                } else current
+            val channelMessages = messageCache[task.channelId]?.toMutableList() ?: return
+            val index = channelMessages.indexOfFirst { it.nonce == task.nonce }
+            if (index != -1) {
+                channelMessages[index] = channelMessages[index].copy(sendError = error, isPending = true)
+                messageCache[task.channelId] = channelMessages
+                updateAllMessagesFlow()
             }
             errorStore.pushError("Message failed: $error")
         }
@@ -421,22 +633,17 @@ class MessageStore(
         val channelId = message.channel_id
         val nonce = message.nonce ?: return
         
-        // Find if there's already a task or create a new one
         scope.launch {
             queuesMutex.withLock {
                 val queue = queues[channelId] ?: return@launch
-                // If it was already failed, it's not in the queue. 
-                // We should probably store the task info even when it fails to retry it easily.
-                // For now, we'll recreate a simple task.
                 val task = MessageTask(nonce, channelId, message.content, null, emptyList(), null)
                 
-                _messages.update { current ->
-                    val index = current.indexOfFirst { it.nonce == nonce }
-                    if (index != -1) {
-                        current.toMutableList().apply {
-                            set(index, get(index).copy(sendError = null, isPending = true))
-                        }
-                    } else current
+                val channelMessages = messageCache[channelId]?.toMutableList() ?: return@launch
+                val index = channelMessages.indexOfFirst { it.nonce == nonce }
+                if (index != -1) {
+                    channelMessages[index] = channelMessages[index].copy(sendError = null, isPending = true)
+                    messageCache[channelId] = channelMessages
+                    updateAllMessagesFlow()
                 }
                 
                 queue.retry(task)
@@ -447,7 +654,10 @@ class MessageStore(
     fun deletePendingMessage(message: Message) {
         val channelId = message.channel_id
         val nonce = message.nonce ?: return
-        _messages.update { it.filter { msg -> msg.nonce != nonce } }
+        val channelMessages = messageCache[channelId] ?: return
+        val newList = channelMessages.filter { msg -> msg.nonce != nonce }
+        messageCache[channelId] = newList
+        updateAllMessagesFlow()
         scope.launch {
             queuesMutex.withLock {
                 queues[channelId]?.cancel(nonce)

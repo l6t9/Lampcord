@@ -4,6 +4,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.decodeFromJsonElement
 import me.lampu.lampcord.shared.model.PresenceUpdate
+import me.lampu.lampcord.shared.model.Session
 import me.lampu.lampcord.shared.state.GatewayEventHandler
 import me.lampu.lampcord.shared.state.PresenceStore
 import me.lampu.lampcord.shared.state.UserStore
@@ -13,12 +14,13 @@ class PresenceEventHandler(
     private val presenceStore: PresenceStore,
     private val userStore: UserStore
 ) : GatewayEventHandler {
-    override val supportedEvents = setOf("PRESENCE_UPDATE")
+    override val supportedEvents = setOf("PRESENCE_UPDATE", "SESSIONS_REPLACE")
 
     override fun handleEvent(type: String, data: JsonElement?) {
         if (data == null) return
         when (type) {
             "PRESENCE_UPDATE" -> handlePresenceUpdate(data)
+            "SESSIONS_REPLACE" -> handleSessionsReplace(data)
         }
     }
 
@@ -29,6 +31,14 @@ class PresenceEventHandler(
             
             // Sync user info if available in presence update
             presence.user?.let { userStore.handleUserUpdate(it) }
+        } catch (e: Exception) { }
+    }
+
+    private fun handleSessionsReplace(data: JsonElement) {
+        try {
+            val sessions = json.decodeFromJsonElement<List<Session>>(data)
+            val userId = userStore.currentUser.value?.id ?: return
+            presenceStore.handleSessions(userId, sessions)
         } catch (e: Exception) { }
     }
 }

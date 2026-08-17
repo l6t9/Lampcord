@@ -69,6 +69,7 @@ import me.lampu.lampcord.shared.state.GuildStore
 import me.lampu.lampcord.shared.state.MessageStore
 import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.state.ProfileStore
+import me.lampu.lampcord.shared.state.ReadStateStore
 import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.ui.components.ClanTagView
@@ -86,9 +87,7 @@ import me.lampu.lampcord.shared.ui.components.messagebody.MessageBody
 import me.lampu.lampcord.shared.ui.components.messagebody.ReactionsView
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.kit.UserAvatar
-import me.lampu.lampcord.shared.utils.EmojiIndex
-import me.lampu.lampcord.shared.utils.getPlatformName
-import me.lampu.lampcord.shared.utils.setClipboardText
+import me.lampu.lampcord.shared.utils.*
 import kotlin.time.Instant
 import org.koin.compose.koinInject
 import kotlin.math.roundToInt
@@ -109,7 +108,8 @@ fun MessageItem(
     profileStore: ProfileStore = koinInject(),
     emojiStore: EmojiStore = koinInject(),
     messageApi: MessageApi = koinInject(),
-    channelApi: ChannelApi = koinInject()
+    channelApi: ChannelApi = koinInject(),
+    readStateStore: ReadStateStore = koinInject()
 ) {
     if (message.type != null && message.type != 0 && message.type != 19 && message.type != 20) {
         SystemMessage(message)
@@ -125,7 +125,20 @@ fun MessageItem(
     val userSettings = settingsStore.userSettings
     val scope = rememberCoroutineScope()
 
-    val contextMenuItems = remember(message, currentUser, userSettings) {
+    val currentMember = remember(navigationStore.selectedGuild, currentUser) {
+        val guildId = navigationStore.selectedGuild?.id ?: return@remember null
+        val userId = currentUser?.id ?: return@remember null
+        userStore.getMember(guildId, userId)
+    }
+
+    val guild = navigationStore.selectedGuild
+    val channel = navigationStore.selectedChannel
+    val canAddReaction = remember(guild, currentMember, channel, currentUser?.id) {
+        if (guild == null || currentMember == null) true
+        else PermissionHelper.hasPermission(currentMember, guild, channel, Permission.ADD_REACTIONS, currentUser?.id)
+    }
+
+    val contextMenuItems = remember(message, currentUser, userSettings, priorMessage, currentMember, canAddReaction) {
         if (message.isPending) {
             return@remember listOf(
                 ContextMenuItem("Delete", Icons.Default.Delete) { 
@@ -135,26 +148,47 @@ fun MessageItem(
         }
         
         val isMe = message.author?.id == currentUser?.id
-        val items = mutableListOf(
-            ContextMenuItem("Add Reaction", Icons.Filled.AddReaction) { showReactionPicker = true },
-            ContextMenuItem("Reply", Icons.Rounded.Reply) { messageStore.replyingTo = message },
-            ContextMenuItem("Forward", Icons.Filled.Forward) { navigationStore.forwardingMessage = message },
-            ContextMenuItem("Copy Text", Icons.Filled.ContentCopy) { setClipboardText(message.content) },
-            ContextMenuItem("Copy Link", Icons.Filled.Link) {
-                val guildId = message.guild_id ?: navigationStore.selectedGuild?.id ?: "@me"
-                val channelId = message.channel_id
-                val messageId = message.id
-                setClipboardText("https://discord.com/channels/$guildId/$channelId/$messageId")
-            },
-            ContextMenuItem("Mention", Icons.Rounded.AlternateEmail) {
-                val channelId = message.channel_id
-                val current = messageStore.draftMessages[channelId] ?: ""
-                messageStore.draftMessages[channelId] = "$current <@${message.author?.id}> "
-            },
-            ContextMenuItem("Create Thread", Icons.Filled.Tag) {
+        
+        val canManageMessages = if (guild == null || currentMember == null) false
+            else PermissionHelper.hasPermission(currentMember, guild, channel, Permission.MANAGE_MESSAGES, currentUser?.id)
+
+        val canManageThreads = if (guild == null || currentMember == null) false
+            else PermissionHelper.hasPermission(currentMember, guild, channel, Permission.MANAGE_THREADS, currentUser?.id)
+
+        val items = mutableListOf<ContextMenuItem>()
+        
+        if (canAddReaction) {
+            items.add(ContextMenuItem("Add Reaction", Icons.Filled.AddReaction) { showReactionPicker = true })
+        }
+
+        items.add(ContextMenuItem("Reply", Icons.Rounded.Reply) { messageStore.replyingTo = message })
+        items.add(ContextMenuItem("Forward", Icons.Filled.Forward) { navigationStore.forwardingMessage = message })
+        items.add(ContextMenuItem("Copy Text", Icons.Filled.ContentCopy) { setClipboardText(message.content) })
+        items.add(ContextMenuItem("Copy Link", Icons.Filled.Link) {
+            val guildId = message.guild_id ?: navigationStore.selectedGuild?.id ?: "@me"
+            val channelId = message.channel_id
+            val messageId = message.id
+            setClipboardText("https://discord.com/channels/$guildId/$channelId/$messageId")
+        })
+        items.add(ContextMenuItem("Mention", Icons.Rounded.AlternateEmail) {
+            val channelId = message.channel_id
+            val current = messageStore.draftMessages[channelId] ?: ""
+            messageStore.draftMessages[channelId] = "$current <@${message.author?.id}> "
+        })
+        
+        if (canManageThreads) {
+            items.add(ContextMenuItem("Create Thread", Icons.Filled.Tag) {
                 showCreateThreadDialog = true
+            })
+        }
+
+        items.add(ContextMenuItem("Mark Unread", Icons.Filled.VisibilityOff) {
+            val targetId = priorMessage?.id ?: message.id
+            scope.launch {
+                channelApi.ackMessage(message.channel_id, targetId)
+                readStateStore.ackMessage(message.channel_id, targetId)
             }
-        )
+        })
         
         if (isMe) {
             items.add(ContextMenuItem("Edit Message", Icons.Filled.Edit) { 
@@ -162,26 +196,24 @@ fun MessageItem(
             })
         }
         
-        items.add(ContextMenuItem(if (message.pinned) "Unpin Message" else "Pin Message", Icons.Filled.PushPin) {
-            if (message.pinned) messageStore.unpinMessage(message) else messageStore.pinMessage(message)
-        })
+        if (canManageMessages) {
+            items.add(ContextMenuItem(if (message.pinned) "Unpin Message" else "Pin Message", Icons.Filled.PushPin) {
+                if (message.pinned) messageStore.unpinMessage(message) else messageStore.pinMessage(message)
+            })
+        }
 
         if (userSettings?.developer_mode == true) {
             items.add(ContextMenuItem("Copy Message ID", Icons.Filled.Dns) { setClipboardText(message.id) })
             items.add(ContextMenuItem("Copy Author ID", Icons.Filled.Dns) { setClipboardText(message.author?.id ?: "") })
         }
 
-        items.add(ContextMenuItem("Delete Message", Icons.Filled.Delete) { 
-            showDeleteDialog = true
-        })
+        if (isMe || canManageMessages) {
+            items.add(ContextMenuItem("Delete Message", Icons.Filled.Delete) { 
+                showDeleteDialog = true
+            })
+        }
         
         items
-    }
-
-    val currentMember = remember(navigationStore.selectedGuild, currentUser) {
-        val guildId = navigationStore.selectedGuild?.id ?: return@remember null
-        val userId = currentUser?.id ?: return@remember null
-        userStore.getMember(guildId, userId)
     }
 
     val isMentioned by remember(message, currentUser, currentMember) {
@@ -353,54 +385,56 @@ fun MessageItem(
                         }
                     }
                 } else null,
-                reactions = { onDismiss ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        val commonReactions = emojiStore.frequentEmojis.take(5)
-                        commonReactions.forEach { emojiKey ->
-                            IconButton(
-                                onClick = {
-                                    scope.launch {
-                                        messageApi.addReaction(message.channel_id, message.id, emojiKey)
+                reactions = if (canAddReaction) {
+                    { onDismiss ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            val commonReactions = emojiStore.frequentEmojis.take(5)
+                            commonReactions.forEach { emojiKey ->
+                                IconButton(
+                                    onClick = {
+                                        scope.launch {
+                                            messageApi.addReaction(message.channel_id, message.id, emojiKey)
+                                        }
+                                        onDismiss()
+                                    },
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                        .background(MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape)
+                                ) {
+                                    val url = remember(emojiKey) {
+                                        if (emojiKey.contains(":")) {
+                                            val id = emojiKey.split(":")[1]
+                                            "https://cdn.discordapp.com/emojis/$id.png?size=48"
+                                        } else {
+                                            val unicode = EmojiIndex.getCharForName(emojiKey) ?: emojiKey
+                                            unicode.toTwemojiUrl()
+                                        }
                                     }
+                                    AsyncImage(
+                                        model = url,
+                                        contentDescription = emojiKey,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                            }
+                            IconButton(
+                                onClick = { 
+                                    showReactionPicker = true
                                     onDismiss()
                                 },
                                 modifier = Modifier
                                     .size(48.dp)
                                     .background(MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape)
                             ) {
-                                val url = remember(emojiKey) {
-                                    if (emojiKey.contains(":")) {
-                                        val id = emojiKey.split(":")[1]
-                                        "https://cdn.discordapp.com/emojis/$id.png?size=48"
-                                    } else {
-                                        val unicode = EmojiIndex.getCharForName(emojiKey) ?: emojiKey
-                                        unicode.toTwemojiUrl()
-                                    }
-                                }
-                                AsyncImage(
-                                    model = url,
-                                    contentDescription = emojiKey,
-                                    modifier = Modifier.size(24.dp)
-                                )
+                                Icon(Icons.Filled.AddReaction, null, modifier = Modifier.size(24.dp))
                             }
                         }
-                        IconButton(
-                            onClick = { 
-                                showReactionPicker = true
-                                onDismiss()
-                            },
-                            modifier = Modifier
-                                .size(48.dp)
-                                .background(MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape)
-                        ) {
-                            Icon(Icons.Filled.AddReaction, null, modifier = Modifier.size(24.dp))
-                        }
                     }
-                }
+                } else null
             ) {
                 val roleColor by remember(message, navigationStore.selectedGuild) {
                     derivedStateOf {
@@ -408,8 +442,8 @@ fun MessageItem(
                         val authorId = message.author?.id ?: return@derivedStateOf Color.Unspecified
                         val member = message.member ?: userStore.getMember(guild.id, authorId) ?: return@derivedStateOf Color.Unspecified
                         val memberRoles = member.roles.mapNotNull { roleId -> guild.roles.find { it.id == roleId } }
-                        val highestRole = memberRoles.maxByOrNull { it.position }
-                        if (highestRole != null && highestRole.color != 0) Color(highestRole.color or 0xFF000000.toInt()) else Color.Unspecified
+                        val colorRole = memberRoles.filter { it.color != 0 }.maxByOrNull { it.position }
+                        if (colorRole != null) Color(colorRole.color or 0xFF000000.toInt()) else Color.Unspecified
                     }
                 }
                 
@@ -557,6 +591,7 @@ fun MessageItem(
                                     UserAvatar(
                                         user = message.author,
                                         size = 20.dp,
+                                        decorationData = message.member?.avatar_decoration_data,
                                         modifier = Modifier.clickable { profileStore.showProfile(message.author.id, guildId, avatarPosition) }
                                     )
                                 }
@@ -670,6 +705,7 @@ fun MessageItem(
                                     UserAvatar(
                                         user = message.author,
                                         size = 40.dp,
+                                        decorationData = message.member?.avatar_decoration_data,
                                         modifier = Modifier.clickable { profileStore.showProfile(message.author.id, guildId, avatarPosition) }
                                     )
                                 }
@@ -711,6 +747,7 @@ fun MessageItem(
                                     UserAvatar(
                                         user = message.author,
                                         size = 40.dp,
+                                        decorationData = message.member?.avatar_decoration_data,
                                         modifier = Modifier.clickable { profileStore.showProfile(message.author.id, guildId, avatarPosition) }
                                     )
                                 }
