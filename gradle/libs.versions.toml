@@ -24,6 +24,7 @@ ksp = "2.3.10"
 jna = "5.16.0"
 ffmpegPlatform = "8.0.1-1.5.13"
 vlcj = "4.8.2"
+qrcode = "4.5.0"
 slf4j = "2.1.0-alpha1"
 navigation3 = "1.2.0-alpha07"
 
@@ -71,6 +72,7 @@ androidx-media3-ui = { group = "androidx.media3", name = "media3-ui", version.re
 jna-core = { module = "net.java.dev.jna:jna", version.ref = "jna" }
 jna-platform = { module = "net.java.dev.jna:jna-platform", version.ref = "jna" }
 vlcj = { module = "uk.co.caprica:vlcj", version.ref = "vlcj" }
+qrcode-kotlin = { module = "io.github.g0dkar:qrcode-kotlin", version.ref = "qrcode" }
 room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version = "2.7.0" }

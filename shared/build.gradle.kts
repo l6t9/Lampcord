@@ -74,6 +74,7 @@ kotlin {
             implementation(libs.sqlite.bundled)
             
             implementation(libs.materialKolor)
+            implementation(libs.qrcode.kotlin)
             
             implementation(libs.coil.compose)
             implementation(libs.coil.network.ktor)

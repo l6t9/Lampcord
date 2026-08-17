@@ -1,11 +1,14 @@
 package me.lampu.lampcord.shared.ui
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -19,10 +22,11 @@ import me.lampu.lampcord.shared.state.SessionManager
 import me.lampu.lampcord.shared.api.RemoteAuthClient
 import me.lampu.lampcord.shared.api.RemoteAuthState
 import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
-import io.ktor.http.encodeURLQueryComponent
-import coil3.compose.AsyncImagePainter
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
+import qrcode.QRCode
+import qrcode.raw.ErrorCorrectionLevel
+import kotlin.math.min
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -270,19 +274,16 @@ fun LoginScreen(
                         Box(contentAlignment = Alignment.Center) {
                             when (val state = remoteAuthState) {
                                 is RemoteAuthState.QRReady -> {
-                                    val qrUrl = "https://quickchart.io/qr?text=${state.url.encodeURLQueryComponent()}&size=256&margin=0&ecLevel=L&format=png"
+                                    val qrCode = remember(state.url) {
+                                        QRCode.ofSquares()
+                                            .withErrorCorrectionLevel(ErrorCorrectionLevel.MEDIUM)
+                                            .build(state.url)
+                                    }
 
-                                    Box(contentAlignment = Alignment.Center) {
-                                        me.lampu.lampcord.shared.ui.components.AsyncImage(
-                                            model = qrUrl,
-                                            contentDescription = "QR Code",
-                                            modifier = Modifier.fillMaxSize().padding(8.dp),
-                                            onState = { state ->
-                                                if (state is AsyncImagePainter.State.Error) {
-                                                    println("QR Load Error: ${state.result.throwable.message}")
-                                                }
-                                            }
-                                        )
+                                    Canvas(
+                                        modifier = Modifier.fillMaxSize().padding(8.dp)
+                                    ) {
+                                        drawLocalQrCode(qrCode)
                                     }
                                 }
                                 is RemoteAuthState.UserScanned -> {
@@ -331,6 +332,33 @@ fun LoginScreen(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawLocalQrCode(qrCode: QRCode) {
+    drawRect(color = Color.White)
+
+    val quietZone = 4
+    val moduleCount = qrCode.rawData.size
+    val totalModules = moduleCount + quietZone * 2
+    val moduleSize = min(size.width, size.height) / totalModules
+    val codeSize = totalModules * moduleSize
+    val offsetX = (size.width - codeSize) / 2f
+    val offsetY = (size.height - codeSize) / 2f
+
+    qrCode.rawData.forEach { cells ->
+        cells.forEach { cell ->
+            if (cell.dark) {
+                drawRect(
+                    color = Color.Black,
+                    topLeft = Offset(
+                        x = offsetX + (cell.col + quietZone) * moduleSize,
+                        y = offsetY + (cell.row + quietZone) * moduleSize,
+                    ),
+                    size = Size(moduleSize, moduleSize),
+                )
             }
         }
     }
