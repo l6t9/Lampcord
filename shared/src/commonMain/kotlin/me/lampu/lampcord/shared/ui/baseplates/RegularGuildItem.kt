@@ -1,7 +1,9 @@
 package me.lampu.lampcord.shared.ui.baseplates
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
@@ -41,7 +43,8 @@ fun RegularGuildItem(
             isUnread && !isMuted -> 0.15f
             else -> 0f
         },
-        label = "indicatorFraction"
+        label = "indicatorFraction",
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)
     )
     
     val indicatorAlpha by animateFloatAsState(
@@ -49,11 +52,15 @@ fun RegularGuildItem(
         label = "indicatorAlpha"
     )
     
-    val backgroundColor by animateColorAsState(if (isSelected) selectedColor else unselectedColor)
+    val backgroundColor by animateColorAsState(
+        if (isSelected || isHovered) selectedColor else unselectedColor,
+        label = "backgroundColor"
+    )
     
     val cornerRadius by animateFloatAsState(
-        targetValue = if (isSelected) 16f else 24f,
-        label = "cornerRadius"
+        targetValue = if (isSelected || isHovered) 16f else 24f,
+        label = "cornerRadius",
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)
     )
     val shape = RoundedCornerShape(cornerRadius.dp)
     

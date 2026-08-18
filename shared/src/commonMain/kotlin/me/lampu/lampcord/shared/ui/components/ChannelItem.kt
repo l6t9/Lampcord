@@ -184,9 +184,11 @@ fun ChannelItem(
                             .alpha(if (isMuted && !isSelected) 0.5f else 1f),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        val contentColor = if (isSelected || (isUnread && canView)) 
-                            MaterialTheme.colorScheme.onSurface 
-                        else MaterialTheme.colorScheme.onSurfaceVariant
+                        val contentColor = when {
+                            isSelected -> MaterialTheme.colorScheme.onSurface
+                            isUnread && canView -> MaterialTheme.colorScheme.onSurface
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                        }
                         
                         Icon(
                             imageVector = if (!canView) {
@@ -200,14 +202,16 @@ fun ChannelItem(
                             },
                             contentDescription = null,
                             modifier = Modifier.size(20.dp),
-                            tint = contentColor
+                            tint = contentColor.copy(alpha = if (isSelected || isUnread) 1f else 0.6f)
                         )
                         
                         Spacer(modifier = Modifier.width(12.dp))
                         
                         Text(
                             text = me.lampu.lampcord.shared.utils.CleanUtils.cleanChannelName(channel.name ?: "unnamed"),
-                            style = MaterialTheme.typography.bodyLarge,
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                fontWeight = if (isUnread) FontWeight.Bold else FontWeight.Medium
+                            ),
                             color = contentColor,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,

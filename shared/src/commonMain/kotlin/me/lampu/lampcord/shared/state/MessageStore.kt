@@ -51,7 +51,7 @@ class MessageStore(
     private val scope: CoroutineScope
 ) {
     private companion object {
-        const val CACHE_MAX_CHANNELS = 8
+        const val CACHE_MAX_CHANNELS = 50
         const val MAX_MESSAGES_PER_CHANNEL = 200
         const val MAX_MESSAGES_PER_CHANNEL_TRIM = 100
     }
@@ -218,6 +218,10 @@ class MessageStore(
 
     private fun updateAllMessagesFlow() {
         _allMessages.value = messageCache.toMap()
+    }
+
+    fun hasMessages(channelId: String): Boolean {
+        return messageCache[channelId]?.isNotEmpty() == true
     }
 
     private fun recordAccess(channelId: String) {

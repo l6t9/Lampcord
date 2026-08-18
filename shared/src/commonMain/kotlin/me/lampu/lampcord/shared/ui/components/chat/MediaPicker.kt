@@ -168,7 +168,7 @@ fun MediaPicker(
                 .fillMaxWidth()
                 .height(450.dp),
             shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerLow
+            color = MaterialTheme.colorScheme.surfaceContainerHigh
         ) {
             MediaPickerContent(
                 onDismiss = onDismiss,

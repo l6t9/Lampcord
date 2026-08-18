@@ -322,16 +322,16 @@ private fun MainBaseplateContent(
                 state = panelState,
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surface),
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh), // Guild Rail background for status bar
                 swipeEnabled = swipeEnabled,
                 startPanel = {
-                    Sidebar(modifier = Modifier.systemBarsPadding())
+                    Sidebar(modifier = Modifier.systemBarsPadding().padding(start = 8.dp, top = 8.dp, bottom = 8.dp))
                 },
                 centerPanel = {
                     Surface(
                         modifier = Modifier.fillMaxSize(),
-                        color = MaterialTheme.colorScheme.surface,
-                        tonalElevation = 2.dp
+                        color = MaterialTheme.colorScheme.background, // Chat background
+                        tonalElevation = 0.dp
                     ) {
                         Scaffold(
                             contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -353,11 +353,11 @@ private fun MainBaseplateContent(
                                                         val recipient = recipientId?.let { allUsers[it] } ?: activeChannel.recipients?.firstOrNull()
                                                         
                                                         if (recipient != null) {
-                                                            Box(modifier = Modifier.size(32.dp)) {
+                                                            Box(modifier = Modifier.size(24.dp)) {
                                                                 AvatarWithDecoration(
                                                                     avatarUrl = recipient.avatar?.let { "https://cdn.discordapp.com/avatars/${recipient.id}/$it.png?size=64" },
                                                                     decorationData = recipient.avatar_decoration_data,
-                                                                    size = 32.dp,
+                                                                    size = 24.dp,
                                                                     status = presenceStore.getUserStatus(recipient.id, currentUser?.id, settingsStore.userSettings?.status)
                                                                 )
                                                             }
@@ -475,7 +475,7 @@ private fun MainBaseplateContent(
                                             }
                                         },
                                         colors = TopAppBarDefaults.topAppBarColors(
-                                            containerColor = MaterialTheme.colorScheme.surface
+                                            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest // Discord Dark Header
                                         )
                                     )
                                 }
@@ -495,7 +495,7 @@ private fun MainBaseplateContent(
                                 modifier = Modifier
                                     .padding(top = padding.calculateTopPadding())
                                     .fillMaxSize()
-                                    .background(MaterialTheme.colorScheme.surface),
+                                    .background(MaterialTheme.colorScheme.background), // Chat background
                                 label = "MainContentTransition"
                             ) { target ->
                                 Box(Modifier.fillMaxSize()) {
@@ -553,46 +553,16 @@ private fun MainBaseplateContent(
                         modifier = Modifier
                             .fillMaxSize()
                             .systemBarsPadding()
-                            .padding(end = 6.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                            .padding(end = 8.dp, top = 8.dp, bottom = 8.dp),
+                        verticalArrangement = Arrangement.Top
                     ) {
                         Surface(
                             modifier = Modifier.weight(1f),
-                            shape = MaterialTheme.shapes.medium,
-                            tonalElevation = 1.dp
+                            shape = RoundedCornerShape(16.dp),
+                            color = MaterialTheme.colorScheme.background,
+                            tonalElevation = 0.dp
                         ) {
-                            if (activeChannel?.type == 1) {
-                                val profile = profileStore.sidebarProfile
-                                if (profile != null) {
-                                    ProfileCard(
-                                        profile = profile,
-                                        showBorder = true,
-                                        isSidebar = true,
-                                        showMemberSince = true,
-                                        modifier = Modifier.fillMaxSize(),
-                                        onExpand = { 
-                                            profileStore.showProfile(profile.user.id, navigationStore.selectedGuild?.id)
-                                            panelState.close()
-                                        }
-                                    )
-                                } else if (profileStore.isSidebarProfileLoading) {
-                                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                        ContainedLoadingIndicator()
-                                    }
-                                } else {
-                                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                        Text("Profile not loaded", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    }
-                                }
-                            } else {
-                                MemberList(
-                                    header = {
-                                        activeChannel?.let {
-                                            MemberHeader(it)
-                                        }
-                                    }
-                                )
-                            }
+                            MemberList()
                         }
                     }
                 }

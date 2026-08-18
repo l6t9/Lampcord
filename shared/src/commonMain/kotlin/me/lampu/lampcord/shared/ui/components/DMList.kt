@@ -74,16 +74,18 @@ fun DMList(
                 modifier = Modifier.weight(1f)
             )
 
-            IconButton(
-                onClick = { navigationStore.selectFriends() },
-                modifier = Modifier.size(32.dp)
-            ) {
-                Icon(
-                    imageVector = if (navigationStore.isFriendsSelected) Icons.Filled.Person else Icons.Rounded.Person,
-                    contentDescription = "Friends",
-                    tint = if (navigationStore.isFriendsSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp)
-                )
+            if (me.lampu.lampcord.shared.utils.getPlatformName() != "android" && me.lampu.lampcord.shared.utils.getPlatformName() != "ios") {
+                IconButton(
+                    onClick = { navigationStore.selectFriends() },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = if (navigationStore.isFriendsSelected) Icons.Filled.Person else Icons.Rounded.Person,
+                        contentDescription = "Friends",
+                        tint = if (navigationStore.isFriendsSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
         

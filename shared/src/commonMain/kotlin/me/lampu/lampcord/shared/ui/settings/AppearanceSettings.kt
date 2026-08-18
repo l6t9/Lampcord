@@ -49,15 +49,13 @@ import me.lampu.lampcord.shared.model.UserSettings
 import me.lampu.lampcord.shared.settings.FontOption
 import me.lampu.lampcord.shared.settings.ThemeMode
 import me.lampu.lampcord.shared.settings.ThemePaletteStyle
+import me.lampu.lampcord.shared.settings.PanelAnimation
 import me.lampu.lampcord.shared.state.SettingsStore
+import me.lampu.lampcord.shared.state.ThemeStore
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.ExpressiveSwitch
 import me.lampu.lampcord.shared.ui.components.HsvColorPicker
-import me.lampu.lampcord.shared.ui.components.settings.SettingsButtonGroup
-import me.lampu.lampcord.shared.ui.components.settings.SettingsButtonGroupCustomIcon
-import me.lampu.lampcord.shared.ui.components.settings.SettingsLargeButtonGroup
-import me.lampu.lampcord.shared.ui.components.settings.SettingsLayout
-import me.lampu.lampcord.shared.ui.components.settings.SettingsSection
+import me.lampu.lampcord.shared.ui.components.settings.*
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.FilePicker
 import org.koin.compose.koinInject
@@ -68,7 +66,10 @@ private enum class PaletteOption { DYNAMIC, CUSTOM }
 
 @OptIn(ExperimentalEncodingApi::class)
 @Composable
-fun AppearanceSettings(settingsStore: SettingsStore = koinInject()) {
+fun AppearanceSettings(
+    settingsStore: SettingsStore = koinInject(),
+    themeStore: ThemeStore = koinInject()
+) {
     val colorScheme = MaterialTheme.colorScheme
 
     fun updateTheme(theme: String) {
@@ -76,6 +77,60 @@ fun AppearanceSettings(settingsStore: SettingsStore = koinInject()) {
     }
 
     SettingsLayout {
+        SettingsSection(
+            title = "Themes",
+            icon = Icons.Filled.Palette
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                var showThemePicker by remember { mutableStateOf(false) }
+                FilePicker(
+                    show = showThemePicker,
+                    onFileSelected = { files ->
+                        files.firstOrNull()?.let { (_, data) ->
+                            val json = data.decodeToString()
+                            themeStore.loadThemeFromJson(json)
+                        }
+                        showThemePicker = false
+                    },
+                    onDismiss = { showThemePicker = false }
+                )
+
+                themeStore.activeTheme?.let { theme ->
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(theme.manifest.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                    theme.manifest.author?.let { Text("by $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                }
+                                IconButton(onClick = { 
+                                    themeStore.activeTheme = null
+                                    me.lampu.lampcord.shared.settings.Settings.shared.activeThemeJson = ""
+                                }) {
+                                    Icon(Icons.Filled.Close, "Remove Theme")
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Button(
+                    onClick = { showThemePicker = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = CircleShape
+                ) {
+                    Icon(Icons.Rounded.FolderOpen, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(12.dp))
+                    Text("Load Aliucord Theme")
+                }
+            }
+        }
+
         SettingsSection(
             title = "Wallpaper & Colors",
             icon = Icons.Filled.Monitor
@@ -121,6 +176,23 @@ fun AppearanceSettings(settingsStore: SettingsStore = koinInject()) {
                             }
                         },
                         labelProvider = { it.name.lowercase().replace('_', ' ').replaceFirstChar { char -> char.uppercase() } }
+                    )
+                }
+
+                // Animation Style
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Panel Animation", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = colorScheme.onSurface)
+                    SettingsButtonGroup(
+                        options = PanelAnimation.entries.toList(),
+                        selectedOption = settingsStore.panelAnimation,
+                        onOptionSelected = { settingsStore.panelAnimation = it },
+                        iconProvider = { animation, isSelected ->
+                            when (animation) {
+                                PanelAnimation.MINIMAL -> if (isSelected) Icons.Filled.Speed else Icons.Rounded.Speed
+                                PanelAnimation.EXPRESSIVE -> if (isSelected) Icons.Filled.AutoAwesome else Icons.Rounded.AutoAwesome
+                            }
+                        },
+                        labelProvider = { it.name.lowercase().replaceFirstChar { char -> char.uppercase() } }
                     )
                 }
 
@@ -201,6 +273,57 @@ fun AppearanceSettings(settingsStore: SettingsStore = koinInject()) {
                         Text("Sync your theme selection across all Discord clients.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     ExpressiveSwitch(checked = settingsStore.syncAppearance, onCheckedChange = { settingsStore.syncAppearance = it })
+                }
+            }
+        }
+
+        SettingsSection(
+            title = "Chatbox Customization",
+            icon = Icons.Rounded.Forum
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Chatbox Font Scale: ${(settingsStore.chatboxFontSize * 100).toInt()}%", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = colorScheme.onSurfaceVariant)
+                    Slider(
+                        value = settingsStore.chatboxFontSize,
+                        onValueChange = { settingsStore.chatboxFontSize = it },
+                        valueRange = 0.5f..2.0f,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Background Opacity: ${(settingsStore.chatboxBackgroundOpacity * 100).toInt()}%", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = colorScheme.onSurfaceVariant)
+                    Slider(
+                        value = settingsStore.chatboxBackgroundOpacity,
+                        onValueChange = { settingsStore.chatboxBackgroundOpacity = it },
+                        valueRange = 0.0f..1.0f,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Border Radius: ${settingsStore.chatboxBorderRadius}dp", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = colorScheme.onSurfaceVariant)
+                    Slider(
+                        value = settingsStore.chatboxBorderRadius.toFloat(),
+                        onValueChange = { settingsStore.chatboxBorderRadius = it.toInt() },
+                        valueRange = 0.0f..32.0f,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Hide Upload Button", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                    }
+                    ExpressiveSwitch(checked = settingsStore.chatboxHideUploadButton, onCheckedChange = { settingsStore.chatboxHideUploadButton = it })
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Hide Emoji Button", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                    }
+                    ExpressiveSwitch(checked = settingsStore.chatboxHideEmojiButton, onCheckedChange = { settingsStore.chatboxHideEmojiButton = it })
                 }
             }
         }

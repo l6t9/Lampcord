@@ -250,8 +250,18 @@ fun ChatArea(
                             1, 3 -> "This is the start of your conversation."
                             else -> "Welcome to #${navigationStore.selectedChannel?.name ?: "null"}"
                         },
-                        fontSize = 24.sp,
+                        fontSize = 32.sp,
+                        fontWeight = FontWeight.Bold,
                         color = Color.White
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = when(navigationStore.selectedChannel?.type ?: 0) {
+                            1, 3 -> "This is the very beginning of your direct message history."
+                            else -> "This is the start of the #${navigationStore.selectedChannel?.name ?: "null"} channel."
+                        },
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
 
                     if ((navigationStore.selectedChannel?.type == 2 || navigationStore.selectedChannel?.type == 13) && voiceStore.currentVoiceState?.channel_id != navigationStore.selectedChannel?.id) {
@@ -296,14 +306,17 @@ fun DateSeparator(timestamp: String) {
             .padding(vertical = 16.dp, horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        HorizontalDivider(modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+        HorizontalDivider(modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
         Text(
-            text = dateText,
+            text = dateText.uppercase(),
             modifier = Modifier.padding(horizontal = 8.dp),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontWeight = FontWeight.Bold
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.5.sp
+            ),
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
         )
-        HorizontalDivider(modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+        HorizontalDivider(modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
     }
 }

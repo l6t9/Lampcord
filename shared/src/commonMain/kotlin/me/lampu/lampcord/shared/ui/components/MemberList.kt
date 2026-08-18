@@ -1,31 +1,27 @@
 package me.lampu.lampcord.shared.ui.components
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import me.lampu.lampcord.shared.state.MemberListStore
 import me.lampu.lampcord.shared.state.NavigationStore
+import me.lampu.lampcord.shared.state.PresenceStore
+import me.lampu.lampcord.shared.state.SettingsStore
+import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.ui.components.members.MemberGroupItem
 import me.lampu.lampcord.shared.ui.components.members.MemberItem
 import me.lampu.lampcord.shared.ui.components.members.MemberSkeleton
@@ -36,13 +32,68 @@ import org.koin.compose.koinInject
 fun MemberList(
     navigationStore: NavigationStore = koinInject(),
     memberListStore: MemberListStore = koinInject(),
+    userStore: UserStore = koinInject(),
+    presenceStore: PresenceStore = koinInject(),
+    settingsStore: SettingsStore = koinInject(),
     header: @Composable (() -> Unit)? = null
 ) {
     val scrollState = rememberLazyListState()
     var isHovered by remember { mutableStateOf(false) }
 
+    val activeChannel = navigationStore.selectedThread ?: navigationStore.selectedChannel
+    val isDm = activeChannel?.type == 1 || activeChannel?.type == 3
+
+    if (isDm) {
+        val currentUser by userStore.currentUser.collectAsState()
+        val allUsers by userStore.users.collectAsState()
+        val privateChannels by koinInject<me.lampu.lampcord.shared.state.GuildStore>().privateChannels.collectAsState()
+        val recipients = remember(activeChannel, privateChannels, allUsers) {
+            val channel = privateChannels.find { it.id == activeChannel?.id } ?: activeChannel
+            val list = mutableListOf<me.lampu.lampcord.shared.model.User>()
+            currentUser?.let { list.add(it) }
+            
+            channel?.recipients?.let { list.addAll(it) }
+            
+            if (channel?.recipients.isNullOrEmpty() && !channel?.recipient_ids.isNullOrEmpty()) {
+                channel?.recipient_ids?.forEach { id ->
+                    allUsers[id]?.let { list.add(it) }
+                }
+            }
+
+            list.distinctBy { it.id }
+        }
+
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background
+        ) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(top = 8.dp, bottom = 52.dp)
+            ) {
+                item {
+                    Text(
+                        text = "Members — ${recipients.size}",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.5.sp
+                        ),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                    )
+                }
+                items(recipients, key = { it.id }) { user ->
+                    MemberItem(me.lampu.lampcord.shared.model.Member(user = user))
+                }
+            }
+        }
+        return
+    }
+
+    // Original Guild Member List Logic
     // Scroll to top when channel changes
-    LaunchedEffect(navigationStore.selectedChannel?.id) {
+    LaunchedEffect(activeChannel?.id) {
         scrollState.scrollToItem(0)
     }
 
@@ -98,9 +149,9 @@ fun MemberList(
     ) {
         Surface(
             modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.surface,
+            color = MaterialTheme.colorScheme.background,
             shape = RoundedCornerShape(0.dp),
-            tonalElevation = 1.dp
+            tonalElevation = 0.dp
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 LazyColumn(
@@ -111,8 +162,8 @@ fun MemberList(
                     if (header != null) {
                         stickyHeader {
                             Surface(
-                                color = MaterialTheme.colorScheme.surface,
-                                tonalElevation = 1.dp
+                                color = MaterialTheme.colorScheme.background,
+                                tonalElevation = 0.dp
                             ) {
                                 header()
                             }

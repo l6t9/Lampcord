@@ -18,6 +18,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import me.lampu.lampcord.shared.settings.PanelAnimation
+import me.lampu.lampcord.shared.settings.Settings
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -65,6 +67,8 @@ fun DiscordPanels(
         val screenWidth = maxWidth
         val sidePanelWidth = screenWidth - 56.dp
         val sidePanelWidthPx = with(density) { sidePanelWidth.toPx() }
+        
+        val animationType = Settings.shared.panelAnimation
 
         val targetOffset = when (state.currentValue) {
             DiscordPanelValue.Start -> sidePanelWidthPx
@@ -73,11 +77,17 @@ fun DiscordPanels(
         }
 
         // Snappy spring spec matching legacy Discord's feel
-        // Adjusted stiffness to be less "stiff" and more "fluid"
-        val springSpec = spring<Float>(
-            dampingRatio = 0.85f,
-            stiffness = 1500f
-        )
+        val springSpec = if (animationType == PanelAnimation.MINIMAL) {
+            spring<Float>(
+                dampingRatio = Spring.DampingRatioNoBouncy,
+                stiffness = Spring.StiffnessMedium
+            )
+        } else {
+            spring<Float>(
+                dampingRatio = 0.85f,
+                stiffness = 1500f
+            )
+        }
 
         val animatedOffset by animateFloatAsState(
             targetValue = targetOffset + state.offset,
@@ -140,11 +150,16 @@ fun DiscordPanels(
                     .fillMaxHeight()
                     .width(sidePanelWidth)
                     .graphicsLayer {
-                        translationX = (progress - 1f) * (sidePanelWidthPx * 0.3f)
-                        alpha = (0.4f + (progress * 0.6f)).coerceIn(0f, 1f)
-                        val scale = 0.92f + (progress * 0.08f)
-                        scaleX = scale
-                        scaleY = scale
+                        if (animationType == PanelAnimation.EXPRESSIVE) {
+                            translationX = (progress - 1f) * (sidePanelWidthPx * 0.3f)
+                            alpha = (0.4f + (progress * 0.6f)).coerceIn(0f, 1f)
+                            val scale = 0.92f + (progress * 0.08f)
+                            scaleX = scale
+                            scaleY = scale
+                        } else {
+                            // Minimal: Slight parallax translation, no scale/alpha
+                            translationX = (progress - 1f) * (sidePanelWidthPx * 0.1f)
+                        }
                     }
                     .zIndex(0f)
             ) {
@@ -163,11 +178,16 @@ fun DiscordPanels(
                     .width(sidePanelWidth)
                     .align(Alignment.CenterEnd)
                     .graphicsLayer {
-                        translationX = (progress + 1f) * (sidePanelWidthPx * 0.3f)
-                        alpha = (0.4f + (absProgress * 0.6f)).coerceIn(0f, 1f)
-                        val scale = 0.92f + (absProgress * 0.08f)
-                        scaleX = scale
-                        scaleY = scale
+                        if (animationType == PanelAnimation.EXPRESSIVE) {
+                            translationX = (progress + 1f) * (sidePanelWidthPx * 0.3f)
+                            alpha = (0.4f + (absProgress * 0.6f)).coerceIn(0f, 1f)
+                            val scale = 0.92f + (absProgress * 0.08f)
+                            scaleX = scale
+                            scaleY = scale
+                        } else {
+                            // Minimal: Slight parallax translation, no scale/alpha
+                            translationX = (progress + 1f) * (sidePanelWidthPx * 0.1f)
+                        }
                     }
                     .zIndex(0f)
             ) {
@@ -184,10 +204,21 @@ fun DiscordPanels(
                     .zIndex(1f)
                     .offset { IntOffset(animatedOffset.roundToInt(), 0) }
                     .graphicsLayer {
-                        val cornerRadius = 18.dp.toPx() * absProgress
+                        val isExpressive = animationType == PanelAnimation.EXPRESSIVE
+                        
+                        // Corner rounding and scaling for the "border" effect
+                        val cornerRadius = 16.dp.toPx() * absProgress
                         shape = RoundedCornerShape(cornerRadius)
                         clip = absProgress > 0.01f
-                        shadowElevation = if (absProgress > 0.01f) 8.dp.toPx() else 0f
+                        
+                        if (isExpressive) {
+                            val scale = 1f - (absProgress * 0.04f)
+                            scaleX = scale
+                            scaleY = scale
+                            shadowElevation = if (absProgress > 0.01f) 12.dp.toPx() else 0f
+                        } else {
+                            shadowElevation = if (absProgress > 0.01f) 6.dp.toPx() else 0f
+                        }
                     }
             ) {
                 centerPanel()
@@ -197,7 +228,7 @@ fun DiscordPanels(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(Color.Black.copy(alpha = absProgress * 0.35f))
+                            .background(Color.Black.copy(alpha = if (animationType == PanelAnimation.EXPRESSIVE) absProgress * 0.35f else absProgress * 0.2f))
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null

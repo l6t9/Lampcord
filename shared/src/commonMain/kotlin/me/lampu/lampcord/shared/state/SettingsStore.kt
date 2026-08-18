@@ -81,6 +81,54 @@ class SettingsStore(
             me.lampu.lampcord.shared.settings.Settings.shared.syncAppearance = value
         }
 
+    private var _panelAnimation by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.panelAnimation)
+    var panelAnimation: me.lampu.lampcord.shared.settings.PanelAnimation
+        get() = _panelAnimation
+        set(value) {
+            _panelAnimation = value
+            me.lampu.lampcord.shared.settings.Settings.shared.panelAnimation = value
+        }
+
+    private var _chatboxBackgroundOpacity by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.chatboxBackgroundOpacity)
+    var chatboxBackgroundOpacity: Float
+        get() = _chatboxBackgroundOpacity
+        set(value) {
+            _chatboxBackgroundOpacity = value
+            me.lampu.lampcord.shared.settings.Settings.shared.chatboxBackgroundOpacity = value
+        }
+
+    private var _chatboxBorderRadius by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.chatboxBorderRadius)
+    var chatboxBorderRadius: Int
+        get() = _chatboxBorderRadius
+        set(value) {
+            _chatboxBorderRadius = value
+            me.lampu.lampcord.shared.settings.Settings.shared.chatboxBorderRadius = value
+        }
+
+    private var _chatboxHideUploadButton by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.chatboxHideUploadButton)
+    var chatboxHideUploadButton: Boolean
+        get() = _chatboxHideUploadButton
+        set(value) {
+            _chatboxHideUploadButton = value
+            me.lampu.lampcord.shared.settings.Settings.shared.chatboxHideUploadButton = value
+        }
+
+    private var _chatboxHideEmojiButton by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.chatboxHideEmojiButton)
+    var chatboxHideEmojiButton: Boolean
+        get() = _chatboxHideEmojiButton
+        set(value) {
+            _chatboxHideEmojiButton = value
+            me.lampu.lampcord.shared.settings.Settings.shared.chatboxHideEmojiButton = value
+        }
+
+    private var _chatboxFontSize by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.chatboxFontSize)
+    var chatboxFontSize: Float
+        get() = _chatboxFontSize
+        set(value) {
+            _chatboxFontSize = value
+            me.lampu.lampcord.shared.settings.Settings.shared.chatboxFontSize = value
+        }
+
     private var _fontScale by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.fontScale)
     var fontScale: Float
         get() = _fontScale

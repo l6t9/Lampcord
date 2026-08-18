@@ -52,7 +52,7 @@ fun SearchScreen(
         ) {
             Surface(
                 modifier = Modifier
-                    .widthIn(max = 1200.dp)
+                    .widthIn(max = 1400.dp)
                     .fillMaxWidth(0.95f)
                     .heightIn(max = 850.dp)
                     .fillMaxHeight(0.9f)

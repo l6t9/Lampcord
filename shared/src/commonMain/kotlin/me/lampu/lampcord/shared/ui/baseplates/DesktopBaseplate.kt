@@ -30,6 +30,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.state.NavigationStore
@@ -68,14 +70,14 @@ fun DesktopBaseplate(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh) // Guild Rail background
     ) {
         Row(
             modifier = Modifier
                 .fillMaxSize()
                 .systemBarsPadding()
-                .padding(6.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                .padding(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Sidebar(modifier = Modifier.width(312.dp))
 
@@ -88,12 +90,13 @@ fun DesktopBaseplate(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight(),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+                verticalArrangement = Arrangement.Top
             ) {
                 Surface(
                     modifier = Modifier.weight(1f),
-                    shape = MaterialTheme.shapes.large,
-                    tonalElevation = 2.dp
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.background,
+                    tonalElevation = 0.dp
                 ) {
                     val quickSpatialSpec = MaterialTheme.motionScheme.defaultSpatialSpec<IntOffset>()
                     val quickEffectsSpec = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
@@ -140,86 +143,28 @@ fun DesktopBaseplate(
                 }
             }
 
-            // Member List / Profile (End Panel)
-            val showMemberList = activeChannel?.guild_id != null && activeChannel.type != 15
-            val showDMProfile = activeChannel?.type == 1 && navigationStore.isProfilePanelVisible
+            // Member List / Thread Panel (End Panel)
+            val showSidePanel = activeChannel != null && activeChannel.type != 15 && (activeChannel.guild_id != null || activeChannel.type == 1 || activeChannel.type == 3)
 
             if (navigationStore.isThreadPanelVisible) {
                 Surface(
-                    modifier = Modifier
-                        .fillMaxHeight(),
-                    shape = MaterialTheme.shapes.medium,
-                    tonalElevation = 2.dp
+                    modifier = Modifier.fillMaxHeight().width(340.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.background,
+                    tonalElevation = 0.dp
                 ) {
                     ThreadPanel()
                 }
             }
 
-            if (showMemberList || showDMProfile) {
-                Column(
-                    modifier = Modifier
-                        .width(if (showDMProfile) 340.dp else 240.dp)
-                        .fillMaxHeight(),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+            if (showSidePanel) {
+                Surface(
+                    modifier = Modifier.fillMaxHeight().width(240.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.background,
+                    tonalElevation = 0.dp
                 ) {
-                    // HomeNavButtons equivalent
-                    if (showMemberList) {
-                        Surface(
-                            onClick = { navigationStore.isSearchVisible = true },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(40.dp),
-                            shape = RoundedCornerShape(20.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                            tonalElevation = 1.dp
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(horizontal = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.Search,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "Search",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                )
-                            }
-                        }
-                    }
-
-                    Surface(
-                        modifier = Modifier.weight(1f),
-                        shape = MaterialTheme.shapes.medium,
-                        tonalElevation = 1.dp
-                    ) {
-                        if (showDMProfile) {
-                            val profile = profileStore.sidebarProfile
-                            if (profile != null) {
-                                ProfileCard(
-                                    profile = profile,
-                                    showBorder = true,
-                                    isSidebar = true,
-                                    showMemberSince = true,
-                                    modifier = Modifier.fillMaxSize(),
-                                    onExpand = { profileStore.showProfile(profile.user.id, navigationStore.selectedGuild?.id) }
-                                )
-                            } else if (profileStore.isSidebarProfileLoading) {
-                                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                    ContainedLoadingIndicator()
-                                }
-                            }
-                        } else {
-                            MemberList()
-                        }
-                    }
+                    MemberList()
                 }
             }
         }

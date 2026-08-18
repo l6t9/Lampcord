@@ -1,12 +1,15 @@
 package me.lampu.lampcord.shared.ui.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.Channel
@@ -36,40 +39,53 @@ fun ChannelHeader(
 
     TopAppBar(
         title = {
-            if (isChannelsAndRoles) {
-                Text(text = "Channels & Roles", style = MaterialTheme.typography.titleSmall)
-            } else if (channel != null) {
-                val isDm = channel.type == 1 || channel.type == 3 || channel.guild_id == null
-                val name = if (isDm) {
-                    val recipientId = channel.recipients?.firstOrNull()?.id
-                        ?: channel.recipient_ids?.firstOrNull()
-                    val recipient = recipientId?.let { userStore.getUser(it) }
-                        ?: channel.recipients?.firstOrNull()
-                    if (channel.name?.isNotBlank() == true) {
-                        channel.name
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (isChannelsAndRoles) {
+                    Text(
+                        text = "Channels & Roles", 
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                    )
+                } else if (channel != null) {
+                    val isDm = channel.type == 1 || channel.type == 3 || channel.guild_id == null
+                    val name = if (isDm) {
+                        val recipientId = channel.recipients?.firstOrNull()?.id
+                            ?: channel.recipient_ids?.firstOrNull()
+                        val recipient = recipientId?.let { userStore.getUser(it) }
+                            ?: channel.recipients?.firstOrNull()
+                        if (channel.name?.isNotBlank() == true) {
+                            channel.name
+                        } else {
+                            recipient?.let { it.global_name ?: it.username } ?: "Unknown"
+                        }
                     } else {
-                        recipient?.let { it.global_name ?: it.username } ?: "Unknown"
+                        CleanUtils.cleanChannelName(channel.name ?: "unnamed")
                     }
-                } else {
-                    CleanUtils.cleanChannelName(channel.name ?: "unnamed")
+                    Text(
+                        text = name,
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    
+                    if (!isDm && channel.topic?.isNotBlank() == true) {
+                        Spacer(Modifier.width(8.dp))
+                        Box(
+                            modifier = Modifier
+                                .width(1.dp)
+                                .height(24.dp)
+                                .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = channel.topic,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                    }
                 }
-                Text(
-                    text = name,
-                    style = MaterialTheme.typography.titleSmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        },
-        subtitle = {
-            if (!isChannelsAndRoles && channel?.topic?.isNotBlank() == true) {
-                Text(
-                    text = channel.topic,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
             }
         },
         navigationIcon = {
@@ -78,7 +94,7 @@ fun ChannelHeader(
                     Icon(
                         imageVector = Icons.Filled.Flag,
                         contentDescription = null,
-                        modifier = Modifier.size(18.dp),
+                        modifier = Modifier.size(22.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 } else if (channel != null) {
@@ -91,21 +107,23 @@ fun ChannelHeader(
                         val recipient = recipientId?.let { userStore.getUser(it) }
                             ?: channel.recipients?.firstOrNull()
                         if (recipient != null) {
-                            AvatarWithDecoration(
-                                avatarUrl = recipient.avatar?.let { "https://cdn.discordapp.com/avatars/${recipient.id}/$it.png?size=64" },
-                                decorationData = recipient.avatar_decoration_data,
-                                size = 32.dp,
-                                status = presenceStore.getUserStatus(
-                                    recipient.id,
-                                    currentUser?.id,
-                                    settingsStore.userSettings?.status
+                            Box(modifier = Modifier.size(24.dp)) {
+                                AvatarWithDecoration(
+                                    avatarUrl = recipient.avatar?.let { "https://cdn.discordapp.com/avatars/${recipient.id}/$it.png?size=64" },
+                                    decorationData = recipient.avatar_decoration_data,
+                                    size = 24.dp,
+                                    status = presenceStore.getUserStatus(
+                                        recipient.id,
+                                        currentUser?.id,
+                                        settingsStore.userSettings?.status
+                                    )
                                 )
-                            )
+                            }
                         } else {
                             Icon(
                                 imageVector = Icons.Rounded.AlternateEmail,
                                 contentDescription = null,
-                                modifier = Modifier.size(18.dp),
+                                modifier = Modifier.size(22.dp),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -126,7 +144,7 @@ fun ChannelHeader(
                             Icon(
                                 imageVector = icon,
                                 contentDescription = null,
-                                modifier = Modifier.size(18.dp),
+                                modifier = Modifier.size(22.dp),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }

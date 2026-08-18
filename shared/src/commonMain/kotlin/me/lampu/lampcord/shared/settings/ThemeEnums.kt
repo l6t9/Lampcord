@@ -34,3 +34,8 @@ enum class StickerAnimation {
     ON_HOVER,
     NEVER,
 }
+
+enum class PanelAnimation {
+    MINIMAL,
+    EXPRESSIVE
+}

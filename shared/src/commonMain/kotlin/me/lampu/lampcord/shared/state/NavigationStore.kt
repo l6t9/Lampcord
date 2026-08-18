@@ -278,7 +278,9 @@ class NavigationStore(
 
     fun selectChannel(channel: Channel, explicitlySelected: Boolean = false) {
         val sameChannel = selectedChannel?.id == channel.id
-        if (sameChannel && selectedThread == null) return
+        val hasMessages = messageStore.hasMessages(channel.id)
+
+        if (sameChannel && selectedThread == null && hasMessages) return
         
         isFriendsSelected = false
         isChannelsAndRolesVisible = false
@@ -353,7 +355,11 @@ class NavigationStore(
     }
 
     fun selectThread(channel: Channel, explicitlySelected: Boolean = false) {
-        if (selectedThread?.id == channel.id) return
+        val sameThread = selectedThread?.id == channel.id
+        val hasMessages = messageStore.hasMessages(channel.id)
+
+        if (sameThread && hasMessages) return
+
         isChannelsAndRolesVisible = false
         isServerSettingsVisible = false
         selectedThread = channel

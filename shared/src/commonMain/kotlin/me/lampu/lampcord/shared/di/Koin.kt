@@ -109,6 +109,7 @@ val storeModule = module {
     single { EmojiStore() }
     single { TokenStore(json = get()) }
     single { SettingsStore(userApi = get()) }
+    single { ThemeStore(scope = get()) }
     single {
         NavigationStore(
             channelApi = get(), guildApi = get(), messageApi = get(), userApi = get(),

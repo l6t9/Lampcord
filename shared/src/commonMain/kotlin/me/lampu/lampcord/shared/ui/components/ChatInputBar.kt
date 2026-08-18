@@ -1,7 +1,7 @@
 package me.lampu.lampcord.shared.ui.components
 
 import androidx.compose.animation.*
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -368,41 +368,53 @@ fun ChatInputBar(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 8.dp, vertical = 8.dp)
-                                .animateContentSize(animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f)),
-                            verticalAlignment = Alignment.CenterVertically
+                                .padding(horizontal = 8.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.Bottom
                         ) {
-                            if (getPlatformName() != "android") {
-                                FilePicker(
-                                    show = showFilePicker,
-                                    onFileSelected = { it -> messageStore.pendingFiles.addAll(it.map { PendingFile(it.first, it.second) }) },
-                                    onDismiss = { showFilePicker = false }
-                                )
-                            }
+                            val settings = me.lampu.lampcord.shared.settings.Settings.shared
+                            val chatboxFontSize = settings.chatboxFontSize
+                            val chatboxMinHeight = settings.chatboxHeight.dp * chatboxFontSize
 
-                            IconButton(
-                                onClick = {
-                                    if (getPlatformName() == "android") {
-                                        navigationStore.isMediaPickerVisible = !navigationStore.isMediaPickerVisible
-                                    } else {
-                                        showFilePicker = true
-                                    }
-                                },
-                                enabled = messageStore.editingMessage == null && canSend,
-                                colors = IconButtonDefaults.filledTonalIconButtonColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                ),
-                                modifier = Modifier.size(40.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.Add,
-                                    contentDescription = "Add",
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
+                            val uploadVisible = !settings.chatboxHideUploadButton && messageStore.editingMessage == null && canSend
                             
-                            Spacer(modifier = Modifier.width(8.dp))
+                            AnimatedVisibility(
+                                visible = uploadVisible,
+                                enter = expandHorizontally(expandFrom = Alignment.End) + fadeIn(),
+                                exit = shrinkHorizontally(shrinkTowards = Alignment.End) + fadeOut()
+                            ) {
+                                Row(verticalAlignment = Alignment.Bottom) {
+                                    if (getPlatformName() != "android") {
+                                        FilePicker(
+                                            show = showFilePicker,
+                                            onFileSelected = { it -> messageStore.pendingFiles.addAll(it.map { PendingFile(it.first, it.second) }) },
+                                            onDismiss = { showFilePicker = false }
+                                        )
+                                    }
+
+                                    IconButton(
+                                        onClick = {
+                                            if (getPlatformName() == "android") {
+                                                navigationStore.isMediaPickerVisible = !navigationStore.isMediaPickerVisible
+                                            } else {
+                                                showFilePicker = true
+                                            }
+                                        },
+                                        modifier = Modifier.size(40.dp),
+                                        colors = IconButtonDefaults.filledIconButtonColors(
+                                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Filled.Add,
+                                            contentDescription = "Add",
+                                            modifier = Modifier.size(22.dp)
+                                        )
+                                    }
+                                    
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                }
+                            }
 
                             val isDm = channel.type == 1 || channel.type == 3 || channel.guild_id == null
                             val isThread = channel.type == 10 || channel.type == 11 || channel.type == 12
@@ -422,89 +434,90 @@ fun ChatInputBar(
                             Surface(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .heightIn(min = 40.dp),
-                                shape = RoundedCornerShape(16.dp),
+                                    .heightIn(min = chatboxMinHeight)
+                                    .animateContentSize(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
+                                shape = RoundedCornerShape(settings.chatboxBorderRadius.dp),
                                 color = MaterialTheme.colorScheme.surfaceContainerHigh
                             ) {
                                 Row(
                                     modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                            BasicTextField(
-                                value = textFieldValue,
-                                onValueChange = { 
-                                    if (canSend) {
-                                        val oldText = textFieldValue.text
-                                        textFieldValue = it
-                                        mentionRanges = shiftMentionRanges(mentionRanges, oldText, it.text)
-                                        
-                                        // Simplified autocomplete trigger check
-                                        if (it.selection.collapsed) {
-                                            val cursor = it.selection.start
-                                            val textBefore = it.text.take(cursor)
-                                            val lastWord = textBefore.substringAfterLast(' ', textBefore)
-                                            
-                                            val (type, query) = when {
-                                                it.text.startsWith('/') && !it.text.contains(' ') -> 
-                                                    AutocompleteType.COMMAND to it.text.substring(1)
-                                                lastWord.startsWith('@') -> 
-                                                    AutocompleteType.MENTION to lastWord.substring(1)
-                                                lastWord.startsWith('#') -> 
-                                                    AutocompleteType.CHANNEL to lastWord.substring(1)
-                                                lastWord.startsWith(':') -> 
-                                                    AutocompleteType.EMOJI to lastWord.substring(1)
-                                                else -> null to ""
-                                            }
-                                            autocompleteStore.updateAutocomplete(type, query, navigationStore.selectedGuild)
-                                        } else {
-                                            autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild)
-                                        }
+                                    BasicTextField(
+                                        value = textFieldValue,
+                                        onValueChange = { 
+                                            if (canSend) {
+                                                val oldText = textFieldValue.text
+                                                textFieldValue = it
+                                                mentionRanges = shiftMentionRanges(mentionRanges, oldText, it.text)
+                                                
+                                                // Simplified autocomplete trigger check
+                                                if (it.selection.collapsed) {
+                                                    val cursor = it.selection.start
+                                                    val textBefore = it.text.take(cursor)
+                                                    val lastWord = textBefore.substringAfterLast(' ', textBefore)
+                                                    
+                                                    val (type, query) = when {
+                                                        it.text.startsWith('/') && !it.text.contains(' ') -> 
+                                                            AutocompleteType.COMMAND to it.text.substring(1)
+                                                        lastWord.startsWith('@') -> 
+                                                            AutocompleteType.MENTION to lastWord.substring(1)
+                                                        lastWord.startsWith('#') -> 
+                                                            AutocompleteType.CHANNEL to lastWord.substring(1)
+                                                        lastWord.startsWith(':') -> 
+                                                            AutocompleteType.EMOJI to lastWord.substring(1)
+                                                        else -> null to ""
+                                                    }
+                                                    autocompleteStore.updateAutocomplete(type, query, navigationStore.selectedGuild)
+                                                } else {
+                                                    autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild)
+                                                }
 
-                                        if (it.text.isNotEmpty()) {
-                                            messageStore.sendTyping(channel.id)
-                                        }
-                                    }
-                                },
-                                visualTransformation = DiscordInputVisualTransformation(primaryColor),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .padding(start = 12.dp, top = 8.dp, bottom = 8.dp)
-                                    .focusRequester(focusRequester)
-                                    .onPreviewKeyEvent { event ->
-                                        if (!canSend) return@onPreviewKeyEvent false
-                                        if (event.type == KeyEventType.KeyDown) {
-                                            if (autocompleteStore.autocompleteType != null) {
-                                                val itemCount = autocompleteStore.autocompleteItems.size
-                                                when (event.key) {
-                                                    Key.DirectionUp -> {
-                                                        if (itemCount > 0) {
-                                                            autocompleteStore.autocompleteSelectedIndex = (autocompleteStore.autocompleteSelectedIndex - 1 + itemCount) % itemCount
-                                                            return@onPreviewKeyEvent true
-                                                        }
-                                                    }
-                                                    Key.DirectionDown -> {
-                                                        if (itemCount > 0) {
-                                                            autocompleteStore.autocompleteSelectedIndex = (autocompleteStore.autocompleteSelectedIndex + 1) % itemCount
-                                                            return@onPreviewKeyEvent true
-                                                        }
-                                                    }
-                                                    Key.Tab, Key.Enter -> {
-                                                        if (itemCount > 0 && autocompleteStore.autocompleteSelectedIndex in 0 until itemCount) {
-                                                            val item = autocompleteStore.autocompleteItems[autocompleteStore.autocompleteSelectedIndex]
-                                                            if (item.isCommand && item.commandObj != null) {
-                                                                commandStore.activeCommand = item.commandObj
-                                                                commandStore.resetSubCommand()
-                                                                textFieldValue = TextFieldValue("")
-                                                                clearMentions()
-                                                                autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild)
-                                                            } else {
-                                                                applyAutocomplete(item)
-                                                            }
-                                                            return@onPreviewKeyEvent true
-                                                        }
-                                                    }
+                                                if (it.text.isNotEmpty()) {
+                                                    messageStore.sendTyping(channel.id)
                                                 }
                                             }
+                                        },
+                                        visualTransformation = DiscordInputVisualTransformation(primaryColor),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .padding(start = 12.dp, top = 8.dp, bottom = 8.dp)
+                                            .focusRequester(focusRequester)
+                                            .onPreviewKeyEvent { event ->
+                                                if (!canSend) return@onPreviewKeyEvent false
+                                                if (event.type == KeyEventType.KeyDown) {
+                                                    if (autocompleteStore.autocompleteType != null) {
+                                                        val itemCount = autocompleteStore.autocompleteItems.size
+                                                        when (event.key) {
+                                                            Key.DirectionUp -> {
+                                                                if (itemCount > 0) {
+                                                                    autocompleteStore.autocompleteSelectedIndex = (autocompleteStore.autocompleteSelectedIndex - 1 + itemCount) % itemCount
+                                                                    return@onPreviewKeyEvent true
+                                                                }
+                                                            }
+                                                            Key.DirectionDown -> {
+                                                                if (itemCount > 0) {
+                                                                    autocompleteStore.autocompleteSelectedIndex = (autocompleteStore.autocompleteSelectedIndex + 1) % itemCount
+                                                                    return@onPreviewKeyEvent true
+                                                                }
+                                                            }
+                                                            Key.Tab, Key.Enter -> {
+                                                                if (itemCount > 0 && autocompleteStore.autocompleteSelectedIndex in 0 until itemCount) {
+                                                                    val item = autocompleteStore.autocompleteItems[autocompleteStore.autocompleteSelectedIndex]
+                                                                    if (item.isCommand && item.commandObj != null) {
+                                                                        commandStore.activeCommand = item.commandObj
+                                                                        commandStore.resetSubCommand()
+                                                                        textFieldValue = TextFieldValue("")
+                                                                        clearMentions()
+                                                                        autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild)
+                                                                    } else {
+                                                                        applyAutocomplete(item)
+                                                                    }
+                                                                    return@onPreviewKeyEvent true
+                                                                }
+                                                            }
+                                                        }
+                                                    }
 
                                                     if (event.key == Key.Escape) {
                                                         if (autocompleteStore.autocompleteType != null) {
@@ -556,14 +569,19 @@ fun ChatInputBar(
                                                 }
                                                 false
                                             },
-                                        textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
+                                        textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            fontSize = MaterialTheme.typography.bodyLarge.fontSize * chatboxFontSize
+                                        ),
                                         cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                                         decorationBox = { innerTextField: @Composable () -> Unit ->
                                             Box(modifier = Modifier.fillMaxWidth()) {
                                                 if (textFieldValue.text.isEmpty()) {
                                                     Text(
                                                         text = placeholderText,
-                                                        style = MaterialTheme.typography.bodyMedium,
+                                                        style = MaterialTheme.typography.bodyLarge.copy(
+                                                            fontSize = MaterialTheme.typography.bodyLarge.fontSize * chatboxFontSize
+                                                        ),
                                                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                                                     )
                                                 }
@@ -572,21 +590,23 @@ fun ChatInputBar(
                                         }
                                     )
 
-                                    IconButton(
-                                        onClick = { 
-                                            navigationStore.isEmojiPickerVisible = !navigationStore.isEmojiPickerVisible
-                                            if (isMobileView) {
-                                                keyboardController?.hide()
-                                            }
-                                        },
-                                        modifier = Modifier.size(36.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Filled.SentimentSatisfied,
-                                            contentDescription = "Emojis",
-                                            modifier = Modifier.size(22.dp),
-                                            tint = if (navigationStore.isEmojiPickerVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
+                                    if (!settings.chatboxHideEmojiButton) {
+                                        IconButton(
+                                            onClick = { 
+                                                navigationStore.isEmojiPickerVisible = !navigationStore.isEmojiPickerVisible
+                                                if (isMobileView) {
+                                                    keyboardController?.hide()
+                                                }
+                                            },
+                                            modifier = Modifier.size(36.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Filled.SentimentSatisfied,
+                                                contentDescription = "Emojis",
+                                                modifier = Modifier.size(24.dp),
+                                                tint = if (navigationStore.isEmojiPickerVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
                                     }
 
                                     if (navigationStore.isEmojiPickerVisible && !isMobileView) {
@@ -623,49 +643,53 @@ fun ChatInputBar(
                                 }
                             }
                             
-                            // Send Button
+                            // Right Buttons (Send Button)
+                            val showSend = textFieldValue.text.isNotBlank() || messageStore.pendingFiles.isNotEmpty() || commandStore.activeCommand != null
+                            
                             AnimatedVisibility(
-                                visible = textFieldValue.text.isNotBlank() || messageStore.pendingFiles.isNotEmpty() || commandStore.activeCommand != null,
-                                enter = fadeIn() + scaleIn(initialScale = 0.8f) + slideInHorizontally { it },
-                                exit = fadeOut() + scaleOut(targetScale = 0.8f) + slideOutHorizontally { it },
-                                modifier = Modifier.padding(start = 8.dp)
+                                visible = showSend,
+                                enter = expandHorizontally(expandFrom = Alignment.Start) + fadeIn() + scaleIn(initialScale = 0.8f),
+                                exit = shrinkHorizontally(shrinkTowards = Alignment.Start) + fadeOut() + scaleOut(targetScale = 0.8f),
                             ) {
-                                IconButton(
-                                    onClick = {
-                                        if (commandStore.activeCommand != null) {
-                                            val options = commandStore.buildInteractionOptions()
-                                            commandStore.sendInteraction(
-                                                command = commandStore.activeCommand!!,
-                                                guildId = navigationStore.selectedGuild?.id,
-                                                channelId = channel.id,
-                                                options = options
-                                            )
-                                            commandStore.activeCommand = null
-                                            commandStore.commandOptions.clear()
-                                            commandStore.resetSubCommand()
-                                        } else {
-                                            if (messageStore.editingMessage != null) {
-                                                messageStore.editMessage(messageStore.editingMessage!!, resolveContent(textFieldValue.text))
-                                                messageStore.editingMessage = null
+                                Row(verticalAlignment = Alignment.Bottom) {
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    IconButton(
+                                        onClick = {
+                                            if (commandStore.activeCommand != null) {
+                                                val options = commandStore.buildInteractionOptions()
+                                                commandStore.sendInteraction(
+                                                    command = commandStore.activeCommand!!,
+                                                    guildId = navigationStore.selectedGuild?.id,
+                                                    channelId = channel.id,
+                                                    options = options
+                                                )
+                                                commandStore.activeCommand = null
+                                                commandStore.commandOptions.clear()
+                                                commandStore.resetSubCommand()
                                             } else {
-                                                messageStore.sendMessageDraft(resolveContent(textFieldValue.text))
+                                                if (messageStore.editingMessage != null) {
+                                                    messageStore.editMessage(messageStore.editingMessage!!, resolveContent(textFieldValue.text))
+                                                    messageStore.editingMessage = null
+                                                } else {
+                                                    messageStore.sendMessageDraft(resolveContent(textFieldValue.text))
+                                                }
                                             }
-                                        }
-                                        textFieldValue = TextFieldValue("")
-                                        clearMentions()
-                                    },
-                                    enabled = commandStore.activeCommand == null || commandStore.isCommandValid(),
-                                    colors = IconButtonDefaults.filledIconButtonColors(
-                                        containerColor = MaterialTheme.colorScheme.primary,
-                                        contentColor = MaterialTheme.colorScheme.onPrimary
-                                    ),
-                                    modifier = Modifier.size(40.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Send,
-                                        contentDescription = "Send",
-                                        modifier = Modifier.size(20.dp)
-                                    )
+                                            textFieldValue = TextFieldValue("")
+                                            clearMentions()
+                                        },
+                                        enabled = commandStore.activeCommand == null || commandStore.isCommandValid(),
+                                        colors = IconButtonDefaults.filledIconButtonColors(
+                                            containerColor = MaterialTheme.colorScheme.primary,
+                                            contentColor = MaterialTheme.colorScheme.onPrimary
+                                        ),
+                                        modifier = Modifier.size(40.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Send,
+                                            contentDescription = "Send",
+                                            modifier = Modifier.size(22.dp)
+                                        )
+                                    }
                                 }
                             }
                         }

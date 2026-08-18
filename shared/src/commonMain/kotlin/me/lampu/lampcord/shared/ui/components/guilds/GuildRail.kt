@@ -51,6 +51,7 @@ import me.lampu.lampcord.shared.model.Channel
 import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.api.CdnUrls
 import me.lampu.lampcord.shared.ui.components.AsyncImage
+import me.lampu.lampcord.shared.ui.theme.*
 
 @Composable
 fun GuildRail(

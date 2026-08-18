@@ -67,12 +67,13 @@ fun ThreadPanel(
         modifier = Modifier
             .width(340.dp)
             .fillMaxHeight()
-            .background(MaterialTheme.colorScheme.surface)
+            .background(MaterialTheme.colorScheme.background)
     ) {
         // Header
         Surface(
             modifier = Modifier.fillMaxWidth().height(48.dp),
-            tonalElevation = 1.dp
+            color = MaterialTheme.colorScheme.background,
+            tonalElevation = 0.dp
         ) {
             Row(
                 modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
