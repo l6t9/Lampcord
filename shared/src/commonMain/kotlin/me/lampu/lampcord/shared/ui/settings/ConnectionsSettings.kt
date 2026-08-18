@@ -19,7 +19,7 @@ fun ConnectionsSettings() {
                 Material3SettingsItem(
                     icon = Icons.Filled.Public,
                     title = { Text(connection.name) },
-                    description = { Text(connection.type.uppercase()) },
+                    description = { Text(connection.type) },
                     trailingContent = {
                         IconButton(onClick = { /* TODO */ }) {
                             Icon(Icons.Filled.Delete, null, tint = MaterialTheme.colorScheme.error)

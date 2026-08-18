@@ -278,57 +278,6 @@ fun AppearanceSettings(
         }
 
         SettingsSection(
-            title = "Chatbox Customization",
-            icon = Icons.Rounded.Forum
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Chatbox Font Scale: ${(settingsStore.chatboxFontSize * 100).toInt()}%", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = colorScheme.onSurfaceVariant)
-                    Slider(
-                        value = settingsStore.chatboxFontSize,
-                        onValueChange = { settingsStore.chatboxFontSize = it },
-                        valueRange = 0.5f..2.0f,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Background Opacity: ${(settingsStore.chatboxBackgroundOpacity * 100).toInt()}%", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = colorScheme.onSurfaceVariant)
-                    Slider(
-                        value = settingsStore.chatboxBackgroundOpacity,
-                        onValueChange = { settingsStore.chatboxBackgroundOpacity = it },
-                        valueRange = 0.0f..1.0f,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Border Radius: ${settingsStore.chatboxBorderRadius}dp", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = colorScheme.onSurfaceVariant)
-                    Slider(
-                        value = settingsStore.chatboxBorderRadius.toFloat(),
-                        onValueChange = { settingsStore.chatboxBorderRadius = it.toInt() },
-                        valueRange = 0.0f..32.0f,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Hide Upload Button", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                    }
-                    ExpressiveSwitch(checked = settingsStore.chatboxHideUploadButton, onCheckedChange = { settingsStore.chatboxHideUploadButton = it })
-                }
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Hide Emoji Button", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                    }
-                    ExpressiveSwitch(checked = settingsStore.chatboxHideEmojiButton, onCheckedChange = { settingsStore.chatboxHideEmojiButton = it })
-                }
-            }
-        }
-
-        SettingsSection(
             title = "Visual Density",
             icon = Icons.Rounded.Forum
         ) {
@@ -354,16 +303,16 @@ fun AppearanceSettings(
         }
 
         SettingsSection(
-            title = "Message Display",
-            icon = Icons.Rounded.Forum
+            title = "Navigation Bar",
+            icon = Icons.Rounded.Rectangle
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Chat Bubbles", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                        Text("Display messages inside rounded chat bubbles.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Hide Labels", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                        Text("Only show icons in the navigation bar.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    ExpressiveSwitch(checked = settingsStore.chatBubbles, onCheckedChange = { settingsStore.chatBubbles = it })
+                    ExpressiveSwitch(checked = settingsStore.hideNavLabels, onCheckedChange = { settingsStore.hideNavLabels = it })
                 }
             }
         }

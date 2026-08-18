@@ -71,7 +71,7 @@ fun GifPicker(
                         modifier = Modifier
                             .fillMaxWidth()
                             .aspectRatio(1.8f)
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(RoundedCornerShape(16.dp))
                             .clickable { 
                                 isCategoryMode = true
                                 onQueryChange(category.name) 
@@ -115,7 +115,7 @@ fun GifPicker(
                         modifier = Modifier
                             .fillMaxWidth()
                             .aspectRatio(1.5f)
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(RoundedCornerShape(16.dp))
                             .clickable { onGifSelected(gif) },
                         contentScale = ContentScale.Crop
                     )

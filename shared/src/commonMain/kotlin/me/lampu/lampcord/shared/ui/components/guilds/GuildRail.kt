@@ -86,7 +86,7 @@ fun GuildRail(
             .width(72.dp)
             .fillMaxHeight(),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
         contentPadding = PaddingValues(vertical = 8.dp)
     ) {
         item {
@@ -159,7 +159,7 @@ fun GuildRail(
             HorizontalDivider(
                 modifier = Modifier
                     .width(32.dp)
-                    .padding(vertical = 4.dp)
+                    .padding(vertical = 2.dp)
                     .clip(MaterialTheme.shapes.medium),
                 thickness = 2.dp,
                 color = MaterialTheme.colorScheme.outline,

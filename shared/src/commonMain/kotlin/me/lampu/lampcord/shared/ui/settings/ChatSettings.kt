@@ -51,6 +51,51 @@ private fun DesktopChatSettings(settingsStore: SettingsStore, userSettings: User
         }
 
         SettingsSection(
+            title = "Chatbox Customization",
+            icon = Icons.Rounded.Rectangle
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Chatbox Font Scale: ${(settingsStore.chatboxFontSize * 100).toInt()}%", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Slider(
+                        value = settingsStore.chatboxFontSize,
+                        onValueChange = { settingsStore.chatboxFontSize = it },
+                        valueRange = 0.5f..2.0f,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Background Opacity: ${(settingsStore.chatboxBackgroundOpacity * 100).toInt()}%", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Slider(
+                        value = settingsStore.chatboxBackgroundOpacity,
+                        onValueChange = { settingsStore.chatboxBackgroundOpacity = it },
+                        valueRange = 0.0f..1.0f,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Border Radius: ${settingsStore.chatboxBorderRadius}dp", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Slider(
+                        value = settingsStore.chatboxBorderRadius.toFloat(),
+                        onValueChange = { settingsStore.chatboxBorderRadius = it.toInt() },
+                        valueRange = 0.0f..32.0f,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                ChatToggle("Hide Upload Button", settingsStore.chatboxHideUploadButton) {
+                    settingsStore.chatboxHideUploadButton = it
+                }
+
+                ChatToggle("Hide Emoji Button", settingsStore.chatboxHideEmojiButton) {
+                    settingsStore.chatboxHideEmojiButton = it
+                }
+            }
+        }
+
+        SettingsSection(
             title = "Gestures",
             icon = Icons.Filled.DragIndicator
         ) {
@@ -175,6 +220,35 @@ private fun ChatToggle(label: String, checked: Boolean, description: String? = n
 }
 
 @Composable
+private fun sliderSettingsItem(
+    title: String,
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    valueRange: ClosedFloatingPointRange<Float> = 0f..1f,
+    steps: Int = 0,
+    label: String? = null
+): Material3SettingsItem {
+    return Material3SettingsItem(
+        title = {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(title)
+                if (label != null) Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+            }
+        },
+        description = {
+            Slider(
+                value = value,
+                onValueChange = onValueChange,
+                valueRange = valueRange,
+                steps = steps,
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+            )
+        },
+        onClick = null
+    )
+}
+
+@Composable
 private fun MobileChatSettings(settingsStore: SettingsStore, userSettings: UserSettings?) {
     var gesturesExpanded by remember { mutableStateOf(false) }
     var nitroExpanded by remember { mutableStateOf(false) }
@@ -206,6 +280,43 @@ private fun MobileChatSettings(settingsStore: SettingsStore, userSettings: UserS
                     onCheckedChange = {
                         settingsStore.showContextMenuMessage = it
                     }
+                )
+            )
+        )
+
+        Material3SettingsGroup(
+            title = "Chatbox Customization",
+            items = listOf(
+                sliderSettingsItem(
+                    title = "Font Scale",
+                    label = "${(settingsStore.chatboxFontSize * 100).toInt()}%",
+                    value = settingsStore.chatboxFontSize,
+                    onValueChange = { settingsStore.chatboxFontSize = it },
+                    valueRange = 0.5f..2.0f
+                ),
+                sliderSettingsItem(
+                    title = "Background Opacity",
+                    label = "${(settingsStore.chatboxBackgroundOpacity * 100).toInt()}%",
+                    value = settingsStore.chatboxBackgroundOpacity,
+                    onValueChange = { settingsStore.chatboxBackgroundOpacity = it },
+                    valueRange = 0.0f..1.0f
+                ),
+                sliderSettingsItem(
+                    title = "Border Radius",
+                    label = "${settingsStore.chatboxBorderRadius}dp",
+                    value = settingsStore.chatboxBorderRadius.toFloat(),
+                    onValueChange = { settingsStore.chatboxBorderRadius = it.toInt() },
+                    valueRange = 0.0f..32.0f
+                ),
+                switchSettingsItem(
+                    title = "Hide Upload Button",
+                    checked = settingsStore.chatboxHideUploadButton,
+                    onCheckedChange = { settingsStore.chatboxHideUploadButton = it }
+                ),
+                switchSettingsItem(
+                    title = "Hide Emoji Button",
+                    checked = settingsStore.chatboxHideEmojiButton,
+                    onCheckedChange = { settingsStore.chatboxHideEmojiButton = it }
                 )
             )
         )

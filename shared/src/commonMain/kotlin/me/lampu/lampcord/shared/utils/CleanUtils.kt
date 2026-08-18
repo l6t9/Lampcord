@@ -52,13 +52,6 @@ object CleanUtils {
         }
 
         val normalized = sb.toString().replace(Regex("\\s+"), " ").trim()
-
-        if (isCategory && settings.cleanChannelsCapitalizeCategories && normalized.isNotEmpty()) {
-            result = normalized.lowercase().replaceFirstChar { it.uppercase() }
-        } else {
-            result = normalized
-        }
-
-        return result.ifEmpty { name }
+        return normalized.ifEmpty { name }
     }
 }

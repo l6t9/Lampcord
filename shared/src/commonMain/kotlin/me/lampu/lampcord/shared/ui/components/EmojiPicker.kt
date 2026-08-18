@@ -178,7 +178,7 @@ fun EmojiPicker(
         },
         shape = if (isMobile) RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp) else RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        shadowElevation = if (isMobile) 0.dp else 8.dp
+        shadowElevation = if (isMobile) 0.dp else 16.dp
     ) {
         Row(modifier = Modifier.fillMaxSize()) {
             Column(modifier = Modifier.weight(1f)) {
@@ -251,13 +251,13 @@ fun EmojiPicker(
                             unfocusedIndicatorColor = Color.Transparent,
                             disabledIndicatorColor = Color.Transparent
                         ),
-                        shape = RoundedCornerShape(8.dp),
+                        shape = RoundedCornerShape(16.dp),
                         singleLine = true,
                         textStyle = MaterialTheme.typography.bodyMedium
                     )
                 }
 
-                Box(modifier = Modifier.weight(1f).padding(8.dp)) {
+                Box(modifier = Modifier.weight(1f).padding(16.dp)) {
                     AnimatedContent(
                         targetState = selectedTab,
                         transitionSpec = {
@@ -343,7 +343,7 @@ fun EmojiGrid(
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp, start = 4.dp)
+                            modifier = Modifier.padding(top = 16.dp, bottom = 4.dp, start = 4.dp)
                         )
                     }
                     items(group.emojis) { emoji ->
@@ -400,7 +400,7 @@ private fun EmojiServerBar(
     Column {
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         LazyRow(
-            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {

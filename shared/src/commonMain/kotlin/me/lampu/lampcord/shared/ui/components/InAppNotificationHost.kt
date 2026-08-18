@@ -66,7 +66,7 @@ fun InAppNotificationHost(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .shadow(8.dp, RoundedCornerShape(16.dp))
+                        .shadow(16.dp, RoundedCornerShape(16.dp))
                         .clip(RoundedCornerShape(16.dp))
                         .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                         .clickable {

@@ -226,7 +226,7 @@ fun FriendItem(
                 3 -> {
                     Button(
                         onClick = { relationshipStore.addFriend(user.id) },
-                        shape = RoundedCornerShape(8.dp)
+                        shape = RoundedCornerShape(16.dp)
                     ) {
                         Text("Accept")
                     }
@@ -305,7 +305,7 @@ fun AddFriendUI(relationshipStore: RelationshipStore = koinInject()) {
                     },
                     enabled = query.isNotBlank(),
                     modifier = Modifier.padding(end = 8.dp),
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(16.dp)
                 ) {
                     Text("Send Friend Request")
                 }

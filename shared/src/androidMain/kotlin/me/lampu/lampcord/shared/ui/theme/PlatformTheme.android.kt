@@ -1,6 +1,8 @@
 package me.lampu.lampcord.shared.ui.theme
 
 import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import android.os.Build
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
@@ -15,6 +17,15 @@ import androidx.core.view.WindowCompat
 import com.materialkolor.PaletteStyle
 import com.materialkolor.rememberDynamicColorScheme
 import me.lampu.lampcord.shared.settings.FontOption
+
+private fun Context.findActivity(): Activity? {
+    var context = this
+    while (context is ContextWrapper) {
+        if (context is Activity) return context
+        context = context.baseContext
+    }
+    return null
+}
 
 @Composable
 actual fun rememberDynamicSeedColor(): Color? {
@@ -60,15 +71,18 @@ actual fun rememberPlatformColorScheme(
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
-            val window = (view.context as Activity).window
-            // Use surfaceContainerHigh (Guild Rail background) for status bar
-            val statusBarColor = if (isDark) DiscordClassicGuildRail else scheme.surfaceContainerHigh
-            window.statusBarColor = statusBarColor.toArgb()
-            val navBarColor = if (isDark) DiscordClassicGuildRail else scheme.surfaceContainerHigh
-            window.navigationBarColor = navBarColor.toArgb()
-            
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !isDark
-            WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = !isDark
+            val activity = view.context.findActivity()
+            if (activity != null) {
+                val window = activity.window
+                // Use surfaceContainerHigh (Guild Rail background) for status bar
+                val statusBarColor = if (isDark) DiscordClassicGuildRail else scheme.surfaceContainerHigh
+                window.statusBarColor = statusBarColor.toArgb()
+                val navBarColor = if (isDark) DiscordClassicGuildRail else scheme.surfaceContainerHigh
+                window.navigationBarColor = navBarColor.toArgb()
+                
+                WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !isDark
+                WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = !isDark
+            }
         }
     }
     

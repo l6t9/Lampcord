@@ -32,6 +32,8 @@ class DiscordPanelsState(
 ) {
     var currentValue by mutableStateOf(initialValue)
     var offset by mutableFloatStateOf(0f)
+    var progress by mutableFloatStateOf(0f)
+    var sidePanelWidthPx by mutableFloatStateOf(0f)
 
     fun openStart() {
         currentValue = DiscordPanelValue.Start
@@ -65,8 +67,9 @@ fun DiscordPanels(
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val density = LocalDensity.current
         val screenWidth = maxWidth
-        val sidePanelWidth = screenWidth - 56.dp
+        val sidePanelWidth = screenWidth - 72.dp
         val sidePanelWidthPx = with(density) { sidePanelWidth.toPx() }
+        state.sidePanelWidthPx = sidePanelWidthPx
         
         val animationType = Settings.shared.panelAnimation
 
@@ -96,6 +99,7 @@ fun DiscordPanels(
         )
 
         val progress = animatedOffset / sidePanelWidthPx
+        state.progress = progress
         val absProgress = abs(progress).coerceIn(0f, 1f)
 
         Box(
@@ -149,10 +153,16 @@ fun DiscordPanels(
                 modifier = Modifier
                     .fillMaxHeight()
                     .width(sidePanelWidth)
+                    .padding(start = 0.dp, top = 0.dp, bottom = 0.dp, end = 0.dp)
                     .graphicsLayer {
+                        val isEffectivelyVisible = progress > 0.001f || state.currentValue == DiscordPanelValue.Start
+                        alpha = if (isEffectivelyVisible) 1f else 0f
+                        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+                        clip = true
+                        shadowElevation = 4.dp.toPx()
+                        
                         if (animationType == PanelAnimation.EXPRESSIVE) {
                             translationX = (progress - 1f) * (sidePanelWidthPx * 0.3f)
-                            alpha = (0.4f + (progress * 0.6f)).coerceIn(0f, 1f)
                             val scale = 0.92f + (progress * 0.08f)
                             scaleX = scale
                             scaleY = scale
@@ -161,14 +171,11 @@ fun DiscordPanels(
                             translationX = (progress - 1f) * (sidePanelWidthPx * 0.1f)
                         }
                     }
-                    .zIndex(0f)
+                    .zIndex(if (progress > 0) 1f else 0f)
             ) {
                 // To keep state (scroll position, etc.), it MUST stay in composition. 
                 // We keep it composed but only visible when relevant.
-                val isEffectivelyVisible = progress > 0.001f || state.currentValue == DiscordPanelValue.Start
-                Box(modifier = Modifier.fillMaxSize().graphicsLayer { alpha = if (isEffectivelyVisible) 1f else 0f }) {
-                    startPanel()
-                }
+                startPanel()
             }
 
             // End Panel (Right)
@@ -177,10 +184,16 @@ fun DiscordPanels(
                     .fillMaxHeight()
                     .width(sidePanelWidth)
                     .align(Alignment.CenterEnd)
+                    .padding(start = 0.dp, top = 0.dp, bottom = 0.dp, end = 16.dp)
                     .graphicsLayer {
+                        val isEffectivelyVisible = progress < -0.001f || state.currentValue == DiscordPanelValue.End
+                        alpha = if (isEffectivelyVisible) 1f else 0f
+                        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+                        clip = true
+                        shadowElevation = 4.dp.toPx()
+
                         if (animationType == PanelAnimation.EXPRESSIVE) {
                             translationX = (progress + 1f) * (sidePanelWidthPx * 0.3f)
-                            alpha = (0.4f + (absProgress * 0.6f)).coerceIn(0f, 1f)
                             val scale = 0.92f + (absProgress * 0.08f)
                             scaleX = scale
                             scaleY = scale
@@ -189,26 +202,30 @@ fun DiscordPanels(
                             translationX = (progress + 1f) * (sidePanelWidthPx * 0.1f)
                         }
                     }
-                    .zIndex(0f)
+                    .zIndex(if (progress < 0) 1f else 0f)
             ) {
-                val isEffectivelyVisible = progress < -0.001f || state.currentValue == DiscordPanelValue.End
-                Box(modifier = Modifier.fillMaxSize().graphicsLayer { alpha = if (isEffectivelyVisible) 1f else 0f }) {
-                    endPanel()
-                }
+                endPanel()
             }
 
             // Center Panel (Main)
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .zIndex(1f)
+                    .zIndex(2f)
                     .offset { IntOffset(animatedOffset.roundToInt(), 0) }
+                    .padding(
+                        start = 16.dp * absProgress,
+                        top = 0.dp,
+                        end = 16.dp * absProgress,
+                        bottom = 0.dp
+                    )
                     .graphicsLayer {
                         val isExpressive = animationType == PanelAnimation.EXPRESSIVE
                         
                         // Corner rounding and scaling for the "border" effect
+                        // Discord-like: rounded only when open
                         val cornerRadius = 16.dp.toPx() * absProgress
-                        shape = RoundedCornerShape(cornerRadius)
+                        shape = RoundedCornerShape(topStart = cornerRadius, topEnd = cornerRadius)
                         clip = absProgress > 0.01f
                         
                         if (isExpressive) {

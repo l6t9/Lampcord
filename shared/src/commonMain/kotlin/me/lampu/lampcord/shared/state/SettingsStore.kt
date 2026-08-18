@@ -89,6 +89,14 @@ class SettingsStore(
             me.lampu.lampcord.shared.settings.Settings.shared.panelAnimation = value
         }
 
+    private var _hideNavLabels by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.hideNavLabels)
+    var hideNavLabels: Boolean
+        get() = _hideNavLabels
+        set(value) {
+            _hideNavLabels = value
+            me.lampu.lampcord.shared.settings.Settings.shared.hideNavLabels = value
+        }
+
     private var _chatboxBackgroundOpacity by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.chatboxBackgroundOpacity)
     var chatboxBackgroundOpacity: Float
         get() = _chatboxBackgroundOpacity

@@ -1,35 +1,22 @@
 package me.lampu.lampcord.shared.ui.baseplates
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
+import androidx.compose.animation.*
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -38,34 +25,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
-import me.lampu.lampcord.shared.state.NavigationStore
-import me.lampu.lampcord.shared.state.ProfileStore
-import me.lampu.lampcord.shared.state.PresenceStore
-import me.lampu.lampcord.shared.state.SettingsStore
-import me.lampu.lampcord.shared.state.UserStore
+import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.SettingsScreen
-import me.lampu.lampcord.shared.ui.components.AttachmentViewer
-import me.lampu.lampcord.shared.ui.components.AdaptiveModalBottomSheet
-import me.lampu.lampcord.shared.ui.components.AvatarWithDecoration
-import me.lampu.lampcord.shared.ui.components.ChatArea
-import me.lampu.lampcord.shared.ui.components.ChatInputBar
-import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
-import me.lampu.lampcord.shared.ui.components.DiscordPanelValue
-import me.lampu.lampcord.shared.ui.components.DiscordPanels
-import me.lampu.lampcord.shared.ui.components.FriendsList
-import me.lampu.lampcord.shared.ui.components.MemberList
-import me.lampu.lampcord.shared.ui.components.Sidebar
-import me.lampu.lampcord.shared.ui.components.VoiceArea
-import me.lampu.lampcord.shared.ui.components.QuickSwitcher
-import me.lampu.lampcord.shared.ui.components.EmojiPicker
+import me.lampu.lampcord.shared.ui.components.*
+import me.lampu.lampcord.shared.ui.components.chat.ChannelSettingsScreen
 import me.lampu.lampcord.shared.ui.components.chat.PinnedMessagesScreen
 import me.lampu.lampcord.shared.ui.components.chat.SearchScreen
 import me.lampu.lampcord.shared.ui.components.guilds.ServerBottomSheet
-import me.lampu.lampcord.shared.ui.components.chat.ChannelSettingsScreen
 import me.lampu.lampcord.shared.ui.components.guilds.ServerSettings
 import me.lampu.lampcord.shared.ui.components.members.MemberHeader
 import me.lampu.lampcord.shared.ui.components.profiles.ProfileCard
-import me.lampu.lampcord.shared.ui.components.rememberDiscordPanelsState
 import me.lampu.lampcord.shared.ui.navigation.Navigator
 import me.lampu.lampcord.shared.ui.navigation.Screen
 import me.lampu.lampcord.shared.ui.navigation.rememberNavigationState
@@ -310,22 +279,28 @@ private fun MainBaseplateContent(
     settingsStore: SettingsStore,
     allUsers: Map<String, me.lampu.lampcord.shared.model.User>,
     currentUser: me.lampu.lampcord.shared.model.User?,
-    panelState: me.lampu.lampcord.shared.ui.components.DiscordPanelsState,
+    panelState: DiscordPanelsState,
     activeChannel: me.lampu.lampcord.shared.model.Channel?,
     isActive: Boolean
 ) {
     // Ensure we recompose when these change
-    key(navigationStore.selectedGuild?.id, navigationStore.isFriendsSelected) {
-        Box(Modifier.fillMaxSize()) {
-            val swipeEnabled = !navigationStore.isBubble && me.lampu.lampcord.shared.settings.Settings.shared.chatGestures == me.lampu.lampcord.shared.settings.ChatGestures.SWIPE_TO_MEMBERS
+    key(navigationStore.selectedGuild?.id ?: "home", navigationStore.isFriendsSelected) {
+        val swipeEnabled = !navigationStore.isBubble && me.lampu.lampcord.shared.settings.Settings.shared.chatGestures == me.lampu.lampcord.shared.settings.ChatGestures.SWIPE_TO_MEMBERS
+        val isFriends = navigationStore.isFriendsSelected && navigationStore.selectedGuild == null
+
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+        ) {
             DiscordPanels(
                 state = panelState,
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh), // Guild Rail background for status bar
+                    .statusBarsPadding(),
                 swipeEnabled = swipeEnabled,
                 startPanel = {
-                    Sidebar(modifier = Modifier.systemBarsPadding().padding(start = 8.dp, top = 8.dp, bottom = 8.dp))
+                    Sidebar()
                 },
                 centerPanel = {
                     Surface(
@@ -338,7 +313,7 @@ private fun MainBaseplateContent(
                             topBar = {
                                 if (activeChannel != null || navigationStore.isChannelsAndRolesVisible || navigationStore.isFriendsSelected) {
                                     TopAppBar(
-                                        windowInsets = TopAppBarDefaults.windowInsets.union(WindowInsets.statusBars),
+                                        windowInsets = TopAppBarDefaults.windowInsets,
                                         title = {
                                             Row(verticalAlignment = Alignment.CenterVertically) {
                                                 if (navigationStore.isChannelsAndRolesVisible) {
@@ -444,7 +419,7 @@ private fun MainBaseplateContent(
                                                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                                                         )
                                                     }
-                                                } else {
+                                                } else if (activeChannel?.type != 1 && activeChannel?.type != 3) {
                                                     IconButton(onClick = { panelState.openStart() }) {
                                                         Icon(
                                                             imageVector = Icons.Filled.Menu,
@@ -493,7 +468,7 @@ private fun MainBaseplateContent(
                                     )
                                 },
                                 modifier = Modifier
-                                    .padding(top = padding.calculateTopPadding())
+                                    .padding(top = padding.calculateTopPadding(), bottom = 0.dp)
                                     .fillMaxSize()
                                     .background(MaterialTheme.colorScheme.background), // Chat background
                                 label = "MainContentTransition"
@@ -549,26 +524,76 @@ private fun MainBaseplateContent(
                     }
                 },
                 endPanel = {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .systemBarsPadding()
-                            .padding(end = 8.dp, top = 8.dp, bottom = 8.dp),
-                        verticalArrangement = Arrangement.Top
-                    ) {
-                        Surface(
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(16.dp),
-                            color = MaterialTheme.colorScheme.background,
-                            tonalElevation = 0.dp
-                        ) {
-                            MemberList()
-                        }
-                    }
+                    MemberList()
                 }
             )
 
-            // 3. Panels back handler integration
+            // Global Navigation Bar Overlay
+            val targetNavBarVisibleAmount = remember(panelState.progress, isFriends) {
+                val progress = panelState.progress
+                if (isFriends) {
+                    (1f + progress).coerceIn(0f, 1f) // Hidden when swiping to Member list (progress < 0)
+                } else {
+                    progress.coerceIn(0f, 1f) // Only visible when swiping to Channel list (progress > 0)
+                }
+            }
+
+            val navBarVisibleAmount by animateFloatAsState(
+                targetValue = targetNavBarVisibleAmount,
+                animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec<Float>(),
+                label = "NavBarVisibleAmount"
+            )
+
+            if (navBarVisibleAmount > 0.001f) {
+                NavigationBar(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .height(80.dp)
+                        .graphicsLayer {
+                            translationY = (1f - navBarVisibleAmount) * 80.dp.toPx()
+                            alpha = navBarVisibleAmount
+                        },
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 0.dp,
+                    windowInsets = WindowInsets.navigationBars
+                ) {
+                    NavigationBarItem(
+                        selected = !navigationStore.isFriendsSelected && !navigationStore.isSettingsVisible && !navigationStore.isSearchVisible,
+                        onClick = {
+                            navigationStore.isFriendsSelected = false
+                            navigationStore.isSettingsVisible = false
+                            navigationStore.isSearchVisible = false
+                        },
+                        icon = { Icon(Icons.Brand.Discord, "Home") },
+                        label = { Text("Home") },
+                        alwaysShowLabel = !settingsStore.hideNavLabels
+                    )
+                    NavigationBarItem(
+                        selected = navigationStore.isFriendsSelected,
+                        onClick = { navigationStore.selectFriends() },
+                        icon = { Icon(if (navigationStore.isFriendsSelected) Icons.Filled.Person else Icons.Rounded.Person, "Friends") },
+                        label = { Text("Friends") },
+                        alwaysShowLabel = !settingsStore.hideNavLabels
+                    )
+                    NavigationBarItem(
+                        selected = navigationStore.isSearchVisible,
+                        onClick = { navigationStore.isSearchVisible = true },
+                        icon = { Icon(Icons.Filled.Search, "Search") },
+                        label = { Text("Search") },
+                        alwaysShowLabel = !settingsStore.hideNavLabels
+                    )
+                    NavigationBarItem(
+                        selected = navigationStore.isSettingsVisible,
+                        onClick = { navigationStore.isSettingsVisible = true },
+                        icon = { Icon(Icons.Filled.Settings, "Settings") },
+                        label = { Text("You") },
+                        alwaysShowLabel = !settingsStore.hideNavLabels
+                    )
+                }
+            }
+            
+            // Panels back handler integration
             BackHandler(enabled = isActive && panelState.currentValue == DiscordPanelValue.End) {
                 panelState.close()
             }

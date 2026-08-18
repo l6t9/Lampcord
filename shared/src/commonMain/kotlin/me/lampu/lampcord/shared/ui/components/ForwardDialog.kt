@@ -296,7 +296,7 @@ private fun FinderResultItem(result: FinderResult, onClick: () -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         onClick = onClick,
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(16.dp),
         color = Color.Transparent
     ) {
         Row(

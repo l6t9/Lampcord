@@ -129,14 +129,14 @@ fun MusicActivity(activity: Activity, modifier: Modifier = Modifier, compact: Bo
                         AsyncImage(
                             model = imageUrl,
                             contentDescription = activity.assets?.large_text,
-                            modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(8.dp)),
+                            modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(16.dp)),
                             contentScale = ContentScale.Crop
                         )
                     } else {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(contentColor.copy(alpha = 0.1f), RoundedCornerShape(8.dp)),
+                                .background(contentColor.copy(alpha = 0.1f), RoundedCornerShape(16.dp)),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(Icons.Filled.Album, null, tint = contentColor.copy(alpha = 0.5f))
@@ -296,7 +296,7 @@ fun DefaultActivity(activity: Activity, modifier: Modifier = Modifier, compact: 
                         AsyncImage(
                             model = imageUrl,
                             contentDescription = activity.assets?.large_text,
-                            modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(8.dp)),
+                            modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(16.dp)),
                             contentScale = ContentScale.Crop
                         )
                         

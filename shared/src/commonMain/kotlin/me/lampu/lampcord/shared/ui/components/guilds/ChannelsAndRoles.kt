@@ -167,7 +167,7 @@ fun BrowseChannelsTab(navigationStore: NavigationStore, guildStore: GuildStore) 
             item {
                 Column {
                     Text(
-                        text = "CHANNELS",
+                        text = "Channels",
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -190,7 +190,7 @@ fun BrowseChannelsTab(navigationStore: NavigationStore, guildStore: GuildStore) 
             if (categoryChannels.isNotEmpty()) {
                 Column {
                     Text(
-                        text = category.name?.uppercase() ?: "CHANNELS",
+                        text = category.name ?: "Channels",
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant

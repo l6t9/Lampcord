@@ -45,9 +45,9 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import org.koin.compose.koinInject
 
-private val FolderIconSize = 56.dp
-private val PreviewIconSize = 24.dp
-private val PreviewIconOffset = 14.dp
+private val FolderIconSize = 48.dp
+private val PreviewIconSize = 22.dp
+private val PreviewIconOffset = 11.dp
 
 @Composable
 fun FolderPreviewGrid(
@@ -186,7 +186,7 @@ fun GuildFolderItem(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(FolderIconSize + 8.dp),
+                .height(FolderIconSize),
             contentAlignment = Alignment.Center
         ) {
             val showIndicator = (!expanded && isAnyChildSelected) || (isUnread && !expanded)
@@ -287,7 +287,7 @@ fun GuildFolderItem(
                     .fillMaxWidth()
                     .padding(vertical = 4.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 val guilds by guildStore.guilds.collectAsState()
                 folder.guild_ids.forEach { el ->

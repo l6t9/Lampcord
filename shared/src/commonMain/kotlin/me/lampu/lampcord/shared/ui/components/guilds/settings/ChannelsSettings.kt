@@ -69,7 +69,7 @@ fun ServerChannels(
                     categories.forEach { category ->
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(
-                                text = category.name?.uppercase() ?: "CATEGORY",
+                                text = category.name ?: "Category",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.clickable { editingChannel = category }

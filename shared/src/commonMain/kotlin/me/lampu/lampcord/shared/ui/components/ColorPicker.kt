@@ -173,7 +173,7 @@ fun HsvColorPicker(
 
             Surface(
                 modifier = Modifier.weight(1f).height(48.dp),
-                shape = RoundedCornerShape(8.dp),
+                shape = RoundedCornerShape(16.dp),
                 color = MaterialTheme.colorScheme.surface,
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
             ) {
@@ -230,7 +230,7 @@ fun HsvColorPicker(
 
             Button(
                 onClick = { onColorSelected(currentColor) },
-                shape = RoundedCornerShape(8.dp)
+                shape = RoundedCornerShape(16.dp)
             ) {
                 Text("Select")
             }

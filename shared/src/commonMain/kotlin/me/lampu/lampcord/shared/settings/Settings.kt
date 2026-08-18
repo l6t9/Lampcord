@@ -72,6 +72,7 @@ class Settings(private val settings: KmpSettings) {
     var showPermissions by preferenceBoolean("show_permissions", true)
     var emojiUsageJson by preference("emoji_usage_v4", "{}")
     var stickerUsageJson by preference("sticker_usage_v1", "{}")
+    var hideNavLabels by preferenceBoolean("hide_nav_labels", false)
 
     fun getLastChannel(guildId: String): String? {
         val id = settings.getString("last_channel_$guildId", "")

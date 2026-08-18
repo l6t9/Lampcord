@@ -112,7 +112,7 @@ fun AccountSettings(userStore: UserStore = koinInject()) {
 @Composable
 private fun AccountInfoItem(label: String, value: String) {
     Column {
-        Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(label, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(value, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
     }
 }

@@ -73,7 +73,7 @@ fun CommandPicker(
                     Surface(
                         onClick = { onCommandSelected(command) },
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(8.dp),
+                        shape = RoundedCornerShape(16.dp),
                         color = Color.Transparent
                     ) {
                         Row(

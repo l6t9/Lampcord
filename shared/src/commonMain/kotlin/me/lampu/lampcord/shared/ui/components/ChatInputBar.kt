@@ -309,7 +309,7 @@ fun ChatInputBar(
                                 messageStore.pendingFiles.forEachIndexed { index, pendingFile ->
                                     Surface(
                                         modifier = Modifier.size(100.dp),
-                                        shape = RoundedCornerShape(8.dp),
+                                        shape = RoundedCornerShape(16.dp),
                                         color = MaterialTheme.colorScheme.surfaceContainerHigh
                                     ) {
                                         Box {
@@ -368,12 +368,15 @@ fun ChatInputBar(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 8.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.Bottom
+                                .padding(start = 8.dp, end = 8.dp, top = 2.dp, bottom = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             val settings = me.lampu.lampcord.shared.settings.Settings.shared
                             val chatboxFontSize = settings.chatboxFontSize
                             val chatboxMinHeight = settings.chatboxHeight.dp * chatboxFontSize
+                            // Discord-like scaling: buttons should be slightly taller than the min height to account for text padding
+                            val buttonSize = chatboxMinHeight + (6.dp * chatboxFontSize)
+                            val iconSize = buttonSize * 0.55f
 
                             val uploadVisible = !settings.chatboxHideUploadButton && messageStore.editingMessage == null && canSend
                             
@@ -382,7 +385,7 @@ fun ChatInputBar(
                                 enter = expandHorizontally(expandFrom = Alignment.End) + fadeIn(),
                                 exit = shrinkHorizontally(shrinkTowards = Alignment.End) + fadeOut()
                             ) {
-                                Row(verticalAlignment = Alignment.Bottom) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
                                     if (getPlatformName() != "android") {
                                         FilePicker(
                                             show = showFilePicker,
@@ -391,7 +394,7 @@ fun ChatInputBar(
                                         )
                                     }
 
-                                    IconButton(
+                                    FilledIconButton(
                                         onClick = {
                                             if (getPlatformName() == "android") {
                                                 navigationStore.isMediaPickerVisible = !navigationStore.isMediaPickerVisible
@@ -399,7 +402,7 @@ fun ChatInputBar(
                                                 showFilePicker = true
                                             }
                                         },
-                                        modifier = Modifier.size(40.dp),
+                                        modifier = Modifier.size(buttonSize),
                                         colors = IconButtonDefaults.filledIconButtonColors(
                                             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                                             contentColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -408,7 +411,7 @@ fun ChatInputBar(
                                         Icon(
                                             imageVector = Icons.Filled.Add,
                                             contentDescription = "Add",
-                                            modifier = Modifier.size(22.dp)
+                                            modifier = Modifier.size(iconSize)
                                         )
                                     }
                                     
@@ -434,7 +437,7 @@ fun ChatInputBar(
                             Surface(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .heightIn(min = chatboxMinHeight)
+                                    .heightIn(min = buttonSize)
                                     .animateContentSize(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
                                 shape = RoundedCornerShape(settings.chatboxBorderRadius.dp),
                                 color = MaterialTheme.colorScheme.surfaceContainerHigh
@@ -651,9 +654,9 @@ fun ChatInputBar(
                                 enter = expandHorizontally(expandFrom = Alignment.Start) + fadeIn() + scaleIn(initialScale = 0.8f),
                                 exit = shrinkHorizontally(shrinkTowards = Alignment.Start) + fadeOut() + scaleOut(targetScale = 0.8f),
                             ) {
-                                Row(verticalAlignment = Alignment.Bottom) {
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    IconButton(
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    FilledIconButton(
                                         onClick = {
                                             if (commandStore.activeCommand != null) {
                                                 val options = commandStore.buildInteractionOptions()
@@ -682,12 +685,12 @@ fun ChatInputBar(
                                             containerColor = MaterialTheme.colorScheme.primary,
                                             contentColor = MaterialTheme.colorScheme.onPrimary
                                         ),
-                                        modifier = Modifier.size(40.dp)
+                                        modifier = Modifier.size(buttonSize)
                                     ) {
                                         Icon(
                                             imageVector = Icons.Rounded.Send,
                                             contentDescription = "Send",
-                                            modifier = Modifier.size(22.dp)
+                                            modifier = Modifier.size(iconSize)
                                         )
                                     }
                                 }

@@ -65,7 +65,8 @@ fun MemberList(
 
         Surface(
             modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background
+            color = MaterialTheme.colorScheme.surface,
+            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
         ) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
@@ -149,8 +150,8 @@ fun MemberList(
     ) {
         Surface(
             modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background,
-            shape = RoundedCornerShape(0.dp),
+            color = MaterialTheme.colorScheme.surface,
+            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
             tonalElevation = 0.dp
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
