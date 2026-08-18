@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
@@ -160,6 +161,7 @@ fun DiscordPanels(
                         shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
                         clip = true
                         shadowElevation = 4.dp.toPx()
+                        transformOrigin = TransformOrigin(0.5f, 0f)
                         
                         if (animationType == PanelAnimation.EXPRESSIVE) {
                             translationX = (progress - 1f) * (sidePanelWidthPx * 0.3f)
@@ -184,13 +186,14 @@ fun DiscordPanels(
                     .fillMaxHeight()
                     .width(sidePanelWidth)
                     .align(Alignment.CenterEnd)
-                    .padding(start = 0.dp, top = 0.dp, bottom = 0.dp, end = 16.dp)
+                    .padding(start = 0.dp, top = 0.dp, bottom = 0.dp, end = 8.dp)
                     .graphicsLayer {
                         val isEffectivelyVisible = progress < -0.001f || state.currentValue == DiscordPanelValue.End
                         alpha = if (isEffectivelyVisible) 1f else 0f
                         shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
                         clip = true
                         shadowElevation = 4.dp.toPx()
+                        transformOrigin = TransformOrigin(0.5f, 0f)
 
                         if (animationType == PanelAnimation.EXPRESSIVE) {
                             translationX = (progress + 1f) * (sidePanelWidthPx * 0.3f)
@@ -213,12 +216,6 @@ fun DiscordPanels(
                     .fillMaxSize()
                     .zIndex(2f)
                     .offset { IntOffset(animatedOffset.roundToInt(), 0) }
-                    .padding(
-                        start = 16.dp * absProgress,
-                        top = 0.dp,
-                        end = 16.dp * absProgress,
-                        bottom = 0.dp
-                    )
                     .graphicsLayer {
                         val isExpressive = animationType == PanelAnimation.EXPRESSIVE
                         
@@ -227,11 +224,16 @@ fun DiscordPanels(
                         val cornerRadius = 16.dp.toPx() * absProgress
                         shape = RoundedCornerShape(topStart = cornerRadius, topEnd = cornerRadius)
                         clip = absProgress > 0.01f
+                        transformOrigin = TransformOrigin(0.5f, 0f)
+                        
+                        // We use scaling instead of padding to prevent relayout of the chat content
+                        // while maintaining the visual "shrinking" effect.
+                        val shrinkFactor = if (isExpressive) 0.06f else 0.04f
+                        val scale = 1f - (absProgress * shrinkFactor)
+                        scaleX = scale
+                        scaleY = scale
                         
                         if (isExpressive) {
-                            val scale = 1f - (absProgress * 0.04f)
-                            scaleX = scale
-                            scaleY = scale
                             shadowElevation = if (absProgress > 0.01f) 12.dp.toPx() else 0f
                         } else {
                             shadowElevation = if (absProgress > 0.01f) 6.dp.toPx() else 0f
