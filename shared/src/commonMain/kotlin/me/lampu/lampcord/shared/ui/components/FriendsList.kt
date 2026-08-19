@@ -257,12 +257,8 @@ fun FriendItem(
                         }
                         ContextMenu(
                             items = listOf(
-                                ContextMenuItem("Remove Friend", Icons.Filled.PersonRemove) {
-                                    relationshipStore.removeFriend(user.id)
-                                },
-                                ContextMenuItem("Block", Icons.Filled.Block, color = Color.Red) {
-                                    relationshipStore.blockUser(user.id)
-                                }
+                                ContextMenuItem("Remove Friend", Icons.Filled.PersonRemove, onClick = { relationshipStore.removeFriend(user.id) }, group = "Primary"),
+                                ContextMenuItem("Block", Icons.Filled.Block, onClick = { relationshipStore.blockUser(user.id) }, color = Color.Red, group = "Destructive")
                             )
                         ) {
                             IconButton(onClick = {}) {

@@ -28,7 +28,11 @@ import me.lampu.lampcord.shared.state.EmojiStore
 import me.lampu.lampcord.shared.state.GuildStore
 import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.utils.setClipboardText
+import me.lampu.lampcord.shared.utils.showToast
+import me.lampu.lampcord.shared.model.EmbedImage
 import org.koin.compose.koinInject
+import me.lampu.lampcord.shared.utils.downloadToDownloads
 
 @Composable
 fun StickerPicker(
@@ -98,6 +102,8 @@ fun StickerPicker(
 
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
+    var cloneImageUrl by remember { mutableStateOf<String?>(null) }
+    var showCloneModal by remember { mutableStateOf(false) }
 
     val groupOffsets = remember(stickerGroups) {
         val offsets = mutableListOf<Int>()
@@ -177,17 +183,51 @@ fun StickerPicker(
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             pack.stickers.forEach { sticker ->
-                                AsyncImage(
-                                    model = "https://cdn.discordapp.com/stickers/${sticker.id}.png?size=160",
-                                    contentDescription = sticker.name,
-                                    modifier = Modifier
-                                        .size(80.dp)
-                                        .clickable { 
-                                            emojiStore.onStickerUsed(sticker.id)
-                                            onStickerSelected(sticker) 
-                                        }
-                                        .padding(4.dp)
+                                val stickerUrl = "https://cdn.discordapp.com/stickers/${sticker.id}.png?size=160"
+                                val stickerMenu = listOf(
+                                    ContextMenuItem("Copy Link", Icons.Filled.Link, onClick = {
+                                        setClipboardText(stickerUrl)
+                                        showToast("Copied to clipboard")
+                                    }),
+                                    ContextMenuItem("View Image", Icons.Filled.OpenInNew, onClick = {
+                                        val img = EmbedImage(url = stickerUrl, proxy_url = stickerUrl)
+                                        navigationStore.openAttachmentViewer(listOf(img))
+                                    }),
+                                    ContextMenuItem("Copy Sticker ID", Icons.Filled.Dns, onClick = {
+                                        setClipboardText(sticker.id)
+                                        showToast("Copied to clipboard")
+                                    })
                                 )
+
+                                // Save and Clone
+                                val downloadFilename = "sticker_${sticker.id}.png"
+                                val extra = listOf(
+                                    ContextMenuItem("Save Image", Icons.Filled.Download, onClick = {
+                                        val scope = coroutineScope
+                                        scope.launch {
+                                            val ok = downloadToDownloads(stickerUrl, downloadFilename)
+                                            if (ok) showToast("Saved to Downloads") else showToast("Save failed")
+                                        }
+                                    }),
+                                    ContextMenuItem("Clone to other server", Icons.Filled.Upload, onClick = {
+                                        cloneImageUrl = stickerUrl
+                                        showCloneModal = true
+                                    })
+                                )
+
+                                ContextMenu(items = stickerMenu + extra) {
+                                    AsyncImage(
+                                        model = stickerUrl,
+                                        contentDescription = sticker.name,
+                                        modifier = Modifier
+                                            .size(80.dp)
+                                            .clickable {
+                                                emojiStore.onStickerUsed(sticker.id)
+                                                onStickerSelected(sticker)
+                                            }
+                                            .padding(4.dp)
+                                    )
+                                }
                             }
                         }
                     }
@@ -205,6 +245,9 @@ fun StickerPicker(
                         }
                     }
                 )
+            }
+            if (showCloneModal && cloneImageUrl != null) {
+                CloneToServerModal(imageUrl = cloneImageUrl!!, defaultName = "sticker", onDismiss = { showCloneModal = false })
             }
         }
     }

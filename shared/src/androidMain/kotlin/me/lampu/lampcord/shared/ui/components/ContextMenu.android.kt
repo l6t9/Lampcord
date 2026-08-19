@@ -60,7 +60,7 @@ actual fun ContextMenu(
     if (showSheet) {
         AdaptiveModalBottomSheet(
             onDismissRequest = { showSheet = false },
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+            containerColor = MaterialTheme.colorScheme.surface
         ) {
             Column(
                 modifier = Modifier
@@ -82,19 +82,30 @@ actual fun ContextMenu(
                     Spacer(Modifier.height(8.dp))
                 }
 
-                Material3SettingsGroup(
-                    items = items.map { item ->
-                        Material3SettingsItem(
-                            title = { Text(item.label) },
-                            icon = item.icon,
-                            iconTint = item.color,
-                            onClick = {
-                                item.onClick()
-                                showSheet = false
-                            }
-                        )
-                    }
-                )
+                val groups = linkedMapOf<String?, MutableList<ContextMenuItem>>()
+                items.forEach { it ->
+                    val key = it.group
+                    if (!groups.containsKey(key)) groups[key] = mutableListOf()
+                    groups[key]!!.add(it)
+                }
+
+                groups.entries.forEachIndexed { idx, entry ->
+                    val groupItems = entry.value
+                    Material3SettingsGroup(
+                        items = groupItems.map { item ->
+                            Material3SettingsItem(
+                                title = { Text(item.label) },
+                                icon = item.icon,
+                                iconTint = item.color,
+                                onClick = {
+                                    item.onClick()
+                                    showSheet = false
+                                }
+                            )
+                        }
+                    )
+                    if (idx < groups.size - 1) Spacer(Modifier.height(8.dp))
+                }
             }
         }
     }

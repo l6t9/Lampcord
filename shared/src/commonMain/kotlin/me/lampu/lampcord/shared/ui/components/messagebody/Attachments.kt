@@ -9,6 +9,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -20,6 +22,12 @@ import me.lampu.lampcord.shared.model.*
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.VideoPlayer
 import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.utils.SnackbarManager
+import me.lampu.lampcord.shared.utils.openDownloadsFolderAndSelect
+import me.lampu.lampcord.shared.utils.sanitizeFilename
+import me.lampu.lampcord.shared.utils.ensureUniqueDownloadFilename
+import me.lampu.lampcord.shared.utils.downloadToDownloads
+import me.lampu.lampcord.shared.utils.showToast
 
 @Composable
 fun AttachmentImage(
@@ -233,9 +241,31 @@ fun FileAttachmentView(attachment: Attachment) {
                 Text(text = attachment.filename, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                 Text(text = "${attachment.size / 1024} KB", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            val uriHandler = LocalUriHandler.current
-            IconButton(onClick = { uriHandler.openUri(attachment.url) }) {
-                Icon(imageVector = Icons.Filled.Download, contentDescription = "Download", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    val scope = rememberCoroutineScope()
+                    var isDownloading by remember { mutableStateOf(false) }
+            IconButton(onClick = {
+                        scope.launch {
+                            isDownloading = true
+                            val raw = attachment.filename ?: "download"
+                            val sanitized = sanitizeFilename(raw)
+                            val filename = ensureUniqueDownloadFilename(sanitized)
+                            val ok = downloadToDownloads(attachment.url, filename)
+                            isDownloading = false
+                            if (ok) {
+                                // show in-app snackbar with Open action
+                                try {
+                                    SnackbarManager.show("Downloaded $filename to Downloads", "Open") { openDownloadsFolderAndSelect(filename) }
+                                } catch (e: Exception) {
+                                    showToast("Downloaded $filename to Downloads")
+                                }
+                            } else showToast("Download failed")
+                        }
+            }) {
+                        if (isDownloading) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        } else {
+                            Icon(imageVector = Icons.Filled.Download, contentDescription = "Download", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
             }
         }
     }

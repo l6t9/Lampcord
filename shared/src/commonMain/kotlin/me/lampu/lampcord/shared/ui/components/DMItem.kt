@@ -72,26 +72,28 @@ fun DMItem(
     }
 
     val contextMenuItems = remember(channel, userSettings, isMuted, recipient) {
-        val items = mutableListOf(
-            ContextMenuItem(if (isMuted) "Unmute" else "Mute", if (isMuted) Icons.Filled.Notifications else Icons.AutoMirrored.Filled.VolumeOff) {
-                guildStore.toggleMuteChannel("@me", channel.id)
-            },
-            ContextMenuItem("Mark as Read", Icons.Filled.Check) {
-                scope.launch {
-                    readStateStore.ackMessage(channel.id, channel.lastMessageId() ?: "0")
-                }
-            },
-            ContextMenuItem("Pinned Messages", Icons.Filled.PushPin) {
-                navigationStore.isPinsVisible = true
-            },
-            ContextMenuItem("Profile", Icons.Filled.AccountCircle) { recipient?.let { profileStore.showProfile(it.id) } },
-            ContextMenuItem("Close DM", Icons.Filled.Close, color = Color.Red) {
-                navigationStore.closeDm(channel.id)
+        val items = mutableListOf<ContextMenuItem>()
+        // Primary
+        items.add(ContextMenuItem(if (isMuted) "Unmute" else "Mute", if (isMuted) Icons.Filled.Notifications else Icons.AutoMirrored.Filled.VolumeOff, onClick = {
+            guildStore.toggleMuteChannel("@me", channel.id)
+        }, group = "Primary"))
+        items.add(ContextMenuItem("Mark as Read", Icons.Filled.Check, onClick = {
+            scope.launch {
+                readStateStore.ackMessage(channel.id, channel.lastMessageId() ?: "0")
             }
-        )
+        }, group = "Primary"))
+        items.add(ContextMenuItem("Pinned Messages", Icons.Filled.PushPin, onClick = {
+            navigationStore.isPinsVisible = true
+        }, group = "Primary"))
+        items.add(ContextMenuItem("Profile", Icons.Filled.AccountCircle, onClick = { recipient?.let { profileStore.showProfile(it.id) } }, group = "Primary"))
+        items.add(ContextMenuItem("Close DM", Icons.Filled.Close, onClick = {
+            navigationStore.closeDm(channel.id)
+        }, color = Color.Red, group = "Destructive"))
+
         if (userSettings?.developer_mode == true) {
-            items.add(ContextMenuItem("Copy ID", Icons.Filled.Dns) { setClipboardText(channel.id) })
+            items.add(ContextMenuItem("Copy ID", Icons.Filled.Dns, onClick = { setClipboardText(channel.id) }, group = "Developer"))
         }
+
         items
     }
     

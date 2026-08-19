@@ -21,5 +21,6 @@ data class ContextMenuItem(
     val label: String,
     val icon: ImageVector? = null,
     val color: Color? = null,
-    val onClick: () -> Unit
+    val onClick: () -> Unit,
+    val group: String? = null
 )

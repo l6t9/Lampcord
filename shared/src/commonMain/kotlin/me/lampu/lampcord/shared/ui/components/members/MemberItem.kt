@@ -93,38 +93,36 @@ fun MemberItem(
 
     val contextMenuItems = remember(displayUser, settingsStore.userSettings, relationshipType, currentUserId) {
         val isMe = displayUser.id == currentUserId
-        val items = mutableListOf(
-            ContextMenuItem("Profile", Icons.Filled.AccountCircle) { profileStore.showProfile(displayUser.id, guildId) },
-            ContextMenuItem("Mention", Icons.Rounded.AlternateEmail) {
-                val channelId = navigationStore.selectedChannel?.id ?: return@ContextMenuItem
-                val current = messageStore.draftMessages[channelId] ?: ""
-                messageStore.draftMessages[channelId] = "$current <@${displayUser.id}> "
-            },
-            ContextMenuItem("Message", Icons.Filled.Chat) {
-                navigationStore.openDm(displayUser.id)
-            }
-        )
+        val items = mutableListOf<ContextMenuItem>()
+        items.add(ContextMenuItem("Profile", Icons.Filled.AccountCircle, onClick = { profileStore.showProfile(displayUser.id, guildId) }, group = "Primary"))
+        items.add(ContextMenuItem("Mention", Icons.Rounded.AlternateEmail, onClick = {
+            val channelId = navigationStore.selectedChannel?.id ?: return@ContextMenuItem
+            val current = messageStore.draftMessages[channelId] ?: ""
+            messageStore.draftMessages[channelId] = "$current <@${displayUser.id}> "
+        }, group = "Primary"))
+        items.add(ContextMenuItem("Message", Icons.Filled.Chat, onClick = { navigationStore.openDm(displayUser.id) }, group = "Primary"))
+
         if (!isMe) {
             when (relationshipType) {
-                1 -> items.add(ContextMenuItem("Remove Friend", Icons.Filled.PersonRemove) {
+                1 -> items.add(ContextMenuItem("Remove Friend", Icons.Filled.PersonRemove, onClick = {
                     relationshipStore.removeFriend(displayUser.id)
-                })
-                2 -> items.add(ContextMenuItem("Unblock", Icons.Filled.Block) {
+                }, group = "Social"))
+                2 -> items.add(ContextMenuItem("Unblock", Icons.Filled.Block, onClick = {
                     relationshipStore.unblockUser(displayUser.id)
-                })
-                3 -> items.add(ContextMenuItem("Accept Friend Request", Icons.Filled.PersonAdd) {
+                }, group = "Social"))
+                3 -> items.add(ContextMenuItem("Accept Friend Request", Icons.Filled.PersonAdd, onClick = {
                     relationshipStore.addFriend(displayUser.id)
-                })
-                else -> items.add(ContextMenuItem("Add Friend", Icons.Filled.PersonAdd) {
+                }, group = "Social"))
+                else -> items.add(ContextMenuItem("Add Friend", Icons.Filled.PersonAdd, onClick = {
                     relationshipStore.addFriend(displayUser.id)
-                })
+                }, group = "Social"))
             }
-            items.add(ContextMenuItem("Block", Icons.Filled.Block, color = Color.Red) {
+            items.add(ContextMenuItem("Block", Icons.Filled.Block, onClick = {
                 relationshipStore.blockUser(displayUser.id)
-            })
+            }, color = Color.Red, group = "Destructive"))
         }
         if (settingsStore.userSettings?.developer_mode == true) {
-            items.add(ContextMenuItem("Copy User ID", Icons.Filled.Dns) { setClipboardText(displayUser.id) })
+            items.add(ContextMenuItem("Copy User ID", Icons.Filled.Dns, onClick = { setClipboardText(displayUser.id) }, group = "Developer"))
         }
         items
     }

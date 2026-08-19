@@ -71,6 +71,7 @@ class NavigationStore(
     var isServerMenuVisible by mutableStateOf(false)
     var isServerSettingsVisible by mutableStateOf(false)
     var isChannelsAndRolesVisible by mutableStateOf(false)
+    var isNotificationsSettingsVisible by mutableStateOf(false)
     var isMediaPickerVisible by mutableStateOf(false)
     var isEmojiPickerVisible by mutableStateOf(false)
     var isPinsVisible by mutableStateOf(false)

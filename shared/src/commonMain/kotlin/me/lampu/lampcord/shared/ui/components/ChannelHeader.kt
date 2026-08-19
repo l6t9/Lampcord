@@ -158,6 +158,17 @@ fun ChannelHeader(
         },
         actions = {
             if (!isChannelsAndRoles && channel != null) {
+                if (settingsStore.showChatSearch) {
+                    IconButton(onClick = { navigationStore.isSearchVisible = !navigationStore.isSearchVisible }) {
+                        Icon(
+                            Icons.Filled.Search,
+                            "Search",
+                            modifier = Modifier.size(20.dp),
+                            tint = if (navigationStore.isSearchVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
                 if (channel.type == 0 || channel.type == 5 || channel.type == 15) {
                     IconButton(onClick = {
                         navigationStore.isThreadPanelVisible =
@@ -171,7 +182,8 @@ fun ChannelHeader(
                         )
                     }
                 }
-                if (channel.type != 2 && channel.type != 13) {
+
+                if (channel.type != 2 && channel.type != 13 && settingsStore.showChatPins) {
                     IconButton(onClick = { navigationStore.isPinsVisible = !navigationStore.isPinsVisible }) {
                         Icon(
                             Icons.Filled.PushPin,

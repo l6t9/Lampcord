@@ -78,7 +78,17 @@ class Settings(private val settings: KmpSettings) {
     var showPermissions by preferenceBoolean("show_permissions", true)
     var emojiUsageJson by preference("emoji_usage_v4", "{}")
     var stickerUsageJson by preference("sticker_usage_v1", "{}")
+    var favoriteEmojisJson by preference("favorite_emojis_v1", "[]")
     var hideNavLabels by preferenceBoolean("hide_nav_labels", false)
+    var showChatSearch by preferenceBoolean("show_chat_search", false)
+    var showChatPins by preferenceBoolean("show_chat_pins", false)
+    var showNavHome by preferenceBoolean("show_nav_home", true)
+    var showNavFriends by preferenceBoolean("show_nav_friends", true)
+    var showNavSearch by preferenceBoolean("show_nav_search", true)
+    var showNavMentions by preferenceBoolean("show_nav_mentions", true)
+    var showNavSettings by preferenceBoolean("show_nav_settings", true)
+    var navTabsOrderJson by preference("nav_tabs_order", "[\"home\",\"friends\",\"search\",\"mentions\",\"settings\"]")
+    var secretTabEnabled by preferenceBoolean("secret_tab_enabled", false)
 
     fun getLastChannel(guildId: String): String? {
         val id = settings.getString("last_channel_$guildId", "")

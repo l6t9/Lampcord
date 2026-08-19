@@ -70,7 +70,7 @@ val storeModule = module {
     single {
         GuildStore(
             guildApi = get(), channelApi = get(), errorStore = get(), selectionStore = get(),
-            entityStore = get(), userGuildSettingsStore = get(), readStateStore = get(), scope = get()
+            entityStore = get(), userGuildSettingsStore = get(), readStateStore = get(), userStore = get(), scope = get()
         )
     }
     single {

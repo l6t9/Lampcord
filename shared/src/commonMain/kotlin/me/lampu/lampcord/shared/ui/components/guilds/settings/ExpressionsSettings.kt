@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import me.lampu.lampcord.shared.api.GuildApi
 import me.lampu.lampcord.shared.model.Emoji
+import me.lampu.lampcord.shared.model.Sticker
 import me.lampu.lampcord.shared.model.Guild
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
@@ -175,10 +176,123 @@ fun ServerEmoji(guild: Guild, guildApi: GuildApi = koinInject()) {
 }
 
 @Composable
-fun ServerStickers() {
-    SettingsLayout {
-        SettingsSection(title = "Stickers", icon = Icons.Filled.StickyNote2) {
-            Text("Sticker management coming soon", color = MaterialTheme.colorScheme.onSurfaceVariant)
+fun ServerStickers(guild: Guild, guildApi: GuildApi = koinInject()) {
+    var stickers by remember { mutableStateOf<List<Sticker>>(guild.stickers) }
+    var isLoading by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    var showUploadPicker by remember { mutableStateOf(false) }
+    var stickerToEdit by remember { mutableStateOf<Sticker?>(null) }
+    var newStickerName by remember { mutableStateOf("") }
+    var newStickerDescription by remember { mutableStateOf("") }
+    var newStickerTags by remember { mutableStateOf("") }
+
+    LaunchedEffect(guild.id) {
+        isLoading = true
+        stickers = guildApi.getGuildStickers(guild.id)
+        isLoading = false
+    }
+
+    FilePicker(
+        show = showUploadPicker,
+        onDismiss = { showUploadPicker = false },
+        onFileSelected = { files ->
+            val file = files.firstOrNull() ?: return@FilePicker
+            scope.launch {
+                val filename = file.first
+                val bytes = file.second
+                val name = filename.substringBeforeLast(".")
+                val created = guildApi.createSticker(guild.id, name, null, null, filename to bytes)
+                if (created != null) {
+                    stickers = stickers + created
+                }
+            }
         }
+    )
+
+    SettingsLayout {
+        SettingsSection(title = "Stickers", icon = Icons.Filled.StickyNote2, actions = {
+            Button(onClick = { showUploadPicker = true }) {
+                Icon(Icons.Rounded.Upload, null, Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Upload Sticker")
+            }
+        }) {
+            if (isLoading) {
+                ContainedLoadingIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+            } else if (stickers.isEmpty()) {
+                Text("No custom stickers", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    stickers.forEach { sticker ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 56.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f))
+                                .clickable {
+                                    newStickerName = sticker.name
+                                    newStickerDescription = sticker.description ?: ""
+                                    newStickerTags = sticker.tags ?: ""
+                                    stickerToEdit = sticker
+                                }
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            AsyncImage(
+                                model = "https://cdn.discordapp.com/stickers/${sticker.id}.png?size=96",
+                                contentDescription = sticker.name,
+                                modifier = Modifier.size(32.dp)
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(sticker.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                                Text(sticker.description ?: "", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            IconButton(onClick = {
+                                scope.launch {
+                                    val guildId = sticker.guild_id ?: return@launch
+                                    if (guildApi.deleteSticker(guildId, sticker.id)) {
+                                        stickers = stickers.filter { it.id != sticker.id }
+                                    }
+                                }
+                            }) {
+                                Icon(Icons.Default.Delete, "Delete", tint = MaterialTheme.colorScheme.error)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (stickerToEdit != null) {
+        AlertDialog(
+            onDismissRequest = { stickerToEdit = null },
+            title = { Text("Edit Sticker") },
+            text = {
+                Column {
+                    OutlinedTextField(value = newStickerName, onValueChange = { newStickerName = it }, label = { Text("Name") }, singleLine = true)
+                    OutlinedTextField(value = newStickerDescription, onValueChange = { newStickerDescription = it }, label = { Text("Description") })
+                    OutlinedTextField(value = newStickerTags, onValueChange = { newStickerTags = it }, label = { Text("Tags (comma separated)") })
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    val s = stickerToEdit!!
+                    scope.launch {
+                        val updated = guildApi.updateSticker(s.guild_id ?: return@launch, s.id, name = newStickerName, description = newStickerDescription, tags = newStickerTags)
+                        if (updated != null) {
+                            stickers = stickers.map { if (it.id == updated.id) updated else it }
+                        }
+                        stickerToEdit = null
+                    }
+                }) { Text("Save") }
+            },
+            dismissButton = {
+                TextButton(onClick = { stickerToEdit = null }) { Text("Cancel") }
+            }
+        )
     }
 }

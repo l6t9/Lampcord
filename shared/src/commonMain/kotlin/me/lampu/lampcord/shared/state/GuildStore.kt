@@ -19,6 +19,7 @@ class GuildStore(
     private val entityStore: EntityStore,
     private val userGuildSettingsStore: UserGuildSettingsStore,
     private val readStateStore: ReadStateStore,
+    private val userStore: UserStore,
     private val scope: CoroutineScope
 ) {
     private val _guildIds = MutableStateFlow<List<String>>(emptyList())
@@ -36,14 +37,33 @@ class GuildStore(
 
     fun setGuilds(newGuilds: List<Guild>, order: List<String>) {
         newGuilds.forEach { entityStore.updateGuild(it) }
-        
         val sortedIds = if (order.isNotEmpty()) {
             newGuilds.map { it.id }.sortedBy { id ->
                 val pos = order.indexOf(id)
                 if (pos == -1) Int.MAX_VALUE else pos
             }
         } else {
-            newGuilds.map { it.id }
+            // Mirror Discord's StoreGuildsSorted ordering:
+            // 1) unmuted before muted
+            // 2) by joinedAt for current user (earlier first)
+            // 3) by guild name (ascending)
+            newGuilds.sortedWith(Comparator { a, b ->
+                val mutedA = userGuildSettingsStore.isGuildMuted(a.id)
+                val mutedB = userGuildSettingsStore.isGuildMuted(b.id)
+                if (mutedA != mutedB) return@Comparator if (mutedA) 1 else -1
+
+                val j1 = userStore.getCurrentMember(a.id)?.joined_at ?: ""
+                val j2 = userStore.getCurrentMember(b.id)?.joined_at ?: ""
+
+                if (j1.isBlank() && j2.isNotBlank()) return@Comparator -1
+                if (j1.isNotBlank() && j2.isBlank()) return@Comparator 1
+                val joinedCompare = j1.compareTo(j2)
+                if (joinedCompare != 0) return@Comparator joinedCompare
+
+                val n1 = a.name ?: ""
+                val n2 = b.name ?: ""
+                n1.compareTo(n2, ignoreCase = true)
+            }).map { it.id }
         }
         _guildIds.value = sortedIds
     }
@@ -57,7 +77,27 @@ class GuildStore(
                     val pos = order.indexOf(id)
                     if (pos == -1) Int.MAX_VALUE else pos
                 }
-            } else newList
+            } else {
+                // Recompute full ordering using current guild list
+                val allGuilds = newList.mapNotNull { id -> entityStore.guilds.value[id] }
+                allGuilds.sortedWith(Comparator { a, b ->
+                    val mutedA = userGuildSettingsStore.isGuildMuted(a.id)
+                    val mutedB = userGuildSettingsStore.isGuildMuted(b.id)
+                    if (mutedA != mutedB) return@Comparator if (mutedA) 1 else -1
+
+                    val j1 = userStore.getCurrentMember(a.id)?.joined_at ?: ""
+                    val j2 = userStore.getCurrentMember(b.id)?.joined_at ?: ""
+
+                    if (j1.isBlank() && j2.isNotBlank()) return@Comparator -1
+                    if (j1.isNotBlank() && j2.isBlank()) return@Comparator 1
+                    val joinedCompare = j1.compareTo(j2)
+                    if (joinedCompare != 0) return@Comparator joinedCompare
+
+                    val n1 = a.name ?: ""
+                    val n2 = b.name ?: ""
+                    n1.compareTo(n2, ignoreCase = true)
+                }).map { it.id }
+            }
         }
     }
 

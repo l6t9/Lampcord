@@ -39,6 +39,9 @@ sealed class Screen : NavKey {
     data object Mentions : Screen()
     
     @Serializable
+    data object EasterEgg : Screen()
+    
+    @Serializable
     data object MediaPicker : Screen()
     
     @Serializable
@@ -80,6 +83,9 @@ sealed class Screen : NavKey {
 
     @Serializable
     data object Theming : Screen()
+
+    @Serializable
+    data object NavigationSettings : Screen()
 
     @Serializable
     data class ThemeEditor(val themeJson: String) : Screen()

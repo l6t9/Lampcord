@@ -78,13 +78,10 @@ fun GuildCategoryItem(
     if (categoryChannels.isEmpty() && !showHidden) return
 
     val categoryContextMenuItems = remember(category, settingsStore.userSettings) {
-        val items = mutableListOf(
-            ContextMenuItem("Mark As Read", Icons.Filled.Check) {
-                guildStore.markCategoryAsRead(category.id)
-            }
-        )
+        val items = mutableListOf<ContextMenuItem>()
+        items.add(ContextMenuItem("Mark As Read", Icons.Filled.Check, onClick = { guildStore.markCategoryAsRead(category.id) }, group = "Primary"))
         if (settingsStore.userSettings?.developer_mode == true) {
-            items.add(ContextMenuItem("Copy ID", Icons.Filled.Dns) { setClipboardText(category.id) })
+            items.add(ContextMenuItem("Copy ID", Icons.Filled.Dns, onClick = { setClipboardText(category.id) }, group = "Developer"))
         }
         items
     }

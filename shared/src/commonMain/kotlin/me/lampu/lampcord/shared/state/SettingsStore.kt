@@ -97,6 +97,78 @@ class SettingsStore(
             me.lampu.lampcord.shared.settings.Settings.shared.hideNavLabels = value
         }
 
+    private var _showChatSearch by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.showChatSearch)
+    var showChatSearch: Boolean
+        get() = _showChatSearch
+        set(value) {
+            _showChatSearch = value
+            me.lampu.lampcord.shared.settings.Settings.shared.showChatSearch = value
+        }
+
+    private var _showChatPins by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.showChatPins)
+    var showChatPins: Boolean
+        get() = _showChatPins
+        set(value) {
+            _showChatPins = value
+            me.lampu.lampcord.shared.settings.Settings.shared.showChatPins = value
+        }
+
+    private var _showNavHome by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.showNavHome)
+    var showNavHome: Boolean
+        get() = _showNavHome
+        set(value) {
+            _showNavHome = value
+            me.lampu.lampcord.shared.settings.Settings.shared.showNavHome = value
+        }
+
+    private var _showNavFriends by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.showNavFriends)
+    var showNavFriends: Boolean
+        get() = _showNavFriends
+        set(value) {
+            _showNavFriends = value
+            me.lampu.lampcord.shared.settings.Settings.shared.showNavFriends = value
+        }
+
+    private var _showNavSearch by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.showNavSearch)
+    var showNavSearch: Boolean
+        get() = _showNavSearch
+        set(value) {
+            _showNavSearch = value
+            me.lampu.lampcord.shared.settings.Settings.shared.showNavSearch = value
+        }
+
+    private var _showNavMentions by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.showNavMentions)
+    var showNavMentions: Boolean
+        get() = _showNavMentions
+        set(value) {
+            _showNavMentions = value
+            me.lampu.lampcord.shared.settings.Settings.shared.showNavMentions = value
+        }
+
+    private var _showNavSettings by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.showNavSettings)
+    var showNavSettings: Boolean
+        get() = _showNavSettings
+        set(value) {
+            _showNavSettings = value
+            me.lampu.lampcord.shared.settings.Settings.shared.showNavSettings = value
+        }
+
+    private var _navTabsOrderJson by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.navTabsOrderJson)
+    var navTabsOrderJson: String
+        get() = _navTabsOrderJson
+        set(value) {
+            _navTabsOrderJson = value
+            me.lampu.lampcord.shared.settings.Settings.shared.navTabsOrderJson = value
+        }
+
+    private var _secretTabEnabled by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.secretTabEnabled)
+    var secretTabEnabled: Boolean
+        get() = _secretTabEnabled
+        set(value) {
+            _secretTabEnabled = value
+            me.lampu.lampcord.shared.settings.Settings.shared.secretTabEnabled = value
+        }
+
     private var _chatboxBackgroundOpacity by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.chatboxBackgroundOpacity)
     var chatboxBackgroundOpacity: Float
         get() = _chatboxBackgroundOpacity

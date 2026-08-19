@@ -73,7 +73,7 @@ fun MemberList(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(top = 8.dp, bottom = 52.dp)
             ) {
-                item {
+                stickyHeader {
                     activeChannel?.let { MemberHeader(it) }
                 }
                 item {
@@ -164,13 +164,13 @@ fun MemberList(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 52.dp)
                 ) {
-                    item {
-                        activeChannel?.let { MemberHeader(it) }
-                    }
+                        stickyHeader {
+                            activeChannel?.let { MemberHeader(it) }
+                        }
                     if (header != null) {
                         stickyHeader {
                             Surface(
-                                color = MaterialTheme.colorScheme.background,
+                                color = MaterialTheme.colorScheme.surface,
                                 tonalElevation = 0.dp
                             ) {
                                 header()

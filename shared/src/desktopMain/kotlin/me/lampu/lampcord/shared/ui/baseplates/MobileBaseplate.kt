@@ -79,6 +79,7 @@ import me.lampu.lampcord.shared.ui.components.members.MemberHeader
 import me.lampu.lampcord.shared.ui.components.profiles.ProfileCard
 import me.lampu.lampcord.shared.ui.components.rememberDiscordPanelsState
 import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.ui.components.GlobalSnackbarHost
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -421,5 +422,6 @@ actual fun MobileBaseplate(
         if (navigationStore.isSearchVisible) {
             SearchScreen(onDismiss = { navigationStore.isSearchVisible = false })
         }
+        GlobalSnackbarHost(modifier = Modifier.align(Alignment.BottomCenter))
     }
 }

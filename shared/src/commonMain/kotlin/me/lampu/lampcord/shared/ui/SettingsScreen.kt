@@ -125,6 +125,7 @@ fun SettingsScreen(
     onNavigateToAdvanced: () -> Unit = {},
     onNavigateToAbout: () -> Unit = {},
     onNavigateToTheming: () -> Unit = {},
+    onNavigateToNavigation: () -> Unit = {},
     onDismiss: () -> Unit
 ) {
 
@@ -417,6 +418,7 @@ fun SettingsScreen(
                     onShowThemerChanged = { showThemer = it },
                     onEditingThemeJsonChanged = { editingThemeJson = it },
                     onNavigateToTheming = finalOnNavigateToTheming,
+                    onNavigateToNavigation = onNavigateToNavigation,
                     onDismiss = onDismiss,
                     onCategorySelected = { selectedCategory = it },
                     onLogoutConfirmationChanged = { showLogoutConfirmation = it },
@@ -436,6 +438,7 @@ fun SettingsDesktopOverlay(
     onShowThemerChanged: (Boolean) -> Unit,
     onEditingThemeJsonChanged: (String?) -> Unit,
     onNavigateToTheming: () -> Unit = {},
+    onNavigateToNavigation: () -> Unit = {},
     onDismiss: () -> Unit,
     onCategorySelected: (SettingsSection) -> Unit,
     onLogoutConfirmationChanged: (Boolean) -> Unit,
@@ -643,7 +646,10 @@ fun SettingsDesktopOverlay(
                                     SettingsSection.PRIVACY -> PrivacySettingsContent()
                                     SettingsSection.CONNECTIONS -> ConnectionsSettingsContent()
                                     SettingsSection.DEVICES -> DevicesSettingsContent()
-                                    SettingsSection.APPEARANCE -> AppearanceSettingsContent(onNavigateToTheming = onNavigateToTheming)
+                                    SettingsSection.APPEARANCE -> AppearanceSettingsContent(
+                                        onNavigateToTheming = onNavigateToTheming,
+                                        onNavigateToNavigation = onNavigateToNavigation
+                                    )
                                     SettingsSection.ACCESSIBILITY -> AccessibilitySettingsContent()
                                     SettingsSection.VOICE_VIDEO -> { /* TODO */ }
                                     SettingsSection.CHAT -> ChatSettingsContent()

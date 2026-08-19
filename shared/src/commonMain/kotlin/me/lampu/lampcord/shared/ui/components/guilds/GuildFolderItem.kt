@@ -153,12 +153,12 @@ fun GuildFolderItem(
 
     val contextMenuItems = remember(folder, guildIds) {
         listOf(
-            ContextMenuItem("Mark as Read", Icons.Filled.Check) {
+            ContextMenuItem("Mark as Read", Icons.Filled.Check, onClick = {
                 guildIds.forEach { guildStore.markGuildAsRead(it) }
-            },
-            ContextMenuItem("Folder Settings", Icons.Filled.Settings) {
+            }, group = "Primary"),
+            ContextMenuItem("Folder Settings", Icons.Filled.Settings, onClick = {
                 showFolderSettings = true
-            }
+            }, group = "Primary")
         )
     }
 

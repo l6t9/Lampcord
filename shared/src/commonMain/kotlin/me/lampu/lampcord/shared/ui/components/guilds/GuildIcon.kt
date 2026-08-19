@@ -81,27 +81,25 @@ fun GuildIcon(
 
     val contextMenuItems = remember(guild, isSelected, settingsStore.userSettings, isMuted) {
         val items = mutableListOf(
-            ContextMenuItem(if (isMuted) "Unmute Server" else "Mute Server", if (isMuted) Icons.Filled.Notifications else Icons.AutoMirrored.Filled.VolumeOff) {
+            ContextMenuItem(if (isMuted) "Unmute Server" else "Mute Server", if (isMuted) Icons.Filled.Notifications else Icons.AutoMirrored.Filled.VolumeOff, onClick = {
                 if (isMuted) {
                     guildStore.unmuteGuild(guild.id)
                 } else {
                     showMuteDialog = true
                 }
-            },
-            ContextMenuItem("Mark as Read", Icons.Filled.Check) {
-                guildStore.markGuildAsRead(guild.id)
-            },
-            ContextMenuItem("Server Profile", Icons.Filled.AccountCircle) {
+            }, group = "Primary"),
+            ContextMenuItem("Mark as Read", Icons.Filled.Check, onClick = { guildStore.markGuildAsRead(guild.id) }, group = "Primary"),
+            ContextMenuItem("Server Profile", Icons.Filled.AccountCircle, onClick = {
                 currentUser?.let { profileStore.showProfile(it.id, navigationStore.selectedGuild?.id) }
-            }
+            }, group = "Primary")
         )
         if (!isSelected) {
-            items.add(ContextMenuItem("Leave Server", Icons.Filled.Logout, color = Color.Red) { 
+            items.add(ContextMenuItem("Leave Server", Icons.Filled.Logout, onClick = {
                 showLeaveDialog = true
-            })
+            }, color = Color.Red, group = "Destructive"))
         }
         if (settingsStore.userSettings?.developer_mode == true) {
-            items.add(ContextMenuItem("Copy ID", Icons.Filled.Dns) { setClipboardText(guild.id) })
+            items.add(ContextMenuItem("Copy ID", Icons.Filled.Dns, onClick = { setClipboardText(guild.id) }, group = "Developer"))
         }
         items
     }

@@ -87,48 +87,50 @@ fun ChannelItem(
     val contextMenuItems = remember(channel, userSettings, isMuted, canView, canManageChannel) {
         val items = mutableListOf<ContextMenuItem>()
         if (canView) {
-            items.add(ContextMenuItem(if (isMuted) "Unmute Channel" else "Mute Channel", if (isMuted) Icons.Filled.Notifications else Icons.AutoMirrored.Filled.VolumeOff) {
+            // Primary group
+            items.add(ContextMenuItem(if (isMuted) "Unmute Channel" else "Mute Channel", if (isMuted) Icons.Filled.Notifications else Icons.AutoMirrored.Filled.VolumeOff, onClick = {
                 guildStore.toggleMuteChannel(channel.guild_id ?: "@me", channel.id)
-            })
-            items.add(ContextMenuItem("Mark as Read", Icons.Filled.Check) { 
+            }, group = "Primary"))
+            items.add(ContextMenuItem("Mark as Read", Icons.Filled.Check, onClick = {
                 scope.launch {
                     readStateStore.ackMessage(channel.id, channel.lastMessageId() ?: "0")
                 }
-            })
-            
+            }, group = "Primary"))
+
             val canManageThreads = if (guild == null || member == null) false 
                 else PermissionHelper.hasPermission(member, guild, channel, Permission.MANAGE_THREADS, currentUser?.id)
             
             if (canManageThreads) {
-                items.add(ContextMenuItem("Threads", Icons.Rounded.Forum) {
+                items.add(ContextMenuItem("Threads", Icons.Rounded.Forum, onClick = {
                     navigationStore.isThreadPanelVisible = true
-                })
+                }, group = "Primary"))
             }
 
-            items.add(ContextMenuItem("Notification Settings", Icons.Filled.Notifications) {
+            items.add(ContextMenuItem("Notification Settings", Icons.Filled.Notifications, onClick = {
                 showNotificationsSheet = true
-            })
+            }, group = "Primary"))
             
             val canCreateInvite = if (guild == null || member == null) true
                 else PermissionHelper.hasPermission(member, guild, channel, Permission.CREATE_INSTANT_INVITE, currentUser?.id)
 
             if (canCreateInvite && channel.type != 4 && channel.type != 2 && channel.type != 13) {
-                items.add(ContextMenuItem("Invite People", Icons.Filled.PersonAdd) {
+                items.add(ContextMenuItem("Invite People", Icons.Filled.PersonAdd, onClick = {
                     showInviteDialog = true
-                })
+                }, group = "Primary"))
             }
             if (!isDmChannel && canManageChannel) {
-                items.add(ContextMenuItem("Channel Settings", Icons.Filled.Settings) {
+                items.add(ContextMenuItem("Channel Settings", Icons.Filled.Settings, onClick = {
                     navigationStore.openChannelSettings(channel)
-                })
+                }, group = "Primary"))
             }
         }
-        items.add(ContextMenuItem("Copy Link", Icons.Filled.Link) {
+        // Utilities
+        items.add(ContextMenuItem("Copy Link", Icons.Filled.Link, onClick = {
             val guildId = channel.guild_id ?: "@me"
             setClipboardText("https://discord.com/channels/$guildId/${channel.id}")
-        })
+        }, group = "Utilities"))
         if (userSettings?.developer_mode == true) {
-            items.add(ContextMenuItem("Copy ID", Icons.Filled.Dns) { setClipboardText(channel.id) })
+            items.add(ContextMenuItem("Copy ID", Icons.Filled.Dns, onClick = { setClipboardText(channel.id) }, group = "Developer"))
         }
         items
     }

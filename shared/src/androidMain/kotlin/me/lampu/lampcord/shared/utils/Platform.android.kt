@@ -16,6 +16,9 @@ import androidx.room.RoomDatabase
 import me.lampu.lampcord.shared.database.AppDatabase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.net.URL
+import android.app.DownloadManager
+import android.net.Uri
 
 actual fun getPlatformName(): String = "android"
 
@@ -284,4 +287,95 @@ actual fun RequestMediaPermissions(onResult: (Boolean) -> Unit) {
         }
         launcher.launch(permissions)
     }
+}
+
+actual suspend fun fetchUrlBytes(url: String): ByteArray? = withContext(Dispatchers.IO) {
+    try {
+        URL(url).readBytes()
+    } catch (e: Exception) {
+        null
+    }
+}
+
+actual fun base64Encode(bytes: ByteArray): String {
+    return android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+}
+
+actual suspend fun downloadToDownloads(url: String, filename: String): Boolean = withContext(Dispatchers.IO) {
+    try {
+        val ctx = AndroidContext.context
+        val dm = ctx.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+        
+        // Match Discord's DownloadManager.Request setup
+        val request = DownloadManager.Request(Uri.parse(url))
+            .setTitle(filename)
+            .setDescription(filename)
+            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+            .setDestinationInExternalPublicDir(android.os.Environment.DIRECTORY_DOWNLOADS, filename)
+
+        @Suppress("DEPRECATION")
+        request.allowScanningByMediaScanner()
+
+        val downloadId = dm.enqueue(request)
+
+        // Suspend until the system broadcasts completion for this download id
+        val deferred = kotlinx.coroutines.CompletableDeferred<Boolean>()
+        val filter = android.content.IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)
+        val receiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: android.content.Intent?) {
+                val id = intent?.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L) ?: -1L
+                if (id == downloadId) {
+                    try {
+                        val q = DownloadManager.Query().setFilterById(downloadId)
+                        val cursor = dm.query(q)
+                        var success = false
+                        cursor?.use {
+                            if (it.moveToFirst()) {
+                                val status = it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
+                                success = status == DownloadManager.STATUS_SUCCESSFUL
+                            }
+                        }
+                        try { ctx.unregisterReceiver(this) } catch (_: Exception) {}
+                        if (!deferred.isCompleted) deferred.complete(success)
+                    } catch (e: Exception) {
+                        try { ctx.unregisterReceiver(this) } catch (_: Exception) {}
+                        if (!deferred.isCompleted) deferred.complete(false)
+                    }
+                }
+            }
+        }
+
+        withContext(kotlinx.coroutines.Dispatchers.Main) {
+            ctx.registerReceiver(receiver, filter)
+        }
+
+        deferred.await()
+    } catch (e: Exception) {
+        false
+    }
+}
+
+actual suspend fun ensureUniqueDownloadFilename(desiredName: String): String = withContext(Dispatchers.IO) {
+    // Match Discord's sanitization: only replace / and \ with _
+    desiredName.replace(Regex("[/\\\\]"), "_")
+}
+
+actual fun openDownloadsFolderAndSelect(filename: String) {
+    try {
+        val ctx = AndroidContext.context
+        val downloads = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS)
+        val uri = android.net.Uri.fromFile(downloads)
+        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW)
+        intent.setDataAndType(uri, "resource/folder")
+        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+        try {
+            ctx.startActivity(intent)
+        } catch (e: Exception) {
+            // fallback: open downloads directory with generic view
+            val i2 = android.content.Intent(android.content.Intent.ACTION_GET_CONTENT)
+            i2.setDataAndType(uri, "*/*")
+            i2.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            try { ctx.startActivity(i2) } catch (_: Exception) {}
+        }
+    } catch (_: Exception) {}
 }

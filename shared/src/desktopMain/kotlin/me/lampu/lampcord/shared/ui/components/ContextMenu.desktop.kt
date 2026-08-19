@@ -67,27 +67,47 @@ actual fun ContextMenu(
             onDismissRequest = { expanded = false },
             offset = offset
         ) {
-            items.forEach { item ->
-                DropdownMenuItem(
-                    text = { 
-                        Text(
-                            text = item.label,
-                            color = item.color ?: MaterialTheme.colorScheme.onSurface
-                        ) 
-                    },
-                    onClick = {
-                        item.onClick()
-                        expanded = false
-                    },
-                    leadingIcon = item.icon?.let { { 
-                        Icon(
-                            imageVector = it,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp),
-                            tint = item.color ?: MaterialTheme.colorScheme.onSurfaceVariant
-                        ) 
-                    } }
-                )
+            val groups = linkedMapOf<String?, MutableList<ContextMenuItem>>()
+            items.forEach { it ->
+                val key = it.group
+                if (!groups.containsKey(key)) groups[key] = mutableListOf()
+                groups[key]!!.add(it)
+            }
+
+            groups.entries.forEachIndexed { gIdx, entry ->
+                val groupHeader = entry.key
+                val groupItems = entry.value
+                // Optional header display - show a non-clickable label for groups with a name
+                if (groupHeader != null) {
+                    DropdownMenuItem(text = { Text(text = groupHeader, color = MaterialTheme.colorScheme.onSurfaceVariant) }, onClick = {}, enabled = false)
+                }
+
+                groupItems.forEach { item ->
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = item.label,
+                                color = item.color ?: MaterialTheme.colorScheme.onSurface
+                            )
+                        },
+                        onClick = {
+                            item.onClick()
+                            expanded = false
+                        },
+                        leadingIcon = item.icon?.let {
+                            {
+                                Icon(
+                                    imageVector = it,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                    tint = item.color ?: MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    )
+                }
+
+                if (gIdx < groups.size - 1) Divider()
             }
         }
     }

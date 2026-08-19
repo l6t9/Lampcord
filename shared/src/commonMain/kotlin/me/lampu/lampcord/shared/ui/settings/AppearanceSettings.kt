@@ -41,6 +41,7 @@ private enum class PaletteOption { DYNAMIC, CUSTOM }
 @Composable
 fun AppearanceSettings(
     onNavigateToTheming: () -> Unit,
+    onNavigateToNavigation: () -> Unit,
     onBack: () -> Unit,
     settingsStore: SettingsStore = koinInject(),
     themeStore: ThemeStore = koinInject()
@@ -51,6 +52,7 @@ fun AppearanceSettings(
     ) {
         AppearanceSettingsContent(
             onNavigateToTheming = onNavigateToTheming,
+            onNavigateToNavigation = onNavigateToNavigation,
             settingsStore = settingsStore,
             themeStore = themeStore
         )
@@ -61,6 +63,7 @@ fun AppearanceSettings(
 @Composable
 fun AppearanceSettingsContent(
     onNavigateToTheming: () -> Unit,
+    onNavigateToNavigation: () -> Unit,
     settingsStore: SettingsStore = koinInject(),
     themeStore: ThemeStore = koinInject()
 ) {
@@ -111,7 +114,7 @@ fun AppearanceSettingsContent(
         )
 
         Material3SettingsGroup(
-            title = "Palette style",
+            title = "Color palette",
             items = listOf(
                 Material3SettingsItem(
                     title = { Text("Visual Style") },
@@ -136,38 +139,7 @@ fun AppearanceSettingsContent(
                             )
                         }
                     }
-                )
-            )
-        )
-
-        Material3SettingsGroup(
-            title = "Animation",
-            items = listOf(
-                Material3SettingsItem(
-                    title = { Text("Panel Animation") },
-                    description = {
-                        Column(modifier = Modifier.padding(top = 8.dp)) {
-                            SettingsButtonGroup(
-                                options = PanelAnimation.entries.toList(),
-                                selectedOption = settingsStore.panelAnimation,
-                                onOptionSelected = { settingsStore.panelAnimation = it },
-                                iconProvider = { animation, isSelected ->
-                                    when (animation) {
-                                        PanelAnimation.MINIMAL -> if (isSelected) Icons.Filled.Speed else Icons.Rounded.Speed
-                                        PanelAnimation.EXPRESSIVE -> if (isSelected) Icons.Filled.AutoAwesome else Icons.Rounded.AutoAwesome
-                                    }
-                                },
-                                labelProvider = { it.name.lowercase().replaceFirstChar { char -> char.uppercase() } }
-                            )
-                        }
-                    }
-                )
-            )
-        )
-
-        Material3SettingsGroup(
-            title = "Color palette",
-            items = listOf(
+                ),
                 Material3SettingsItem(
                     title = { Text("Source") },
                     description = {
@@ -236,32 +208,62 @@ fun AppearanceSettingsContent(
         )
 
         Material3SettingsGroup(
+            title = "Animation",
+            items = listOf(
+                Material3SettingsItem(
+                    title = { Text("Panel Animation") },
+                    description = {
+                        Column(modifier = Modifier.padding(top = 8.dp)) {
+                            SettingsButtonGroup(
+                                options = PanelAnimation.entries.toList(),
+                                selectedOption = settingsStore.panelAnimation,
+                                onOptionSelected = { settingsStore.panelAnimation = it },
+                                iconProvider = { animation, isSelected ->
+                                    when (animation) {
+                                        PanelAnimation.MINIMAL -> if (isSelected) Icons.Filled.Speed else Icons.Rounded.Speed
+                                        PanelAnimation.EXPRESSIVE -> if (isSelected) Icons.Filled.AutoAwesome else Icons.Rounded.AutoAwesome
+                                    }
+                                },
+                                labelProvider = { it.name.lowercase().replaceFirstChar { char -> char.uppercase() } }
+                            )
+                        }
+                    }
+                )
+            )
+        )
+
+
+
+        Material3SettingsGroup(
             title = "Display",
             items = listOf(
                 Material3SettingsItem(
                     title = { Text("UI Density") },
-                    description = { Text("Adjust the space between server, channel, and member lists.") },
-                    trailingContent = {
-                        SettingsButtonGroup(
-                            options = me.lampu.lampcord.shared.settings.MessageSpacingMode.entries.toList(),
-                            selectedOption = settingsStore.messageSpacingMode,
-                            onOptionSelected = { settingsStore.messageSpacingMode = it },
-                            iconProvider = null,
-                            labelProvider = {
-                                when (it) {
-                                    me.lampu.lampcord.shared.settings.MessageSpacingMode.COMPACT -> "Compact"
-                                    me.lampu.lampcord.shared.settings.MessageSpacingMode.DEFAULT -> "Default"
-                                    me.lampu.lampcord.shared.settings.MessageSpacingMode.SPACIOUS -> "Spacious"
+                    description = { 
+                        Column(modifier = Modifier.padding(top = 4.dp)) {
+                            Text("Adjust the space between server, channel, and member lists.")
+                            Spacer(Modifier.height(12.dp))
+                            SettingsButtonGroup(
+                                options = me.lampu.lampcord.shared.settings.MessageSpacingMode.entries.toList(),
+                                selectedOption = settingsStore.messageSpacingMode,
+                                onOptionSelected = { settingsStore.messageSpacingMode = it },
+                                iconProvider = null,
+                                labelProvider = {
+                                    when (it) {
+                                        me.lampu.lampcord.shared.settings.MessageSpacingMode.COMPACT -> "Compact"
+                                        me.lampu.lampcord.shared.settings.MessageSpacingMode.DEFAULT -> "Default"
+                                        me.lampu.lampcord.shared.settings.MessageSpacingMode.SPACIOUS -> "Spacious"
+                                    }
                                 }
-                            }
-                        )
+                            )
+                        }
                     }
                 ),
-                switchSettingsItem(
-                    title = "Hide Navigation Labels",
-                    description = "Only show icons in the navigation bar.",
-                    checked = settingsStore.hideNavLabels,
-                    onCheckedChange = { settingsStore.hideNavLabels = it }
+                Material3SettingsItem(
+                    icon = Icons.Filled.BottomAppBar,
+                    title = { Text("Navigation Tabs") },
+                    description = { Text("Reorder and toggle visibility of navigation tabs") },
+                    onClick = onNavigateToNavigation
                 )
             )
         )

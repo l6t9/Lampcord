@@ -461,7 +461,7 @@ class MessageStore(
         allowedMentions: AllowedMentions? = null,
         poll: Poll? = null
     ) {
-        val nonce = getCurrentTimeMillis().toString()
+        val nonce = me.lampu.lampcord.shared.utils.Snowflake.nextId()
         val tempMessage = Message(
             id = nonce,
             channel_id = channelId,

@@ -428,7 +428,7 @@ private fun ServerSettingsContent(
         ServerSettingsSection.OVERVIEW -> ServerOverview(guild)
         ServerSettingsSection.ROLES -> ServerRoles(guild, onRoleClick)
         ServerSettingsSection.EMOJI -> ServerEmoji(guild)
-        ServerSettingsSection.STICKERS -> ServerStickers()
+        ServerSettingsSection.STICKERS -> ServerStickers(guild)
         ServerSettingsSection.CHANNELS -> ServerChannels(guild)
         
         ServerSettingsSection.AUDIT_LOG -> ServerAuditLog(guild)

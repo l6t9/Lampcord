@@ -1,4 +1,4 @@
-@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class, kotlin.ExperimentalStdlibApi::class)
 
 package me.lampu.lampcord.shared.ui.components
 
@@ -40,10 +40,18 @@ import me.lampu.lampcord.shared.model.Emoji
 import me.lampu.lampcord.shared.model.Gif
 import me.lampu.lampcord.shared.model.getDisplayUrl
 import me.lampu.lampcord.shared.state.*
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.utils.setClipboardText
+import me.lampu.lampcord.shared.utils.showToast
+import me.lampu.lampcord.shared.model.EmbedImage
 import me.lampu.lampcord.shared.utils.getPlatformName
+import me.lampu.lampcord.shared.utils.downloadToDownloads
 import org.koin.compose.koinInject
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import kotlinx.serialization.json.Json
+import me.lampu.lampcord.shared.settings.Settings
 
 @Composable
 fun EmojiPicker(
@@ -53,6 +61,7 @@ fun EmojiPicker(
     emojiStore: EmojiStore = koinInject(),
     messageStore: MessageStore = koinInject(),
     mediaApi: MediaApi = koinInject(),
+    settingsStore: me.lampu.lampcord.shared.state.SettingsStore = koinInject(),
     modifier: Modifier = Modifier,
     onEmojiSelected: (Emoji) -> Unit
 ) {
@@ -60,16 +69,34 @@ fun EmojiPicker(
     val currentUser by userStore.currentUser.collectAsState()
     val nitro = (currentUser?.premium_type ?: 0) > 0 || me.lampu.lampcord.shared.settings.Settings.shared.freeNitroEmojis
     
-    var categorizedEmojis by remember { mutableStateOf<Map<String, List<Emoji>>>(emptyMap()) }
+    var categorizedEmojis: Map<String, List<Emoji>> by remember { mutableStateOf(emptyMap<String, List<Emoji>>()) }
     LaunchedEffect(Unit) {
         categorizedEmojis = EmojiLoader.getCategorizedEmojis()
     }
 
     val guilds by guildStore.guilds.collectAsState()
     val selectedGuild = navigationStore.selectedGuild
-    val emojiGroups = remember(selectedGuild, guilds.size, nitro, categorizedEmojis, emojiStore.frequentEmojis) {
+    val emojiGroups: List<EmojiGroup> = remember(selectedGuild, guilds.size, nitro, categorizedEmojis, emojiStore.frequentEmojis) {
         val groups = mutableListOf<EmojiGroup>()
-        
+        // Favorites from persistent settings
+        val favoriteKeys = try {
+            val json = Settings.shared.favoriteEmojisJson
+            Json.decodeFromString<List<String>>(json)
+        } catch (e: Exception) {
+            emptyList()
+        }
+        if (favoriteKeys.isNotEmpty()) {
+            val favEmojis = favoriteKeys.mapNotNull { key ->
+                if (key.contains(":")) {
+                    val parts = key.split(":")
+                    Emoji(name = parts[0], id = parts[1])
+                } else {
+                    Emoji(name = key)
+                }
+            }
+            if (favEmojis.isNotEmpty()) groups.add(EmojiGroup("favorites", "Favorites", favEmojis, null))
+        }
+
         if (emojiStore.frequentEmojis.isNotEmpty()) {
             val frequent = emojiStore.frequentEmojis.map { key ->
                 if (key.contains(":")) {
@@ -83,9 +110,38 @@ fun EmojiPicker(
         }
 
         if (nitro) {
+            val orderedGuilds = run {
+                val settings = settingsStore.userSettings
+                if (settings?.guild_folders.isNullOrEmpty()) {
+                    guilds
+                } else {
+                    val out = mutableListOf<me.lampu.lampcord.shared.model.Guild>()
+                    val seen = mutableSetOf<String>()
+                    settings!!.guild_folders.forEach { folder ->
+                        val guildIds = folder.guild_ids.mapNotNull { el -> el.jsonPrimitive.contentOrNull }
+                        if (folder.id == null && guildIds.size == 1) {
+                            val g = guilds.find { it.id == guildIds.first() }
+                            if (g != null) {
+                                out.add(g)
+                                seen.add(g.id)
+                            }
+                        } else {
+                            guildIds.forEach { id ->
+                                val g = guilds.find { it.id == id }
+                                if (g != null) {
+                                    out.add(g)
+                                    seen.add(id)
+                                }
+                            }
+                        }
+                    }
+                    out.addAll(guilds.filter { it.id !in seen })
+                    out
+                }
+            }
+
             groups.addAll(
-                guilds
-                    .sortedByDescending { it.id == selectedGuild?.id }
+                orderedGuilds
                     .map { guild ->
                         EmojiGroup(guild.id, guild.name, guild.emojis, guild.icon?.let { "https://cdn.discordapp.com/icons/${guild.id}/$it.png?size=64" })
                     }.filter { it.emojis.isNotEmpty() }
@@ -116,6 +172,8 @@ fun EmojiPicker(
 
     val gridState = rememberLazyGridState()
     val coroutineScope = rememberCoroutineScope()
+    var cloneImageUrl by remember { mutableStateOf<String?>(null) }
+    var showCloneModal by remember { mutableStateOf(false) }
     val isMobile = getPlatformName() == "android" || getPlatformName() == "ios"
     val searchFocusRequester = remember { FocusRequester() }
 
@@ -151,7 +209,13 @@ fun EmojiPicker(
         offsets
     }
 
-    var selectedGroupIndex by remember(emojiGroups) { mutableStateOf(0) }
+    var selectedGroupIndex by remember(filteredGroups) { mutableStateOf(0) }
+
+    val favoriteKeys = remember { 
+        try {
+            Json.decodeFromString<List<String>>(me.lampu.lampcord.shared.settings.Settings.shared.favoriteEmojisJson)
+        } catch (e: Exception) { emptyList() }
+    }
 
     fun groupForIndex(index: Int): Int {
         for (i in groupOffsets.indices) {
@@ -270,10 +334,25 @@ fun EmojiPicker(
                             0 -> Column {
                                 EmojiGrid(
                                     groups = filteredGroups,
-                                    state = gridState,
-                                    emojiStore = emojiStore,
-                                    onEmojiSelected = onEmojiSelected,
-                                    modifier = Modifier.weight(1f)
+                                                                state = gridState,
+                                                                emojiStore = emojiStore,
+                                                                navigationStore = navigationStore,
+                                                                coroutineScope = coroutineScope,
+                                                                onCloneRequested = { url ->
+                                                                    cloneImageUrl = url
+                                                                    showCloneModal = true
+                                                                },
+                                                                onEmojiSelected = onEmojiSelected,
+                                                                favorites = favoriteKeys,
+                                                                onToggleFavorite = { key ->
+                                                                    // persist favorites
+                                                                    val current = try {
+                                                                        Json.decodeFromString<List<String>>(Settings.shared.favoriteEmojisJson).toMutableList()
+                                                                    } catch (e: Exception) { mutableListOf() }
+                                                                    if (current.contains(key)) current.remove(key) else current.add(0, key)
+                                                                    Settings.shared.favoriteEmojisJson = Json.encodeToString(current)
+                                                                },
+                                                                modifier = Modifier.weight(1f)
                                 )
                                 if (filteredGroups.size > 1 && searchQuery.isEmpty()) {
                                     EmojiServerBar(
@@ -310,6 +389,10 @@ fun EmojiPicker(
             }
         }
     }
+    
+    if (showCloneModal && cloneImageUrl != null) {
+        CloneToServerModal(imageUrl = cloneImageUrl!!, defaultName = "emoji", onDismiss = { showCloneModal = false })
+    }
 }
 
 data class EmojiGroup(val id: String?, val guildName: String?, val emojis: List<Emoji>, val iconUrl: String?)
@@ -319,7 +402,12 @@ fun EmojiGrid(
     groups: List<EmojiGroup>,
     state: LazyGridState,
     emojiStore: EmojiStore,
+    navigationStore: NavigationStore,
+    coroutineScope: kotlinx.coroutines.CoroutineScope,
+    onCloneRequested: (String) -> Unit,
     onEmojiSelected: (Emoji) -> Unit,
+    favorites: List<String> = emptyList(),
+    onToggleFavorite: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     if (groups.all { it.emojis.isEmpty() }) {
@@ -348,40 +436,91 @@ fun EmojiGrid(
                     }
                     items(group.emojis) { emoji ->
                         val url = emoji.getDisplayUrl()
-                        
+                        val key = if (emoji.id != null) "${emoji.name}:${emoji.id}" else (emoji.name ?: "")
+                        val isFav = favorites.contains(key)
+
+                        val menuItems = mutableListOf<ContextMenuItem>()
                         if (url != null) {
-                            AsyncImage(
-                                model = url,
-                                contentDescription = emoji.name,
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .clip(RoundedCornerShape(4.dp))
-.clickable { 
-                                                        val emojiStr = if (emoji.id != null) "${emoji.name}:${emoji.id}" else ":${emoji.name}:"
-                                                        emojiStore.onEmojiUsed(emojiStr)
-                                                        onEmojiSelected(emoji) 
-                                                    }
-                                    .padding(4.dp),
-                                filterQuality = FilterQuality.Medium
+                            val u = url
+                            menuItems.add(ContextMenuItem("Copy Link", Icons.Filled.Link, onClick = {
+                                setClipboardText(u)
+                                showToast("Copied to clipboard")
+                            }))
+                            menuItems.add(ContextMenuItem("View Image", Icons.Filled.OpenInNew, onClick = {
+                                val img = EmbedImage(url = u, proxy_url = u)
+                                navigationStore.openAttachmentViewer(listOf(img))
+                            }))
+                        }
+
+                        // Emoji code (custom) or unicode text
+                        menuItems.add(ContextMenuItem("Copy Emoji Code", Icons.Filled.ContentCopy, onClick = {
+                            val code = if (emoji.id != null) "<${if (emoji.animated == true) "a" else ""}:${emoji.name}:${emoji.id}>" else ":${emoji.name}:"
+                            setClipboardText(code)
+                            showToast("Copied to clipboard")
+                        }))
+
+                        // Save / Clone actions
+                        if (url != null) {
+                            val filename = (emoji.name ?: "emoji") + if (emoji.animated == true) ".gif" else ".png"
+                            menuItems.add(ContextMenuItem("Save Image", Icons.Filled.Download, onClick = {
+                                coroutineScope.launch {
+                                    val ok = downloadToDownloads(url, filename)
+                                    if (ok) showToast("Saved to Downloads") else showToast("Save failed")
+                                }
+                            }))
+                            menuItems.add(ContextMenuItem("Clone to other server", Icons.Filled.Upload, onClick = {
+                                onCloneRequested(url)
+                            }))
+                        }
+
+                        // Favorite toggle moved to context menu
+                        menuItems.add(
+                            ContextMenuItem(
+                                if (isFav) "Remove from Favorites" else "Add to Favorites",
+                                if (isFav) Icons.Filled.Favorite else Icons.Rounded.FavoriteBorder,
+                                onClick = { onToggleFavorite(key) }
                             )
-                        } else if (emoji.name != null) {
-                            Box(
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .clip(RoundedCornerShape(4.dp))
-.clickable { 
-                                                        val emojiName = emoji.name
-                                                        val emojiStr = if (emoji.id != null) "${emojiName}:${emoji.id}" else ":${emojiName}:"
-                                                        emojiStore.onEmojiUsed(emojiStr)
-                                                        onEmojiSelected(emoji) 
-                                                    }
-                                    .padding(4.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = emoji.name,
-                                    fontSize = 24.sp
-                                )
+                        )
+
+                        ContextMenu(items = menuItems) {
+                            Box(modifier = Modifier.size(40.dp)) {
+                                if (url != null) {
+                                    AsyncImage(
+                                        model = url,
+                                        contentDescription = emoji.name,
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .clip(RoundedCornerShape(4.dp))
+                                            .clickable {
+                                                val emojiStr = if (emoji.id != null) "${emoji.name}:${emoji.id}" else ":${emoji.name}:"
+                                                emojiStore.onEmojiUsed(emojiStr)
+                                                onEmojiSelected(emoji)
+                                            }
+                                            .padding(4.dp),
+                                        filterQuality = FilterQuality.Medium
+                                    )
+                                } else if (emoji.name != null) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .clip(RoundedCornerShape(4.dp))
+                                            .clickable {
+                                                val emojiName = emoji.name
+                                                val emojiStr = if (emoji.id != null) "${emojiName}:${emoji.id}" else ":${emojiName}:"
+                                                emojiStore.onEmojiUsed(emojiStr)
+                                                onEmojiSelected(emoji)
+                                            }
+                                            .padding(4.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = emoji.name,
+                                            fontSize = 24.sp
+                                        )
+                                    }
+                                }
+
+                                // Favorite action is now available in the context menu
                             }
                         }
                     }

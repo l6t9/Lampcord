@@ -141,9 +141,7 @@ fun MessageItem(
     val contextMenuItems = remember(message, currentUser, userSettings, priorMessage, currentMember, canAddReaction) {
         if (message.isPending) {
             return@remember listOf(
-                ContextMenuItem("Delete", Icons.Default.Delete) { 
-                    messageStore.deletePendingMessage(message)
-                }
+                ContextMenuItem("Delete", Icons.Default.Delete, onClick = { messageStore.deletePendingMessage(message) }, group = "Destructive")
             )
         }
         
@@ -157,62 +155,57 @@ fun MessageItem(
 
         val items = mutableListOf<ContextMenuItem>()
         
+        // Group 1: Primary Actions (Discord Group 1)
         if (canAddReaction) {
-            items.add(ContextMenuItem("Add Reaction", Icons.Filled.AddReaction) { showReactionPicker = true })
+            items.add(ContextMenuItem("Add Reaction", Icons.Filled.AddReaction, onClick = { showReactionPicker = true }, group = "Primary"))
         }
 
-        items.add(ContextMenuItem("Reply", Icons.Rounded.Reply) { messageStore.replyingTo = message })
-        items.add(ContextMenuItem("Forward", Icons.Filled.Forward) { navigationStore.forwardingMessage = message })
-        items.add(ContextMenuItem("Copy Text", Icons.Filled.ContentCopy) { setClipboardText(message.content) })
-        items.add(ContextMenuItem("Copy Link", Icons.Filled.Link) {
-            val guildId = message.guild_id ?: navigationStore.selectedGuild?.id ?: "@me"
-            val channelId = message.channel_id
-            val messageId = message.id
-            setClipboardText("https://discord.com/channels/$guildId/$channelId/$messageId")
-        })
-        items.add(ContextMenuItem("Mention", Icons.Rounded.AlternateEmail) {
-            val channelId = message.channel_id
-            val current = messageStore.draftMessages[channelId] ?: ""
-            messageStore.draftMessages[channelId] = "$current <@${message.author?.id}> "
-        })
+        if (isMe) {
+            items.add(ContextMenuItem("Edit Message", Icons.Filled.Edit, onClick = { messageStore.editingMessage = message }, group = "Primary"))
+        }
+
+        items.add(ContextMenuItem("Reply", Icons.Rounded.Reply, onClick = { messageStore.replyingTo = message }, group = "Primary"))
+        items.add(ContextMenuItem("Forward", Icons.Filled.Forward, onClick = { navigationStore.forwardingMessage = message }, group = "Primary"))
         
         if (canManageThreads) {
-            items.add(ContextMenuItem("Create Thread", Icons.Filled.Tag) {
-                showCreateThreadDialog = true
-            })
+            items.add(ContextMenuItem("Create Thread", Icons.Filled.Tag, onClick = { showCreateThreadDialog = true }, group = "Primary"))
         }
 
-        items.add(ContextMenuItem("Mark Unread", Icons.Filled.VisibilityOff) {
+        // Group 2: Secondary Actions (Discord Group 2)
+        items.add(ContextMenuItem("Mark Unread", Icons.Filled.VisibilityOff, onClick = {
             val targetId = priorMessage?.id ?: message.id
             scope.launch {
                 channelApi.ackMessage(message.channel_id, targetId)
                 readStateStore.ackMessage(message.channel_id, targetId)
             }
-        })
-        
-        if (isMe) {
-            items.add(ContextMenuItem("Edit Message", Icons.Filled.Edit) { 
-                messageStore.editingMessage = message 
-            })
-        }
-        
+        }, group = "Secondary"))
+
         if (canManageMessages) {
-            items.add(ContextMenuItem(if (message.pinned) "Unpin Message" else "Pin Message", Icons.Filled.PushPin) {
+            items.add(ContextMenuItem(if (message.pinned) "Unpin Message" else "Pin Message", Icons.Filled.PushPin, onClick = {
                 if (message.pinned) messageStore.unpinMessage(message) else messageStore.pinMessage(message)
-            })
+            }, group = "Secondary"))
         }
 
-        if (userSettings?.developer_mode == true) {
-            items.add(ContextMenuItem("Copy Message ID", Icons.Filled.Dns) { setClipboardText(message.id) })
-            items.add(ContextMenuItem("Copy Author ID", Icons.Filled.Dns) { setClipboardText(message.author?.id ?: "") })
-        }
+        // Group 3: Content / Sharing (Discord Group 3)
+        items.add(ContextMenuItem("Copy Text", Icons.Filled.ContentCopy, onClick = { setClipboardText(message.content) }, group = "Content"))
+        items.add(ContextMenuItem("Copy Link", Icons.Filled.Link, onClick = {
+            val guildId = message.guild_id ?: navigationStore.selectedGuild?.id ?: "@me"
+            val channelId = message.channel_id
+            val messageId = message.id
+            setClipboardText("https://discord.com/channels/$guildId/$channelId/$messageId")
+        }, group = "Content"))
 
+        // Group 4: Destructive (Discord Group 4)
         if (isMe || canManageMessages) {
-            items.add(ContextMenuItem("Delete Message", Icons.Filled.Delete) { 
-                showDeleteDialog = true
-            })
+            items.add(ContextMenuItem("Delete Message", Icons.Filled.Delete, color = Color.Red, onClick = { showDeleteDialog = true }, group = "Destructive"))
         }
-        
+
+        // Group 5: Developer
+        if (userSettings?.developer_mode == true) {
+            items.add(ContextMenuItem("Copy Message ID", Icons.Filled.Dns, onClick = { setClipboardText(message.id) }, group = "Developer"))
+            items.add(ContextMenuItem("Copy Author ID", Icons.Filled.Dns, onClick = { setClipboardText(message.author?.id ?: "") }, group = "Developer"))
+        }
+
         items
     }
 

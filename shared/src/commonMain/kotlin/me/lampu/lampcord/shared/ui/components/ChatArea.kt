@@ -1,6 +1,7 @@
 package me.lampu.lampcord.shared.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -22,8 +23,13 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.derivedStateOf
+import kotlinx.coroutines.launch
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.zIndex
@@ -64,23 +71,47 @@ fun ChatArea(
     navigationStore: NavigationStore = koinInject(),
     settingsStore: SettingsStore = koinInject(),
     themeStore: ThemeStore = koinInject(),
-    voiceStore: VoiceStore = koinInject()
+    voiceStore: VoiceStore = koinInject(),
+    readStateStore: me.lampu.lampcord.shared.state.ReadStateStore = koinInject()
 ) {
     val scrollState = rememberLazyListState()
     var isHovered by remember { mutableStateOf(false) }
     val messages by messageStore.messages.collectAsState()
     val relationships by relationshipStore.relationships.collectAsState()
+    val readStates by readStateStore.readStates.collectAsState()
 
     val themeBackgroundUrl = themeStore.themeBackgroundUrl ?: ""
     val themeBackgroundAlpha = themeStore.themeBackgroundAlpha
     
     val backgroundUrl = if (themeBackgroundUrl.isNotEmpty()) themeBackgroundUrl else settingsStore.chatBackground
 
+    val channelId = navigationStore.selectedChannel?.id
+    val ackedMessageId = remember(readStates, channelId) {
+        if (channelId == null) "0" else readStates[channelId]?.last_message_id?.toString()?.removeSurrounding("\"") ?: "0"
+    }
+
+    val unreadMessagesCount = remember(messages, ackedMessageId) {
+        val ackedLong = ackedMessageId.toLongOrNull() ?: 0L
+        messages.count { (it.id.toLongOrNull() ?: 0L) > ackedLong && !it.isPending }
+    }
+
+    val firstUnreadMessageId = remember(messages, ackedMessageId) {
+        val ackedLong = ackedMessageId.toLongOrNull() ?: 0L
+        messages.findLast { (it.id.toLongOrNull() ?: 0L) > ackedLong && !it.isPending }?.id
+    }
+
     LaunchedEffect(scrollState) {
         snapshotFlow { scrollState.layoutInfo.visibleItemsInfo }
             .collect { visibleItems ->
                 if (visibleItems.isNotEmpty()) {
                     val lastVisibleItem = visibleItems.last()
+                    // Auto-ack if at the bottom
+                    if (scrollState.firstVisibleItemIndex == 0 && messages.isNotEmpty()) {
+                        val latestId = messages.first().id
+                        if ((latestId.toLongOrNull() ?: 0L) > (ackedMessageId.toLongOrNull() ?: 0L)) {
+                            readStateStore.ackMessage(channelId ?: "", latestId)
+                        }
+                    }
                     if (lastVisibleItem.index >= messages.size - 5) {
                         messageStore.loadMoreMessages(
                             navigationStore.selectedChannel?.id ?: "",
@@ -93,6 +124,7 @@ fun ChatArea(
     }
     
     val latestMessageId = messages.firstOrNull()?.id
+    val coroutineScope = rememberCoroutineScope()
     
     LaunchedEffect(latestMessageId) {
         if (latestMessageId != null) {
@@ -210,10 +242,14 @@ fun ChatArea(
                 }
 
                 val itemZIndex = (filteredMessages.size - index).toFloat()
+                val isFirstUnread = message.id == firstUnreadMessageId
 
                 Column(modifier = Modifier.fillMaxWidth().zIndex(itemZIndex).graphicsLayer(clip = false)) {
                     if (showDateSeparator) {
                         DateSeparator(message.timestamp)
+                    }
+                    if (isFirstUnread) {
+                        UnreadSeparator()
                     }
                     Box(Modifier.animateItem().graphicsLayer(clip = false)) {
                         MessageItem(
@@ -292,6 +328,59 @@ fun ChatArea(
             isVisible = isHovered,
             reverseLayout = true
         )
+        if (unreadMessagesCount > 0 && scrollState.firstVisibleItemIndex > 0) {
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .zIndex(2f)
+                    .padding(top = 12.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable { coroutineScope.launch { scrollState.animateScrollToItem(0) } },
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.primary,
+                tonalElevation = 4.dp
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.ArrowDownward, 
+                        contentDescription = null, 
+                        modifier = Modifier.size(14.dp), 
+                        tint = MaterialTheme.colorScheme.onPrimary
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = "$unreadMessagesCount NEW MESSAGE${if (unreadMessagesCount > 1) "S" else ""}",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 0.5.sp,
+                            fontSize = 10.sp
+                        ),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        maxLines = 1
+                    )
+                }
+            }
+        }
+
+        val scrolledAway = remember { derivedStateOf {
+            val index = scrollState.firstVisibleItemIndex
+            val offset = scrollState.firstVisibleItemScrollOffset
+            // Mirror Discord: require a larger scrollback before showing jump-to-latest
+            val MIN_SCROLLBACK = 10
+            index >= MIN_SCROLLBACK || (index > 0 && offset > 200)
+        } }
+
+        if (scrolledAway.value) {
+            androidx.compose.material3.FloatingActionButton(
+                onClick = { coroutineScope.launch { scrollState.animateScrollToItem(0) } },
+                modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)
+            ) {
+                Icon(Icons.Filled.ArrowDownward, null)
+            }
+        }
     }
 }
 
@@ -326,5 +415,27 @@ fun DateSeparator(timestamp: String) {
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
         )
         HorizontalDivider(modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+    }
+}
+
+@Composable
+fun UnreadSeparator() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp, horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        HorizontalDivider(modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.error)
+        Text(
+            text = "NEW MESSAGES",
+            modifier = Modifier.padding(horizontal = 8.dp),
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold
+            ),
+            color = MaterialTheme.colorScheme.error
+        )
+        HorizontalDivider(modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.error)
     }
 }

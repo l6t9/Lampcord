@@ -7,6 +7,8 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import me.lampu.lampcord.shared.database.AppDatabase
 import java.io.File
+import java.net.URL
+import java.util.Base64
 
 actual fun getPlatformName(): String {
     val os = System.getProperty("os.name").lowercase()
@@ -89,5 +91,71 @@ actual fun showToast(text: String) {
 actual fun RequestMediaPermissions(onResult: (Boolean) -> Unit) {
     LaunchedEffect(Unit) {
         onResult(true)
+    }
+}
+
+suspend fun safeReadUrl(url: String): ByteArray? = try {
+    with(java.lang.Runnable { }) {
+        URL(url).readBytes()
+    }
+} catch (e: Exception) { null }
+
+actual suspend fun fetchUrlBytes(url: String): ByteArray? = try {
+    URL(url).readBytes()
+} catch (e: Exception) { null }
+
+actual fun base64Encode(bytes: ByteArray): String = Base64.getEncoder().encodeToString(bytes)
+
+actual suspend fun downloadToDownloads(url: String, filename: String): Boolean {
+    return try {
+        val bytes = fetchUrlBytes(url) ?: return false
+        val downloads = java.io.File(System.getProperty("user.home"), "Downloads")
+        if (!downloads.exists()) downloads.mkdirs()
+        val out = java.io.File(downloads, filename)
+        out.writeBytes(bytes)
+        true
+    } catch (e: Exception) {
+        false
+    }
+}
+
+actual suspend fun ensureUniqueDownloadFilename(desiredName: String): String {
+    return try {
+        val downloads = java.io.File(System.getProperty("user.home"), "Downloads")
+        if (!downloads.exists()) downloads.mkdirs()
+        var base = desiredName
+        var ext = ""
+        val idx = desiredName.lastIndexOf('.')
+        if (idx > 0) {
+            base = desiredName.substring(0, idx)
+            ext = desiredName.substring(idx)
+        }
+        var candidate = desiredName
+        var i = 1
+        while (java.io.File(downloads, candidate).exists()) {
+            candidate = "$base ($i)$ext"
+            i++
+            if (i > 1000) break
+        }
+        candidate
+    } catch (e: Exception) {
+        desiredName
+    }
+}
+
+actual fun openDownloadsFolderAndSelect(filename: String) {
+    try {
+        val downloads = java.io.File(System.getProperty("user.home"), "Downloads")
+        if (!downloads.exists()) downloads.mkdirs()
+        val f = java.io.File(downloads, filename)
+        val desktop = java.awt.Desktop.getDesktop()
+        if (f.exists()) {
+            // try to open parent folder
+            desktop.open(f.parentFile)
+        } else {
+            desktop.open(downloads)
+        }
+    } catch (e: Exception) {
+        // ignore
     }
 }

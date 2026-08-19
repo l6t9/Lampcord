@@ -32,7 +32,7 @@ fun AdaptiveModalBottomSheet(
     sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false),
     sheetMaxWidth: Dp = BottomSheetDefaults.SheetMaxWidth,
     shape: Shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
-    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerLow,
+    containerColor: Color = MaterialTheme.colorScheme.surface,
     contentColor: Color = contentColorFor(containerColor),
     tonalElevation: Dp = 0.dp,
     scrimColor: Color = BottomSheetDefaults.ScrimColor,

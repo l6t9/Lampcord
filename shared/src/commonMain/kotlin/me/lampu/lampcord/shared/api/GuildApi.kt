@@ -10,6 +10,10 @@ import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
+import io.ktor.client.request.forms.MultiPartFormDataContent
+import io.ktor.client.request.forms.formData
+import io.ktor.http.Headers
+import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import kotlinx.serialization.json.add
@@ -158,6 +162,81 @@ class GuildApi(private val rest: RestClient) {
     suspend fun deleteEmoji(guildId: String, emojiId: String): Boolean {
         return try {
             val response = rest.httpClient.delete("${rest.apiBase}/guilds/$guildId/emojis/$emojiId") {
+                standardHeaders(rest)
+            }
+            response.status.isSuccess()
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    suspend fun getGuildStickers(guildId: String): List<me.lampu.lampcord.shared.model.Sticker> {
+        return try {
+            rest.httpClient.get("${rest.apiBase}/guilds/$guildId/stickers") {
+                standardHeaders(rest)
+            }.body()
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun getContentTypeForFile(name: String): ContentType {
+        return when {
+            name.endsWith(".png", true) -> ContentType.Image.PNG
+            name.endsWith(".jpg", true) || name.endsWith(".jpeg", true) -> ContentType.Image.JPEG
+            name.endsWith(".gif", true) -> ContentType.Image.GIF
+            name.endsWith(".webp", true) -> ContentType.parse("image/webp")
+            name.endsWith(".mp4", true) -> ContentType.Video.MP4
+            name.endsWith(".mov", true) -> ContentType.Video.QuickTime
+            name.endsWith(".webm", true) -> ContentType.Video.Any
+            else -> ContentType.Application.OctetStream
+        }
+    }
+
+    suspend fun createSticker(guildId: String, name: String, description: String?, tags: String?, file: Pair<String, ByteArray>): me.lampu.lampcord.shared.model.Sticker? {
+        return try {
+            val (filename, bytes) = file
+            val response = rest.httpClient.post("${rest.apiBase}/guilds/$guildId/stickers") {
+                standardHeaders(rest)
+                setBody(MultiPartFormDataContent(
+                    formData {
+                        append("name", name)
+                        if (!description.isNullOrBlank()) append("description", description)
+                        if (!tags.isNullOrBlank()) append("tags", tags)
+                        append("file", bytes, Headers.build {
+                            append(HttpHeaders.ContentType, getContentTypeForFile(filename).toString())
+                            append(HttpHeaders.ContentDisposition, "form-data; name=\"file\"; filename=\"$filename\"")
+                        })
+                    }
+                ))
+            }
+            if (response.status.isSuccess()) response.body() else null
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    suspend fun updateSticker(guildId: String, stickerId: String, name: String? = null, description: String? = null, tags: String? = null): me.lampu.lampcord.shared.model.Sticker? {
+        return try {
+            val payload = buildJsonObject {
+                if (name != null) put("name", name)
+                if (description != null) put("description", description)
+                if (tags != null) put("tags", tags)
+            }
+            val response = rest.httpClient.patch("${rest.apiBase}/guilds/$guildId/stickers/$stickerId") {
+                standardHeaders(rest)
+                contentType(ContentType.Application.Json)
+                setBody(payload)
+            }
+            if (response.status.isSuccess()) response.body() else null
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    suspend fun deleteSticker(guildId: String, stickerId: String): Boolean {
+        return try {
+            val response = rest.httpClient.delete("${rest.apiBase}/guilds/$guildId/stickers/$stickerId") {
                 standardHeaders(rest)
             }
             response.status.isSuccess()

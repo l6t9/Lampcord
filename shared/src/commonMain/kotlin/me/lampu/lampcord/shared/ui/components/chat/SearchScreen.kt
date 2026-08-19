@@ -322,20 +322,22 @@ private fun SearchScreenContent(
                                 val channel = guildStore.allGuildChannels.value[message.channel_id] ?: guildStore.privateChannels.value.find { it.id == message.channel_id }
                                 val guild = guildStore.guilds.value.firstOrNull { it.id == message.guild_id }
 
+                                val onClick = {
+                                    if (guild != null) {
+                                        navigationStore.selectGuild(guild) { gatewayManager.sendSubscription(it) }
+                                    }
+                                    if (channel != null) {
+                                        navigationStore.selectChannel(channel, explicitlySelected = true)
+                                        messageStore.scrollToMessageId = message.id
+                                        onDismiss()
+                                    }
+                                }
+
                                 Column(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .padding(vertical = 4.dp)
-                                        .clickable {
-                                            if (guild != null) {
-                                                navigationStore.selectGuild(guild) { gatewayManager.sendSubscription(it) }
-                                            }
-                                            if (channel != null) {
-                                                navigationStore.selectChannel(channel, explicitlySelected = true)
-                                                messageStore.scrollToMessageId = message.id
-                                                onDismiss()
-                                            }
-                                        }
+                                        .clickable(onClick = onClick)
                                 ) {
                                     Row(
                                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
@@ -361,7 +363,15 @@ private fun SearchScreenContent(
                                         shape = RoundedCornerShape(12.dp),
                                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
                                     ) {
-                                        MessageItem(message = message)
+                                        Box {
+                                            MessageItem(message = message)
+                                            // Transparent overlay to catch clicks and prevent MessageItem internal interaction
+                                            Box(
+                                                modifier = Modifier
+                                                    .matchParentSize()
+                                                    .clickable(onClick = onClick)
+                                            )
+                                        }
                                     }
                                 }
                             }

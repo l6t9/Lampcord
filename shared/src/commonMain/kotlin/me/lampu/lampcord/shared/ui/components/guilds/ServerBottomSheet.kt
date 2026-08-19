@@ -61,6 +61,7 @@ import me.lampu.lampcord.shared.ui.components.settings.Material3SettingsGroup
 import me.lampu.lampcord.shared.ui.components.settings.Material3SettingsItem
 import me.lampu.lampcord.shared.ui.components.settings.switchSettingsItem
 import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.ui.components.chat.InviteDialog
 import me.lampu.lampcord.shared.utils.Permission
 import me.lampu.lampcord.shared.utils.PermissionHelper
 import me.lampu.lampcord.shared.utils.setClipboardText
@@ -82,6 +83,11 @@ fun ServerBottomSheet(
     val userGuildSettings by userGuildSettingsStore.userGuildSettings.collectAsState()
     val currentUser by userStore.currentUser.collectAsState()
     var showLeaveDialog by remember { mutableStateOf(false) }
+    var showInviteDialog by remember { mutableStateOf(false) }
+    val allChannels by guildStore.allGuildChannels.collectAsState()
+    val inviteChannel = remember(guild.id, allChannels) {
+        allChannels.values.find { it.guild_id == guild.id && it.type == 0 } ?: allChannels.values.find { it.guild_id == guild.id }
+    }
 
     if (showLeaveDialog) {
         LeaveServerDialog(
@@ -145,6 +151,10 @@ fun ServerBottomSheet(
                         }
                     }
                 }
+            }
+
+            if (showInviteDialog && inviteChannel != null) {
+                InviteDialog(channel = inviteChannel, onDismiss = { showInviteDialog = false })
             }
 
             Spacer(Modifier.height(48.dp))
@@ -218,7 +228,10 @@ fun ServerBottomSheet(
                     ) {
                         val actions = mutableListOf(
                             Triple(Icons.Rounded.RocketLaunch, "${guild.premium_subscription_count ?: 0} Boosts") { /* TODO */ },
-                            Triple(Icons.Rounded.Notifications, "Notifications") { /* TODO */ }
+                            Triple(Icons.Rounded.Notifications, "Notifications") { /* TODO */ },
+                            Triple(Icons.Filled.PersonAdd, "Invite") {
+                                if (inviteChannel != null) showInviteDialog = true
+                            }
                         )
                         
                         if (canManageGuild) {

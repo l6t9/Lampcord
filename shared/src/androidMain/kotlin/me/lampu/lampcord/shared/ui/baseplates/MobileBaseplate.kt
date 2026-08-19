@@ -32,6 +32,8 @@ import me.lampu.lampcord.shared.ui.AboutContent
 import me.lampu.lampcord.shared.ui.settings.*
 import me.lampu.lampcord.shared.ui.components.settings.SettingsSubScreen
 import me.lampu.lampcord.shared.ui.components.*
+import me.lampu.lampcord.shared.ui.components.ForumPostList
+import me.lampu.lampcord.shared.ui.components.GlobalSnackbarHost
 import me.lampu.lampcord.shared.ui.components.chat.ChannelSettingsScreen
 import me.lampu.lampcord.shared.ui.components.chat.PinnedMessagesScreen
 import me.lampu.lampcord.shared.ui.components.chat.SearchScreen
@@ -75,7 +77,6 @@ actual fun MobileBaseplate(
             Screen.Pins,
             Screen.ChannelsAndRoles,
             Screen.Theming,
-            Screen.ThemeEditor,
             Screen.AccountSettings,
             Screen.ProfilesSettings,
             Screen.AppearanceSettings,
@@ -86,7 +87,9 @@ actual fun MobileBaseplate(
             Screen.ChatSettings,
             Screen.NotificationsSettings,
             Screen.AdvancedSettings,
-            Screen.AboutSettings
+            Screen.AboutSettings,
+            Screen.NavigationSettings,
+            Screen.EasterEgg
         ) 
     }
     val navigationState = rememberNavigationState(
@@ -143,18 +146,24 @@ actual fun MobileBaseplate(
         if (navigationStore.isChannelsAndRolesVisible) navigator.navigate(Screen.ChannelsAndRoles)
         else if (navigationState.topLevelRoute == Screen.ChannelsAndRoles) navigator.goBack()
     }
+    LaunchedEffect(navigationStore.isNotificationsSettingsVisible) {
+        if (navigationStore.isNotificationsSettingsVisible) navigator.navigate(Screen.NotificationsSettings)
+        else if (navigationState.topLevelRoute == Screen.NotificationsSettings) navigator.goBack()
+    }
     LaunchedEffect(navigationStore.isMentionsSelected) {
         if (navigationStore.isMentionsSelected) navigator.navigate(Screen.Mentions)
         else if (navigationState.topLevelRoute == Screen.Mentions) navigator.goBack()
     }
 
     LaunchedEffect(navigationStore.selectedGuild?.id, navigationStore.isFriendsSelected, navigationStore.isMentionsSelected) {
-        if (navigationStore.selectedGuild != null) {
-            navigator.navigate(Screen.Chat)
-        } else if (navigationStore.isFriendsSelected) {
+        // Prefer explicit tab selections (Friends/Mentions) over auto-navigation due to a selected guild.
+        // This prevents the UI from immediately forcing Chat when user taps Friends or Mentions.
+        if (navigationStore.isFriendsSelected) {
             navigator.navigate(Screen.Friends)
         } else if (navigationStore.isMentionsSelected) {
             navigator.navigate(Screen.Mentions)
+        } else if (navigationStore.selectedGuild != null) {
+            navigator.navigate(Screen.Chat)
         }
     }
 
@@ -177,6 +186,7 @@ actual fun MobileBaseplate(
         if (route !is Screen.Search && navigationStore.isSearchVisible) navigationStore.isSearchVisible = false
         if (route !is Screen.Pins && navigationStore.isPinsVisible) navigationStore.isPinsVisible = false
         if (route !is Screen.ChannelsAndRoles && navigationStore.isChannelsAndRolesVisible) navigationStore.isChannelsAndRolesVisible = false
+        if (route !is Screen.NotificationsSettings && navigationStore.isNotificationsSettingsVisible) navigationStore.isNotificationsSettingsVisible = false
 
         when (route) {
             is Screen.Friends -> {
@@ -292,6 +302,7 @@ actual fun MobileBaseplate(
                         onNavigateToAdvanced = { navigator.navigate(Screen.AdvancedSettings) },
                         onNavigateToAbout = { navigator.navigate(Screen.AboutSettings) },
                         onNavigateToTheming = { navigator.navigate(Screen.Theming) },
+                        onNavigateToNavigation = { navigator.navigate(Screen.NavigationSettings) },
                         onDismiss = { navigationStore.isSettingsVisible = false }
                     )
                 }
@@ -305,7 +316,7 @@ actual fun MobileBaseplate(
                 ProfilesSettings(onBack = { navigator.goBack() }, userStore = userStore)
             }
             entry<Screen.AppearanceSettings> {
-                AppearanceSettings(onNavigateToTheming = { navigator.navigate(Screen.Theming) }, onBack = { navigator.goBack() })
+                AppearanceSettings(onNavigateToTheming = { navigator.navigate(Screen.Theming) }, onNavigateToNavigation = { navigator.navigate(Screen.NavigationSettings) }, onBack = { navigator.goBack() })
             }
             entry<Screen.AccessibilitySettings> {
                 AccessibilitySettings(onBack = { navigator.goBack() })
@@ -325,12 +336,30 @@ actual fun MobileBaseplate(
             entry<Screen.NotificationsSettings> {
                 NotificationsSettings(onBack = { navigator.goBack() })
             }
+            entry<Screen.NavigationSettings> {
+                NavigationSettings(onBack = { navigator.goBack() })
+            }
             entry<Screen.AdvancedSettings> {
                 AdvancedSettings(onBack = { navigator.goBack() })
             }
             entry<Screen.AboutSettings> {
                 SettingsSubScreen(title = "About", onNavigateBack = { navigator.goBack() }) {
                     AboutContent(version = "1.0.0", onOpenUrl = { /* TODO */ })
+                }
+            }
+            entry<Screen.EasterEgg> {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("?", style = MaterialTheme.typography.displayLarge)
+                        Text("The mysterious tab.", style = MaterialTheme.typography.bodyLarge)
+                        Spacer(Modifier.height(24.dp))
+                        Button(onClick = {
+                            navigationStore.isSettingsVisible = true
+                            navigator.navigate(Screen.Settings)
+                        }) {
+                            Text("Open Settings")
+                        }
+                    }
                 }
             }
             entry<Screen.ServerSettings> {
@@ -527,93 +556,136 @@ actual fun MobileBaseplate(
             }
         )
 
-        if (navBarVisibleAmount > 0.001f) {
-            NavigationBar(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .height(80.dp)
-                    .graphicsLayer {
-                        translationY = (1f - navBarVisibleAmount) * 80.dp.toPx()
-                        alpha = navBarVisibleAmount
-                    },
-                containerColor = MaterialTheme.colorScheme.surface,
-                tonalElevation = 0.dp,
-                windowInsets = WindowInsets.navigationBars
-            ) {
-                NavigationBarItem(
-                    selected = currentRoute == Screen.Chat,
-                    onClick = {
-                        navigationStore.isFriendsSelected = false
-                        navigationStore.isSettingsVisible = false
-                        navigationStore.isSearchVisible = false
-                        navigationStore.isMentionsSelected = false
-                        navigator.navigate(Screen.Chat)
-                    },
-                    icon = { Icon(Icons.Brand.Discord, "Home") },
-                    label = { Text("Home") },
-                    alwaysShowLabel = !settingsStore.hideNavLabels
-                )
-                NavigationBarItem(
-                    selected = currentRoute == Screen.Friends,
-                    onClick = {
-                        navigationStore.isFriendsSelected = true
-                        navigator.navigate(Screen.Friends)
-                    },
-                    icon = { Icon(if (currentRoute == Screen.Friends) Icons.Filled.Person else Icons.Rounded.Person, "Friends") },
-                    label = { Text("Friends") },
-                    alwaysShowLabel = !settingsStore.hideNavLabels
-                )
-                NavigationBarItem(
-                    selected = currentRoute == Screen.GlobalSearch,
-                    onClick = {
-                        navigator.navigate(Screen.GlobalSearch)
-                    },
-                    icon = { Icon(Icons.Filled.Search, "Search") },
-                    label = { Text("Search") },
-                    alwaysShowLabel = !settingsStore.hideNavLabels
-                )
-                NavigationBarItem(
-                    selected = currentRoute == Screen.Mentions,
-                    onClick = {
-                        navigationStore.isMentionsSelected = true
-                        navigator.navigate(Screen.Mentions)
-                    },
-                    icon = { Icon(Icons.Rounded.AlternateEmail, "Mentions") },
-                    label = { Text("Mentions") },
-                    alwaysShowLabel = !settingsStore.hideNavLabels
-                )
-                NavigationBarItem(
-                    selected = currentRoute == Screen.Settings,
-                    onClick = {
-                        navigationStore.isSettingsVisible = true
-                        navigator.navigate(Screen.Settings)
-                    },
-                    icon = {
-                        val user = currentUser
-                        val avatarUrl = user?.avatar?.let { "https://cdn.discordapp.com/avatars/${user.id}/$it.png?size=64" }
-                        if (avatarUrl != null && user != null) {
-                            Box(modifier = Modifier.size(24.dp)) {
-                                AvatarWithDecoration(
-                                    avatarUrl = avatarUrl,
-                                    decorationData = currentUser?.avatar_decoration_data,
-                                    size = 24.dp,
-                                    status = presenceStore.getUserStatus(
-                                        currentUser?.id ?: "",
-                                        currentUser?.id,
-                                        settingsStore.userSettings?.status
-                                    )
-                                )
-                            }
-                        } else {
-                            Icon(Icons.Filled.Settings, "You")
-                        }
-                    },
-                    label = { Text("You") },
-                    alwaysShowLabel = !settingsStore.hideNavLabels
-                )
+    val navItems = remember(settingsStore.navTabsOrderJson, settingsStore.showNavHome, settingsStore.showNavFriends, settingsStore.showNavSearch, settingsStore.showNavMentions, settingsStore.showNavSettings) {
+        val order = runCatching { 
+            settingsStore.navTabsOrderJson.removeSurrounding("[", "]").split(",").map { it.trim().removeSurrounding("\"") }
+        }.getOrDefault(listOf("home", "friends", "search", "mentions", "settings"))
+        
+        val items = order.mapNotNull { key ->
+            when (key) {
+                "home" -> if (settingsStore.showNavHome) Screen.Chat else null
+                "friends" -> if (settingsStore.showNavFriends) Screen.Friends else null
+                "search" -> if (settingsStore.showNavSearch) Screen.GlobalSearch else null
+                "mentions" -> if (settingsStore.showNavMentions) Screen.Mentions else null
+                "settings" -> if (settingsStore.showNavSettings) Screen.Settings else null
+                else -> null
             }
         }
+        
+        if (items.isEmpty()) listOf(Screen.EasterEgg) else items
+    }
+
+    if (navBarVisibleAmount > 0.001f) {
+        NavigationBar(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .height(80.dp)
+                .graphicsLayer {
+                    translationY = (1f - navBarVisibleAmount) * 80.dp.toPx()
+                    alpha = navBarVisibleAmount
+                },
+            containerColor = MaterialTheme.colorScheme.surface,
+            tonalElevation = 0.dp,
+            windowInsets = WindowInsets.navigationBars
+        ) {
+            navItems.forEach { screen ->
+                when (screen) {
+                    Screen.Chat -> {
+                        NavigationBarItem(
+                            selected = currentRoute == Screen.Chat,
+                            onClick = {
+                                navigationStore.isFriendsSelected = false
+                                navigationStore.isSettingsVisible = false
+                                navigationStore.isSearchVisible = false
+                                navigationStore.isMentionsSelected = false
+                                navigator.navigate(Screen.Chat)
+                            },
+                            icon = { Icon(Icons.Brand.Discord, "Home") },
+                            label = { Text("Home") },
+                            alwaysShowLabel = !settingsStore.hideNavLabels
+                        )
+                    }
+                    Screen.Friends -> {
+                        NavigationBarItem(
+                            selected = currentRoute == Screen.Friends,
+                            onClick = {
+                                navigationStore.isFriendsSelected = true
+                                navigator.navigate(Screen.Friends)
+                            },
+                            icon = { Icon(if (currentRoute == Screen.Friends) Icons.Filled.Person else Icons.Rounded.Person, "Friends") },
+                            label = { Text("Friends") },
+                            alwaysShowLabel = !settingsStore.hideNavLabels
+                        )
+                    }
+                    Screen.GlobalSearch -> {
+                        NavigationBarItem(
+                            selected = currentRoute == Screen.GlobalSearch,
+                            onClick = {
+                                navigator.navigate(Screen.GlobalSearch)
+                            },
+                            icon = { Icon(Icons.Filled.Search, "Search") },
+                            label = { Text("Search") },
+                            alwaysShowLabel = !settingsStore.hideNavLabels
+                        )
+                    }
+                    Screen.Mentions -> {
+                        NavigationBarItem(
+                            selected = currentRoute == Screen.Mentions,
+                            onClick = {
+                                navigationStore.isMentionsSelected = true
+                                navigator.navigate(Screen.Mentions)
+                            },
+                            icon = { Icon(Icons.Rounded.AlternateEmail, "Mentions") },
+                            label = { Text("Mentions") },
+                            alwaysShowLabel = !settingsStore.hideNavLabels
+                        )
+                    }
+                    Screen.Settings -> {
+                        NavigationBarItem(
+                            selected = currentRoute == Screen.Settings,
+                            onClick = {
+                                navigationStore.isSettingsVisible = true
+                                navigator.navigate(Screen.Settings)
+                            },
+                            icon = {
+                                val user = currentUser
+                                val avatarUrl = user?.avatar?.let { "https://cdn.discordapp.com/avatars/${user.id}/$it.png?size=64" }
+                                if (avatarUrl != null && user != null) {
+                                    Box(modifier = Modifier.size(24.dp)) {
+                                        AvatarWithDecoration(
+                                            avatarUrl = avatarUrl,
+                                            decorationData = currentUser?.avatar_decoration_data,
+                                            size = 24.dp,
+                                            status = presenceStore.getUserStatus(
+                                                currentUser?.id ?: "",
+                                                currentUser?.id,
+                                                settingsStore.userSettings?.status
+                                            )
+                                        )
+                                    }
+                                } else {
+                                    Icon(Icons.Filled.Settings, "You")
+                                }
+                            },
+                            label = { Text("You") },
+                            alwaysShowLabel = !settingsStore.hideNavLabels
+                        )
+                    }
+                    Screen.EasterEgg -> {
+                        NavigationBarItem(
+                            selected = currentRoute == Screen.EasterEgg,
+                            onClick = { navigator.navigate(Screen.EasterEgg) },
+                            icon = { Icon(Icons.Filled.QuestionMark, null) },
+                            label = { Text("?") },
+                            alwaysShowLabel = !settingsStore.hideNavLabels
+                        )
+                    }
+                    else -> {}
+                }
+            }
+        }
+    }
 
         // Panels back handler integration
         BackHandler(enabled = panelState.currentValue == DiscordPanelValue.End) {
@@ -684,6 +756,8 @@ actual fun MobileBaseplate(
             ServerBottomSheet(guild, onDismiss = { navigationStore.isServerMenuVisible = false })
         }
     }
+
+    GlobalSnackbarHost(modifier = Modifier.fillMaxWidth())
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -874,9 +948,15 @@ private fun MainBaseplateContent(
                                         .fillMaxSize()
                                 ) {
                                     Box(modifier = Modifier.weight(1f)) {
-                                        ChatArea(modifier = Modifier.fillMaxSize())
-                                    }
-                                    ChatInputBar(activeChannel)
+                                            if (activeChannel.type == 15 && navigationStore.selectedThread == null) {
+                                                ForumPostList()
+                                            } else {
+                                                ChatArea(modifier = Modifier.fillMaxSize())
+                                            }
+                                        }
+                                        if (!(activeChannel.type == 15 && navigationStore.selectedThread == null)) {
+                                            ChatInputBar(activeChannel)
+                                        }
                                 }
                             }
                         } else if (target == "roles") {
