@@ -18,11 +18,13 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.text.input.VisualTransformation
 import me.lampu.lampcord.shared.state.SessionManager
 import me.lampu.lampcord.shared.api.RemoteAuthClient
 import me.lampu.lampcord.shared.api.RemoteAuthState
 import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
 import kotlinx.coroutines.launch
+import me.lampu.lampcord.shared.ui.icons.Icons
 import org.koin.compose.koinInject
 import qrcode.QRCode
 import qrcode.raw.ErrorCorrectionLevel
@@ -38,6 +40,7 @@ fun LoginScreen(
 ) {
     var login by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
     var mfaCode by remember { mutableStateOf("") }
     var mfaTicket by remember { mutableStateOf<String?>(null) }
     var mfaType by remember { mutableStateOf("totp") }
@@ -153,7 +156,7 @@ fun LoginScreen(
                         value = password,
                         onValueChange = { password = it },
                         label = { Text("Password") },
-                        visualTransformation = PasswordVisualTransformation(),
+                        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         shape = MaterialTheme.shapes.large,
@@ -167,7 +170,15 @@ fun LoginScreen(
                         ),
                         keyboardActions = KeyboardActions(
                             onDone = { performLogin() }
-                        )
+                        ),
+                        trailingIcon = {
+                            IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                Icon(
+                                    imageVector = if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                    contentDescription = if (passwordVisible) "Hide password" else "Show password"
+                                )
+                            }
+                        }
                     )
                 } else {
                     Text(
@@ -191,8 +202,8 @@ fun LoginScreen(
                         )
                     )
                     
-                    TextButton(onClick = { 
-                        mfaType = if (mfaType == "totp") "backup" else "totp" 
+                    TextButton(onClick = {
+                        mfaType = if (mfaType == "totp") "backup" else "totp"
                         mfaCode = ""
                     }) {
                         Text(if (mfaType == "totp") "Use Backup Code" else "Use Authenticator App")
