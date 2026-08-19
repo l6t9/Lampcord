@@ -23,6 +23,7 @@ import me.lampu.lampcord.shared.state.PresenceStore
 import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.ui.components.members.MemberGroupItem
+import me.lampu.lampcord.shared.ui.components.members.MemberHeader
 import me.lampu.lampcord.shared.ui.components.members.MemberItem
 import me.lampu.lampcord.shared.ui.components.members.MemberSkeleton
 import org.koin.compose.koinInject
@@ -72,6 +73,9 @@ fun MemberList(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(top = 8.dp, bottom = 52.dp)
             ) {
+                item {
+                    activeChannel?.let { MemberHeader(it) }
+                }
                 item {
                     Text(
                         text = "Members — ${recipients.size}",
@@ -160,6 +164,9 @@ fun MemberList(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 52.dp)
                 ) {
+                    item {
+                        activeChannel?.let { MemberHeader(it) }
+                    }
                     if (header != null) {
                         stickyHeader {
                             Surface(
@@ -168,11 +175,6 @@ fun MemberList(
                             ) {
                                 header()
                             }
-                        }
-                    } else {
-                        // Spacing at top if no header
-                        item {
-                            Spacer(Modifier.height(8.dp))
                         }
                     }
 
