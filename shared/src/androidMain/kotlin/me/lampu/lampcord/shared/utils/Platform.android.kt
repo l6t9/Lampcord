@@ -233,9 +233,23 @@ actual fun writeInternalFile(name: String, content: String) {
     java.io.File(dir, name).writeText(content)
 }
 
+actual fun writeInternalBytes(name: String, content: ByteArray) {
+    val dir = AndroidContext.context.filesDir
+    if (!dir.exists()) dir.mkdirs()
+    java.io.File(dir, name).writeBytes(content)
+}
+
 actual fun readInternalFile(name: String): String? {
     val file = java.io.File(AndroidContext.context.filesDir, name)
     return if (file.exists()) file.readText() else null
+}
+
+actual fun checkInternalFileExists(name: String): Boolean {
+    return java.io.File(AndroidContext.context.filesDir, name).exists()
+}
+
+actual fun getInternalFilePath(name: String): String {
+    return java.io.File(AndroidContext.context.filesDir, name).absolutePath
 }
 
 actual fun showToast(text: String) {

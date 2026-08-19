@@ -87,7 +87,8 @@ fun ChatInputBar(
     userStore: UserStore = koinInject(),
     guildStore: GuildStore = koinInject(),
     memberListStore: MemberListStore = koinInject(),
-    relationshipStore: RelationshipStore = koinInject()
+    relationshipStore: RelationshipStore = koinInject(),
+    emojiStore: EmojiStore = koinInject()
 ) {
     var textFieldValue by remember(channel.id) { 
         val draft = messageStore.draftMessages[channel.id] ?: ""
@@ -134,8 +135,14 @@ fun ChatInputBar(
             val textBefore = text.take(cursor)
             val lastWordStart = textBefore.lastIndexOfAny(charArrayOf(' ', '\n')) + 1
 
+            // If the item is an emoji token (starts with ':'), prefer the last ':' as the start
+            val colonStart = if (item.inputText?.startsWith(":") == true) {
+                val idx = textBefore.lastIndexOf(':')
+                if (idx >= 0) idx else lastWordStart
+            } else lastWordStart
+
             // If it's a command, it's usually at the start
-            val actualStart = if (item.isCommand) 0 else lastWordStart
+            val actualStart = if (item.isCommand) 0 else colonStart
 
             val inputText = item.inputText ?: item.replacement
             val newText = text.replaceRange(actualStart, cursor, inputText)
@@ -164,7 +171,19 @@ fun ChatInputBar(
         val members = memberListStore.memberListItems.mapNotNull { it?.member } +
             relationshipStore.relationships.value.mapNotNull { rel -> rel.user?.let { Member(user = it) } }
         val roles = navigationStore.selectedGuild?.roles ?: emptyList()
-        return resolveServerContent(content, mentionRanges, channels, members, roles)
+        
+        val guildEmojis = guildStore.guilds.value.flatMap { guild ->
+            guild.emojis.map { it.copy(guild_id = guild.id) }
+        }
+        val frequentEmojis = emojiStore.frequentEmojis.mapNotNull { key ->
+            if (key.contains(":")) {
+                val parts = key.split(":")
+                me.lampu.lampcord.shared.model.Emoji(name = parts[0], id = parts[1])
+            } else null
+        }
+        val allAvailableEmojis = (guildEmojis + frequentEmojis).distinctBy { it.id }
+        
+        return resolveServerContent(content, mentionRanges, channels, members, roles, allAvailableEmojis, currentUser, guildId)
     }
 
     fun clearMentions() {
@@ -620,25 +639,33 @@ fun ChatInputBar(
                                             properties = androidx.compose.ui.window.PopupProperties(focusable = true)
                                         ) {
                                             EmojiPicker { emoji ->
-                                                val isExternal = emoji.guild_id != null && emoji.guild_id != navigationStore.selectedGuild?.id
+                                                // Compute canonical server-side emoji token (preserve F_ when
+                                                // realmojis are enabled so transformOutgoing can convert it).
+                                                val settings = me.lampu.lampcord.shared.settings.Settings.shared
                                                 val hasNitro = (currentUser?.premium_type ?: 0) > 0
-                                                val freeNitro = me.lampu.lampcord.shared.settings.Settings.shared.freeNitroEmojis
-                                                
-                                                val emojiText = if (emoji.id != null) {
-                                                    if (isExternal && !hasNitro && freeNitro) {
-                                                        if (me.lampu.lampcord.shared.settings.Settings.shared.realmojis) {
-                                                            "<${if (emoji.animated == true) "a" else ""}:F_${emoji.name}:${emoji.id}>"
-                                                        } else {
-                                                            val ext = if (emoji.animated == true) "gif" else "png"
-                                                            "https://cdn.discordapp.com/emojis/${emoji.id}.$ext?size=48"
-                                                        }
-                                                    } else {
-                                                        "<${if (emoji.animated == true) "a" else ""}:${emoji.name}:${emoji.id}>"
-                                                    }
-                                                } else emoji.name ?: ""
+                                                val serverReplacement = if (emoji.id != null) {
+                                                    // Force F_ tokens for picker when user doesn't have Nitro but
+                                                    // freeNitro + realmojis are enabled so outgoing transform
+                                                    // will convert to the expected markdown. This keeps picker
+                                                    // behavior consistent with autocomplete.
+                                                    val forceF = settings.freeNitroEmojis && settings.realmojis && !hasNitro
+                                                    val namePart = if (forceF) "F_${emoji.name}" else emoji.name ?: "emoji"
+                                                    "<${if (emoji.animated == true) "a" else ""}:${namePart}:${emoji.id}>"
+                                                } else null
 
-                                                val newText = textFieldValue.text.take(textFieldValue.selection.start) + emojiText + textFieldValue.text.drop(textFieldValue.selection.end)
-                                                textFieldValue = TextFieldValue(newText, TextRange(textFieldValue.selection.start + emojiText.length))
+                                                if (emoji.id != null && serverReplacement != null) {
+                                                    println("DEBUG emojiPicker: freeNitro=${settings.freeNitroEmojis} realmojis=${settings.realmojis} needsNitro=${(emoji.guild_id != null && emoji.guild_id != navigationStore.selectedGuild?.id) || emoji.animated == true} hasNitro=${(currentUser?.premium_type ?: 0) > 0} serverReplacement=$serverReplacement")
+                                                    applyAutocomplete(AutocompleteItem(
+                                                        id = emoji.id,
+                                                        title = ":${emoji.name}:",
+                                                        replacement = serverReplacement,
+                                                        inputText = ":${emoji.name}:"
+                                                    ))
+                                                } else {
+                                                    val emojiText = emoji.name ?: ""
+                                                    val newText = textFieldValue.text.replaceRange(textFieldValue.selection.start, textFieldValue.selection.end, emojiText)
+                                                    textFieldValue = TextFieldValue(newText, TextRange(textFieldValue.selection.start + emojiText.length))
+                                                }
                                                 navigationStore.isEmojiPickerVisible = false
                                             }
                                         }
@@ -709,25 +736,27 @@ fun ChatInputBar(
                             EmojiPicker(
                                 modifier = Modifier.fillMaxWidth(),
                                 onEmojiSelected = { emoji ->
-                                    val isExternal = emoji.guild_id != null && emoji.guild_id != navigationStore.selectedGuild?.id
+                                    val settings = me.lampu.lampcord.shared.settings.Settings.shared
                                     val hasNitro = (currentUser?.premium_type ?: 0) > 0
-                                    val freeNitro = me.lampu.lampcord.shared.settings.Settings.shared.freeNitroEmojis
-                                    
-                                    val emojiText = if (emoji.id != null) {
-                                        if (isExternal && !hasNitro && freeNitro) {
-                                            if (me.lampu.lampcord.shared.settings.Settings.shared.realmojis) {
-                                                "<${if (emoji.animated == true) "a" else ""}:F_${emoji.name}:${emoji.id}>"
-                                            } else {
-                                                val ext = if (emoji.animated == true) "gif" else "png"
-                                                "https://cdn.discordapp.com/emojis/${emoji.id}.$ext?size=48"
-                                            }
-                                        } else {
-                                            "<${if (emoji.animated == true) "a" else ""}:${emoji.name}:${emoji.id}>"
-                                        }
-                                    } else emoji.name ?: ""
+                                    val serverReplacement = if (emoji.id != null) {
+                                        val forceF = settings.freeNitroEmojis && settings.realmojis && !hasNitro
+                                        val namePart = if (forceF) "F_${emoji.name}" else emoji.name ?: "emoji"
+                                        "<${if (emoji.animated == true) "a" else ""}:${namePart}:${emoji.id}>"
+                                    } else null
 
-                                    val newText = textFieldValue.text.take(textFieldValue.selection.start) + emojiText + textFieldValue.text.drop(textFieldValue.selection.end)
-                                    textFieldValue = TextFieldValue(newText, TextRange(textFieldValue.selection.start + emojiText.length))
+                                    if (emoji.id != null && serverReplacement != null) {
+                                        println("DEBUG emojiPickerMobile: freeNitro=${settings.freeNitroEmojis} realmojis=${settings.realmojis} needsNitro=${(emoji.guild_id != null && emoji.guild_id != navigationStore.selectedGuild?.id) || emoji.animated == true} hasNitro=${(currentUser?.premium_type ?: 0) > 0} serverReplacement=$serverReplacement")
+                                        applyAutocomplete(AutocompleteItem(
+                                            id = emoji.id,
+                                            title = ":${emoji.name}:",
+                                            replacement = serverReplacement,
+                                            inputText = ":${emoji.name}:"
+                                        ))
+                                    } else {
+                                        val emojiText = emoji.name ?: ""
+                                        val newText = textFieldValue.text.replaceRange(textFieldValue.selection.start, textFieldValue.selection.end, emojiText)
+                                        textFieldValue = TextFieldValue(newText, TextRange(textFieldValue.selection.start + emojiText.length))
+                                    }
                                 }
                             )
                         }
@@ -781,7 +810,10 @@ private fun resolveServerContent(
     ranges: Map<IntRange, String>,
     channels: List<Channel>,
     members: List<Member>,
-    roles: List<Role>
+    roles: List<Role>,
+    emojis: List<me.lampu.lampcord.shared.model.Emoji>,
+    currentUser: me.lampu.lampcord.shared.model.User?,
+    selectedGuildId: String?
 ): String {
     var result = content
 
@@ -791,11 +823,12 @@ private fun resolveServerContent(
         }
     }
 
-    val roleNames = roles.map { it.name }
-    val pattern = Regex("""(?<![\p{L}\p{N}_])([#@])([^\s]+)""")
+    // Don't match emoji tokens that are already inside angle-bracket server tokens
+    val pattern = Regex("""(?<![<\p{L}\p{N}_])(?:([#@])([^\s]+)|(:)([a-zA-Z0-9_-]+)(:))""")
     val subs = pattern.findAll(result).mapNotNull { m ->
-        val trigger = m.groupValues[1]
-        val token = m.groupValues[2].trimEnd(',', '.', '!', '?', ';', ':', '"', '\'', ')', ']', '}')
+        val trigger = m.groupValues[1].ifEmpty { m.groupValues[3] }
+        val token = if (trigger == ":") m.groupValues[4] else m.groupValues[2].trimEnd(',', '.', '!', '?', ';', ':', '"', '\'', ')', ']', '}').removeSuffix(":")
+
         val replacement = when (trigger) {
             "#" -> channels.firstOrNull { it.name?.equals(token, ignoreCase = true) == true }
                 ?.let { "<#${it.id}>" }
@@ -814,6 +847,12 @@ private fun resolveServerContent(
                         member?.user?.id?.let { "<@$it>" }
                     }
                 }
+            }
+            ":" -> {
+                val emoji = emojis.firstOrNull { it.name?.equals(token, ignoreCase = true) == true }
+                if (emoji != null) {
+                    me.lampu.lampcord.shared.utils.FreeNitroEmojis.getReplacement(emoji, currentUser, selectedGuildId)
+                } else null
             }
             else -> null
         }

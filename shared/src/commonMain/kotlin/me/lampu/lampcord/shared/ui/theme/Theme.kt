@@ -54,7 +54,7 @@ fun LampcordTheme(
         useMaterialYou = useMaterialYou && useDynamicColor
     )
     
-    val colorScheme = remember(baseColorScheme, pureBlack, useDarkTheme, themeStore.activeTheme) {
+    val colorScheme = remember(baseColorScheme, pureBlack, useDarkTheme, themeStore.activeThemes, Settings.shared.transparencyMode) {
         var scheme = if (useDarkTheme && pureBlack) {
             baseColorScheme.pureBlack()
         } else {
@@ -62,7 +62,7 @@ fun LampcordTheme(
         }
         
         // Apply theme overrides
-        themeStore.activeTheme?.let {
+        if (themeStore.activeThemes.isNotEmpty()) {
             scheme = scheme.copy(
                 primary = themeStore.resolveColor("primary", scheme) ?: scheme.primary,
                 onPrimary = themeStore.resolveColor("onPrimary", scheme) ?: scheme.onPrimary,
@@ -99,11 +99,33 @@ fun LampcordTheme(
                 surfaceContainerHighest = themeStore.resolveColor("surfaceContainerHighest", scheme) ?: themeStore.resolveColor("surface", scheme) ?: scheme.surfaceContainerHighest,
             )
         }
-        scheme
+
+        // Apply transparency if enabled and background is present
+        val transparencyMode = Settings.shared.transparencyMode
+        if (transparencyMode != me.lampu.lampcord.shared.settings.TransparencyMode.NONE && themeStore.themeBackgroundUrl != null) {
+            val transparentScheme = scheme.copy(
+                background = Color.Transparent,
+                surface = if (transparencyMode == me.lampu.lampcord.shared.settings.TransparencyMode.FULL) Color.Transparent else scheme.surface.copy(alpha = 0.7f),
+                surfaceContainer = if (transparencyMode == me.lampu.lampcord.shared.settings.TransparencyMode.FULL) Color.Transparent else scheme.surfaceContainer.copy(alpha = 0.7f),
+                surfaceContainerLow = if (transparencyMode == me.lampu.lampcord.shared.settings.TransparencyMode.FULL) Color.Transparent else scheme.surfaceContainerLow.copy(alpha = 0.7f),
+                surfaceContainerLowest = if (transparencyMode == me.lampu.lampcord.shared.settings.TransparencyMode.FULL) Color.Transparent else scheme.surfaceContainerLowest.copy(alpha = 0.7f),
+                surfaceContainerHigh = if (transparencyMode == me.lampu.lampcord.shared.settings.TransparencyMode.FULL) Color.Transparent else scheme.surfaceContainerHigh.copy(alpha = 0.7f),
+                surfaceContainerHighest = if (transparencyMode == me.lampu.lampcord.shared.settings.TransparencyMode.FULL) Color.Transparent else scheme.surfaceContainerHighest.copy(alpha = 0.7f),
+                surfaceVariant = if (transparencyMode == me.lampu.lampcord.shared.settings.TransparencyMode.FULL) Color.Transparent else scheme.surfaceVariant.copy(alpha = 0.7f),
+            )
+            transparentScheme
+        } else {
+            scheme
+        }
     }
 
     val animatedColorScheme = animateColorScheme(colorScheme = colorScheme)
-    val font = rememberAppFontFamily(appFont, customFontPath)
+    
+    val themeFontPath = themeStore.themeFontPath
+    val finalFontOption = if (!themeFontPath.isNullOrEmpty()) FontOption.CUSTOM else appFont
+    val finalFontPath = if (!themeFontPath.isNullOrEmpty()) themeFontPath else customFontPath
+    
+    val font = rememberAppFontFamily(finalFontOption, finalFontPath)
 
     MaterialExpressiveTheme(
         colorScheme = animatedColorScheme,

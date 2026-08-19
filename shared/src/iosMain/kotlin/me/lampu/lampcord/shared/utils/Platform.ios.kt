@@ -48,7 +48,13 @@ actual fun getAppStoragePath(): String = "" // Placeholder for iOS
 
 actual fun writeInternalFile(name: String, content: String) {}
 
+actual fun writeInternalBytes(name: String, content: ByteArray) {}
+
 actual fun readInternalFile(name: String): String? = null
+
+actual fun checkInternalFileExists(name: String): Boolean = false
+
+actual fun getInternalFilePath(name: String): String = ""
 
 actual fun showToast(text: String) {
     println("Toast: $text")

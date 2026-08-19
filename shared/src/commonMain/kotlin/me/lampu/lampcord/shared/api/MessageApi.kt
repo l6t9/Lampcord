@@ -64,22 +64,10 @@ class MessageApi(private val rest: RestClient) {
         val settings = Settings.shared
         val bypass = settings.bypassUploadLimit
 
-        var finalContent = if (settings.freeNitroEmojis) {
-            val emojiRegex = Regex("""<(a)?:F_([a-zA-Z0-9_]+):(\d+)>""")
-            content.replace(emojiRegex) { match ->
-                val animated = match.groupValues[1].isNotEmpty()
-                val name = match.groupValues[2]
-                val id = match.groupValues[3]
-                val useWebp = settings.useWebpEmojis
-
-                val url = if (useWebp) {
-                    "https://cdn.discordapp.com/emojis/$id.webp?name=$name&animated=$animated"
-                } else {
-                    "https://cdn.discordapp.com/emojis/$id.${if (animated) "gif" else "png"}?name=$name"
-                }
-                "[$name]($url)"
-            }
-        } else content
+        var finalContent = transformContent(content)
+        if (finalContent != content) {
+            Logging.i("Message", "Transformed nitro emojis: $content -> $finalContent")
+        }
 
         val remainingFiles = mutableListOf<Pair<String, ByteArray>>()
         if (bypass) {
@@ -220,12 +208,34 @@ class MessageApi(private val rest: RestClient) {
             val response = rest.httpClient.patch("${rest.apiBase}/channels/$channelId/messages/$messageId") {
                 standardHeaders(rest)
                 contentType(ContentType.Application.Json)
-                setBody(MessageRequest(content))
+                setBody(MessageRequest(transformContent(content)))
             }
             response.status.isSuccess()
         } catch (e: Exception) {
             Logging.e("Message", "Error editing message: ${e.message}")
             false
+        }
+    }
+
+    private fun transformContent(content: String): String {
+        val settings = Settings.shared
+        if (!settings.freeNitroEmojis) return content
+
+        val emojiRegex = Regex("""<(a?):F_([a-zA-Z0-9_]+):(\d+)>""")
+        return content.replace(emojiRegex) { match ->
+            val animated = match.groupValues[1] == "a"
+            val name = match.groupValues[2]
+            val id = match.groupValues[3]
+            val useWebp = settings.useWebpEmojis
+
+            val url = if (useWebp) {
+                "https://cdn.discordapp.com/emojis/$id.webp?name=$name&animated=$animated&size=48"
+            } else {
+                val ext = if (animated) "gif" else "png"
+                "https://cdn.discordapp.com/emojis/$id.$ext?name=$name&size=48"
+            }
+
+            if (settings.realmojis) "[$name]($url)" else url
         }
     }
 
@@ -342,6 +352,22 @@ class MessageApi(private val rest: RestClient) {
         } catch (e: Exception) {
             Logging.e("Messages", "Error searching guild messages: ${e.message}")
             null
+        }
+    }
+
+    suspend fun getMentions(limit: Int = 20, before: String? = null): List<Message> {
+        return try {
+            val response = rest.httpClient.get("${rest.apiBase}/users/@me/mentions") {
+                standardHeaders(rest)
+                parameter("limit", limit)
+                if (before != null) {
+                    parameter("before", before)
+                }
+            }
+            if (response.status.isSuccess()) response.body() else emptyList()
+        } catch (e: Exception) {
+            Logging.e("Messages", "Error fetching mentions: ${e.message}")
+            emptyList()
         }
     }
 }

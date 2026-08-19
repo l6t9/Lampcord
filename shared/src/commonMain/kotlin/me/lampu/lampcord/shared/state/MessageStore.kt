@@ -92,70 +92,9 @@ class MessageStore(
     // Nonce tracking to replace local messages with server ones (Discord logic)
     private val messageNonceIds = mutableMapOf<String, String>()
 
-    private val emojiMarkdownRegexCompound = Regex(
-        """(?:\[(?:[a-zA-Z0-9_~]+|\u2236[a-zA-Z0-9_~]+\u2236)]\()?(https://cdn\.discordapp.com/emojis/(\d+)\.(gif|png|webp)(?:\?[^)\s]*)?)\)?"""
-    )
-    private val emojiMarkdownRegexSingle = Regex(
-        """^(?:\[(?:[a-zA-Z0-9_~]+|\u2236[a-zA-Z0-9_~]+\u2236)]\()?(https://cdn\.discordapp\.com/emojis/(\d+)\.(gif|png|webp)(?:\?[^)\s]*)?)\)?$"""
-    )
-    private val fEmojiRegex = Regex("""<(a?):F_([a-zA-Z0-9_]+):(\d+)>""")
+    private fun transformOutgoingContent(content: String): String = me.lampu.lampcord.shared.utils.FreeNitroEmojis.transformOutgoing(content)
 
-    private fun preprocess(message: Message): Message {
-        val settings = me.lampu.lampcord.shared.settings.Settings.shared
-        if (!settings.freeNitroEmojis || !settings.realmojis) return message
-
-        val content = message.content
-        val embeds = message.embeds.toMutableList()
-        var newContent = content
-
-        val regex = if (settings.compoundRealmojis) emojiMarkdownRegexCompound else emojiMarkdownRegexSingle
-        val matches = regex.findAll(content)
-        var changed = false
-        matches.forEach { match ->
-            val fullMatch = match.value
-            val url = match.groupValues[1]
-            val id = match.groupValues[2]
-            val ext = match.groupValues[3]
-            
-            val embedIndex = embeds.indexOfFirst { 
-                it.url == url || it.thumbnail?.url == url || it.image?.url == url || 
-                it.thumbnail?.proxy_url == url || it.image?.proxy_url == url
-            }
-            if (embedIndex != -1) {
-                embeds.removeAt(embedIndex)
-                changed = true
-            }
-            
-            var name = "emoji"
-            val queryParams = url.substringAfter('?', "").split('&')
-            queryParams.forEach { param ->
-                val parts = param.split('=')
-                if (parts[0] == "name" && parts.size > 1) {
-                    name = parts[1]
-                }
-            }
-            
-            val animated = ext == "gif" || url.contains("animated=true")
-            val emojiTag = "<${if (animated) "a" else ""}:F_$name:$id>"
-            if (newContent.contains(fullMatch)) {
-                newContent = newContent.replace(fullMatch, emojiTag)
-                changed = true
-            }
-        }
-
-        return if (changed) message.copy(content = newContent, embeds = embeds) else message
-    }
-
-    private fun transformOutgoingContent(content: String): String {
-        return fEmojiRegex.replace(content) { match ->
-            val animated = match.groupValues[1] == "a"
-            val name = match.groupValues[2]
-            val id = match.groupValues[3]
-            val ext = if (animated) "gif" else "png"
-            val url = "https://cdn.discordapp.com/emojis/$id.$ext?size=48&name=$name"
-            "[$name]($url)"
-        }
-    }
+    private fun preprocess(message: Message): Message = me.lampu.lampcord.shared.utils.FreeNitroEmojis.preprocessIncoming(message)
 
     init {
         scope.launch {
@@ -564,16 +503,15 @@ class MessageStore(
             isProcessing = true
             
             scope.launch {
-                try {
-                    while (true) {
-                        val task = if (queue.isNotEmpty()) queue[0] else null
-                        if (task == null) break
-                        
-                        try {
-                            val settings = me.lampu.lampcord.shared.settings.Settings.shared
-                            val contentToSend = if (settings.freeNitroEmojis && settings.realmojis) {
-                                transformOutgoingContent(task.content)
-                            } else task.content
+
+                            try {
+                            while (true) {
+                                val task = if (queue.isNotEmpty()) queue[0] else null
+                                if (task == null) break
+                                
+                                try {
+                                    val contentToSend = transformOutgoingContent(task.content)
+                                    println("DEBUG sendMessage: raw='${task.content}' transformed='${contentToSend}' nonce=${task.nonce} channel=${task.channelId}")
 
                             val message = withTimeoutOrNull(60000.milliseconds) {
                                 messageApi.sendMessage(
@@ -680,11 +618,7 @@ class MessageStore(
     fun editMessage(message: Message, content: String) {
         scope.launch {
             try {
-                val settings = me.lampu.lampcord.shared.settings.Settings.shared
-                val contentToSend = if (settings.freeNitroEmojis && settings.realmojis) {
-                    transformOutgoingContent(content)
-                } else content
-                
+                val contentToSend = transformOutgoingContent(content)
                 if (!messageApi.editMessage(message.channel_id, message.id, contentToSend)) {
                     errorStore.pushError("Failed to edit message.")
                 }

@@ -59,7 +59,7 @@ class EmojiStore {
             .take(40)
 
         frequentEmojis = if (sorted.size < 40) {
-            val defaults = listOf("❓", "🤔", "❌", "✅", "🔥", "bread", "fork_and_knife", "yum", "weary", "tired_face", "poop", "thumbsup", "100")
+            val defaults = listOf("")
             (sorted + defaults).distinct().take(40)
         } else {
             sorted

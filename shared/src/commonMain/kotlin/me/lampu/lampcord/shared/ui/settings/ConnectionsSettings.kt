@@ -9,49 +9,56 @@ import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.components.settings.*
 
 @Composable
-fun ConnectionsSettings() {
+fun ConnectionsSettings(onBack: () -> Unit) {
+    SettingsSubScreen(
+        title = "Connections",
+        onNavigateBack = onBack
+    ) {
+        ConnectionsSettingsContent()
+    }
+}
+
+@Composable
+fun ConnectionsSettingsContent() {
     val connections = emptyList<me.lampu.lampcord.shared.model.ConnectedAccount>()
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Material3SettingsGroup(
             title = "Connected Accounts",
-            items = connections.map { connection ->
-                Material3SettingsItem(
-                    icon = Icons.Filled.Public,
-                    title = { Text(connection.name) },
-                    description = { Text(connection.type) },
-                    trailingContent = {
-                        IconButton(onClick = { /* TODO */ }) {
-                            Icon(Icons.Filled.Delete, null, tint = MaterialTheme.colorScheme.error)
+            items = buildList {
+                if (connections.isEmpty()) {
+                    add(Material3SettingsItem(
+                        title = { 
+                            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                                Text("No connected accounts found", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
-                    }
-                )
+                    ))
+                } else {
+                    addAll(connections.map { connection ->
+                        Material3SettingsItem(
+                            icon = Icons.Filled.Public,
+                            title = { Text(connection.name) },
+                            description = { Text(connection.type) },
+                            trailingContent = {
+                                IconButton(onClick = { /* TODO */ }) {
+                                    Icon(Icons.Filled.Delete, null, tint = MaterialTheme.colorScheme.error)
+                                }
+                            }
+                        )
+                    })
+                }
             }
         )
 
-        if (connections.isEmpty()) {
-            Material3SettingsGroup {
-                Box(
-                    modifier = Modifier.fillMaxWidth().padding(32.dp),
-                    contentAlignment = androidx.compose.ui.Alignment.Center
-                ) {
-                    Text("No connected accounts found", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-        }
-
-        Spacer(Modifier.height(16.dp))
-        
-        Material3SettingsGroup {
-            Material3SettingsGroup(
-                items = listOf(
-                    Material3SettingsItem(
-                        icon = Icons.Filled.Add,
-                        title = { Text("Add Connection") },
-                        onClick = { /* TODO */ }
-                    )
+        Material3SettingsGroup(
+            items = listOf(
+                Material3SettingsItem(
+                    icon = Icons.Filled.Add,
+                    title = { Text("Add Connection") },
+                    onClick = { /* TODO */ }
                 )
             )
-        }
+        )
     }
 }

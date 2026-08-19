@@ -284,11 +284,11 @@ fun GuildFolderItem(
             // Expanded area
             Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp),
+                    .fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                Spacer(Modifier.height(4.dp)) // Small gap after folder icon
                 val guilds by guildStore.guilds.collectAsState()
                 folder.guild_ids.forEach { el ->
                     val guildId = el.jsonPrimitive.contentOrNull ?: return@forEach

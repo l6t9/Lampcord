@@ -59,7 +59,7 @@ fun DiscordMarkdownText(
     val isJumbo = remember(content) {
         val trimmed = content.trim()
         if (trimmed.isEmpty()) return@remember false
-        val customEmojiRegex = Regex("""<(a?):(\w+):(\d+)>""")
+        val customEmojiRegex = me.lampu.lampcord.shared.utils.FreeNitroEmojis.emojiRegex
         var temp = trimmed
         var count = 0
         customEmojiRegex.findAll(trimmed).forEach { 
@@ -219,7 +219,7 @@ private fun AnnotatedString.Builder.appendDiscordMarkdown(
         // Inline code
         Regex("""`([^`]+)`""") to "CODE",
         // Custom Emojis
-        Regex("""<(a?):(\w+):(\d+)>""") to "EMOJI",
+        me.lampu.lampcord.shared.utils.FreeNitroEmojis.emojiRegex to "EMOJI",
         // Timestamps
         Regex("""<t:(-?\d+)(?::([tTdDfFR]))?>""") to "TIMESTAMP",
         // Mentions
@@ -367,11 +367,11 @@ private fun AnnotatedString.Builder.appendDiscordMarkdown(
             }
             "EMOJI" -> {
                 val animated = match!!.groupValues[1] == "a"
-                val name = match.groupValues[2]
-                val id = match.groupValues[3]
+                val name = match.groupValues[3]
+                val id = match.groupValues[4]
                 val key = "$id:${if (animated) "a" else "p"}:$name"
                 pushStringAnnotation("EMOJI", key)
-                appendInlineContent(key, "<$name>")
+                appendInlineContent(key, ":$name:")
                 pop()
             }
             "TIMESTAMP" -> {

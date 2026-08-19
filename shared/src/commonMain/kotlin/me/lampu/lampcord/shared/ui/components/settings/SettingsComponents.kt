@@ -30,6 +30,7 @@ import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -67,7 +68,7 @@ fun Material3SettingsGroup(
                 textAlign = TextAlign.Start,
                 modifier = Modifier.padding(
                     bottom = 12.dp,
-                    top = 24.dp,
+                    top = 8.dp,
                     start = 16.dp,
                     end = 32.dp,
                 ),
@@ -101,8 +102,8 @@ fun Material3SettingsItemRow(
     isLast: Boolean = false,
     horizontalPadding: Dp = 16.dp,
 ) {
-    val cornerRadius = 12.dp
-    val reducedRadius = 2.dp
+    val cornerRadius = 20.dp
+    val reducedRadius = 5.dp
 
     val shape = RoundedCornerShape(
         topStart = if (isFirst) cornerRadius else reducedRadius,

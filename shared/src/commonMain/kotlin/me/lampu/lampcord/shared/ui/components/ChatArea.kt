@@ -47,10 +47,12 @@ import me.lampu.lampcord.shared.state.MessageStore
 import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.state.RelationshipStore
 import me.lampu.lampcord.shared.state.SettingsStore
+import me.lampu.lampcord.shared.state.ThemeStore
 import me.lampu.lampcord.shared.state.VoiceStore
 import me.lampu.lampcord.shared.ui.components.chat.MessageItem
 import me.lampu.lampcord.shared.ui.icons.Icons
 import org.koin.compose.koinInject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
 
@@ -61,12 +63,18 @@ fun ChatArea(
     relationshipStore: RelationshipStore = koinInject(),
     navigationStore: NavigationStore = koinInject(),
     settingsStore: SettingsStore = koinInject(),
+    themeStore: ThemeStore = koinInject(),
     voiceStore: VoiceStore = koinInject()
 ) {
     val scrollState = rememberLazyListState()
     var isHovered by remember { mutableStateOf(false) }
     val messages by messageStore.messages.collectAsState()
     val relationships by relationshipStore.relationships.collectAsState()
+
+    val themeBackgroundUrl = themeStore.themeBackgroundUrl ?: ""
+    val themeBackgroundAlpha = themeStore.themeBackgroundAlpha
+    
+    val backgroundUrl = if (themeBackgroundUrl.isNotEmpty()) themeBackgroundUrl else settingsStore.chatBackground
 
     LaunchedEffect(scrollState) {
         snapshotFlow { scrollState.layoutInfo.visibleItemsInfo }
@@ -115,7 +123,7 @@ fun ChatArea(
             messageStore.scrollToMessageId = null
         }
     }
-    
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -132,9 +140,9 @@ fun ChatArea(
                 }
             }
     ) {
-        if (settingsStore.chatBackground.isNotEmpty()) {
+        if (backgroundUrl.isNotEmpty()) {
             AsyncImage(
-                model = settingsStore.chatBackground,
+                model = backgroundUrl,
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
@@ -143,7 +151,7 @@ fun ChatArea(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.6f))
+                    .background(MaterialTheme.colorScheme.surface.copy(alpha = if (themeBackgroundUrl.isNotEmpty()) themeBackgroundAlpha else 0.6f))
             )
         }
 

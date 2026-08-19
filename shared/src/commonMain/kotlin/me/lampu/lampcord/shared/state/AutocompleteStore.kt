@@ -178,11 +178,12 @@ class AutocompleteStore(
                     val isAnimated = emoji.animated == true
                     
                     val replacement = if (emoji.id != null) {
-                        if (isExternal && !hasNitro && freeNitro) {
+                        val needsNitro = isExternal || isAnimated
+                        if (needsNitro && !hasNitro && freeNitro) {
                             if (realmojis) {
                                 "<${if (isAnimated) "a" else ""}:F_${emoji.name}:${emoji.id}>"
                             } else {
-                                "https://cdn.discordapp.com/emojis/${emoji.id}.${if (isAnimated) "gif" else "png"}?size=48"
+                                "https://cdn.discordapp.com/emojis/${emoji.id}.${if (isAnimated) "gif" else "png"}?size=48&name=${emoji.name}"
                             }
                         } else {
                             "<${if (isAnimated) "a" else ""}:${emoji.name}:${emoji.id}>"
@@ -193,7 +194,8 @@ class AutocompleteStore(
                         id = emoji.id ?: emoji.name ?: "",
                         title = ":${emoji.name}:",
                         icon = if (emoji.id != null) "https://cdn.discordapp.com/emojis/${emoji.id}.png?size=64" else null,
-                        replacement = replacement
+                        replacement = replacement,
+                        inputText = ":${emoji.name}:"
                     )
                 })
 

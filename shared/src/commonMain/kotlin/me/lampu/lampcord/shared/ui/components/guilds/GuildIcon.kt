@@ -111,37 +111,32 @@ fun GuildIcon(
         content = tooltipText(guild.name ?: "Server"),
         anchor = {
             ContextMenu(items = contextMenuItems) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.padding(vertical = 4.dp)
+                RegularGuildItem(
+                    isSelected = isSelected,
+                    isUnread = isUnread,
+                    isMuted = isMuted,
+                    onClick = onClick,
+                    selectedColor = if (iconUrl == null) MaterialTheme.colorScheme.primary else Color.Transparent,
+                    unselectedColor = if (iconUrl == null) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent
                 ) {
-                    RegularGuildItem(
-                        isSelected = isSelected,
-                        isUnread = isUnread,
-                        isMuted = isMuted,
-                        onClick = onClick,
-                        selectedColor = if (iconUrl == null) MaterialTheme.colorScheme.primary else Color.Transparent,
-                        unselectedColor = if (iconUrl == null) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent
-                    ) {
-                        if (iconUrl != null) {
-                            AsyncImage(
-                                model = iconUrl,
-                                contentDescription = guild.name,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        } else {
-                            val initials = remember(guild.name) {
-                                guild.name?.split(" ")?.mapNotNull { it.firstOrNull() }?.joinToString("") ?: "?"
-                            }
-                            Text(
-                                text = initials,
-                                style = MaterialTheme.typography.titleMedium,
-                                color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
-                                textAlign = TextAlign.Center,
-                                maxLines = 1,
-                                fontSize = if (initials.length > 3) 12.sp else 16.sp
-                            )
+                    if (iconUrl != null) {
+                        AsyncImage(
+                            model = iconUrl,
+                            contentDescription = guild.name,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        val initials = remember(guild.name) {
+                            guild.name?.split(" ")?.mapNotNull { it.firstOrNull() }?.joinToString("") ?: "?"
                         }
+                        Text(
+                            text = initials,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
+                            textAlign = TextAlign.Center,
+                            maxLines = 1,
+                            fontSize = if (initials.length > 3) 12.sp else 16.sp
+                        )
                     }
 
                     if (mentionCount > 0) {

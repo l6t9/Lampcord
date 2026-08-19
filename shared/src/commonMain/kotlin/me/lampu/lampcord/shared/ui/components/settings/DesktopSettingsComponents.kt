@@ -1,6 +1,7 @@
 package me.lampu.lampcord.shared.ui.components.settings
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.runtime.Composable
@@ -22,14 +23,13 @@ fun SettingsLayout(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(
-                    horizontal = if (isCompact) 16.dp else 48.dp,
                     vertical = if (isCompact) 16.dp else 24.dp
                 ),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Column(
                 modifier = Modifier.widthIn(max = 850.dp).fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(if (isCompact) 24.dp else 48.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 content()
             }
@@ -76,10 +76,17 @@ fun SettingsSection(
                 }
             }
             
-            Column(
-                verticalArrangement = Arrangement.spacedBy(if (isCompact) 12.dp else 20.dp)
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                color = MaterialTheme.colorScheme.surfaceContainer
             ) {
-                content()
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(if (isCompact) 12.dp else 20.dp)
+                ) {
+                    content()
+                }
             }
         }
     }

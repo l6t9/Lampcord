@@ -10,7 +10,8 @@ data class LampcordTheme(
     val colors: Map<String, JsonElement> = emptyMap(),
     val drawable_tints: Map<String, JsonElement> = emptyMap(),
     val background: Map<String, JsonElement> = emptyMap(),
-    val fonts: Map<String, JsonElement> = emptyMap()
+    val fonts: Map<String, JsonElement> = emptyMap(),
+    val raws: Map<String, JsonElement> = emptyMap()
 )
 
 @Serializable

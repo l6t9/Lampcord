@@ -25,6 +25,7 @@ enum class SettingsSearchDestination {
     VoiceVideo,
     Notifications,
     Advanced,
+    Theming,
     Logout
 }
 

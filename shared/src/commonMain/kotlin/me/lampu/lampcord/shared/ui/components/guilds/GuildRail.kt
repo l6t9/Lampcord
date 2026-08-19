@@ -86,7 +86,7 @@ fun GuildRail(
             .width(72.dp)
             .fillMaxHeight(),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = PaddingValues(vertical = 8.dp)
     ) {
         item {
@@ -153,17 +153,6 @@ fun GuildRail(
 
         items(dmMentionChannels, key = { "dm_${it.id}" }) { channel ->
             DMIcon(channel = channel)
-        }
-
-        item {
-            HorizontalDivider(
-                modifier = Modifier
-                    .width(32.dp)
-                    .padding(vertical = 2.dp)
-                    .clip(MaterialTheme.shapes.medium),
-                thickness = 2.dp,
-                color = MaterialTheme.colorScheme.outline,
-            )
         }
 
         val folders = userSettings?.guild_folders ?: emptyList()

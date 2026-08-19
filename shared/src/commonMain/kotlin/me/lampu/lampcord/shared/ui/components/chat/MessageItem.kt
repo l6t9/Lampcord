@@ -352,15 +352,23 @@ fun MessageItem(
                 )
             }
 
-            val topPadding = when (spacingMode) {
-                me.lampu.lampcord.shared.settings.MessageSpacingMode.COMPACT -> 0.dp
-                me.lampu.lampcord.shared.settings.MessageSpacingMode.DEFAULT -> if (isInline) 0.dp else (if (useBubbles) 4.dp else 6.dp)
-                me.lampu.lampcord.shared.settings.MessageSpacingMode.SPACIOUS -> if (isInline) 2.dp else (if (useBubbles) 8.dp else 10.dp)
+            val topPadding = if (useBubbles) {
+                if (isInline) 1.5.dp else 6.dp
+            } else {
+                when (spacingMode) {
+                    me.lampu.lampcord.shared.settings.MessageSpacingMode.COMPACT -> 0.dp
+                    me.lampu.lampcord.shared.settings.MessageSpacingMode.DEFAULT -> if (isInline) 0.dp else 6.dp
+                    me.lampu.lampcord.shared.settings.MessageSpacingMode.SPACIOUS -> if (isInline) 2.dp else 10.dp
+                }
             }
-            val bottomPadding = when (spacingMode) {
-                me.lampu.lampcord.shared.settings.MessageSpacingMode.COMPACT -> 0.dp
-                me.lampu.lampcord.shared.settings.MessageSpacingMode.DEFAULT -> if (hasNextSameUser) 0.dp else (if (useBubbles) 4.dp else 6.dp)
-                me.lampu.lampcord.shared.settings.MessageSpacingMode.SPACIOUS -> if (hasNextSameUser) 2.dp else (if (useBubbles) 8.dp else 10.dp)
+            val bottomPadding = if (useBubbles) {
+                if (hasNextSameUser) 1.5.dp else 6.dp
+            } else {
+                when (spacingMode) {
+                    me.lampu.lampcord.shared.settings.MessageSpacingMode.COMPACT -> 0.dp
+                    me.lampu.lampcord.shared.settings.MessageSpacingMode.DEFAULT -> if (hasNextSameUser) 0.dp else 6.dp
+                    me.lampu.lampcord.shared.settings.MessageSpacingMode.SPACIOUS -> if (hasNextSameUser) 2.dp else 10.dp
+                }
             }
 
             ContextMenu(
@@ -461,7 +469,8 @@ fun MessageItem(
                             UsernameView(
                                 name = message.member?.nick ?: message.author.global_name ?: message.author.username ?: "Unknown User",
                                 style = message.member?.display_name_styles ?: message.author.display_name_styles,
-                                baseStyle = MaterialTheme.typography.titleSmall.copy(
+                                baseStyle = if (useBubbles) MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
+                                else MaterialTheme.typography.titleSmall.copy(
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 15.sp
                                 ),
@@ -485,8 +494,9 @@ fun MessageItem(
                             Spacer(Modifier.width(8.dp))
                             MessageTimestamp(
                                 timestamp = message.timestamp,
-                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                style = if (useBubbles) MaterialTheme.typography.labelSmall
+                                else MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (useBubbles) 0.7f else 0.5f)
                             )
                             
                             if (message.isDeleted) {
@@ -513,18 +523,19 @@ fun MessageItem(
                                     Text(
                                         text = message.oldContent,
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (useBubbles) 0.5f else 0.4f),
                                         modifier = Modifier.padding(bottom = 1.dp),
                                         textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
                                     )
                                 }
                                 DiscordMarkdownText(
                                     content = message.content,
-                                    style = MaterialTheme.typography.bodyLarge.copy(
+                                    style = if (useBubbles) MaterialTheme.typography.bodyMedium
+                                    else MaterialTheme.typography.bodyLarge.copy(
                                         fontSize = 15.sp,
                                         lineHeight = 20.sp
                                     ),
-                                    color = if (message.isDeleted) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onBackground
+                                    color = if (message.isDeleted) MaterialTheme.colorScheme.error else if (useBubbles) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onBackground
                                 )
                             }
                         }

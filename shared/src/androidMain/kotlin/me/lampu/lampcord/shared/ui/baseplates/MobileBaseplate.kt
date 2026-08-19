@@ -23,10 +23,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.SettingsScreen
+import me.lampu.lampcord.shared.ui.AboutContent
+import me.lampu.lampcord.shared.ui.settings.*
+import me.lampu.lampcord.shared.ui.components.settings.SettingsSubScreen
 import me.lampu.lampcord.shared.ui.components.*
 import me.lampu.lampcord.shared.ui.components.chat.ChannelSettingsScreen
 import me.lampu.lampcord.shared.ui.components.chat.PinnedMessagesScreen
@@ -62,12 +66,27 @@ actual fun MobileBaseplate(
         setOf(
             Screen.Chat,
             Screen.Friends, 
+            Screen.Mentions,
+            Screen.Search,
+            Screen.GlobalSearch,
             Screen.Settings, 
             Screen.ServerSettings, 
             Screen.ChannelSettings,
-            Screen.Search,
             Screen.Pins,
-            Screen.ChannelsAndRoles
+            Screen.ChannelsAndRoles,
+            Screen.Theming,
+            Screen.ThemeEditor,
+            Screen.AccountSettings,
+            Screen.ProfilesSettings,
+            Screen.AppearanceSettings,
+            Screen.AccessibilitySettings,
+            Screen.PrivacySettings,
+            Screen.ConnectionsSettings,
+            Screen.DevicesSettings,
+            Screen.ChatSettings,
+            Screen.NotificationsSettings,
+            Screen.AdvancedSettings,
+            Screen.AboutSettings
         ) 
     }
     val navigationState = rememberNavigationState(
@@ -77,7 +96,27 @@ actual fun MobileBaseplate(
     val navigator = remember { Navigator(navigationState) }
 
     val panelState = rememberDiscordPanelsState()
+    var lastPanelValue by remember { mutableStateOf(DiscordPanelValue.Center) }
     val keyboardController = LocalSoftwareKeyboardController.current
+
+    val routeIndexMap = remember {
+        mapOf<Any, Int>(
+            Screen.Chat to 0,
+            Screen.Friends to 1,
+            Screen.GlobalSearch to 2,
+            Screen.Mentions to 3,
+            Screen.Settings to 4,
+            Screen.Search to 5,
+            Screen.Pins to 6,
+            Screen.ChannelsAndRoles to 7,
+            Screen.ServerSettings to 8,
+            Screen.ChannelSettings to 9,
+            Screen.Theming to 10,
+            Screen.ThemeEditor::class to 11,
+        )
+    }
+    val quickSpatialSpec = MaterialTheme.motionScheme.defaultSpatialSpec<IntOffset>()
+    val quickEffectsSpec = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
 
     // Sync navigationStore visibility states with navigator
     LaunchedEffect(navigationStore.isSettingsVisible) {
@@ -104,24 +143,56 @@ actual fun MobileBaseplate(
         if (navigationStore.isChannelsAndRolesVisible) navigator.navigate(Screen.ChannelsAndRoles)
         else if (navigationState.topLevelRoute == Screen.ChannelsAndRoles) navigator.goBack()
     }
+    LaunchedEffect(navigationStore.isMentionsSelected) {
+        if (navigationStore.isMentionsSelected) navigator.navigate(Screen.Mentions)
+        else if (navigationState.topLevelRoute == Screen.Mentions) navigator.goBack()
+    }
 
-    LaunchedEffect(navigationStore.selectedGuild?.id, navigationStore.isFriendsSelected) {
+    LaunchedEffect(navigationStore.selectedGuild?.id, navigationStore.isFriendsSelected, navigationStore.isMentionsSelected) {
         if (navigationStore.selectedGuild != null) {
             navigator.navigate(Screen.Chat)
         } else if (navigationStore.isFriendsSelected) {
             navigator.navigate(Screen.Friends)
+        } else if (navigationStore.isMentionsSelected) {
+            navigator.navigate(Screen.Mentions)
         }
     }
 
     // Sync navigator back to navigationStore
     LaunchedEffect(navigationState.topLevelRoute) {
         val route = navigationState.topLevelRoute
+        
+        // Sync panel state when navigating
+        if (route == Screen.Chat) {
+            // Restore last panel value when returning to Chat
+            panelState.currentValue = lastPanelValue
+        } else {
+            // Auto-close panels when navigating away from Chat
+            panelState.close()
+        }
+
         if (route !is Screen.Settings && navigationStore.isSettingsVisible) navigationStore.isSettingsVisible = false
         if (route !is Screen.ServerSettings && navigationStore.isServerSettingsVisible) navigationStore.isServerSettingsVisible = false
         if (route !is Screen.ChannelSettings && navigationStore.channelSettingsChannel != null) navigationStore.closeChannelSettings()
         if (route !is Screen.Search && navigationStore.isSearchVisible) navigationStore.isSearchVisible = false
         if (route !is Screen.Pins && navigationStore.isPinsVisible) navigationStore.isPinsVisible = false
         if (route !is Screen.ChannelsAndRoles && navigationStore.isChannelsAndRolesVisible) navigationStore.isChannelsAndRolesVisible = false
+
+        when (route) {
+            is Screen.Friends -> {
+                navigationStore.isFriendsSelected = true
+                navigationStore.isMentionsSelected = false
+            }
+            is Screen.Mentions -> {
+                navigationStore.isFriendsSelected = false
+                navigationStore.isMentionsSelected = true
+            }
+            is Screen.Chat -> {
+                navigationStore.isFriendsSelected = false
+                navigationStore.isMentionsSelected = false
+            }
+            else -> {}
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -130,90 +201,435 @@ actual fun MobileBaseplate(
         }
     }
 
-    LaunchedEffect(panelState.currentValue) {
+    LaunchedEffect(panelState.currentValue, navigationState.topLevelRoute) {
+        if (navigationState.topLevelRoute == Screen.Chat) {
+            lastPanelValue = panelState.currentValue
+        }
         if (panelState.currentValue != DiscordPanelValue.Center) {
             keyboardController?.hide()
         }
     }
 
+    val currentRoute = navigationState.topLevelRoute
+    val isChat = currentRoute == Screen.Chat
+    val isTabRoute = currentRoute in setOf(
+        Screen.Chat, Screen.Friends, Screen.Mentions, Screen.GlobalSearch, Screen.Settings
+    )
+
+    // Global Navigation Bar Overlay
+    val targetNavBarVisibleAmount = remember(panelState.progress, currentRoute, isTabRoute) {
+        val progress = panelState.progress
+        if (isTabRoute) {
+            if (currentRoute == Screen.Chat) {
+                progress.coerceIn(0f, 1f)
+            } else {
+                (1f + progress).coerceIn(0f, 1f)
+            }
+        } else {
+            0f
+        }
+    }
+
+    val navBarVisibleAmount by animateFloatAsState(
+        targetValue = targetNavBarVisibleAmount,
+        animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec<Float>(),
+        label = "NavBarVisibleAmount"
+    )
+
     val entries = navigationState.toEntries(
         entryProvider {
             entry<Screen.Chat> {
-                MainBaseplateContent(
-                    navigationStore,
-                    profileStore,
-                    presenceStore,
-                    settingsStore,
-                    allUsers,
-                    currentUser,
-                    panelState,
-                    navigationStore.selectedThread ?: navigationStore.selectedChannel,
-                    isActive = navigationState.topLevelRoute == Screen.Chat
-                )
+                Box(Modifier.fillMaxSize()) {
+                    MainBaseplateContent(
+                        navigationStore,
+                        profileStore,
+                        presenceStore,
+                        settingsStore,
+                        allUsers,
+                        currentUser,
+                        panelState,
+                        navigationStore.selectedThread ?: navigationStore.selectedChannel
+                    )
+                }
             }
             entry<Screen.Friends> {
-                MainBaseplateContent(
-                    navigationStore,
-                    profileStore,
-                    presenceStore,
-                    settingsStore,
-                    allUsers,
-                    currentUser,
-                    panelState,
-                    navigationStore.selectedThread ?: navigationStore.selectedChannel,
-                    isActive = navigationState.topLevelRoute == Screen.Friends
-                )
+                val currentBottomPadding = (80.dp * navBarVisibleAmount).coerceAtLeast(0.dp)
+                Box(Modifier.fillMaxSize().padding(bottom = currentBottomPadding)) {
+                    FriendsList()
+                }
             }
-            entry<Screen.Settings> {
-                SettingsScreen(onDismiss = { navigationStore.isSettingsVisible = false })
-            }
-            entry<Screen.ServerSettings> {
-                ServerSettings(onDismiss = { navigationStore.isServerSettingsVisible = false })
-            }
-            entry<Screen.ChannelSettings> {
-                ChannelSettingsScreen(onDismiss = { navigationStore.closeChannelSettings() })
+            entry<Screen.Mentions> {
+                val currentBottomPadding = (80.dp * navBarVisibleAmount).coerceAtLeast(0.dp)
+                Box(Modifier.fillMaxSize().padding(bottom = currentBottomPadding)) {
+                    me.lampu.lampcord.shared.ui.components.chat.MentionsScreen()
+                }
             }
             entry<Screen.Search> {
-                SearchScreen(onDismiss = { navigationStore.isSearchVisible = false })
+                val currentBottomPadding = (80.dp * navBarVisibleAmount).coerceAtLeast(0.dp)
+                Box(Modifier.fillMaxSize().padding(bottom = currentBottomPadding)) {
+                    SearchScreen(onDismiss = { navigationStore.isSearchVisible = false })
+                }
+            }
+            entry<Screen.GlobalSearch> {
+                val currentBottomPadding = (80.dp * navBarVisibleAmount).coerceAtLeast(0.dp)
+                Box(Modifier.fillMaxSize().padding(bottom = currentBottomPadding)) {
+                    GlobalSearchScreen(onDismiss = { navigator.goBack() })
+                }
+            }
+            entry<Screen.Settings> {
+                val currentBottomPadding = (80.dp * navBarVisibleAmount).coerceAtLeast(0.dp)
+                Box(Modifier.fillMaxSize().padding(bottom = currentBottomPadding)) {
+                    SettingsScreen(
+                        onNavigateToAccount = { navigator.navigate(Screen.AccountSettings) },
+                        onNavigateToProfiles = { navigator.navigate(Screen.ProfilesSettings) },
+                        onNavigateToPrivacy = { navigator.navigate(Screen.PrivacySettings) },
+                        onNavigateToConnections = { navigator.navigate(Screen.ConnectionsSettings) },
+                        onNavigateToDevices = { navigator.navigate(Screen.DevicesSettings) },
+                        onNavigateToAppearance = { navigator.navigate(Screen.AppearanceSettings) },
+                        onNavigateToAccessibility = { navigator.navigate(Screen.AccessibilitySettings) },
+                        onNavigateToChat = { navigator.navigate(Screen.ChatSettings) },
+                        onNavigateToNotifications = { navigator.navigate(Screen.NotificationsSettings) },
+                        onNavigateToAdvanced = { navigator.navigate(Screen.AdvancedSettings) },
+                        onNavigateToAbout = { navigator.navigate(Screen.AboutSettings) },
+                        onNavigateToTheming = { navigator.navigate(Screen.Theming) },
+                        onDismiss = { navigationStore.isSettingsVisible = false }
+                    )
+                }
+            }
+            entry<Screen.AccountSettings> {
+                val userStore: UserStore = koinInject()
+                AccountSettings(onBack = { navigator.goBack() }, userStore = userStore)
+            }
+            entry<Screen.ProfilesSettings> {
+                val userStore: UserStore = koinInject()
+                ProfilesSettings(onBack = { navigator.goBack() }, userStore = userStore)
+            }
+            entry<Screen.AppearanceSettings> {
+                AppearanceSettings(onNavigateToTheming = { navigator.navigate(Screen.Theming) }, onBack = { navigator.goBack() })
+            }
+            entry<Screen.AccessibilitySettings> {
+                AccessibilitySettings(onBack = { navigator.goBack() })
+            }
+            entry<Screen.PrivacySettings> {
+                PrivacySettings(onBack = { navigator.goBack() })
+            }
+            entry<Screen.ConnectionsSettings> {
+                ConnectionsSettings(onBack = { navigator.goBack() })
+            }
+            entry<Screen.DevicesSettings> {
+                DevicesSettings(onBack = { navigator.goBack() })
+            }
+            entry<Screen.ChatSettings> {
+                ChatSettings(onBack = { navigator.goBack() })
+            }
+            entry<Screen.NotificationsSettings> {
+                NotificationsSettings(onBack = { navigator.goBack() })
+            }
+            entry<Screen.AdvancedSettings> {
+                AdvancedSettings(onBack = { navigator.goBack() })
+            }
+            entry<Screen.AboutSettings> {
+                SettingsSubScreen(title = "About", onNavigateBack = { navigator.goBack() }) {
+                    AboutContent(version = "1.0.0", onOpenUrl = { /* TODO */ })
+                }
+            }
+            entry<Screen.ServerSettings> {
+                val currentBottomPadding = (80.dp * navBarVisibleAmount).coerceAtLeast(0.dp)
+                Box(Modifier.fillMaxSize().padding(bottom = currentBottomPadding)) {
+                    ServerSettings(onDismiss = { navigationStore.isServerSettingsVisible = false })
+                }
+            }
+            entry<Screen.ChannelSettings> {
+                val currentBottomPadding = (80.dp * navBarVisibleAmount).coerceAtLeast(0.dp)
+                Box(Modifier.fillMaxSize().padding(bottom = currentBottomPadding)) {
+                    ChannelSettingsScreen(onDismiss = { navigationStore.closeChannelSettings() })
+                }
             }
             entry<Screen.Pins> {
-                PinnedMessagesScreen(onDismiss = { navigationStore.isPinsVisible = false })
+                val currentBottomPadding = (80.dp * navBarVisibleAmount).coerceAtLeast(0.dp)
+                Box(Modifier.fillMaxSize().padding(bottom = currentBottomPadding)) {
+                    PinnedMessagesScreen(onDismiss = { navigationStore.isPinsVisible = false })
+                }
             }
             entry<Screen.ChannelsAndRoles> {
+                val currentBottomPadding = (80.dp * navBarVisibleAmount).coerceAtLeast(0.dp)
                 val guild = navigationStore.selectedGuild
-                Scaffold(
-                    topBar = {
-                        TopAppBar(
-                            title = {
-                                Column {
-                                    Text("Channels & Roles", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                    guild?.name?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                Box(Modifier.fillMaxSize().padding(bottom = currentBottomPadding)) {
+                    Scaffold(
+                        topBar = {
+                            TopAppBar(
+                                title = {
+                                    Column {
+                                        Text("Channels & Roles", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                        guild?.name?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                    }
+                                },
+                                navigationIcon = {
+                                    IconButton(onClick = { navigationStore.isChannelsAndRolesVisible = false }) {
+                                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                                    }
                                 }
-                            },
-                            navigationIcon = {
-                                IconButton(onClick = { navigationStore.isChannelsAndRolesVisible = false }) {
-                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
-                                }
-                            }
-                        )
+                            )
+                        }
+                    ) { padding ->
+                        Box(Modifier.padding(padding)) {
+                            me.lampu.lampcord.shared.ui.components.guilds.ChannelsAndRoles()
+                        }
                     }
-                ) { padding ->
-                    Box(Modifier.padding(padding)) {
-                        me.lampu.lampcord.shared.ui.components.guilds.ChannelsAndRoles()
-                    }
+                }
+            }
+            entry<Screen.Theming> {
+                Box(Modifier.fillMaxSize().padding(bottom = 80.dp)) {
+                    ThemingSettings(onNavigateToEditor = { navigator.navigate(Screen.ThemeEditor(it)) }, onBack = { navigator.goBack() })
+                }
+            }
+            entry<Screen.ThemeEditor> { screen: Screen.ThemeEditor ->
+                Box(Modifier.fillMaxSize()) {
+                    ThemeEditorScreen(themeJson = screen.themeJson, onBack = { navigator.goBack() })
                 }
             }
         }
     )
 
-    NavDisplay(
-        entries = entries,
-        onBack = {
-            if (!navigator.goBack()) {
-                // Exit app or go to home if not on start route
+
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+    ) {
+        DiscordPanels(
+            state = panelState,
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding(),
+            swipeEnabled = isChat && !navigationStore.isBubble && me.lampu.lampcord.shared.settings.Settings.shared.chatGestures == me.lampu.lampcord.shared.settings.ChatGestures.SWIPE_TO_MEMBERS,
+            startPanel = { 
+                if (isChat) {
+                    val currentBottomPadding = (80.dp * navBarVisibleAmount).coerceAtLeast(0.dp)
+                    Box(Modifier.fillMaxSize().padding(bottom = currentBottomPadding)) {
+                        Sidebar()
+                    }
+                }
+            },
+            endPanel = {
+                if (isChat) {
+                    MemberList()
+                }
+            },
+            centerPanel = {
+                // The chat panel (center) should remain full-height even when the drawer is open 
+                // to avoid vertical layout "jumps" during swiping. 
+                // Other tab screens (Friends, Mentions, etc.) use the padding to stay above the nav bar.
+                Box(Modifier.fillMaxSize()) {
+                    NavDisplay(
+                        entries = entries,
+                        onBack = {
+                            if (!navigator.goBack()) {
+                                // Exit app or go to home if not on start route
+                            }
+                        },
+                        transitionSpec = {
+                            val targetKey = targetState.key
+                            val initialKey = initialState.key
+
+                            val targetIndex = routeIndexMap[targetKey] ?: routeIndexMap[targetKey!!::class] ?: -1
+                            val initialIndex = routeIndexMap[initialKey] ?: routeIndexMap[initialKey!!::class] ?: -1
+
+                            val enterTransition =
+                                if (targetIndex == -1 || targetIndex > initialIndex) {
+                                    slideInHorizontally(animationSpec = quickSpatialSpec) { it / 8 } +
+                                        fadeIn(quickEffectsSpec)
+                                } else {
+                                    slideInHorizontally(animationSpec = quickSpatialSpec) { -it / 8 } +
+                                        fadeIn(quickEffectsSpec)
+                                }
+
+                            val exitTransition =
+                                if (targetIndex == -1 || targetIndex > initialIndex) {
+                                    slideOutHorizontally(animationSpec = quickSpatialSpec) { -it / 8 } +
+                                        fadeOut(quickEffectsSpec)
+                                } else {
+                                    slideOutHorizontally(animationSpec = quickSpatialSpec) { it / 8 } +
+                                        fadeOut(quickEffectsSpec)
+                                }
+
+                            enterTransition togetherWith exitTransition
+                        },
+                        popTransitionSpec = {
+                            val targetKey = targetState.key
+                            val initialKey = initialState.key
+
+                            val targetIndex = routeIndexMap[targetKey] ?: routeIndexMap[targetKey!!::class] ?: -1
+                            val initialIndex = routeIndexMap[initialKey] ?: routeIndexMap[initialKey!!::class] ?: -1
+
+                            val enterTransition =
+                                if (initialIndex != -1 && initialIndex < targetIndex) {
+                                    slideInHorizontally(animationSpec = quickSpatialSpec) { it / 8 } +
+                                        fadeIn(quickEffectsSpec)
+                                } else {
+                                    slideInHorizontally(animationSpec = quickSpatialSpec) { -it / 8 } +
+                                        fadeIn(quickEffectsSpec)
+                                }
+
+                            val exitTransition =
+                                if (initialIndex != -1 && initialIndex < targetIndex) {
+                                    slideOutHorizontally(animationSpec = quickSpatialSpec) { -it / 8 } +
+                                        fadeOut(quickEffectsSpec)
+                                } else {
+                                    slideOutHorizontally(animationSpec = quickSpatialSpec) { it / 8 } +
+                                        fadeOut(quickEffectsSpec)
+                                }
+
+                            enterTransition togetherWith exitTransition
+                        },
+                        predictivePopTransitionSpec = {
+                            val targetKey = targetState.key
+                            val initialKey = initialState.key
+
+                            val targetIndex = routeIndexMap[targetKey] ?: routeIndexMap[targetKey!!::class] ?: -1
+                            val initialIndex = routeIndexMap[initialKey] ?: routeIndexMap[initialKey!!::class] ?: -1
+
+                            val enterTransition =
+                                if (initialIndex != -1 && initialIndex < targetIndex) {
+                                    slideInHorizontally(animationSpec = quickSpatialSpec) { it / 8 } +
+                                        fadeIn(quickEffectsSpec)
+                                } else {
+                                    slideInHorizontally(animationSpec = quickSpatialSpec) { -it / 8 } +
+                                        fadeIn(quickEffectsSpec)
+                                }
+
+                            val exitTransition =
+                                if (initialIndex != -1 && initialIndex < targetIndex) {
+                                    slideOutHorizontally(animationSpec = quickSpatialSpec) { -it / 8 } +
+                                        fadeOut(quickEffectsSpec)
+                                } else {
+                                    slideOutHorizontally(animationSpec = quickSpatialSpec) { it / 8 } +
+                                        fadeOut(quickEffectsSpec)
+                                }
+
+                            enterTransition togetherWith exitTransition
+                        }
+                    )
+
+                    if (panelState.currentValue != DiscordPanelValue.Center) {
+                        Box(
+                            modifier = Modifier
+                                .zIndex(1f)
+                                .fillMaxSize()
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                    onClick = { panelState.close() },
+                                )
+                        )
+                    }
+                }
+            }
+        )
+
+        if (navBarVisibleAmount > 0.001f) {
+            NavigationBar(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .height(80.dp)
+                    .graphicsLayer {
+                        translationY = (1f - navBarVisibleAmount) * 80.dp.toPx()
+                        alpha = navBarVisibleAmount
+                    },
+                containerColor = MaterialTheme.colorScheme.surface,
+                tonalElevation = 0.dp,
+                windowInsets = WindowInsets.navigationBars
+            ) {
+                NavigationBarItem(
+                    selected = currentRoute == Screen.Chat,
+                    onClick = {
+                        navigationStore.isFriendsSelected = false
+                        navigationStore.isSettingsVisible = false
+                        navigationStore.isSearchVisible = false
+                        navigationStore.isMentionsSelected = false
+                        navigator.navigate(Screen.Chat)
+                    },
+                    icon = { Icon(Icons.Brand.Discord, "Home") },
+                    label = { Text("Home") },
+                    alwaysShowLabel = !settingsStore.hideNavLabels
+                )
+                NavigationBarItem(
+                    selected = currentRoute == Screen.Friends,
+                    onClick = {
+                        navigationStore.isFriendsSelected = true
+                        navigator.navigate(Screen.Friends)
+                    },
+                    icon = { Icon(if (currentRoute == Screen.Friends) Icons.Filled.Person else Icons.Rounded.Person, "Friends") },
+                    label = { Text("Friends") },
+                    alwaysShowLabel = !settingsStore.hideNavLabels
+                )
+                NavigationBarItem(
+                    selected = currentRoute == Screen.GlobalSearch,
+                    onClick = {
+                        navigator.navigate(Screen.GlobalSearch)
+                    },
+                    icon = { Icon(Icons.Filled.Search, "Search") },
+                    label = { Text("Search") },
+                    alwaysShowLabel = !settingsStore.hideNavLabels
+                )
+                NavigationBarItem(
+                    selected = currentRoute == Screen.Mentions,
+                    onClick = {
+                        navigationStore.isMentionsSelected = true
+                        navigator.navigate(Screen.Mentions)
+                    },
+                    icon = { Icon(Icons.Rounded.AlternateEmail, "Mentions") },
+                    label = { Text("Mentions") },
+                    alwaysShowLabel = !settingsStore.hideNavLabels
+                )
+                NavigationBarItem(
+                    selected = currentRoute == Screen.Settings,
+                    onClick = {
+                        navigationStore.isSettingsVisible = true
+                        navigator.navigate(Screen.Settings)
+                    },
+                    icon = {
+                        val user = currentUser
+                        val avatarUrl = user?.avatar?.let { "https://cdn.discordapp.com/avatars/${user.id}/$it.png?size=64" }
+                        if (avatarUrl != null && user != null) {
+                            Box(modifier = Modifier.size(24.dp)) {
+                                AvatarWithDecoration(
+                                    avatarUrl = avatarUrl,
+                                    decorationData = currentUser?.avatar_decoration_data,
+                                    size = 24.dp,
+                                    status = presenceStore.getUserStatus(
+                                        currentUser?.id ?: "",
+                                        currentUser?.id,
+                                        settingsStore.userSettings?.status
+                                    )
+                                )
+                            }
+                        } else {
+                            Icon(Icons.Filled.Settings, "You")
+                        }
+                    },
+                    label = { Text("You") },
+                    alwaysShowLabel = !settingsStore.hideNavLabels
+                )
             }
         }
-    )
+
+        // Panels back handler integration
+        BackHandler(enabled = panelState.currentValue == DiscordPanelValue.End) {
+            panelState.close()
+        }
+
+        BackHandler(enabled = panelState.currentValue == DiscordPanelValue.Center && isChat) {
+            if (navigationStore.selectedThread != null) {
+                navigationStore.selectedThread = null
+            } else if (navigationStore.isChannelsAndRolesVisible) {
+                navigationStore.isChannelsAndRolesVisible = false
+            } else {
+                panelState.openStart()
+            }
+        }
+    }
 
     // Global Overlays (non-backstack)
     if (navigationStore.isAttachmentViewerVisible) {
@@ -280,331 +696,205 @@ private fun MainBaseplateContent(
     allUsers: Map<String, me.lampu.lampcord.shared.model.User>,
     currentUser: me.lampu.lampcord.shared.model.User?,
     panelState: DiscordPanelsState,
-    activeChannel: me.lampu.lampcord.shared.model.Channel?,
-    isActive: Boolean
+    activeChannel: me.lampu.lampcord.shared.model.Channel?
 ) {
     // Ensure we recompose when these change
-    key(navigationStore.selectedGuild?.id ?: "home", navigationStore.isFriendsSelected) {
-        val swipeEnabled = !navigationStore.isBubble && me.lampu.lampcord.shared.settings.Settings.shared.chatGestures == me.lampu.lampcord.shared.settings.ChatGestures.SWIPE_TO_MEMBERS
-        val isFriends = navigationStore.isFriendsSelected && navigationStore.selectedGuild == null
-
-        Box(
-            Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+    key(navigationStore.selectedGuild?.id ?: "home") {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background, // Chat background
+            tonalElevation = 0.dp
         ) {
-            DiscordPanels(
-                state = panelState,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .statusBarsPadding(),
-                swipeEnabled = swipeEnabled,
-                startPanel = {
-                    Sidebar()
-                },
-                centerPanel = {
-                    Surface(
-                        modifier = Modifier.fillMaxSize(),
-                        color = MaterialTheme.colorScheme.background, // Chat background
-                        tonalElevation = 0.dp
-                    ) {
-                        Scaffold(
-                            contentWindowInsets = WindowInsets(0, 0, 0, 0),
-                            topBar = {
-                                if (activeChannel != null || navigationStore.isChannelsAndRolesVisible || navigationStore.isFriendsSelected) {
-                                    TopAppBar(
-                                        windowInsets = TopAppBarDefaults.windowInsets,
-                                        title = {
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                if (navigationStore.isChannelsAndRolesVisible) {
-                                                    Text(
-                                                        text = "Browse Channels",
-                                                        style = MaterialTheme.typography.titleMedium,
-                                                        fontWeight = FontWeight.Bold
-                                                    )
-                                                } else if (activeChannel != null) {
-                                                    if (activeChannel.type == 1) {
-                                                        val recipientId = activeChannel.recipients?.firstOrNull()?.id ?: activeChannel.recipient_ids?.firstOrNull()
-                                                        val recipient = recipientId?.let { allUsers[it] } ?: activeChannel.recipients?.firstOrNull()
-                                                        
-                                                        if (recipient != null) {
-                                                            Box(modifier = Modifier.size(24.dp)) {
-                                                                AvatarWithDecoration(
-                                                                    avatarUrl = recipient.avatar?.let { "https://cdn.discordapp.com/avatars/${recipient.id}/$it.png?size=64" },
-                                                                    decorationData = recipient.avatar_decoration_data,
-                                                                    size = 24.dp,
-                                                                    status = presenceStore.getUserStatus(recipient.id, currentUser?.id, settingsStore.userSettings?.status)
-                                                                )
-                                                            }
-                                                            Spacer(Modifier.width(12.dp))
-                                                        }
-                                                    }
-
-                                                    Column {
-                                                        Text(
-                                                            text = if (activeChannel.type == 1) {
-                                                                val recipientId = activeChannel.recipients?.firstOrNull()?.id ?: activeChannel.recipient_ids?.firstOrNull()
-                                                                val recipient = recipientId?.let { allUsers[it] } ?: activeChannel.recipients?.firstOrNull()
-                                                                recipient?.let { it.global_name ?: it.username } ?: "Chat"
-                                                            } else activeChannel.name ?: "Chat",
-                                                            style = MaterialTheme.typography.titleMedium,
-                                                            fontWeight = FontWeight.Bold,
-                                                            maxLines = 1,
-                                                            overflow = TextOverflow.Ellipsis,
-                                                            modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 3000, velocity = 30.dp)
-                                                        )
-                                                        if (activeChannel.topic?.isNotBlank() == true) {
-                                                            Text(
-                                                                text = activeChannel.topic,
-                                                                style = MaterialTheme.typography.labelSmall,
-                                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                                maxLines = 1,
-                                                                overflow = TextOverflow.Ellipsis,
-                                                                modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 3000, velocity = 30.dp)
-                                                            )
-                                                        }
-                                                    }
-                                                } else if (navigationStore.isFriendsSelected) {
-                                                    Text(
-                                                        text = "Friends",
-                                                        style = MaterialTheme.typography.titleMedium,
-                                                        fontWeight = FontWeight.Bold
-                                                    )
-                                                }
-                                            }
-                                        },
-                                        navigationIcon = {
-                                            if (!navigationStore.isBubble) {
-                                                val isThread = navigationStore.selectedThread != null
-                                                val isRoles = navigationStore.isChannelsAndRolesVisible
-                                                if (isThread) {
-                                                    IconButton(onClick = {
-                                                        navigationStore.selectedThread = null
-                                                    }) {
-                                                        Icon(
-                                                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                                            contentDescription = "Back"
-                                                        )
-                                                    }
-                                                } else if (isRoles) {
-                                                    IconButton(onClick = {
-                                                        navigationStore.isChannelsAndRolesVisible = false
-                                                    }) {
-                                                        Icon(
-                                                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                                            contentDescription = "Back"
-                                                        )
-                                                    }
-                                                } else if (activeChannel != null && activeChannel.type != 1 && activeChannel.type != 3 && activeChannel.guild_id != null) {
-                                                    val channelIcon = when (activeChannel.type) {
-                                                        15 -> Icons.Rounded.Forum
-                                                        2, 13 -> Icons.AutoMirrored.Filled.VolumeUp
-                                                        5 -> Icons.Filled.Campaign
-                                                        else -> Icons.Filled.Tag
-                                                    }
-                                                    Box(
-                                                        modifier = Modifier
-                                                            .padding(start = 4.dp)
-                                                            .size(40.dp)
-                                                            .clickable(
-                                                                interactionSource = remember { MutableInteractionSource() },
-                                                                indication = null
-                                                            ) { panelState.openStart() },
-                                                        contentAlignment = Alignment.Center
-                                                    ) {
-                                                        Icon(
-                                                            imageVector = channelIcon,
-                                                            contentDescription = "Channels",
-                                                            modifier = Modifier.size(22.dp),
-                                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                                        )
-                                                    }
-                                                } else if (activeChannel?.type != 1 && activeChannel?.type != 3) {
-                                                    IconButton(onClick = { panelState.openStart() }) {
-                                                        Icon(
-                                                            imageVector = Icons.Filled.Menu,
-                                                            contentDescription = "Menu"
-                                                        )
-                                                    }
-                                                }
-                                            }
-                                        },
-                                        actions = {
-                                            if (!navigationStore.isBubble && activeChannel != null && (activeChannel.guild_id != null || activeChannel.type == 1 || activeChannel.type == 3)) {
-                                                IconButton(onClick = { navigationStore.isSearchVisible = true }) {
-                                                    Icon(
-                                                        imageVector = Icons.Filled.Search,
-                                                        contentDescription = "Search",
-                                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                                    )
-                                                }
-                                                if (activeChannel.type != 2 && activeChannel.type != 13) {
-                                                    IconButton(onClick = { navigationStore.isPinsVisible = true }) {
-                                                        Icon(
-                                                            imageVector = Icons.Filled.PushPin,
-                                                            contentDescription = "Pins",
-                                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                                        )
-                                                    }
-                                                }
-                                            }
-                                        },
-                                        colors = TopAppBarDefaults.topAppBarColors(
-                                            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest // Discord Dark Header
+            Scaffold(
+                contentWindowInsets = WindowInsets(0, 0, 0, 0),
+                topBar = {
+                    if (activeChannel != null || navigationStore.isChannelsAndRolesVisible) {
+                        TopAppBar(
+                            windowInsets = TopAppBarDefaults.windowInsets,
+                            title = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    if (navigationStore.isChannelsAndRolesVisible) {
+                                        Text(
+                                            text = "Browse Channels",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold
                                         )
-                                    )
-                                }
-                            }
-                        ) { padding ->
-                            val quickSpatialSpec = MaterialTheme.motionScheme.defaultSpatialSpec<IntOffset>()
-                            val quickEffectsSpec = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
+                                    } else if (activeChannel != null) {
+                                        if (activeChannel.type == 1) {
+                                            val recipientId = activeChannel.recipients?.firstOrNull()?.id ?: activeChannel.recipient_ids?.firstOrNull()
+                                            val recipient = recipientId?.let { allUsers[it] } ?: activeChannel.recipients?.firstOrNull()
 
-                            AnimatedContent(
-                                targetState = activeChannel?.id
-                                    ?: if (navigationStore.isChannelsAndRolesVisible) "roles" else if (navigationStore.isFriendsSelected) "friends" else "none",
-                                transitionSpec = {
-                                    (fadeIn(quickEffectsSpec) + slideInHorizontally(quickSpatialSpec) { it / 8 }).togetherWith(
-                                        fadeOut(quickEffectsSpec) + slideOutHorizontally(quickSpatialSpec) { -it / 8 }
-                                    )
-                                },
-                                modifier = Modifier
-                                    .padding(top = padding.calculateTopPadding(), bottom = 0.dp)
-                                    .fillMaxSize()
-                                    .background(MaterialTheme.colorScheme.background), // Chat background
-                                label = "MainContentTransition"
-                            ) { target ->
-                                Box(Modifier.fillMaxSize()) {
-                                    if (activeChannel != null && target == activeChannel.id) {
-                                        if (activeChannel.type == 2 || activeChannel.type == 13) {
-                                            VoiceArea(activeChannel)
-                                        } else {
-                                            Column(
-                                                modifier = Modifier
-                                                    .fillMaxSize()
-                                            ) {
-                                                Box(modifier = Modifier.weight(1f)) {
-                                                    ChatArea(modifier = Modifier.fillMaxSize())
+                                            if (recipient != null) {
+                                                Box(modifier = Modifier.size(24.dp)) {
+                                                    AvatarWithDecoration(
+                                                        avatarUrl = recipient.avatar?.let { "https://cdn.discordapp.com/avatars/${recipient.id}/$it.png?size=64" },
+                                                        decorationData = recipient.avatar_decoration_data,
+                                                        size = 24.dp,
+                                                        status = presenceStore.getUserStatus(recipient.id, currentUser?.id, settingsStore.userSettings?.status)
+                                                    )
                                                 }
-                                                ChatInputBar(activeChannel)
+                                                Spacer(Modifier.width(12.dp))
                                             }
                                         }
-                                    } else if (target == "roles") {
-                                        me.lampu.lampcord.shared.ui.components.guilds.ChannelsAndRoles()
-                                    } else if (target == "friends") {
-                                        FriendsList()
-                                    } else {
-                                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                                Icon(Icons.Brand.Discord, null, modifier = Modifier.size(80.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f))
-                                                Spacer(Modifier.height(24.dp))
-                                                Text("Select a channel to start chatting", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                                Spacer(Modifier.height(24.dp))
-                                                Button(onClick = { panelState.openStart() }) {
-                                                    Text("Open Drawer")
-                                                }
+
+                                        Column {
+                                            Text(
+                                                text = if (activeChannel.type == 1) {
+                                                    val recipientId = activeChannel.recipients?.firstOrNull()?.id ?: activeChannel.recipient_ids?.firstOrNull()
+                                                    val recipient = recipientId?.let { allUsers[it] } ?: activeChannel.recipients?.firstOrNull()
+                                                    recipient?.let { it.global_name ?: it.username } ?: "Chat"
+                                                } else activeChannel.name ?: "Chat",
+                                                style = MaterialTheme.typography.titleMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                                modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 3000, velocity = 30.dp)
+                                            )
+                                            if (activeChannel.topic?.isNotBlank() == true) {
+                                                Text(
+                                                    text = activeChannel.topic,
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis,
+                                                    modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 3000, velocity = 30.dp)
+                                                )
                                             }
                                         }
                                     }
                                 }
+                            },
+                            navigationIcon = {
+                                if (!navigationStore.isBubble) {
+                                    val isThread = navigationStore.selectedThread != null
+                                    val isRoles = navigationStore.isChannelsAndRolesVisible
+                                    if (isThread) {
+                                        IconButton(onClick = {
+                                            navigationStore.selectedThread = null
+                                        }) {
+                                            Icon(
+                                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                                contentDescription = "Back"
+                                            )
+                                        }
+                                    } else if (isRoles) {
+                                        IconButton(onClick = {
+                                            navigationStore.isChannelsAndRolesVisible = false
+                                        }) {
+                                            Icon(
+                                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                                contentDescription = "Back"
+                                            )
+                                        }
+                                    } else if (activeChannel != null && activeChannel.type != 1 && activeChannel.type != 3 && activeChannel.guild_id != null) {
+                                        val channelIcon = when (activeChannel.type) {
+                                            15 -> Icons.Rounded.Forum
+                                            2, 13 -> Icons.AutoMirrored.Filled.VolumeUp
+                                            5 -> Icons.Filled.Campaign
+                                            else -> Icons.Filled.Tag
+                                        }
+                                        Box(
+                                            modifier = Modifier
+                                                .padding(start = 4.dp)
+                                                .size(40.dp)
+                                                .clickable(
+                                                    interactionSource = remember { MutableInteractionSource() },
+                                                    indication = null
+                                                ) { panelState.openStart() },
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = channelIcon,
+                                                contentDescription = "Channels",
+                                                modifier = Modifier.size(22.dp),
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    } else if (activeChannel?.type != 1 && activeChannel?.type != 3) {
+                                        IconButton(onClick = { panelState.openStart() }) {
+                                            Icon(
+                                                imageVector = Icons.Filled.Menu,
+                                                contentDescription = "Menu"
+                                            )
+                                        }
+                                    }
+                                }
+                            },
+                            actions = {
+                                if (!navigationStore.isBubble && activeChannel != null && (activeChannel.guild_id != null || activeChannel.type == 1 || activeChannel.type == 3)) {
+                                    IconButton(onClick = { navigationStore.isSearchVisible = true }) {
+                                        Icon(
+                                            imageVector = Icons.Filled.Search,
+                                            contentDescription = "Search",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    if (activeChannel.type != 2 && activeChannel.type != 13) {
+                                        IconButton(onClick = { navigationStore.isPinsVisible = true }) {
+                                            Icon(
+                                                imageVector = Icons.Filled.PushPin,
+                                                contentDescription = "Pins",
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
+                            },
+                            colors = TopAppBarDefaults.topAppBarColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerLowest // Discord Dark Header
+                            )
+                        )
+                    }
+                }
+            ) { padding ->
+                val quickSpatialSpec = MaterialTheme.motionScheme.defaultSpatialSpec<IntOffset>()
+                val quickEffectsSpec = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
+
+                AnimatedContent(
+                    targetState = activeChannel?.id
+                        ?: if (navigationStore.isChannelsAndRolesVisible) "roles" else "none",
+                    transitionSpec = {
+                        (fadeIn(quickEffectsSpec) + slideInHorizontally(quickSpatialSpec) { it / 8 }).togetherWith(
+                            fadeOut(quickEffectsSpec) + slideOutHorizontally(quickSpatialSpec) { -it / 8 }
+                        )
+                    },
+                    modifier = Modifier
+                        .padding(top = padding.calculateTopPadding(), bottom = 0.dp)
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background), // Chat background
+                    label = "MainContentTransition"
+                ) { target ->
+                    Box(Modifier.fillMaxSize()) {
+                        if (activeChannel != null && target == activeChannel.id) {
+                            if (activeChannel.type == 2 || activeChannel.type == 13) {
+                                VoiceArea(activeChannel)
+                            } else {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                ) {
+                                    Box(modifier = Modifier.weight(1f)) {
+                                        ChatArea(modifier = Modifier.fillMaxSize())
+                                    }
+                                    ChatInputBar(activeChannel)
+                                }
+                            }
+                        } else if (target == "roles") {
+                            me.lampu.lampcord.shared.ui.components.guilds.ChannelsAndRoles()
+                        } else {
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Icon(Icons.Brand.Discord, null, modifier = Modifier.size(80.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f))
+                                    Spacer(Modifier.height(24.dp))
+                                    Text("Select a channel to start chatting", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Spacer(Modifier.height(24.dp))
+                                    Button(onClick = { panelState.openStart() }) {
+                                        Text("Open Drawer")
+                                    }
+                                }
                             }
                         }
-
-                        if (panelState.currentValue != DiscordPanelValue.Center) {
-                            Box(
-                                modifier = Modifier
-                                    .zIndex(1f)
-                                    .fillMaxSize()
-                                    .clickable(
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        indication = null,
-                                        onClick = { panelState.close() },
-                                    )
-                            )
-                        }
                     }
-                },
-                endPanel = {
-                    MemberList()
-                }
-            )
-
-            // Global Navigation Bar Overlay
-            val targetNavBarVisibleAmount = remember(panelState.progress, isFriends) {
-                val progress = panelState.progress
-                if (isFriends) {
-                    (1f + progress).coerceIn(0f, 1f) // Hidden when swiping to Member list (progress < 0)
-                } else {
-                    progress.coerceIn(0f, 1f) // Only visible when swiping to Channel list (progress > 0)
-                }
-            }
-
-            val navBarVisibleAmount by animateFloatAsState(
-                targetValue = targetNavBarVisibleAmount,
-                animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec<Float>(),
-                label = "NavBarVisibleAmount"
-            )
-
-            if (navBarVisibleAmount > 0.001f) {
-                NavigationBar(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .height(80.dp)
-                        .graphicsLayer {
-                            translationY = (1f - navBarVisibleAmount) * 80.dp.toPx()
-                            alpha = navBarVisibleAmount
-                        },
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 0.dp,
-                    windowInsets = WindowInsets.navigationBars
-                ) {
-                    NavigationBarItem(
-                        selected = !navigationStore.isFriendsSelected && !navigationStore.isSettingsVisible && !navigationStore.isSearchVisible,
-                        onClick = {
-                            navigationStore.isFriendsSelected = false
-                            navigationStore.isSettingsVisible = false
-                            navigationStore.isSearchVisible = false
-                        },
-                        icon = { Icon(Icons.Brand.Discord, "Home") },
-                        label = { Text("Home") },
-                        alwaysShowLabel = !settingsStore.hideNavLabels
-                    )
-                    NavigationBarItem(
-                        selected = navigationStore.isFriendsSelected,
-                        onClick = { navigationStore.selectFriends() },
-                        icon = { Icon(if (navigationStore.isFriendsSelected) Icons.Filled.Person else Icons.Rounded.Person, "Friends") },
-                        label = { Text("Friends") },
-                        alwaysShowLabel = !settingsStore.hideNavLabels
-                    )
-                    NavigationBarItem(
-                        selected = navigationStore.isSearchVisible,
-                        onClick = { navigationStore.isSearchVisible = true },
-                        icon = { Icon(Icons.Filled.Search, "Search") },
-                        label = { Text("Search") },
-                        alwaysShowLabel = !settingsStore.hideNavLabels
-                    )
-                    NavigationBarItem(
-                        selected = navigationStore.isSettingsVisible,
-                        onClick = { navigationStore.isSettingsVisible = true },
-                        icon = { Icon(Icons.Filled.Settings, "Settings") },
-                        label = { Text("You") },
-                        alwaysShowLabel = !settingsStore.hideNavLabels
-                    )
-                }
-            }
-            
-            // Panels back handler integration
-            BackHandler(enabled = isActive && panelState.currentValue == DiscordPanelValue.End) {
-                panelState.close()
-            }
-
-            BackHandler(enabled = isActive && panelState.currentValue == DiscordPanelValue.Center) {
-                if (navigationStore.selectedThread != null) {
-                    navigationStore.selectedThread = null
-                } else if (navigationStore.isChannelsAndRolesVisible) {
-                    navigationStore.isChannelsAndRolesVisible = false
-                } else {
-                    panelState.openStart()
                 }
             }
         }

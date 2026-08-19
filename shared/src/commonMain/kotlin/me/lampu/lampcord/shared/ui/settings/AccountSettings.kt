@@ -1,20 +1,8 @@
 package me.lampu.lampcord.shared.ui.settings
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -25,75 +13,84 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.ui.components.AsyncImage
-import me.lampu.lampcord.shared.ui.components.settings.Material3SettingsItem
-import me.lampu.lampcord.shared.ui.components.settings.SettingsLayout
-import me.lampu.lampcord.shared.ui.components.settings.SettingsSection
+import me.lampu.lampcord.shared.ui.components.settings.*
 import me.lampu.lampcord.shared.ui.icons.Icons
 import org.koin.compose.koinInject
 
 @Composable
-fun AccountSettings(userStore: UserStore = koinInject()) {
+fun AccountSettings(
+    onBack: () -> Unit,
+    userStore: UserStore = koinInject()
+) {
     val user by userStore.currentUser.collectAsState()
     val userVal = user ?: return
     
-    SettingsLayout {
-        SettingsSection(
+    SettingsSubScreen(
+        title = "Account",
+        onNavigateBack = onBack
+    ) {
+        AccountSettingsContent(userVal = userVal)
+    }
+}
+
+@Composable
+fun AccountSettingsContent(userVal: me.lampu.lampcord.shared.model.User) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Material3SettingsGroup(
             title = "Account Information",
-            icon = Icons.Filled.AccountCircle
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    val avatarUrl = userVal.avatar?.let { "https://cdn.discordapp.com/avatars/${userVal.id}/$it.png?size=128" }
-                    if (avatarUrl != null) {
-                        AsyncImage(
-                            model = avatarUrl,
-                            contentDescription = "Avatar",
-                            modifier = Modifier.size(80.dp).clip(CircleShape)
-                        )
-                    } else {
-                        Surface(
-                            modifier = Modifier.size(80.dp),
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.primaryContainer
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(userVal.username?.take(1)?.uppercase() ?: "?", style = MaterialTheme.typography.headlineMedium)
+            items = listOf(
+                Material3SettingsItem(
+                    leadingContent = {
+                        val avatarUrl = userVal.avatar?.let { "https://cdn.discordapp.com/avatars/${userVal.id}/$it.png?size=128" }
+                        if (avatarUrl != null) {
+                            AsyncImage(
+                                model = avatarUrl,
+                                contentDescription = "Avatar",
+                                modifier = Modifier.size(60.dp).clip(CircleShape)
+                            )
+                        } else {
+                            Surface(
+                                modifier = Modifier.size(60.dp),
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.primaryContainer
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(userVal.username?.take(1)?.uppercase() ?: "?", style = MaterialTheme.typography.headlineSmall)
+                                }
                             }
                         }
+                    },
+                    title = { Text(userVal.global_name ?: userVal.username ?: "Unknown User", fontWeight = FontWeight.Bold) },
+                    description = { Text(userVal.username ?: "") },
+                    trailingContent = {
+                        Button(onClick = { /* TODO */ }) {
+                            Text("Edit")
+                        }
                     }
+                )
+            )
+        )
 
-                    Spacer(Modifier.width(20.dp))
+        Material3SettingsGroup(
+            items = listOf(
+                Material3SettingsItem(
+                    title = { Text("Username") },
+                    description = { Text(userVal.username ?: "Not set") }
+                ),
+                Material3SettingsItem(
+                    title = { Text("Email") },
+                    description = { Text(userVal.email ?: "Not set") }
+                )
+            )
+        )
 
-                    Column {
-                        Text(userVal.global_name ?: userVal.username ?: "Unknown User", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                        Text(userVal.username ?: "", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    AccountInfoItem("Username", userVal.username ?: "Not set")
-                    AccountInfoItem("Email", userVal.email ?: "Not set")
-                }
-
-                Spacer(Modifier.height(8.dp))
-
-                Button(onClick = { /* TODO */ }) {
-                    Text("Edit User Profile")
-                }
-            }
-        }
-
-        SettingsSection(
+        Material3SettingsGroup(
             title = "Password and Authentication",
-            icon = Icons.Filled.Lock
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            items = listOf(
                 Material3SettingsItem(
                     title = { Text("Change Password") },
                     onClick = { /* TODO */ }
-                )
+                ),
                 Material3SettingsItem(
                     title = { Text("Two-Factor Authentication") },
                     description = { 
@@ -104,15 +101,7 @@ fun AccountSettings(userStore: UserStore = koinInject()) {
                     },
                     onClick = { /* TODO */ }
                 )
-            }
-        }
-    }
-}
-
-@Composable
-private fun AccountInfoItem(label: String, value: String) {
-    Column {
-        Text(label, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+            )
+        )
     }
 }

@@ -35,7 +35,13 @@ expect fun getAppStoragePath(): String
 
 expect fun writeInternalFile(name: String, content: String)
 
+expect fun writeInternalBytes(name: String, content: ByteArray)
+
 expect fun readInternalFile(name: String): String?
+
+expect fun checkInternalFileExists(name: String): Boolean
+
+expect fun getInternalFilePath(name: String): String
 
 expect fun showToast(text: String)
 

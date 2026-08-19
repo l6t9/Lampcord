@@ -39,3 +39,10 @@ enum class PanelAnimation {
     MINIMAL,
     EXPRESSIVE
 }
+
+enum class TransparencyMode {
+    NONE,
+    CHAT,
+    CHAT_SETTINGS,
+    FULL
+}

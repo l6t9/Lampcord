@@ -21,11 +21,17 @@ class Settings(private val settings: KmpSettings) {
     var customFontPath by preference("custom_font_path", "")
     var chatBackground by preference("chat_background", "")
     var activeThemeJson by preference("active_theme_json", "")
+    var installedThemesJson by preference("installed_themes_json", "[]")
     var searchHistoryJson by preference("search_history", "[]")
     var tapTap by preferenceBoolean("tap_tap", true)
     var chatGestures by preferenceEnum("chat_gestures", ChatGestures.SWIPE_TO_MEMBERS)
     var animateStickers by preferenceEnum("animate_stickers", StickerAnimation.ALWAYS)
     var panelAnimation by preferenceEnum("panel_animation", PanelAnimation.MINIMAL)
+
+    // Theme Settings
+    var transparencyMode by preferenceEnum("transparency_mode", TransparencyMode.NONE)
+    var enableCustomFonts by preferenceBoolean("enable_custom_fonts", true)
+    var enableCustomSounds by preferenceBoolean("enable_custom_sounds", true)
 
     // Chatbox Customization
     var chatboxBackgroundOpacity by preferenceFloat("chatbox_background_opacity", 1.0f)

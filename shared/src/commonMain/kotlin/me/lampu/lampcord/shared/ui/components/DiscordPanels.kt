@@ -16,7 +16,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import me.lampu.lampcord.shared.settings.PanelAnimation
@@ -215,8 +214,8 @@ fun DiscordPanels(
                 modifier = Modifier
                     .fillMaxSize()
                     .zIndex(2f)
-                    .offset { IntOffset(animatedOffset.roundToInt(), 0) }
                     .graphicsLayer {
+                        translationX = animatedOffset
                         val isExpressive = animationType == PanelAnimation.EXPRESSIVE
                         
                         // Corner rounding and scaling for the "border" effect

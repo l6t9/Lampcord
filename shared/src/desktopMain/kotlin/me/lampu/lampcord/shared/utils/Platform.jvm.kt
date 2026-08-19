@@ -62,9 +62,23 @@ actual fun writeInternalFile(name: String, content: String) {
     java.io.File(dir, name).writeText(content)
 }
 
+actual fun writeInternalBytes(name: String, content: ByteArray) {
+    val dir = java.io.File(getAppStoragePath())
+    if (!dir.exists()) dir.mkdirs()
+    java.io.File(dir, name).writeBytes(content)
+}
+
 actual fun readInternalFile(name: String): String? {
     val file = java.io.File(getAppStoragePath(), name)
     return if (file.exists()) file.readText() else null
+}
+
+actual fun checkInternalFileExists(name: String): Boolean {
+    return java.io.File(getAppStoragePath(), name).exists()
+}
+
+actual fun getInternalFilePath(name: String): String {
+    return java.io.File(getAppStoragePath(), name).absolutePath
 }
 
 actual fun showToast(text: String) {

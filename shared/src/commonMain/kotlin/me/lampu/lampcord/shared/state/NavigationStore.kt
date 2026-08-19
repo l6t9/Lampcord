@@ -58,6 +58,7 @@ class NavigationStore(
 
     var selectedGuildOnboarding by mutableStateOf<Onboarding?>(null)
     var isFriendsSelected by mutableStateOf(false)
+    var isMentionsSelected by mutableStateOf(false)
 
     var isConnected by mutableStateOf(false)
     var isConnecting by mutableStateOf(false)
@@ -167,6 +168,11 @@ class NavigationStore(
             val lastDmId = Settings.shared.getLastChannel("home")
             if (lastDmId == "friends") {
                 isFriendsSelected = true
+                isMentionsSelected = false
+                selectedChannel = null
+            } else if (lastDmId == "mentions") {
+                isFriendsSelected = false
+                isMentionsSelected = true
                 selectedChannel = null
             } else {
                 val dmToSelect = if (lastDmId != null) channels.find { it.id == lastDmId } else channels.firstOrNull()
@@ -185,10 +191,23 @@ class NavigationStore(
         selectedChannel = null
         selectedThread = null
         isFriendsSelected = true
+        isMentionsSelected = false
         isChannelsAndRolesVisible = false
         isServerSettingsVisible = false
         Settings.shared.clearLastGuild()
         Settings.shared.setLastChannel("home", "friends")
+    }
+
+    fun selectMentions() {
+        selectedGuild = null
+        selectedChannel = null
+        selectedThread = null
+        isFriendsSelected = false
+        isMentionsSelected = true
+        isChannelsAndRolesVisible = false
+        isServerSettingsVisible = false
+        Settings.shared.clearLastGuild()
+        Settings.shared.setLastChannel("home", "mentions")
     }
 
     fun restoreLastState(subscribeCallback: (String) -> Unit) {
@@ -406,6 +425,7 @@ class NavigationStore(
         selectedThread = null
         selectedGuildOnboarding = null
         isFriendsSelected = false
+        isMentionsSelected = false
         isConnected = false
         isConnecting = false
         isSettingsVisible = false
