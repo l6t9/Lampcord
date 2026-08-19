@@ -6,6 +6,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -31,6 +32,7 @@ fun ChannelHeader(
     settingsStore: SettingsStore = koinInject()
 ) {
     val currentUser by userStore.currentUser.collectAsState()
+    val allUsers by userStore.users.collectAsState()
     val isChannelsAndRoles = navigationStore.isChannelsAndRolesVisible
     val isDesktop = me.lampu.lampcord.shared.utils.getPlatformName() == "desktop" || 
                     me.lampu.lampcord.shared.utils.getPlatformName() == "macos" || 
@@ -47,18 +49,20 @@ fun ChannelHeader(
                     )
                 } else if (channel != null) {
                     val isDm = channel.type == 1 || channel.type == 3 || channel.guild_id == null
-                    val name = if (isDm) {
-                        val recipientId = channel.recipients?.firstOrNull()?.id
-                            ?: channel.recipient_ids?.firstOrNull()
-                        val recipient = recipientId?.let { userStore.getUser(it) }
-                            ?: channel.recipients?.firstOrNull()
-                        if (channel.name?.isNotBlank() == true) {
-                            channel.name
+                    val name = remember(channel, allUsers, isDm) {
+                        if (isDm) {
+                            val recipientId = channel.recipients?.firstOrNull()?.id
+                                ?: channel.recipient_ids?.firstOrNull()
+                            val recipient = recipientId?.let { allUsers[it] }
+                                ?: channel.recipients?.firstOrNull()
+                            if (channel.name?.isNotBlank() == true) {
+                                channel.name
+                            } else {
+                                recipient?.let { it.global_name ?: it.username } ?: "Unknown"
+                            }
                         } else {
-                            recipient?.let { it.global_name ?: it.username } ?: "Unknown"
+                            CleanUtils.cleanChannelName(channel.name ?: "unnamed")
                         }
-                    } else {
-                        CleanUtils.cleanChannelName(channel.name ?: "unnamed")
                     }
                     Text(
                         text = name,

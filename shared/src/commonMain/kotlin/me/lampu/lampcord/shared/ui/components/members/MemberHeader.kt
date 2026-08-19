@@ -51,6 +51,7 @@ fun MemberHeader(
     guildStore: GuildStore = koinInject()
 ) {
     val currentUser by userStore.currentUser.collectAsState()
+    val allUsers by userStore.users.collectAsState()
     val guild = navigationStore.selectedGuild
     val member = remember(guild?.id, currentUser) {
         if (guild != null && currentUser != null) userStore.getMember(guild.id, currentUser!!.id) else null
@@ -82,11 +83,20 @@ fun MemberHeader(
                 }
             }
             
-            val name = if (isDm) {
-                val recipient = channel.recipients?.firstOrNull()
-                recipient?.let { it.global_name ?: it.username } ?: "Unnamed DM"
-            } else {
-                me.lampu.lampcord.shared.utils.CleanUtils.cleanChannelName(channel.name ?: "unnamed")
+            val name = remember(channel, allUsers, isDm) {
+                if (isDm) {
+                    val recipientId = channel.recipients?.firstOrNull()?.id
+                        ?: channel.recipient_ids?.firstOrNull()
+                    val recipient = recipientId?.let { allUsers[it] }
+                        ?: channel.recipients?.firstOrNull()
+                    if (channel.name?.isNotBlank() == true) {
+                        channel.name
+                    } else {
+                        recipient?.let { it.global_name ?: it.username } ?: "Unknown"
+                    }
+                } else {
+                    me.lampu.lampcord.shared.utils.CleanUtils.cleanChannelName(channel.name ?: "unnamed")
+                }
             }
 
             Icon(
