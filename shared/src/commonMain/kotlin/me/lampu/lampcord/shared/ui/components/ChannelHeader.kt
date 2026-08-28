@@ -183,7 +183,7 @@ fun ChannelHeader(
                     }
                 }
 
-                if (channel.type != 2 && channel.type != 13 && settingsStore.showChatPins) {
+                if (channel.type != 2 && channel.type != 13 && (settingsStore.showChatPins || isDesktop)) {
                     IconButton(onClick = { navigationStore.isPinsVisible = !navigationStore.isPinsVisible }) {
                         Icon(
                             Icons.Filled.PushPin,

@@ -162,7 +162,7 @@ private fun SearchScreenContent(
                                         lastPart.startsWith("#") -> AutocompleteType.CHANNEL to lastPart.substring(1)
                                         else -> null to ""
                                     }
-                                    autocompleteStore.updateAutocomplete(type, query, navigationStore.selectedGuild, isSearch = true)
+                                    autocompleteStore.updateAutocomplete(type, query, navigationStore.selectedGuild, navigationStore.selectedChannel, isSearch = true)
                                 } else {
                                     autocompleteStore.clear(isSearch = true)
                                 }
@@ -227,7 +227,7 @@ private fun SearchScreenContent(
                                                 "in" -> AutocompleteType.CHANNEL
                                                 else -> null
                                             }
-                                            autocompleteStore.updateAutocomplete(type, "", navigationStore.selectedGuild, isSearch = true)
+                                            autocompleteStore.updateAutocomplete(type, "", navigationStore.selectedGuild, navigationStore.selectedChannel, isSearch = true)
                                         }
                                         .padding(horizontal = 16.dp, vertical = 12.dp),
                                     verticalAlignment = Alignment.CenterVertically
@@ -361,17 +361,13 @@ private fun SearchScreenContent(
                                     Surface(
                                         modifier = Modifier.padding(horizontal = 8.dp),
                                         shape = RoundedCornerShape(12.dp),
-                                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
+                                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
+                                        onClick = onClick
                                     ) {
-                                        Box {
-                                            MessageItem(message = message)
-                                            // Transparent overlay to catch clicks and prevent MessageItem internal interaction
-                                            Box(
-                                                modifier = Modifier
-                                                    .matchParentSize()
-                                                    .clickable(onClick = onClick)
-                                            )
-                                        }
+                                        MessageItem(
+                                            message = message,
+                                            isPreview = true
+                                        )
                                     }
                                 }
                             }

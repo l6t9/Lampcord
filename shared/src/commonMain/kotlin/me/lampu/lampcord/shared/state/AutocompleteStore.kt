@@ -23,7 +23,7 @@ class AutocompleteStore(
     var searchAutocompleteSelectedIndex by mutableStateOf(0)
     val searchAutocompleteItems = mutableStateListOf<AutocompleteItem>()
 
-    fun updateAutocomplete(type: AutocompleteType?, query: String, selectedGuild: Guild?, isSearch: Boolean = false) {
+    fun updateAutocomplete(type: AutocompleteType?, query: String, selectedGuild: Guild?, selectedChannel: Channel? = null, isSearch: Boolean = false) {
         if (type == null) {
             if (isSearch) {
                 searchAutocompleteType = null
@@ -63,6 +63,20 @@ class AutocompleteStore(
                          val name = member.nick ?: member.user?.global_name ?: member.user?.username ?: ""
                          name.contains(query, ignoreCase = true) || member.user?.username?.contains(query, ignoreCase = true) == true
                      }.take(10)
+                } else if (selectedChannel != null && selectedChannel.guild_id == null) {
+                    val recipients = selectedChannel.recipients?.filter { user ->
+                        user.global_name?.contains(query, ignoreCase = true) == true ||
+                                user.username?.contains(query, ignoreCase = true) == true
+                    }?.map { Member(user = it) } ?: emptyList()
+
+                    val allMembers = recipients.toMutableList()
+                    userStore.currentUser.value?.let { currentUser ->
+                        if (currentUser.global_name?.contains(query, ignoreCase = true) == true ||
+                            currentUser.username?.contains(query, ignoreCase = true) == true) {
+                            allMembers.add(Member(user = currentUser))
+                        }
+                    }
+                    allMembers.take(10)
                 } else {
                     relationshipStore.relationships.value.filter { rel ->
                         val user = rel.user ?: rel.user_id?.let { id -> User(id = id) }

@@ -92,7 +92,7 @@ val storeModule = module {
     }
     single {
         SearchStore(
-            messageApi = get(), memberListStore = get(), guildStore = get(), json = get(), scope = get()
+            messageApi = get(), memberListStore = get(), guildStore = get(), userStore = get(), json = get(), scope = get()
         )
     }
     single { ProfileStore(userApi = get(), scope = get()) }

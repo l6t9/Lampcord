@@ -19,6 +19,7 @@ actual fun ContextMenu(
     shape: androidx.compose.ui.graphics.Shape,
     header: (@Composable () -> Unit)?,
     reactions: (@Composable (onDismiss: () -> Unit) -> Unit)?,
+    enabled: Boolean,
     content: @Composable () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -27,7 +28,8 @@ actual fun ContextMenu(
 
     Box(
         modifier = modifier
-            .pointerInput(items) {
+            .pointerInput(items, enabled) {
+                if (!enabled) return@pointerInput
                 awaitPointerEventScope {
                     while (true) {
                         val event = awaitPointerEvent(PointerEventPass.Initial)
@@ -65,7 +67,8 @@ actual fun ContextMenu(
         DropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
-            offset = offset
+            offset = offset,
+            shape = RoundedCornerShape(16.dp)
         ) {
             val groups = linkedMapOf<String?, MutableList<ContextMenuItem>>()
             items.forEach { it ->
@@ -75,12 +78,7 @@ actual fun ContextMenu(
             }
 
             groups.entries.forEachIndexed { gIdx, entry ->
-                val groupHeader = entry.key
                 val groupItems = entry.value
-                // Optional header display - show a non-clickable label for groups with a name
-                if (groupHeader != null) {
-                    DropdownMenuItem(text = { Text(text = groupHeader, color = MaterialTheme.colorScheme.onSurfaceVariant) }, onClick = {}, enabled = false)
-                }
 
                 groupItems.forEach { item ->
                     DropdownMenuItem(

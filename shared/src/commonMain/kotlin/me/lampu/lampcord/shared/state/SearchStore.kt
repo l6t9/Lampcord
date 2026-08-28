@@ -14,6 +14,7 @@ class SearchStore(
     private val messageApi: MessageApi,
     private val memberListStore: MemberListStore,
     private val guildStore: GuildStore,
+    private val userStore: UserStore,
     private val json: Json,
     private val scope: CoroutineScope
 ) {
@@ -66,11 +67,29 @@ class SearchStore(
                                 // Try to resolve username to ID if it's not already an ID
                                 if (value.toLongOrNull() == null) {
                                     val username = if (value.startsWith("@")) value.substring(1) else value
-                                    val member = memberListStore.memberListItems.filterNotNull().mapNotNull { it.member }.find { 
-                                        it.user?.username?.equals(username, ignoreCase = true) == true || 
-                                        it.nick?.equals(username, ignoreCase = true) == true ||
-                                        it.user?.global_name?.equals(username, ignoreCase = true) == true
-                                    }
+                                    
+                                    val member = if (selectedGuild != null) {
+                                        memberListStore.memberListItems.filterNotNull().mapNotNull { it.member }.find {
+                                            it.user?.username?.equals(username, ignoreCase = true) == true ||
+                                                    it.nick?.equals(username, ignoreCase = true) == true ||
+                                                    it.user?.global_name?.equals(username, ignoreCase = true) == true
+                                        }
+                                    } else if (selectedChannel != null && selectedChannel.guild_id == null) {
+                                        val recipient = selectedChannel.recipients?.find {
+                                            it.username?.equals(username, ignoreCase = true) == true ||
+                                                    it.global_name?.equals(username, ignoreCase = true) == true
+                                        }
+                                        if (recipient != null) {
+                                            me.lampu.lampcord.shared.model.Member(user = recipient)
+                                        } else {
+                                            val currentUser = userStore.currentUser.value
+                                            if (currentUser?.username?.equals(username, ignoreCase = true) == true ||
+                                                currentUser?.global_name?.equals(username, ignoreCase = true) == true) {
+                                                me.lampu.lampcord.shared.model.Member(user = currentUser)
+                                            } else null
+                                        }
+                                    } else null
+
                                     member?.user?.id ?: value
                                 } else value
                             }

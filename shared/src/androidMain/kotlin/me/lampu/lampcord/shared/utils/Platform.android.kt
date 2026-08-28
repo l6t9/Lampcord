@@ -304,19 +304,25 @@ actual fun base64Encode(bytes: ByteArray): String {
 actual suspend fun downloadToDownloads(url: String, filename: String): Boolean = withContext(Dispatchers.IO) {
     try {
         val ctx = AndroidContext.context
-        val dm = ctx.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+        val systemService = ctx.getSystemService(Context.DOWNLOAD_SERVICE)
+        val dm = if (systemService is DownloadManager) systemService else return@withContext false
         
+        val uri = Uri.parse(url)
+        val title = filename.ifBlank { uri.lastPathSegment } ?: "file"
+        val sanitizedTitle = title.replace(Regex("[/\\\\]"), "_")
+
         // Match Discord's DownloadManager.Request setup
-        val request = DownloadManager.Request(Uri.parse(url))
-            .setTitle(filename)
-            .setDescription(filename)
-            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-            .setDestinationInExternalPublicDir(android.os.Environment.DIRECTORY_DOWNLOADS, filename)
+        val request = DownloadManager.Request(uri)
+            .setTitle(sanitizedTitle)
+            .setDescription(sanitizedTitle)
+            .setNotificationVisibility(1) // VISIBILITY_VISIBLE_NOTIFY_COMPLETED
+            .setDestinationInExternalPublicDir(android.os.Environment.DIRECTORY_DOWNLOADS, sanitizedTitle)
 
         @Suppress("DEPRECATION")
         request.allowScanningByMediaScanner()
 
         val downloadId = dm.enqueue(request)
+        if (downloadId <= 0) return@withContext false
 
         // Suspend until the system broadcasts completion for this download id
         val deferred = kotlinx.coroutines.CompletableDeferred<Boolean>()
@@ -331,6 +337,7 @@ actual suspend fun downloadToDownloads(url: String, filename: String): Boolean =
                         var success = false
                         cursor?.use {
                             if (it.moveToFirst()) {
+                                // Match Discord: they don't check status, but we will for safety
                                 val status = it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
                                 success = status == DownloadManager.STATUS_SUCCESSFUL
                             }
@@ -346,7 +353,11 @@ actual suspend fun downloadToDownloads(url: String, filename: String): Boolean =
         }
 
         withContext(kotlinx.coroutines.Dispatchers.Main) {
-            ctx.registerReceiver(receiver, filter)
+            if (Build.VERSION.SDK_INT >= 34) {
+                ctx.registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED)
+            } else {
+                ctx.registerReceiver(receiver, filter)
+            }
         }
 
         deferred.await()

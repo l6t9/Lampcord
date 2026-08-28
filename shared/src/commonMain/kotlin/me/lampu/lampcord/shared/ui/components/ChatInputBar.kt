@@ -159,7 +159,7 @@ fun ChatInputBar(
             }
             mentionRanges = shifted
 
-            autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild)
+            autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild, channel)
         }
     }
 
@@ -253,7 +253,7 @@ fun ChatInputBar(
                                     commandStore.resetSubCommand()
                                     textFieldValue = TextFieldValue("")
                                     clearMentions()
-                                    autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild)
+                                    autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild, channel)
                                 } else {
                                     applyAutocomplete(item)
                                 }
@@ -490,9 +490,9 @@ fun ChatInputBar(
                                                             AutocompleteType.EMOJI to lastWord.substring(1)
                                                         else -> null to ""
                                                     }
-                                                    autocompleteStore.updateAutocomplete(type, query, navigationStore.selectedGuild)
+                                                    autocompleteStore.updateAutocomplete(type, query, navigationStore.selectedGuild, channel)
                                                 } else {
-                                                    autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild)
+                                                    autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild, channel)
                                                 }
 
                                                 if (it.text.isNotEmpty()) {
@@ -531,7 +531,7 @@ fun ChatInputBar(
                                                                         commandStore.resetSubCommand()
                                                                         textFieldValue = TextFieldValue("")
                                                                         clearMentions()
-                                                                        autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild)
+                                                                        autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild, channel)
                                                                     } else {
                                                                         applyAutocomplete(item)
                                                                     }
@@ -543,7 +543,7 @@ fun ChatInputBar(
 
                                                     if (event.key == Key.Escape) {
                                                         if (autocompleteStore.autocompleteType != null) {
-                                                            autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild)
+                                                            autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild, channel)
                                                             return@onPreviewKeyEvent true
                                                         }
                                                         if (messageStore.editingMessage != null) {

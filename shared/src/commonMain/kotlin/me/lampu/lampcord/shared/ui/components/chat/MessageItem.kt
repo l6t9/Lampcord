@@ -100,6 +100,7 @@ fun MessageItem(
     message: Message,
     priorMessage: Message? = null,
     nextMessage: Message? = null,
+    isPreview: Boolean = false,
     messageStore: MessageStore = koinInject(),
     userStore: UserStore = koinInject(),
     navigationStore: NavigationStore = koinInject(),
@@ -266,7 +267,7 @@ fun MessageItem(
             .zIndex(if (isHovered || showReactionPicker) 10f else 1f)
             .offset { IntOffset(offsetX.roundToInt(), 0) }
             .pointerInput(message.id, gestureMode) {
-                if (gestureMode == me.lampu.lampcord.shared.settings.ChatGestures.SWIPE_TO_REPLY) {
+                if (!isPreview && gestureMode == me.lampu.lampcord.shared.settings.ChatGestures.SWIPE_TO_REPLY) {
                     detectHorizontalDragGestures(
                         onDragEnd = {
                             if (offsetX < -80f) {
@@ -285,7 +286,7 @@ fun MessageItem(
                 }
             }
             .pointerInput(message.id, tapTapEnabled) {
-                if (tapTapEnabled) {
+                if (!isPreview && tapTapEnabled) {
                     detectTapGestures(
                         onDoubleTap = {
                             val isMe = message.author?.id == currentUser?.id
@@ -366,6 +367,7 @@ fun MessageItem(
 
             ContextMenu(
                 items = contextMenuItems,
+                enabled = !isPreview,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 8.dp, end = 8.dp, top = topPadding, bottom = bottomPadding),
@@ -470,7 +472,7 @@ fun MessageItem(
                                 color = if (isDm) Color.White else displayColor,
                                 modifier = Modifier
                                     .onGloballyPositioned { namePosition = it.positionInRoot() }
-                                    .clickable { profileStore.showProfile(message.author.id, guildId, namePosition) },
+                                    .clickable(enabled = !isPreview) { profileStore.showProfile(message.author.id, guildId, namePosition) },
                                 ignoreEffects = !isHovered,
                                 ignoreColors = if (isDm) !isHovered else true
                             )
@@ -602,7 +604,7 @@ fun MessageItem(
                                         user = message.author,
                                         size = 20.dp,
                                         decorationData = message.member?.avatar_decoration_data,
-                                        modifier = Modifier.clickable { profileStore.showProfile(message.author.id, guildId, avatarPosition) }
+                                        modifier = Modifier.clickable(enabled = !isPreview) { profileStore.showProfile(message.author.id, guildId, avatarPosition) }
                                     )
                                 }
                             } else {

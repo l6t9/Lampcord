@@ -18,6 +18,7 @@ actual fun ContextMenu(
     shape: androidx.compose.ui.graphics.Shape,
     header: (@Composable () -> Unit)?,
     reactions: (@Composable (onDismiss: () -> Unit) -> Unit)?,
+    enabled: Boolean,
     content: @Composable () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -26,7 +27,8 @@ actual fun ContextMenu(
 
     Box(
         modifier = modifier
-            .pointerInput(items) {
+            .pointerInput(items, enabled) {
+                if (!enabled) return@pointerInput
                 awaitPointerEventScope {
                     while (true) {
                         val event = awaitPointerEvent(PointerEventPass.Initial)
