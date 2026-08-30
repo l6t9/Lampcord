@@ -1,22 +1,26 @@
 package me.lampu.lampcord.shared.ui.components.profiles
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import me.lampu.lampcord.shared.model.UserProfile
 import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.components.AvatarWithDecoration
@@ -35,10 +39,10 @@ fun ProfileHeader(
     profile: UserProfile,
     theme: ProfileTheme,
     isExpanded: Boolean,
-    selectedTab: Int,
-    onTabSelected: (Int) -> Unit,
     onExpand: (() -> Unit)? = null,
     onDismiss: (() -> Unit)? = null,
+    onEditAvatar: (() -> Unit)? = null,
+    customProfileOverride: me.lampu.lampcord.shared.model.CustomProfile? = null,
     userStore: UserStore = koinInject(),
     presenceStore: PresenceStore = koinInject(),
     settingsStore: SettingsStore = koinInject(),
@@ -55,9 +59,18 @@ fun ProfileHeader(
         relationships.find { (it.id ?: it.user?.id ?: it.user_id) == user.id }
     }
     val isFriend = relationship?.type == 1
-    val isBlocked = relationship?.type == 2
 
-    val avatarUrl = profile.guild_member?.avatar?.let {
+    val clientProfileStore: ClientProfileStore = koinInject()
+    val customProfiles by clientProfileStore.customProfiles.collectAsState()
+    val dbProfile = remember(user.id, settingsStore.userPfp, customProfiles) { 
+        clientProfileStore.getCustomProfile(user.id)?.let {
+            if (!settingsStore.userPfp) it.copy(avatar = null) else it
+        }
+    }
+
+    val customProfile = customProfileOverride ?: remember(dbProfile) { dbProfile }
+
+    val avatarUrl = customProfile?.avatar ?: profile.guild_member?.avatar?.let {
         "https://cdn.discordapp.com/guilds/${profile.guild_id}/users/${user.id}/avatars/$it.png?size=160"
     } ?: user.avatar?.let {
         "https://cdn.discordapp.com/avatars/${user.id}/$it.png?size=160"
@@ -66,16 +79,27 @@ fun ProfileHeader(
     val presences by presenceStore.presences.collectAsState()
     val presence = profile.guild_member?.presence ?: profile.presence ?: presences[user.id]
 
+    val activities = remember(profile.activities, presence, presences[user.id], user.id, currentUser?.id) {
+        val reactivePresence = if (user.id == currentUser?.id) presences[user.id] ?: presence else presence
+        profile.activities.ifEmpty { reactivePresence?.activities ?: emptyList() }
+    }
+    val customStatus = activities.find { it.type == 4 }
+    val otherActivity = activities.find { it.type != 4 }
+    val displayActivity = customStatus ?: otherActivity
+
     val profileTextColor = MaterialTheme.colorScheme.onSurface
     val profileSecondaryTextColor = MaterialTheme.colorScheme.onSurfaceVariant
 
-    Row(verticalAlignment = Alignment.Bottom) {
+    Row(
+        verticalAlignment = Alignment.Top, // Align to top to ensure downward expansion
+        modifier = Modifier.fillMaxWidth().padding(end = 16.dp).zIndex(1f)
+    ) {
         Box(
             modifier = Modifier
-                .offset(y = if (isExpanded) (-60).dp else (-45).dp)
-                .size(if (isExpanded) 120.dp else 94.dp)
+                .offset(y = (-45).dp)
+                .size(94.dp)
                 .background(theme.cutoutColor, CircleShape)
-                .padding(if (isExpanded) 8.dp else 6.dp)
+                .padding(6.dp)
         ) {
             val status = remember(presence, user.id, currentUser?.id, settingsStore.userSettings?.status) {
                 if (user.id == currentUser?.id) {
@@ -84,52 +108,108 @@ fun ProfileHeader(
                     presenceStore.getUserStatus(user.id, presence, currentUser?.id, settingsStore.userSettings?.status)
                 }
             }
-            AvatarWithDecoration(
-                avatarUrl = avatarUrl,
-                decorationData = profile.guild_member?.avatar_decoration_data ?: user.avatar_decoration_data,
-                size = if (isExpanded) 104.dp else 82.dp,
-                status = status,
-                modifier = Modifier.clickable(
-                    enabled = !isExpanded,
-                    indication = null,
-                    interactionSource = remember { MutableInteractionSource() }
-                ) { onExpand?.invoke() }
-            )
-        }
+            val avatarInteractionSource = remember { MutableInteractionSource() }
+            val isAvatarHovered by avatarInteractionSource.collectIsHoveredAsState()
 
-        val activities = remember(profile.activities, presence, presences[user.id], user.id, currentUser?.id) {
-            val reactivePresence = if (user.id == currentUser?.id) presences[user.id] ?: presence else presence
-            profile.activities.ifEmpty { reactivePresence?.activities ?: emptyList() }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .hoverable(avatarInteractionSource)
+                    .then(if (onEditAvatar != null) Modifier.clickable { onEditAvatar() } else Modifier)
+            ) {
+                AvatarWithDecoration(
+                    avatarUrl = avatarUrl,
+                    decorationData = profile.guild_member?.avatar_decoration_data ?: user.avatar_decoration_data,
+                    size = 82.dp,
+                    status = status,
+                    modifier = Modifier.then(
+                        if (onEditAvatar == null) {
+                            Modifier.clickable(
+                                enabled = !isExpanded,
+                                indication = null,
+                                interactionSource = remember { MutableInteractionSource() }
+                            ) { onExpand?.invoke() }
+                        } else Modifier
+                    )
+                )
+
+                if (onEditAvatar != null && isAvatarHovered) {
+                    Surface(
+                        modifier = Modifier.align(Alignment.Center),
+                        color = Color.Black.copy(alpha = 0.4f),
+                        shape = CircleShape
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Edit,
+                            contentDescription = "Edit Avatar",
+                            modifier = Modifier.padding(8.dp).size(20.dp),
+                            tint = Color.White
+                        )
+                    }
+                }
+            }
         }
-        val customStatus = activities.find { it.type == 4 }
-        val otherActivity = activities.find { it.type != 4 }
-        val displayActivity = customStatus ?: otherActivity
 
         if (displayActivity != null) {
-            Surface(
-                color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.8f),
-                shape = RoundedCornerShape(
-                    topStart = 16.dp,
-                    topEnd = 16.dp,
-                    bottomEnd = 16.dp,
-                    bottomStart = 4.dp
-                ),
-                tonalElevation = 4.dp,
-                shadowElevation = 2.dp,
+            Box(
                 modifier = Modifier
-                    .offset(y = if (isExpanded) (-54).dp else (-39).dp)
-                    .padding(start = 6.dp, bottom = 12.dp)
+                    .weight(1f, fill = false)
+                    .zIndex(10f)
+                    .offset(
+                        x = (-8).dp,
+                        y = (-42).dp
+                    )
+                    // Use layout to report a fixed small height so expansion doesn't push content below
+                    .layout { measurable, constraints ->
+                        val placeable = measurable.measure(constraints)
+                        val fixedHeight = 24.dp.roundToPx()
+                        layout(placeable.width, fixedHeight) {
+                            placeable.placeRelative(0, 0)
+                        }
+                    }
             ) {
-                UserActivity(
-                    activity = displayActivity,
-                    compact = true,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                )
+                // Smallest dot - lowered and solid
+                Surface(
+                    modifier = Modifier
+                        .offset(x = 10.dp, y = 14.dp)
+                        .size(10.dp),
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surfaceContainerLow,
+                    tonalElevation = 2.dp,
+                    shadowElevation = 1.dp
+                ) {}
+                
+                // Medium dot - bigger and deeply submerged
+                Surface(
+                    modifier = Modifier
+                        .offset(x = 22.dp, y = 18.dp)
+                        .size(24.dp),
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surfaceContainerLow,
+                    tonalElevation = 2.dp,
+                    shadowElevation = 1.dp
+                ) {}
+
+                Surface(
+                    modifier = Modifier
+                        .offset(x = 32.dp, y = 28.dp)
+                        .widthIn(max = 280.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerLow,
+                    shape = RoundedCornerShape(12.dp),
+                    tonalElevation = 4.dp,
+                    shadowElevation = 2.dp
+                ) {
+                    UserActivity(
+                        activity = displayActivity,
+                        compact = true,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    )
+                }
             }
         }
     }
 
-    Column(modifier = Modifier.offset(y = if (isExpanded) (-50).dp else (-35).dp)) {
+    Column(modifier = Modifier.offset(y = (-35).dp)) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -137,7 +217,7 @@ fun ProfileHeader(
             UsernameView(
                 name = profile.guild_member?.nick ?: user.global_name ?: user.username ?: "Unknown User",
                 style = profile.guild_member?.display_name_styles ?: user.display_name_styles,
-                baseStyle = if (isExpanded) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleLarge,
+                baseStyle = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = profileTextColor,
                 marquee = true
@@ -163,97 +243,27 @@ fun ProfileHeader(
         Spacer(Modifier.height(8.dp))
         UserBadges(userId = user.id, badges = profile.badges + profile.guild_badges)
         
-        Spacer(Modifier.height(12.dp))
-        if (user.id == currentUser?.id) {
-            val isServerProfile = profile.guild_member != null && profile.guild_id != null
-            
-            if (isServerProfile) {
-                ButtonGroup(
-                    overflowIndicator = { menuState -> ButtonGroupDefaults.OverflowIndicator(menuState) },
-                    expandedRatio = 1f,
-                    horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-                    modifier = Modifier.fillMaxWidth().height(40.dp),
-                ) {
-                    customItem(
-                        buttonGroupContent = {
-                            Button(
-                                onClick = { /* TODO: Edit User Profile */ },
-                                shapes = ButtonDefaults.shapes(
-                                    shape = ButtonGroupDefaults.connectedLeadingButtonShape,
-                                    pressedShape = ButtonGroupDefaults.connectedLeadingButtonPressShape,
-                                ),
-                                modifier = Modifier.weight(1f).fillMaxHeight(),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = theme.buttonColor,
-                                    contentColor = theme.buttonTextColor
-                                ),
-                                contentPadding = PaddingValues(horizontal = 12.dp)
-                            ) {
-                                Icon(Icons.Filled.Edit, null, modifier = Modifier.size(16.dp))
-                                Spacer(Modifier.width(8.dp))
-                                Text("User Profile", fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-                            }
-                        },
-                        menuContent = { menuState ->
-                            DropdownMenuItem(
-                                leadingIcon = { Icon(Icons.Filled.Edit, null) },
-                                text = { Text("Edit User Profile") },
-                                onClick = {
-                                    /* TODO */
-                                    menuState.dismiss()
-                                }
-                            )
-                        }
-                    )
-                    customItem(
-                        buttonGroupContent = {
-                            Button(
-                                onClick = { /* TODO: Edit Server Profile */ },
-                                shapes = ButtonDefaults.shapes(
-                                    shape = ButtonGroupDefaults.connectedTrailingButtonShape,
-                                    pressedShape = ButtonGroupDefaults.connectedTrailingButtonPressShape,
-                                ),
-                                modifier = Modifier.weight(1f).fillMaxHeight(),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = theme.buttonColor,
-                                    contentColor = theme.buttonTextColor
-                                ),
-                                contentPadding = PaddingValues(horizontal = 12.dp)
-                            ) {
-                                Icon(Icons.Filled.Edit, null, modifier = Modifier.size(16.dp))
-                                Spacer(Modifier.width(8.dp))
-                                Text("Server Profile", fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-                            }
-                        },
-                        menuContent = { menuState ->
-                            DropdownMenuItem(
-                                leadingIcon = { Icon(Icons.Filled.Edit, null) },
-                                text = { Text("Edit Server Profile") },
-                                onClick = {
-                                    /* TODO */
-                                    menuState.dismiss()
-                                }
-                            )
-                        }
-                    )
-                }
-            } else {
-                Button(
-                    onClick = { /* TODO: Edit Profile */ },
-                    modifier = Modifier.fillMaxWidth().height(40.dp),
-                    shape = CircleShape,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = theme.buttonColor,
-                        contentColor = theme.buttonTextColor
-                    ),
-                    contentPadding = PaddingValues(horizontal = 12.dp)
-                ) {
-                    Icon(Icons.Filled.Edit, null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Edit Profile", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Medium)
-                }
+        if (user.id == currentUser?.id && onEditAvatar == null) {
+            Spacer(Modifier.height(8.dp))
+            Button(
+                onClick = {
+                    navigationStore.navigateToSettings("PROFILES")
+                    onDismiss?.invoke()
+                },
+                modifier = Modifier.fillMaxWidth().height(40.dp),
+                shape = CircleShape,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = theme.buttonColor,
+                    contentColor = theme.buttonTextColor
+                ),
+                contentPadding = PaddingValues(horizontal = 12.dp)
+            ) {
+                Icon(Icons.Filled.Edit, null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Edit Profile", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Medium)
             }
-        } else {
+        } else if (user.id != currentUser?.id) {
+            Spacer(Modifier.height(12.dp))
             Row(
                 modifier = Modifier.fillMaxWidth().height(40.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -284,135 +294,7 @@ fun ProfileHeader(
                         fontWeight = FontWeight.Medium
                     )
                 }
-
-                var menuExpanded by remember { mutableStateOf(false) }
-                var showNicknameDialog by remember { mutableStateOf(false) }
-
-                if (showNicknameDialog) {
-                    var nickname by remember { mutableStateOf(relationship?.nickname ?: "") }
-                    AlertDialog(
-                        onDismissRequest = { showNicknameDialog = false },
-                        title = { Text("Edit Friend Nickname") },
-                        text = {
-                            OutlinedTextField(
-                                value = nickname,
-                                onValueChange = { nickname = it },
-                                label = { Text("Nickname") },
-                                modifier = Modifier.fillMaxWidth(),
-                                singleLine = true
-                            )
-                        },
-                        confirmButton = {
-                            TextButton(onClick = {
-                                relationshipStore.updateNickname(user.id, nickname.takeIf { it.isNotBlank() })
-                                showNicknameDialog = false
-                            }) {
-                                Text("Save")
-                            }
-                        },
-                        dismissButton = {
-                            TextButton(onClick = { showNicknameDialog = false }) {
-                                Text("Cancel")
-                            }
-                        }
-                    )
-                }
-
-                Box {
-                    Button(
-                        onClick = { menuExpanded = true },
-                        modifier = Modifier.size(40.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = theme.cardColor,
-                            contentColor = profileTextColor
-                        ),
-                        shape = CircleShape,
-                        contentPadding = PaddingValues(0.dp)
-                    ) {
-                        Icon(Icons.Filled.MoreHoriz, null, modifier = Modifier.size(18.dp))
-                    }
-
-                    DropdownMenu(
-                        expanded = menuExpanded,
-                        onDismissRequest = { menuExpanded = false }
-                    ) {
-                        if (isFriend) {
-                            DropdownMenuItem(
-                                text = { Text("Remove Friend") },
-                                onClick = {
-                                    relationshipStore.removeFriend(user.id)
-                                    menuExpanded = false
-                                },
-                                leadingIcon = { Icon(Icons.Filled.PersonRemove, null) }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Edit Friend Nickname") },
-                                onClick = {
-                                    showNicknameDialog = true
-                                    menuExpanded = false
-                                },
-                                leadingIcon = { Icon(Icons.Filled.Edit, null) }
-                            )
-                        } else if (!isBlocked) {
-                            DropdownMenuItem(
-                                text = { Text("Add Friend") },
-                                onClick = {
-                                    relationshipStore.addFriend(user.id)
-                                    menuExpanded = false
-                                },
-                                leadingIcon = { Icon(Icons.Filled.PersonAdd, null) }
-                            )
-                        }
-
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-
-                        DropdownMenuItem(
-                            text = { Text("Block", color = MaterialTheme.colorScheme.error) },
-                            onClick = {
-                                relationshipStore.blockUser(user.id)
-                                menuExpanded = false
-                            },
-                            leadingIcon = { Icon(Icons.Filled.Block, null, tint = MaterialTheme.colorScheme.error) }
-                        )
-                        
-                        DropdownMenuItem(
-                            text = { Text("Ignore") },
-                            onClick = {
-                                // TODO: Ignore user
-                                menuExpanded = false
-                            },
-                            leadingIcon = { Icon(Icons.Filled.VisibilityOff, null) }
-                        )
-                    }
-                }
             }
         }
-        
-        Spacer(Modifier.height(16.dp))
-        
-        // Main / Board Tabs
-        PrimaryTabRow(
-            selectedTabIndex = selectedTab,
-            containerColor = Color.Transparent,
-            contentColor = profileTextColor,
-            divider = {}
-        ) {
-            val tabs = listOf("Main", "Board")
-            tabs.forEachIndexed { index, title ->
-                Tab(
-                    selected = selectedTab == index,
-                    onClick = { onTabSelected(index) },
-                    text = {
-                        Text(
-                            text = title,
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Medium,
-                            color = if (selectedTab == index) profileTextColor else profileSecondaryTextColor
-                        )
-                    }
-                )
-            }
-        }
-        Spacer(Modifier.height(8.dp))
     }
 }

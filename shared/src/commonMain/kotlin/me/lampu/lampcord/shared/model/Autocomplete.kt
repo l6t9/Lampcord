@@ -14,8 +14,6 @@ data class AutocompleteItem(
     val isCommand: Boolean = false,
     val commandObj: ApplicationCommand? = null,
     val color: Color? = null,
-    // Text inserted into the input bar. When it differs from `replacement`,
-    // the input shows this friendly text (e.g. "#general") and `replacement`
-    // is what gets sent (e.g. "<#123456789>"). Null means "use replacement".
+    val gradient: List<Color>? = null,
     val inputText: String? = null
 )

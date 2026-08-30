@@ -191,3 +191,81 @@ object ModernProfileColors {
         return 0xFF000000.toInt() or (rr shl 16) or (rg shl 8) or rb
     }
 }
+
+object Profile3y3 {
+    private const val HEADER = "\uDB40\uDC33\uDB40\uDC79\uDB40\uDC33" // "3y3" in tags
+
+    fun encode(data: String): String {
+        val sb = StringBuilder(HEADER)
+        for (char in data) {
+            val code = char.code
+            if (code in 0..127) {
+                // Map ASCII to Tags range U+E0000 - U+E007F
+                sb.appendCodePoint(0xE0000 + code)
+            }
+        }
+        return sb.toString()
+    }
+
+    fun decode(input: String): String? {
+        val startIndex = input.indexOf(HEADER)
+        if (startIndex == -1) return null
+
+        val sb = StringBuilder()
+        var i = startIndex + HEADER.length
+        while (i < input.length) {
+            val codePoint = input.codePointAt(i)
+            if (codePoint in 0xE0000..0xE007F) {
+                sb.append((codePoint - 0xE0000).toChar())
+            } else if (codePoint == 0xDB40 || codePoint == 0xDC00) {
+                 // Skip high/low surrogates if handled by appendCodePoint
+            } else {
+                break
+            }
+            i += if (charCount(codePoint) > 1) 2 else 1
+        }
+        
+        val result = sb.toString()
+        return if (result.isEmpty()) null else result
+    }
+
+    fun strip(input: String): String {
+        val startIndex = input.indexOf(HEADER)
+        if (startIndex == -1) return input
+        
+        var endIndex = startIndex + HEADER.length
+        while (endIndex < input.length) {
+            val codePoint = input.codePointAt(endIndex)
+            if (codePoint in 0xE0000..0xE007F) {
+                endIndex += if (charCount(codePoint) > 1) 2 else 1
+            } else {
+                break
+            }
+        }
+        
+        return input.removeRange(startIndex, endIndex)
+    }
+
+    private fun charCount(codePoint: Int): Int = if (codePoint >= 0x10000) 2 else 1
+    
+    private fun String.codePointAt(index: Int): Int {
+        val high = this[index]
+        if (high.isHighSurrogate() && index + 1 < this.length) {
+            val low = this[index + 1]
+            if (low.isLowSurrogate()) {
+                return (high.code - 0xD800 shl 10) + (low.code - 0xDC00) + 0x10000
+            }
+        }
+        return high.code
+    }
+    
+    private fun StringBuilder.appendCodePoint(codePoint: Int): StringBuilder {
+        if (codePoint <= 0xFFFF) {
+            append(codePoint.toChar())
+        } else {
+            append(((codePoint - 0x10000) shr 10 or 0xD800).toChar())
+            append(((codePoint - 0x10000) and 0x3FF or 0xDC00).toChar())
+        }
+        return this
+    }
+}

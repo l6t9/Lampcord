@@ -96,6 +96,10 @@ kotlin {
             dependencies {
                 implementation(compose.desktop.currentOs)
                 implementation(libs.vlcj)
+                
+                implementation("io.ktor:ktor-server-core:${libs.versions.ktor.get()}")
+                implementation("io.ktor:ktor-server-netty:${libs.versions.ktor.get()}")
+                implementation("io.ktor:ktor-server-websockets:${libs.versions.ktor.get()}")
 
                 val javacppPlatform = System.getProperty("org.bytedeco.javacpp.platform") ?: run {
                     val osName = System.getProperty("os.name").lowercase()

@@ -3,7 +3,8 @@ package me.lampu.lampcord.shared.ui.baseplates
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
@@ -23,7 +24,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
-import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import me.lampu.lampcord.shared.state.*
@@ -111,11 +111,12 @@ actual fun MobileBaseplate(
             Screen.Settings to 4,
             Screen.Search to 5,
             Screen.Pins to 6,
-            Screen.ChannelsAndRoles to 7,
-            Screen.ServerSettings to 8,
-            Screen.ChannelSettings to 9,
-            Screen.Theming to 10,
-            Screen.ThemeEditor::class to 11,
+            Screen.Threads::class to 7,
+            Screen.ChannelsAndRoles to 8,
+            Screen.ServerSettings to 9,
+            Screen.ChannelSettings to 10,
+            Screen.Theming to 11,
+            Screen.ThemeEditor::class to 12,
         )
     }
     val quickSpatialSpec = MaterialTheme.motionScheme.defaultSpatialSpec<IntOffset>()
@@ -156,8 +157,6 @@ actual fun MobileBaseplate(
     }
 
     LaunchedEffect(navigationStore.selectedGuild?.id, navigationStore.isFriendsSelected, navigationStore.isMentionsSelected) {
-        // Prefer explicit tab selections (Friends/Mentions) over auto-navigation due to a selected guild.
-        // This prevents the UI from immediately forcing Chat when user taps Friends or Mentions.
         if (navigationStore.isFriendsSelected) {
             navigator.navigate(Screen.Friends)
         } else if (navigationStore.isMentionsSelected) {
@@ -167,16 +166,23 @@ actual fun MobileBaseplate(
         }
     }
 
-    // Sync navigator back to navigationStore
+    LaunchedEffect(navigationStore.isThreadPanelVisible) {
+        if (navigationStore.isThreadPanelVisible) {
+            val channel = navigationStore.selectedChannel
+            if (channel != null) {
+                navigator.navigate(Screen.Threads(channel.id))
+            }
+        } else if (navigationState.topLevelRoute is Screen.Threads) {
+            navigator.goBack()
+        }
+    }
+
     LaunchedEffect(navigationState.topLevelRoute) {
         val route = navigationState.topLevelRoute
         
-        // Sync panel state when navigating
         if (route == Screen.Chat) {
-            // Restore last panel value when returning to Chat
             panelState.currentValue = lastPanelValue
         } else {
-            // Auto-close panels when navigating away from Chat
             panelState.close()
         }
 
@@ -185,6 +191,8 @@ actual fun MobileBaseplate(
         if (route !is Screen.ChannelSettings && navigationStore.channelSettingsChannel != null) navigationStore.closeChannelSettings()
         if (route !is Screen.Search && navigationStore.isSearchVisible) navigationStore.isSearchVisible = false
         if (route !is Screen.Pins && navigationStore.isPinsVisible) navigationStore.isPinsVisible = false
+        if (route !is Screen.Threads && navigationStore.isThreadPanelVisible) navigationStore.isThreadPanelVisible = false
+        if (route !is Screen.ChannelsAndRoles && navigationStore.isChannelsAndRolesVisible) navigationStore.isChannelsAndRolesVisible = false
         if (route !is Screen.ChannelsAndRoles && navigationStore.isChannelsAndRolesVisible) navigationStore.isChannelsAndRolesVisible = false
         if (route !is Screen.NotificationsSettings && navigationStore.isNotificationsSettingsVisible) navigationStore.isNotificationsSettingsVisible = false
 
@@ -226,7 +234,6 @@ actual fun MobileBaseplate(
         Screen.Chat, Screen.Friends, Screen.Mentions, Screen.GlobalSearch, Screen.Settings
     )
 
-    // Global Navigation Bar Overlay
     val targetNavBarVisibleAmount = remember(panelState.progress, currentRoute, isTabRoute) {
         val progress = panelState.progress
         if (isTabRoute) {
@@ -246,6 +253,9 @@ actual fun MobileBaseplate(
         label = "NavBarVisibleAmount"
     )
 
+    val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val navBarHeight = 80.dp + bottomInset
+
     val entries = navigationState.toEntries(
         entryProvider {
             entry<Screen.Chat> {
@@ -263,31 +273,31 @@ actual fun MobileBaseplate(
                 }
             }
             entry<Screen.Friends> {
-                val currentBottomPadding = (80.dp * navBarVisibleAmount).coerceAtLeast(0.dp)
+                val currentBottomPadding = (navBarHeight * navBarVisibleAmount).coerceAtLeast(0.dp)
                 Box(Modifier.fillMaxSize().padding(bottom = currentBottomPadding)) {
                     FriendsList()
                 }
             }
             entry<Screen.Mentions> {
-                val currentBottomPadding = (80.dp * navBarVisibleAmount).coerceAtLeast(0.dp)
+                val currentBottomPadding = (navBarHeight * navBarVisibleAmount).coerceAtLeast(0.dp)
                 Box(Modifier.fillMaxSize().padding(bottom = currentBottomPadding)) {
                     me.lampu.lampcord.shared.ui.components.chat.MentionsScreen()
                 }
             }
             entry<Screen.Search> {
-                val currentBottomPadding = (80.dp * navBarVisibleAmount).coerceAtLeast(0.dp)
+                val currentBottomPadding = (navBarHeight * navBarVisibleAmount).coerceAtLeast(0.dp)
                 Box(Modifier.fillMaxSize().padding(bottom = currentBottomPadding)) {
                     SearchScreen(onDismiss = { navigationStore.isSearchVisible = false })
                 }
             }
             entry<Screen.GlobalSearch> {
-                val currentBottomPadding = (80.dp * navBarVisibleAmount).coerceAtLeast(0.dp)
+                val currentBottomPadding = (navBarHeight * navBarVisibleAmount).coerceAtLeast(0.dp)
                 Box(Modifier.fillMaxSize().padding(bottom = currentBottomPadding)) {
                     GlobalSearchScreen(onDismiss = { navigator.goBack() })
                 }
             }
             entry<Screen.Settings> {
-                val currentBottomPadding = (80.dp * navBarVisibleAmount).coerceAtLeast(0.dp)
+                val currentBottomPadding = (navBarHeight * navBarVisibleAmount).coerceAtLeast(0.dp)
                 Box(Modifier.fillMaxSize().padding(bottom = currentBottomPadding)) {
                     SettingsScreen(
                         onNavigateToAccount = { navigator.navigate(Screen.AccountSettings) },
@@ -343,8 +353,9 @@ actual fun MobileBaseplate(
                 AdvancedSettings(onBack = { navigator.goBack() })
             }
             entry<Screen.AboutSettings> {
+                val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
                 SettingsSubScreen(title = "About", onNavigateBack = { navigator.goBack() }) {
-                    AboutContent(version = "1.0.0", onOpenUrl = { /* TODO */ })
+                    AboutContent(version = "1.0.0", onOpenUrl = { uriHandler.openUri(it) })
                 }
             }
             entry<Screen.EasterEgg> {
@@ -363,25 +374,31 @@ actual fun MobileBaseplate(
                 }
             }
             entry<Screen.ServerSettings> {
-                val currentBottomPadding = (80.dp * navBarVisibleAmount).coerceAtLeast(0.dp)
+                val currentBottomPadding = (navBarHeight * navBarVisibleAmount).coerceAtLeast(0.dp)
                 Box(Modifier.fillMaxSize().padding(bottom = currentBottomPadding)) {
                     ServerSettings(onDismiss = { navigationStore.isServerSettingsVisible = false })
                 }
             }
             entry<Screen.ChannelSettings> {
-                val currentBottomPadding = (80.dp * navBarVisibleAmount).coerceAtLeast(0.dp)
+                val currentBottomPadding = (navBarHeight * navBarVisibleAmount).coerceAtLeast(0.dp)
                 Box(Modifier.fillMaxSize().padding(bottom = currentBottomPadding)) {
                     ChannelSettingsScreen(onDismiss = { navigationStore.closeChannelSettings() })
                 }
             }
             entry<Screen.Pins> {
-                val currentBottomPadding = (80.dp * navBarVisibleAmount).coerceAtLeast(0.dp)
+                val currentBottomPadding = (navBarHeight * navBarVisibleAmount).coerceAtLeast(0.dp)
                 Box(Modifier.fillMaxSize().padding(bottom = currentBottomPadding)) {
                     PinnedMessagesScreen(onDismiss = { navigationStore.isPinsVisible = false })
                 }
             }
+            entry<Screen.Threads> {
+                val currentBottomPadding = (navBarHeight * navBarVisibleAmount).coerceAtLeast(0.dp)
+                Box(Modifier.fillMaxSize().padding(bottom = currentBottomPadding)) {
+                    ThreadPanel(onDismiss = { navigationStore.isThreadPanelVisible = false })
+                }
+            }
             entry<Screen.ChannelsAndRoles> {
-                val currentBottomPadding = (80.dp * navBarVisibleAmount).coerceAtLeast(0.dp)
+                val currentBottomPadding = (navBarHeight * navBarVisibleAmount).coerceAtLeast(0.dp)
                 val guild = navigationStore.selectedGuild
                 Box(Modifier.fillMaxSize().padding(bottom = currentBottomPadding)) {
                     Scaffold(
@@ -408,7 +425,7 @@ actual fun MobileBaseplate(
                 }
             }
             entry<Screen.Theming> {
-                Box(Modifier.fillMaxSize().padding(bottom = 80.dp)) {
+                Box(Modifier.fillMaxSize().padding(bottom = navBarHeight)) {
                     ThemingSettings(onNavigateToEditor = { navigator.navigate(Screen.ThemeEditor(it)) }, onBack = { navigator.goBack() })
                 }
             }
@@ -434,7 +451,7 @@ actual fun MobileBaseplate(
             swipeEnabled = isChat && !navigationStore.isBubble && me.lampu.lampcord.shared.settings.Settings.shared.chatGestures == me.lampu.lampcord.shared.settings.ChatGestures.SWIPE_TO_MEMBERS,
             startPanel = { 
                 if (isChat) {
-                    val currentBottomPadding = (80.dp * navBarVisibleAmount).coerceAtLeast(0.dp)
+                    val currentBottomPadding = (navBarHeight * navBarVisibleAmount).coerceAtLeast(0.dp)
                     Box(Modifier.fillMaxSize().padding(bottom = currentBottomPadding)) {
                         Sidebar()
                     }
@@ -446,16 +463,11 @@ actual fun MobileBaseplate(
                 }
             },
             centerPanel = {
-                // The chat panel (center) should remain full-height even when the drawer is open 
-                // to avoid vertical layout "jumps" during swiping. 
-                // Other tab screens (Friends, Mentions, etc.) use the padding to stay above the nav bar.
                 Box(Modifier.fillMaxSize()) {
                     NavDisplay(
                         entries = entries,
                         onBack = {
-                            if (!navigator.goBack()) {
-                                // Exit app or go to home if not on start route
-                            }
+                            navigator.goBack()
                         },
                         transitionSpec = {
                             val targetKey = targetState.key
@@ -475,60 +487,6 @@ actual fun MobileBaseplate(
 
                             val exitTransition =
                                 if (targetIndex == -1 || targetIndex > initialIndex) {
-                                    slideOutHorizontally(animationSpec = quickSpatialSpec) { -it / 8 } +
-                                        fadeOut(quickEffectsSpec)
-                                } else {
-                                    slideOutHorizontally(animationSpec = quickSpatialSpec) { it / 8 } +
-                                        fadeOut(quickEffectsSpec)
-                                }
-
-                            enterTransition togetherWith exitTransition
-                        },
-                        popTransitionSpec = {
-                            val targetKey = targetState.key
-                            val initialKey = initialState.key
-
-                            val targetIndex = routeIndexMap[targetKey] ?: routeIndexMap[targetKey!!::class] ?: -1
-                            val initialIndex = routeIndexMap[initialKey] ?: routeIndexMap[initialKey!!::class] ?: -1
-
-                            val enterTransition =
-                                if (initialIndex != -1 && initialIndex < targetIndex) {
-                                    slideInHorizontally(animationSpec = quickSpatialSpec) { it / 8 } +
-                                        fadeIn(quickEffectsSpec)
-                                } else {
-                                    slideInHorizontally(animationSpec = quickSpatialSpec) { -it / 8 } +
-                                        fadeIn(quickEffectsSpec)
-                                }
-
-                            val exitTransition =
-                                if (initialIndex != -1 && initialIndex < targetIndex) {
-                                    slideOutHorizontally(animationSpec = quickSpatialSpec) { -it / 8 } +
-                                        fadeOut(quickEffectsSpec)
-                                } else {
-                                    slideOutHorizontally(animationSpec = quickSpatialSpec) { it / 8 } +
-                                        fadeOut(quickEffectsSpec)
-                                }
-
-                            enterTransition togetherWith exitTransition
-                        },
-                        predictivePopTransitionSpec = {
-                            val targetKey = targetState.key
-                            val initialKey = initialState.key
-
-                            val targetIndex = routeIndexMap[targetKey] ?: routeIndexMap[targetKey!!::class] ?: -1
-                            val initialIndex = routeIndexMap[initialKey] ?: routeIndexMap[initialKey!!::class] ?: -1
-
-                            val enterTransition =
-                                if (initialIndex != -1 && initialIndex < targetIndex) {
-                                    slideInHorizontally(animationSpec = quickSpatialSpec) { it / 8 } +
-                                        fadeIn(quickEffectsSpec)
-                                } else {
-                                    slideInHorizontally(animationSpec = quickSpatialSpec) { -it / 8 } +
-                                        fadeIn(quickEffectsSpec)
-                                }
-
-                            val exitTransition =
-                                if (initialIndex != -1 && initialIndex < targetIndex) {
                                     slideOutHorizontally(animationSpec = quickSpatialSpec) { -it / 8 } +
                                         fadeOut(quickEffectsSpec)
                                 } else {
@@ -580,9 +538,8 @@ actual fun MobileBaseplate(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .height(80.dp)
                 .graphicsLayer {
-                    translationY = (1f - navBarVisibleAmount) * 80.dp.toPx()
+                    translationY = (1f - navBarVisibleAmount) * navBarHeight.toPx()
                     alpha = navBarVisibleAmount
                 },
             containerColor = MaterialTheme.colorScheme.surface,
@@ -687,7 +644,6 @@ actual fun MobileBaseplate(
         }
     }
 
-        // Panels back handler integration
         BackHandler(enabled = panelState.currentValue == DiscordPanelValue.End) {
             panelState.close()
         }
@@ -703,7 +659,6 @@ actual fun MobileBaseplate(
         }
     }
 
-    // Global Overlays (non-backstack)
     if (navigationStore.isAttachmentViewerVisible) {
         AttachmentViewer(
             items = navigationStore.attachmentViewerItems,
@@ -713,7 +668,6 @@ actual fun MobileBaseplate(
         )
     }
 
-    // User Profile Sheet
     if (profileStore.isProfileLoading || profileStore.selectedProfile != null) {
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
 
@@ -750,7 +704,6 @@ actual fun MobileBaseplate(
         }
     }
 
-    // Server Menu Bottom Sheet
     if (navigationStore.isServerMenuVisible) {
         navigationStore.selectedGuild?.let { guild ->
             ServerBottomSheet(guild, onDismiss = { navigationStore.isServerMenuVisible = false })
@@ -772,11 +725,10 @@ private fun MainBaseplateContent(
     panelState: DiscordPanelsState,
     activeChannel: me.lampu.lampcord.shared.model.Channel?
 ) {
-    // Ensure we recompose when these change
     key(navigationStore.selectedGuild?.id ?: "home") {
         Surface(
             modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background, // Chat background
+            color = MaterialTheme.colorScheme.background,
             tonalElevation = 0.dp
         ) {
             Scaffold(
@@ -896,14 +848,16 @@ private fun MainBaseplateContent(
                             },
                             actions = {
                                 if (!navigationStore.isBubble && activeChannel != null && (activeChannel.guild_id != null || activeChannel.type == 1 || activeChannel.type == 3)) {
-                                    IconButton(onClick = { navigationStore.isSearchVisible = true }) {
-                                        Icon(
-                                            imageVector = Icons.Filled.Search,
-                                            contentDescription = "Search",
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
+                                    if (settingsStore.showChatSearch) {
+                                        IconButton(onClick = { navigationStore.isSearchVisible = true }) {
+                                            Icon(
+                                                imageVector = Icons.Filled.Search,
+                                                contentDescription = "Search",
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
                                     }
-                                    if (activeChannel.type != 2 && activeChannel.type != 13) {
+                                    if (activeChannel.type != 2 && activeChannel.type != 13 && settingsStore.showChatPins) {
                                         IconButton(onClick = { navigationStore.isPinsVisible = true }) {
                                             Icon(
                                                 imageVector = Icons.Filled.PushPin,
@@ -915,7 +869,7 @@ private fun MainBaseplateContent(
                                 }
                             },
                             colors = TopAppBarDefaults.topAppBarColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerLowest // Discord Dark Header
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
                             )
                         )
                     }
@@ -935,7 +889,7 @@ private fun MainBaseplateContent(
                     modifier = Modifier
                         .padding(top = padding.calculateTopPadding(), bottom = 0.dp)
                         .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.background), // Chat background
+                        .background(MaterialTheme.colorScheme.background),
                     label = "MainContentTransition"
                 ) { target ->
                     Box(Modifier.fillMaxSize()) {

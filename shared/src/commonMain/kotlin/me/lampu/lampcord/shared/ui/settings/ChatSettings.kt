@@ -52,6 +52,18 @@ fun ChatSettingsContent(settingsStore: SettingsStore = koinInject()) {
                     description = "View the message and quick reactions inside the context menu.",
                     checked = settingsStore.showContextMenuMessage,
                     onCheckedChange = { settingsStore.showContextMenuMessage = it }
+                ),
+                switchSettingsItem(
+                    title = "Show Search in Header",
+                    description = "Show the search button in the chat header.",
+                    checked = settingsStore.showChatSearch,
+                    onCheckedChange = { settingsStore.showChatSearch = it }
+                ),
+                switchSettingsItem(
+                    title = "Show Pins in Header",
+                    description = "Show the pinned messages button in the chat header.",
+                    checked = settingsStore.showChatPins,
+                    onCheckedChange = { settingsStore.showChatPins = it }
                 )
             )
         )

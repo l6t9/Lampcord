@@ -8,6 +8,7 @@ data class Channel(
     val id: String,
     val type: Int? = null,
     val guild_id: String? = null,
+    val owner_id: String? = null,
     val position: Int? = null,
     val name: String? = null,
     val topic: String? = null,
@@ -23,6 +24,8 @@ data class Channel(
     val total_message_sent: Int? = null,
     val available_tags: List<ForumTag>? = null,
     val applied_tags: List<String>? = null,
+    val reactions: List<MessageReaction>? = null,
+    val message: Message? = null,
     val permission_overwrites: List<PermissionOverwrite>? = null,
     val member_list_id: String? = null,
     val flags: Int? = null

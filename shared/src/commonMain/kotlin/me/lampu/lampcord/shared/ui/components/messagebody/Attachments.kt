@@ -28,6 +28,7 @@ import me.lampu.lampcord.shared.utils.sanitizeFilename
 import me.lampu.lampcord.shared.utils.ensureUniqueDownloadFilename
 import me.lampu.lampcord.shared.utils.downloadToDownloads
 import me.lampu.lampcord.shared.utils.showToast
+import me.lampu.lampcord.shared.utils.RequestMediaPermissions
 
 @Composable
 fun AttachmentImage(
@@ -228,6 +229,9 @@ fun MessageMosaic(items: List<DiscordMedia>, onOpenItem: ((Int) -> Unit)? = null
 
 @Composable
 fun FileAttachmentView(attachment: Attachment) {
+    var hasPermission by remember { mutableStateOf<Boolean?>(null) }
+    RequestMediaPermissions { granted -> hasPermission = granted }
+
     Surface(
         modifier = Modifier.padding(vertical = 4.dp).widthIn(max = 400.dp).fillMaxWidth(),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -244,9 +248,13 @@ fun FileAttachmentView(attachment: Attachment) {
                     val scope = rememberCoroutineScope()
                     var isDownloading by remember { mutableStateOf(false) }
             IconButton(onClick = {
+                        if (hasPermission == false) {
+                            showToast("Storage permission required to download")
+                            return@IconButton
+                        }
                         scope.launch {
                             isDownloading = true
-                            val raw = attachment.filename ?: "download"
+                            val raw = attachment.filename
                             val sanitized = sanitizeFilename(raw)
                             val filename = ensureUniqueDownloadFilename(sanitized)
                             val ok = downloadToDownloads(attachment.url, filename)

@@ -162,14 +162,18 @@ fun ThemingSettingsContent(
                 Button(
                     onClick = { showImportPicker = true },
                     modifier = Modifier.weight(1f),
-                    shape = CircleShape
+                    shape = CircleShape,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
                 ) {
                     Icon(Icons.Rounded.FolderOpen, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text("Import Theme")
                 }
                 
-                OutlinedButton(
+                Button(
                     onClick = {
                         val newTheme = LampcordTheme(
                             manifest = ThemeManifest(name = "New Theme", author = "Me")
@@ -177,7 +181,11 @@ fun ThemingSettingsContent(
                         themeStore.installTheme(Json.encodeToString(newTheme))
                     },
                     modifier = Modifier.weight(1f),
-                    shape = CircleShape
+                    shape = CircleShape,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
                 ) {
                     Icon(Icons.Rounded.Add, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
@@ -321,7 +329,7 @@ fun ThemeEditorScreen(
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
-            ScrollableTabRow(
+            PrimaryScrollableTabRow(
                 selectedTabIndex = activeTab,
                 edgePadding = 16.dp,
                 containerColor = MaterialTheme.colorScheme.surface,
@@ -446,7 +454,10 @@ fun ColorMapEditor(title: String, colors: Map<String, JsonElement>, onUpdate: (M
                     onClick = { showAddDialog = true },
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                     shape = CircleShape,
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer, contentColor = MaterialTheme.colorScheme.onSecondaryContainer)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
                 ) {
                     Icon(Icons.Rounded.Add, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
@@ -504,7 +515,12 @@ fun ColorMapEditor(title: String, colors: Map<String, JsonElement>, onUpdate: (M
                                     editingKey = newKey
                                 }
                             },
-                            enabled = newKey.isNotBlank()
+                            enabled = newKey.isNotBlank(),
+                            shape = CircleShape,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            )
                         ) {
                             Text("Add")
                         }

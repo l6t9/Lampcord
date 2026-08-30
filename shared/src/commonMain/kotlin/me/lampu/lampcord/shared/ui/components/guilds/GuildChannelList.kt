@@ -172,7 +172,7 @@ fun GuildChannelList(
                 item { Spacer(modifier = Modifier.height(8.dp)) }
 
                 items(rootChannels, key = { it.id }) { channel ->
-                    Box(Modifier.animateItem()) {
+                    Box(Modifier.animateItem().padding(vertical = if (settingsStore.messageSpacingMode == me.lampu.lampcord.shared.settings.MessageSpacingMode.DEFAULT) 1.dp else 0.dp)) {
                         ChannelItem(channel)
                     }
                 }
@@ -281,9 +281,9 @@ fun GuildChannelList(
                         leadingIcon = { Icon(Icons.Filled.Check, null, modifier = Modifier.size(18.dp)) }
                     )
                     DropdownMenuItem(
-                        text = { Text("Server Profile") },
+                        text = { Text("Edit Profile") },
                         onClick = { 
-                            u?.let { profileStore.showProfile(it.id, g?.id) }
+                            navigationStore.navigateToSettings("PROFILES")
                             menuExpanded = false 
                         },
                         leadingIcon = { Icon(Icons.Filled.AccountCircle, null, modifier = Modifier.size(18.dp)) }
@@ -305,13 +305,14 @@ fun GuildChannelList(
                         )
                     }
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                    val errorColor = MaterialTheme.colorScheme.error
                     DropdownMenuItem(
-                        text = { Text("Leave Server", color = Color.Red) },
+                        text = { Text("Leave Server", color = errorColor) },
                         onClick = { 
                             showLeaveDialog = true
                             menuExpanded = false 
                         },
-                        leadingIcon = { Icon(Icons.Filled.Logout, null, tint = Color.Red, modifier = Modifier.size(18.dp)) }
+                        leadingIcon = { Icon(Icons.Filled.Logout, null, tint = errorColor, modifier = Modifier.size(18.dp)) }
                     )
                     if (settingsStore.userSettings?.developer_mode == true) {
                         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))

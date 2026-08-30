@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -186,7 +187,8 @@ fun GuildFolderItem(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(FolderIconSize),
+                .height(FolderIconSize)
+                .graphicsLayer(clip = false),
             contentAlignment = Alignment.Center
         ) {
             val showIndicator = (!expanded && isAnyChildSelected) || (isUnread && !expanded)
@@ -249,7 +251,7 @@ fun GuildFolderItem(
             )
             
             if (mentionCount > 0 && !expanded) {
-                Box(modifier = Modifier.size(FolderIconSize)) {
+                Box(modifier = Modifier.size(FolderIconSize).graphicsLayer(clip = false)) {
                     Surface(
                         color = MaterialTheme.colorScheme.error,
                         shape = CircleShape,

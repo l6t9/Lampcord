@@ -89,10 +89,20 @@ class AutocompleteStore(
                     val user = member.user!!
                     val name = member.nick ?: user.global_name ?: user.username ?: "Unknown User"
                     
-                    val roleColor = if (selectedGuild != null) {
-                        val memberRoles = member.roles.mapNotNull { roleId -> selectedGuild.roles.find { it.id == roleId } }
-                        val colorRole = memberRoles.filter { it.color != 0 }.maxByOrNull { it.position }
-                        if (colorRole != null) Color(colorRole.color or 0xFF000000.toInt()) else null
+                    val roleData = if (selectedGuild != null) {
+                        val colorRole = member.getRoleColorRole(selectedGuild)
+                        if (colorRole != null) {
+                            val primaryInt = colorRole.colors?.primary_color ?: colorRole.color
+                            val gradient = if (colorRole.colors?.secondary_color != null) {
+                                listOfNotNull(
+                                    Color(primaryInt or 0xFF000000.toInt()),
+                                    Color(colorRole.colors.secondary_color or 0xFF000000.toInt()),
+                                    colorRole.colors.tertiary_color?.let { Color(it or 0xFF000000.toInt()) }
+                                )
+                            } else null
+                            val color = if (primaryInt != 0) Color(primaryInt or 0xFF000000.toInt()) else null
+                            color to gradient
+                        } else null
                     } else null
 
                     AutocompleteItem(
@@ -102,7 +112,8 @@ class AutocompleteStore(
                         icon = user.avatar?.let { "https://cdn.discordapp.com/avatars/${user.id}/$it.png?size=64" },
                         replacement = if (isSearch) user.id else "<@${user.id}>",
                         searchReplacement = user.username,
-                        color = roleColor,
+                        color = roleData?.first,
+                        gradient = roleData?.second,
                         inputText = if (isSearch) user.id else "@$name"
                     )
                 })
@@ -112,13 +123,21 @@ class AutocompleteStore(
                         role.name.contains(query, ignoreCase = true) 
                     }?.take(5) ?: emptyList()
                     results.addAll(roles.map { role ->
+                        val primaryInt = role.colors?.primary_color ?: role.color
                         AutocompleteItem(
                             id = role.id,
                             title = role.name,
                             iconType = Icons.Filled.Group,
                             replacement = "<@&${role.id}>",
                             searchReplacement = role.name,
-                            color = if (role.color != 0) Color(role.color or 0xFF000000.toInt()) else null,
+                            color = if (primaryInt != 0) Color(primaryInt or 0xFF000000.toInt()) else null,
+                            gradient = if (role.colors?.secondary_color != null) {
+                                listOfNotNull(
+                                    Color(primaryInt or 0xFF000000.toInt()),
+                                    Color(role.colors.secondary_color or 0xFF000000.toInt()),
+                                    role.colors.tertiary_color?.let { Color(it or 0xFF000000.toInt()) }
+                                )
+                            } else null,
                             inputText = "@${role.name}"
                         )
                     })

@@ -46,6 +46,7 @@ import org.koin.compose.koinInject
 
 @Composable
 fun ThreadPanel(
+    onDismiss: () -> Unit = { me.lampu.lampcord.shared.settings.Settings.shared.let { /* fallback */ } },
     navigationStore: NavigationStore = koinInject(),
     guildStore: GuildStore = koinInject(),
     channelApi: ChannelApi = koinInject()
@@ -63,31 +64,42 @@ fun ThreadPanel(
     var hasLoadedArchived by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
+    val platform = me.lampu.lampcord.shared.utils.getPlatformName()
+    val isMobile = platform == "android" || platform == "ios"
+
     Column(
         modifier = Modifier
-            .width(340.dp)
+            .then(if (isMobile) Modifier.fillMaxWidth() else Modifier.width(340.dp))
             .fillMaxHeight()
             .background(MaterialTheme.colorScheme.background)
     ) {
         // Header
         Surface(
-            modifier = Modifier.fillMaxWidth().height(48.dp),
-            color = MaterialTheme.colorScheme.background,
+            modifier = Modifier.fillMaxWidth().height(56.dp),
+            color = MaterialTheme.colorScheme.surface,
             tonalElevation = 0.dp
         ) {
             Row(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Filled.Tag, null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(Modifier.width(8.dp))
-                Text(text = "Threads", style = MaterialTheme.typography.titleSmall)
-                Spacer(Modifier.weight(1f))
-                IconButton(onClick = { navigationStore.isThreadPanelVisible = false }) {
-                    Icon(Icons.Filled.Close, "Close")
+                IconButton(onClick = { 
+                    if (isMobile) onDismiss() else navigationStore.isThreadPanelVisible = false 
+                }) {
+                    Icon(
+                        imageVector = if (isMobile) Icons.AutoMirrored.Filled.ArrowBack else Icons.Filled.Close,
+                        contentDescription = "Back"
+                    )
                 }
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = "Threads", 
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),

@@ -59,6 +59,7 @@ import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.zIndex
 import kotlinx.coroutines.launch
 import me.lampu.lampcord.shared.api.ChannelApi
+import me.lampu.lampcord.shared.api.GuildApi
 import me.lampu.lampcord.shared.api.MessageApi
 import me.lampu.lampcord.shared.model.Emoji
 import me.lampu.lampcord.shared.model.Message
@@ -110,6 +111,7 @@ fun MessageItem(
     emojiStore: EmojiStore = koinInject(),
     messageApi: MessageApi = koinInject(),
     channelApi: ChannelApi = koinInject(),
+    guildApi: GuildApi = koinInject(),
     readStateStore: ReadStateStore = koinInject()
 ) {
     if (message.type != null && message.type != 0 && message.type != 19 && message.type != 20) {
@@ -123,13 +125,34 @@ fun MessageItem(
     var showCreateThreadDialog by remember { mutableStateOf(false) }
     
     val currentUser by userStore.currentUser.collectAsState()
+    val members by userStore.members.collectAsState()
     val userSettings = settingsStore.userSettings
     val scope = rememberCoroutineScope()
 
-    val currentMember = remember(navigationStore.selectedGuild, currentUser) {
-        val guildId = navigationStore.selectedGuild?.id ?: return@remember null
-        val userId = currentUser?.id ?: return@remember null
-        userStore.getMember(guildId, userId)
+    val guildId = remember(message, navigationStore.selectedGuild) {
+        message.guild_id ?: navigationStore.selectedGuild?.id
+    }
+
+    val authorId = message.author?.id
+
+    LaunchedEffect(authorId, guildId) {
+        if (authorId != null && guildId != null && message.member == null) {
+            val existing = userStore.getMember(guildId, authorId)
+            if (existing == null) {
+                try {
+                    val fetched = guildApi.getGuildMember(guildId, authorId)
+                    if (fetched != null) {
+                        userStore.cacheMember(guildId, authorId, fetched)
+                    }
+                } catch (e: Exception) { }
+            }
+        }
+    }
+
+    val currentMember = remember(navigationStore.selectedGuild, currentUser, members) {
+        val gId = navigationStore.selectedGuild?.id ?: return@remember null
+        val uId = currentUser?.id ?: return@remember null
+        userStore.getMember(gId, uId)
     }
 
     val guild = navigationStore.selectedGuild
@@ -439,16 +462,34 @@ fun MessageItem(
                     }
                 } else null
             ) {
-                val roleColor by remember(message, navigationStore.selectedGuild) {
+                val guilds by guildStore.guilds.collectAsState()
+                val roleData by remember(message, guilds, navigationStore.selectedGuild, members) {
                     derivedStateOf {
-                        val guild = navigationStore.selectedGuild ?: return@derivedStateOf Color.Unspecified
-                        val authorId = message.author?.id ?: return@derivedStateOf Color.Unspecified
-                        val member = message.member ?: userStore.getMember(guild.id, authorId) ?: return@derivedStateOf Color.Unspecified
-                        val memberRoles = member.roles.mapNotNull { roleId -> guild.roles.find { it.id == roleId } }
-                        val colorRole = memberRoles.filter { it.color != 0 }.maxByOrNull { it.position }
-                        if (colorRole != null) Color(colorRole.color or 0xFF000000.toInt()) else Color.Unspecified
+                        val guild = (if (message.guild_id != null) guilds.find { it.id == message.guild_id } else null)
+                            ?: navigationStore.selectedGuild
+                            ?: return@derivedStateOf null
+
+                        val authorId = message.author?.id ?: return@derivedStateOf null
+                        val member = message.member ?: userStore.getMember(guild.id, authorId) ?: return@derivedStateOf null
+                        val colorRole = member.getRoleColorRole(guild)
+
+                        if (colorRole != null) {
+                            val primaryInt = colorRole.colors?.primary_color ?: colorRole.color
+                            val gradient = if (colorRole.colors?.secondary_color != null) {
+                                listOfNotNull(
+                                    Color(primaryInt or 0xFF000000.toInt()),
+                                    Color(colorRole.colors.secondary_color or 0xFF000000.toInt()),
+                                    colorRole.colors.tertiary_color?.let { Color(it or 0xFF000000.toInt()) }
+                                )
+                            } else null
+                            val color = if (primaryInt != 0) Color(primaryInt or 0xFF000000.toInt()) else Color.Unspecified
+                            color to gradient
+                        } else null
                     }
                 }
+
+                val roleColor = roleData?.first ?: Color.Unspecified
+                val roleGradient = roleData?.second
                 
                 val displayColor = if (roleColor == Color.Unspecified) MaterialTheme.colorScheme.onSurface else roleColor
 
@@ -470,11 +511,12 @@ fun MessageItem(
                                     fontSize = 15.sp
                                 ),
                                 color = if (isDm) Color.White else displayColor,
+                                roleGradient = roleGradient,
                                 modifier = Modifier
                                     .onGloballyPositioned { namePosition = it.positionInRoot() }
                                     .clickable(enabled = !isPreview) { profileStore.showProfile(message.author.id, guildId, namePosition) },
                                 ignoreEffects = !isHovered,
-                                ignoreColors = if (isDm) !isHovered else true
+                                ignoreColors = if (isDm) !isHovered else false
                             )
                             val guild = navigationStore.selectedGuild
                             val roleIcon = message.member?.getRoleIcon(guild) ?: userStore.getMember(guild?.id ?: "", message.author.id)?.getRoleIcon(guild)
@@ -631,11 +673,12 @@ fun MessageItem(
                                                 style = message.member?.display_name_styles ?: message.author.display_name_styles,
                                                 baseStyle = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                                 color = if (isDm) Color.White else displayColor,
+                                                roleGradient = roleGradient,
                                                 modifier = Modifier
                                                     .onGloballyPositioned { namePosition = it.positionInRoot() }
                                                     .clickable { profileStore.showProfile(message.author.id, guildId, namePosition) },
                                                 ignoreEffects = !isHovered,
-                                                ignoreColors = if (isDm) !isHovered else true
+                                                ignoreColors = if (isDm) !isHovered else false
                                             )
                                             val guild = navigationStore.selectedGuild
                                             val roleIcon = message.member?.getRoleIcon(guild) ?: userStore.getMember(guild?.id ?: "", message.author.id)?.getRoleIcon(guild)

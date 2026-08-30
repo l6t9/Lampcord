@@ -145,8 +145,16 @@ data class Role(
     val managed: Boolean,
     val mentionable: Boolean,
     val icon: String? = null,
-    val unicode_emoji: String? = null
+    val unicode_emoji: String? = null,
+    val colors: RoleColors? = null
 ) {
+    @Serializable
+    data class RoleColors(
+        val primary_color: Int? = null,
+        val secondary_color: Int? = null,
+        val tertiary_color: Int? = null
+    )
+
     @Serializable
     data class Partial(
         val name: String? = null,
@@ -155,7 +163,8 @@ data class Role(
         val mentionable: Boolean? = null,
         val permissions: String? = null,
         val icon: String? = null,
-        val unicode_emoji: String? = null
+        val unicode_emoji: String? = null,
+        val colors: RoleColors? = null
     )
 }
 
@@ -178,12 +187,29 @@ data class Member(
     val collectibles: Collectibles? = null,
     val display_name_styles: DisplayNameStyles? = null
 ) {
+    @Serializable
+    data class Partial(
+        val nick: String? = null,
+        val avatar: String? = null,
+        val banner: String? = null
+    )
+
     fun userId(): String? = user?.id ?: presence?.user?.id
 
     fun getRoleIcon(guild: Guild?): Role? {
         if (guild == null) return null
         return roles.mapNotNull { roleId -> guild.roles.find { it.id == roleId } }
             .filter { it.icon != null || it.unicode_emoji != null }
+            .maxByOrNull { it.position }
+    }
+
+    fun getRoleColorRole(guild: Guild?): Role? {
+        if (guild == null) return null
+        val memberRoles = roles.mapNotNull { roleId -> guild.roles.find { it.id == roleId } }.toMutableList()
+        // Include @everyone role
+        guild.roles.find { it.id == guild.id }?.let { memberRoles.add(it) }
+
+        return memberRoles.filter { it.color != 0 || it.colors?.secondary_color != null }
             .maxByOrNull { it.position }
     }
 }

@@ -11,11 +11,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
-import me.lampu.lampcord.shared.ui.components.settings.Material3SettingsGroup
-import me.lampu.lampcord.shared.ui.components.settings.Material3SettingsItem
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -29,6 +30,7 @@ actual fun ContextMenu(
     content: @Composable () -> Unit
 ) {
     var showSheet by remember { mutableStateOf(false) }
+    val haptic = LocalHapticFeedback.current
 
     Box(
         modifier = modifier
@@ -43,6 +45,7 @@ actual fun ContextMenu(
                         } ?: true
                         
                         if (timedOut) {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             showSheet = true
                             down.consume()
                             // Consume all subsequent events until all pointers are up
@@ -62,7 +65,8 @@ actual fun ContextMenu(
     if (showSheet) {
         AdaptiveModalBottomSheet(
             onDismissRequest = { showSheet = false },
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = MaterialTheme.colorScheme.surface,
+            dragHandle = { BottomSheetDefaults.DragHandle() }
         ) {
             Column(
                 modifier = Modifier
@@ -72,8 +76,16 @@ actual fun ContextMenu(
                     .padding(bottom = 32.dp),
             ) {
                 if (header != null) {
-                    Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                        header()
+                    Surface(
+                        modifier = Modifier
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                            .fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.surfaceContainer,
+                        shape = RoundedCornerShape(20.dp)
+                    ) {
+                        Box(modifier = Modifier.padding(16.dp)) {
+                            header()
+                        }
                     }
                 }
                 
@@ -91,22 +103,48 @@ actual fun ContextMenu(
                     groups[key]!!.add(it)
                 }
 
+                val cornerRadius = 20.dp
+                val reducedRadius = 5.dp
+
                 groups.entries.forEachIndexed { idx, entry ->
                     val groupItems = entry.value
-                    Material3SettingsGroup(
-                        items = groupItems.map { item ->
-                            Material3SettingsItem(
-                                title = { Text(item.label) },
-                                icon = item.icon,
-                                iconTint = item.color,
-                                onClick = {
-                                    item.onClick()
-                                    showSheet = false
-                                }
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        groupItems.forEachIndexed { itemIdx, item ->
+                            val isFirst = itemIdx == 0
+                            val isLast = itemIdx == groupItems.lastIndex
+                            val itemShape = RoundedCornerShape(
+                                topStart = if (isFirst) cornerRadius else reducedRadius,
+                                topEnd = if (isFirst) cornerRadius else reducedRadius,
+                                bottomStart = if (isLast) cornerRadius else reducedRadius,
+                                bottomEnd = if (isLast) cornerRadius else reducedRadius,
                             )
+
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(itemShape)
+                                    .clickable {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        item.onClick()
+                                        showSheet = false
+                                    },
+                                shape = itemShape,
+                                color = MaterialTheme.colorScheme.surfaceContainer
+                            ) {
+                                ListItem(
+                                    headlineContent = { Text(item.label, color = item.color ?: Color.Unspecified, style = MaterialTheme.typography.bodyLarge) },
+                                    leadingContent = item.icon?.let { { Icon(it, null, modifier = Modifier.size(22.dp), tint = item.color ?: MaterialTheme.colorScheme.onSurfaceVariant) } },
+                                    colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+                                )
+                            }
                         }
-                    )
-                    if (idx < groups.size - 1) Spacer(Modifier.height(8.dp))
+                    }
+                    if (idx < groups.size - 1) Spacer(Modifier.height(16.dp))
                 }
             }
         }

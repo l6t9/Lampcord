@@ -105,7 +105,7 @@ actual fun ContextMenu(
                     )
                 }
 
-                if (gIdx < groups.size - 1) Divider()
+                if (gIdx < groups.size - 1) HorizontalDivider()
             }
         }
     }

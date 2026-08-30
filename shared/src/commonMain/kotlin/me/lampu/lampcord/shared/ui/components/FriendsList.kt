@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -28,7 +29,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
@@ -77,6 +77,7 @@ fun FriendsList(
 
     Scaffold(
         modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             Column {
                 LargeTopAppBar(
@@ -255,11 +256,14 @@ fun FriendItem(
                         IconButton(onClick = { navigationStore.openDm(user.id) }) {
                             Icon(Icons.Filled.Chat, "Message", modifier = Modifier.size(20.dp))
                         }
+                        val errorColor = MaterialTheme.colorScheme.error
                         ContextMenu(
-                            items = listOf(
-                                ContextMenuItem("Remove Friend", Icons.Filled.PersonRemove, onClick = { relationshipStore.removeFriend(user.id) }, group = "Primary"),
-                                ContextMenuItem("Block", Icons.Filled.Block, onClick = { relationshipStore.blockUser(user.id) }, color = Color.Red, group = "Destructive")
-                            )
+                            items = remember(user.id, errorColor) {
+                                listOf(
+                                    ContextMenuItem("Remove Friend", Icons.Filled.PersonRemove, onClick = { relationshipStore.removeFriend(user.id) }, group = "Primary"),
+                                    ContextMenuItem("Block", Icons.Filled.Block, onClick = { relationshipStore.blockUser(user.id) }, color = errorColor, group = "Destructive")
+                                )
+                            }
                         ) {
                             IconButton(onClick = {}) {
                                 Icon(Icons.Filled.MoreVert, "More", modifier = Modifier.size(20.dp))

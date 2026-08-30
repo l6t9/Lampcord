@@ -1,13 +1,18 @@
 package me.lampu.lampcord.shared.ui.components
 
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -26,6 +31,10 @@ object DisplayNameCatalog {
         const val TOON = 4
         const val POP = 5
         const val GLOW = 6
+        const val TEST_1 = 1001
+        const val TEST_2 = 1002
+        const val TEST_3 = 1003
+        const val TEST_4 = 1004
     }
 
     object Fonts {
@@ -68,6 +77,20 @@ object DisplayNameCatalog {
         Fonts.ZILLA_SLAB -> 0.03.sp
         else -> TextUnit.Unspecified
     }
+
+    fun isProfileEffect(effectId: Int): Boolean = when (effectId) {
+        Effect.SOLID,
+        Effect.GRADIENT,
+        Effect.NEON,
+        Effect.TOON,
+        Effect.POP,
+        Effect.GLOW,
+        Effect.TEST_1,
+        Effect.TEST_2,
+        Effect.TEST_3,
+        Effect.TEST_4 -> true
+        else -> false
+    }
 }
 
 @Composable
@@ -77,6 +100,7 @@ fun UsernameView(
     modifier: Modifier = Modifier,
     baseStyle: TextStyle = MaterialTheme.typography.bodyMedium,
     color: Color = Color.Unspecified,
+    roleGradient: List<Color>? = null,
     fontWeight: FontWeight? = null,
     maxLines: Int = 1,
     overflow: TextOverflow = TextOverflow.Ellipsis,
@@ -91,13 +115,61 @@ fun UsernameView(
 
     val useStyleColors = !ignoreColors && !styleColors.isNullOrEmpty()
     
-    val brush = if (useStyleColors && styleColors.size > 1) {
-        Brush.linearGradient(styleColors)
-    } else null
+    val infiniteTransition = rememberInfiniteTransition(label = "usernameGradient")
+    val animValue by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(4000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "gradientOffset"
+    )
 
-    val finalColor = if (useStyleColors) styleColors.first() else color
+    val brush = remember(useStyleColors, styleColors, roleGradient, animValue) {
+        if (roleGradient != null && roleGradient.size > 1) {
+            val offset = animValue * 200f // 2x the period
+            
+            val animatedColors = when {
+                roleGradient.size >= 3 -> listOf(roleGradient[0], roleGradient[1], roleGradient[2], roleGradient[0])
+                roleGradient.size == 2 -> listOf(roleGradient[0], roleGradient[1], roleGradient[0])
+                else -> roleGradient
+            }
+            
+            Brush.linearGradient(
+                colors = animatedColors,
+                start = Offset(offset - 200f, 0f),
+                end = Offset(offset, 0f),
+                tileMode = TileMode.Repeated
+            )
+        } else if (useStyleColors && styleColors != null && styleColors.size > 1) {
+            // Static gradient for display name styles
+            Brush.linearGradient(colors = styleColors)
+        } else if (useStyleColors && styleColors != null && styleColors.size == 1 && effectId == DisplayNameCatalog.Effect.GRADIENT) {
+            // Discord sometimes sends GRADIENT effect with only 1 color, which should be SOLID
+            null
+        } else null
+    }
+
+    val finalColor = if (roleGradient != null && roleGradient.isNotEmpty()) {
+        roleGradient.first()
+    } else if (color != Color.Unspecified) {
+        color
+    } else if (useStyleColors && !styleColors.isNullOrEmpty()) {
+        styleColors.first()
+    } else {
+        color
+    }
     
-    val effectBaseColor = if (useStyleColors) styleColors.first() else if (color != Color.Unspecified) color else MaterialTheme.colorScheme.onSurface
+    val effectBaseColor = if (roleGradient != null && roleGradient.isNotEmpty()) {
+        roleGradient.first()
+    } else if (useStyleColors && !styleColors.isNullOrEmpty()) {
+        styleColors.first()
+    } else if (color != Color.Unspecified) {
+        color
+    } else {
+        MaterialTheme.colorScheme.onSurface
+    }
 
     val textModifier = if (marquee) {
         Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 3000, velocity = 30.dp)
@@ -135,7 +207,7 @@ fun UsernameView(
                 )
             } else {
                 baseStyle.copy(
-                    color = finalColor,
+                    color = if (finalColor != Color.Unspecified) finalColor else MaterialTheme.colorScheme.onSurface,
                     fontFamily = fontFamily ?: baseStyle.fontFamily,
                     letterSpacing = if (letterSpacing != TextUnit.Unspecified) letterSpacing else baseStyle.letterSpacing,
                     fontWeight = fontWeight ?: baseStyle.fontWeight,

@@ -60,6 +60,11 @@ actual fun showToast(text: String) {
     println("Toast: $text")
 }
 
+actual fun restartApp() {
+    // No easy way to restart on iOS
+    platform.posix.exit(0)
+}
+
 @Composable
 actual fun RequestMediaPermissions(onResult: (Boolean) -> Unit) {
     LaunchedEffect(Unit) {

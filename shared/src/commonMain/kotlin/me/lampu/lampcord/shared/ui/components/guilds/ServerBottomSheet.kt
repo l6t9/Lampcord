@@ -358,10 +358,10 @@ fun ServerBottomSheet(
                         } else null,
 
                         Material3SettingsItem(
-                            title = { Text("Edit Server Profile") },
+                            title = { Text("Edit Profile") },
                             description = { Text(currentUser?.global_name ?: currentUser?.username ?: "") },
                             onClick = {
-                                currentUser?.let { profileStore.showProfile(it.id, navigationStore.selectedGuild?.id) }
+                                navigationStore.navigateToSettings("PROFILES")
                                 onDismiss()
                             }
                         ),

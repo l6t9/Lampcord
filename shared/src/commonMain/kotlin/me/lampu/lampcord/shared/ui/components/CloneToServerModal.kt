@@ -57,7 +57,7 @@ fun CloneToServerModal(
                             }
                         }
                     )
-                    Divider()
+                    HorizontalDivider()
                 }
             }
             Spacer(Modifier.height(8.dp))

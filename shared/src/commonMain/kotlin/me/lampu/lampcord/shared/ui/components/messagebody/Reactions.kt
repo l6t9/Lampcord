@@ -35,6 +35,7 @@ import me.lampu.lampcord.shared.api.MessageApi
 import me.lampu.lampcord.shared.model.Message
 import me.lampu.lampcord.shared.model.MessageReaction
 import me.lampu.lampcord.shared.model.getDisplayUrl
+import me.lampu.lampcord.shared.state.MessageStore
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.chat.ReactionPickerSheet
 import me.lampu.lampcord.shared.ui.icons.Icons
@@ -44,11 +45,10 @@ import org.koin.compose.koinInject
 @Composable
 fun ReactionsView(
     message: Message,
-    messageApi: MessageApi = koinInject()
+    messageStore: MessageStore = koinInject()
 ) {
     val reactions = message.reactions ?: return
     if (reactions.isEmpty()) return
-    val scope = rememberCoroutineScope()
     
     var showReactionUsers by remember { mutableStateOf<MessageReaction?>(null) }
     var showAddReactionPicker by remember { mutableStateOf(false) }
@@ -61,7 +61,6 @@ fun ReactionsView(
         ) {
             reactions.forEach { reaction ->
                 val isMe = reaction.me
-                val emojiStr = if (reaction.emoji.id != null) "${reaction.emoji.name}:${reaction.emoji.id}" else reaction.emoji.name ?: ""
                 
                 Surface(
                     modifier = Modifier
@@ -76,13 +75,7 @@ fun ReactionsView(
                             .padding(horizontal = 8.dp)
                             .combinedClickable(
                                 onClick = {
-                                    scope.launch {
-                                        if (isMe) {
-                                            messageApi.removeReaction(message.channel_id, message.id, emojiStr)
-                                        } else {
-                                            messageApi.addReaction(message.channel_id, message.id, emojiStr)
-                                        }
-                                    }
+                                    messageStore.toggleReaction(message, reaction.emoji)
                                 },
                                 onLongClick = {
                                     showReactionUsers = reaction
@@ -148,10 +141,7 @@ fun ReactionsView(
         ReactionPickerSheet(
             onDismiss = { showAddReactionPicker = false },
             onEmojiSelected = { emoji ->
-                val emojiStr = if (emoji.id != null) "${emoji.name}:${emoji.id}" else emoji.name ?: ""
-                scope.launch {
-                    messageApi.addReaction(message.channel_id, message.id, emojiStr)
-                }
+                messageStore.toggleReaction(message, emoji)
             }
         )
     }

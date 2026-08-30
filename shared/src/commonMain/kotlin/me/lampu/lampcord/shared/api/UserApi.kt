@@ -17,6 +17,7 @@ import kotlinx.serialization.json.put
 import me.lampu.lampcord.shared.model.ConnectedAccount
 import me.lampu.lampcord.shared.model.GuildFolder
 import me.lampu.lampcord.shared.model.Relationship
+import me.lampu.lampcord.shared.model.User
 import me.lampu.lampcord.shared.model.UserProfile
 import me.lampu.lampcord.shared.model.UserSettings
 import me.lampu.lampcord.shared.utils.Logging
@@ -46,6 +47,34 @@ class UserApi(private val rest: RestClient) {
         } catch (e: Exception) {
             Logging.e("Profile", "Error fetching user profile: ${e.message}")
             null
+        }
+    }
+
+    suspend fun patchUser(partial: User.Partial): User? {
+        return try {
+            val response = rest.httpClient.patch("${rest.apiBase}/users/@me") {
+                standardHeaders(rest)
+                contentType(ContentType.Application.Json)
+                setBody(partial)
+            }
+            if (response.status.isSuccess()) response.body() else null
+        } catch (e: Exception) {
+            Logging.e("User", "Error patching user: ${e.message}")
+            null
+        }
+    }
+
+    suspend fun patchUserProfile(partial: me.lampu.lampcord.shared.model.UserProfileMetadata.Partial): Boolean {
+        return try {
+            val response = rest.httpClient.patch("${rest.apiBase}/users/@me/profile") {
+                standardHeaders(rest)
+                contentType(ContentType.Application.Json)
+                setBody(partial)
+            }
+            response.status.isSuccess()
+        } catch (e: Exception) {
+            Logging.e("User", "Error patching user profile: ${e.message}")
+            false
         }
     }
 

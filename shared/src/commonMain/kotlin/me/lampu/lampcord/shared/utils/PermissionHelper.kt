@@ -139,4 +139,15 @@ object PermissionHelper {
     fun canViewChannel(member: Member, guild: Guild, channel: Channel, userId: String? = null): Boolean {
         return hasPermission(member, guild, channel, Permission.VIEW_CHANNEL, userId)
     }
+
+    fun isChannelPrivate(guild: Guild, channel: Channel): Boolean {
+        if (channel.guild_id == null) return false
+        val overwrites = channel.permission_overwrites ?: return false
+        
+        // Find @everyone overwrite
+        val everyoneOverwrite = overwrites.find { it.id == guild.id } ?: return false
+        val deny = everyoneOverwrite.denyString().toULongOrNull()?.toLong() ?: 0L
+        
+        return (deny and Permission.VIEW_CHANNEL.value) != 0L
+    }
 }

@@ -71,7 +71,8 @@ fun DMItem(
         derivedStateOf { readStateStore.getMentionCount(channel.id) }
     }
 
-    val contextMenuItems = remember(channel, userSettings, isMuted, recipient) {
+    val errorColor = MaterialTheme.colorScheme.error
+    val contextMenuItems = remember(channel, userSettings, isMuted, recipient, errorColor) {
         val items = mutableListOf<ContextMenuItem>()
         // Primary
         items.add(ContextMenuItem(if (isMuted) "Unmute" else "Mute", if (isMuted) Icons.Filled.Notifications else Icons.AutoMirrored.Filled.VolumeOff, onClick = {
@@ -88,7 +89,7 @@ fun DMItem(
         items.add(ContextMenuItem("Profile", Icons.Filled.AccountCircle, onClick = { recipient?.let { profileStore.showProfile(it.id) } }, group = "Primary"))
         items.add(ContextMenuItem("Close DM", Icons.Filled.Close, onClick = {
             navigationStore.closeDm(channel.id)
-        }, color = Color.Red, group = "Destructive"))
+        }, color = errorColor, group = "Destructive"))
 
         if (userSettings?.developer_mode == true) {
             items.add(ContextMenuItem("Copy ID", Icons.Filled.Dns, onClick = { setClipboardText(channel.id) }, group = "Developer"))

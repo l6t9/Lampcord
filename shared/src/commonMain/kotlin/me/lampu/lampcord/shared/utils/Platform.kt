@@ -45,5 +45,9 @@ expect fun getInternalFilePath(name: String): String
 
 expect fun showToast(text: String)
 
+expect fun restartApp()
+
 @Composable
 expect fun RequestMediaPermissions(onResult: (Boolean) -> Unit)
+
+val reloadTrigger = kotlinx.coroutines.flow.MutableStateFlow(0)

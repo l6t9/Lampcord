@@ -16,6 +16,7 @@ import androidx.room.RoomDatabase
 import me.lampu.lampcord.shared.database.AppDatabase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.net.URL
 import android.app.DownloadManager
 import android.net.Uri
@@ -263,6 +264,16 @@ actual fun showToast(text: String) {
     }
 }
 
+actual fun restartApp() {
+    val context = AndroidContext.context
+    val packageManager = context.packageManager
+    val intent = packageManager.getLaunchIntentForPackage(context.packageName)
+    val componentName = intent?.component
+    val mainIntent = android.content.Intent.makeRestartActivityTask(componentName)
+    context.startActivity(mainIntent)
+    Runtime.getRuntime().exit(0)
+}
+
 @Composable
 actual fun RequestMediaPermissions(onResult: (Boolean) -> Unit) {
     val launcher = rememberLauncherForActivityResult(
@@ -302,66 +313,95 @@ actual fun base64Encode(bytes: ByteArray): String {
 }
 
 actual suspend fun downloadToDownloads(url: String, filename: String): Boolean = withContext(Dispatchers.IO) {
-    try {
-        val ctx = AndroidContext.context
-        val systemService = ctx.getSystemService(Context.DOWNLOAD_SERVICE)
-        val dm = if (systemService is DownloadManager) systemService else return@withContext false
-        
-        val uri = Uri.parse(url)
-        val title = filename.ifBlank { uri.lastPathSegment } ?: "file"
-        val sanitizedTitle = title.replace(Regex("[/\\\\]"), "_")
+    val ctx = AndroidContext.context
+    val systemService = ctx.getSystemService(Context.DOWNLOAD_SERVICE)
+    val dm = if (systemService is DownloadManager) systemService else return@withContext false
 
-        // Match Discord's DownloadManager.Request setup
-        val request = DownloadManager.Request(uri)
+    val uri = try {
+        Uri.parse(url)
+    } catch (e: Exception) {
+        return@withContext false
+    }
+
+    // Match Discord 126.21 sanitization precisely
+    val title = filename.ifBlank { uri.lastPathSegment } ?: "file"
+    val sanitizedTitle = title.replace(Regex("[/\\\\]"), "_")
+
+    val request = try {
+        DownloadManager.Request(uri)
             .setTitle(sanitizedTitle)
             .setDescription(sanitizedTitle)
-            .setNotificationVisibility(1) // VISIBILITY_VISIBLE_NOTIFY_COMPLETED
+            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
             .setDestinationInExternalPublicDir(android.os.Environment.DIRECTORY_DOWNLOADS, sanitizedTitle)
+    } catch (e: Exception) {
+        return@withContext false
+    }
 
-        @Suppress("DEPRECATION")
-        request.allowScanningByMediaScanner()
+    // Guess MIME type from extension to help DownloadManager
+    val extension = sanitizedTitle.substringAfterLast('.', "").lowercase()
+    if (extension.isNotEmpty()) {
+        val mimeType = android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
+        if (mimeType != null) {
+            request.setMimeType(mimeType)
+        }
+    }
 
-        val downloadId = dm.enqueue(request)
-        if (downloadId <= 0) return@withContext false
+    @Suppress("DEPRECATION")
+    request.allowScanningByMediaScanner()
 
-        // Suspend until the system broadcasts completion for this download id
-        val deferred = kotlinx.coroutines.CompletableDeferred<Boolean>()
-        val filter = android.content.IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)
-        val receiver = object : android.content.BroadcastReceiver() {
-            override fun onReceive(context: Context?, intent: android.content.Intent?) {
-                val id = intent?.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L) ?: -1L
-                if (id == downloadId) {
-                    try {
-                        val q = DownloadManager.Query().setFilterById(downloadId)
-                        val cursor = dm.query(q)
-                        var success = false
-                        cursor?.use {
-                            if (it.moveToFirst()) {
-                                // Match Discord: they don't check status, but we will for safety
-                                val status = it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
-                                success = status == DownloadManager.STATUS_SUCCESSFUL
-                            }
+    val deferred = kotlinx.coroutines.CompletableDeferred<Boolean>()
+    var downloadId = -1L
+    
+    val filter = android.content.IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)
+    val receiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: android.content.Intent?) {
+            val id = intent?.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L) ?: -1L
+            if (id != -1L && id == downloadId) {
+                try {
+                    val q = DownloadManager.Query().setFilterById(id)
+                    val cursor = dm.query(q)
+                    var success = false
+                    cursor?.use {
+                        if (it.moveToFirst()) {
+                            val status = it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
+                            success = status == DownloadManager.STATUS_SUCCESSFUL
                         }
-                        try { ctx.unregisterReceiver(this) } catch (_: Exception) {}
-                        if (!deferred.isCompleted) deferred.complete(success)
-                    } catch (e: Exception) {
-                        try { ctx.unregisterReceiver(this) } catch (_: Exception) {}
-                        if (!deferred.isCompleted) deferred.complete(false)
                     }
+                    if (!deferred.isCompleted) deferred.complete(success)
+                } catch (e: Exception) {
+                    if (!deferred.isCompleted) deferred.complete(false)
+                } finally {
+                    try { ctx.unregisterReceiver(this) } catch (_: Exception) {}
                 }
             }
         }
+    }
 
-        withContext(kotlinx.coroutines.Dispatchers.Main) {
-            if (Build.VERSION.SDK_INT >= 34) {
-                ctx.registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED)
-            } else {
-                ctx.registerReceiver(receiver, filter)
+    withContext(Dispatchers.Main) {
+        if (Build.VERSION.SDK_INT >= 34) {
+            ctx.registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED)
+        } else {
+            ctx.registerReceiver(receiver, filter)
+        }
+    }
+
+    return@withContext try {
+        downloadId = dm.enqueue(request)
+        if (downloadId <= 0) {
+            withContext(Dispatchers.Main) { try { ctx.unregisterReceiver(receiver) } catch (_: Exception) {} }
+            false
+        } else {
+            // Discord 126.21 patience: up to 10 minutes for a download
+            withTimeoutOrNull(600000L) {
+                deferred.await()
+            } ?: run {
+                // Timeout
+                withContext(Dispatchers.Main) { try { ctx.unregisterReceiver(receiver) } catch (_: Exception) {} }
+                false
             }
         }
-
-        deferred.await()
     } catch (e: Exception) {
+        withContext(Dispatchers.Main) { try { ctx.unregisterReceiver(receiver) } catch (_: Exception) {} }
         false
     }
 }

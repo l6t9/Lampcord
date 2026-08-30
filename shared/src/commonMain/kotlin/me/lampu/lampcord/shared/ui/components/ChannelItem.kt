@@ -2,6 +2,8 @@ package me.lampu.lampcord.shared.ui.components
 
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -38,11 +40,17 @@ fun ChannelItem(
     settingsStore: SettingsStore = koinInject(),
     guildStore: GuildStore = koinInject(),
     voiceStore: VoiceStore = koinInject(),
-    presenceStore: PresenceStore = koinInject()
+    presenceStore: PresenceStore = koinInject(),
+    typingStore: TypingStore = koinInject()
 ) {
     val isSelected = navigationStore.selectedChannel?.id == channel.id
     val readStates by readStateStore.readStates.collectAsState()
     
+    val typingUsers by typingStore.typingUsers.collectAsState()
+    val isSomeoneTyping = remember(channel.id, typingUsers) {
+        typingUsers[channel.id]?.isNotEmpty() == true
+    }
+
     val isUnread by remember(channel, readStates[channel.id]) {
         derivedStateOf { readStateStore.isUnread(channel) }
     }
@@ -75,6 +83,9 @@ fun ChannelItem(
     val userSettings = settingsStore.userSettings
     val scope = rememberCoroutineScope()
 
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+
     var showNotificationsSheet by remember { mutableStateOf(false) }
     var showInviteDialog by remember { mutableStateOf(false) }
     val isDmChannel = channel.guild_id == null || channel.type == 1 || channel.type == 3
@@ -82,6 +93,11 @@ fun ChannelItem(
     val canManageChannel = remember(channel, guild, member) {
         if (guild == null || member == null) false
         else PermissionHelper.hasPermission(member, guild, channel, Permission.MANAGE_CHANNELS, currentUser?.id)
+    }
+
+    val isPrivate = remember(channel, guild) {
+        if (guild == null) false
+        else PermissionHelper.isChannelPrivate(guild, channel)
     }
 
     val contextMenuItems = remember(channel, userSettings, isMuted, canView, canManageChannel) {
@@ -139,14 +155,14 @@ fun ChannelItem(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 1.dp)
+                .padding(vertical = if (settingsStore.messageSpacingMode == me.lampu.lampcord.shared.settings.MessageSpacingMode.DEFAULT) 1.dp else 0.dp)
                 .alpha(if (canView) 1f else 0.4f),
             verticalArrangement = Arrangement.Center
         ) {
-            val itemHeight = when (settingsStore.messageSpacingMode) {
-                me.lampu.lampcord.shared.settings.MessageSpacingMode.COMPACT -> 32.dp
-                me.lampu.lampcord.shared.settings.MessageSpacingMode.DEFAULT -> 40.dp
-                me.lampu.lampcord.shared.settings.MessageSpacingMode.SPACIOUS -> 48.dp
+            val (itemHeight, iconSize) = when (settingsStore.messageSpacingMode) {
+                me.lampu.lampcord.shared.settings.MessageSpacingMode.COMPACT -> 28.dp to 24.dp
+                me.lampu.lampcord.shared.settings.MessageSpacingMode.DEFAULT -> 36.dp to 24.dp
+                me.lampu.lampcord.shared.settings.MessageSpacingMode.SPACIOUS -> 44.dp to 24.dp
             }
 
             Box(
@@ -168,7 +184,7 @@ fun ChannelItem(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(itemHeight)
-                        .padding(horizontal = 8.dp, vertical = 2.dp),
+                        .padding(horizontal = 8.dp),
 
                     onClick = { 
                         if (!canView) return@Surface
@@ -178,34 +194,58 @@ fun ChannelItem(
                         MaterialTheme.colorScheme.surfaceContainerHigh 
                     else Color.Transparent,
                     shape = MaterialTheme.shapes.small,
-                    enabled = canView
+                    enabled = canView,
+                    interactionSource = interactionSource
                 ) {
                     Row(
                         modifier = Modifier
-                            .padding(horizontal = 12.dp)
+                            .padding(horizontal = 10.dp)
                             .alpha(if (isMuted && !isSelected) 0.5f else 1f),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         val contentColor = when {
                             isSelected -> MaterialTheme.colorScheme.onSurface
                             isUnread && canView -> MaterialTheme.colorScheme.onSurface
+                            isHovered -> MaterialTheme.colorScheme.onSurface
                             else -> MaterialTheme.colorScheme.onSurfaceVariant
                         }
                         
-                        Icon(
-                            imageVector = if (!canView) {
-                                if (isSelected) Icons.Filled.Lock else Icons.Rounded.Lock
-                            } else when(channel.type) {
-                                15 -> if (isSelected) Icons.Filled.Forum else Icons.Rounded.Forum
-                                2, 13 -> if (isSelected) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Rounded.VolumeUp
-                                5 -> if (isSelected) Icons.Filled.Campaign else Icons.Rounded.Campaign
-                                10, 11, 12 -> if (isSelected) Icons.Filled.Tag else Icons.Rounded.Tag
-                                else -> if (isSelected) Icons.Filled.Tag else Icons.Rounded.Tag
-                            },
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp),
-                            tint = contentColor.copy(alpha = if (isSelected || isUnread) 1f else 0.6f)
-                        )
+                        Box(modifier = Modifier.size(iconSize)) {
+                            Icon(
+                                imageVector = if (!canView) {
+                                    if (isSelected) Icons.Filled.Lock else Icons.Rounded.Lock
+                                } else when(channel.type) {
+                                    15 -> if (isSelected) Icons.Filled.Forum else Icons.Rounded.Forum
+                                    2, 13 -> if (isSelected) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Rounded.VolumeUp
+                                    5 -> if (isSelected) Icons.Filled.Campaign else Icons.Rounded.Campaign
+                                    10, 11, 12 -> if (isSelected) Icons.Filled.Tag else Icons.Rounded.Tag
+                                    else -> if (isSelected) Icons.Filled.Tag else Icons.Rounded.Tag
+                                },
+                                contentDescription = null,
+                                modifier = Modifier.matchParentSize(),
+                                tint = contentColor.copy(alpha = if (isSelected || isUnread || isHovered) 1f else 0.6f)
+                            )
+                            
+                            if (canView && isPrivate && channel.type != 4) {
+                                Surface(
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .offset(x = 2.dp, y = (-2).dp)
+                                        .size(12.dp),
+                                    shape = CircleShape,
+                                    color = if (isSelected)
+                                        MaterialTheme.colorScheme.surfaceContainerHigh
+                                    else MaterialTheme.colorScheme.surface,
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Lock,
+                                        contentDescription = null,
+                                        modifier = Modifier.padding(1.dp).fillMaxSize(),
+                                        tint = contentColor
+                                    )
+                                }
+                            }
+                        }
                         
                         Spacer(modifier = Modifier.width(12.dp))
                         
@@ -219,6 +259,10 @@ fun ChannelItem(
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f).basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 3000, velocity = 30.dp)
                         )
+
+                        if (isSomeoneTyping && !isSelected) {
+                            TypingDots(modifier = Modifier.padding(end = 4.dp).size(16.dp))
+                        }
                         
                         if (mentionCount > 0) {
                             Surface(
@@ -272,20 +316,6 @@ fun ChannelItem(
                 }
             }
             
-            // Threads (if any are associated with this channel)
-            val allChannels by guildStore.allGuildChannels.collectAsState()
-            val threads = allChannels.values.filter { it.guild_id == channel.guild_id && it.parent_id == channel.id && it.isThread() }
-            if (threads.isNotEmpty() && isSelected) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 32.dp)
-                ) {
-                    threads.forEach { thread ->
-                        ChannelItem(thread)
-                    }
-                }
-            }
         }
     }
 
@@ -303,8 +333,6 @@ fun ChannelItem(
         )
     }
 }
-
-fun Channel.isThread() = type in listOf(10, 11, 12)
 
 @Composable
 fun VoiceParticipantSidebarItem(

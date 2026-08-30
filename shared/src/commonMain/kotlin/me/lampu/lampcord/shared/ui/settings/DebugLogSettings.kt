@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,7 +26,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DebugLogScreen(onBack: () -> Unit) {
-    var logs by remember { mutableStateOf(Logging.getLogs()) }
+    val logs by Logging.logs.collectAsState()
     var filterLevel by remember { mutableStateOf<String?>(null) }
     var filterTag by remember { mutableStateOf<String?>(null) }
     var searchQuery by remember { mutableStateOf("") }
@@ -58,10 +59,10 @@ fun DebugLogScreen(onBack: () -> Unit) {
                     }
                 },
                 actions = {
-                    IconButton(onClick = { logs = Logging.getLogs() }) {
+                    IconButton(onClick = { /* Redundant with StateFlow but kept for UI */ }) {
                         Icon(Icons.Rounded.Refresh, "Refresh")
                     }
-                    IconButton(onClick = { Logging.clear(); logs = emptyList() }) {
+                    IconButton(onClick = { Logging.clear() }) {
                         Icon(Icons.Rounded.Delete, "Clear")
                     }
                 }

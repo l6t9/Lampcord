@@ -134,11 +134,12 @@ fun AutocompletePicker(
                             Spacer(Modifier.width(12.dp))
                             
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = item.title,
-                                    style = MaterialTheme.typography.bodyMedium,
+                                UsernameView(
+                                    name = item.title,
+                                    style = null,
+                                    baseStyle = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                                     color = item.color ?: MaterialTheme.colorScheme.onSurface,
-                                    fontWeight = FontWeight.SemiBold,
+                                    roleGradient = item.gradient,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )

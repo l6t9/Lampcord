@@ -14,22 +14,42 @@ import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import me.lampu.lampcord.shared.di.appModule
+import me.lampu.lampcord.shared.rpc.DesktopRPCServer
 import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.ui.App
 import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.utils.reloadTrigger
 import me.lampu.lampcord.ui.WaylandDensityProvider
 import me.lampu.lampcord.utils.WaylandScale
 import org.koin.compose.koinInject
+import org.koin.core.context.GlobalContext.get
 import org.koin.core.context.startKoin
+import org.koin.core.context.stopKoin
 
 fun main() {
     WaylandScale.detectAndApply()
     
-    startKoin {
-        modules(appModule)
+    fun initApp() {
+        stopKoin()
+        startKoin {
+            modules(appModule)
+        }
     }
 
+    initApp()
+
+    val rpcServer = DesktopRPCServer(get().get())
+    rpcServer.start()
+
     application {
+        val reloadKey by reloadTrigger.collectAsState()
+        
+        LaunchedEffect(reloadKey) {
+            if (reloadKey > 0) {
+                initApp()
+            }
+        }
+
         val settingsStore: SettingsStore = koinInject()
         
         val seedColorString = settingsStore.accentColor
@@ -70,8 +90,10 @@ fun main() {
             title = "Lampcord",
             icon = dynamicIcon
         ) {
-            WaylandDensityProvider {
-                App()
+            key(reloadKey) {
+                WaylandDensityProvider {
+                    App()
+                }
             }
         }
     }

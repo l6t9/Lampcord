@@ -87,6 +87,10 @@ actual fun showToast(text: String) {
     println("Toast: $text")
 }
 
+actual fun restartApp() {
+    reloadTrigger.value++
+}
+
 @Composable
 actual fun RequestMediaPermissions(onResult: (Boolean) -> Unit) {
     LaunchedEffect(Unit) {

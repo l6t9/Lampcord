@@ -78,6 +78,13 @@ class NavigationStore(
     var isThreadPanelVisible by mutableStateOf(false)
     var isProfilePanelVisible by mutableStateOf(true)
 
+    var settingsCategory by mutableStateOf<String?>(null)
+
+    fun navigateToSettings(category: String? = null) {
+        settingsCategory = category
+        isSettingsVisible = true
+    }
+
     var channelSettingsChannel by mutableStateOf<Channel?>(null)
 
     fun openChannelSettings(channel: Channel) {
@@ -140,6 +147,7 @@ class NavigationStore(
     var forwardingMessage by mutableStateOf<me.lampu.lampcord.shared.model.Message?>(null)
     
     var isForumLoading by mutableStateOf(false)
+    var shouldMentionReply by mutableStateOf(true)
 
     fun startForwarding(message: me.lampu.lampcord.shared.model.Message) {
         forwardingMessage = message

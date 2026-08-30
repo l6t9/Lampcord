@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import me.lampu.lampcord.shared.model.Channel
 import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.state.PresenceStore
@@ -45,7 +46,7 @@ fun ChannelHeader(
                 if (isChannelsAndRoles) {
                     Text(
                         text = "Channels & Roles", 
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, fontSize = 18.sp)
                     )
                 } else if (channel != null) {
                     val isDm = channel.type == 1 || channel.type == 3 || channel.guild_id == null
@@ -66,39 +67,20 @@ fun ChannelHeader(
                     }
                     Text(
                         text = name,
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, fontSize = 18.sp),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    
-                    if (!isDm && channel.topic?.isNotBlank() == true) {
-                        Spacer(Modifier.width(8.dp))
-                        Box(
-                            modifier = Modifier
-                                .width(1.dp)
-                                .height(24.dp)
-                                .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = channel.topic,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false)
-                        )
-                    }
                 }
             }
         },
         navigationIcon = {
-            Box(Modifier.padding(start = 12.dp)) {
+            Box(Modifier.padding(start = 16.dp)) {
                 if (isChannelsAndRoles) {
                     Icon(
                         imageVector = Icons.Filled.Flag,
                         contentDescription = null,
-                        modifier = Modifier.size(22.dp),
+                        modifier = Modifier.size(24.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 } else if (channel != null) {
@@ -111,11 +93,11 @@ fun ChannelHeader(
                         val recipient = recipientId?.let { userStore.getUser(it) }
                             ?: channel.recipients?.firstOrNull()
                         if (recipient != null) {
-                            Box(modifier = Modifier.size(24.dp)) {
+                            Box(modifier = Modifier.size(28.dp)) {
                                 AvatarWithDecoration(
                                     avatarUrl = recipient.avatar?.let { "https://cdn.discordapp.com/avatars/${recipient.id}/$it.png?size=64" },
                                     decorationData = recipient.avatar_decoration_data,
-                                    size = 24.dp,
+                                    size = 28.dp,
                                     status = presenceStore.getUserStatus(
                                         recipient.id,
                                         currentUser?.id,
@@ -127,7 +109,7 @@ fun ChannelHeader(
                             Icon(
                                 imageVector = Icons.Rounded.AlternateEmail,
                                 contentDescription = null,
-                                modifier = Modifier.size(22.dp),
+                                modifier = Modifier.size(24.dp),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -139,16 +121,17 @@ fun ChannelHeader(
                             else -> Icons.Filled.Tag
                         }
                         if (isThread) {
-                            Text(
-                                ">",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            Icon(
+                                imageVector = Icons.Rounded.Topic,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         } else {
                             Icon(
                                 imageVector = icon,
                                 contentDescription = null,
-                                modifier = Modifier.size(22.dp),
+                                modifier = Modifier.size(24.dp),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -163,7 +146,7 @@ fun ChannelHeader(
                         Icon(
                             Icons.Filled.Search,
                             "Search",
-                            modifier = Modifier.size(20.dp),
+                            modifier = Modifier.size(22.dp),
                             tint = if (navigationStore.isSearchVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -175,9 +158,9 @@ fun ChannelHeader(
                             !navigationStore.isThreadPanelVisible
                     }) {
                         Icon(
-                            Icons.Filled.Tag,
+                            Icons.Rounded.Topic,
                             "Threads",
-                            modifier = Modifier.size(20.dp),
+                            modifier = Modifier.size(22.dp),
                             tint = if (navigationStore.isThreadPanelVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -188,7 +171,7 @@ fun ChannelHeader(
                         Icon(
                             Icons.Filled.PushPin,
                             "Pins",
-                            modifier = Modifier.size(20.dp),
+                            modifier = Modifier.size(22.dp),
                             tint = if (navigationStore.isPinsVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -199,14 +182,14 @@ fun ChannelHeader(
                         Icon(
                             Icons.Filled.AccountCircle,
                             "User Profile",
-                            modifier = Modifier.size(20.dp),
+                            modifier = Modifier.size(22.dp),
                             tint = if (navigationStore.isProfilePanelVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
             }
         },
-        expandedHeight = 48.dp,
+        expandedHeight = 56.dp,
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = Color.Transparent,
             scrolledContainerColor = Color.Transparent

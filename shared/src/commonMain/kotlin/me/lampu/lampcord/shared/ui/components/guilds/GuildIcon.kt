@@ -24,6 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -79,7 +80,8 @@ fun GuildIcon(
     var showMuteDialog by remember { mutableStateOf(false) }
     var showLeaveDialog by remember { mutableStateOf(false) }
 
-    val contextMenuItems = remember(guild, isSelected, settingsStore.userSettings, isMuted) {
+    val errorColor = MaterialTheme.colorScheme.error
+    val contextMenuItems = remember(guild, isSelected, settingsStore.userSettings, isMuted, errorColor) {
         val items = mutableListOf(
             ContextMenuItem(if (isMuted) "Unmute Server" else "Mute Server", if (isMuted) Icons.Filled.Notifications else Icons.AutoMirrored.Filled.VolumeOff, onClick = {
                 if (isMuted) {
@@ -89,14 +91,14 @@ fun GuildIcon(
                 }
             }, group = "Primary"),
             ContextMenuItem("Mark as Read", Icons.Filled.Check, onClick = { guildStore.markGuildAsRead(guild.id) }, group = "Primary"),
-            ContextMenuItem("Server Profile", Icons.Filled.AccountCircle, onClick = {
-                currentUser?.let { profileStore.showProfile(it.id, navigationStore.selectedGuild?.id) }
+            ContextMenuItem("Edit Profile", Icons.Filled.AccountCircle, onClick = {
+                navigationStore.navigateToSettings("PROFILES")
             }, group = "Primary")
         )
         if (!isSelected) {
             items.add(ContextMenuItem("Leave Server", Icons.Filled.Logout, onClick = {
                 showLeaveDialog = true
-            }, color = Color.Red, group = "Destructive"))
+            }, color = errorColor, group = "Destructive"))
         }
         if (settingsStore.userSettings?.developer_mode == true) {
             items.add(ContextMenuItem("Copy ID", Icons.Filled.Dns, onClick = { setClipboardText(guild.id) }, group = "Developer"))
@@ -109,32 +111,34 @@ fun GuildIcon(
         content = tooltipText(guild.name ?: "Server"),
         anchor = {
             ContextMenu(items = contextMenuItems) {
-                RegularGuildItem(
-                    isSelected = isSelected,
-                    isUnread = isUnread,
-                    isMuted = isMuted,
-                    onClick = onClick,
-                    selectedColor = if (iconUrl == null) MaterialTheme.colorScheme.primary else Color.Transparent,
-                    unselectedColor = if (iconUrl == null) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent
-                ) {
-                    if (iconUrl != null) {
-                        AsyncImage(
-                            model = iconUrl,
-                            contentDescription = guild.name,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } else {
-                        val initials = remember(guild.name) {
-                            guild.name?.split(" ")?.mapNotNull { it.firstOrNull() }?.joinToString("") ?: "?"
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.graphicsLayer(clip = false)) {
+                    RegularGuildItem(
+                        isSelected = isSelected,
+                        isUnread = isUnread,
+                        isMuted = isMuted,
+                        onClick = onClick,
+                        selectedColor = if (iconUrl == null) MaterialTheme.colorScheme.primary else Color.Transparent,
+                        unselectedColor = if (iconUrl == null) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent
+                    ) {
+                        if (iconUrl != null) {
+                            AsyncImage(
+                                model = iconUrl,
+                                contentDescription = guild.name,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            val initials = remember(guild.name) {
+                                guild.name?.split(" ")?.mapNotNull { it.firstOrNull() }?.joinToString("") ?: "?"
+                            }
+                            Text(
+                                text = initials,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
+                                textAlign = TextAlign.Center,
+                                maxLines = 1,
+                                fontSize = if (initials.length > 3) 12.sp else 16.sp
+                            )
                         }
-                        Text(
-                            text = initials,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
-                            textAlign = TextAlign.Center,
-                            maxLines = 1,
-                            fontSize = if (initials.length > 3) 12.sp else 16.sp
-                        )
                     }
 
                     if (mentionCount > 0) {

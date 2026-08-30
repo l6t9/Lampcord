@@ -1,10 +1,13 @@
 package me.lampu.lampcord.shared.ui.components.guilds
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -46,6 +49,9 @@ fun GuildCategoryItem(
     guildStore: GuildStore = koinInject()
 ) {
     var collapsed by remember { mutableStateOf(false) }
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+
     val guild = navigationStore.selectedGuild
     val currentUser by userStore.currentUser.collectAsState()
     val allMembers by userStore.members.collectAsState()
@@ -86,32 +92,38 @@ fun GuildCategoryItem(
         items
     }
 
-    Column {
+    Column(modifier = Modifier.padding(top = 12.dp)) {
         ContextMenu(items = categoryContextMenuItems) {
+            val contentColor = if (isHovered) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { collapsed = !collapsed }
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .clickable(
+                        interactionSource = interactionSource,
+                        indication = null,
+                        onClick = { collapsed = !collapsed }
+                    )
+                    .padding(horizontal = 16.dp, vertical = 2.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = me.lampu.lampcord.shared.utils.CleanUtils.cleanChannelName(category.name ?: "Category", isCategory = true),
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = contentColor,
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Icon(
                     imageVector = if (collapsed) Icons.Filled.ChevronRight else Icons.Filled.KeyboardArrowDown,
                     contentDescription = if (collapsed) "Expand" else "Collapse",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = contentColor,
                     modifier = Modifier.size(16.dp)
                 )
             }
         }
         if (!collapsed) {
             Column {
+                Spacer(modifier = Modifier.height(4.dp))
                 categoryChannels.forEach { channel ->
                     ChannelItem(channel)
                 }

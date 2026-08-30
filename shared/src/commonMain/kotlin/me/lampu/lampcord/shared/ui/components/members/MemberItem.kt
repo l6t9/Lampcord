@@ -77,12 +77,26 @@ fun MemberItem(
         "https://cdn.discordapp.com/avatars/${displayUser.id}/$it.png"
     }
 
-    val roleColor = remember(member.roles, navigationStore.selectedGuild) {
-        val guild = navigationStore.selectedGuild ?: return@remember Color.Unspecified
-        val memberRoles = member.roles.mapNotNull { roleId -> guild.roles.find { it.id == roleId } }
-        val colorRole = memberRoles.filter { it.color != 0 }.maxByOrNull { it.position }
-        if (colorRole != null) Color(colorRole.color or 0xFF000000.toInt()) else Color.Unspecified
+    val roleData = remember(member.roles, navigationStore.selectedGuild) {
+        val guild = navigationStore.selectedGuild ?: return@remember null
+        val colorRole = member.getRoleColorRole(guild)
+        
+        if (colorRole != null) {
+            val primaryInt = colorRole.colors?.primary_color ?: colorRole.color
+            val gradient = if (colorRole.colors?.secondary_color != null) {
+                listOfNotNull(
+                    Color(primaryInt or 0xFF000000.toInt()),
+                    Color(colorRole.colors.secondary_color or 0xFF000000.toInt()),
+                    colorRole.colors.tertiary_color?.let { Color(it or 0xFF000000.toInt()) }
+                )
+            } else null
+            val color = if (primaryInt != 0) Color(primaryInt or 0xFF000000.toInt()) else Color.Unspecified
+            color to gradient
+        } else null
     }
+
+    val roleColor = roleData?.first ?: Color.Unspecified
+    val roleGradient = roleData?.second
 
     val relationshipStore = koinInject<RelationshipStore>()
     val relationships by relationshipStore.relationships.collectAsState()
@@ -91,7 +105,8 @@ fun MemberItem(
         relationships.find { (it.id ?: it.user?.id ?: it.user_id) == displayUser.id }?.type
     }
 
-    val contextMenuItems = remember(displayUser, settingsStore.userSettings, relationshipType, currentUserId) {
+    val errorColor = MaterialTheme.colorScheme.error
+    val contextMenuItems = remember(displayUser, settingsStore.userSettings, relationshipType, currentUserId, errorColor) {
         val isMe = displayUser.id == currentUserId
         val items = mutableListOf<ContextMenuItem>()
         items.add(ContextMenuItem("Profile", Icons.Filled.AccountCircle, onClick = { profileStore.showProfile(displayUser.id, guildId) }, group = "Primary"))
@@ -119,7 +134,7 @@ fun MemberItem(
             }
             items.add(ContextMenuItem("Block", Icons.Filled.Block, onClick = {
                 relationshipStore.blockUser(displayUser.id)
-            }, color = Color.Red, group = "Destructive"))
+            }, color = errorColor, group = "Destructive"))
         }
         if (settingsStore.userSettings?.developer_mode == true) {
             items.add(ContextMenuItem("Copy User ID", Icons.Filled.Dns, onClick = { setClipboardText(displayUser.id) }, group = "Developer"))
@@ -205,11 +220,12 @@ fun MemberItem(
                                 name = member.nick ?: displayUser.global_name ?: displayUser.username ?: "Unknown User",
                                 style = member.display_name_styles ?: displayUser.display_name_styles,
                                 baseStyle = MaterialTheme.typography.bodyMedium,
-                                color = if (roleColor != Color.Unspecified) roleColor else MaterialTheme.colorScheme.onSurface,
+                                color = roleColor,
+                                roleGradient = roleGradient,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                                 marquee = true,
-                                ignoreEffects = true,
+                                ignoreEffects = false,
                                 ignoreColors = true
                             )
                             displayUser.primary_guild?.let {

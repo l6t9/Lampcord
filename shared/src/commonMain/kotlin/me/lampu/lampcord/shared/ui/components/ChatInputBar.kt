@@ -7,21 +7,26 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.TransformedText
@@ -30,6 +35,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import me.lampu.lampcord.shared.model.AutocompleteItem
 import me.lampu.lampcord.shared.model.AutocompleteType
 import me.lampu.lampcord.shared.model.Channel
@@ -46,6 +52,7 @@ import me.lampu.lampcord.shared.utils.Permission
 import me.lampu.lampcord.shared.utils.getClipboardFiles
 import me.lampu.lampcord.shared.utils.getPlatformName
 import org.koin.compose.koinInject
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 
 class DiscordInputVisualTransformation(val primaryColor: Color) : VisualTransformation {
     override fun filter(text: AnnotatedString): TransformedText {
@@ -95,6 +102,8 @@ fun ChatInputBar(
         mutableStateOf(TextFieldValue(draft, TextRange(draft.length))) 
     }
     
+    val haptic = LocalHapticFeedback.current
+
     // Tracks autocompleted mentions/channels/roles as ranges in the raw input
     // text that map to the server values to send (e.g. "#general" -> "<#id>").
     var mentionRanges by remember(channel.id) { mutableStateOf<Map<IntRange, String>>(emptyMap()) }
@@ -128,6 +137,7 @@ fun ChatInputBar(
     }
 
     fun applyAutocomplete(item: AutocompleteItem) {
+        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
         val text = textFieldValue.text
         val selection = textFieldValue.selection
         if (selection.collapsed) {
@@ -226,6 +236,11 @@ fun ChatInputBar(
     }
 
     val primaryColor = MaterialTheme.colorScheme.primary
+    val settings = me.lampu.lampcord.shared.settings.Settings.shared
+    val chatboxFontSize = settings.chatboxFontSize
+    val chatboxMinHeight = settings.chatboxHeight.dp * chatboxFontSize
+    val buttonSize = chatboxMinHeight + (6.dp * chatboxFontSize)
+    val iconSize = buttonSize * 0.55f
 
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
         val platform = getPlatformName()
@@ -277,29 +292,29 @@ fun ChatInputBar(
                         }
 
                         if (messageStore.replyingTo != null || messageStore.editingMessage != null) {
-                            Surface(
-                                modifier = Modifier.fillMaxWidth(),
-                                color = MaterialTheme.colorScheme.surfaceContainerLow
+                            val isEditing = messageStore.editingMessage != null
+                            val activeMsg = messageStore.editingMessage ?: messageStore.replyingTo
+                            val guildId = activeMsg?.guild_id ?: navigationStore.selectedGuild?.id
+                            
+                            val roleColor by remember(activeMsg, guildId) {
+                                derivedStateOf {
+                                    val guild = guildStore.guilds.value.find { it.id == guildId } ?: return@derivedStateOf Color.Unspecified
+                                    val authorId = activeMsg?.author?.id ?: return@derivedStateOf Color.Unspecified
+                                    val member = userStore.getMember(guild.id, authorId) ?: return@derivedStateOf Color.Unspecified
+                                    val memberRoles = member.roles.mapNotNull { roleId -> guild.roles.find { it.id == roleId } }
+                                    val colorRole = memberRoles.filter { it.color != 0 }.maxByOrNull { it.position }
+                                    if (colorRole != null) Color(colorRole.color or 0xFF000000.toInt()) else Color.Unspecified
+                                }
+                            }
+
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                                Box(
+                                    modifier = Modifier.size(buttonSize),
+                                    contentAlignment = Alignment.Center
                                 ) {
-                                    val isEditing = messageStore.editingMessage != null
-                                    val activeMsg = messageStore.editingMessage ?: messageStore.replyingTo
-                                    
-                                    Icon(
-                                        imageVector = if (isEditing) Icons.Filled.Edit else Icons.Rounded.Reply,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = if (isEditing) "Editing message" else "Replying to ${activeMsg?.author?.global_name ?: activeMsg?.author?.username}",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        modifier = Modifier.weight(1f)
-                                    )
                                     IconButton(
                                         onClick = { 
                                             if (isEditing) {
@@ -312,6 +327,49 @@ fun ChatInputBar(
                                         modifier = Modifier.size(24.dp)
                                     ) {
                                         Icon(Icons.Filled.Close, null, modifier = Modifier.size(16.dp))
+                                    }
+                                }
+                                
+                                Spacer(modifier = Modifier.width(4.dp))
+                                
+                                val displayName = activeMsg?.author?.global_name ?: activeMsg?.author?.username ?: "Unknown"
+                                val text = if (isEditing) {
+                                    AnnotatedString("Editing message")
+                                } else {
+                                    AnnotatedString.Builder().apply {
+                                        append("Replying to ")
+                                        withStyle(SpanStyle(
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (roleColor != Color.Unspecified) roleColor else MaterialTheme.colorScheme.onSurface
+                                        )) {
+                                            append(displayName)
+                                        }
+                                    }.toAnnotatedString()
+                                }
+
+                                Text(
+                                    text = text,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    modifier = Modifier.weight(1f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+
+                                if (!isEditing && navigationStore.selectedGuild != null) {
+                                    val mentionOn = navigationStore.shouldMentionReply
+                                    TextButton(
+                                        onClick = { 
+                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            navigationStore.shouldMentionReply = !navigationStore.shouldMentionReply 
+                                        },
+                                        contentPadding = PaddingValues(horizontal = 8.dp),
+                                        modifier = Modifier.height(32.dp)
+                                    ) {
+                                        Text(
+                                            text = if (mentionOn) "@ ON" else "@ OFF",
+                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Black),
+                                            color = if (mentionOn) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                        )
                                     }
                                 }
                             }
@@ -328,7 +386,7 @@ fun ChatInputBar(
                                 messageStore.pendingFiles.forEachIndexed { index, pendingFile ->
                                     Surface(
                                         modifier = Modifier.size(100.dp),
-                                        shape = RoundedCornerShape(16.dp),
+                                        shape = RoundedCornerShape(8.dp),
                                         color = MaterialTheme.colorScheme.surfaceContainerHigh
                                     ) {
                                         Box {
@@ -390,13 +448,6 @@ fun ChatInputBar(
                                 .padding(start = 8.dp, end = 8.dp, top = 2.dp, bottom = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            val settings = me.lampu.lampcord.shared.settings.Settings.shared
-                            val chatboxFontSize = settings.chatboxFontSize
-                            val chatboxMinHeight = settings.chatboxHeight.dp * chatboxFontSize
-                            // Discord-like scaling: buttons should be slightly taller than the min height to account for text padding
-                            val buttonSize = chatboxMinHeight + (6.dp * chatboxFontSize)
-                            val iconSize = buttonSize * 0.55f
-
                             val uploadVisible = !settings.chatboxHideUploadButton && messageStore.editingMessage == null && canSend
                             
                             AnimatedVisibility(
@@ -416,6 +467,7 @@ fun ChatInputBar(
                                     FilledIconButton(
                                         onClick = {
                                             if (getPlatformName() == "android") {
+                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                 navigationStore.isMediaPickerVisible = !navigationStore.isMediaPickerVisible
                                             } else {
                                                 showFilePicker = true
@@ -577,11 +629,15 @@ fun ChatInputBar(
                                                             }
                                                         }
                                                         if (currentText.isNotBlank() || messageStore.pendingFiles.isNotEmpty()) {
+                                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                             if (messageStore.editingMessage != null) {
                                                                 messageStore.editMessage(messageStore.editingMessage!!, resolveContent(currentText))
                                                                 messageStore.editingMessage = null
                                                             } else {
-                                                                messageStore.sendMessageDraft(resolveContent(currentText))
+                                                                val allowedMentions = if (messageStore.replyingTo != null) {
+                                                                    me.lampu.lampcord.shared.model.AllowedMentions(replied_user = navigationStore.shouldMentionReply)
+                                                                } else null
+                                                                messageStore.sendMessageDraft(resolveContent(currentText), allowedMentions = allowedMentions)
                                                             }
                                                             textFieldValue = TextFieldValue("")
                                                             clearMentions()
@@ -615,6 +671,7 @@ fun ChatInputBar(
                                     if (!settings.chatboxHideEmojiButton) {
                                         IconButton(
                                             onClick = { 
+                                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                                 navigationStore.isEmojiPickerVisible = !navigationStore.isEmojiPickerVisible
                                                 if (isMobileView) {
                                                     keyboardController?.hide()
@@ -639,6 +696,7 @@ fun ChatInputBar(
                                             properties = androidx.compose.ui.window.PopupProperties(focusable = true)
                                         ) {
                                             EmojiPicker { emoji ->
+                                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                                 // Compute canonical server-side emoji token (preserve F_ when
                                                 // realmojis are enabled so transformOutgoing can convert it).
                                                 val settings = me.lampu.lampcord.shared.settings.Settings.shared
@@ -685,6 +743,7 @@ fun ChatInputBar(
                                     Spacer(modifier = Modifier.width(4.dp))
                                     FilledIconButton(
                                         onClick = {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                             if (commandStore.activeCommand != null) {
                                                 val options = commandStore.buildInteractionOptions()
                                                 commandStore.sendInteraction(
@@ -701,7 +760,10 @@ fun ChatInputBar(
                                                     messageStore.editMessage(messageStore.editingMessage!!, resolveContent(textFieldValue.text))
                                                     messageStore.editingMessage = null
                                                 } else {
-                                                    messageStore.sendMessageDraft(resolveContent(textFieldValue.text))
+                                                    val allowedMentions = if (messageStore.replyingTo != null) {
+                                                        me.lampu.lampcord.shared.model.AllowedMentions(replied_user = navigationStore.shouldMentionReply)
+                                                    } else null
+                                                    messageStore.sendMessageDraft(resolveContent(textFieldValue.text), allowedMentions = allowedMentions)
                                                 }
                                             }
                                             textFieldValue = TextFieldValue("")
@@ -736,6 +798,7 @@ fun ChatInputBar(
                             EmojiPicker(
                                 modifier = Modifier.fillMaxWidth(),
                                 onEmojiSelected = { emoji ->
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     val settings = me.lampu.lampcord.shared.settings.Settings.shared
                                     val hasNitro = (currentUser?.premium_type ?: 0) > 0
                                     val serverReplacement = if (emoji.id != null) {

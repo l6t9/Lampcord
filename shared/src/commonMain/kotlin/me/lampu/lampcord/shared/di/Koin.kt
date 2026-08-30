@@ -3,6 +3,7 @@ package me.lampu.lampcord.shared.di
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.Json
+import me.lampu.lampcord.shared.api.ApplicationApi
 import me.lampu.lampcord.shared.api.AuthApi
 import me.lampu.lampcord.shared.api.ChannelApi
 import me.lampu.lampcord.shared.api.GuildApi
@@ -44,6 +45,7 @@ val apiModule = module {
     single { GuildApi(get()) }
     single { UserApi(get()) }
     single { MediaApi(get()) }
+    single { ApplicationApi(get()) }
 }
 
 val databaseModule = module {
@@ -66,6 +68,7 @@ val storeModule = module {
     single { UserGuildSettingsStore() }
     single { AppErrorStore() }
     single { PresenceStore(userApi = get()) }
+    single { ClientProfileStore(httpClient = get(), json = get(), scope = get()) }
     single { RelationshipStore(userApi = get(), userStore = get(), scope = get()) }
     single {
         GuildStore(
@@ -108,6 +111,7 @@ val storeModule = module {
     single { FinderStore(guildStore = get(), scope = get()) }
     single { MentionsStore(messageApi = get(), scope = get()) }
     single { EmojiStore() }
+    single { ApplicationStore(get(), get()) }
     single { TokenStore(json = get()) }
     single { SettingsStore(userApi = get()) }
     single { ThemeStore(scope = get()) }

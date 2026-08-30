@@ -46,6 +46,9 @@ sealed class Screen : NavKey {
     
     @Serializable
     data object EmojiPicker : Screen()
+    
+    @Serializable
+    data class Threads(val channelId: String) : Screen()
 
     // Settings sub-screens
     @Serializable

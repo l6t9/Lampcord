@@ -169,6 +169,30 @@ class SettingsStore(
             me.lampu.lampcord.shared.settings.Settings.shared.secretTabEnabled = value
         }
 
+    private var _profile3y3 by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.profile3y3)
+    var profile3y3: Boolean
+        get() = _profile3y3
+        set(value) {
+            _profile3y3 = value
+            me.lampu.lampcord.shared.settings.Settings.shared.profile3y3 = value
+        }
+
+    private var _userBg by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.userBg)
+    var userBg: Boolean
+        get() = _userBg
+        set(value) {
+            _userBg = value
+            me.lampu.lampcord.shared.settings.Settings.shared.userBg = value
+        }
+
+    private var _userPfp by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.userPfp)
+    var userPfp: Boolean
+        get() = _userPfp
+        set(value) {
+            _userPfp = value
+            me.lampu.lampcord.shared.settings.Settings.shared.userPfp = value
+        }
+
     private var _chatboxBackgroundOpacity by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.chatboxBackgroundOpacity)
     var chatboxBackgroundOpacity: Float
         get() = _chatboxBackgroundOpacity

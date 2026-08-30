@@ -156,4 +156,13 @@ object DateTimeUtils {
         val minute = localDateTime.minute.toString().padStart(2, '0')
         return ("$hour:$minute")
     }
+
+    fun now(): Long = Clock.System.now().toEpochMilliseconds()
+
+    fun formatLogTimestamp(timestamp: Long): String {
+        val instant = Instant.fromEpochMilliseconds(timestamp)
+        val timeZone = TimeZone.currentSystemDefault()
+        val localDateTime = instant.toLocalDateTime(timeZone)
+        return "${localDateTime.hour.toString().padStart(2, '0')}:${localDateTime.minute.toString().padStart(2, '0')}:${localDateTime.second.toString().padStart(2, '0')}.${(timestamp % 1000).toString().padStart(3, '0')}"
+    }
 }

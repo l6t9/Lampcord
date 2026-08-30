@@ -246,7 +246,7 @@ fun DiscordPanels(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(Color.Black.copy(alpha = if (animationType == PanelAnimation.EXPRESSIVE) absProgress * 0.35f else absProgress * 0.2f))
+                            .background(Color.Black.copy(alpha = if (animationType == PanelAnimation.EXPRESSIVE) absProgress * 0.45f else absProgress * 0.3f))
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null

@@ -439,4 +439,18 @@ class GuildApi(private val rest: RestClient) {
             false
         }
     }
+
+    suspend fun updateSelfMember(guildId: String, partial: Member.Partial): Member? {
+        return try {
+            val response = rest.httpClient.patch("${rest.apiBase}/guilds/$guildId/members/@me") {
+                standardHeaders(rest)
+                contentType(ContentType.Application.Json)
+                setBody(partial)
+            }
+            if (response.status.isSuccess()) response.body() else null
+        } catch (e: Exception) {
+            Logging.e("Guild", "Error updating self member: ${e.message}")
+            null
+        }
+    }
 }

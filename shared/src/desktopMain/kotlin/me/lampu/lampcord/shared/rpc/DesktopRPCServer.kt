@@ -1,8 +1,9 @@
 package me.lampu.lampcord.shared.rpc
 
 import io.ktor.server.application.*
-import io.ktor.server.engine.*
-import io.ktor.server.netty.*
+import io.ktor.server.engine.EmbeddedServer
+import io.ktor.server.engine.embeddedServer
+import io.ktor.server.netty.Netty
 import io.ktor.server.routing.*
 import io.ktor.server.websocket.*
 import io.ktor.websocket.*
@@ -18,7 +19,7 @@ import kotlin.time.Duration.Companion.seconds
  * It listens on ports 6463-6472 and handles SET_ACTIVITY requests.
  */
 class DesktopRPCServer(private val gatewayManager: GatewayManager) {
-    private var server: NettyApplicationEngine? = null
+    private var server: EmbeddedServer<*, *>? = null
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -39,7 +40,7 @@ class DesktopRPCServer(private val gatewayManager: GatewayManager) {
                         }
                         routing {
                             webSocket("/") {
-                                handleConnection(this)
+                                handleConnection()
                             }
                         }
                     }
@@ -54,7 +55,7 @@ class DesktopRPCServer(private val gatewayManager: GatewayManager) {
         }
     }
 
-    private suspend fun DefaultWebSocketServerSession.handleConnection(session: DefaultWebSocketServerSession) {
+    private suspend fun DefaultWebSocketServerSession.handleConnection() {
         Logging.d("RPC", "New RPC connection")
         try {
             // Initial Handshake

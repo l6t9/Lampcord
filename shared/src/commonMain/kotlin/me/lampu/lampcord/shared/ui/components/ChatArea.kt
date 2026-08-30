@@ -405,7 +405,7 @@ fun DateSeparator(timestamp: String) {
     ) {
         HorizontalDivider(modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
         Text(
-            text = dateText.uppercase(),
+            text = dateText,
             modifier = Modifier.padding(horizontal = 8.dp),
             style = MaterialTheme.typography.labelSmall.copy(
                 fontSize = 11.sp,

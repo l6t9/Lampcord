@@ -26,6 +26,7 @@ fun PinnedMessagesScreen(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text("Pins - #${channel.name}") },

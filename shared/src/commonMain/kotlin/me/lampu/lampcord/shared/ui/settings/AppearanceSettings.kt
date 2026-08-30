@@ -482,7 +482,7 @@ private fun ThemeControls(settingsStore: SettingsStore, updateTheme: (String) ->
         ) {
             Icon(Icons.Rounded.Image, null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(12.dp))
-            Text("Choose background", fontWeight = FontWeight.ExtraBold)
+            Text("Choose background")
         }
 
         if (settingsStore.chatBackground.isNotEmpty()) {

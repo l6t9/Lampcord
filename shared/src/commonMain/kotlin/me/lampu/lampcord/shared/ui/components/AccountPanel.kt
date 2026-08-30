@@ -18,9 +18,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroup
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.DropdownMenu
@@ -45,6 +47,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.text.style.TextOverflow
@@ -148,12 +151,34 @@ fun AccountPanel(
                 
                 Spacer(modifier = Modifier.width(10.dp))
                 
+                val roleData = remember(member, navigationStore.selectedGuild) {
+                    val m = member ?: return@remember null
+                    val g = navigationStore.selectedGuild ?: return@remember null
+                    val colorRole = m.getRoleColorRole(g)
+                    if (colorRole != null) {
+                        val primaryInt = colorRole.colors?.primary_color ?: colorRole.color
+                        val gradient = if (colorRole.colors?.secondary_color != null) {
+                            listOfNotNull(
+                                Color(primaryInt or 0xFF000000.toInt()),
+                                Color(colorRole.colors.secondary_color or 0xFF000000.toInt()),
+                                colorRole.colors.tertiary_color?.let { Color(it or 0xFF000000.toInt()) }
+                            )
+                        } else null
+                        val color = if (primaryInt != 0) Color(primaryInt or 0xFF000000.toInt()) else Color.Unspecified
+                        color to gradient
+                    } else null
+                }
+                val roleColor = roleData?.first ?: Color.Unspecified
+                val roleGradient = roleData?.second
+
                 Column(modifier = Modifier.weight(1f)) {
                     UsernameView(
                         name = member?.nick ?: user.global_name ?: user.username ?: "Unknown",
                         style = member?.display_name_styles ?: user.display_name_styles,
                         baseStyle = MaterialTheme.typography.labelLarge,
                         fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                        color = if (roleColor != Color.Unspecified) roleColor else MaterialTheme.colorScheme.onSurface,
+                        roleGradient = roleGradient,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         marquee = true
@@ -452,7 +477,11 @@ fun CustomStatusDialog(
             Button(
                 onClick = { onSave(text) },
                 modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.medium
+                shape = CircleShape,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                )
             ) {
                 Text("Save")
             }

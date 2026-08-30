@@ -61,7 +61,18 @@ data class User(
     val collectibles: Collectibles? = null,
     val primary_guild: PrimaryGuild? = null,
     val display_name_styles: DisplayNameStyles? = null
-)
+) {
+    @Serializable
+    data class Partial(
+        val username: String? = null,
+        val avatar: String? = null,
+        val banner: String? = null,
+        val accent_color: Int? = null,
+        val global_name: String? = null,
+        val pronouns: String? = null,
+        val bio: String? = null
+    )
+}
 
 @Serializable
 data class UserProfile(
@@ -110,7 +121,17 @@ data class UserProfileMetadata(
     val theme_colors: List<Int>? = null,
     val pronouns: String? = null,
     val display_name_styles: DisplayNameStyles? = null
-)
+) {
+    @Serializable
+    data class Partial(
+        val bio: String? = null,
+        val accent_color: Int? = null,
+        val banner: String? = null,
+        val theme_colors: List<Int>? = null,
+        val pronouns: String? = null,
+        val display_name_styles: DisplayNameStyles? = null
+    )
+}
 
 @Serializable
 data class UserSettings(

@@ -33,11 +33,15 @@ fun SystemMessage(
         verticalAlignment = Alignment.CenterVertically
     ) {
         val (icon, iconTint, text) = when (message.type) {
-            1 -> Triple(Icons.Filled.PersonAdd, DiscordGreen, "${message.author?.username ?: "Unknown"} added a recipient.")
-            2 -> Triple(Icons.Filled.PersonRemove, DiscordRed, "${message.author?.username ?: "Unknown"} removed a recipient.")
-            6 -> Triple(Icons.Filled.PushPin, MaterialTheme.colorScheme.primary, "${message.author?.username ?: "Unknown"} pinned a message to this channel.")
+            1 -> Triple(Icons.Filled.PersonAdd, DiscordGreen, "${message.author?.global_name ?: message.author?.username ?: "Unknown"} added a recipient.")
+            2 -> Triple(Icons.Filled.PersonRemove, DiscordRed, "${message.author?.global_name ?: message.author?.username ?: "Unknown"} removed a recipient.")
+            3 -> Triple(Icons.AutoMirrored.Filled.VolumeUp, MaterialTheme.colorScheme.primary, "${message.author?.global_name ?: message.author?.username ?: "Unknown"} started a call.")
+            4 -> Triple(Icons.Filled.Edit, MaterialTheme.colorScheme.onSurfaceVariant, "${message.author?.global_name ?: message.author?.username ?: "Unknown"} changed the channel name.")
+            5 -> Triple(Icons.Filled.Image, MaterialTheme.colorScheme.onSurfaceVariant, "${message.author?.global_name ?: message.author?.username ?: "Unknown"} changed the channel icon.")
+            6 -> Triple(Icons.Filled.PushPin, MaterialTheme.colorScheme.primary, "${message.author?.global_name ?: message.author?.username ?: "Unknown"} pinned a message to this channel.")
             7 -> Triple(Icons.AutoMirrored.Filled.ArrowForward, DiscordGreen, "${message.author?.global_name ?: message.author?.username ?: "Unknown"} joined the server.")
             8, 9, 10, 11 -> Triple(Icons.Filled.RocketLaunch, Fuchsia, "${message.author?.global_name ?: message.author?.username ?: "Unknown"} just boosted the server!")
+            12 -> Triple(Icons.Filled.Campaign, MaterialTheme.colorScheme.primary, "${message.author?.global_name ?: message.author?.username ?: "Unknown"} added a followed channel to this channel.")
             18 -> Triple(Icons.Filled.Tag, MaterialTheme.colorScheme.primary, "${message.author?.global_name ?: message.author?.username ?: "Unknown"} started a thread.")
             else -> Triple(Icons.Filled.Info, MaterialTheme.colorScheme.onSurfaceVariant, "System message (Type ${message.type})")
         }

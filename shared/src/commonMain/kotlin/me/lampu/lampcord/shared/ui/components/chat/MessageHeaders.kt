@@ -312,7 +312,7 @@ fun ThreadStarterBar(
             verticalAlignment = Alignment.CenterVertically
         ) {
             androidx.compose.material3.Icon(
-                imageVector = me.lampu.lampcord.shared.ui.icons.Icons.Filled.Tag,
+                imageVector = me.lampu.lampcord.shared.ui.icons.Icons.Rounded.Topic,
                 contentDescription = null,
                 modifier = Modifier.size(18.dp),
                 tint = MaterialTheme.colorScheme.primary
@@ -335,9 +335,10 @@ fun ThreadStarterBar(
                 }
             }
             androidx.compose.material3.Icon(
-                imageVector = me.lampu.lampcord.shared.ui.icons.Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                imageVector = me.lampu.lampcord.shared.ui.icons.Icons.Rounded.Topic,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
             )
         }
     }

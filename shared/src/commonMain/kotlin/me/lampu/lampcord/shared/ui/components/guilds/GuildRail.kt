@@ -19,6 +19,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
@@ -102,7 +103,7 @@ fun GuildRail(
                 anchorPosition = TooltipAnchorPosition.End,
                 content = tooltipText("Direct Messages"),
                 anchor = {
-                    Box(contentAlignment = Alignment.Center) {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.graphicsLayer(clip = false)) {
                         RegularGuildItem(
                             isSelected = isHomeSelected,
                             onClick = { navigationStore.selectHome() },
@@ -221,7 +222,7 @@ private fun DMIcon(
         anchorPosition = TooltipAnchorPosition.End,
         content = tooltipText(channel.name ?: recipient?.global_name ?: recipient?.username ?: "Direct Message"),
         anchor = {
-            Box(contentAlignment = Alignment.Center) {
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.graphicsLayer(clip = false)) {
                 RegularGuildItem(
                     isSelected = isSelected,
                     isUnread = isUnread,

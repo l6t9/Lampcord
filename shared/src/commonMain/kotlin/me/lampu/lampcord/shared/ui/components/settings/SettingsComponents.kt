@@ -180,14 +180,14 @@ fun Material3SettingsItemRow(
 
                 item.description?.let { desc ->
                     Spacer(modifier = Modifier.height(2.dp))
-                    ProvideTextStyle(
-                        MaterialTheme.typography.bodySmall.copy(
-                            color = if (!item.enabled) {
-                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                        ),
+                    val color = if (!item.enabled) {
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+                    androidx.compose.runtime.CompositionLocalProvider(
+                        androidx.compose.material3.LocalContentColor provides color,
+                        androidx.compose.material3.LocalTextStyle provides MaterialTheme.typography.bodySmall.copy(color = Color.Unspecified)
                     ) {
                         desc()
                     }
@@ -231,6 +231,7 @@ fun SettingsSubScreen(
     Scaffold(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = MaterialTheme.colorScheme.surface,
+        contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
         topBar = {
             LargeTopAppBar(
                 title = { Text(title) },

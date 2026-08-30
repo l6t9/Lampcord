@@ -29,7 +29,7 @@ fun NavigationSettings(
     SettingsSubScreen(
         title = "Navigation",
         onNavigateBack = onBack,
-        contentScrollable = false
+        contentScrollable = true
     ) {
         NavigationSettingsContent(settingsStore)
     }
@@ -100,13 +100,12 @@ private fun NavigationSettingsContent(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
         )
 
-        LazyColumn(
+        Column(
             modifier = Modifier
-                .weight(1f)
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            itemsIndexed(items) { index, item ->
+            items.forEachIndexed { index, item ->
                 val label = when (item) {
                     "home" -> "Home"
                     "friends" -> "Friends"
@@ -171,5 +170,7 @@ private fun NavigationSettingsContent(
                 }
             }
         }
+        
+        Spacer(Modifier.height(16.dp))
     }
 }

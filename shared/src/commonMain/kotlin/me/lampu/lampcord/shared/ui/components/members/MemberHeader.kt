@@ -2,6 +2,7 @@ package me.lampu.lampcord.shared.ui.components.members
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -274,13 +275,16 @@ fun MemberHeader(
 
             if (channel.topic?.isNotBlank() == true) {
                 Spacer(Modifier.height(4.dp))
+                var expanded by remember { mutableStateOf(false) }
                 Text(
                     text = channel.topic,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
+                    maxLines = if (expanded) Int.MAX_VALUE else 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(horizontal = 16.dp)
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp)
+                        .clickable { expanded = !expanded }
                 )
             }
         }
@@ -310,11 +314,6 @@ fun MemberHeader(
                         icon = Icons.Filled.PushPin,
                         label = "Pins",
                         onClick = { navigationStore.isPinsVisible = true }
-                    ),
-                    HeaderButtonData(
-                        icon = Icons.Filled.Notifications,
-                        label = "Notifications",
-                        onClick = { navigationStore.isNotificationsSettingsVisible = true }
                     ),
                     HeaderButtonData(
                         icon = Icons.Filled.Settings,

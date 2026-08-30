@@ -26,6 +26,7 @@ import org.koin.compose.koinInject
 
 @Composable
 fun TypingIndicator(
+    modifier: Modifier = Modifier,
     typingStore: TypingStore = koinInject(),
     userStore: UserStore = koinInject(),
     navigationStore: NavigationStore = koinInject()
@@ -57,7 +58,7 @@ fun TypingIndicator(
     }
 
     Surface(
-        modifier = Modifier.fillMaxWidth().height(24.dp),
+        modifier = modifier.fillMaxWidth().height(24.dp),
         color = Color.Transparent
     ) {
         Row(

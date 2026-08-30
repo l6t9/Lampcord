@@ -616,35 +616,206 @@ class MessageStore(
     }
 
     fun editMessage(message: Message, content: String) {
+        val channelId = message.channel_id
+        val id = message.id
+        
+        val current = messageCache[channelId]?.toMutableList() ?: return
+        val idx = current.indexOfFirst { it.id == id }
+        if (idx == -1) return
+        
+        val oldMessage = current[idx]
+        val preprocessed = transformOutgoingContent(content)
+        
+        // Optimistic update
+        current[idx] = oldMessage.copy(content = preprocessed, oldContent = oldMessage.content)
+        messageCache[channelId] = current
+        updateAllMessagesFlow()
+        
         scope.launch {
             try {
-                val contentToSend = transformOutgoingContent(content)
-                if (!messageApi.editMessage(message.channel_id, message.id, contentToSend)) {
+                if (!messageApi.editMessage(channelId, id, preprocessed)) {
+                    // Rollback
+                    val rollback = messageCache[channelId]?.toMutableList() ?: return@launch
+                    val rIdx = rollback.indexOfFirst { it.id == id }
+                    if (rIdx != -1) {
+                        rollback[rIdx] = oldMessage
+                        messageCache[channelId] = rollback
+                        updateAllMessagesFlow()
+                    }
                     errorStore.pushError("Failed to edit message.")
                 }
             } catch (e: Exception) {
-                errorStore.pushError("Error editing message: ${e.message}")
+                // Rollback
+                val rollback = messageCache[channelId]?.toMutableList() ?: return@launch
+                val rIdx = rollback.indexOfFirst { it.id == id }
+                if (rIdx != -1) {
+                    rollback[rIdx] = oldMessage
+                    messageCache[channelId] = rollback
+                    updateAllMessagesFlow()
+                }
             }
         }
     }
 
     fun deleteMessage(message: Message) {
+        val channelId = message.channel_id
+        val id = message.id
+        
+        // Optimistic delete
+        val cached = messageCache[channelId]
+        handleMessageDelete(id)
+        
         scope.launch {
             try {
-                messageApi.deleteMessage(message.channel_id, message.id)
-            } catch (e: Exception) { }
+                if (!messageApi.deleteMessage(channelId, id)) {
+                    // Rollback
+                    cached?.find { it.id == id }?.let { restored ->
+                        val current = messageCache[channelId]?.toMutableList() ?: mutableListOf()
+                        if (!current.any { it.id == id }) {
+                            current.add(restored)
+                            messageCache[channelId] = current.sortedByDescending { it.id }
+                            updateAllMessagesFlow()
+                        }
+                    }
+                    errorStore.pushError("Failed to delete message")
+                }
+            } catch (e: Exception) {
+                // Rollback
+                cached?.find { it.id == id }?.let { restored ->
+                    val current = messageCache[channelId]?.toMutableList() ?: mutableListOf()
+                    if (!current.any { it.id == id }) {
+                        current.add(restored)
+                        messageCache[channelId] = current.sortedByDescending { it.id }
+                        updateAllMessagesFlow()
+                    }
+                }
+            }
         }
     }
 
     fun pinMessage(message: Message) {
+        val channelId = message.channel_id
+        val id = message.id
+        
+        // Optimistic pin
+        updateMessagePinState(channelId, id, true)
+        
         scope.launch {
-            channelApi.pinMessage(message.channel_id, message.id)
+            try {
+                if (!channelApi.pinMessage(channelId, id)) {
+                    updateMessagePinState(channelId, id, false)
+                    errorStore.pushError("Failed to pin message")
+                }
+            } catch (e: Exception) {
+                updateMessagePinState(channelId, id, false)
+            }
         }
     }
 
     fun unpinMessage(message: Message) {
+        val channelId = message.channel_id
+        val id = message.id
+        
+        // Optimistic unpin
+        updateMessagePinState(channelId, id, false)
+        
         scope.launch {
-            channelApi.unpinMessage(message.channel_id, message.id)
+            try {
+                if (!channelApi.unpinMessage(channelId, id)) {
+                    updateMessagePinState(channelId, id, true)
+                    errorStore.pushError("Failed to unpin message")
+                }
+            } catch (e: Exception) {
+                updateMessagePinState(channelId, id, true)
+            }
+        }
+    }
+
+    private fun updateMessagePinState(channelId: String, messageId: String, pinned: Boolean) {
+        val current = messageCache[channelId]?.toMutableList() ?: return
+        val idx = current.indexOfFirst { it.id == messageId }
+        if (idx != -1) {
+            current[idx] = current[idx].copy(pinned = pinned)
+            messageCache[channelId] = current
+            updateAllMessagesFlow()
+        }
+    }
+
+    fun toggleReaction(message: Message, emoji: me.lampu.lampcord.shared.model.Emoji) {
+        val channelId = message.channel_id
+        val emojiStr = if (emoji.id != null) "${emoji.name}:${emoji.id}" else emoji.name ?: return
+        val currentUserId = userStore.currentUser.value?.id ?: return
+        
+        val reactions = message.reactions ?: emptyList()
+        val existing = reactions.find { 
+            (it.emoji.id != null && it.emoji.id == emoji.id) || 
+            (it.emoji.id == null && it.emoji.name == emoji.name) 
+        }
+        
+        val isAdding = existing == null || !existing.me
+
+        // Optimistic update
+        if (isAdding) {
+            handleReactionAdd(MessageReactionAdd(
+                user_id = currentUserId,
+                channel_id = channelId,
+                message_id = message.id,
+                emoji = emoji
+            ))
+        } else {
+            handleReactionRemove(MessageReactionRemove(
+                user_id = currentUserId,
+                channel_id = channelId,
+                message_id = message.id,
+                emoji = emoji
+            ))
+        }
+
+        scope.launch {
+            try {
+                val success = if (isAdding) {
+                    messageApi.addReaction(channelId, message.id, emojiStr)
+                } else {
+                    messageApi.removeReaction(channelId, message.id, emojiStr)
+                }
+                
+                if (!success) {
+                    // Rollback if failed
+                    if (isAdding) {
+                        handleReactionRemove(MessageReactionRemove(
+                            user_id = currentUserId,
+                            channel_id = channelId,
+                            message_id = message.id,
+                            emoji = emoji
+                        ))
+                    } else {
+                        handleReactionAdd(MessageReactionAdd(
+                            user_id = currentUserId,
+                            channel_id = channelId,
+                            message_id = message.id,
+                            emoji = emoji
+                        ))
+                    }
+                    errorStore.pushError("Failed to update reaction")
+                }
+            } catch (e: Exception) {
+                // Rollback on exception
+                if (isAdding) {
+                    handleReactionRemove(MessageReactionRemove(
+                        user_id = currentUserId,
+                        channel_id = channelId,
+                        message_id = message.id,
+                        emoji = emoji
+                    ))
+                } else {
+                    handleReactionAdd(MessageReactionAdd(
+                        user_id = currentUserId,
+                        channel_id = channelId,
+                        message_id = message.id,
+                        emoji = emoji
+                    ))
+                }
+            }
         }
     }
 

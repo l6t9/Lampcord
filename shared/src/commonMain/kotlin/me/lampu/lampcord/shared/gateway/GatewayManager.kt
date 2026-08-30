@@ -326,20 +326,29 @@ class GatewayManager(
     }
 
     private suspend fun identify(token: String) {
+        val platform = getPlatformName()
+        val isMobile = platform == "android" || platform == "ios"
+        
         val properties = buildMap {
-            put("os", JsonPrimitive("Android"))
-            put("browser", JsonPrimitive("Discord Android"))
-            put("device", JsonPrimitive(getDeviceName()))
+            if (isMobile) {
+                put("os", JsonPrimitive(if (platform == "android") "Android" else "iOS"))
+                put("browser", JsonPrimitive(if (platform == "android") "Discord Android" else "Discord iOS"))
+                put("device", JsonPrimitive(getDeviceName()))
+            } else {
+                put("os", JsonPrimitive(platform.replaceFirstChar { it.uppercase() }))
+                put("browser", JsonPrimitive("Discord Desktop"))
+                put("device", JsonPrimitive(""))
+            }
             put("system_locale", JsonPrimitive("en-US"))
             put("has_client_mods", JsonPrimitive(false))
-            put("client_version", JsonPrimitive("341.0 - rn"))
-            put("release_channel", JsonPrimitive("canaryRelease"))
+            put("client_version", JsonPrimitive(if (isMobile) "341.0 - rn" else "0.0.309"))
+            put("release_channel", JsonPrimitive("stable"))
             put("device_vendor_id", JsonPrimitive(rest.vendorId))
-            put("design_id", JsonPrimitive(2))
+            put("design_id", JsonPrimitive(if (isMobile) 2 else 0))
             put("browser_user_agent", JsonPrimitive(""))
             put("browser_version", JsonPrimitive(""))
             put("os_version", JsonPrimitive(getOsSdkVersion()))
-            put("client_build_number", JsonPrimitive(6081))
+            put("client_build_number", JsonPrimitive(if (isMobile) 6081 else 309000))
             put("client_event_source", JsonNull)
             put("client_launch_id", JsonPrimitive(clientLaunchId))
             put("launch_signature", JsonPrimitive(launchSignature))

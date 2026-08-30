@@ -1,9 +1,13 @@
 package me.lampu.lampcord.shared.ui.components.messagebody
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -22,9 +26,11 @@ import me.lampu.lampcord.shared.model.User
 import me.lampu.lampcord.shared.model.getDisplayUrl
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
+import me.lampu.lampcord.shared.utils.getPlatformName
 import org.koin.compose.koinInject
+import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ReactionUsersDialog(
     channelId: String,
@@ -34,83 +40,156 @@ fun ReactionUsersDialog(
     onDismiss: () -> Unit,
     messageApi: MessageApi = koinInject()
 ) {
-    var selectedReaction by remember { mutableStateOf(initialEmoji) }
+    val isMobile = getPlatformName() == "android" || getPlatformName() == "ios"
+    val pagerState = rememberPagerState(initialPage = reactions.indexOf(initialEmoji).coerceAtLeast(0)) { reactions.size }
+    
+    if (isMobile) {
+        ModalBottomSheet(
+            onDismissRequest = onDismiss,
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = MaterialTheme.colorScheme.surface,
+            dragHandle = { BottomSheetDefaults.DragHandle() }
+        ) {
+            ReactionUsersContent(
+                channelId = channelId,
+                messageId = messageId,
+                reactions = reactions,
+                pagerState = pagerState,
+                messageApi = messageApi
+            )
+        }
+    } else {
+        Dialog(onDismissRequest = onDismiss) {
+            Surface(
+                modifier = Modifier
+                    .width(440.dp)
+                    .heightIn(max = 600.dp),
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surface
+            ) {
+                ReactionUsersContent(
+                    channelId = channelId,
+                    messageId = messageId,
+                    reactions = reactions,
+                    pagerState = pagerState,
+                    messageApi = messageApi
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@Composable
+private fun ReactionUsersContent(
+    channelId: String,
+    messageId: String,
+    reactions: List<MessageReaction>,
+    pagerState: PagerState,
+    messageApi: MessageApi
+) {
+    val scope = rememberCoroutineScope()
+
+    Column(modifier = Modifier.fillMaxWidth().fillMaxHeight(0.85f)) {
+        SecondaryScrollableTabRow(
+            selectedTabIndex = pagerState.currentPage,
+            containerColor = Color.Transparent,
+            edgePadding = 16.dp,
+            divider = {}
+        ) {
+            reactions.forEachIndexed { index, reaction ->
+                Tab(
+                    selected = pagerState.currentPage == index,
+                    onClick = { 
+                        scope.launch {
+                            pagerState.animateScrollToPage(index)
+                        }
+                    }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        val url = reaction.emoji.getDisplayUrl()
+                        var loadFailed by remember { mutableStateOf(false) }
+                        if (url != null && !loadFailed) {
+                            AsyncImage(
+                                model = url, 
+                                contentDescription = null, 
+                                modifier = Modifier.size(16.dp),
+                                showPlaceholder = false,
+                                onState = { state -> if (state is coil3.compose.AsyncImagePainter.State.Error) loadFailed = true }
+                            )
+                        } else {
+                            Text(reaction.emoji.name ?: "", fontSize = 14.sp)
+                        }
+                        Text(reaction.count.toString(), style = MaterialTheme.typography.labelMedium)
+                    }
+                }
+            }
+        }
+
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+            verticalAlignment = Alignment.Top
+        ) { page ->
+            ReactionUserList(
+                channelId = channelId,
+                messageId = messageId,
+                reaction = reactions[page],
+                messageApi = messageApi
+            )
+        }
+    }
+}
+
+@Composable
+private fun ReactionUserList(
+    channelId: String,
+    messageId: String,
+    reaction: MessageReaction,
+    messageApi: MessageApi
+) {
     var users by remember { mutableStateOf<List<User>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
 
-    val emojiStr = if (selectedReaction.emoji.id != null) "${selectedReaction.emoji.name}:${selectedReaction.emoji.id}" else selectedReaction.emoji.name ?: ""
+    val emojiStr = remember(reaction) {
+        if (reaction.emoji.id != null) "${reaction.emoji.name}:${reaction.emoji.id}" else reaction.emoji.name ?: ""
+    }
 
-    LaunchedEffect(selectedReaction) {
+    LaunchedEffect(emojiStr) {
         isLoading = true
         users = messageApi.getReactionUsers(channelId, messageId, emojiStr)
         isLoading = false
     }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(max = 500.dp),
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surface
-        ) {
-            Column {
-                SecondaryScrollableTabRow(
-                    selectedTabIndex = reactions.indexOf(selectedReaction),
-                    containerColor = Color.Transparent,
-                    edgePadding = 16.dp,
-                    divider = {}
-                ) {
-                    reactions.forEach { reaction ->
-                        Tab(
-                            selected = selectedReaction == reaction,
-                            onClick = { selectedReaction = reaction }
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                val url = reaction.emoji.getDisplayUrl()
-                                if (url != null) {
-                                    AsyncImage(model = url, contentDescription = null, modifier = Modifier.size(16.dp))
-                                } else {
-                                    Text(reaction.emoji.name ?: "", fontSize = 14.sp)
-                                }
-                                Text(reaction.count.toString(), style = MaterialTheme.typography.labelMedium)
-                            }
-                        }
-                    }
-                }
-
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-
-                Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                    if (isLoading) {
-                        ContainedLoadingIndicator(modifier = Modifier.align(Alignment.Center))
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            items(users) { user ->
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    val avatarUrl = user.avatar?.let { "https://cdn.discordapp.com/avatars/${user.id}/$it.png?size=64" }
-                                    AsyncImage(
-                                        model = avatarUrl,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(32.dp).clip(CircleShape)
-                                    )
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Text(
-                                        text = user.global_name ?: user.username ?: "Unknown",
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            }
-                        }
+    Box(modifier = Modifier.fillMaxSize()) {
+        if (isLoading) {
+            ContainedLoadingIndicator(modifier = Modifier.align(Alignment.Center))
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(users) { user ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        val avatarUrl = user.avatar?.let { "https://cdn.discordapp.com/avatars/${user.id}/$it.png?size=64" }
+                        AsyncImage(
+                            model = avatarUrl,
+                            contentDescription = null,
+                            modifier = Modifier.size(32.dp).clip(CircleShape)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = user.global_name ?: user.username ?: "Unknown",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
             }
