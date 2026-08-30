@@ -121,7 +121,7 @@ fun ProfileSections(
         val presence = profile.guild_member?.presence ?: profile.presence ?: presences[user.id]
         val activities = (profile.activities.ifEmpty { presence?.activities ?: emptyList() }).filter { it.type != 4 }
 
-        if (activities.isNotEmpty() && !isExpanded) {
+        if (activities.isNotEmpty()) {
             Column {
                 ProfileSectionHeader("Activity")
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

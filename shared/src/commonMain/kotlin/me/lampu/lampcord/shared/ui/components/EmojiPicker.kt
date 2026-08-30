@@ -379,7 +379,16 @@ fun EmojiPicker(
                             2 -> StickerPicker(
                                 mediaApi = mediaApi,
                                 onStickerSelected = { sticker ->
-                                    messageStore.sendMessageDraft("", stickerIds = listOf(sticker.id))
+                                    val replacement = me.lampu.lampcord.shared.utils.FreeNitroEmojis.getStickerReplacement(
+                                        sticker,
+                                        currentUser,
+                                        navigationStore.selectedGuild?.id
+                                    )
+                                    if (replacement != null) {
+                                        messageStore.sendMessageDraft(replacement)
+                                    } else {
+                                        messageStore.sendMessageDraft("", stickerIds = listOf(sticker.id))
+                                    }
                                     navigationStore.isEmojiPickerVisible = false
                                 }
                             )

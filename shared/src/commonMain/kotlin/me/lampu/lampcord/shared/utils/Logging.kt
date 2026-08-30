@@ -56,8 +56,8 @@ object Logging {
         // Periodically flush to disk
         scope.launch(Dispatchers.Default) {
             try {
-                // We'll write the full log buffer to a file every 10 logs
-                if (_logs.value.size % 10 == 0) {
+                // We'll write the full log buffer to a file every 50 logs
+                if (_logs.value.size % 50 == 0) {
                     val logContent = _logs.value.joinToString("\n")
                     writeInternalFile("lampcord_debug.log", logContent)
                 }
@@ -108,6 +108,14 @@ object Logging {
         when (throwable) {
             null -> logger.error("[$tag] $message")
             else -> logger.error("[$tag] $message", throwable)
+        }
+    }
+
+    val ktorLogger = object : io.ktor.client.plugins.logging.Logger {
+        override fun log(message: String) {
+            // Filter out potentially sensitive data if needed, or just log it
+            // Ktor logs can be very verbose, so we log them as Debug by default
+            d("Ktor", message)
         }
     }
 }

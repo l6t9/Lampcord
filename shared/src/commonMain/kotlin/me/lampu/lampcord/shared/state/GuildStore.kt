@@ -6,6 +6,7 @@ import kotlinx.coroutines.launch
 import me.lampu.lampcord.shared.api.ChannelApi
 import me.lampu.lampcord.shared.api.GuildApi
 import me.lampu.lampcord.shared.model.*
+import me.lampu.lampcord.shared.utils.Logging
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlin.time.Clock
@@ -36,6 +37,7 @@ class GuildStore(
     val allGuildChannels = entityStore.channels
 
     fun setGuilds(newGuilds: List<Guild>, order: List<String>) {
+        Logging.i("GuildStore", "Setting ${newGuilds.size} guilds")
         newGuilds.forEach { entityStore.updateGuild(it) }
         val sortedIds = if (order.isNotEmpty()) {
             newGuilds.map { it.id }.sortedBy { id ->
@@ -69,6 +71,7 @@ class GuildStore(
     }
 
     fun handleGuildCreate(guild: Guild, order: List<String>) {
+        Logging.i("GuildStore", "Handling GUILD_CREATE: ${guild.name} (${guild.id})")
         entityStore.updateGuild(guild)
         if (guild.id !in _guildIds.value) {
             val newList = _guildIds.value + guild.id
@@ -102,6 +105,7 @@ class GuildStore(
     }
 
     fun handleGuildDelete(guildId: String) {
+        Logging.i("GuildStore", "Handling GUILD_DELETE: $guildId")
         _guildIds.value -= guildId
         entityStore.removeGuild(guildId)
     }

@@ -37,6 +37,7 @@ import me.lampu.lampcord.shared.state.ProfileStore
 import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.theme.rememberPlatformColorScheme
+import me.lampu.lampcord.shared.utils.Logging
 import org.koin.compose.koinInject
 import androidx.compose.material3.LocalContentColor
 
@@ -70,7 +71,7 @@ fun UserProfileDialog(
                     onExpand = { profileStore.isProfileExpanded = true },
                     onDismiss = onDismiss,
                     modifier = Modifier.then(
-                        if (isExpanded) Modifier.width(800.dp).height(600.dp)
+                        if (isExpanded) Modifier.width(450.dp).heightIn(max = 800.dp)
                         else Modifier.width(300.dp).wrapContentHeight()
                     )
                 )
@@ -94,7 +95,6 @@ fun ProfileCard(
     showBorder: Boolean = true,
     userStore: UserStore = koinInject(),
     clientProfileStore: ClientProfileStore = koinInject(),
-    presenceStore: me.lampu.lampcord.shared.state.PresenceStore = koinInject(),
     settingsStore: me.lampu.lampcord.shared.state.SettingsStore = koinInject()
 ) {
     val user = profile.user
@@ -105,10 +105,19 @@ fun ProfileCard(
     val decoded3y3 = remember(profile, settingsStore.profile3y3) {
         if (!settingsStore.profile3y3) return@remember null
         val bio = profile.guild_member_profile?.bio ?: profile.user_profile?.bio ?: profile.user.bio
-        bio?.let { Profile3y3.decode(it) }?.let {
+        bio?.let { 
+            val decoded = Profile3y3.decode(it)
+            if (decoded != null) {
+                Logging.d("Profile3y3", "Decoded 3y3 for ${user.username}: $decoded")
+            }
+            decoded
+        }?.let {
             try {
                 kotlinx.serialization.json.Json.decodeFromString<me.lampu.lampcord.shared.model.CustomProfile>(it)
-            } catch (e: Exception) { null }
+            } catch (e: Exception) { 
+                Logging.e("Profile3y3", "Failed to parse 3y3 JSON for ${user.username}", e)
+                null 
+            }
         }
     }
     
@@ -257,363 +266,66 @@ fun ProfileCard(
     val outerShape = RoundedCornerShape(16.dp)
     val innerShape = RoundedCornerShape(12.dp)
 
-    if (isExpanded && !isSidebar) {
-        val washColor = theme.primaryAccent
-        
-        val bannerUrl = remember(user, guildMeta, userMeta, customProfile) {
-            if (customProfile?.banner != null) {
-                customProfile.banner
-            } else if (guildMeta?.banner != null && profile.guild_id != null) {
-                "https://cdn.discordapp.com/guilds/${profile.guild_id}/users/${user.id}/banners/${guildMeta.banner}.png?size=1024"
-            } else (userMeta?.banner ?: user.banner)?.let {
-                "https://cdn.discordapp.com/banners/${user.id}/$it.png?size=1024"
-            }
-        }
-
-        // Deriving a themed background color for the big card
-        val bigCardBg = remember(washColor) {
-            val (h, s, l) = ModernProfileColors.rgbToHsl((washColor.value.toLong() shr 32).toInt())
-            if (isDark) {
-                // Dark mode: deep version of the accent, but more vibrant than pure black
-                Color(ModernProfileColors.hslToRgb(h, s * 0.5, (l * 0.2).coerceIn(0.06, 0.12)))
-            } else {
-                // Light mode: soft version of the accent
-                Color(ModernProfileColors.hslToRgb(h, s * 0.3, (l * 1.05).coerceIn(0.9, 0.97)))
-            }
-        }
-
-        Surface(
-            modifier = modifier,
-            shape = outerShape,
-            color = bigCardBg,
-            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
+    Box(
+        modifier = modifier
+            .then(if (showBorder) Modifier.background(theme.outerBorderBrush, outerShape).padding(4.dp) else Modifier)
+    ) {
+        Column(
+            modifier = Modifier
+                .then(if (isSidebar) Modifier.fillMaxSize() else Modifier.fillMaxWidth().wrapContentHeight())
+                .then(if (showBorder) Modifier.clip(innerShape) else Modifier)
+                .background(theme.backgroundBrush)
         ) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                // Background Layer: Full width banner with fade
-                Column(modifier = Modifier.fillMaxSize()) {
-                    Box(modifier = Modifier.fillMaxWidth().height(280.dp)) {
-                        if (bannerUrl != null) {
-                            me.lampu.lampcord.shared.ui.components.AsyncImage(
-                                model = bannerUrl,
-                                contentDescription = null,
-                                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        }
-                        
-                        // Heavy themed tint to make the banner subtle
-                        Box(modifier = Modifier.fillMaxSize().background(washColor.copy(alpha = 0.65f)))
-                        
-                        // Fade to the primary theme-derived background
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(
-                                    Brush.verticalGradient(
-                                        0.0f to Color.Transparent,
-                                        0.2f to Color.Transparent,
-                                        1.0f to bigCardBg
-                                    )
-                                )
+            CompositionLocalProvider(LocalContentColor provides theme.contentColor) {
+                Column(
+                    modifier = Modifier
+                        .then(if (isSidebar) Modifier.weight(1f) else Modifier.wrapContentHeight())
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    ProfileBanner(profile, theme, isExpanded, onDismiss = onDismiss, onEdit = onEditBanner, customProfileOverride = customProfile)
+
+                    Column(modifier = Modifier.padding(start = if (isExpanded) { 16.dp } else 10.dp, end = 16.dp)) {
+                        ProfileHeader(
+                            profile = profile,
+                            theme = theme,
+                            isExpanded = isExpanded,
+                            onExpand = onExpand,
+                            onDismiss = onDismiss,
+                            onEditAvatar = onEditAvatar,
+                            customProfileOverride = customProfile
+                        )
+                        ProfileSections(
+                            profile = profile,
+                            theme = theme,
+                            isExpanded = isExpanded,
+                            showMemberSince = showMemberSince
                         )
                     }
-                    Box(modifier = Modifier.fillMaxSize().background(bigCardBg))
                 }
+            }
 
-                // Global themed wash overlay
+            if (!isExpanded && user.id != currentUser?.id) {
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                0.0f to washColor.copy(alpha = 0.35f),
-                                0.5f to washColor.copy(alpha = 0.1f),
-                                1.0f to Color.Transparent
-                            )
-                        )
-                )
-
-                // Content Layer
-                Column(modifier = Modifier.fillMaxSize()) {
-                    Box(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
-                        IconButton(
-                            onClick = { onDismiss?.invoke() },
-                            modifier = Modifier.align(Alignment.TopEnd)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Close,
-                                contentDescription = "Close",
-                                tint = if (isDark) Color.White.copy(alpha = 0.6f) else Color.Black.copy(alpha = 0.6f)
-                            )
-                        }
-                    }
-
-                    Row(modifier = Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, bottom = 16.dp)) {
-                        Surface(
-                            modifier = Modifier
-                                .width(300.dp)
-                                .fillMaxHeight()
-                                .clip(innerShape),
-                            color = if (isDark) Color(0xFF1E1F22) else Color(0xFFF2F3F5)
-                        ) {
-                            Box(modifier = Modifier.fillMaxSize().background(theme.backgroundBrush)) {
-                                Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-                                    ProfileBanner(profile, theme, isExpanded = false, onDismiss = onDismiss, onEdit = onEditBanner, customProfileOverride = customProfile)
-                                    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                                        ProfileHeader(
-                                            profile = profile,
-                                            theme = theme,
-                                            isExpanded = true,
-                                            onDismiss = onDismiss,
-                                            onEditAvatar = onEditAvatar,
-                                            customProfileOverride = customProfile
-                                        )
-                                        ProfileSections(
-                                            profile = profile,
-                                            theme = theme,
-                                            isExpanded = true,
-                                            showMemberSince = showMemberSince
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        Spacer(Modifier.width(24.dp))
-
-                        Column(modifier = Modifier.weight(1f)) {
-                            var selectedTab by remember { mutableStateOf(0) }
-                            val tabs = listOf("Board", "Activity", "Mutual Friends", "Mutual Servers")
-                            
-                            ScrollableTabRow(
-                                selectedTabIndex = selectedTab,
-                                containerColor = Color.Transparent,
-                                divider = {},
-                                edgePadding = 0.dp,
-                                indicator = { tabPositions ->
-                                    if (selectedTab < tabPositions.size) {
-                                        TabRowDefaults.SecondaryIndicator(
-                                            modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
-                                            color = if (isDark) Color.White else Color.Black
-                                        )
-                                    }
-                                }
-                            ) {
-                                tabs.forEachIndexed { index, title ->
-                                    Tab(
-                                        selected = selectedTab == index,
-                                        onClick = { selectedTab = index },
-                                        text = { 
-                                            Text(
-                                                text = title,
-                                                style = MaterialTheme.typography.titleSmall,
-                                                fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal,
-                                                color = if (selectedTab == index) {
-                                                    if (isDark) Color.White else Color.Black
-                                                } else {
-                                                    if (isDark) Color.White.copy(alpha = 0.6f) else Color.Black.copy(alpha = 0.6f)
-                                                }
-                                            ) 
-                                        }
-                                    )
-                                }
-                            }
-
-                            Spacer(Modifier.height(24.dp))
-
-                            Box(modifier = Modifier.fillMaxSize().padding(top = 8.dp)) {
-                                when (selectedTab) {
-                                    0 -> { // Board
-                                        Column(
-                                            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
-                                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                                        ) {
-                                            ModernProfileBoardCard(title = "Favorite Game", isDark = isDark) {
-                                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                                    Box(Modifier.size(64.dp).background(Color.Gray.copy(alpha = 0.2f), RoundedCornerShape(8.dp)))
-                                                    Spacer(Modifier.width(12.dp))
-                                                    Column {
-                                                        Text("Game Title", style = MaterialTheme.typography.titleMedium, color = if (isDark) Color.White else Color.Black)
-                                                        Text("Playing for 2 hours", style = MaterialTheme.typography.bodySmall, color = (if (isDark) Color.White else Color.Black).copy(alpha = 0.6f))
-                                                    }
-                                                }
-                                            }
-                                            
-                                            ModernProfileBoardCard(title = "Games I Like", isDark = isDark) {
-                                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                                    repeat(3) {
-                                                        Box(Modifier.size(64.dp, 80.dp).background(Color.Gray.copy(alpha = 0.2f), RoundedCornerShape(8.dp)))
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                    1 -> { // Activity
-                                        val presences by presenceStore.presences.collectAsState()
-                                        val presence = profile.guild_member?.presence ?: profile.presence ?: presences[user.id]
-                                        val activities = (profile.activities.ifEmpty { presence?.activities ?: emptyList() }).filter { it.type != 4 }
-                                        
-                                        Column(
-                                            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
-                                            verticalArrangement = Arrangement.spacedBy(24.dp)
-                                        ) {
-                                            if (activities.isNotEmpty()) {
-                                                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                                    Text(
-                                                        "Current activity",
-                                                        style = MaterialTheme.typography.labelMedium,
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = (if (isDark) Color.White else Color.Black).copy(alpha = 0.6f)
-                                                    )
-                                                    activities.forEach { activity ->
-                                                        me.lampu.lampcord.shared.ui.components.UserActivity(
-                                                            activity = activity,
-                                                            compact = false
-                                                        )
-                                                    }
-                                                }
-                                            }
-                                            
-                                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                                Text(
-                                                    "Recent activity",
-                                                    style = MaterialTheme.typography.labelMedium,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = (if (isDark) Color.White else Color.Black).copy(alpha = 0.6f)
-                                                )
-                                                
-                                                // Placeholder for actual activity history
-                                                repeat(2) {
-                                                    Surface(
-                                                        modifier = Modifier.fillMaxWidth(),
-                                                        shape = RoundedCornerShape(12.dp),
-                                                        color = if (isDark) Color(0xFF2B2D31).copy(alpha = 0.5f) else Color(0xFFE3E5E8).copy(alpha = 0.5f)
-                                                    ) {
-                                                        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                                            Box(Modifier.size(48.dp).background(Color.Gray.copy(alpha = 0.2f), RoundedCornerShape(8.dp)))
-                                                            Spacer(Modifier.width(12.dp))
-                                                            Column {
-                                                                Text("Past Activity", style = MaterialTheme.typography.titleSmall, color = if (isDark) Color.White else Color.Black)
-                                                                Text("Played 3 days ago", style = MaterialTheme.typography.bodySmall, color = (if (isDark) Color.White else Color.Black).copy(alpha = 0.6f))
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                    else -> {
-                                        Text(
-                                            text = "${tabs[selectedTab]} Content Coming Soon",
-                                            modifier = Modifier.align(Alignment.Center),
-                                            style = MaterialTheme.typography.bodyLarge,
-                                            color = (if (isDark) Color.White else Color.Black).copy(alpha = 0.4f)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    } else {
-        Box(
-            modifier = modifier
-                .then(if (showBorder) Modifier.background(theme.outerBorderBrush, outerShape).padding(4.dp) else Modifier)
-        ) {
-            Column(
-                modifier = Modifier
-                    .then(if (isSidebar) Modifier.fillMaxSize() else Modifier.fillMaxWidth().wrapContentHeight())
-                    .then(if (showBorder) Modifier.clip(innerShape) else Modifier)
-                    .background(theme.backgroundBrush)
-            ) {
-                CompositionLocalProvider(LocalContentColor provides theme.contentColor) {
-                    Column(
-                        modifier = Modifier
-                            .then(if (isSidebar) Modifier.weight(1f) else Modifier.wrapContentHeight())
-                            .verticalScroll(rememberScrollState())
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
+                ) {
+                    Button(
+                        onClick = { onExpand?.invoke() },
+                        modifier = Modifier.fillMaxWidth().height(32.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = theme.buttonColor,
+                            contentColor = theme.buttonTextColor
+                        ),
+                        shape = CircleShape,
+                        contentPadding = PaddingValues(horizontal = 12.dp)
                     ) {
-                        ProfileBanner(profile, theme, isExpanded, onDismiss = onDismiss, onEdit = onEditBanner, customProfileOverride = customProfile)
-
-                        Column(modifier = Modifier.padding(start = if (isExpanded) { 16.dp } else 10.dp, end = 16.dp)) {
-                            ProfileHeader(
-                                profile = profile,
-                                theme = theme,
-                                isExpanded = isExpanded,
-                                onExpand = onExpand,
-                                onDismiss = onDismiss,
-                                onEditAvatar = onEditAvatar,
-                                customProfileOverride = customProfile
-                            )
-                            ProfileSections(
-                                profile = profile,
-                                theme = theme,
-                                isExpanded = isExpanded,
-                                showMemberSince = showMemberSince
-                            )
-                        }
+                        Text("View Full Profile", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Medium)
                     }
                 }
-
-                if (!isExpanded && user.id != currentUser?.id) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
-                    ) {
-                        Button(
-                            onClick = { onExpand?.invoke() },
-                            modifier = Modifier.fillMaxWidth().height(32.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = theme.buttonColor,
-                                contentColor = theme.buttonTextColor
-                            ),
-                            shape = CircleShape,
-                            contentPadding = PaddingValues(horizontal = 12.dp)
-                        ) {
-                            Text("View Full Profile", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Medium)
-                        }
-                    }
-                } else {
-                    Spacer(Modifier.height(16.dp))
-                }
+            } else {
+                Spacer(Modifier.height(16.dp))
             }
-        }
-    }
-}
-
-@Composable
-private fun ModernProfileBoardCard(
-    title: String,
-    isDark: Boolean = true,
-    content: @Composable () -> Unit
-) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = if (isDark) Color(0xFF2B2D31) else Color(0xFFE3E5E8),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isDark) Color.White else Color.Black
-                )
-                Icon(
-                    imageVector = Icons.Filled.MoreHoriz,
-                    contentDescription = null,
-                    tint = (if (isDark) Color.White else Color.Black).copy(alpha = 0.6f),
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-            content()
         }
     }
 }

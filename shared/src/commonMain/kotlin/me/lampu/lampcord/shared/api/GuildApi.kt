@@ -20,6 +20,7 @@ import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import kotlinx.coroutines.CancellationException
 import me.lampu.lampcord.shared.model.ApplicationCommandIndex
 import me.lampu.lampcord.shared.model.AuditLog
 import me.lampu.lampcord.shared.model.Ban
@@ -44,6 +45,7 @@ class GuildApi(private val rest: RestClient) {
             }
             if (response.status.isSuccess()) response.body() else null
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Logging.e("Guild", "Error fetching guild: ${e.message}")
             null
         }
@@ -58,6 +60,7 @@ class GuildApi(private val rest: RestClient) {
             }
             response.status.isSuccess()
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Logging.e("Guild", "Error updating guild: ${e.message}")
             false
         }
@@ -275,6 +278,7 @@ class GuildApi(private val rest: RestClient) {
             }
             if (response.status.isSuccess()) response.body() else null
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Logging.e("Invite", "Error resolving invite $code: ${e.message}")
             null
         }
@@ -287,6 +291,7 @@ class GuildApi(private val rest: RestClient) {
             }
             if (response.status.isSuccess()) response.body<Invite>()?.guild else null
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Logging.e("Invite", "Error joining with code $inviteCode: ${e.message}")
             null
         }
@@ -319,6 +324,7 @@ class GuildApi(private val rest: RestClient) {
                 emptyList()
             }
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Logging.e("Guild", "Error fetching members: ${e.message}")
             emptyList()
         }
@@ -339,6 +345,7 @@ class GuildApi(private val rest: RestClient) {
                 emptyList()
             }
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Logging.e("Guild", "Error searching members: ${e.message}")
             emptyList()
         }
@@ -351,6 +358,7 @@ class GuildApi(private val rest: RestClient) {
             }
             if (response.status.isSuccess()) response.body() else null
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Logging.e("Guild", "Error fetching member: ${e.message}")
             null
         }
@@ -363,6 +371,7 @@ class GuildApi(private val rest: RestClient) {
             }
             response.status.isSuccess()
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Logging.e("Auth", "Error leaving guild: ${e.message}")
             false
         }
@@ -375,6 +384,7 @@ class GuildApi(private val rest: RestClient) {
             }
             if (response.status.isSuccess()) response.body() else null
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Logging.e("Command", "Error getting command index: ${e.message}")
             null
         }
@@ -389,6 +399,7 @@ class GuildApi(private val rest: RestClient) {
             }
             response.status.isSuccess()
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Logging.e("Interaction", "Error sending interaction: ${e.message}")
             false
         }
@@ -407,6 +418,7 @@ class GuildApi(private val rest: RestClient) {
             }
             response.status.isSuccess()
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Logging.e("Guild", "Error onboarding channels: ${e.message}")
             false
         }
@@ -421,6 +433,7 @@ class GuildApi(private val rest: RestClient) {
             }
             response.status.isSuccess()
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Logging.e("Guild", "Error updating guild settings: ${e.message}")
             false
         }
@@ -435,6 +448,7 @@ class GuildApi(private val rest: RestClient) {
             }
             response.status.isSuccess()
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Logging.e("Guild", "Error updating member roles: ${e.message}")
             false
         }
@@ -449,6 +463,7 @@ class GuildApi(private val rest: RestClient) {
             }
             if (response.status.isSuccess()) response.body() else null
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Logging.e("Guild", "Error updating self member: ${e.message}")
             null
         }

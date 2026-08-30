@@ -17,6 +17,7 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import io.ktor.http.encodeURLQueryComponent
 import io.ktor.http.isSuccess
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.Serializable
 import me.lampu.lampcord.shared.model.AllowedMentions
 import me.lampu.lampcord.shared.model.Message
@@ -148,6 +149,7 @@ class MessageApi(private val rest: RestClient) {
                 if (response.status.isSuccess()) response.body() else null
             }
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Logging.e("Messages", "Error sending message: ${e.message}")
             null
         }
@@ -198,6 +200,7 @@ class MessageApi(private val rest: RestClient) {
             }
             if (response.status.isSuccess()) response.body() else emptyList()
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Logging.e("Messages", "Error fetching messages: ${e.message}")
             emptyList()
         }
@@ -316,6 +319,7 @@ class MessageApi(private val rest: RestClient) {
             }
             if (response.status.isSuccess()) response.body() else null
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Logging.e("Messages", "Error searching channel messages: ${e.message}")
             null
         }
@@ -350,6 +354,7 @@ class MessageApi(private val rest: RestClient) {
             }
             if (response.status.isSuccess()) response.body() else null
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Logging.e("Messages", "Error searching guild messages: ${e.message}")
             null
         }

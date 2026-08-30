@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import me.lampu.lampcord.shared.model.*
+import me.lampu.lampcord.shared.utils.Logging
 
 class UserStore {
     private val _currentUser = MutableStateFlow<User?>(null)
@@ -17,11 +18,13 @@ class UserStore {
     val members: StateFlow<Map<String, Map<String, Member>>> = _members.asStateFlow()
 
     fun setCurrentUser(user: User?) {
+        Logging.i("UserStore", "Setting current user: ${user?.username} (${user?.id})")
         _currentUser.value = user
         if (user != null) handleUserUpdate(user)
     }
 
     fun handleUserUpdate(user: User) {
+        Logging.d("UserStore", "Updating user: ${user.username} (${user.id})")
         _users.update { current ->
             val existing = current[user.id]
             val updated = existing?.copy(

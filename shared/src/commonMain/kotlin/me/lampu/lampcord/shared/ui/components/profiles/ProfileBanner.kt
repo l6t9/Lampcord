@@ -58,13 +58,17 @@ fun ProfileBanner(
     val isFriend = relationship?.type == 1
     val isBlocked = relationship?.type == 2
 
-    Box(modifier = Modifier.fillMaxWidth().height(105.dp)) {
+    val platform = remember { me.lampu.lampcord.shared.utils.getPlatformName() }
+    val bannerHeight = remember(isExpanded) {
+        if (isExpanded) 160.dp else 105.dp
+    }
+    Box(modifier = Modifier.fillMaxWidth().height(bannerHeight)) {
         val bannerUrl = if (customProfile?.banner != null) {
             customProfile.banner
         } else if (guildMeta?.banner != null && guildId != null) {
-            "https://cdn.discordapp.com/guilds/$guildId/users/${user.id}/banners/${guildMeta.banner}.png?size=600"
+            "https://cdn.discordapp.com/guilds/$guildId/users/${user.id}/banners/${guildMeta.banner}.png?size=${if (isExpanded) 1024 else 600}"
         } else (userMeta?.banner ?: user.banner)?.let {
-            "https://cdn.discordapp.com/banners/${user.id}/$it.png?size=600"
+            "https://cdn.discordapp.com/banners/${user.id}/$it.png?size=${if (isExpanded) 1024 else 600}"
         }
 
         val interactionSource = remember { MutableInteractionSource() }
@@ -155,7 +159,10 @@ fun ProfileBanner(
         Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(8.dp)
+                .padding(
+                    top = if (platform == "android" && isExpanded) 16.dp else 8.dp,
+                    end = if (platform == "android" && isExpanded) 16.dp else 8.dp
+                )
         ) {
             Surface(
                 onClick = { menuExpanded = true },

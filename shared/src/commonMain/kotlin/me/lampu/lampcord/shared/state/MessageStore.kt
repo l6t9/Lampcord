@@ -32,6 +32,7 @@ import me.lampu.lampcord.shared.model.PendingFile
 import me.lampu.lampcord.shared.model.Poll
 import me.lampu.lampcord.shared.model.ReactionCountDetails
 import me.lampu.lampcord.shared.model.User
+import me.lampu.lampcord.shared.utils.Logging
 import me.lampu.lampcord.shared.utils.Backoff
 import me.lampu.lampcord.shared.utils.ResourceLoader
 import me.lampu.lampcord.shared.utils.getCurrentTimeMillis
@@ -196,6 +197,7 @@ class MessageStore(
     }
 
     fun handleMessageCreate(message: Message) {
+        Logging.d("MessageStore", "Handling MESSAGE_CREATE: ${message.id}")
         val preprocessed = preprocess(message)
         val channelId = message.channel_id
         val channelMessages = messageCache[channelId]?.toMutableList() ?: mutableListOf()
@@ -235,6 +237,7 @@ class MessageStore(
     }
 
     fun handleMessageUpdate(message: Message, dataObj: JsonObject) {
+        Logging.d("MessageStore", "Handling MESSAGE_UPDATE: ${message.id}")
         val channelId = message.channel_id
         val channelMessages = messageCache[channelId]?.toMutableList() ?: return
         val index = channelMessages.indexOfFirst { it.id == message.id }
@@ -250,6 +253,7 @@ class MessageStore(
     }
 
     fun handleMessageDelete(id: String) {
+        Logging.d("MessageStore", "Handling MESSAGE_DELETE: $id")
         var changed = false
         messageCache.forEach { (chanId, channelMessages) ->
             val newList = if (me.lampu.lampcord.shared.settings.Settings.shared.messageLoggerEnabled) {
@@ -386,6 +390,7 @@ class MessageStore(
 
     fun loadMoreMessages(channelId: String, guildId: String?, threadId: String?) {
         if (_isLoadingHistory.value) return
+        Logging.i("MessageStore", "Loading more messages for $channelId")
         val currentChannelMessages = messageCache[channelId] ?: emptyList()
         val hasMore = _hasMoreHistory.value[channelId] ?: true
         if (!hasMore) return
@@ -511,7 +516,7 @@ class MessageStore(
                                 
                                 try {
                                     val contentToSend = transformOutgoingContent(task.content)
-                                    println("DEBUG sendMessage: raw='${task.content}' transformed='${contentToSend}' nonce=${task.nonce} channel=${task.channelId}")
+                                    Logging.d("MessageStore", "Sending message: nonce=${task.nonce} channel=${task.channelId}")
 
                             val message = withTimeoutOrNull(60000.milliseconds) {
                                 messageApi.sendMessage(

@@ -2,6 +2,7 @@ package me.lampu.lampcord.shared.utils
 
 import me.lampu.lampcord.shared.model.Emoji
 import me.lampu.lampcord.shared.model.Message
+import me.lampu.lampcord.shared.model.Sticker
 import me.lampu.lampcord.shared.model.User
 import me.lampu.lampcord.shared.settings.Settings
 
@@ -12,6 +13,9 @@ object FreeNitroEmojis {
     )
     val markdownRegexSingle = Regex(
         """^(?:\[(?:[a-zA-Z0-9_~]+|\u2236[a-zA-Z0-9_~]+\u2236)]\()?(https://cdn\.discordapp\.com/emojis/(\d+)\.(gif|png|webp)(?:\?[^)\s]*)?)\)?$"""
+    )
+    val stickerRegex = Regex(
+        """(?:\[(?:[a-zA-Z0-9_~]+|\u2236[a-zA-Z0-9_~]+\u2236)]\()?(https://cdn\.discordapp\.com/stickers/(\d+)\.(gif|png|webp|json)(?:\?[^)\s]*)?)\)?"""
     )
 
     fun getReplacement(emoji: Emoji, currentUser: User?, selectedGuildId: String?): String {
@@ -45,6 +49,25 @@ object FreeNitroEmojis {
         }
     }
 
+    fun getStickerReplacement(sticker: Sticker, currentUser: User?, selectedGuildId: String?): String? {
+        val settings = Settings.shared
+        if (!settings.freeNitroEmojis) return null
+
+        val isExternal = sticker.guild_id != null && sticker.guild_id != selectedGuildId
+        val isAnimated = sticker.format_type != 1
+        val isUnavailable = sticker.available == false
+        val needsNitro = isExternal || isAnimated || isUnavailable
+        val hasNitro = (currentUser?.premium_type ?: 0) > 0
+
+        if (needsNitro && !hasNitro) {
+            return when (sticker.format_type) {
+                4 -> "https://cdn.discordapp.com/stickers/${sticker.id}.gif?size=320"
+                else -> "https://cdn.discordapp.com/stickers/${sticker.id}.png?size=320"
+            }
+        }
+        return null
+    }
+
     fun transformOutgoing(content: String): String {
         val settings = Settings.shared
         if (!settings.freeNitroEmojis || !settings.realmojis) return content
@@ -76,12 +99,13 @@ object FreeNitroEmojis {
         val settings = Settings.shared
         if (!settings.freeNitroEmojis || !settings.realmojis) return message
 
-        val content = message.content
+        var content = message.content
         val embeds = message.embeds.toMutableList()
+        val stickerItems = message.sticker_items?.toMutableList() ?: mutableListOf()
         val regex = if (settings.compoundRealmojis) markdownRegexCompound else markdownRegexSingle
 
         var changed = false
-        val newContent = regex.replace(content) { match ->
+        content = regex.replace(content) { match ->
             val url = match.groupValues[1]
             val id = match.groupValues[2]
             val ext = match.groupValues[3]
@@ -111,6 +135,35 @@ object FreeNitroEmojis {
             "<$animated:$name:$id>"
         }
 
-        return if (changed) message.copy(content = newContent, embeds = embeds) else message
+        content = stickerRegex.replace(content) { match ->
+            val id = match.groupValues[2]
+            val ext = match.groupValues[3]
+            
+            val formatType = when(ext) {
+                "gif" -> 4
+                "json" -> 3
+                "webp" -> 2
+                else -> 1
+            }
+
+            if (!stickerItems.any { it.id == id }) {
+                stickerItems.add(me.lampu.lampcord.shared.model.StickerItem(
+                    id = id,
+                    name = "sticker",
+                    format_type = formatType
+                ))
+            }
+
+            embeds.removeAll { embed ->
+                val embedUrl = embed.url ?: embed.thumbnail?.url ?: embed.image?.url ?: 
+                              embed.thumbnail?.proxy_url ?: embed.image?.proxy_url
+                embedUrl?.contains("/stickers/$id.") == true
+            }
+
+            changed = true
+            "" 
+        }
+
+        return if (changed) message.copy(content = content.trim(), embeds = embeds, sticker_items = stickerItems.ifEmpty { null }) else message
     }
 }

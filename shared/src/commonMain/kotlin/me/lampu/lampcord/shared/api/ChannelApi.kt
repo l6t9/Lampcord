@@ -11,6 +11,7 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
@@ -42,6 +43,7 @@ class ChannelApi(private val rest: RestClient) {
                 emptyList()
             }
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Logging.e("Guild", "Error fetching channels: ${e.message}")
             emptyList()
         }
@@ -54,6 +56,7 @@ class ChannelApi(private val rest: RestClient) {
             }
             if (response.status.isSuccess()) response.body() else null
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Logging.e("Channel", "Error fetching channel: ${e.message}")
             null
         }
@@ -82,6 +85,7 @@ class ChannelApi(private val rest: RestClient) {
             }
             if (response.status.isSuccess()) response.body() else null
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Logging.e("Thread", "Error creating thread: ${e.message}")
             null
         }
@@ -103,6 +107,7 @@ class ChannelApi(private val rest: RestClient) {
             }
             if (response.status.isSuccess()) response.body() else null
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Logging.e("Thread", "Error creating thread from message: ${e.message}")
             null
         }
@@ -142,6 +147,7 @@ class ChannelApi(private val rest: RestClient) {
             }
             if (response.status.isSuccess()) response.body() else emptyList()
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Logging.e("DM", "Error fetching DMs: ${e.message}")
             emptyList()
         }
@@ -174,6 +180,7 @@ class ChannelApi(private val rest: RestClient) {
             }
             if (response.status.isSuccess()) response.body() else null
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Logging.e("Invite", "Error creating invite: ${e.message}")
             null
         }
@@ -185,6 +192,7 @@ class ChannelApi(private val rest: RestClient) {
                 standardHeaders(rest)
             }.body()
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Logging.e("Threads", "Error fetching active threads: ${e.message}")
             null
         }
@@ -199,6 +207,7 @@ class ChannelApi(private val rest: RestClient) {
                 parameter("sort_order", "desc")
             }.body()
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Logging.e("Threads", "Error searching threads: ${e.message}")
             null
         }
@@ -214,6 +223,7 @@ class ChannelApi(private val rest: RestClient) {
                 }
             }.body()
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Logging.e("Threads", "Error fetching archived threads: ${e.message}")
             null
         }
@@ -226,6 +236,7 @@ class ChannelApi(private val rest: RestClient) {
             }
             if (response.status.isSuccess()) response.body() else null
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Logging.e("Guild", "Error fetching guild onboarding: ${e.message}")
             null
         }
@@ -238,6 +249,7 @@ class ChannelApi(private val rest: RestClient) {
             }
             if (response.status.isSuccess()) response.body() else emptyList()
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Logging.e("Pinned", "Error fetching pinned messages: ${e.message}")
             emptyList()
         }
@@ -250,6 +262,7 @@ class ChannelApi(private val rest: RestClient) {
             }
             response.status.isSuccess()
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Logging.e("Message", "Error pinning message: ${e.message}")
             false
         }
@@ -262,6 +275,7 @@ class ChannelApi(private val rest: RestClient) {
             }
             response.status.isSuccess()
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Logging.e("Message", "Error unpinning message: ${e.message}")
             false
         }
@@ -287,6 +301,7 @@ class ChannelApi(private val rest: RestClient) {
             }
             response.status.isSuccess()
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Logging.e("Message", "Error acking message: ${e.message}")
             false
         }

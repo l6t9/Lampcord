@@ -39,6 +39,7 @@ import me.lampu.lampcord.shared.model.GatewayPayload
 import me.lampu.lampcord.shared.model.Identify
 import me.lampu.lampcord.shared.model.IdentifyClientState
 import me.lampu.lampcord.shared.model.Resume
+import me.lampu.lampcord.shared.utils.Logging
 import me.lampu.lampcord.shared.utils.getCpuCoreCount
 import me.lampu.lampcord.shared.utils.getCurrentTimeMillis
 import me.lampu.lampcord.shared.utils.getDeviceName
@@ -104,10 +105,12 @@ class GatewayManager(
 
     fun connect(token: String) {
         disconnect()
+        Logging.i("Gateway", "Connecting to Discord Gateway...")
         connectionJob = scope.launch {
             try {
                 val gatewayUrl = authApi.getGatewayUrl() ?: "wss://gateway.discord.gg"
                 val url = (resumeGatewayUrl ?: gatewayUrl).removeSuffix("/") + "/?v=9&encoding=json"
+                Logging.d("Gateway", "Gateway URL: $url")
 
                 val userAgent = when (val platform = getPlatformName()) {
                     "android" -> {
@@ -138,6 +141,7 @@ class GatewayManager(
                         header("Cache-Control", "no-cache")
                     }
                 ) {
+                    Logging.i("Gateway", "WebSocket connected.")
                     session = this
                     reconnectAttempt = 0
                     
@@ -152,6 +156,7 @@ class GatewayManager(
                                 _events.emit(payload)
                             } else if (frame is Frame.Close) {
                                 val reason = closeReason.await()
+                                Logging.w("Gateway", "WebSocket closed: $reason")
                                 val code = reason?.code?.toInt() ?: 0
                                 if (code == 4004 || code == 4003) {
                                     _events.emit(GatewayPayload(op = -1, t = "AUTH_FAILED"))
@@ -160,12 +165,15 @@ class GatewayManager(
                                 }
                             }
                         } catch (e: Exception) {
+                            Logging.e("Gateway", "Error in WebSocket loop", e)
                             break
                         }
                     }
                 }
             } catch (e: Exception) {
+                Logging.e("Gateway", "Connection failed", e)
             } finally {
+                Logging.i("Gateway", "Cleaning up connection...")
                 session = null
                 stopHeartbeat()
                 stopTimeSpentUpdates()
@@ -174,6 +182,7 @@ class GatewayManager(
                 if (isActive) {
                     reconnectAttempt++
                     val delay = (1000 * (1 shl (reconnectAttempt - 1))).milliseconds.coerceAtMost(maxReconnectDelay)
+                    Logging.i("Gateway", "Reconnecting in $delay (attempt $reconnectAttempt)...")
                     delay(delay)
                     connect(token)
                 }
@@ -212,7 +221,11 @@ class GatewayManager(
                         val data = payload.d?.jsonObject
                         sessionId = data?.get("session_id")?.jsonPrimitive?.content
                         resumeGatewayUrl = data?.get("resume_gateway_url")?.jsonPrimitive?.content
+                        Logging.i("Gateway", "READY. Session: $sessionId")
                         startTimeSpentUpdates()
+                    }
+                    "RESUMED" -> {
+                        Logging.i("Gateway", "RESUMED session $sessionId")
                     }
                 }
             }
@@ -225,6 +238,7 @@ class GatewayManager(
             }
             9 -> { 
                 val resumable = payload.d?.jsonPrimitive?.boolean ?: false
+                Logging.w("Gateway", "Invalid session. Resumable: $resumable")
                 if (!resumable) {
                     sessionId = null
                     lastSequence = null
@@ -239,6 +253,7 @@ class GatewayManager(
     }
 
     private fun startHeartbeat(interval: Long) {
+        Logging.d("Gateway", "Starting heartbeat every ${interval}ms")
         heartbeatJob?.cancel()
         heartbeatAckReceived = true
         heartbeatJob = CoroutineScope(Dispatchers.Default).launch {
@@ -316,6 +331,7 @@ class GatewayManager(
     }
 
     private suspend fun resume(token: String) {
+        Logging.i("Gateway", "Resuming session $sessionId at sequence $lastSequence")
         val resume = Resume(
             token = token,
             session_id = sessionId!!,
@@ -326,6 +342,7 @@ class GatewayManager(
     }
 
     private suspend fun identify(token: String) {
+        Logging.i("Gateway", "Identifying...")
         val platform = getPlatformName()
         val isMobile = platform == "android" || platform == "ios"
         

@@ -11,6 +11,7 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -45,6 +46,7 @@ class UserApi(private val rest: RestClient) {
                 null
             }
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Logging.e("Profile", "Error fetching user profile: ${e.message}")
             null
         }
@@ -59,6 +61,7 @@ class UserApi(private val rest: RestClient) {
             }
             if (response.status.isSuccess()) response.body() else null
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Logging.e("User", "Error patching user: ${e.message}")
             null
         }
@@ -73,6 +76,7 @@ class UserApi(private val rest: RestClient) {
             }
             response.status.isSuccess()
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Logging.e("User", "Error patching user profile: ${e.message}")
             false
         }
@@ -85,6 +89,7 @@ class UserApi(private val rest: RestClient) {
             }
             if (response.status.isSuccess()) response.body() else emptyList()
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Logging.e("Relationship", "Error fetching relationships: ${e.message}")
             emptyList()
         }
@@ -190,6 +195,7 @@ class UserApi(private val rest: RestClient) {
             }
             if (response.status.isSuccess()) response.body() else null
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Logging.e("Settings", "Error fetching user settings: ${e.message}")
             null
         }

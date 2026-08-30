@@ -191,7 +191,9 @@ data class Member(
     data class Partial(
         val nick: String? = null,
         val avatar: String? = null,
-        val banner: String? = null
+        val banner: String? = null,
+        val bio: String? = null,
+        val pronouns: String? = null
     )
 
     fun userId(): String? = user?.id ?: presence?.user?.id
