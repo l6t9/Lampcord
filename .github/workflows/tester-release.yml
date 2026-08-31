@@ -130,15 +130,19 @@ jobs:
             should_release=true
           else
             if [[ -z "$BEFORE_SHA" || "$BEFORE_SHA" =~ ^0+$ ]]; then
-              echo "Unable to compare appVersion on the initial branch push" >&2
-              exit 1
-            fi
-            previous_version="$(git show "$BEFORE_SHA:gradle.properties" | read_version)"
-            if is_forward_version "$previous_version" "$version"; then
+              # Initial push or forced push, allow release if version matches alpha pattern
               should_release=true
             else
-              should_release=false
-              echo "Skipping tester release for non-forward appVersion change from $previous_version to $version." >> "$GITHUB_STEP_SUMMARY"
+              previous_version="$(git show "$BEFORE_SHA:gradle.properties" 2>/dev/null | read_version || true)"
+              if [[ -z "$previous_version" ]]; then
+                # Version was just added
+                should_release=true
+              elif is_forward_version "$previous_version" "$version"; then
+                should_release=true
+              else
+                should_release=false
+                echo "Skipping tester release for non-forward appVersion change from $previous_version to $version." >> "$GITHUB_STEP_SUMMARY"
+              fi
             fi
           fi
 
