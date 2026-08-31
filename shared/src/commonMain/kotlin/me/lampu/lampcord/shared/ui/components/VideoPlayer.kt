@@ -12,5 +12,6 @@ expect fun VideoPlayer(
     title: String? = null,
     subtitle: String? = null,
     compact: Boolean = false,
+    autoPlay: Boolean = true,
     onFullscreenClick: (() -> Unit)? = null
 )

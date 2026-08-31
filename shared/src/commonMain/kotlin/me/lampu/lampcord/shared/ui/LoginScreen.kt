@@ -41,6 +41,9 @@ fun LoginScreen(
     var login by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
+    var useTokenLogin by remember { mutableStateOf(false) }
+    var token by remember { mutableStateOf("") }
+    var tokenVisible by remember { mutableStateOf(false) }
     var mfaCode by remember { mutableStateOf("") }
     var mfaTicket by remember { mutableStateOf<String?>(null) }
     var mfaType by remember { mutableStateOf("totp") }
@@ -58,8 +61,12 @@ fun LoginScreen(
         }
     }
 
-    LaunchedEffect(Unit) {
-        remoteAuthClient.start()
+    LaunchedEffect(useTokenLogin) {
+        if (useTokenLogin) {
+            remoteAuthClient.stop()
+        } else {
+            remoteAuthClient.start()
+        }
     }
 
     DisposableEffect(Unit) {
@@ -74,18 +81,28 @@ fun LoginScreen(
             errorMessage = null
             try {
                 if (mfaTicket == null) {
-                    val response = sessionManager.login(login, password)
-                    if (response == null) {
-                        errorMessage = "Login failed (check your connection)"
-                    } else if (response.token != null) {
-                        sessionManager.connect(response.token)
-                        onLoginSuccess()
-                    } else if (response.mfa == true && response.ticket != null) {
-                        mfaTicket = response.ticket
-                    } else if (response.message != null) {
-                        errorMessage = response.message
+                    if (useTokenLogin) {
+                        val authToken = token.trim()
+                        if (authToken.isBlank()) {
+                            errorMessage = "Enter a token"
+                        } else {
+                            sessionManager.connect(authToken)
+                            onLoginSuccess()
+                        }
                     } else {
-                        errorMessage = "Invalid login or password"
+                        val response = sessionManager.login(login, password)
+                        if (response == null) {
+                            errorMessage = "Login failed (check your connection)"
+                        } else if (response.token != null) {
+                            sessionManager.connect(response.token)
+                            onLoginSuccess()
+                        } else if (response.mfa == true && response.ticket != null) {
+                            mfaTicket = response.ticket
+                        } else if (response.message != null) {
+                            errorMessage = response.message
+                        } else {
+                            errorMessage = "Invalid login or password"
+                        }
                     }
                 } else {
                     val currentTicket: String? = mfaTicket
@@ -135,51 +152,92 @@ fun LoginScreen(
                 Spacer(modifier = Modifier.height(32.dp))
 
                 if (mfaTicket == null) {
-                    TextField(
-                        value = login,
-                        onValueChange = { login = it },
-                        label = { Text("Email or Phone Number") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        shape = MaterialTheme.shapes.large,
-                        colors = TextFieldDefaults.colors(
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant
-                        ),
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Email,
-                            imeAction = ImeAction.Next
-                        )
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    TextField(
-                        value = password,
-                        onValueChange = { password = it },
-                        label = { Text("Password") },
-                        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        shape = MaterialTheme.shapes.large,
-                        colors = TextFieldDefaults.colors(
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant
-                        ),
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Password,
-                            imeAction = ImeAction.Done
-                        ),
-                        keyboardActions = KeyboardActions(
-                            onDone = { performLogin() }
-                        ),
-                        trailingIcon = {
-                            IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                                Icon(
-                                    imageVector = if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                    contentDescription = if (passwordVisible) "Hide password" else "Show password"
-                                )
+                    if (useTokenLogin) {
+                        TextField(
+                            value = token,
+                            onValueChange = { token = it },
+                            label = { Text("Discord Token") },
+                            visualTransformation = if (tokenVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            shape = MaterialTheme.shapes.large,
+                            colors = TextFieldDefaults.colors(
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                            ),
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Password,
+                                imeAction = ImeAction.Done
+                            ),
+                            keyboardActions = KeyboardActions(
+                                onDone = { performLogin() }
+                            ),
+                            trailingIcon = {
+                                IconButton(onClick = { tokenVisible = !tokenVisible }) {
+                                    Icon(
+                                        imageVector = if (tokenVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                        contentDescription = if (tokenVisible) "Hide token" else "Show token"
+                                    )
+                                }
                             }
-                        }
-                    )
+                        )
+                    } else {
+                        TextField(
+                            value = login,
+                            onValueChange = { login = it },
+                            label = { Text("Email or Phone Number") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            shape = MaterialTheme.shapes.large,
+                            colors = TextFieldDefaults.colors(
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                            ),
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Email,
+                                imeAction = ImeAction.Next
+                            )
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        TextField(
+                            value = password,
+                            onValueChange = { password = it },
+                            label = { Text("Password") },
+                            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            shape = MaterialTheme.shapes.large,
+                            colors = TextFieldDefaults.colors(
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                            ),
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Password,
+                                imeAction = ImeAction.Done
+                            ),
+                            keyboardActions = KeyboardActions(
+                                onDone = { performLogin() }
+                            ),
+                            trailingIcon = {
+                                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                    Icon(
+                                        imageVector = if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                        contentDescription = if (passwordVisible) "Hide password" else "Show password"
+                                    )
+                                }
+                            }
+                        )
+                    }
+
+                    TextButton(
+                        onClick = {
+                            useTokenLogin = !useTokenLogin
+                            errorMessage = null
+                        },
+                        modifier = Modifier.padding(top = 4.dp)
+                    ) {
+                        Text(if (useTokenLogin) "Use email and password instead" else "Login with token")
+                    }
                 } else {
                     Text(
                         if (mfaType == "totp") "Enter 2FA Code" else "Enter Backup Code",
@@ -258,7 +316,7 @@ fun LoginScreen(
                     }
                 }
 
-                if (mfaTicket == null) {
+                if (mfaTicket == null && !useTokenLogin) {
                     Spacer(modifier = Modifier.height(32.dp))
                     
                     HorizontalDivider(

@@ -1,9 +1,17 @@
 package me.lampu.lampcord.shared.ui.components.settings
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -49,6 +57,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.ui.components.ExpressiveSwitch
 import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.settings.Settings
 
 @Composable
 fun Material3SettingsGroup(
@@ -114,6 +123,7 @@ fun Material3SettingsItemRow(
 
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
+    val reduceMotion = Settings.shared.reduceMotion
 
     val backgroundColor by animateColorAsState(
         targetValue = when {
@@ -122,6 +132,7 @@ fun Material3SettingsItemRow(
             else -> item.containerColor ?: MaterialTheme.colorScheme.surfaceContainer
         },
         label = "backgroundColor",
+        animationSpec = if (reduceMotion) snap() else spring(),
     )
 
     Column(
@@ -130,7 +141,7 @@ fun Material3SettingsItemRow(
             .padding(horizontal = horizontalPadding)
             .clip(shape)
             .background(color = backgroundColor)
-            .animateContentSize(),
+            .animateContentSize(animationSpec = if (reduceMotion) snap() else spring()),
     ) {
         Row(
             modifier = Modifier
@@ -200,7 +211,7 @@ fun Material3SettingsItemRow(
             } else if (item.expandableContent != null) {
                 val rotation by animateFloatAsState(
                     targetValue = if (item.expanded) 90f else 0f,
-                    animationSpec = tween(200)
+                    animationSpec = if (reduceMotion) snap() else tween(200)
                 )
                 Icon(
                     imageVector = Icons.Rounded.ChevronRight,
@@ -211,7 +222,11 @@ fun Material3SettingsItemRow(
             }
         }
 
-        AnimatedVisibility(visible = item.expanded && item.enabled) {
+        AnimatedVisibility(
+            visible = item.expanded && item.enabled,
+            enter = if (reduceMotion) EnterTransition.None else expandVertically() + fadeIn(),
+            exit = if (reduceMotion) ExitTransition.None else shrinkVertically() + fadeOut()
+        ) {
             item.expandableContent?.invoke()
         }
     }

@@ -3,6 +3,7 @@ package me.lampu.lampcord.shared.ui.baseplates
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -19,6 +20,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import me.lampu.lampcord.shared.settings.Settings
 
 @Composable
 fun RegularGuildItem(
@@ -35,6 +37,7 @@ fun RegularGuildItem(
     val isHovered by interactionSource.collectIsHoveredAsState()
 
     val showHoverIndicator = isHovered && !isSelected
+    val reduceMotion = Settings.shared.reduceMotion
 
     val indicatorFraction by animateFloatAsState(
         targetValue = when {
@@ -44,23 +47,25 @@ fun RegularGuildItem(
             else -> 0f
         },
         label = "indicatorFraction",
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)
+        animationSpec = if (reduceMotion) snap() else spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)
     )
     
     val indicatorAlpha by animateFloatAsState(
         targetValue = if (isSelected || (isUnread && !isMuted) || showHoverIndicator) 1f else 0f,
-        label = "indicatorAlpha"
+        label = "indicatorAlpha",
+        animationSpec = if (reduceMotion) snap() else spring()
     )
     
     val backgroundColor by animateColorAsState(
         if (isSelected || isHovered) selectedColor else unselectedColor,
-        label = "backgroundColor"
+        label = "backgroundColor",
+        animationSpec = if (reduceMotion) snap() else spring()
     )
     
     val cornerRadius by animateFloatAsState(
         targetValue = if (isSelected || isHovered) 16f else 24f,
         label = "cornerRadius",
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)
+        animationSpec = if (reduceMotion) snap() else spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)
     )
     val shape = RoundedCornerShape(cornerRadius.dp)
     

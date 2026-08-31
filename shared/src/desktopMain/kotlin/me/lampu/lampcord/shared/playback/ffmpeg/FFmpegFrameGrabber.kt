@@ -525,6 +525,20 @@ class FFmpegFrameGrabber : FrameGrabber {
 
     override fun getLengthInTime(): Long = (oc?.takeUnless { it.isNull }?.duration() ?: 0L) * 1000000L / AV_TIME_BASE
 
+    /**
+     * Returns the video stream duration when the container does not expose a
+     * duration. This is common with mobile MP4 exports whose metadata is not
+     * written into the container header.
+     */
+    fun getVideoDurationInTime(): Long {
+        val stream = video_st ?: return 0L
+        val streamDuration = stream.duration()
+        if (streamDuration <= 0L || streamDuration == AV_NOPTS_VALUE) return 0L
+        val timeBase = stream.time_base()
+        if (timeBase.num() <= 0 || timeBase.den() <= 0) return 0L
+        return streamDuration * 1000000L * timeBase.num() / timeBase.den()
+    }
+
     fun getLengthInVideoFrames(): Int = Math.round(getLengthInTime() * frameRate / 1000000L).toInt()
 
     fun getLengthInAudioFrames(): Int {
@@ -659,7 +673,7 @@ class FFmpegFrameGrabber : FrameGrabber {
                 val par = st.codecpar()
                 if (videoStream < 0 && par.codec_type() == AVMEDIA_TYPE_VIDEO && st.disposition() == videoDisposition) {
                     videoStream = i
-                } else if (audioStream < 0 && par.codec_type() == AVMEDIA_TYPE_AUDIO && st.disposition() == audioDisposition) {
+                } else if (audioStream == -1 && par.codec_type() == AVMEDIA_TYPE_AUDIO && st.disposition() == audioDisposition) {
                     audioStream = i
                 }
             }
@@ -679,7 +693,7 @@ class FFmpegFrameGrabber : FrameGrabber {
                     video_st = st
                     video_par = par
                     videoStream = i
-                } else if (audio_st == null && par.codec_type() == AVMEDIA_TYPE_AUDIO && par.codec_id() != AV_CODEC_ID_NONE &&
+                } else if (audioStream != -2 && audio_st == null && par.codec_type() == AVMEDIA_TYPE_AUDIO && par.codec_id() != AV_CODEC_ID_NONE &&
                     (audioStream < 0 || audioStream == i)
                 ) {
                     audio_st = st

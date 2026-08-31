@@ -1,6 +1,8 @@
 package me.lampu.lampcord.shared.ui.components.guilds
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -63,6 +65,7 @@ import me.lampu.lampcord.shared.model.Guild
 import me.lampu.lampcord.shared.model.Member
 import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.state.UserStore
+import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.PlatformBackHandler
 import me.lampu.lampcord.shared.ui.components.guilds.settings.RoleEditor
@@ -272,6 +275,7 @@ fun ServerSettingsDesktopOverlay(
 ) {
     val guild = navigationStore.selectedGuild ?: return
     val currentSection = selectedCategory ?: allowedSections.firstOrNull() ?: ServerSettingsSection.OVERVIEW
+    val reduceMotion = Settings.shared.reduceMotion
 
     Surface(
         modifier = Modifier
@@ -389,9 +393,13 @@ fun ServerSettingsDesktopOverlay(
                     AnimatedContent(
                         targetState = Triple(currentSection, selectedRole, guild.id),
                         transitionSpec = {
-                            (fadeIn(animationSpec = tween(300)) + slideInVertically(animationSpec = tween(300)) { 20 }).togetherWith(
-                                fadeOut(animationSpec = tween(200))
-                            )
+                            if (reduceMotion) {
+                                EnterTransition.None togetherWith ExitTransition.None
+                            } else {
+                                (fadeIn(animationSpec = tween(300)) + slideInVertically(animationSpec = tween(300)) { 20 }).togetherWith(
+                                    fadeOut(animationSpec = tween(200))
+                                )
+                            }
                         },
                         modifier = Modifier.fillMaxSize(),
                         label = "serverSettingsContent",

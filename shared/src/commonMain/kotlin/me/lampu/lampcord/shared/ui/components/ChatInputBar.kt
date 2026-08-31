@@ -185,13 +185,7 @@ fun ChatInputBar(
         val guildEmojis = guildStore.guilds.value.flatMap { guild ->
             guild.emojis.map { it.copy(guild_id = guild.id) }
         }
-        val frequentEmojis = emojiStore.frequentEmojis.mapNotNull { key ->
-            if (key.contains(":")) {
-                val parts = key.split(":")
-                me.lampu.lampcord.shared.model.Emoji(name = parts[0], id = parts[1])
-            } else null
-        }
-        val allAvailableEmojis = (guildEmojis + frequentEmojis).distinctBy { it.id }
+        val allAvailableEmojis = guildEmojis.distinctBy { it.id }
         
         return resolveServerContent(content, mentionRanges, channels, members, roles, allAvailableEmojis, currentUser, guildId)
     }
@@ -237,6 +231,7 @@ fun ChatInputBar(
 
     val primaryColor = MaterialTheme.colorScheme.primary
     val settings = me.lampu.lampcord.shared.settings.Settings.shared
+    val reduceMotion = settings.reduceMotion
     val chatboxFontSize = settings.chatboxFontSize
     val chatboxMinHeight = settings.chatboxHeight.dp * chatboxFontSize
     val buttonSize = chatboxMinHeight + (6.dp * chatboxFontSize)
@@ -253,8 +248,8 @@ fun ChatInputBar(
                 // Autocomplete Picker
                 AnimatedVisibility(
                     visible = autocompleteStore.autocompleteType != null,
-                    enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                    exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+                    enter = if (reduceMotion) EnterTransition.None else slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                    exit = if (reduceMotion) ExitTransition.None else slideOutVertically(targetOffsetY = { it }) + fadeOut()
                 ) {
                     autocompleteStore.autocompleteType?.let { type ->
                         AutocompletePicker(
@@ -433,8 +428,8 @@ fun ChatInputBar(
                         } else {
                             AnimatedVisibility(
                                 visible = navigationStore.isMediaPickerVisible,
-                                enter = expandVertically() + fadeIn(),
-                                exit = shrinkVertically() + fadeOut()
+                                enter = if (reduceMotion) EnterTransition.None else expandVertically() + fadeIn(),
+                                exit = if (reduceMotion) ExitTransition.None else shrinkVertically() + fadeOut()
                             ) {
                                 MediaPicker(onDismiss = {
                                     navigationStore.isMediaPickerVisible = false
@@ -452,8 +447,8 @@ fun ChatInputBar(
                             
                             AnimatedVisibility(
                                 visible = uploadVisible,
-                                enter = expandHorizontally(expandFrom = Alignment.End) + fadeIn(),
-                                exit = shrinkHorizontally(shrinkTowards = Alignment.End) + fadeOut()
+                                enter = if (reduceMotion) EnterTransition.None else expandHorizontally(expandFrom = Alignment.End) + fadeIn(),
+                                exit = if (reduceMotion) ExitTransition.None else shrinkHorizontally(shrinkTowards = Alignment.End) + fadeOut()
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     if (getPlatformName() != "android") {
@@ -509,7 +504,9 @@ fun ChatInputBar(
                                 modifier = Modifier
                                     .weight(1f)
                                     .heightIn(min = buttonSize)
-                                    .animateContentSize(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
+                                    .animateContentSize(
+                                        animationSpec = if (reduceMotion) snap() else spring(stiffness = Spring.StiffnessMediumLow)
+                                    ),
                                 shape = RoundedCornerShape(settings.chatboxBorderRadius.dp),
                                 color = MaterialTheme.colorScheme.surfaceContainerHigh
                             ) {
@@ -736,8 +733,8 @@ fun ChatInputBar(
                             
                             AnimatedVisibility(
                                 visible = showSend,
-                                enter = expandHorizontally(expandFrom = Alignment.Start) + fadeIn() + scaleIn(initialScale = 0.8f),
-                                exit = shrinkHorizontally(shrinkTowards = Alignment.Start) + fadeOut() + scaleOut(targetScale = 0.8f),
+                                enter = if (reduceMotion) EnterTransition.None else expandHorizontally(expandFrom = Alignment.Start) + fadeIn() + scaleIn(initialScale = 0.8f),
+                                exit = if (reduceMotion) ExitTransition.None else shrinkHorizontally(shrinkTowards = Alignment.Start) + fadeOut() + scaleOut(targetScale = 0.8f),
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Spacer(modifier = Modifier.width(4.dp))
@@ -789,8 +786,8 @@ fun ChatInputBar(
                         // Mobile Emoji Picker - Moved below input row
                         AnimatedVisibility(
                             visible = navigationStore.isEmojiPickerVisible && !isDesktopTarget,
-                            enter = expandVertically() + fadeIn(),
-                            exit = shrinkVertically() + fadeOut()
+                            enter = if (reduceMotion) EnterTransition.None else expandVertically() + fadeIn(),
+                            exit = if (reduceMotion) ExitTransition.None else shrinkVertically() + fadeOut()
                         ) {
                             PlatformBackHandler(enabled = navigationStore.isEmojiPickerVisible) {
                                 navigationStore.isEmojiPickerVisible = false

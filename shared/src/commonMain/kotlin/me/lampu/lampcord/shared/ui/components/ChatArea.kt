@@ -56,6 +56,7 @@ import me.lampu.lampcord.shared.state.RelationshipStore
 import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.state.ThemeStore
 import me.lampu.lampcord.shared.state.VoiceStore
+import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.ui.components.chat.MessageItem
 import me.lampu.lampcord.shared.ui.icons.Icons
 import org.koin.compose.koinInject
@@ -79,6 +80,7 @@ fun ChatArea(
     val messages by messageStore.messages.collectAsState()
     val relationships by relationshipStore.relationships.collectAsState()
     val readStates by readStateStore.readStates.collectAsState()
+    val reduceMotion = Settings.shared.reduceMotion
 
     val themeBackgroundUrl = themeStore.themeBackgroundUrl ?: ""
     val themeBackgroundAlpha = themeStore.themeBackgroundAlpha
@@ -147,9 +149,13 @@ fun ChatArea(
                     val averageItemHeight = visibleItems.map { it.size }.average().toInt()
                     val centerOffset = (viewportHeight / 2) - (averageItemHeight / 2)
 
-                    scrollState.animateScrollToItem(index, scrollOffset = -centerOffset)
+                    if (reduceMotion) {
+                        scrollState.scrollToItem(index, scrollOffset = -centerOffset)
+                    } else {
+                        scrollState.animateScrollToItem(index, scrollOffset = -centerOffset)
+                    }
                 } else {
-                    scrollState.animateScrollToItem(index)
+                    if (reduceMotion) scrollState.scrollToItem(index) else scrollState.animateScrollToItem(index)
                 }
             }
             messageStore.scrollToMessageId = null
@@ -251,7 +257,7 @@ fun ChatArea(
                     if (isFirstUnread) {
                         UnreadSeparator()
                     }
-                    Box(Modifier.animateItem().graphicsLayer(clip = false)) {
+                    Box((if (reduceMotion) Modifier else Modifier.animateItem()).graphicsLayer(clip = false)) {
                         MessageItem(
                             message = message,
                             priorMessage = if (isInline) priorMessage else null,
@@ -335,7 +341,11 @@ fun ChatArea(
                     .zIndex(2f)
                     .padding(top = 12.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .clickable { coroutineScope.launch { scrollState.animateScrollToItem(0) } },
+                    .clickable {
+                        coroutineScope.launch {
+                            if (reduceMotion) scrollState.scrollToItem(0) else scrollState.animateScrollToItem(0)
+                        }
+                    },
                 shape = RoundedCornerShape(12.dp),
                 color = MaterialTheme.colorScheme.primary,
                 tonalElevation = 4.dp
@@ -375,7 +385,11 @@ fun ChatArea(
 
         if (scrolledAway.value) {
             androidx.compose.material3.FloatingActionButton(
-                onClick = { coroutineScope.launch { scrollState.animateScrollToItem(0) } },
+                onClick = {
+                    coroutineScope.launch {
+                        if (reduceMotion) scrollState.scrollToItem(0) else scrollState.animateScrollToItem(0)
+                    }
+                },
                 modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)
             ) {
                 Icon(Icons.Filled.ArrowDownward, null)

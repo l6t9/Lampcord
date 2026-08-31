@@ -3,6 +3,8 @@
 package me.lampu.lampcord.shared.ui.components
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
@@ -48,6 +50,8 @@ import me.lampu.lampcord.shared.utils.showToast
 import me.lampu.lampcord.shared.model.EmbedImage
 import me.lampu.lampcord.shared.utils.getPlatformName
 import me.lampu.lampcord.shared.utils.downloadToDownloads
+import me.lampu.lampcord.shared.utils.EmojiIndex
+import me.lampu.lampcord.shared.model.toTwemojiUrl
 import org.koin.compose.koinInject
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import kotlinx.serialization.json.Json
@@ -66,6 +70,7 @@ fun EmojiPicker(
     onEmojiSelected: (Emoji) -> Unit
 ) {
     var selectedTab by remember { mutableStateOf(0) }
+    val reduceMotion = Settings.shared.reduceMotion
     val currentUser by userStore.currentUser.collectAsState()
     val nitro = (currentUser?.premium_type ?: 0) > 0 || me.lampu.lampcord.shared.settings.Settings.shared.freeNitroEmojis
     
@@ -76,8 +81,30 @@ fun EmojiPicker(
 
     val guilds by guildStore.guilds.collectAsState()
     val selectedGuild = navigationStore.selectedGuild
-    val emojiGroups: List<EmojiGroup> = remember(selectedGuild, guilds.size, nitro, categorizedEmojis, emojiStore.frequentEmojis) {
+    val emojiGroups: List<EmojiGroup> = remember(selectedGuild, guilds, nitro, categorizedEmojis, emojiStore.frequentEmojis) {
         val groups = mutableListOf<EmojiGroup>()
+        val customEmojisById = guilds.flatMap { it.emojis }.associateBy { it.id }
+        fun emojiFromKey(key: String): Emoji? {
+            // Discord clients have used several equivalent keys over time:
+            // name:id, <:name:id>, <a:name:id>, and sometimes just the ID.
+            val normalized = key.trim().removePrefix("<a:").removePrefix("<:").removeSuffix(">")
+            val parts = normalized.split(":")
+            val id = parts.lastOrNull()?.takeIf { it.isNotEmpty() && it.all(Char::isDigit) }
+                ?: normalized.takeIf { it.length in 15..22 && it.all(Char::isDigit) }
+            return if (id != null) {
+                customEmojisById[id] ?: parts.dropLast(1).joinToString(":")
+                    .takeIf { it.isNotBlank() }
+                    ?.let { name -> Emoji(name = name, id = id, animated = key.startsWith("<a:")) }
+            } else {
+                val emojiName = normalized.removeSurrounding(":")
+                val unicode = EmojiIndex.getCharForName(emojiName)
+                when {
+                    unicode != null -> Emoji(name = emojiName, url = unicode.toTwemojiUrl())
+                    EmojiIndex.getNamesForChar(normalized) != null -> Emoji(name = normalized, url = normalized.toTwemojiUrl())
+                    else -> null
+                }
+            }
+        }
         // Favorites from persistent settings
         val favoriteKeys = try {
             val json = Settings.shared.favoriteEmojisJson
@@ -86,27 +113,16 @@ fun EmojiPicker(
             emptyList()
         }
         if (favoriteKeys.isNotEmpty()) {
-            val favEmojis = favoriteKeys.mapNotNull { key ->
-                if (key.contains(":")) {
-                    val parts = key.split(":")
-                    Emoji(name = parts[0], id = parts[1])
-                } else {
-                    Emoji(name = key)
-                }
-            }
+            val favEmojis = favoriteKeys.mapNotNull(::emojiFromKey)
             if (favEmojis.isNotEmpty()) groups.add(EmojiGroup("favorites", "Favorites", favEmojis, null))
         }
 
-        if (emojiStore.frequentEmojis.isNotEmpty()) {
-            val frequent = emojiStore.frequentEmojis.map { key ->
-                if (key.contains(":")) {
-                    val parts = key.split(":")
-                    Emoji(name = parts[0], id = parts[1])
-                } else {
-                    Emoji(name = key)
-                }
-            }
-            groups.add(EmojiGroup("frequent", "Frequently Used", frequent, null))
+        // Discord stores picker frecency in the account settings proto. Keep
+        // the synced order at the top of the picker, then supplement it with
+        // emojis used locally in Lampcord.
+        val frequentEmojis = emojiStore.frequentEmojis.mapNotNull(::emojiFromKey)
+        if (frequentEmojis.isNotEmpty()) {
+            groups.add(EmojiGroup("frequent", "Frequently Used", frequentEmojis, null))
         }
 
         if (nitro) {
@@ -325,8 +341,12 @@ fun EmojiPicker(
                     AnimatedContent(
                         targetState = selectedTab,
                         transitionSpec = {
-                            fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) togetherWith 
-                            fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow))
+                            if (reduceMotion) {
+                                EnterTransition.None togetherWith ExitTransition.None
+                            } else {
+                                fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) togetherWith
+                                fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow))
+                            }
                         },
                         label = "EmojiPickerTabTransition"
                     ) { targetTab ->
@@ -361,7 +381,7 @@ fun EmojiPicker(
                                         onSelect = { index ->
                                             selectedGroupIndex = index
                                             coroutineScope.launch {
-                                                gridState.animateScrollToItem(groupOffsets[index])
+                                                if (reduceMotion) gridState.scrollToItem(groupOffsets[index]) else gridState.animateScrollToItem(groupOffsets[index])
                                             }
                                         }
                                     )
@@ -372,7 +392,15 @@ fun EmojiPicker(
                                 onQueryChange = { searchQuery = it },
                                 mediaApi = mediaApi,
                                 onGifSelected = { gif ->
-                                    messageStore.sendMessageDraft(gif.url)
+                                    // Klipy's canonical URL is the shareable
+                                    // page URL. Sending its CDN preview URL
+                                    // makes Discord post a raw WebP instead of
+                                    // a GIF embed.
+                                    messageStore.sendMessageDraft(
+                                        gif.url.takeIf { it.isNotBlank() }
+                                            ?: gif.gifSrc?.takeIf { it.isNotBlank() }
+                                            ?: gif.src
+                                    )
                                     navigationStore.isEmojiPickerVisible = false
                                 }
                             )
@@ -445,6 +473,15 @@ fun EmojiGrid(
                     }
                     items(group.emojis) { emoji ->
                         val url = emoji.getDisplayUrl()
+                        val displayUrl = if (Settings.shared.reduceMotion &&
+                            emoji.animated == true && emoji.id != null
+                        ) {
+                            // Request a PNG directly instead of allowing the
+                            // picker to decode and autoplay the GIF.
+                            "https://cdn.discordapp.com/emojis/${emoji.id}.png?size=48"
+                        } else {
+                            url
+                        }
                         val key = if (emoji.id != null) "${emoji.name}:${emoji.id}" else (emoji.name ?: "")
                         val isFav = favorites.contains(key)
 
@@ -493,9 +530,9 @@ fun EmojiGrid(
 
                         ContextMenu(items = menuItems) {
                             Box(modifier = Modifier.size(40.dp)) {
-                                if (url != null) {
+                                if (displayUrl != null) {
                                     AsyncImage(
-                                        model = url,
+                                        model = displayUrl,
                                         contentDescription = emoji.name,
                                         modifier = Modifier
                                             .fillMaxSize()

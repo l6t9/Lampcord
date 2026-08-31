@@ -9,7 +9,6 @@ import me.lampu.lampcord.shared.settings.Settings
 
 class EmojiStore {
     private val maxSamples = 70
-    private val minScoreThreshold = 10
     
     private var usageMap = mutableMapOf<String, List<Long>>()
     private var stickerUsageMap = mutableMapOf<String, List<Long>>()
@@ -52,25 +51,20 @@ class EmojiStore {
         val now = Clock.System.now().toEpochMilliseconds()
         val scores = usageMap.mapValues { (_, times) ->
             times.sumOf { time -> getWeight(getDaysDiff(time, now)) }
-        }.filter { it.value > minScoreThreshold }
+        }
 
         val sorted = scores.entries.sortedByDescending { it.value }
             .map { it.key }
             .take(40)
 
-        frequentEmojis = if (sorted.size < 40) {
-            val defaults = listOf("")
-            (sorted + defaults).distinct().take(40)
-        } else {
-            sorted
-        }
+        frequentEmojis = sorted
     }
 
     private fun updateFrequentStickers() {
         val now = Clock.System.now().toEpochMilliseconds()
         val scores = stickerUsageMap.mapValues { (_, times) ->
             times.sumOf { time -> getWeight(getDaysDiff(time, now)) }
-        }.filter { it.value > minScoreThreshold }
+        }
 
         frequentStickers = scores.entries.sortedByDescending { it.value }
             .map { it.key }

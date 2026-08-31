@@ -8,6 +8,7 @@ import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.ui.components.settings.*
 import me.lampu.lampcord.shared.model.UserSettings
+import me.lampu.lampcord.shared.settings.Settings
 import androidx.compose.ui.text.font.FontWeight
 import org.koin.compose.koinInject
 
@@ -55,8 +56,8 @@ fun AccessibilitySettingsContent(settingsStore: SettingsStore = koinInject()) {
                 switchSettingsItem(
                     title = "Reduced Motion",
                     description = "Reduces the amount of animation and movement in the UI.",
-                    checked = false, // TODO
-                    onCheckedChange = { }
+                    checked = Settings.shared.reduceMotion,
+                    onCheckedChange = { Settings.shared.reduceMotion = it }
                 ),
                 switchSettingsItem(
                     title = "High Contrast",

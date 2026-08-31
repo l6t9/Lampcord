@@ -21,12 +21,14 @@ actual fun VideoPlayer(
     title: String?,
     subtitle: String?,
     compact: Boolean,
+    autoPlay: Boolean,
     onFullscreenClick: (() -> Unit)?
 ) {
     val nsUrl = remember(url) { NSURL.URLWithString(url) }
     val player = remember(nsUrl) { nsUrl?.let { AVPlayer.playerWithURL(it) } }
 
     if (player != null) {
+        if (!autoPlay) player.pause()
         UIKitView(
             factory = {
                 val playerViewController = AVPlayerViewController()

@@ -19,15 +19,20 @@ fun UserAvatar(
     decorationData: AvatarDecorationData? = null
 ) {
     val avatarUrl = user?.avatar?.let {
-        val extension = if (it.startsWith("a_")) "gif" else "webp"
+        val extension = if (it.startsWith("a_")) "gif" else "png"
         "https://cdn.discordapp.com/avatars/${user.id}/$it.$extension?size=${(size.value * 2).toInt()}"
     } ?: user?.let {
         val index = ((it.id.toLongOrNull() ?: 0L) shr 22) % 6
         "https://cdn.discordapp.com/embed/avatars/$index.png"
     }
 
+    val fallbackUrl = user?.let {
+        val index = ((it.id.toLongOrNull() ?: 0L) shr 22) % 6
+        "https://cdn.discordapp.com/embed/avatars/$index.png"
+    }
     AvatarWithDecoration(
         avatarUrl = avatarUrl,
+        fallbackAvatarUrl = fallbackUrl,
         decorationData = decorationData ?: user?.avatar_decoration_data,
         size = size,
         modifier = modifier

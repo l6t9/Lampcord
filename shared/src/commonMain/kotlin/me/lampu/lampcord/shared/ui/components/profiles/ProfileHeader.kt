@@ -22,6 +22,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import me.lampu.lampcord.shared.model.UserProfile
+import me.lampu.lampcord.shared.api.CdnUrls
+import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.components.AvatarWithDecoration
 import me.lampu.lampcord.shared.ui.components.ClanTagView
@@ -29,6 +31,7 @@ import me.lampu.lampcord.shared.ui.components.UserActivity
 import me.lampu.lampcord.shared.ui.components.UserTagView
 import me.lampu.lampcord.shared.ui.components.UsernameView
 import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.utils.getPlatformName
 import me.lampu.lampcord.shared.utils.setClipboardText
 import me.lampu.lampcord.shared.utils.showToast
 import org.koin.compose.koinInject
@@ -72,9 +75,7 @@ fun ProfileHeader(
 
     val avatarUrl = customProfile?.avatar ?: profile.guild_member?.avatar?.let {
         "https://cdn.discordapp.com/guilds/${profile.guild_id}/users/${user.id}/avatars/$it.png?size=160"
-    } ?: user.avatar?.let {
-        "https://cdn.discordapp.com/avatars/${user.id}/$it.png?size=160"
-    }
+    } ?: CdnUrls.getUserAvatarUrl(user.id, user.avatar, 160)
 
     val presences by presenceStore.presences.collectAsState()
     val presence = profile.guild_member?.presence ?: profile.presence ?: presences[user.id]
@@ -220,7 +221,7 @@ fun ProfileHeader(
                 baseStyle = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = profileTextColor,
-                marquee = true
+                marquee = !Settings.shared.reduceMotion
             )
             user.primary_guild?.let {
                 ClanTagView(it)
@@ -235,7 +236,13 @@ fun ProfileHeader(
                     " • $pronouns",
                     style = MaterialTheme.typography.bodyMedium,
                     color = profileSecondaryTextColor,
-                    modifier = Modifier.padding(start = 4.dp).basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 3000, velocity = 30.dp),
+                    modifier = Modifier.padding(start = 4.dp).then(
+                        if (Settings.shared.reduceMotion) Modifier else Modifier.basicMarquee(
+                            iterations = if (getPlatformName() == "windows") 1 else Int.MAX_VALUE,
+                            initialDelayMillis = 3000,
+                            velocity = 30.dp
+                        )
+                    ),
                     maxLines = 1
                 )
             }

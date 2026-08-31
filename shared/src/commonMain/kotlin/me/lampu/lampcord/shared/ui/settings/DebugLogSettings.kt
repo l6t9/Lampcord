@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.sp
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.Logging
 import me.lampu.lampcord.shared.utils.DateTimeUtils
+import me.lampu.lampcord.shared.settings.Settings
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,7 +46,7 @@ fun DebugLogScreen(onBack: () -> Unit) {
 
     LaunchedEffect(filteredLogs.size, autoScroll) {
         if (autoScroll && filteredLogs.isNotEmpty()) {
-            listState.animateScrollToItem(filteredLogs.size - 1)
+            if (Settings.shared.reduceMotion) listState.scrollToItem(filteredLogs.size - 1) else listState.animateScrollToItem(filteredLogs.size - 1)
         }
     }
 

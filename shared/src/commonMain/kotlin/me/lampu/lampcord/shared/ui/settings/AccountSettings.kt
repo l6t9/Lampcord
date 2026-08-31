@@ -12,6 +12,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.state.UserStore
+import me.lampu.lampcord.shared.api.CdnUrls
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.settings.*
 import me.lampu.lampcord.shared.ui.icons.Icons
@@ -41,24 +42,11 @@ fun AccountSettingsContent(userVal: me.lampu.lampcord.shared.model.User) {
             items = listOf(
                 Material3SettingsItem(
                     leadingContent = {
-                        val avatarUrl = userVal.avatar?.let { "https://cdn.discordapp.com/avatars/${userVal.id}/$it.png?size=128" }
-                        if (avatarUrl != null) {
-                            AsyncImage(
-                                model = avatarUrl,
-                                contentDescription = "Avatar",
-                                modifier = Modifier.size(60.dp).clip(CircleShape)
-                            )
-                        } else {
-                            Surface(
-                                modifier = Modifier.size(60.dp),
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.primaryContainer
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Text(userVal.username?.take(1)?.uppercase() ?: "?", style = MaterialTheme.typography.headlineSmall)
-                                }
-                            }
-                        }
+                        AsyncImage(
+                            model = CdnUrls.getUserAvatarUrl(userVal.id, userVal.avatar, 128),
+                            contentDescription = "Avatar",
+                            modifier = Modifier.size(60.dp).clip(CircleShape)
+                        )
                     },
                     title = { Text(userVal.global_name ?: userVal.username ?: "Unknown User", fontWeight = FontWeight.Bold) },
                     description = { Text(userVal.username ?: "") },

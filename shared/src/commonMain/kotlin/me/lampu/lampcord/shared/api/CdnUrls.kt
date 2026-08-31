@@ -1,7 +1,9 @@
 package me.lampu.lampcord.shared.api
 
+import me.lampu.lampcord.shared.settings.Settings
+
 /**
- * Pure CDN URL builders for guild icons and user avatars.
+ * CDN URL builders for guild icons and user avatars.
  */
 object CdnUrls {
 
@@ -12,7 +14,7 @@ object CdnUrls {
 
     fun getUserAvatarUrl(userId: String, avatarHash: String?, size: Int = 1024): String {
         if (avatarHash == null) return getDefaultAvatarUrl(userId)
-        val extension = if (avatarHash.startsWith("a_")) "gif" else "webp"
+        val extension = if (avatarHash.startsWith("a_") && !Settings.shared.reduceMotion) "gif" else "png"
         return "https://cdn.discordapp.com/avatars/$userId/$avatarHash.$extension?size=$size"
     }
 

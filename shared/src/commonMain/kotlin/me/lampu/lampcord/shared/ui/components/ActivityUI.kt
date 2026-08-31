@@ -19,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.Activity
+import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.state.ApplicationStore
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.getCurrentTimeMillis
@@ -135,7 +136,12 @@ fun CustomStatus(activity: Activity, modifier: Modifier = Modifier, compact: Boo
     ) {
         if (activity.emoji != null) {
             val emojiUrl = if (activity.emoji.id != null) {
-                "https://cdn.discordapp.com/emojis/${activity.emoji.id}.${if (activity.emoji.animated == true) "gif" else "png"}?size=32"
+                val extension = if (activity.emoji.animated == true && !Settings.shared.reduceMotion) {
+                    "gif"
+                } else {
+                    "png"
+                }
+                "https://cdn.discordapp.com/emojis/${activity.emoji.id}.$extension?size=32"
             } else null
             
             if (emojiUrl != null) {
@@ -316,10 +322,12 @@ fun MusicProgressBar(start: Long, end: Long, color: Color = Color.White) {
     }
     
     LaunchedEffect(start, end) {
-        while (true) {
+        while (currentMillis < totalMs) {
             val now = getCurrentTimeMillis()
             currentMillis = (now - startMs).coerceIn(0, totalMs)
-            delay(1000.milliseconds)
+            if (currentMillis < totalMs) {
+                delay(1000.milliseconds)
+            }
         }
     }
 

@@ -53,7 +53,9 @@ fun App() {
 }
 
 fun newImageLoader(context: PlatformContext): ImageLoader {
-    return ImageLoader.Builder(context)
+    return addPlatformImageDecoders(ImageLoader.Builder(context))
         .crossfade(true)
         .build()
 }
+
+expect fun addPlatformImageDecoders(builder: ImageLoader.Builder): ImageLoader.Builder

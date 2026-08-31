@@ -21,6 +21,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import kotlinx.coroutines.launch
 import me.lampu.lampcord.shared.model.Channel
+import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.components.chat.ChannelNotificationsSheet
 import me.lampu.lampcord.shared.ui.components.chat.InviteDialog
@@ -257,7 +258,13 @@ fun ChannelItem(
                             color = contentColor,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f).basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 3000, velocity = 30.dp)
+                            modifier = Modifier.weight(1f).then(
+                                if (Settings.shared.reduceMotion) Modifier else Modifier.basicMarquee(
+                                    iterations = 1,
+                                    initialDelayMillis = 3000,
+                                    velocity = 30.dp
+                                )
+                            )
                         )
 
                         if (isSomeoneTyping && !isSelected) {
@@ -371,7 +378,13 @@ fun VoiceParticipantSidebarItem(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f).basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 3000, velocity = 30.dp)
+            modifier = Modifier.weight(1f).then(
+                if (Settings.shared.reduceMotion) Modifier else Modifier.basicMarquee(
+                    iterations = 1,
+                    initialDelayMillis = 3000,
+                    velocity = 30.dp
+                )
+            )
         )
         if (state.self_mute || state.mute) {
             Icon(

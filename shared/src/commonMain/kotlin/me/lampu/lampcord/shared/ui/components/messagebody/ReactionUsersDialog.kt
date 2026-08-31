@@ -23,6 +23,7 @@ import androidx.compose.ui.window.Dialog
 import me.lampu.lampcord.shared.api.MessageApi
 import me.lampu.lampcord.shared.model.MessageReaction
 import me.lampu.lampcord.shared.model.User
+import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.model.getDisplayUrl
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
@@ -44,7 +45,7 @@ fun ReactionUsersDialog(
     val pagerState = rememberPagerState(initialPage = reactions.indexOf(initialEmoji).coerceAtLeast(0)) { reactions.size }
     
     if (isMobile) {
-        ModalBottomSheet(
+        me.lampu.lampcord.shared.ui.components.AdaptiveModalBottomSheet(
             onDismissRequest = onDismiss,
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
             containerColor = MaterialTheme.colorScheme.surface,
@@ -102,7 +103,7 @@ private fun ReactionUsersContent(
                     selected = pagerState.currentPage == index,
                     onClick = { 
                         scope.launch {
-                            pagerState.animateScrollToPage(index)
+                            if (Settings.shared.reduceMotion) pagerState.scrollToPage(index) else pagerState.animateScrollToPage(index)
                         }
                     }
                 ) {

@@ -1,7 +1,10 @@
 package me.lampu.lampcord.shared.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.VerticalScrollbar
@@ -20,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
+import me.lampu.lampcord.shared.settings.Settings
 
 @Composable
 actual fun VerticalScrollbar(
@@ -34,12 +38,15 @@ actual fun VerticalScrollbar(
     val isDragged by interactionSource.collectIsDraggedAsState()
     
     val isActive = isHovered || isPressed || isDragged
-    val thickness by animateDpAsState(if (isActive) 8.dp else 4.dp)
+    val thickness by animateDpAsState(
+        if (isActive) 8.dp else 4.dp,
+        animationSpec = if (Settings.shared.reduceMotion) snap() else androidx.compose.animation.core.spring()
+    )
 
     AnimatedVisibility(
         visible = isVisible || isActive,
-        enter = fadeIn(),
-        exit = fadeOut(),
+        enter = if (Settings.shared.reduceMotion) EnterTransition.None else fadeIn(),
+        exit = if (Settings.shared.reduceMotion) ExitTransition.None else fadeOut(),
         modifier = modifier
     ) {
         Box(modifier = Modifier.fillMaxHeight()) {

@@ -1,6 +1,8 @@
 package me.lampu.lampcord.shared.ui.components.profiles
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -61,8 +63,8 @@ fun UserProfileDialog(
     ) {
         AnimatedVisibility(
             visible = profile != null,
-            enter = fadeIn(tween(200, easing = LinearOutSlowInEasing)) + scaleIn(tween(200, easing = FastOutSlowInEasing), initialScale = 0.9f),
-            exit = fadeOut(tween(150)) + scaleOut(tween(150), targetScale = 0.9f)
+            enter = if (me.lampu.lampcord.shared.settings.Settings.shared.reduceMotion) EnterTransition.None else fadeIn(tween(200, easing = LinearOutSlowInEasing)) + scaleIn(tween(200, easing = FastOutSlowInEasing), initialScale = 0.9f),
+            exit = if (me.lampu.lampcord.shared.settings.Settings.shared.reduceMotion) ExitTransition.None else fadeOut(tween(150)) + scaleOut(tween(150), targetScale = 0.9f)
         ) {
             if (profile != null) {
                 ProfileCard(

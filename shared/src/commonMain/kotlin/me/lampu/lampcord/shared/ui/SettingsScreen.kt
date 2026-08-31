@@ -1,6 +1,8 @@
 package me.lampu.lampcord.shared.ui
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -62,6 +64,7 @@ import kotlinx.coroutines.launch
 import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.state.SessionManager
 import me.lampu.lampcord.shared.state.UserStore
+import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.ui.components.settings.Material3SettingsGroup
 import me.lampu.lampcord.shared.ui.components.settings.Material3SettingsItem
 import me.lampu.lampcord.shared.ui.components.settings.SettingsSearchDestination
@@ -121,6 +124,7 @@ fun SettingsScreen(
     navigationStore: NavigationStore = koinInject()
 ) {
 
+    val reduceMotion = Settings.shared.reduceMotion
 
     var selectedCategory by remember { mutableStateOf<SettingsSection?>(null) }
 
@@ -265,7 +269,9 @@ fun SettingsScreen(
                 targetState = showDebugLogs,
                 modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface),
                 transitionSpec = {
-                    if (targetState) {
+                    if (reduceMotion) {
+                        EnterTransition.None togetherWith ExitTransition.None
+                    } else if (targetState) {
                         (fadeIn(quickEffectsSpec) + slideInHorizontally(quickSpatialSpec) { it / 8 }).togetherWith(
                             fadeOut(quickEffectsSpec) + slideOutHorizontally(quickSpatialSpec) { -it / 8 }
                         )
@@ -516,6 +522,7 @@ fun SettingsDesktopOverlay(
     railState: WideNavigationRailState
 ) {
     val activeCategory = selectedCategory ?: SettingsSection.ACCOUNT
+    val reduceMotion = Settings.shared.reduceMotion
     val uriHandler = LocalUriHandler.current
     var showOptionsMenu by remember { mutableStateOf(false) }
 
@@ -650,6 +657,7 @@ fun SettingsDesktopOverlay(
                     val railSections = listOf(
                         SettingsSection.ACCOUNT,
                         SettingsSection.APPEARANCE,
+                        SettingsSection.ACCESSIBILITY,
                         SettingsSection.CHAT,
                         SettingsSection.NOTIFICATIONS,
                         SettingsSection.ADVANCED,
@@ -727,9 +735,13 @@ fun SettingsDesktopOverlay(
                     AnimatedContent(
                         targetState = navigationState,
                         transitionSpec = {
-                            (fadeIn(animationSpec = tween(300)) + slideInVertically(animationSpec = tween(300)) { 20 }).togetherWith(
-                                fadeOut(animationSpec = tween(200))
-                            )
+                            if (reduceMotion) {
+                                EnterTransition.None togetherWith ExitTransition.None
+                            } else {
+                                (fadeIn(animationSpec = tween(300)) + slideInVertically(animationSpec = tween(300)) { 20 }).togetherWith(
+                                    fadeOut(animationSpec = tween(200))
+                                )
+                            }
                         },
                         modifier = Modifier.fillMaxSize(),
                         label = "settingsContent",

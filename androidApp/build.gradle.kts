@@ -40,11 +40,19 @@ android {
         }
     }
 
+    val hasReleaseSigning = keystoreProperties["release.storeFile"] != null
+
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            signingConfig = signingConfigs.getByName("release")
+            // CI can build an installable optimized APK without exposing a
+            // release keystore. A configured keystore is still preferred.
+            signingConfig = if (hasReleaseSigning) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

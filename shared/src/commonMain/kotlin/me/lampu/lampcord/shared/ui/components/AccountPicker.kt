@@ -30,6 +30,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.FilterQuality
+import me.lampu.lampcord.shared.api.CdnUrls
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -123,27 +124,19 @@ private fun AccountItem(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            val avatarUrl = account.user.avatar?.let {
-                "https://cdn.discordapp.com/avatars/${account.user.id}/$it.png?size=128"
-            }
+            val avatarUrl = CdnUrls.getUserAvatarUrl(account.user.id, account.user.avatar, 128)
 
             Surface(
                 modifier = Modifier.size(44.dp),
                 shape = CircleShape,
                 color = MaterialTheme.colorScheme.secondaryContainer
             ) {
-                if (avatarUrl != null) {
-                    AsyncImage(
-                        model = avatarUrl,
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        filterQuality = FilterQuality.Medium
-                    )
-                } else {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(account.user.username?.take(1)?.uppercase() ?: "?", style = MaterialTheme.typography.titleMedium)
-                    }
-                }
+                AsyncImage(
+                    model = avatarUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    filterQuality = FilterQuality.Medium
+                )
             }
             
             Spacer(modifier = Modifier.width(16.dp))

@@ -58,46 +58,53 @@ fun SystemMessage(
             
             Spacer(modifier = Modifier.width(12.dp))
 
-            val randomMessages = listOf("pizzaPre", "slid", "everyoneWelcomePre", "showedUp", "hopped")
-            val selectedMessage = randomMessages[message.id.takeLast(1).toIntOrNull()?.let { it % randomMessages.size } ?: 0]
+            Column(modifier = Modifier.weight(1f)) {
+                androidx.compose.foundation.layout.FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    val randomMessages = listOf("pizzaPre", "slid", "everyoneWelcomePre", "showedUp", "hopped")
+                    val selectedMessage = randomMessages[message.id.takeLast(1).toIntOrNull()?.let { it % randomMessages.size } ?: 0]
 
-            if (selectedMessage.contains("Pre")) {
-                Text(
-                    text = when (selectedMessage) {
-                        "pizzaPre" -> "Welcome,"
-                        "everyoneWelcomePre" -> "Everyone welcome"
-                        else -> ""
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Spacer(modifier = Modifier.width(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (selectedMessage.contains("Pre")) {
+                            Text(
+                                text = when (selectedMessage) {
+                                    "pizzaPre" -> "Welcome,"
+                                    "everyoneWelcomePre" -> "Everyone welcome"
+                                    else -> ""
+                                },
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                        }
+
+                        var profilePosition by remember { mutableStateOf(Offset.Zero) }
+                        Text(
+                            text = message.author?.global_name ?: message.author?.username ?: "Unknown User",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .onGloballyPositioned { profilePosition = it.positionInRoot() }
+                                .clickable { message.author?.let { profileStore.showProfile(it.id, position = profilePosition) } }
+                        )
+                    }
+
+                    Text(
+                        text = when (selectedMessage) {
+                            "pizzaPre" -> ". We hope you brought pizza."
+                            "everyoneWelcomePre" -> "!"
+                            "slid" -> " just slid into the server!"
+                            "showedUp" -> " just showed up!"
+                            "hopped" -> " hopped into the server."
+                            else -> " just slid into the server!"
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
             }
-            
-            var profilePosition by remember { mutableStateOf(Offset.Zero) }
-            Text(
-                text = message.author?.global_name ?: message.author?.username ?: "Unknown User",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier
-                    .onGloballyPositioned { profilePosition = it.positionInRoot() }
-                    .clickable { message.author?.let { profileStore.showProfile(it.id, position = profilePosition) } }
-            )
-            
-            // Spacer(modifier = Modifier.width(4.dp)) Disabled for dots and commas
-            
-            Text(
-                text = when (selectedMessage) {
-                    "pizzaPre" -> ". We hope you brought pizza."
-                    "everyoneWelcomePre" -> "!"
-                    "slid" -> " just slid into the server!"
-                    "showedUp" -> " just showed up!"
-                    "hopped" -> " hopped into the server."
-                    else -> " just slid into the server!"
-                },
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
             
             Spacer(modifier = Modifier.width(8.dp))
             
@@ -120,6 +127,7 @@ fun SystemMessage(
             
             Text(
                 text = text,
+                modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

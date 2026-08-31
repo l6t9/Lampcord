@@ -307,21 +307,30 @@ class ChannelApi(private val rest: RestClient) {
         }
     }
 
-    suspend fun ackBulk(channelIds: List<String>): Boolean {
+    /** Acknowledges the exact latest message for each channel. */
+    suspend fun ackBulk(readStates: Map<String, String>): Boolean {
+        if (readStates.isEmpty()) return true
         return try {
             val response = rest.httpClient.post("${rest.apiBase}/read-states/ack-bulk") {
                 standardHeaders(rest)
                 contentType(ContentType.Application.Json)
                 setBody(buildJsonObject {
                     put("read_states", buildJsonArray {
-                        channelIds.forEach { id ->
-                            add(buildJsonObject { put("channel_id", id); put("message_id", "99999999999999999999") })
+                        readStates.forEach { (channelId, messageId) ->
+                            add(buildJsonObject {
+                                put("channel_id", channelId)
+                                put("message_id", messageId)
+                            })
                         }
                     })
                 })
             }
             response.status.isSuccess()
-        } catch (e: Exception) { false }
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            Logging.e("Message", "Error bulk-acking read states: ${e.message}")
+            false
+        }
     }
 
     suspend fun muteChannelForDuration(channelId: String, guildId: String?, durationSeconds: Long): Boolean {

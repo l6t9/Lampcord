@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import me.lampu.lampcord.shared.model.Channel
+import me.lampu.lampcord.shared.api.CdnUrls
 import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.setClipboardText
@@ -49,9 +50,7 @@ fun DMItem(
         allUsers[recipientId] ?: channel.recipients?.firstOrNull()
     }
     
-    val avatarUrl = recipient?.avatar?.let { 
-        "https://cdn.discordapp.com/avatars/${recipient.id}/$it.png"
-    }
+    val avatarUrl = recipient?.let { CdnUrls.getUserAvatarUrl(it.id, it.avatar, 64) }
     val name = recipient?.let { it.global_name ?: it.username } ?: "Unnamed DM"
 
     val currentUser by userStore.currentUser.collectAsState()

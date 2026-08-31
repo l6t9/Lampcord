@@ -22,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import me.lampu.lampcord.shared.api.MediaApi
+import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.model.Sticker
 import me.lampu.lampcord.shared.model.StickerPack
 import me.lampu.lampcord.shared.state.EmojiStore
@@ -241,7 +242,7 @@ fun StickerPicker(
                     onSelect = { index ->
                         selectedGroupIndex = index
                         coroutineScope.launch {
-                            listState.animateScrollToItem(groupOffsets[index])
+                            if (Settings.shared.reduceMotion) listState.scrollToItem(groupOffsets[index]) else listState.animateScrollToItem(groupOffsets[index])
                         }
                     }
                 )

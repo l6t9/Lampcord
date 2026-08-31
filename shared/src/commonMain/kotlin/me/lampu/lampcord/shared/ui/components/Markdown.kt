@@ -2,11 +2,16 @@ package me.lampu.lampcord.shared.ui.components
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -15,6 +20,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.text.AnnotatedString
@@ -23,6 +30,7 @@ import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
@@ -30,6 +38,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
+import kotlin.math.roundToInt
 import me.lampu.lampcord.shared.model.toTwemojiUrl
 import me.lampu.lampcord.shared.state.GuildStore
 import me.lampu.lampcord.shared.state.NavigationStore
@@ -37,6 +51,9 @@ import me.lampu.lampcord.shared.state.ProfileStore
 import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.utils.DateTimeUtils
 import me.lampu.lampcord.shared.utils.EmojiIndex
+import me.lampu.lampcord.shared.utils.getPlatformName
+import me.lampu.lampcord.shared.utils.setClipboardText
+import me.lampu.lampcord.shared.utils.showToast
 import org.koin.compose.koinInject
 
 @Composable
@@ -166,12 +183,120 @@ fun DiscordMarkdownText(
         map
     }
 
-    Text(
-        text = annotatedString,
-        modifier = modifier,
-        style = style.copy(color = if (color != Color.Unspecified) color else LocalContentColor.current),
-        inlineContent = inlineContent
-    )
+    val uriHandler = LocalUriHandler.current
+    var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+    var contextMenuUrl by remember { mutableStateOf<String?>(null) }
+    var contextMenuOffset by remember { mutableStateOf(IntOffset.Zero) }
+    val textContent: @Composable () -> Unit = {
+        Box {
+            Text(
+                text = annotatedString,
+                modifier = modifier
+                    .pointerInput(annotatedString) {
+                        detectTapGestures(
+                            onTap = { position ->
+                                val offset = textLayoutResult?.getOffsetForPosition(position) ?: return@detectTapGestures
+                                annotatedString.getStringAnnotations("URL", offset, offset)
+                                    .firstOrNull()
+                                    ?.let { uriHandler.openUri(it.item) }
+                            },
+                            onLongPress = { position ->
+                                if (getPlatformName() != "android") return@detectTapGestures
+                                val offset = textLayoutResult?.getOffsetForPosition(position) ?: return@detectTapGestures
+                                val url = annotatedString.getStringAnnotations("URL", offset, offset)
+                                    .firstOrNull()
+                                    ?.item
+                                    ?: return@detectTapGestures
+                                contextMenuUrl = url
+                                contextMenuOffset = IntOffset(
+                                    position.x.roundToInt(),
+                                    position.y.roundToInt()
+                                )
+                            }
+                        )
+                    }
+                    .pointerInput(annotatedString, textLayoutResult) {
+                        awaitPointerEventScope {
+                            while (true) {
+                                val event = awaitPointerEvent(PointerEventPass.Main)
+                                val down = event.changes.firstOrNull { it.changedToDown() }
+                                if (down != null && event.buttons.isSecondaryPressed) {
+                                    val offset = textLayoutResult?.getOffsetForPosition(down.position)
+                                        ?: continue
+                                    val url = annotatedString.getStringAnnotations("URL", offset, offset)
+                                        .firstOrNull()
+                                        ?.item
+                                        ?: continue
+                                    contextMenuUrl = url
+                                    contextMenuOffset = IntOffset(
+                                        down.position.x.roundToInt(),
+                                        down.position.y.roundToInt()
+                                    )
+                                    down.consume()
+                                }
+                            }
+                        }
+                    },
+                style = style.copy(color = if (color != Color.Unspecified) color else LocalContentColor.current),
+                inlineContent = inlineContent,
+                onTextLayout = { textLayoutResult = it }
+            )
+
+            if (contextMenuUrl != null && getPlatformName() == "android") {
+                val url = contextMenuUrl ?: return@Box
+                AlertDialog(
+                    onDismissRequest = { contextMenuUrl = null },
+                    title = { Text("Link") },
+                    text = { Text(url) },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            setClipboardText(url)
+                            showToast("Copied link")
+                            contextMenuUrl = null
+                        }) { Text("Copy Link") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = {
+                            uriHandler.openUri(url)
+                            contextMenuUrl = null
+                        }) { Text("Open Link") }
+                    }
+                )
+            } else if (contextMenuUrl != null) Popup(
+                alignment = Alignment.TopStart,
+                offset = contextMenuOffset,
+                onDismissRequest = { contextMenuUrl = null },
+                properties = PopupProperties(focusable = true)
+            ) {
+                Surface(
+                    modifier = Modifier.width(180.dp),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+                    tonalElevation = 4.dp
+                ) {
+                    androidx.compose.foundation.layout.Column {
+                        contextMenuUrl?.let { url ->
+                            DropdownMenuItem(
+                                text = { Text("Open Link") },
+                                onClick = {
+                                    uriHandler.openUri(url)
+                                    contextMenuUrl = null
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Copy Link") },
+                                onClick = {
+                                    setClipboardText(url)
+                                    showToast("Copied link")
+                                    contextMenuUrl = null
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+    textContent()
 }
 
 private fun AnnotatedString.Builder.appendDiscordMarkdown(
@@ -203,8 +328,9 @@ private fun AnnotatedString.Builder.appendDiscordMarkdown(
         Regex("""\|\|([\s\S]+?)\|\|""") to "SPOILER",
         // Suppressed links
         Regex("""<(https?://[^>]+)>""") to "URL_SUPPRESSED",
-        // Masked links
-        Regex("""\[([^]]+)]\((https?://[^\s)]+)\)""") to "MASKED_LINK",
+        // Masked links. Discord also permits the destination to be wrapped
+        // in angle brackets: [label](<https://example.com>).
+        maskedLinkPattern to "MASKED_LINK",
         // Auto links
         Regex("""(https?://[^\s)>]+)""") to "URL",
         // Bold
@@ -321,18 +447,16 @@ private fun AnnotatedString.Builder.appendDiscordMarkdown(
             "MASKED_LINK" -> {
                 val text = match!!.groupValues[1]
                 val url = match.groupValues[2]
-                val link = LinkAnnotation.Url(url)
                 withStyle(style = SpanStyle(color = primaryColor, textDecoration = TextDecoration.Underline)) {
-                    pushLink(link)
+                    pushStringAnnotation("URL", url)
                     appendDiscordMarkdown(text, revealedSpoilers, primaryColor, navigationStore, guildStore, userStore, profileStore, onSpoilerClick)
                     pop()
                 }
             }
             "URL", "URL_SUPPRESSED" -> {
                 val url = if (tag == "URL_SUPPRESSED") match!!.groupValues[1] else match!!.groupValues[0]
-                val link = LinkAnnotation.Url(url)
                 withStyle(style = SpanStyle(color = primaryColor, textDecoration = TextDecoration.Underline)) {
-                    pushLink(link)
+                    pushStringAnnotation("URL", url)
                     append(url)
                     pop()
                 }
@@ -439,6 +563,11 @@ private fun AnnotatedString.Builder.appendDiscordMarkdown(
         append(content.substring(lastIndex))
     }
 }
+
+// Older cached messages can contain an escaped opening bracket. Treat that
+// legacy representation as a masked link too, so historical messages render
+// the same way as newly received ones.
+private val maskedLinkPattern = Regex("""(?:\\)?\[([^\]\r\n]+)]\(<?(https?://[^\s<>]+)>?\)""")
 
 private val languageAliases = mapOf(
     "cs" to "csharp",

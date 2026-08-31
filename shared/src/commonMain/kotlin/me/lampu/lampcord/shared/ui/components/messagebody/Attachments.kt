@@ -29,6 +29,8 @@ import me.lampu.lampcord.shared.utils.ensureUniqueDownloadFilename
 import me.lampu.lampcord.shared.utils.downloadToDownloads
 import me.lampu.lampcord.shared.utils.showToast
 import me.lampu.lampcord.shared.utils.RequestMediaPermissions
+import me.lampu.lampcord.shared.utils.getPlatformName
+import me.lampu.lampcord.shared.settings.Settings
 
 @Composable
 fun AttachmentImage(
@@ -41,9 +43,17 @@ fun AttachmentImage(
 ) {
     val isVideo = media.isVideo()
     val isGifv = media.isGifv()
-    var isInlinePlaying by remember { mutableStateOf(isGifv) }
+    val isAndroid = getPlatformName() == "android"
+    val reduceMotion = Settings.shared.reduceMotion
+    var isInlinePlaying by remember(isGifv, reduceMotion) { mutableStateOf(isGifv && !reduceMotion) }
     
-    val url = media.proxy_url ?: media.url ?: ""
+    // The Windows FFmpeg backend is more reliable with Discord's original
+    // attachment URL. Keep the proxy-first path for other platforms.
+    val url = if (isVideo && getPlatformName() == "windows") {
+        media.url ?: media.proxy_url ?: ""
+    } else {
+        media.proxy_url ?: media.url ?: ""
+    }
     
     // Use the proxy URL as-is for images,
     // only append format=png for video posters. No width/height resizing.
@@ -59,7 +69,7 @@ fun AttachmentImage(
     val interactionSource = remember { MutableInteractionSource() }
     val clickModifier = if (!isInlinePlaying && onClick != null) {
         Modifier.clickable(interactionSource = interactionSource, indication = null) { 
-            if (isVideo && !isGifv) {
+            if (isVideo) {
                 isInlinePlaying = true
             } else {
                 onClick()
@@ -67,6 +77,14 @@ fun AttachmentImage(
         }
     } else {
         Modifier
+    }
+    val inlineFullscreenClick = if (isGifv && !isAndroid) null else onClick?.let { openFullscreen ->
+        {
+            // The fullscreen viewer creates its own decoder. Remove this
+            // inline instance first so both audio streams never play at once.
+            isInlinePlaying = false
+            openFullscreen()
+        }
     }
 
     if (isInlinePlaying && isVideo) {
@@ -77,12 +95,15 @@ fun AttachmentImage(
 
         VideoPlayer(
             url = url,
-            loop = isGifv,
-            showControls = !isGifv,
+            loop = isGifv && !reduceMotion,
+            // Android's PlayerView otherwise exposes GIF/video previews as
+            // an unlabelled seek bar with no fullscreen control.
+            showControls = !isGifv || reduceMotion || isAndroid,
             title = title ?: (media as? Attachment)?.filename,
             subtitle = subtitle ?: (media as? Attachment)?.content_type,
             compact = true,
-            onFullscreenClick = if (!isGifv) onClick else null,
+            autoPlay = !isGifv || !reduceMotion,
+            onFullscreenClick = inlineFullscreenClick,
             modifier = modifier
                 .sizeIn(maxWidth = finalWidth, maxHeight = finalHeight)
                 .aspectRatio(media.aspectRatio ?: (16f / 9f))
@@ -97,7 +118,7 @@ fun AttachmentImage(
                 contentScale = ContentScale.Crop,
                 placeholderHash = media.placeholder
             )
-            if (isVideo && !isGifv) {
+            if (isVideo) {
                 Surface(
                     shape = CircleShape,
                     color = MaterialTheme.colorScheme.primaryContainer,
@@ -141,7 +162,7 @@ fun AttachmentImage(
                 contentScale = ContentScale.Fit,
                 placeholderHash = media.placeholder
             )
-            if (isVideo && !isGifv) {
+            if (isVideo) {
                 Surface(
                     shape = CircleShape,
                     color = MaterialTheme.colorScheme.primaryContainer,

@@ -13,6 +13,14 @@ import java.awt.event.ComponentEvent
 fun WindowScope.WaylandDensityProvider(
     content: @Composable () -> Unit
 ) {
+    // Wayland scaling is Linux-only. Avoid starting listeners and a polling
+    // coroutine on Windows and macOS, where the scale is always the default.
+    val isWayland = remember { WaylandScale.isWayland() }
+    if (!isWayland) {
+        content()
+        return
+    }
+
     var scale by remember { mutableFloatStateOf(1.0f) }
     val window = window // access the AWT window from WindowScope
 

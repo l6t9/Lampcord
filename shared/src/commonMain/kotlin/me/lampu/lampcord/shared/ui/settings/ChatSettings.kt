@@ -8,11 +8,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.state.SettingsStore
+import me.lampu.lampcord.shared.state.MessageLogger
 import me.lampu.lampcord.shared.model.UserSettings
 import me.lampu.lampcord.shared.ui.components.settings.*
 import me.lampu.lampcord.shared.settings.ChatGestures
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.utils.showToast
 import org.koin.compose.koinInject
 
 @Composable
@@ -29,8 +31,12 @@ fun ChatSettings(
 }
 
 @Composable
-fun ChatSettingsContent(settingsStore: SettingsStore = koinInject()) {
+fun ChatSettingsContent(
+    settingsStore: SettingsStore = koinInject(),
+    messageLogger: MessageLogger = koinInject()
+) {
     val userSettings = settingsStore.userSettings
+    var showClearLoggerConfirmation by remember { mutableStateOf(false) }
     Column(modifier = Modifier.fillMaxWidth()) {
         Material3SettingsGroup(
             title = "Display",
@@ -235,6 +241,28 @@ fun ChatSettingsContent(settingsStore: SettingsStore = koinInject()) {
                         onCheckedChange = { Settings.shared.messageLoggerIgnoreSelf = it }
                     ))
                 }
+                add(Material3SettingsItem(
+                    title = { Text("Clear Logged Messages") },
+                    description = { Text("Permanently delete every message saved by Message Logger on this device.") },
+                    onClick = { showClearLoggerConfirmation = true }
+                ))
+            }
+        )
+    }
+
+    if (showClearLoggerConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showClearLoggerConfirmation = false },
+            title = { Text("Clear logged messages?") },
+            text = { Text("This permanently deletes all Message Logger records stored on this device. This cannot be undone.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showClearLoggerConfirmation = false
+                    messageLogger.clearLoggedMessages { showToast("Logged messages cleared") }
+                }) { Text("Clear") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearLoggerConfirmation = false }) { Text("Cancel") }
             }
         )
     }

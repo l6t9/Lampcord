@@ -4,6 +4,7 @@ package me.lampu.lampcord.shared.ui.components
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.snap
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -33,6 +34,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
+import me.lampu.lampcord.shared.settings.Settings
+import me.lampu.lampcord.shared.api.CdnUrls
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.ToggleButton
@@ -62,6 +65,7 @@ import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.state.VoiceStore
 import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.utils.getPlatformName
 import org.koin.compose.koinInject
 
 @Composable
@@ -135,9 +139,7 @@ fun AccountPanel(
             ) {
                 val avatarUrl = member?.avatar?.let {
                     "https://cdn.discordapp.com/guilds/${navigationStore.selectedGuild?.id}/users/${user.id}/avatars/$it.png?size=160"
-                } ?: user.avatar?.let {
-                    "https://cdn.discordapp.com/avatars/${user.id}/$it.png?size=160"
-                }
+                } ?: CdnUrls.getUserAvatarUrl(user.id, user.avatar, 160)
 
                 Box(modifier = Modifier.size(32.dp)) {
                     val status = userSettings?.status ?: "online"
@@ -200,7 +202,11 @@ fun AccountPanel(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 3000, velocity = 30.dp)
+                            modifier = if (Settings.shared.reduceMotion) Modifier else Modifier.basicMarquee(
+                                iterations = if (getPlatformName() == "windows") 1 else Int.MAX_VALUE,
+                                initialDelayMillis = 3000,
+                                velocity = 30.dp
+                            )
                         )
                     }
                 }
@@ -208,7 +214,13 @@ fun AccountPanel(
                 ButtonGroup(
                     modifier = Modifier
                         .height(32.dp)
-                        .animateContentSize(animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f)),
+                        .animateContentSize(
+                            animationSpec = if (Settings.shared.reduceMotion) {
+                                snap()
+                            } else {
+                                spring(dampingRatio = 0.6f, stiffness = 400f)
+                            }
+                        ),
                     overflowIndicator = { menuState -> ButtonGroupDefaults.OverflowIndicator(menuState) },
                     horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
                 ) {

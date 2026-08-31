@@ -26,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.Member
 import me.lampu.lampcord.shared.model.UserProfile
+import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.DiscordMarkdownText
@@ -33,6 +34,7 @@ import me.lampu.lampcord.shared.ui.components.UserActivity
 import me.lampu.lampcord.shared.ui.components.settings.Material3SettingsGroup
 import me.lampu.lampcord.shared.ui.components.settings.Material3SettingsItem
 import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.utils.getPlatformName
 import me.lampu.lampcord.shared.utils.Permission
 import me.lampu.lampcord.shared.utils.PermissionHelper
 import me.lampu.lampcord.shared.utils.setClipboardText
@@ -257,16 +259,36 @@ fun ProfileSections(
 
 @Composable
 private fun RoleBadge(role: me.lampu.lampcord.shared.model.Role) {
-    val infiniteTransition = rememberInfiniteTransition(label = "roleGradient")
-    val animValue by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(4000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "gradientOffset"
-    )
+    val roleColors = remember<List<Color>?>(role) {
+        val c = role.colors
+        if (c?.secondary_color != null) {
+            val p = c.primary_color ?: role.color
+            listOfNotNull(
+                Color(p or -0x1000000),
+                Color(c.secondary_color or -0x1000000),
+                c.tertiary_color?.let { Color(it or -0x1000000) }
+            )
+        } else null
+    }
+
+    // Avoid a frame-driven transition for the static Windows profile view.
+    val animateGradient = !Settings.shared.reduceMotion &&
+        getPlatformName() != "windows" && roleColors != null && roleColors.size > 1
+    val animValue = if (animateGradient) {
+        val infiniteTransition = rememberInfiniteTransition(label = "roleGradient")
+        val value by infiniteTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(4000, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart
+            ),
+            label = "gradientOffset"
+        )
+        value
+    } else {
+        0f
+    }
 
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -277,18 +299,6 @@ private fun RoleBadge(role: me.lampu.lampcord.shared.model.Role) {
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            val roleColors = remember<List<Color>?>(role) {
-                val c = role.colors
-                if (c?.secondary_color != null) {
-                    val p = c.primary_color ?: role.color
-                    listOfNotNull(
-                        Color(p or -0x1000000),
-                        Color(c.secondary_color or -0x1000000),
-                        c.tertiary_color?.let { Color(it or -0x1000000) }
-                    )
-                } else null
-            }
-
             val pInt = role.colors?.primary_color ?: role.color
             val baseColor = if (pInt != 0) Color(pInt or -0x1000000) else MaterialTheme.colorScheme.primary
             
@@ -326,7 +336,11 @@ private fun RoleBadge(role: me.lampu.lampcord.shared.model.Role) {
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
-                modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 3000, velocity = 30.dp)
+                modifier = if (Settings.shared.reduceMotion) Modifier else Modifier.basicMarquee(
+                    iterations = if (getPlatformName() == "windows") 1 else Int.MAX_VALUE,
+                    initialDelayMillis = 3000,
+                    velocity = 30.dp
+                )
             )
         }
     }

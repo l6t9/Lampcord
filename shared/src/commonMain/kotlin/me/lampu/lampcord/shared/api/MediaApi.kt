@@ -9,11 +9,16 @@ import me.lampu.lampcord.shared.model.StickerPack
 import me.lampu.lampcord.shared.model.StickerStoreDirectory
 import me.lampu.lampcord.shared.model.TrendingGifCategoriesResponse
 import me.lampu.lampcord.shared.utils.Logging
+import me.lampu.lampcord.shared.settings.Settings
 
 /**
  * Sticker packs and GIF endpoints.
  */
 class MediaApi(private val rest: RestClient) {
+
+    private fun requestedGifFormat(): String {
+        return if (Settings.shared.reduceMotion) "png" else "gif"
+    }
 
     suspend fun getStickerPacks(): StickerStoreDirectory? {
         return try {
@@ -45,7 +50,7 @@ class MediaApi(private val rest: RestClient) {
                 standardHeaders(rest)
                 parameter("provider", "klipy")
                 parameter("locale", locale)
-                parameter("media_format", "mp4")
+                parameter("media_format", requestedGifFormat())
             }
             if (response.status.isSuccess()) response.body() else null
         } catch (e: Exception) {
@@ -61,7 +66,7 @@ class MediaApi(private val rest: RestClient) {
                 parameter("q", category)
                 parameter("provider", "klipy")
                 parameter("locale", locale)
-                parameter("media_format", "mp4")
+                parameter("media_format", requestedGifFormat())
                 parameter("limit", limit)
             }
             if (response.status.isSuccess()) response.body() else emptyList()
@@ -78,7 +83,7 @@ class MediaApi(private val rest: RestClient) {
                 parameter("q", query)
                 parameter("provider", "klipy")
                 parameter("locale", locale)
-                parameter("media_format", "mp4")
+                parameter("media_format", requestedGifFormat())
                 parameter("limit", limit)
             }
             if (response.status.isSuccess()) response.body() else emptyList()

@@ -35,6 +35,7 @@ import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.Member
+import me.lampu.lampcord.shared.api.CdnUrls
 import me.lampu.lampcord.shared.state.MessageStore
 import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.state.PresenceStore
@@ -73,9 +74,7 @@ fun MemberItem(
     val guildId = navigationStore.selectedGuild?.id
     val avatarUrl = member.avatar?.let {
         "https://cdn.discordapp.com/guilds/$guildId/users/${displayUser.id}/avatars/$it.png"
-    } ?: displayUser.avatar?.let {
-        "https://cdn.discordapp.com/avatars/${displayUser.id}/$it.png"
-    }
+    } ?: CdnUrls.getUserAvatarUrl(displayUser.id, displayUser.avatar, 64)
 
     val roleData = remember(member.roles, navigationStore.selectedGuild) {
         val guild = navigationStore.selectedGuild ?: return@remember null

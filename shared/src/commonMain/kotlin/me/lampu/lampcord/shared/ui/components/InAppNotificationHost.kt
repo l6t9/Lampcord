@@ -1,6 +1,8 @@
 package me.lampu.lampcord.shared.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -52,8 +54,8 @@ fun InAppNotificationHost(
             val data = toast.data
             AnimatedVisibility(
                 visible = true,
-                enter = slideInVertically { -it } + fadeIn(),
-                exit = slideOutVertically { -it } + fadeOut()
+                enter = if (Settings.shared.reduceMotion) EnterTransition.None else slideInVertically { -it } + fadeIn(),
+                exit = if (Settings.shared.reduceMotion) ExitTransition.None else slideOutVertically { -it } + fadeOut()
             ) {
                 val preview = when {
                     data.message.content.isNotBlank() -> data.message.content

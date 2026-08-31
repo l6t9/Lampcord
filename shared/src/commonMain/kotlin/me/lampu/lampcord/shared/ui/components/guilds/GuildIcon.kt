@@ -58,7 +58,7 @@ fun GuildIcon(
 ) {
     val isAnimated = guild.icon?.startsWith("a_") == true
     val iconUrl = if (guild.icon != null) {
-        val ext = if (isAnimated && isSelected) "gif" else "png"
+        val ext = if (isAnimated && isSelected && !me.lampu.lampcord.shared.settings.Settings.shared.reduceMotion) "gif" else "png"
         "https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.$ext?size=96"
     } else null
 

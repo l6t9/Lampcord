@@ -66,7 +66,7 @@ fun MessageComponentsRow(
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             component.emoji?.let { emoji ->
-                                val emojiUrl = emoji.id?.let { "https://cdn.discordapp.com/emojis/$it.webp?size=48&animated=${emoji.animated == true}" }
+                                val emojiUrl = emoji.id?.let { "https://cdn.discordapp.com/emojis/$it.webp?size=48&animated=${emoji.animated == true && !me.lampu.lampcord.shared.settings.Settings.shared.reduceMotion}" }
                                 if (emojiUrl != null) { AsyncImage(model = emojiUrl, contentDescription = null, modifier = Modifier.size(16.dp)) }
                                 else { Text(emoji.name ?: "", fontSize = 14.sp) }
                             }

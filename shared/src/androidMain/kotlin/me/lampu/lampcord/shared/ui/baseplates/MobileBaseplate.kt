@@ -76,19 +76,6 @@ actual fun MobileBaseplate(
             Screen.ChannelSettings,
             Screen.Pins,
             Screen.ChannelsAndRoles,
-            Screen.Theming,
-            Screen.AccountSettings,
-            Screen.ProfilesSettings,
-            Screen.AppearanceSettings,
-            Screen.AccessibilitySettings,
-            Screen.PrivacySettings,
-            Screen.ConnectionsSettings,
-            Screen.DevicesSettings,
-            Screen.ChatSettings,
-            Screen.NotificationsSettings,
-            Screen.AdvancedSettings,
-            Screen.AboutSettings,
-            Screen.NavigationSettings,
             Screen.EasterEgg
         ) 
     }
@@ -249,7 +236,11 @@ actual fun MobileBaseplate(
 
     val navBarVisibleAmount by animateFloatAsState(
         targetValue = targetNavBarVisibleAmount,
-        animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec<Float>(),
+        animationSpec = if (me.lampu.lampcord.shared.settings.Settings.shared.reduceMotion) {
+            androidx.compose.animation.core.snap()
+        } else {
+            MaterialTheme.motionScheme.defaultSpatialSpec<Float>()
+        },
         label = "NavBarVisibleAmount"
     )
 
@@ -470,31 +461,35 @@ actual fun MobileBaseplate(
                             navigator.goBack()
                         },
                         transitionSpec = {
-                            val targetKey = targetState.key
-                            val initialKey = initialState.key
+                            if (me.lampu.lampcord.shared.settings.Settings.shared.reduceMotion) {
+                                EnterTransition.None togetherWith ExitTransition.None
+                            } else {
+                                val targetKey = targetState.key
+                                val initialKey = initialState.key
 
-                            val targetIndex = routeIndexMap[targetKey] ?: routeIndexMap[targetKey!!::class] ?: -1
-                            val initialIndex = routeIndexMap[initialKey] ?: routeIndexMap[initialKey!!::class] ?: -1
+                                val targetIndex = routeIndexMap[targetKey] ?: routeIndexMap[targetKey!!::class] ?: -1
+                                val initialIndex = routeIndexMap[initialKey] ?: routeIndexMap[initialKey!!::class] ?: -1
 
-                            val enterTransition =
-                                if (targetIndex == -1 || targetIndex > initialIndex) {
-                                    slideInHorizontally(animationSpec = quickSpatialSpec) { it / 8 } +
-                                        fadeIn(quickEffectsSpec)
-                                } else {
-                                    slideInHorizontally(animationSpec = quickSpatialSpec) { -it / 8 } +
-                                        fadeIn(quickEffectsSpec)
-                                }
+                                val enterTransition =
+                                    if (targetIndex == -1 || targetIndex > initialIndex) {
+                                        slideInHorizontally(animationSpec = quickSpatialSpec) { it / 8 } +
+                                            fadeIn(quickEffectsSpec)
+                                    } else {
+                                        slideInHorizontally(animationSpec = quickSpatialSpec) { -it / 8 } +
+                                            fadeIn(quickEffectsSpec)
+                                    }
 
-                            val exitTransition =
-                                if (targetIndex == -1 || targetIndex > initialIndex) {
-                                    slideOutHorizontally(animationSpec = quickSpatialSpec) { -it / 8 } +
-                                        fadeOut(quickEffectsSpec)
-                                } else {
-                                    slideOutHorizontally(animationSpec = quickSpatialSpec) { it / 8 } +
-                                        fadeOut(quickEffectsSpec)
-                                }
+                                val exitTransition =
+                                    if (targetIndex == -1 || targetIndex > initialIndex) {
+                                        slideOutHorizontally(animationSpec = quickSpatialSpec) { -it / 8 } +
+                                            fadeOut(quickEffectsSpec)
+                                    } else {
+                                        slideOutHorizontally(animationSpec = quickSpatialSpec) { it / 8 } +
+                                            fadeOut(quickEffectsSpec)
+                                    }
 
-                            enterTransition togetherWith exitTransition
+                                enterTransition togetherWith exitTransition
+                            }
                         }
                     )
 
@@ -774,7 +769,11 @@ private fun MainBaseplateContent(
                                                 fontWeight = FontWeight.Bold,
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis,
-                                                modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 3000, velocity = 30.dp)
+                                                modifier = if (me.lampu.lampcord.shared.settings.Settings.shared.reduceMotion) {
+                                                    Modifier
+                                                } else {
+                                                    Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 3000, velocity = 30.dp)
+                                                }
                                             )
                                             if (activeChannel.topic?.isNotBlank() == true) {
                                                 Text(
@@ -783,7 +782,11 @@ private fun MainBaseplateContent(
                                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                     maxLines = 1,
                                                     overflow = TextOverflow.Ellipsis,
-                                                    modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 3000, velocity = 30.dp)
+                                                    modifier = if (me.lampu.lampcord.shared.settings.Settings.shared.reduceMotion) {
+                                                        Modifier
+                                                    } else {
+                                                        Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 3000, velocity = 30.dp)
+                                                    }
                                                 )
                                             }
                                         }
@@ -882,9 +885,13 @@ private fun MainBaseplateContent(
                     targetState = activeChannel?.id
                         ?: if (navigationStore.isChannelsAndRolesVisible) "roles" else "none",
                     transitionSpec = {
-                        (fadeIn(quickEffectsSpec) + slideInHorizontally(quickSpatialSpec) { it / 8 }).togetherWith(
-                            fadeOut(quickEffectsSpec) + slideOutHorizontally(quickSpatialSpec) { -it / 8 }
-                        )
+                        if (me.lampu.lampcord.shared.settings.Settings.shared.reduceMotion) {
+                            EnterTransition.None togetherWith ExitTransition.None
+                        } else {
+                            (fadeIn(quickEffectsSpec) + slideInHorizontally(quickSpatialSpec) { it / 8 }).togetherWith(
+                                fadeOut(quickEffectsSpec) + slideOutHorizontally(quickSpatialSpec) { -it / 8 }
+                            )
+                        }
                     },
                     modifier = Modifier
                         .padding(top = padding.calculateTopPadding(), bottom = 0.dp)

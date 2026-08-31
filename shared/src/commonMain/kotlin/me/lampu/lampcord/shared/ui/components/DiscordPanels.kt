@@ -72,6 +72,7 @@ fun DiscordPanels(
         state.sidePanelWidthPx = sidePanelWidthPx
         
         val animationType = Settings.shared.panelAnimation
+        val reduceMotion = Settings.shared.reduceMotion
 
         val targetOffset = when (state.currentValue) {
             DiscordPanelValue.Start -> sidePanelWidthPx
@@ -94,7 +95,7 @@ fun DiscordPanels(
 
         val animatedOffset by animateFloatAsState(
             targetValue = targetOffset + state.offset,
-            animationSpec = springSpec,
+            animationSpec = if (reduceMotion) snap() else springSpec,
             label = "panelOffset"
         )
 
@@ -162,7 +163,11 @@ fun DiscordPanels(
                         shadowElevation = 4.dp.toPx()
                         transformOrigin = TransformOrigin(0.5f, 0f)
                         
-                        if (animationType == PanelAnimation.EXPRESSIVE) {
+                        if (reduceMotion) {
+                            translationX = 0f
+                            scaleX = 1f
+                            scaleY = 1f
+                        } else if (animationType == PanelAnimation.EXPRESSIVE) {
                             translationX = (progress - 1f) * (sidePanelWidthPx * 0.3f)
                             val scale = 0.92f + (progress * 0.08f)
                             scaleX = scale
@@ -194,7 +199,11 @@ fun DiscordPanels(
                         shadowElevation = 4.dp.toPx()
                         transformOrigin = TransformOrigin(0.5f, 0f)
 
-                        if (animationType == PanelAnimation.EXPRESSIVE) {
+                        if (reduceMotion) {
+                            translationX = 0f
+                            scaleX = 1f
+                            scaleY = 1f
+                        } else if (animationType == PanelAnimation.EXPRESSIVE) {
                             translationX = (progress + 1f) * (sidePanelWidthPx * 0.3f)
                             val scale = 0.92f + (absProgress * 0.08f)
                             scaleX = scale
@@ -220,22 +229,28 @@ fun DiscordPanels(
                         
                         // Corner rounding and scaling for the "border" effect
                         // Discord-like: rounded only when open
-                        val cornerRadius = 16.dp.toPx() * absProgress
+                        val cornerRadius = if (reduceMotion) 0f else 16.dp.toPx() * absProgress
                         shape = RoundedCornerShape(topStart = cornerRadius, topEnd = cornerRadius)
-                        clip = absProgress > 0.01f
+                        clip = !reduceMotion && absProgress > 0.01f
                         transformOrigin = TransformOrigin(0.5f, 0f)
                         
                         // We use scaling instead of padding to prevent relayout of the chat content
                         // while maintaining the visual "shrinking" effect.
-                        val shrinkFactor = if (isExpressive) 0.06f else 0.04f
-                        val scale = 1f - (absProgress * shrinkFactor)
-                        scaleX = scale
-                        scaleY = scale
-                        
-                        if (isExpressive) {
-                            shadowElevation = if (absProgress > 0.01f) 12.dp.toPx() else 0f
+                        if (reduceMotion) {
+                            scaleX = 1f
+                            scaleY = 1f
+                            shadowElevation = 0f
                         } else {
-                            shadowElevation = if (absProgress > 0.01f) 6.dp.toPx() else 0f
+                            val shrinkFactor = if (isExpressive) 0.06f else 0.04f
+                            val scale = 1f - (absProgress * shrinkFactor)
+                            scaleX = scale
+                            scaleY = scale
+
+                            if (isExpressive) {
+                                shadowElevation = if (absProgress > 0.01f) 12.dp.toPx() else 0f
+                            } else {
+                                shadowElevation = if (absProgress > 0.01f) 6.dp.toPx() else 0f
+                            }
                         }
                     }
             ) {

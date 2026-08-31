@@ -1,6 +1,8 @@
 package me.lampu.lampcord.shared.ui.baseplates
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -37,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.state.ProfileStore
 import me.lampu.lampcord.shared.state.VoiceStore
+import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.ui.SettingsScreen
 import me.lampu.lampcord.shared.ui.components.AttachmentViewer
 import me.lampu.lampcord.shared.ui.components.ChannelHeader
@@ -100,14 +103,19 @@ fun DesktopBaseplate(
                 ) {
                     val quickSpatialSpec = MaterialTheme.motionScheme.defaultSpatialSpec<IntOffset>()
                     val quickEffectsSpec = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
+                    val reduceMotion = Settings.shared.reduceMotion
 
                     AnimatedContent(
                         targetState = activeChannel?.id
                             ?: if (navigationStore.isChannelsAndRolesVisible) "roles" else if (navigationStore.isFriendsSelected) "friends" else "none",
                         transitionSpec = {
-                            (fadeIn(quickEffectsSpec) + slideInHorizontally(quickSpatialSpec) { it / 8 }).togetherWith(
-                                fadeOut(quickEffectsSpec) + slideOutHorizontally(quickSpatialSpec) { -it / 8 }
-                            )
+                            if (reduceMotion) {
+                                EnterTransition.None togetherWith ExitTransition.None
+                            } else {
+                                (fadeIn(quickEffectsSpec) + slideInHorizontally(quickSpatialSpec) { it / 8 }).togetherWith(
+                                    fadeOut(quickEffectsSpec) + slideOutHorizontally(quickSpatialSpec) { -it / 8 }
+                                )
+                            }
                         },
                         modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface),
                         label = "MainContentTransition"

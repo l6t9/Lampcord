@@ -109,4 +109,29 @@ class ReadStateStore(private val channelApi: ChannelApi) {
         }
         channelApi.ackMessage(channelId, messageId)
     }
+
+    /** Marks a set of channels read both locally and on Discord. */
+    suspend fun ackBulk(readStates: Map<String, String>): Boolean {
+        val validStates = readStates.filterValues { it.toLongOrNull()?.let { id -> id > 0L } == true }
+        if (validStates.isEmpty()) return true
+        if (!channelApi.ackBulk(validStates)) return false
+
+        applyAcknowledgements(validStates)
+        return true
+    }
+
+    /** Applies confirmed acknowledgements without issuing another REST request. */
+    fun applyAcknowledgements(readStates: Map<String, String>) {
+        val validStates = readStates.filterValues { it.toLongOrNull()?.let { id -> id > 0L } == true }
+        if (validStates.isEmpty()) return
+        _readStates.update { current ->
+            current + validStates.mapValues { (channelId, messageId) ->
+                val previous = current[channelId]
+                (previous ?: ReadState(id = channelId)).copy(
+                    last_message_id = JsonPrimitive(messageId),
+                    mention_count = 0
+                )
+            }
+        }
+    }
 }

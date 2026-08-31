@@ -2,6 +2,7 @@ package me.lampu.lampcord.shared.settings
 
 import com.russhwolf.settings.Settings as KmpSettings
 import com.russhwolf.settings.set
+import androidx.compose.runtime.mutableStateOf
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
 
@@ -27,6 +28,7 @@ class Settings(private val settings: KmpSettings) {
     var chatGestures by preferenceEnum("chat_gestures", ChatGestures.SWIPE_TO_MEMBERS)
     var animateStickers by preferenceEnum("animate_stickers", StickerAnimation.ALWAYS)
     var panelAnimation by preferenceEnum("panel_animation", PanelAnimation.MINIMAL)
+    var reduceMotion by preferenceBoolean("reduce_motion", false)
 
     // Theme Settings
     var transparencyMode by preferenceEnum("transparency_mode", TransparencyMode.NONE)
@@ -54,7 +56,7 @@ class Settings(private val settings: KmpSettings) {
     var cleanChannelsCapitalizeCategories by preferenceBoolean("clean_channels_capitalize_categories", true)
 
     // Message Logger
-    var messageLoggerEnabled by preferenceBoolean("message_logger_enabled", true)
+    var messageLoggerEnabled by preferenceBoolean("message_logger_enabled", false)
     var messageLoggerIgnoreBots by preferenceBoolean("message_logger_ignore_bots", false)
     var messageLoggerIgnoreSelf by preferenceBoolean("message_logger_ignore_self", false)
 
@@ -79,6 +81,7 @@ class Settings(private val settings: KmpSettings) {
     var emojiUsageJson by preference("emoji_usage_v4", "{}")
     var stickerUsageJson by preference("sticker_usage_v1", "{}")
     var favoriteEmojisJson by preference("favorite_emojis_v1", "[]")
+    var videoVolume by preferenceFloat("video_volume", 0.2f)
     var localProfileOverrides by preference("local_profile_overrides_v1", "{}")
     var profile3y3 by preferenceBoolean("profile_3y3", true)
     var userBg by preferenceBoolean("user_bg", true)
@@ -118,52 +121,63 @@ class Settings(private val settings: KmpSettings) {
 
     private inline fun <reified T : Enum<T>> preferenceEnum(key: String, defaultValue: T): ReadWriteProperty<Any?, T> =
         object : ReadWriteProperty<Any?, T> {
-            override fun getValue(thisRef: Any?, property: KProperty<*>): T {
-                val name = settings.getString(key, defaultValue.name)
-                return enumValues<T>().find { it.name == name } ?: defaultValue
-            }
+            private val value = mutableStateOf(
+                settings.getString(key, defaultValue.name)
+                    .let { name -> enumValues<T>().find { it.name == name } ?: defaultValue }
+            )
+
+            override fun getValue(thisRef: Any?, property: KProperty<*>): T = value.value
 
             override fun setValue(thisRef: Any?, property: KProperty<*>, value: T) {
+                this.value.value = value
                 settings[key] = value.name
             }
         }
 
     private fun preference(key: String, defaultValue: String): ReadWriteProperty<Any?, String> =
         object : ReadWriteProperty<Any?, String> {
-            override fun getValue(thisRef: Any?, property: KProperty<*>): String =
-                settings.getString(key, defaultValue)
+            private val value = mutableStateOf(settings.getString(key, defaultValue))
+
+            override fun getValue(thisRef: Any?, property: KProperty<*>): String = value.value
 
             override fun setValue(thisRef: Any?, property: KProperty<*>, value: String) {
+                this.value.value = value
                 settings[key] = value
             }
         }
 
     private fun preferenceBoolean(key: String, defaultValue: Boolean): ReadWriteProperty<Any?, Boolean> =
         object : ReadWriteProperty<Any?, Boolean> {
-            override fun getValue(thisRef: Any?, property: KProperty<*>): Boolean =
-                settings.getBoolean(key, defaultValue)
+            private val state = mutableStateOf(settings.getBoolean(key, defaultValue))
+
+            override fun getValue(thisRef: Any?, property: KProperty<*>): Boolean = state.value
 
             override fun setValue(thisRef: Any?, property: KProperty<*>, value: Boolean) {
+                state.value = value
                 settings[key] = value
             }
         }
 
     private fun preferenceFloat(key: String, defaultValue: Float): ReadWriteProperty<Any?, Float> =
         object : ReadWriteProperty<Any?, Float> {
-            override fun getValue(thisRef: Any?, property: KProperty<*>): Float =
-                settings.getFloat(key, defaultValue)
+            private val state = mutableStateOf(settings.getFloat(key, defaultValue))
+
+            override fun getValue(thisRef: Any?, property: KProperty<*>): Float = state.value
 
             override fun setValue(thisRef: Any?, property: KProperty<*>, value: Float) {
+                state.value = value
                 settings[key] = value
             }
         }
 
     private fun preferenceInt(key: String, defaultValue: Int): ReadWriteProperty<Any?, Int> =
         object : ReadWriteProperty<Any?, Int> {
-            override fun getValue(thisRef: Any?, property: KProperty<*>): Int =
-                settings.getInt(key, defaultValue)
+            private val state = mutableStateOf(settings.getInt(key, defaultValue))
+
+            override fun getValue(thisRef: Any?, property: KProperty<*>): Int = state.value
 
             override fun setValue(thisRef: Any?, property: KProperty<*>, value: Int) {
+                state.value = value
                 settings[key] = value
             }
         }

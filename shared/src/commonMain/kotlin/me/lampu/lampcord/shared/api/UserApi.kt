@@ -28,6 +28,21 @@ import me.lampu.lampcord.shared.utils.Logging
  */
 class UserApi(private val rest: RestClient) {
 
+    suspend fun getUserSettingsProto(type: Int = 2): String? {
+        return try {
+            val response = rest.httpClient.get("${rest.apiBase}/users/@me/settings-proto/$type") {
+                standardHeaders(rest)
+            }
+            if (response.status.isSuccess()) {
+                response.body<SettingsProtoResponse>().settings
+            } else null
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            Logging.e("Settings", "Error fetching user settings proto: ${e.message}")
+            null
+        }
+    }
+
     suspend fun getUserProfile(userId: String, guildId: String? = null): UserProfile? {
         return try {
             val url = if (guildId != null) {
@@ -219,9 +234,9 @@ class UserApi(private val rest: RestClient) {
         }
     }
 
-    suspend fun updateUserSettingsProto(base64Payload: String): Boolean {
+    suspend fun updateUserSettingsProto(base64Payload: String, type: Int = 1): Boolean {
         return try {
-            val response = rest.httpClient.patch("${rest.apiBase}/users/@me/settings-proto/1") {
+            val response = rest.httpClient.patch("${rest.apiBase}/users/@me/settings-proto/$type") {
                 standardHeaders(rest)
                 contentType(ContentType.Application.Json)
                 setBody(mapOf("settings" to base64Payload))
@@ -256,6 +271,11 @@ class UserApi(private val rest: RestClient) {
         }
     }
 }
+
+@kotlinx.serialization.Serializable
+private data class SettingsProtoResponse(
+    val settings: String = ""
+)
 
 @kotlinx.serialization.Serializable
 data class DiscordDevice(

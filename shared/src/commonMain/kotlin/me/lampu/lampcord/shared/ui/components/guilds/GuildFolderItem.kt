@@ -2,11 +2,14 @@ package me.lampu.lampcord.shared.ui.components.guilds
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -45,6 +48,7 @@ import me.lampu.lampcord.shared.ui.components.*
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import org.koin.compose.koinInject
+import me.lampu.lampcord.shared.settings.Settings
 
 private val FolderIconSize = 48.dp
 private val PreviewIconSize = 22.dp
@@ -141,6 +145,7 @@ fun GuildFolderItem(
     
     val guildIds = remember(folder.guild_ids) { folder.guild_ids.mapNotNull { el -> el.jsonPrimitive.contentOrNull } }
     val isAnyChildSelected = guildIds.any { id -> id == navigationStore.selectedGuild?.id }
+    val reduceMotion = Settings.shared.reduceMotion
     
     val readStates by readStateStore.readStates.collectAsState()
     val userGuildSettings by userGuildSettingsStore.userGuildSettings.collectAsState()
@@ -155,7 +160,7 @@ fun GuildFolderItem(
     val contextMenuItems = remember(folder, guildIds) {
         listOf(
             ContextMenuItem("Mark as Read", Icons.Filled.Check, onClick = {
-                guildIds.forEach { guildStore.markGuildAsRead(it) }
+                guildStore.markFolderAsRead(folder)
             }, group = "Primary"),
             ContextMenuItem("Folder Settings", Icons.Filled.Settings, onClick = {
                 showFolderSettings = true
@@ -164,7 +169,10 @@ fun GuildFolderItem(
     }
 
     val surfaceColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-    val expansionProgress by animateFloatAsState(targetValue = if (expanded) 1f else 0f)
+    val expansionProgress by animateFloatAsState(
+        targetValue = if (expanded) 1f else 0f,
+        animationSpec = if (reduceMotion) snap() else spring()
+    )
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -210,7 +218,8 @@ fun GuildFolderItem(
                 targetValue = when {
                     expanded -> folderColor.copy(alpha = if (isHovered) 0.2f else 0.1f)
                     else -> folderColor.copy(alpha = if (isHovered) 0.35f else 0.2f)
-                }
+                },
+                animationSpec = if (reduceMotion) snap() else spring()
             )
 
             ExpressiveTooltip(
@@ -280,8 +289,8 @@ fun GuildFolderItem(
 
         AnimatedVisibility(
             visible = expanded,
-            enter = expandVertically(animationSpec = spring(stiffness = 300f)) + fadeIn(),
-            exit = shrinkVertically(animationSpec = spring(stiffness = 300f)) + fadeOut()
+            enter = if (reduceMotion) EnterTransition.None else expandVertically(animationSpec = spring(stiffness = 300f)) + fadeIn(),
+            exit = if (reduceMotion) ExitTransition.None else shrinkVertically(animationSpec = spring(stiffness = 300f)) + fadeOut()
         ) {
             // Expanded area
             Column(

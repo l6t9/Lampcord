@@ -32,6 +32,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.AutocompleteItem
 import me.lampu.lampcord.shared.model.AutocompleteType
+import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.state.AutocompleteStore
 import org.koin.compose.koinInject
 
@@ -53,7 +54,7 @@ fun AutocompletePicker(
     
     LaunchedEffect(selectedIndex) {
         if (selectedIndex >= 0 && selectedIndex < items.size) {
-            scrollState.animateScrollToItem(selectedIndex)
+            if (Settings.shared.reduceMotion) scrollState.scrollToItem(selectedIndex) else scrollState.animateScrollToItem(selectedIndex)
         }
     }
 

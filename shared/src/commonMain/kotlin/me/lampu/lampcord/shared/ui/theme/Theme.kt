@@ -119,7 +119,13 @@ fun LampcordTheme(
         }
     }
 
-    val animatedColorScheme = animateColorScheme(colorScheme = colorScheme)
+    // Reduced motion also applies to theme changes. Keeping the scheme direct
+    // avoids a cross-fade when the user changes appearance settings.
+    val animatedColorScheme = if (Settings.shared.reduceMotion) {
+        colorScheme
+    } else {
+        animateColorScheme(colorScheme = colorScheme)
+    }
     
     val themeFontPath = themeStore.themeFontPath
     val finalFontOption = if (!themeFontPath.isNullOrEmpty()) FontOption.CUSTOM else appFont

@@ -23,6 +23,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import me.lampu.lampcord.shared.settings.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -172,13 +173,13 @@ fun GuildChannelList(
                 item { Spacer(modifier = Modifier.height(8.dp)) }
 
                 items(rootChannels, key = { it.id }) { channel ->
-                    Box(Modifier.animateItem().padding(vertical = if (settingsStore.messageSpacingMode == me.lampu.lampcord.shared.settings.MessageSpacingMode.DEFAULT) 1.dp else 0.dp)) {
+                    Box((if (Settings.shared.reduceMotion) Modifier else Modifier.animateItem()).padding(vertical = if (settingsStore.messageSpacingMode == me.lampu.lampcord.shared.settings.MessageSpacingMode.DEFAULT) 1.dp else 0.dp)) {
                         ChannelItem(channel)
                     }
                 }
                 
                 items(categories, key = { it.id }) { category ->
-                    Box(Modifier.animateItem()) {
+                    Box(if (Settings.shared.reduceMotion) Modifier else Modifier.animateItem()) {
                         GuildCategoryItem(category, visibleChannels)
                     }
                 }
@@ -240,7 +241,13 @@ fun GuildChannelList(
                         color = contentColor,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f).basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 3000, velocity = 30.dp)
+                        modifier = Modifier.weight(1f).then(
+                            if (Settings.shared.reduceMotion) Modifier else Modifier.basicMarquee(
+                                iterations = 1,
+                                initialDelayMillis = 3000,
+                                velocity = 30.dp
+                            )
+                        )
                     )
                     Icon(
                         imageVector = if (menuExpanded) Icons.Filled.Close else Icons.Filled.KeyboardArrowDown,

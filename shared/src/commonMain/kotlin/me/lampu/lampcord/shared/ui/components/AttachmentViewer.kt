@@ -1,6 +1,8 @@
 package me.lampu.lampcord.shared.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
@@ -42,7 +44,9 @@ import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.Attachment
 import me.lampu.lampcord.shared.model.DiscordMedia
 import me.lampu.lampcord.shared.model.EmbedVideo
+import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.utils.getPlatformName
 import me.lampu.lampcord.shared.utils.setClipboardText
 
 /**
@@ -57,8 +61,11 @@ fun AttachmentViewer(
     onDismiss: () -> Unit
 ) {
     if (items.isEmpty()) return
+    PlatformBackHandler(onBack = onDismiss)
+
     val index = selectedIndex.coerceIn(0, items.lastIndex)
     val item = items[index]
+    val reduceMotion = Settings.shared.reduceMotion
 
     var showControls by remember { mutableStateOf(true) }
     val focusRequester = remember { FocusRequester() }
@@ -101,14 +108,23 @@ fun AttachmentViewer(
                     val isGifv = item.isGifv()
                     VideoPlayer(
                         url = item.url ?: item.proxy_url ?: "",
-                        loop = isGifv,
-                        showControls = !isGifv,
+                        loop = isGifv && !reduceMotion,
+                        // GIFV embeds need visible playback controls once
+                        // they are fullscreen on Android.
+                        showControls = !isGifv || getPlatformName() == "android",
+                        autoPlay = !isGifv || !reduceMotion,
                         title = (item as? Attachment)?.filename,
                         subtitle = (item as? Attachment)?.content_type,
                         onFullscreenClick = onDismiss,
                         modifier = Modifier
-                            .fillMaxWidth(0.95f)
-                            .aspectRatio((item.aspectRatio ?: (16f / 9f)).coerceIn(0.3f, 4f))
+                            // Do not size fullscreen playback from attachment
+                            // metadata. Discord occasionally omits it (or gives
+                            // us a poster's dimensions), which falls back to
+                            // 16:9 and makes portrait/TikTok videos appear
+                            // zoomed into a landscape frame. VideoPlayer uses
+                            // ContentScale.Fit, so a viewport-sized player keeps
+                            // the decoded video's natural aspect ratio intact.
+                            .fillMaxSize()
                             .pointerInput(Unit) {
                                 detectTapGestures(onTap = { showControls = !showControls })
                             }
@@ -134,8 +150,8 @@ fun AttachmentViewer(
         // Top Header
         AnimatedVisibility(
             visible = showControls,
-            enter = fadeIn(),
-            exit = fadeOut(),
+            enter = if (reduceMotion) EnterTransition.None else fadeIn(),
+            exit = if (reduceMotion) ExitTransition.None else fadeOut(),
             modifier = Modifier.align(Alignment.TopCenter)
         ) {
             Surface(
@@ -180,8 +196,8 @@ fun AttachmentViewer(
         if (items.size > 1) {
             AnimatedVisibility(
                 visible = showControls,
-                enter = fadeIn(),
-                exit = fadeOut(),
+                enter = if (reduceMotion) EnterTransition.None else fadeIn(),
+                exit = if (reduceMotion) ExitTransition.None else fadeOut(),
                 modifier = Modifier.align(Alignment.CenterStart).padding(start = 16.dp)
             ) {
                 ViewerRoundButton(onClick = { if (index > 0) onIndexChange(index - 1) }, enabled = index > 0) {
@@ -190,8 +206,8 @@ fun AttachmentViewer(
             }
             AnimatedVisibility(
                 visible = showControls,
-                enter = fadeIn(),
-                exit = fadeOut(),
+                enter = if (reduceMotion) EnterTransition.None else fadeIn(),
+                exit = if (reduceMotion) ExitTransition.None else fadeOut(),
                 modifier = Modifier.align(Alignment.CenterEnd).padding(end = 16.dp)
             ) {
                 ViewerRoundButton(
@@ -207,8 +223,8 @@ fun AttachmentViewer(
         if (items.size > 1) {
             AnimatedVisibility(
                 visible = showControls,
-                enter = fadeIn(),
-                exit = fadeOut(),
+                enter = if (reduceMotion) EnterTransition.None else fadeIn(),
+                exit = if (reduceMotion) ExitTransition.None else fadeOut(),
                 modifier = Modifier.align(Alignment.BottomCenter)
             ) {
                 AttachmentCarousel(items = items, selectedIndex = index, onSelect = onIndexChange)
@@ -317,7 +333,8 @@ private fun AttachmentCarousel(
         itemCount = { items.size }
     )
     LaunchedEffect(selectedIndex) {
-        carouselState.animateScrollToItem(selectedIndex.coerceIn(0, items.lastIndex))
+        val target = selectedIndex.coerceIn(0, items.lastIndex)
+        if (Settings.shared.reduceMotion) carouselState.scrollToItem(target) else carouselState.animateScrollToItem(target)
     }
     HorizontalUncontainedCarousel(
         state = carouselState,

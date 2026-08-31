@@ -5,6 +5,7 @@ package me.lampu.lampcord.shared.ui.components.chat
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -73,6 +74,7 @@ import me.lampu.lampcord.shared.state.ProfileStore
 import me.lampu.lampcord.shared.state.ReadStateStore
 import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.state.UserStore
+import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.ui.components.ClanTagView
 import me.lampu.lampcord.shared.ui.components.ContextMenu
 import me.lampu.lampcord.shared.ui.components.ContextMenuItem
@@ -123,6 +125,7 @@ fun MessageItem(
     var showReactionPicker by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showCreateThreadDialog by remember { mutableStateOf(false) }
+    var showMessageContextMenu by remember { mutableStateOf(false) }
     
     val currentUser by userStore.currentUser.collectAsState()
     val members by userStore.members.collectAsState()
@@ -179,11 +182,8 @@ fun MessageItem(
 
         val items = mutableListOf<ContextMenuItem>()
         
-        // Group 1: Primary Actions (Discord Group 1)
-        if (canAddReaction) {
-            items.add(ContextMenuItem("Add Reaction", Icons.Filled.AddReaction, onClick = { showReactionPicker = true }, group = "Primary"))
-        }
-
+        // Group 1: Primary Actions (Discord Group 1). The reaction strip below
+        // already provides the single Add Reaction action.
         if (isMe) {
             items.add(ContextMenuItem("Edit Message", Icons.Filled.Edit, onClick = { messageStore.editingMessage = message }, group = "Primary"))
         }
@@ -236,8 +236,12 @@ fun MessageItem(
     val isMentioned by remember(message, currentUser, currentMember) {
         derivedStateOf { if (message.isPending) false else messageStore.isMessageMentioningMe(message, currentUser, currentMember) }
     }
-    
-    val messageAlpha by animateFloatAsState(if (message.isPending) 0.5f else 1f)
+
+    val reduceMotion = Settings.shared.reduceMotion
+    val messageAlpha by animateFloatAsState(
+        if (message.isPending) 0.5f else 1f,
+        animationSpec = if (reduceMotion) snap() else spring()
+    )
 
     val isInline = priorMessage != null
     val useBubbles = settingsStore.chatBubbles
@@ -352,7 +356,7 @@ fun MessageItem(
                     }
                 )
                 .alpha(messageAlpha)
-                .animateContentSize()
+                .animateContentSize(animationSpec = if (reduceMotion) snap() else spring())
                 .graphicsLayer(clip = false)
         ) {
             if (isMentioned || message.isDeleted) {
@@ -388,9 +392,15 @@ fun MessageItem(
                 }
             }
 
+            // On Android, DiscordMarkdownText owns a held link so it can
+            // present link-specific actions. Keep the normal message menu
+            // for all other messages and platforms.
+            val linkOwnsAndroidLongPress = getPlatformName() == "android" &&
+                message.content.contains(Regex("""https?://\S+"""))
+
             ContextMenu(
                 items = contextMenuItems,
-                enabled = !isPreview,
+                enabled = !isPreview && !linkOwnsAndroidLongPress,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 8.dp, end = 8.dp, top = topPadding, bottom = bottomPadding),
@@ -418,7 +428,9 @@ fun MessageItem(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            val commonReactions = emojiStore.frequentEmojis.take(5)
+                            // Frequently used emojis are intentionally not
+                            // shown in the context menu.
+                            val commonReactions = emptyList<String>()
                             commonReactions.forEach { emojiKey ->
                                 IconButton(
                                     onClick = {
@@ -837,19 +849,19 @@ fun MessageItem(
                 })
             }
             list.add(Triple(Icons.Filled.Tag, "Create Thread") { showCreateThreadDialog = true })
-            list.add(Triple(Icons.Filled.MoreHoriz, "More") { /* TODO */ })
+            list.add(Triple(Icons.Filled.MoreHoriz, "More") { showMessageContextMenu = true })
             list
         }
 
-        val showActions = isHovered || showReactionPicker
+        val showActions = isHovered || showReactionPicker || showMessageContextMenu
         val actionAlpha by animateFloatAsState(
             targetValue = if (showActions) 1f else 0f,
-            animationSpec = tween(durationMillis = 150),
+            animationSpec = if (reduceMotion) snap() else tween(durationMillis = 150),
             label = "actionAlpha"
         )
         val actionScale by animateFloatAsState(
             targetValue = if (showActions) 1f else 0.92f,
-            animationSpec = spring(dampingRatio = 0.7f, stiffness = 400f),
+            animationSpec = if (reduceMotion) snap() else spring(dampingRatio = 0.7f, stiffness = 400f),
             label = "actionScale"
         )
 
@@ -887,15 +899,42 @@ fun MessageItem(
                                     actions.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
                                     else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
                                 }
-                                ToggleButton(
-                                    checked = false,
-                                    onCheckedChange = { onClick() },
-                                    shapes = shapes,
-                                    colors = ToggleButtonDefaults.tonalToggleButtonColors(),
-                                    contentPadding = PaddingValues(0.dp),
-                                    modifier = Modifier.fillMaxSize()
-                                ) {
-                                    Icon(icon, label, modifier = Modifier.size(18.dp))
+                                Box {
+                                    ToggleButton(
+                                        checked = false,
+                                        onCheckedChange = { onClick() },
+                                        shapes = shapes,
+                                        colors = ToggleButtonDefaults.tonalToggleButtonColors(),
+                                        contentPadding = PaddingValues(0.dp),
+                                        modifier = Modifier.fillMaxSize()
+                                    ) {
+                                        Icon(icon, label, modifier = Modifier.size(18.dp))
+                                    }
+
+                                    if (label == "More") {
+                                        DropdownMenu(
+                                            expanded = showMessageContextMenu,
+                                            onDismissRequest = { showMessageContextMenu = false },
+                                            shape = RoundedCornerShape(16.dp)
+                                        ) {
+                                            val groups = contextMenuItems.groupBy { it.group }.values
+                                            groups.forEachIndexed { groupIndex, items ->
+                                                items.forEach { item ->
+                                                    DropdownMenuItem(
+                                                        text = { Text(item.label) },
+                                                        onClick = {
+                                                            item.onClick()
+                                                            showMessageContextMenu = false
+                                                        },
+                                                        leadingIcon = item.icon?.let { itemIcon ->
+                                                            { Icon(itemIcon, null, tint = item.color ?: MaterialTheme.colorScheme.onSurfaceVariant) }
+                                                        }
+                                                    )
+                                                }
+                                                if (groupIndex < groups.size - 1) HorizontalDivider()
+                                            }
+                                        }
+                                    }
                                 }
                             },
                             menuContent = {

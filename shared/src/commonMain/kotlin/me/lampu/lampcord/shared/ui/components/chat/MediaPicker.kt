@@ -69,6 +69,7 @@ import me.lampu.lampcord.shared.model.Poll
 import me.lampu.lampcord.shared.model.PollAnswer
 import me.lampu.lampcord.shared.model.PollMedia
 import me.lampu.lampcord.shared.state.MessageStore
+import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.AdaptiveModalBottomSheet
 import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
@@ -90,6 +91,7 @@ fun MediaPicker(
     messageStore: MessageStore = koinInject()
 ) {
     val isMobile = getPlatformName() == "android" || getPlatformName() == "ios"
+    val reduceMotion = Settings.shared.reduceMotion
     var selectedTab by remember { mutableStateOf(0) }
     var showSystemFilePicker by remember { mutableStateOf(false) }
     
@@ -100,7 +102,9 @@ fun MediaPicker(
     }
 
     val animatedDismiss = {
-        scope.launch {
+        if (reduceMotion) {
+            onDismiss()
+        } else scope.launch {
             isToolbarVisible = false
             delay(100.milliseconds)
             onDismiss()
@@ -131,11 +135,11 @@ fun MediaPicker(
 
                 val transition = updateTransition(targetState = isToolbarVisible, label = "ToolbarTransition")
                 val toolbarAlpha by transition.animateFloat(
-                    transitionSpec = { if (targetState) tween(400) else tween(100) },
+                    transitionSpec = { if (reduceMotion) androidx.compose.animation.core.snap() else if (targetState) tween(400) else tween(100) },
                     label = "alpha"
                 ) { state -> if (state) 1f else 0f }
                 val toolbarSlideOffset by transition.animateDp(
-                    transitionSpec = { if (targetState) tween(400) else tween(100) },
+                    transitionSpec = { if (reduceMotion) androidx.compose.animation.core.snap() else if (targetState) tween(400) else tween(100) },
                     label = "slide"
                 ) { state -> if (state) 0.dp else 40.dp }
 

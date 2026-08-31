@@ -46,11 +46,17 @@ import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.ClanTagView
 import me.lampu.lampcord.shared.ui.components.UserTagView
 import me.lampu.lampcord.shared.utils.DateTimeUtils
+import me.lampu.lampcord.shared.api.CdnUrls
 import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MessageTimestamp(timestamp: String, style: androidx.compose.ui.text.TextStyle, color: Color) {
+fun MessageTimestamp(
+    timestamp: String,
+    style: androidx.compose.ui.text.TextStyle,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
     val fullDate = remember(timestamp) { DateTimeUtils.formatFullDate(timestamp) }
     val displayDate = remember(timestamp) { DateTimeUtils.formatTimestamp(timestamp) }
     
@@ -78,7 +84,11 @@ fun MessageTimestamp(timestamp: String, style: androidx.compose.ui.text.TextStyl
         Text(
             text = displayDate,
             style = style,
-            color = color
+            color = color,
+            modifier = modifier,
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
@@ -123,9 +133,7 @@ fun InteractionHeader(interaction: MessageInteraction) {
 
         Spacer(modifier = Modifier.width(4.dp))
 
-        val avatarUrl = interaction.user?.avatar?.let {
-            "https://cdn.discordapp.com/avatars/${interaction.user.id}/$it.png?size=48"
-        }
+        val avatarUrl = interaction.user?.let { CdnUrls.getUserAvatarUrl(it.id, it.avatar, 48) }
 
         if (avatarUrl != null) {
             AsyncImage(
@@ -231,10 +239,8 @@ fun ReplyBar(
 
         Spacer(modifier = Modifier.width(4.dp))
 
-        val avatarUrl = referencedMessage.member?.avatar?.let {
-            "https://cdn.discordapp.com/guilds/${referencedMessage.guild_id ?: navigationStore.selectedGuild?.id}/users/${referencedMessage.author?.id}/avatars/$it.png?size=48"
-        } ?: referencedMessage.author?.avatar?.let {
-            "https://cdn.discordapp.com/avatars/${referencedMessage.author.id}/$it.png?size=48"
+        val avatarUrl = referencedMessage.author?.let {
+            CdnUrls.getUserAvatarUrl(it.id, it.avatar, 48)
         }
 
         if (avatarUrl != null) {

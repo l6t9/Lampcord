@@ -14,6 +14,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -22,6 +23,8 @@ import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.state.TypingStore
 import me.lampu.lampcord.shared.state.UserStore
+import me.lampu.lampcord.shared.settings.Settings
+import me.lampu.lampcord.shared.utils.getPlatformName
 import org.koin.compose.koinInject
 
 @Composable
@@ -79,6 +82,21 @@ fun TypingIndicator(
 
 @Composable
 fun TypingDots(modifier: Modifier = Modifier) {
+    // Keep the typing indicator visible without a continuously animated clock
+    // on Windows.
+    if (getPlatformName() == "windows" || Settings.shared.reduceMotion) {
+        Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+            repeat(3) {
+                Box(
+                    Modifier
+                        .size(4.dp)
+                        .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f), CircleShape)
+                )
+            }
+        }
+        return
+    }
+
     val infiniteTransition = rememberInfiniteTransition(label = "typingDots")
     val alpha1 by infiniteTransition.animateFloat(
         initialValue = 0.2f,

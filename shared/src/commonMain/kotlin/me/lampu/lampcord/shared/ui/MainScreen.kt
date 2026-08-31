@@ -11,6 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.state.*
+import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.ui.baseplates.*
 import me.lampu.lampcord.shared.ui.components.*
 import me.lampu.lampcord.shared.utils.getPlatformName
@@ -25,6 +26,7 @@ fun MainScreen(
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val isMobile = getPlatformName() == "android" || getPlatformName() == "ios" || maxWidth < 600.dp
+        val reduceMotion = Settings.shared.reduceMotion
 
         val loadingMessage = remember(navigationStore.isConnecting, messageStore.loadingMessages.size) {
             if (navigationStore.isConnecting) {
@@ -37,7 +39,11 @@ fun MainScreen(
         AnimatedContent(
             targetState = navigationStore.isConnected to navigationStore.isConnecting,
             transitionSpec = {
-                fadeIn(tween(300)).togetherWith(fadeOut(tween(300)))
+                if (reduceMotion) {
+                    EnterTransition.None togetherWith ExitTransition.None
+                } else {
+                    fadeIn(tween(300)).togetherWith(fadeOut(tween(300)))
+                }
             },
             label = "MainScreenContentTransition"
         ) { (isConnected, isConnecting) ->

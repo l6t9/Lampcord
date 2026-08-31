@@ -32,8 +32,11 @@ actual fun ContextMenu(
                 if (!enabled) return@pointerInput
                 awaitPointerEventScope {
                     while (true) {
-                        val event = awaitPointerEvent(PointerEventPass.Initial)
-                        val down = event.changes.find { it.changedToDown() }
+                        // Let nested content handle the Main pass first. A
+                        // link consumes its own click; non-link message text
+                        // remains available for this menu on the Final pass.
+                        val event = awaitPointerEvent(PointerEventPass.Final)
+                        val down = event.changes.find { it.changedToDown() && !it.isConsumed }
                         
                         if (down != null) {
                             if (event.buttons.isSecondaryPressed) {

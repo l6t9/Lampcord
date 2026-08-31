@@ -38,7 +38,12 @@ actual fun ContextMenu(
                 if (!enabled) return@pointerInput
                 awaitPointerEventScope {
                     while (true) {
-                        val down = awaitFirstDown(pass = PointerEventPass.Initial)
+                        // Message menus must observe the down event before
+                        // ordinary text handlers consume it.
+                        val down = awaitFirstDown(
+                            pass = PointerEventPass.Initial,
+                            requireUnconsumed = false
+                        )
                         val timedOut = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
                             waitForUpOrCancellation(pass = PointerEventPass.Initial)
                             false

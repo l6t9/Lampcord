@@ -19,7 +19,11 @@ fun StickersView(stickers: List<StickerItem>) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         stickers.forEach { sticker ->
             val stickerUrl = when (sticker.format_type) {
-                4 -> "https://cdn.discordapp.com/stickers/${sticker.id}.gif?size=320"
+                4 -> if (me.lampu.lampcord.shared.settings.Settings.shared.reduceMotion) {
+                    "https://cdn.discordapp.com/stickers/${sticker.id}.png?size=320"
+                } else {
+                    "https://cdn.discordapp.com/stickers/${sticker.id}.gif?size=320"
+                }
                 3 -> "https://cdn.discordapp.com/stickers/${sticker.id}.json" // Lottie, needs special handling for full animation
                 else -> "https://cdn.discordapp.com/stickers/${sticker.id}.png?size=320"
             }

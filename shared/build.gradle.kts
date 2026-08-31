@@ -89,6 +89,7 @@ kotlin {
                 implementation(libs.androidx.security.crypto)
                 
                 implementation(libs.androidx.navigation3.ui)
+                implementation("io.coil-kt.coil3:coil-gif:${libs.versions.coil.get()}")
             }
         }
         

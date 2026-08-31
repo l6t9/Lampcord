@@ -1,6 +1,8 @@
 package me.lampu.lampcord.shared.ui.baseplates
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -58,6 +60,7 @@ import androidx.compose.ui.zIndex
 import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.state.ProfileStore
 import me.lampu.lampcord.shared.state.UserStore
+import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.ui.SettingsScreen
 import me.lampu.lampcord.shared.ui.components.AttachmentViewer
 import me.lampu.lampcord.shared.ui.components.AdaptiveModalBottomSheet
@@ -93,6 +96,7 @@ actual fun MobileBaseplate(
     val selectedThread = navigationStore.selectedThread
     val activeChannel = selectedThread ?: selectedChannel
     val keyboardController = LocalSoftwareKeyboardController.current
+    val reduceMotion = Settings.shared.reduceMotion
 
     LaunchedEffect(panelState.currentValue) {
         if (panelState.currentValue != DiscordPanelValue.Center) {
@@ -236,9 +240,13 @@ actual fun MobileBaseplate(
                                 else if (navigationStore.isFriendsSelected) "friends" 
                                 else "none",
                             transitionSpec = {
-                                (fadeIn(quickEffectsSpec) + slideInHorizontally(quickSpatialSpec) { it / 8 }).togetherWith(
-                                    fadeOut(quickEffectsSpec) + slideOutHorizontally(quickSpatialSpec) { -it / 8 }
-                                )
+                                if (reduceMotion) {
+                                    EnterTransition.None togetherWith ExitTransition.None
+                                } else {
+                                    (fadeIn(quickEffectsSpec) + slideInHorizontally(quickSpatialSpec) { it / 8 }).togetherWith(
+                                        fadeOut(quickEffectsSpec) + slideOutHorizontally(quickSpatialSpec) { -it / 8 }
+                                    )
+                                }
                             },
                             modifier = Modifier
                                 .padding(top = padding.calculateTopPadding())

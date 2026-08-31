@@ -1,6 +1,7 @@
 package me.lampu.lampcord
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.runtime.*
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -16,6 +17,7 @@ import androidx.compose.ui.window.application
 import me.lampu.lampcord.shared.di.appModule
 import me.lampu.lampcord.shared.rpc.DesktopRPCServer
 import me.lampu.lampcord.shared.state.SettingsStore
+import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.ui.App
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.reloadTrigger
@@ -61,7 +63,10 @@ fun main() {
             }
         }
         
-        val seedColor by animateColorAsState(targetSeedColor)
+        val seedColor by animateColorAsState(
+            targetValue = targetSeedColor,
+            animationSpec = if (Settings.shared.reduceMotion) snap() else androidx.compose.animation.core.spring()
+        )
         
         val discordPainter = rememberVectorPainter(Icons.Brand.Discord)
         val dynamicIcon = remember(seedColor) {

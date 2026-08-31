@@ -19,4 +19,7 @@ interface MessageDao {
 
     @Query("UPDATE logged_messages SET isDeleted = 1 WHERE id = :id")
     suspend fun markDeleted(id: String)
+
+    @Query("DELETE FROM logged_messages")
+    suspend fun clearAll()
 }

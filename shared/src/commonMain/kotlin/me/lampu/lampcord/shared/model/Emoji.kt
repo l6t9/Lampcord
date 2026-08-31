@@ -1,6 +1,7 @@
 package me.lampu.lampcord.shared.model
 
 import kotlinx.serialization.Serializable
+import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.utils.EmojiIndex
 
 @Serializable
@@ -20,7 +21,7 @@ data class Emoji(
 fun Emoji.getDisplayUrl(): String? {
     if (url != null) return url
     if (id != null) {
-        val ext = if (animated == true) "gif" else "png"
+        val ext = if (animated == true && !Settings.shared.reduceMotion) "gif" else "png"
         return "https://cdn.discordapp.com/emojis/$id.$ext?size=48"
     }
     val unicode = name?.let { EmojiIndex.getCharForName(it) } ?: name

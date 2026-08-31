@@ -74,6 +74,18 @@ class MessageLogger(
         }
     }
 
+    /** Removes every message stored locally by Message Logger. */
+    fun clearLoggedMessages(onComplete: () -> Unit = {}) {
+        scope.launch {
+            try {
+                messageDao.clearAll()
+                onComplete()
+            } catch (e: Exception) {
+                println("Error clearing logged messages: ${e.message}")
+            }
+        }
+    }
+
     suspend fun getLoggedMessages(channelId: String): List<Message> {
         return try {
             val entities = messageDao.getMessagesForChannel(channelId)

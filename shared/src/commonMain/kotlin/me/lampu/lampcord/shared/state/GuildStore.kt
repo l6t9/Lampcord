@@ -3,7 +3,6 @@ package me.lampu.lampcord.shared.state
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import me.lampu.lampcord.shared.api.ChannelApi
 import me.lampu.lampcord.shared.api.GuildApi
 import me.lampu.lampcord.shared.model.*
 import me.lampu.lampcord.shared.utils.Logging
@@ -14,7 +13,6 @@ import kotlin.time.Duration
 
 class GuildStore(
     private val guildApi: GuildApi,
-    private val channelApi: ChannelApi,
     private val errorStore: AppErrorStore,
     private val selectionStore: SelectionStore,
     private val entityStore: EntityStore,
@@ -139,13 +137,37 @@ class GuildStore(
     }
 
     fun markGuildAsRead(guildId: String) {
+        markGuildsAsRead(listOf(guildId), "guild")
+    }
+
+    /** Marks every server in a folder with one read-state acknowledgement request. */
+    fun markFolderAsRead(folder: GuildFolder) {
+        val guildIds = folder.guild_ids.mapNotNull { it.jsonPrimitive.contentOrNull }.distinct()
+        markGuildsAsRead(guildIds, "folder")
+    }
+
+    private fun markGuildsAsRead(guildIds: Collection<String>, target: String) {
+        if (guildIds.isEmpty()) return
         scope.launch {
             try {
-                if (!channelApi.ackBulk(listOf(guildId))) {
-                    errorStore.pushError("Failed to mark guild as read.")
+                val readStates = allGuildChannels.value.values
+                    .asSequence()
+                    .filter {
+                        it.guild_id in guildIds &&
+                            (readStateStore.isUnread(it) || readStateStore.getMentionCount(it.id) > 0)
+                    }
+                    .mapNotNull { channel ->
+                        channel.lastMessageId()
+                            ?.takeIf { it.toLongOrNull()?.let { id -> id > 0L } == true }
+                            ?.let { channel.id to it }
+                    }
+                    .toMap()
+
+                if (!readStateStore.ackBulk(readStates)) {
+                    errorStore.pushError("Failed to mark $target as read.")
                 }
             } catch (e: Exception) {
-                errorStore.pushError("Error marking guild as read: ${e.message}")
+                errorStore.pushError("Error marking $target as read: ${e.message}")
             }
         }
     }

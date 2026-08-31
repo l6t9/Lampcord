@@ -7,12 +7,17 @@ import androidx.compose.ui.text.font.FontFamily
 import com.materialkolor.PaletteStyle
 import com.materialkolor.rememberDynamicColorScheme
 import me.lampu.lampcord.shared.settings.FontOption
+import me.lampu.lampcord.shared.utils.getPlatformName
 import kotlinx.coroutines.delay
 import java.io.File
 import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 actual fun rememberDynamicSeedColor(): Color? {
+    // These color files are Linux-specific. Do not keep a background polling
+    // coroutine alive on Windows or macOS.
+    if (remember { getPlatformName() != "linux" }) return null
+
     val home = remember { System.getProperty("user.home") }
     val colorFile = remember(home) { File("$home/.local/state/quickshell/user/generated/color.txt") }
     val alternativeColorFile = remember(home) { File("$home/.cache/wal/colors") } // common fallback for pywal

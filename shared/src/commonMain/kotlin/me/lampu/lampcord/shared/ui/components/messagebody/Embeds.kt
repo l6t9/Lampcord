@@ -39,16 +39,25 @@ import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.DiscordMarkdownText
 import me.lampu.lampcord.shared.ui.components.VideoPlayer
+import me.lampu.lampcord.shared.settings.Settings
+import me.lampu.lampcord.shared.utils.getPlatformName
 import org.koin.compose.koinInject
 
 @Composable
-fun GifvView(video: EmbedVideo, modifier: Modifier = Modifier) {
+fun GifvView(
+    video: EmbedVideo,
+    modifier: Modifier = Modifier,
+    onFullscreenClick: (() -> Unit)? = null
+) {
+    val isAndroid = getPlatformName() == "android"
     Box(modifier = modifier.clip(RoundedCornerShape(8.dp)).background(Color.Black)) {
         VideoPlayer(
             url = video.url ?: "",
-            loop = true,
-            showControls = false,
+            loop = !Settings.shared.reduceMotion,
+            showControls = Settings.shared.reduceMotion || isAndroid,
             compact = true,
+            autoPlay = !Settings.shared.reduceMotion,
+            onFullscreenClick = if (isAndroid) onFullscreenClick else null,
             modifier = Modifier.fillMaxSize()
         )
     }
@@ -62,6 +71,9 @@ fun EmbedView(
     if (embed.type == "gifv" && embed.video != null) {
         GifvView(
             video = embed.video,
+            onFullscreenClick = {
+                navigationStore.openAttachmentViewer(listOf(embed.video), 0)
+            },
             modifier = Modifier.padding(vertical = 4.dp).widthIn(max = 500.dp).fillMaxWidth().aspectRatio(embed.video.aspectRatio ?: 1f)
         )
         return

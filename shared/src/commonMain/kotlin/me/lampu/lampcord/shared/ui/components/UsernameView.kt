@@ -2,6 +2,7 @@ package me.lampu.lampcord.shared.ui.components
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.basicMarquee
+import me.lampu.lampcord.shared.settings.Settings
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -21,6 +22,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import me.lampu.lampcord.shared.model.DisplayNameStyles
+import me.lampu.lampcord.shared.utils.getPlatformName
 import me.lampu.lampcord.shared.utils.loadFont
 
 object DisplayNameCatalog {
@@ -52,7 +54,6 @@ object DisplayNameCatalog {
         const val ZILLA_SLAB = 12
     }
 
-    @Composable
     fun getFontFamily(fontId: Int?): FontFamily? = when (fontId) {
         Fonts.BANGERS -> FontFamily(loadFont("font/Bangers-Regular.ttf"))
         Fonts.BIO_RHYME -> FontFamily(loadFont("font/BioRhyme-Regular.ttf"))
@@ -110,21 +111,32 @@ fun UsernameView(
 ) {
     val styleColors = style?.colors?.map { Color(it or 0xFF000000.toInt()) }
     val effectId = if (ignoreEffects) DisplayNameCatalog.Effect.SOLID else (style?.effect_id ?: if (!styleColors.isNullOrEmpty() && styleColors.size > 1) DisplayNameCatalog.Effect.GRADIENT else DisplayNameCatalog.Effect.SOLID)
-    val fontFamily = DisplayNameCatalog.getFontFamily(style?.font_id)
+    val fontFamily = remember(style?.font_id) {
+        DisplayNameCatalog.getFontFamily(style?.font_id)
+    }
     val letterSpacing = DisplayNameCatalog.getLetterSpacing(style?.font_id)
 
     val useStyleColors = !ignoreColors && !styleColors.isNullOrEmpty()
     
-    val infiniteTransition = rememberInfiniteTransition(label = "usernameGradient")
-    val animValue by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(4000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "gradientOffset"
-    )
+    // Animated gradients are expensive when every visible message starts its own
+    // frame-driven transition. Keep gradients static on Windows and only create
+    // the transition when a role gradient actually needs it.
+    val animateGradient = !Settings.shared.reduceMotion && getPlatformName() != "windows" && roleGradient != null && roleGradient.size > 1
+    val animValue = if (animateGradient) {
+        val infiniteTransition = rememberInfiniteTransition(label = "usernameGradient")
+        val value by infiniteTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(4000, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart
+            ),
+            label = "gradientOffset"
+        )
+        value
+    } else {
+        0f
+    }
 
     val brush = remember(useStyleColors, styleColors, roleGradient, animValue) {
         if (roleGradient != null && roleGradient.size > 1) {
@@ -171,8 +183,12 @@ fun UsernameView(
         MaterialTheme.colorScheme.onSurface
     }
 
-    val textModifier = if (marquee) {
-        Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 3000, velocity = 30.dp)
+    val textModifier = if (marquee && !Settings.shared.reduceMotion) {
+        Modifier.basicMarquee(
+            iterations = if (getPlatformName() == "windows") 1 else Int.MAX_VALUE,
+            initialDelayMillis = 3000,
+            velocity = 30.dp
+        )
     } else Modifier
 
     Box(modifier = modifier, contentAlignment = Alignment.CenterStart) {
