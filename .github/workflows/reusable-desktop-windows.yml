@@ -1,0 +1,83 @@
+name: Desktop Windows
+
+on:
+  workflow_call:
+    inputs:
+      upload-artifact:
+        description: Upload packaged output as workflow artifacts
+        required: false
+        default: false
+        type: boolean
+      artifact-prefix:
+        description: Prefix for workflow artifact names
+        required: false
+        default: ''
+        type: string
+      staging-release-tag:
+        description: Draft release tag used for cross-job package handoff
+        required: false
+        default: ''
+        type: string
+      cache-read-only:
+        description: Keep the Gradle cache read-only
+        required: false
+        default: false
+        type: boolean
+    secrets:
+      GRADLE_ENCRYPTION_KEY:
+        required: false
+
+jobs:
+  package:
+    name: MSI
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Prepare CI Gradle
+        uses: ./.github/actions/prepare-ci-gradle
+        with:
+          cache-scope: desktop-windows
+          cache-read-only: ${{ inputs.cache-read-only }}
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+
+      - name: Build Windows portable package
+        shell: bash
+        run: ./gradlew :desktopApp:createDistributable --no-daemon
+
+      - name: Package Windows ZIP
+        shell: pwsh
+        run: |
+          $version = ""
+          Get-Content gradle.properties | ForEach-Object {
+            if ($_ -match "appVersion=(.*)") { $version = $matches[1] }
+          }
+          $appDir = "desktopApp/build/compose/binaries/main/app/Lampcord"
+          $zipPath = "dist/lampcord-desktop-windows-x64-$version.zip"
+          mkdir -p dist
+          Compress-Archive -Path "$appDir\*" -DestinationPath "$zipPath" -Force
+          "path=$zipPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+        id: package
+
+      - name: Upload Windows artifact
+        if: inputs.upload-artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact-prefix }}desktop-windows
+          path: ${{ steps.package.outputs.path }}
+          if-no-files-found: error
+          retention-days: 4
+
+      - name: Upload Windows staging asset
+        if: inputs.staging-release-tag != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STAGING_RELEASE_TAG: ${{ inputs.staging-release-tag }}
+          PACKAGE_PATH: ${{ steps.package.outputs.path }}
+        run: gh release upload "$STAGING_RELEASE_TAG" "$PACKAGE_PATH" --clobber --repo "$GITHUB_REPOSITORY"

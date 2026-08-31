@@ -36,8 +36,19 @@ concurrency:
 
 jobs:
   linux:
-    name: Desktop
+    name: Linux
     uses: ./.github/workflows/reusable-desktop-linux.yml
+    permissions:
+      contents: read
+    with:
+      upload-artifact: true
+      cache-read-only: ${{ github.event_name == 'pull_request' }}
+    secrets:
+      GRADLE_ENCRYPTION_KEY: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+
+  windows:
+    name: Windows
+    uses: ./.github/workflows/reusable-desktop-windows.yml
     permissions:
       contents: read
     with:
