@@ -52,9 +52,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libfuse2 jq
 
+          mkdir -p tools
+          curl --fail --location --silent --show-error \
+            "https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage" \
+            --output tools/appimagetool.AppImage
+          chmod +x tools/appimagetool.AppImage
+
       - name: Build Linux AppImage
         shell: bash
-        run: ./gradlew :desktopApp:createAppImageLocal --no-daemon
+        run: ./gradlew :desktopApp:createAppImageLocal --no-daemon --no-build-cache --no-configuration-cache
 
       - name: Collect Linux AppImage
         id: package

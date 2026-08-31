@@ -29,7 +29,7 @@ on:
 
 jobs:
   package:
-    name: MSI
+    name: ZIP
     runs-on: windows-latest
     timeout-minutes: 20
     steps:
@@ -48,7 +48,7 @@ jobs:
 
       - name: Build Windows portable package
         shell: bash
-        run: ./gradlew :desktopApp:createDistributable --no-daemon
+        run: ./gradlew :desktopApp:createDistributable --no-daemon --no-build-cache --no-configuration-cache
 
       - name: Package Windows ZIP
         shell: pwsh
