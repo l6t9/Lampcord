@@ -1,0 +1,96 @@
+name: Prepare CI Gradle
+description: Configure JDK, Gradle caches, and CI-safe Gradle settings
+
+inputs:
+  cache-scope:
+    description: >-
+      Stable identifier for this job's Gradle caches. Jobs that build different task graphs
+      must pass different scopes, otherwise they overwrite each other's cache entry.
+    required: true
+  cache-read-only:
+    description: Whether the Gradle caches should be read-only
+    required: false
+    default: 'false'
+  cache-encryption-key:
+    description: Encryption key used when storing Gradle configuration-cache entries
+    required: false
+    default: ''
+  persist-configuration-cache:
+    description: >-
+      Whether to keep the project-local configuration cache across runs. Must stay 'false' for
+      builds that read credentials at configuration time: those values are serialized into the
+      configuration cache, and nothing encrypts the Actions cache entry that holds it.
+    required: false
+    default: 'true'
+
+runs:
+  using: composite
+  steps:
+    # A missing scope would silently collapse several jobs onto one configuration-cache key and
+    # let them clobber each other's entry, so fail loudly instead.
+    - name: Validate cache scope
+      shell: bash
+      env:
+        CACHE_SCOPE: ${{ inputs.cache-scope }}
+      run: test -n "$CACHE_SCOPE" || { echo "cache-scope is required" >&2; exit 1; }
+
+    - name: Set up JDK 21
+      uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+      with:
+        distribution: temurin
+        java-version: '21'
+
+    # Gradle User Home (dependencies, the local build cache, and the wrapper distribution) is
+    # cached by setup-gradle on every platform, backed by Blacksmith's colocated Actions cache.
+    # Restores measured at ~400ms, so there is nothing here that a hot-mounted disk needs to
+    # rescue. Cache cleanup stays at the default 'on-success': setup-gradle owns Gradle User
+    # Home again, and pruning is what keeps the cached archive from growing without bound.
+    - name: Set up Gradle
+      uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6
+      with:
+        cache-read-only: ${{ inputs.cache-read-only }}
+        cache-encryption-key: ${{ inputs.cache-encryption-key }}
+
+    # Everything Gradle reads at configuration time. Any change to these invalidates the
+    # configuration cache anyway, so they make a natural cache key.
+    - name: Fingerprint Gradle configuration inputs
+      id: configuration-fingerprint
+      shell: bash
+      env:
+        FINGERPRINT: ${{ hashFiles('**/*.gradle.kts', 'gradle.properties', 'gradle/libs.versions.toml', 'gradle/wrapper/gradle-wrapper.properties') }}
+      run: echo "value=$FINGERPRINT" >> "$GITHUB_OUTPUT"
+
+    # setup-gradle only caches Gradle User Home. The configuration cache lives in the
+    # project-local .gradle directory, so without this it is stored and then thrown away on
+    # every run ("Calculating task graph as no cached configuration is available", ~20-30s a
+    # job). Restoring a stale entry is safe: Gradle fingerprint-checks it and falls back to a
+    # full task-graph calculation on a mismatch.
+    #
+    # Saving is gated on cache-read-only so PR runs only read, matching how setup-gradle treats
+    # the same input and keeping PR revisions from evicting main-branch entries.
+    - name: Cache Gradle configuration cache
+      if: inputs.persist-configuration-cache != 'false' && inputs.cache-read-only != 'true'
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      with:
+        path: .gradle/configuration-cache
+        key: gradle-configuration-cache-v1-${{ runner.os }}-${{ runner.arch }}-${{ inputs.cache-scope }}-${{ steps.configuration-fingerprint.outputs.value }}-${{ github.sha }}
+        restore-keys: |
+          gradle-configuration-cache-v1-${{ runner.os }}-${{ runner.arch }}-${{ inputs.cache-scope }}-${{ steps.configuration-fingerprint.outputs.value }}-
+
+    - name: Restore Gradle configuration cache (read-only)
+      if: inputs.persist-configuration-cache != 'false' && inputs.cache-read-only == 'true'
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      with:
+        path: .gradle/configuration-cache
+        key: gradle-configuration-cache-v1-${{ runner.os }}-${{ runner.arch }}-${{ inputs.cache-scope }}-${{ steps.configuration-fingerprint.outputs.value }}-${{ github.sha }}
+        restore-keys: |
+          gradle-configuration-cache-v1-${{ runner.os }}-${{ runner.arch }}-${{ inputs.cache-scope }}-${{ steps.configuration-fingerprint.outputs.value }}-
+
+    - name: Use CI JDK
+      shell: bash
+      run: sed '/^org.gradle.java.home=/d' gradle.properties > gradle.properties.tmp && mv gradle.properties.tmp gradle.properties
+
+    - name: Grant execute permission for gradlew
+      if: runner.os != 'Windows'
+      shell: bash
+      run: chmod +x ./gradlew

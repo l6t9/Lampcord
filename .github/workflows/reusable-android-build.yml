@@ -1,0 +1,181 @@
+name: Reusable Android Build
+
+on:
+  workflow_call:
+    inputs:
+      variant:
+        description: Android build variant
+        required: false
+        default: debug
+        type: string
+      upload-artifact:
+        description: Upload the APK as a workflow artifact
+        required: false
+        default: false
+        type: boolean
+      artifact-name:
+        description: Workflow artifact name
+        required: false
+        default: android-build
+        type: string
+      staging-release-tag:
+        description: Draft release tag used for cross-job package handoff
+        required: false
+        default: ''
+        type: string
+      cache-read-only:
+        description: Keep the Gradle cache read-only
+        required: false
+        default: false
+        type: boolean
+      require-signing:
+        description: Fail unless the release APK is signed
+        required: false
+        default: false
+        type: boolean
+    secrets:
+      GRADLE_ENCRYPTION_KEY:
+        required: false
+      KEYSTORE_PATH:
+        required: false
+      KEYSTORE_PASSWORD:
+        required: false
+      KEY_ALIAS:
+        required: false
+      KEY_PASSWORD:
+        required: false
+
+jobs:
+  build:
+    name: APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Validate build configuration
+        id: config
+        shell: bash
+        env:
+          BUILD_VARIANT: ${{ inputs.variant }}
+        run: |
+          set -euo pipefail
+          if [[ "$BUILD_VARIANT" != "debug" && "$BUILD_VARIANT" != "release" ]]; then
+            echo "Unsupported Android variant: $BUILD_VARIANT" >&2
+            exit 1
+          fi
+
+          version=""
+          while IFS='=' read -r key value; do
+            if [[ "$key" == "appVersion" ]]; then
+              version="$value"
+              break
+            fi
+          done < gradle.properties
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-a[0-9]+)?$ ]] || {
+            echo "Invalid appVersion: $version" >&2
+            exit 1
+          }
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare CI Gradle
+        uses: ./.github/actions/prepare-ci-gradle
+        with:
+          cache-scope: android-${{ inputs.variant }}
+          cache-read-only: ${{ inputs.cache-read-only }}
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+          persist-configuration-cache: ${{ inputs.variant != 'release' }}
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Prepare Android signing
+        if: inputs.variant == 'release'
+        id: signing
+        uses: ./.github/actions/prepare-android-signing
+        env:
+          KEYSTORE_PATH: ${{ secrets.KEYSTORE_PATH }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+      - name: Require Android signing
+        if: inputs.variant == 'release' && inputs.require-signing && steps.signing.outputs.signing_available != 'true'
+        shell: bash
+        run: |
+          echo "Android release signing credentials are required" >&2
+          exit 1
+
+      - name: Build APK
+        shell: bash
+        env:
+          BUILD_VARIANT: ${{ inputs.variant }}
+          KEYSTORE_PATH: ${{ steps.signing.outputs.keystore_path }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          extra_args=()
+          if [[ "$BUILD_VARIANT" == "release" ]]; then
+            task=":androidApp:assembleRelease"
+            extra_args=(--no-configuration-cache)
+            extra_args+=(-x :androidApp:lintVitalRelease)
+          else
+            task=":androidApp:assembleDebug"
+          fi
+          ./gradlew "$task" --no-daemon "${extra_args[@]}"
+
+      - name: Collect APK
+        id: apk
+        shell: bash
+        env:
+          BUILD_VARIANT: ${{ inputs.variant }}
+          APP_VERSION: ${{ steps.config.outputs.version }}
+        run: |
+          set -euo pipefail
+          files=(androidApp/build/outputs/apk/"$BUILD_VARIANT"/*.apk)
+          test -f "${files[0]}" || { echo "Android APK was not produced" >&2; exit 1; }
+          test "${#files[@]}" -eq 1 || { echo "Expected one Android APK, found ${#files[@]}" >&2; exit 1; }
+          mkdir -p dist
+          if [[ "$BUILD_VARIANT" == "release" ]]; then
+            output="dist/lampcord-android-${APP_VERSION}.apk"
+          else
+            output="dist/lampcord-android-${APP_VERSION}-debug.apk"
+          fi
+          cp "${files[0]}" "$output"
+          echo "path=$output" >> "$GITHUB_OUTPUT"
+
+      - name: Verify APK signature
+        if: inputs.variant == 'release' && inputs.require-signing
+        shell: bash
+        env:
+          APK_PATH: ${{ steps.apk.outputs.path }}
+        run: |
+          set -euo pipefail
+          apksigners=("$ANDROID_HOME"/build-tools/*/apksigner)
+          test -x "${apksigners[-1]}" || { echo "apksigner was not found" >&2; exit 1; }
+          "${apksigners[-1]}" verify --verbose --print-certs "$APK_PATH"
+
+      - name: Upload Android artifact
+        if: inputs.upload-artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: ${{ steps.apk.outputs.path }}
+          if-no-files-found: error
+          retention-days: 4
+
+      - name: Upload Android staging asset
+        if: inputs.staging-release-tag != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STAGING_RELEASE_TAG: ${{ inputs.staging-release-tag }}
+          PACKAGE_PATH: ${{ steps.apk.outputs.path }}
+        run: gh release upload "$STAGING_RELEASE_TAG" "$PACKAGE_PATH" --clobber --repo "$GITHUB_REPOSITORY"

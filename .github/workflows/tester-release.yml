@@ -1,0 +1,415 @@
+name: Tester Release
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - gradle.properties
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Existing alpha appVersion to retry
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tester-release
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Prepare tester release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      should-release: ${{ steps.release.outputs.should-release }}
+      version: ${{ steps.release.outputs.version }}
+      base-sha: ${{ steps.release.outputs.base-sha }}
+    steps:
+      - name: Check out repository history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Resolve release range
+        id: release
+        shell: bash
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          EVENT_NAME: ${{ github.event_name }}
+          REQUESTED_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "Tester releases can only run from the main branch" >&2
+            exit 1
+          fi
+
+          read_version() {
+            while IFS='=' read -r key value; do
+              if [[ "$key" == "appVersion" ]]; then
+                printf '%s' "$value"
+                return
+              fi
+            done
+          }
+
+          is_forward_version() {
+            local previous="$1"
+            local current="$2"
+            local previous_major previous_minor previous_patch previous_alpha
+            local current_major current_minor current_patch current_alpha
+
+            [[ "$previous" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)(-a([0-9]+(\.[0-9]+)*))?$ ]] || return 1
+            previous_major="${BASH_REMATCH[1]}"
+            previous_minor="${BASH_REMATCH[2]}"
+            previous_patch="${BASH_REMATCH[3]}"
+            previous_alpha="${BASH_REMATCH[5]}"
+
+            [[ "$current" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)(-a([0-9]+(\.[0-9]+)*))?$ ]] || return 1
+            current_major="${BASH_REMATCH[1]}"
+            current_minor="${BASH_REMATCH[2]}"
+            current_patch="${BASH_REMATCH[3]}"
+            current_alpha="${BASH_REMATCH[5]}"
+
+            if ((10#$current_major != 10#$previous_major)); then
+              ((10#$current_major > 10#$previous_major))
+              return
+            fi
+            if ((10#$current_minor != 10#$previous_minor)); then
+              ((10#$current_minor > 10#$previous_minor))
+              return
+            fi
+            if ((10#$current_patch != 10#$previous_patch)); then
+              ((10#$current_patch > 10#$previous_patch))
+              return
+            fi
+            [[ -n "$previous_alpha" ]] || return 1
+            [[ -z "$current_alpha" ]] && return 0
+            [[ "$previous_alpha" != "$current_alpha" ]] &&
+              [[ "$(printf '%s\n%s\n' "$previous_alpha" "$current_alpha" | sort -V | tail -n 1)" == "$current_alpha" ]]
+          }
+
+          find_previous_release_base() {
+            local current_version="$1"
+            local search_head="$2"
+            local commit candidate_version previous_version
+
+            while IFS= read -r commit; do
+              candidate_version="$(git show "${commit}:gradle.properties" | read_version)"
+              previous_version="$(git show "${commit}^:gradle.properties" 2>/dev/null | read_version || true)"
+              if is_forward_version "$previous_version" "$candidate_version" &&
+                is_forward_version "$candidate_version" "$current_version"; then
+                printf '%s' "$commit"
+                return
+              fi
+            done < <(git log -G '^appVersion=' --format='%H' "$search_head" -- gradle.properties)
+          }
+
+          version="$(read_version < gradle.properties)"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+-a[0-9]+$ ]]; then
+            {
+              echo "should-release=false"
+              echo "version=$version"
+              echo "base-sha="
+            } >> "$GITHUB_OUTPUT"
+            echo "Skipping tester release for non-alpha appVersion \`$version\`." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            [[ "$REQUESTED_VERSION" == "$version" ]] || {
+              echo "Requested version $REQUESTED_VERSION does not match appVersion $version" >&2
+              exit 1
+            }
+            should_release=true
+          else
+            if [[ -z "$BEFORE_SHA" || "$BEFORE_SHA" =~ ^0+$ ]]; then
+              echo "Unable to compare appVersion on the initial branch push" >&2
+              exit 1
+            fi
+            previous_version="$(git show "$BEFORE_SHA:gradle.properties" | read_version)"
+            if is_forward_version "$previous_version" "$version"; then
+              should_release=true
+            else
+              should_release=false
+              echo "Skipping tester release for non-forward appVersion change from $previous_version to $version." >> "$GITHUB_STEP_SUMMARY"
+            fi
+          fi
+
+          version_commit="$(git log -G '^appVersion=' --format='%H' -1 "$GITHUB_SHA" -- gradle.properties)"
+          base_sha="$(find_previous_release_base "$version" "${version_commit}^")"
+          if [[ -z "$base_sha" ]]; then
+            base_sha="$(git rev-list --max-parents=0 "$GITHUB_SHA")"
+          fi
+
+          {
+            echo "should-release=$should_release"
+            echo "version=$version"
+            echo "base-sha=$base_sha"
+          } >> "$GITHUB_OUTPUT"
+
+          {
+            echo "### Tester release"
+            echo "- Version: \`$version\`"
+            echo "- Commit range: \`${base_sha:0:8}..${GITHUB_SHA:0:8}\`"
+            echo "- Publish: \`$should_release\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  stage:
+    name: Create package staging release
+    if: needs.prepare.outputs.should-release == 'true'
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+    steps:
+      - name: Create draft release
+        id: release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APP_VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          set -euo pipefail
+          tag="tester-package-staging"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release delete "$tag" --yes --repo "$GITHUB_REPOSITORY"
+          fi
+          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${tag}" > /dev/null 2>&1; then
+            gh api --method DELETE "repos/${GITHUB_REPOSITORY}/git/refs/tags/${tag}"
+          fi
+          gh release create "$tag" \
+            --draft \
+            --target "$GITHUB_SHA" \
+            --title "Lampcord $APP_VERSION package staging" \
+            --notes "Temporary package handoff for Actions run $GITHUB_RUN_ID." \
+            --repo "$GITHUB_REPOSITORY"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+  android:
+    name: Android
+    if: needs.prepare.outputs.should-release == 'true'
+    needs:
+      - prepare
+      - stage
+    uses: ./.github/workflows/reusable-android-build.yml
+    permissions:
+      contents: write
+    with:
+      variant: release
+      staging-release-tag: ${{ needs.stage.outputs.tag }}
+      require-signing: true
+    secrets:
+      GRADLE_ENCRYPTION_KEY: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+      KEYSTORE_PATH: ${{ secrets.KEYSTORE_PATH }}
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+      KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+  linux:
+    name: Linux
+    if: needs.prepare.outputs.should-release == 'true'
+    needs:
+      - prepare
+      - stage
+    uses: ./.github/workflows/reusable-desktop-linux.yml
+    permissions:
+      contents: write
+    with:
+      staging-release-tag: ${{ needs.stage.outputs.tag }}
+    secrets:
+      GRADLE_ENCRYPTION_KEY: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+
+  publish:
+    name: Publish tester release
+    if: needs.prepare.outputs.should-release == 'true'
+    needs:
+      - prepare
+      - stage
+      - android
+      - linux
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - name: Check out repository history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Download staged packages
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STAGING_RELEASE_TAG: ${{ needs.stage.outputs.tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          gh release download "$STAGING_RELEASE_TAG" --dir release-assets --repo "$GITHUB_REPOSITORY"
+
+      - name: Validate publication inputs
+        shell: bash
+        env:
+          APP_VERSION: ${{ needs.prepare.outputs.version }}
+          PIXELDRAIN_API_KEY: ${{ secrets.PIXELDRAIN_API_KEY }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_TESTER_WEBHOOK_URL }}
+        run: |
+          set -euo pipefail
+          test -n "$PIXELDRAIN_API_KEY" || { echo "PIXELDRAIN_API_KEY is not configured" >&2; exit 1; }
+          test -n "$DISCORD_WEBHOOK_URL" || { echo "DISCORD_TESTER_WEBHOOK_URL is not configured" >&2; exit 1; }
+
+          expected=(
+            "release-assets/lampcord-android-${APP_VERSION}.apk"
+            "release-assets/lampcord-desktop-linux-x64-${APP_VERSION}.AppImage"
+          )
+          for file in "${expected[@]}"; do
+            test -f "$file" || { echo "Missing release artifact: $file" >&2; exit 1; }
+          done
+
+      - name: Generate full changelog
+        shell: bash
+        env:
+          BASE_SHA: ${{ needs.prepare.outputs.base-sha }}
+        run: |
+          set -euo pipefail
+          git log "$BASE_SHA..$GITHUB_SHA" > release-assets/CHANGELOG.md
+
+      - name: Create release metadata
+        shell: bash
+        env:
+          APP_VERSION: ${{ needs.prepare.outputs.version }}
+          BASE_SHA: ${{ needs.prepare.outputs.base-sha }}
+        run: |
+          set -euo pipefail
+          built_at="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          jq -n \
+            --arg version "$APP_VERSION" \
+            --arg commit "$GITHUB_SHA" \
+            --arg base_commit "$BASE_SHA" \
+            --arg actor "$GITHUB_ACTOR" \
+            --arg built_at "$built_at" \
+            --arg run_url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            '{version: $version, commit: $commit, baseCommit: $base_commit, actor: $actor, builtAt: $built_at, runUrl: $run_url}' \
+            > "release-assets/lampcord-${APP_VERSION}-build-info.json"
+          (
+            cd release-assets
+            sha256sum -- * > SHA256SUMS
+          )
+
+      - name: Upload Android APK to Pixeldrain
+        id: pixeldrain-android
+        uses: ./.github/actions/upload-pixeldrain
+        env:
+          PIXELDRAIN_API_KEY: ${{ secrets.PIXELDRAIN_API_KEY }}
+        with:
+          file-path: release-assets/lampcord-android-${{ needs.prepare.outputs.version }}.apk
+
+      - name: Upload Linux AppImage to Pixeldrain
+        id: pixeldrain-linux
+        uses: ./.github/actions/upload-pixeldrain
+        env:
+          PIXELDRAIN_API_KEY: ${{ secrets.PIXELDRAIN_API_KEY }}
+        with:
+          file-path: release-assets/lampcord-desktop-linux-x64-${{ needs.prepare.outputs.version }}.AppImage
+
+      - name: Upload checksums to Pixeldrain
+        id: pixeldrain-checksums
+        uses: ./.github/actions/upload-pixeldrain
+        env:
+          PIXELDRAIN_API_KEY: ${{ secrets.PIXELDRAIN_API_KEY }}
+        with:
+          file-path: release-assets/SHA256SUMS
+          upload-filename: lampcord-${{ needs.prepare.outputs.version }}-SHA256SUMS.txt
+
+      - name: Notify testers on Discord
+        shell: bash
+        env:
+          APP_VERSION: ${{ needs.prepare.outputs.version }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_TESTER_WEBHOOK_URL }}
+          ANDROID_URL: ${{ steps.pixeldrain-android.outputs.pixeldrain_url }}
+          LINUX_URL: ${{ steps.pixeldrain-linux.outputs.pixeldrain_url }}
+          CHECKSUMS_URL: ${{ steps.pixeldrain-checksums.outputs.pixeldrain_url }}
+        run: |
+          set -euo pipefail
+          
+          role1="1534704702585966642"
+          role2="1534740463481913415"
+
+          downloads="$(printf '%s\n%s\n%s' \
+            "[Android]($ANDROID_URL)" \
+            "[Linux x64]($LINUX_URL)" \
+            "[SHA-256 checksums]($CHECKSUMS_URL)")"
+          run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          timestamp="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+
+          jq -n \
+            --arg content "<@&$role1> <@&$role2>" \
+            --arg role1 "$role1" \
+            --arg role2 "$role2" \
+            --arg title "Lampcord $APP_VERSION is ready for testing" \
+            --arg downloads "$downloads" \
+            --arg build "[$GITHUB_SHA]($run_url) triggered by $GITHUB_ACTOR" \
+            --arg timestamp "$timestamp" \
+            '{
+              content: $content,
+              allowed_mentions: {parse: [], roles: [$role1, $role2]},
+              embeds: [{
+                title: $title,
+                color: 5793266,
+                fields: [
+                  {name: "Downloads", value: $downloads},
+                  {name: "Build", value: $build}
+                ],
+                timestamp: $timestamp
+              }]
+            }' > discord-payload.json
+
+          curl \
+            --fail \
+            --silent \
+            --show-error \
+            --retry 3 \
+            -H "Content-Type: application/json" \
+            --data-binary @discord-payload.json \
+            --output /dev/null \
+            "$DISCORD_WEBHOOK_URL"
+
+  cleanup-staging:
+    name: Clean up package staging release
+    if: always() && needs.prepare.outputs.should-release == 'true'
+    needs:
+      - prepare
+      - stage
+      - android
+      - linux
+      - publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: Delete package staging release
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STAGING_RELEASE_TAG: tester-package-staging
+        run: |
+          set -euo pipefail
+          if gh release view "$STAGING_RELEASE_TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release delete "$STAGING_RELEASE_TAG" --yes --repo "$GITHUB_REPOSITORY"
+          fi
+          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${STAGING_RELEASE_TAG}" > /dev/null 2>&1; then
+            gh api --method DELETE "repos/${GITHUB_REPOSITORY}/git/refs/tags/${STAGING_RELEASE_TAG}"
+          fi

@@ -1,0 +1,72 @@
+name: Upload to Pixeldrain
+description: Upload a file to Pixeldrain and verify its checksum
+
+inputs:
+  file-path:
+    description: Path to the file to upload
+    required: true
+  upload-filename:
+    description: Optional filename override for the upload
+    required: false
+    default: ''
+outputs:
+  pixeldrain_url:
+    description: Public Pixeldrain download URL
+    value: ${{ steps.upload.outputs.pixeldrain_url }}
+
+runs:
+  using: composite
+  steps:
+    - name: Upload to Pixeldrain
+      id: upload
+      shell: bash
+      env:
+        PIXELDRAIN_API_KEY: ${{ env.PIXELDRAIN_API_KEY }}
+        FILE_PATH: ${{ inputs.file-path }}
+        UPLOAD_FILENAME: ${{ inputs.upload-filename }}
+      run: |
+        set -euo pipefail
+        if [ -z "$PIXELDRAIN_API_KEY" ]; then
+          echo "PIXELDRAIN_API_KEY is not configured"
+          exit 1
+        fi
+        if [ ! -f "$FILE_PATH" ]; then
+          echo "File not found: $FILE_PATH"
+          exit 1
+        fi
+
+        filename="${UPLOAD_FILENAME:-${FILE_PATH##*/}}"
+        encoded_filename="$(jq -rn --arg filename "$filename" '$filename | @uri')"
+        auth="Authorization: Basic $(printf ':%s' "$PIXELDRAIN_API_KEY" | base64)"
+        if ! response="$(curl \
+          --fail-with-body \
+          --silent \
+          --show-error \
+          --connect-timeout 20 \
+          --max-time 600 \
+          -H "$auth" \
+          --upload-file "$FILE_PATH" \
+          "https://pixeldrain.com/api/file/$encoded_filename")"; then
+          echo "Pixeldrain upload failed" >&2
+          exit 1
+        fi
+        FILE_ID="$(jq -er '.id | strings | select(length > 0)' <<< "$response")" || {
+          echo "Pixeldrain returned an invalid upload response" >&2
+          exit 1
+        }
+        [[ "$FILE_ID" =~ ^[A-Za-z0-9_-]+$ ]] || { echo "Pixeldrain returned an invalid file ID" >&2; exit 1; }
+
+        local_hash="$(sha256sum "$FILE_PATH" | cut -d' ' -f1)"
+        local_size="$(wc -c < "$FILE_PATH")"
+        jq -e \
+          --arg name "$filename" \
+          --arg hash "$local_hash" \
+          --argjson size "$local_size" \
+          '.name == $name and .hash_sha256 == $hash and .size == $size' \
+          <<< "$response" > /dev/null || {
+            echo "Pixeldrain file metadata does not match the uploaded file" >&2
+            exit 1
+          }
+
+        echo "Download URL: https://pixeldrain.com/u/$FILE_ID"
+        echo "pixeldrain_url=https://pixeldrain.com/u/$FILE_ID" >> "$GITHUB_OUTPUT"

@@ -22,8 +22,12 @@ android {
         applicationId = "me.lampu.lampcord"
         minSdk = 24
         targetSdk = 37
+        
+        val appVersion = project.property("appVersion") as String
+        versionName = appVersion
+        // Extract version code from appVersion if possible, or just keep it as 1 for now
+        // Metrolist might have a more complex way.
         versionCode = 1
-        versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
