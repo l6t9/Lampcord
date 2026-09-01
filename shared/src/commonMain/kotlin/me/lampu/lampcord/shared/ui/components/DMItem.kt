@@ -15,6 +15,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import me.lampu.lampcord.shared.model.Channel
@@ -105,6 +107,8 @@ fun DMItem(
         me.lampu.lampcord.shared.settings.MessageSpacingMode.SPACIOUS -> 56.dp
     }
 
+    val haptic = LocalHapticFeedback.current
+
     ContextMenu(items = contextMenuItems) {
         Surface(
             modifier = Modifier
@@ -124,7 +128,10 @@ fun DMItem(
                         }
                     }
                 },
-            onClick = { navigationStore.selectChannel(channel, explicitlySelected = true) },
+            onClick = {
+                navigationStore.selectChannel(channel, explicitlySelected = true)
+                haptic.performHapticFeedback(HapticFeedbackType.VirtualKey)
+            },
             color = if (isSelected) 
                 MaterialTheme.colorScheme.surfaceVariant 
             else Color.Transparent,
