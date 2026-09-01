@@ -18,6 +18,10 @@ android {
         }
     }
 
+    fun signingProperty(propertyName: String, environmentName: String): String? =
+        (keystoreProperties[propertyName] as String?)?.takeIf { it.isNotBlank() }
+            ?: System.getenv(environmentName)?.takeIf { it.isNotBlank() }
+
     defaultConfig {
         applicationId = "me.lampu.lampcord"
         minSdk = 24
@@ -34,17 +38,17 @@ android {
 
     signingConfigs {
         create("release") {
-            val storeFileProperty = keystoreProperties["release.storeFile"] as String?
+            val storeFileProperty = signingProperty("release.storeFile", "KEYSTORE_PATH")
             if (storeFileProperty != null) {
                 storeFile = rootProject.file(storeFileProperty)
-                storePassword = keystoreProperties["release.storePassword"] as String?
-                keyAlias = keystoreProperties["release.keyAlias"] as String?
-                keyPassword = keystoreProperties["release.keyPassword"] as String?
+                storePassword = signingProperty("release.storePassword", "KEYSTORE_PASSWORD")
+                keyAlias = signingProperty("release.keyAlias", "KEY_ALIAS")
+                keyPassword = signingProperty("release.keyPassword", "KEY_PASSWORD")
             }
         }
     }
 
-    val hasReleaseSigning = keystoreProperties["release.storeFile"] != null
+    val hasReleaseSigning = signingProperty("release.storeFile", "KEYSTORE_PATH") != null
 
     buildTypes {
         release {
