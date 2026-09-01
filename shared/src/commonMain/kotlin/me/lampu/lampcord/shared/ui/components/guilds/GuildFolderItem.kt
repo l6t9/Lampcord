@@ -51,8 +51,8 @@ import org.koin.compose.koinInject
 import me.lampu.lampcord.shared.settings.Settings
 
 private val FolderIconSize = 48.dp
-private val PreviewIconSize = 22.dp
-private val PreviewIconOffset = 11.dp
+private val PreviewIconSize = 20.dp
+private val PreviewIconOffset = 10.dp
 
 @Composable
 fun FolderPreviewGrid(
@@ -104,7 +104,7 @@ fun PreviewIcon(guild: Guild) {
 
     Surface(
         modifier = Modifier.fillMaxSize(),
-        shape = CircleShape,
+        shape = RoundedCornerShape(6.dp),
         color = MaterialTheme.colorScheme.surfaceVariant,
         shadowElevation = 0.dp,
         tonalElevation = 0.dp

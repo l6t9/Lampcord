@@ -20,11 +20,16 @@ actual fun ContextMenu(
     header: (@Composable () -> Unit)?,
     reactions: (@Composable (onDismiss: () -> Unit) -> Unit)?,
     enabled: Boolean,
+    openRequest: Int,
     content: @Composable () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
     var offset by remember { mutableStateOf(DpOffset.Zero) }
     val density = LocalDensity.current
+
+    LaunchedEffect(openRequest) {
+        if (openRequest > 0) expanded = true
+    }
 
     Box(
         modifier = modifier

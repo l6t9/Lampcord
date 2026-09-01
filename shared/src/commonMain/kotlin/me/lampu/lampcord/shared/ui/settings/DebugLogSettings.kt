@@ -46,7 +46,7 @@ fun DebugLogScreen(onBack: () -> Unit) {
 
     LaunchedEffect(filteredLogs.size, autoScroll) {
         if (autoScroll && filteredLogs.isNotEmpty()) {
-            if (Settings.shared.reduceMotion) listState.scrollToItem(filteredLogs.size - 1) else listState.animateScrollToItem(filteredLogs.size - 1)
+            if (!Settings.shared.reduceMotion) listState.animateScrollToItem(filteredLogs.size - 1) else listState.scrollToItem(filteredLogs.size - 1)
         }
     }
 
@@ -155,7 +155,9 @@ fun DebugLogScreen(onBack: () -> Unit) {
             HorizontalDivider()
 
             LazyColumn(
-                modifier = Modifier.weight(1f).fillMaxWidth(),
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
                 state = listState,
                 contentPadding = PaddingValues(8.dp)
             ) {

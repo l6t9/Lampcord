@@ -381,7 +381,7 @@ fun EmojiPicker(
                                         onSelect = { index ->
                                             selectedGroupIndex = index
                                             coroutineScope.launch {
-                                                if (reduceMotion) gridState.scrollToItem(groupOffsets[index]) else gridState.animateScrollToItem(groupOffsets[index])
+                                                if (!reduceMotion) gridState.animateScrollToItem(groupOffsets[index]) else gridState.scrollToItem(groupOffsets[index])
                                             }
                                         }
                                     )

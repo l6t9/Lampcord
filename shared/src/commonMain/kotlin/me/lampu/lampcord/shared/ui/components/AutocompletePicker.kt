@@ -54,7 +54,7 @@ fun AutocompletePicker(
     
     LaunchedEffect(selectedIndex) {
         if (selectedIndex >= 0 && selectedIndex < items.size) {
-            if (Settings.shared.reduceMotion) scrollState.scrollToItem(selectedIndex) else scrollState.animateScrollToItem(selectedIndex)
+            if (!Settings.shared.reduceMotion) scrollState.animateScrollToItem(selectedIndex) else scrollState.scrollToItem(selectedIndex)
         }
     }
 
@@ -89,8 +89,9 @@ fun AutocompletePicker(
 
             LazyColumn(
                 state = scrollState,
-                modifier = Modifier.fillMaxWidth(),
-                contentPadding = PaddingValues(4.dp),
+                modifier = Modifier
+                    .fillMaxWidth(),
+            contentPadding = PaddingValues(4.dp),
                 verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 itemsIndexed(items, key = { _, item -> item.id }) { index, item ->

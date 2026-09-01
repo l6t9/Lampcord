@@ -27,10 +27,15 @@ actual fun ContextMenu(
     header: (@Composable () -> Unit)?,
     reactions: (@Composable (onDismiss: () -> Unit) -> Unit)?,
     enabled: Boolean,
+    openRequest: Int,
     content: @Composable () -> Unit
 ) {
     var showSheet by remember { mutableStateOf(false) }
     val haptic = LocalHapticFeedback.current
+
+    LaunchedEffect(openRequest) {
+        if (openRequest > 0) showSheet = true
+    }
 
     Box(
         modifier = modifier
@@ -38,14 +43,21 @@ actual fun ContextMenu(
                 if (!enabled) return@pointerInput
                 awaitPointerEventScope {
                     while (true) {
-                        // Message menus must observe the down event before
-                        // ordinary text handlers consume it.
+                        // Observe the final pass so nested controls, such as
+                        // reaction chips, can claim their own long-press.
                         val down = awaitFirstDown(
-                            pass = PointerEventPass.Initial,
+                            pass = PointerEventPass.Final,
                             requireUnconsumed = false
                         )
+                        // Nested controls and link gestures own their press.
+                        // Only unclaimed message text belongs to this menu.
+                        if (down.isConsumed) continue
+                        // A nested gesture can cancel this wait after claiming
+                        // the pointer. Only a real timeout belongs to the
+                        // message context menu.
                         val timedOut = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
-                            waitForUpOrCancellation(pass = PointerEventPass.Initial)
+                            waitForUpOrCancellation(pass = PointerEventPass.Final)
+                                ?: return@withTimeoutOrNull false
                             false
                         } ?: true
                         
@@ -53,12 +65,6 @@ actual fun ContextMenu(
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             showSheet = true
                             down.consume()
-                            // Consume all subsequent events until all pointers are up
-                            while (true) {
-                                val event = awaitPointerEvent(PointerEventPass.Initial)
-                                event.changes.forEach { it.consume() }
-                                if (event.changes.all { !it.pressed }) break
-                            }
                         }
                     }
                 }

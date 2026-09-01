@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
@@ -46,7 +47,21 @@ actual fun VideoPlayer(
     }
 
     DisposableEffect(exoPlayer) {
+        val endedPlaybackListener = object : Player.Listener {
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                if (playbackState == Player.STATE_ENDED && !loop) {
+                    // Leave the ended player paused at the first frame so the
+                    // controller's Play button starts the GIF from the
+                    // beginning instead of trying to resume past its end.
+                    exoPlayer.seekTo(0L)
+                    exoPlayer.pause()
+                }
+            }
+        }
+        exoPlayer.addListener(endedPlaybackListener)
+
         onDispose {
+            exoPlayer.removeListener(endedPlaybackListener)
             exoPlayer.release()
         }
     }

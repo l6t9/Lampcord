@@ -206,7 +206,8 @@ fun ChatArea(
 
         LazyColumn(
             state = scrollState,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize(),
             reverseLayout = true
         ) {
             items(

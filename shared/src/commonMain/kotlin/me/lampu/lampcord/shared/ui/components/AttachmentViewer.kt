@@ -334,7 +334,7 @@ private fun AttachmentCarousel(
     )
     LaunchedEffect(selectedIndex) {
         val target = selectedIndex.coerceIn(0, items.lastIndex)
-        if (Settings.shared.reduceMotion) carouselState.scrollToItem(target) else carouselState.animateScrollToItem(target)
+        if (!Settings.shared.reduceMotion) carouselState.animateScrollToItem(target) else carouselState.scrollToItem(target)
     }
     HorizontalUncontainedCarousel(
         state = carouselState,

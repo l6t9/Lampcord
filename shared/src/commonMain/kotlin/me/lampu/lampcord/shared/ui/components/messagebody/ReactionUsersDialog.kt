@@ -103,7 +103,7 @@ private fun ReactionUsersContent(
                     selected = pagerState.currentPage == index,
                     onClick = { 
                         scope.launch {
-                            if (Settings.shared.reduceMotion) pagerState.scrollToPage(index) else pagerState.animateScrollToPage(index)
+                    if (!Settings.shared.reduceMotion) pagerState.animateScrollToPage(index) else pagerState.scrollToPage(index)
                         }
                     }
                 ) {

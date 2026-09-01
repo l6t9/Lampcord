@@ -141,8 +141,9 @@ fun StickerPicker(
         Column(modifier = Modifier.fillMaxSize()) {
             LazyColumn(
                 state = listState,
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(4.dp)
+                modifier = Modifier
+                    .weight(1f),
+            contentPadding = PaddingValues(4.dp)
             ) {
                 stickerGroups.forEach { pack ->
                     item(key = "header_${pack.id}") {
@@ -242,7 +243,7 @@ fun StickerPicker(
                     onSelect = { index ->
                         selectedGroupIndex = index
                         coroutineScope.launch {
-                            if (Settings.shared.reduceMotion) listState.scrollToItem(groupOffsets[index]) else listState.animateScrollToItem(groupOffsets[index])
+                            if (!Settings.shared.reduceMotion) listState.animateScrollToItem(groupOffsets[index]) else listState.scrollToItem(groupOffsets[index])
                         }
                     }
                 )

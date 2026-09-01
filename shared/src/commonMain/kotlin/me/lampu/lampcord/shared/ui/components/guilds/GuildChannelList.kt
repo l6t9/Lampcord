@@ -149,7 +149,8 @@ fun GuildChannelList(
 
         LazyColumn(
             state = scrollState,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize(),
             contentPadding = PaddingValues(top = if (bannerUrl == null) 48.dp else 0.dp, bottom = 68.dp)
         ) {
             if (allChannelsForThisGuild.isEmpty() && navigationStore.selectedGuild != null) {

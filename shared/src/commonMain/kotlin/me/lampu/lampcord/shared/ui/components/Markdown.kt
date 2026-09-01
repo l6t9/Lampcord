@@ -3,6 +3,7 @@ package me.lampu.lampcord.shared.ui.components
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.material3.LocalContentColor
@@ -20,7 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.ui.input.pointer.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
@@ -193,27 +194,66 @@ fun DiscordMarkdownText(
                 text = annotatedString,
                 modifier = modifier
                     .pointerInput(annotatedString) {
-                        detectTapGestures(
-                            onTap = { position ->
-                                val offset = textLayoutResult?.getOffsetForPosition(position) ?: return@detectTapGestures
-                                annotatedString.getStringAnnotations("URL", offset, offset)
-                                    .firstOrNull()
-                                    ?.let { uriHandler.openUri(it.item) }
-                            },
-                            onLongPress = { position ->
-                                if (getPlatformName() != "android") return@detectTapGestures
-                                val offset = textLayoutResult?.getOffsetForPosition(position) ?: return@detectTapGestures
-                                val url = annotatedString.getStringAnnotations("URL", offset, offset)
-                                    .firstOrNull()
-                                    ?.item
-                                    ?: return@detectTapGestures
-                                contextMenuUrl = url
-                                contextMenuOffset = IntOffset(
-                                    position.x.roundToInt(),
-                                    position.y.roundToInt()
-                                )
+                        if (getPlatformName() == "android") {
+                            awaitEachGesture {
+                                var downEvent: PointerEvent
+                                var down: PointerInputChange?
+                                do {
+                                    downEvent = awaitPointerEvent(PointerEventPass.Main)
+                                    down = downEvent.changes.firstOrNull { it.changedToDown() }
+                                } while (down == null)
+
+                                // Leave mouse secondary-clicks to the pointer
+                                // handler below, which shows the desktop link menu.
+                                if (downEvent.buttons.isSecondaryPressed) return@awaitEachGesture
+
+                                val pressed = down ?: return@awaitEachGesture
+                                val offset = textLayoutResult?.getOffsetForPosition(pressed.position)
+                                val url = offset?.let {
+                                    annotatedString.getStringAnnotations("URL", it, it)
+                                        .firstOrNull()
+                                        ?.item
+                                }
+
+                                // Leave ordinary text untouched so the
+                                // enclosing message context menu can handle it.
+                                if (url == null) return@awaitEachGesture
+
+                                // Link presses are owned by this text gesture
+                                // and must not open the parent message menu.
+                                pressed.consume()
+                                val completedTap = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+                                    while (true) {
+                                        val event = awaitPointerEvent(PointerEventPass.Main)
+                                        val change = event.changes.firstOrNull { it.id == pressed.id }
+                                            ?: continue
+                                        if (change.isConsumed) return@withTimeoutOrNull false
+                                        if (!change.pressed) return@withTimeoutOrNull true
+                                    }
+                                }
+
+                                when {
+                                    completedTap == null -> {
+                                        contextMenuUrl = url
+                                        contextMenuOffset = IntOffset(
+                                            pressed.position.x.roundToInt(),
+                                            pressed.position.y.roundToInt()
+                                        )
+                                    }
+                                    completedTap == true -> uriHandler.openUri(url)
+                                }
                             }
-                        )
+                        } else {
+                            detectTapGestures(
+                                onTap = { position ->
+                                    val offset = textLayoutResult?.getOffsetForPosition(position)
+                                        ?: return@detectTapGestures
+                                    annotatedString.getStringAnnotations("URL", offset, offset)
+                                        .firstOrNull()
+                                        ?.let { uriHandler.openUri(it.item) }
+                                }
+                            )
+                        }
                     }
                     .pointerInput(annotatedString, textLayoutResult) {
                         awaitPointerEventScope {

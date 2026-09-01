@@ -126,6 +126,7 @@ fun MessageItem(
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showCreateThreadDialog by remember { mutableStateOf(false) }
     var showMessageContextMenu by remember { mutableStateOf(false) }
+    var messageLongPressRequest by remember { mutableStateOf(0) }
     
     val currentUser by userStore.currentUser.collectAsState()
     val members by userStore.members.collectAsState()
@@ -315,6 +316,9 @@ fun MessageItem(
             .pointerInput(message.id, tapTapEnabled) {
                 if (!isPreview && tapTapEnabled) {
                     detectTapGestures(
+                        onLongPress = if (getPlatformName() == "android") {
+                            { _ -> messageLongPressRequest++ }
+                        } else null,
                         onDoubleTap = {
                             val isMe = message.author?.id == currentUser?.id
                             if (isMe) {
@@ -392,15 +396,9 @@ fun MessageItem(
                 }
             }
 
-            // On Android, DiscordMarkdownText owns a held link so it can
-            // present link-specific actions. Keep the normal message menu
-            // for all other messages and platforms.
-            val linkOwnsAndroidLongPress = getPlatformName() == "android" &&
-                message.content.contains(Regex("""https?://\S+"""))
-
             ContextMenu(
                 items = contextMenuItems,
-                enabled = !isPreview && !linkOwnsAndroidLongPress,
+                enabled = !isPreview,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 8.dp, end = 8.dp, top = topPadding, bottom = bottomPadding),
@@ -472,7 +470,8 @@ fun MessageItem(
                             }
                         }
                     }
-                } else null
+                } else null,
+                openRequest = messageLongPressRequest
             ) {
                 val guilds by guildStore.guilds.collectAsState()
                 val roleData by remember(message, guilds, navigationStore.selectedGuild, members) {

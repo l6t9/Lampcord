@@ -12,6 +12,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.Message
 import me.lampu.lampcord.shared.state.*
@@ -66,30 +67,30 @@ fun SystemMessage(
                     val randomMessages = listOf("pizzaPre", "slid", "everyoneWelcomePre", "showedUp", "hopped")
                     val selectedMessage = randomMessages[message.id.takeLast(1).toIntOrNull()?.let { it % randomMessages.size } ?: 0]
 
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (selectedMessage.contains("Pre")) {
-                            Text(
-                                text = when (selectedMessage) {
-                                    "pizzaPre" -> "Welcome,"
-                                    "everyoneWelcomePre" -> "Everyone welcome"
-                                    else -> ""
-                                },
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                        }
-
-                        var profilePosition by remember { mutableStateOf(Offset.Zero) }
+                    if (selectedMessage.contains("Pre")) {
                         Text(
-                            text = message.author?.global_name ?: message.author?.username ?: "Unknown User",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier
-                                .onGloballyPositioned { profilePosition = it.positionInRoot() }
-                                .clickable { message.author?.let { profileStore.showProfile(it.id, position = profilePosition) } }
+                            text = when (selectedMessage) {
+                                "pizzaPre" -> "Welcome,"
+                                "everyoneWelcomePre" -> "Everyone welcome"
+                                else -> ""
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
+
+                    var profilePosition by remember { mutableStateOf(Offset.Zero) }
+                    Text(
+                        text = message.author?.global_name ?: message.author?.username ?: "Unknown User",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .onGloballyPositioned { profilePosition = it.positionInRoot() }
+                            .clickable { message.author?.let { profileStore.showProfile(it.id, position = profilePosition) } }
+                    )
 
                     Text(
                         text = when (selectedMessage) {

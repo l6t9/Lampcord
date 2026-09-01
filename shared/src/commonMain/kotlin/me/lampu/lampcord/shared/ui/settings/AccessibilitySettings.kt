@@ -52,20 +52,24 @@ fun AccessibilitySettingsContent(settingsStore: SettingsStore = koinInject()) {
 
         Material3SettingsGroup(
             title = "Motion & Contrast",
-            items = listOf(
-                switchSettingsItem(
-                    title = "Reduced Motion",
-                    description = "Reduces the amount of animation and movement in the UI.",
-                    checked = Settings.shared.reduceMotion,
-                    onCheckedChange = { Settings.shared.reduceMotion = it }
-                ),
-                switchSettingsItem(
-                    title = "High Contrast",
-                    description = "Increases contrast between foreground and background elements.",
-                    checked = false, // TODO
-                    onCheckedChange = { }
+            items = buildList {
+                add(
+                    switchSettingsItem(
+                        title = "Reduced Motion",
+                        description = "Reduces the amount of animation and movement in the UI.",
+                        checked = Settings.shared.reduceMotion,
+                        onCheckedChange = { Settings.shared.reduceMotion = it }
+                    )
                 )
-            )
+                add(
+                    switchSettingsItem(
+                        title = "High Contrast",
+                        description = "Increases contrast between foreground and background elements.",
+                        checked = false, // TODO
+                        onCheckedChange = { }
+                    )
+                )
+            }
         )
 
         Material3SettingsGroup(

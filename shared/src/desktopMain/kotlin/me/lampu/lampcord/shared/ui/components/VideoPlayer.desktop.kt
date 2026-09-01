@@ -74,6 +74,7 @@ actual fun VideoPlayer(
     var isPlaying by remember { mutableStateOf(false) }
     var currentTime by remember { mutableLongStateOf(0L) }
     var duration by remember { mutableLongStateOf(0L) }
+    var hasEnded by remember { mutableStateOf(false) }
     var volume by remember { mutableFloatStateOf(Settings.shared.videoVolume.coerceIn(0f, 1f)) }
     var isResolving by remember { mutableStateOf(true) }
     var loadError by remember { mutableStateOf<String?>(null) }
@@ -90,6 +91,7 @@ actual fun VideoPlayer(
             onEnded = {
                 if (!loop) {
                     isPlaying = false
+                    hasEnded = true
                 }
             }
         )
@@ -102,6 +104,7 @@ actual fun VideoPlayer(
         currentTime = 0L
         duration = 0L
         isPlaying = false
+        hasEnded = false
         val success = withContext(Dispatchers.IO) {
             player.load(url, headers = mapOf("User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")) {
                 currentTime
@@ -124,6 +127,15 @@ actual fun VideoPlayer(
 
     LaunchedEffect(volume) {
         player.setVolume(volume)
+    }
+
+    val togglePlayback = {
+        if (!isPlaying && hasEnded) {
+            player.seekTo(0L)
+            currentTime = 0L
+            hasEnded = false
+        }
+        isPlaying = !isPlaying
     }
 
     DisposableEffect(player) {
@@ -159,7 +171,7 @@ actual fun VideoPlayer(
                 modifier = Modifier
                     .fillMaxSize()
                     .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
-                        isPlaying = !isPlaying
+                        togglePlayback()
                     }
             )
         } else if (isResolving) {
@@ -218,7 +230,7 @@ actual fun VideoPlayer(
                 isPlaying = isPlaying,
                 isHovered = isHovered,
                 compact = compact,
-                onTogglePlay = { isPlaying = !isPlaying }
+                onTogglePlay = togglePlayback
             )
 
             // Metrolist style Bottom Video Controls
@@ -238,10 +250,11 @@ actual fun VideoPlayer(
                     subtitle = subtitle,
                     compact = compact,
                     showSeekBar = !compact || !isPortraitVideo,
-                    onTogglePlay = { isPlaying = !isPlaying },
+                    onTogglePlay = togglePlayback,
                     onSeek = { 
                         val target = (it * duration).toLong()
                         currentTime = target
+                        hasEnded = false
                         player.seekTo(target)
                     },
                     onVolumeChange = {

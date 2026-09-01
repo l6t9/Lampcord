@@ -34,6 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.Embed
+import me.lampu.lampcord.shared.model.EmbedImage
 import me.lampu.lampcord.shared.model.EmbedVideo
 import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.ui.components.AsyncImage
@@ -75,6 +76,29 @@ fun EmbedView(
                 navigationStore.openAttachmentViewer(listOf(embed.video), 0)
             },
             modifier = Modifier.padding(vertical = 4.dp).widthIn(max = 500.dp).fillMaxWidth().aspectRatio(embed.video.aspectRatio ?: 1f)
+        )
+        return
+    }
+
+    // Some providers (including Tenor) only return the GIF as the embed URL,
+    // or return a still preview in embed.image. Always prefer the actual GIF
+    // URL when one is available.
+    val gifUrl = listOfNotNull(
+        embed.image?.url,
+        embed.image?.proxy_url,
+        embed.url
+    ).firstOrNull { it.isGifUrl() }
+    if (gifUrl != null) {
+        val gifImage = embed.image?.copy(url = gifUrl, proxy_url = gifUrl)
+            ?: EmbedImage(url = gifUrl, proxy_url = gifUrl)
+        AttachmentImage(
+            media = gifImage,
+            onClick = { navigationStore.openAttachmentViewer(listOf(gifImage), 0) },
+            modifier = Modifier
+                .padding(vertical = 4.dp)
+                .widthIn(max = 400.dp)
+                .fillMaxWidth()
+                .aspectRatio(gifImage.aspectRatio ?: 1f)
         )
         return
     }
@@ -167,4 +191,9 @@ fun EmbedView(
             }
         }
     }
+}
+
+private fun String?.isGifUrl(): Boolean {
+    val path = this?.substringBefore('?')?.substringBefore('#') ?: return false
+    return path.endsWith(".gif", ignoreCase = true)
 }

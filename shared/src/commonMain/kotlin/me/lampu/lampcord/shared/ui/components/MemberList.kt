@@ -70,7 +70,9 @@ fun MemberList(
             shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
         ) {
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                state = scrollState,
+                modifier = Modifier
+                    .fillMaxSize(),
                 contentPadding = PaddingValues(top = 8.dp, bottom = 52.dp)
             ) {
                 stickyHeader {
@@ -161,7 +163,8 @@ fun MemberList(
             Box(modifier = Modifier.fillMaxSize()) {
                 LazyColumn(
                     state = scrollState,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 52.dp)
                 ) {
                         stickyHeader {

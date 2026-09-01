@@ -264,7 +264,12 @@ fun SettingsSubScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .then(if (contentScrollable) Modifier.verticalScroll(scrollState) else Modifier)
+                .then(
+                    if (contentScrollable) {
+                        Modifier
+                            .verticalScroll(scrollState)
+                    } else Modifier
+                )
                 .padding(vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {

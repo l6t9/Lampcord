@@ -92,7 +92,9 @@ fun DMList(
         Box(modifier = Modifier.fillMaxSize()) {
             LazyColumn(
                 state = scrollState,
-                modifier = Modifier.fillMaxSize().padding(top = 8.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = 8.dp),
                 contentPadding = PaddingValues(bottom = 68.dp)
             ) {
                 if (privateChannels.isEmpty()) {
