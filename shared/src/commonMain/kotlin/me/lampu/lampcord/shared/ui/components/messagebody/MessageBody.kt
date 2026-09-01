@@ -48,9 +48,9 @@ fun MessageAttachments(
     content: String? = null,
     navigationStore: NavigationStore = koinInject()
 ) {
-    val images = attachments.filter { it.content_type?.startsWith("image/") == true }
-    val videos = attachments.filter { it.content_type?.startsWith("video/") == true }
-    val otherFiles = attachments.filter { it.content_type?.startsWith("image/") != true && it.content_type?.startsWith("video/") != true }
+    val images = attachments.filter { it.isImage() }
+    val videos = attachments.filter { it.isVideo() }
+    val otherFiles = attachments.filter { !it.isImage() && !it.isVideo() }
     
     val viewableItems: List<DiscordMedia> = images + videos
 

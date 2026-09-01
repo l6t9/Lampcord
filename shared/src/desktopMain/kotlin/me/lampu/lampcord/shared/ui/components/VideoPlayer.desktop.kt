@@ -32,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import me.lampu.lampcord.shared.model.Attachment
@@ -92,6 +93,12 @@ actual fun VideoPlayer(
                 if (!loop) {
                     isPlaying = false
                     hasEnded = true
+                }
+            },
+            onError = { message ->
+                if (loadError == null) {
+                    loadError = message
+                    isPlaying = false
                 }
             }
         )
@@ -228,7 +235,6 @@ actual fun VideoPlayer(
         if (showControls) {
             HoverablePlayControls(
                 isPlaying = isPlaying,
-                isHovered = isHovered,
                 compact = compact,
                 onTogglePlay = togglePlayback
             )
@@ -272,12 +278,11 @@ actual fun VideoPlayer(
 @Composable
 private fun HoverablePlayControls(
     isPlaying: Boolean,
-    isHovered: Boolean,
     compact: Boolean,
     onTogglePlay: () -> Unit
 ) {
     AnimatedVisibility(
-        visible = isHovered && !isPlaying,
+        visible = !isPlaying,
         enter = if (Settings.shared.reduceMotion) EnterTransition.None else fadeIn(),
         exit = if (Settings.shared.reduceMotion) ExitTransition.None else fadeOut(),
     ) {
@@ -365,7 +370,10 @@ private fun BottomVideoControls(
                     Text(
                         text = "${formatDuration(currentTime)} / ${formatDuration(duration, unknownWhenZero = true)}",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color.White.copy(alpha = 0.9f)
+                        fontSize = if (compact) 10.sp else 11.sp,
+                        color = Color.White.copy(alpha = 0.9f),
+                        maxLines = 1,
+                        softWrap = false
                     )
 
                     if (showSeekBar) {
@@ -488,8 +496,8 @@ private fun VideoConnectedButtonGroup(
     onFullscreenClick: (() -> Unit)?,
     compact: Boolean
 ) {
-    val groupHeight = if (compact) 32.dp else 40.dp
-    val iconSize = if (compact) 18.dp else 20.dp
+    val groupHeight = 40.dp
+    val iconSize = if (compact) 22.dp else 20.dp
     val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
     var showVolumeMenu by remember { mutableStateOf(false) }
 
@@ -516,7 +524,7 @@ private fun VideoConnectedButtonGroup(
         Box {
             VideoActionButton(
                 onClick = { showVolumeMenu = !showVolumeMenu },
-                modifier = Modifier.size(groupHeight),
+                modifier = Modifier.size(if (compact) 40.dp else groupHeight),
                 contentDescription = "Volume"
             ) {
                 Icon(volumeIcon, null, modifier = Modifier.size(iconSize))
@@ -595,6 +603,7 @@ private class DesktopVideoPlayer(
     private val repeat: Boolean,
     private val onFrame: (ImageBitmap) -> Unit,
     private val onEnded: () -> Unit = {},
+    private val onError: (String) -> Unit = {},
     private val onSeekLanded: ((Long) -> Unit)? = null,
 ) {
     private var grabber: FFmpegFrameGrabber? = null
@@ -605,6 +614,9 @@ private class DesktopVideoPlayer(
 
     @Volatile
     private var isPaused = false
+
+    @Volatile
+    private var closeRequested = true
 
     @Volatile
     private var pendingSeekMs: Long? = null
@@ -779,6 +791,7 @@ private class DesktopVideoPlayer(
     fun play(startPaused: Boolean = false) {
         if (decodeThread?.isAlive == true) return
         val g = grabber ?: return
+        closeRequested = false
         isRunning = true
         isPaused = startPaused
         pausedAtNanos = 0L
@@ -810,10 +823,6 @@ private class DesktopVideoPlayer(
                         videoTimestampOffsetMs = null
                     }
                     while (isRunning) {
-                        if (isPaused && initialVideoFrameRendered) {
-                            Thread.sleep(10)
-                            continue
-                        }
                         val seekTarget = pendingSeekMs
                         if (seekTarget != null) {
                             pendingSeekMs = null
@@ -831,6 +840,10 @@ private class DesktopVideoPlayer(
                             lastVideoTimestampMs = -1L
                             videoTimestampOffsetMs = null
                             initialVideoFrameRendered = false
+                        }
+                        if (isPaused && initialVideoFrameRendered) {
+                            Thread.sleep(10)
+                            continue
                         }
                         val frame = g.grabFrame(true, true, true, false, false)
                         if (frame == null) {
@@ -864,9 +877,12 @@ private class DesktopVideoPlayer(
                     println("[VideoPlayer] Interrupted: ${e.message}")
                 } catch (e: Exception) {
                     println("[VideoPlayer] Exception in decode loop: ${e.stackTraceToString()}")
+                    if (!closeRequested) {
+                        onError("Unable to play this video")
+                    }
                 } finally {
                     isRunning = false
-                    onEnded()
+                    if (!closeRequested) onEnded()
                 }
             }.apply {
                 priority = Thread.NORM_PRIORITY
@@ -936,6 +952,7 @@ private class DesktopVideoPlayer(
     }
 
     fun close() {
+        closeRequested = true
         isRunning = false
         isPaused = false
         decodeThread?.interrupt()

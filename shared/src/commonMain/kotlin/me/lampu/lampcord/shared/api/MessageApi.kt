@@ -185,6 +185,12 @@ class MessageApi(private val rest: RestClient) {
             name.endsWith(".mp4", true) -> ContentType.Video.MP4
             name.endsWith(".mov", true) -> ContentType.Video.QuickTime
             name.endsWith(".webm", true) -> ContentType.Video.Any
+            name.endsWith(".m4a", true) -> ContentType.parse("audio/mp4")
+            name.endsWith(".aac", true) -> ContentType.parse("audio/aac")
+            name.endsWith(".mp3", true) -> ContentType.parse("audio/mpeg")
+            name.endsWith(".ogg", true) || name.endsWith(".opus", true) -> ContentType.parse("audio/ogg")
+            name.endsWith(".wav", true) -> ContentType.parse("audio/wav")
+            name.endsWith(".3gp", true) -> ContentType.parse("audio/3gpp")
             else -> ContentType.Application.OctetStream
         }
     }

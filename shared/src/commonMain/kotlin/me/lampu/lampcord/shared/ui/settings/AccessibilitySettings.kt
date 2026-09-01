@@ -56,7 +56,7 @@ fun AccessibilitySettingsContent(settingsStore: SettingsStore = koinInject()) {
                 add(
                     switchSettingsItem(
                         title = "Reduced Motion",
-                        description = "Reduces the amount of animation and movement in the UI.",
+                        description = "Reduces interface motion and prevents GIFs, animated emojis, stickers, and avatars from playing automatically.",
                         checked = Settings.shared.reduceMotion,
                         onCheckedChange = { Settings.shared.reduceMotion = it }
                     )

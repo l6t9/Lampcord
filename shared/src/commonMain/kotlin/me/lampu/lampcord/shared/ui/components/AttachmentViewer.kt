@@ -77,6 +77,10 @@ fun AttachmentViewer(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
+            // MainActivity draws edge-to-edge. Keep fullscreen media and its
+            // controls above the Android navigation bar while the background
+            // still covers the entire window.
+            .navigationBarsPadding()
             .focusRequester(focusRequester)
             .focusable()
             .onPreviewKeyEvent { event ->

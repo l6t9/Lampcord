@@ -34,8 +34,18 @@ interface DiscordMedia {
             }
         }
 
-    fun isVideo(): Boolean = mediaKind == MediaKind.VIDEO
+    fun isVideo(): Boolean = mediaKind == MediaKind.VIDEO && !isAudioFilename()
     fun isImage(): Boolean = mediaKind == MediaKind.IMAGE
+    fun isAudio(): Boolean = mediaKind == MediaKind.AUDIO || isAudioFilename()
+
+    private fun isAudioFilename(): Boolean =
+        (this as? Attachment)?.filename?.substringAfterLast('.', "")?.lowercase() in audioExtensions
+
+    private companion object {
+        val audioExtensions = setOf(
+            "aac", "flac", "m4a", "mp3", "oga", "ogg", "opus", "wav", "weba"
+        )
+    }
     fun isGifv(): Boolean {
         val u = (url ?: proxy_url)?.lowercase() ?: return false
         return u.contains("klipy.com") || u.contains(".gifv") || u.contains("tenor.com")

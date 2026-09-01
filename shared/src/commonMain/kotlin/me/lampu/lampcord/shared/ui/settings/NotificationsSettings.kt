@@ -66,7 +66,7 @@ fun NotificationsSettingsContent(settingsStore: SettingsStore = koinInject()) {
             items = listOf(
                 switchSettingsItem(
                     title = "Show In-App Notifications",
-                    description = "Display banners for new messages while using the app.",
+                    description = "Display banners in the app when someone mentions or pings you.",
                     checked = settingsStore.showInAppNotifications,
                     onCheckedChange = { settingsStore.showInAppNotifications = it }
                 )

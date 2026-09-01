@@ -16,11 +16,13 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import me.lampu.lampcord.shared.model.ConnectedAccount
+import me.lampu.lampcord.shared.model.Gif
 import me.lampu.lampcord.shared.model.GuildFolder
 import me.lampu.lampcord.shared.model.Relationship
 import me.lampu.lampcord.shared.model.User
 import me.lampu.lampcord.shared.model.UserProfile
 import me.lampu.lampcord.shared.model.UserSettings
+import me.lampu.lampcord.shared.model.decodeFavoriteGifs
 import me.lampu.lampcord.shared.utils.Logging
 
 /**
@@ -41,6 +43,10 @@ class UserApi(private val rest: RestClient) {
             Logging.e("Settings", "Error fetching user settings proto: ${e.message}")
             null
         }
+    }
+
+    suspend fun getFavoriteGifs(): List<Gif> {
+        return getUserSettingsProto(type = 2)?.let(::decodeFavoriteGifs).orEmpty()
     }
 
     suspend fun getUserProfile(userId: String, guildId: String? = null): UserProfile? {

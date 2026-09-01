@@ -480,6 +480,16 @@ fun ChatInputBar(
                                             modifier = Modifier.size(iconSize)
                                         )
                                     }
+
+                                    if (getPlatformName() == "android") {
+                                        VoiceMessageRecorder(
+                                            enabled = true,
+                                            buttonSize = buttonSize,
+                                            iconSize = iconSize,
+                                            modifier = Modifier.padding(start = 4.dp),
+                                            onRecordingReady = { messageStore.pendingFiles.add(it) }
+                                        )
+                                    }
                                     
                                     Spacer(modifier = Modifier.width(4.dp))
                                 }

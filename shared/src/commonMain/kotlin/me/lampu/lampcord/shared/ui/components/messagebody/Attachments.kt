@@ -20,6 +20,7 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.*
 import me.lampu.lampcord.shared.ui.components.AsyncImage
+import me.lampu.lampcord.shared.ui.components.AudioPlayer
 import me.lampu.lampcord.shared.ui.components.VideoPlayer
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.SnackbarManager
@@ -255,6 +256,7 @@ fun MessageMosaic(items: List<DiscordMedia>, onOpenItem: ((Int) -> Unit)? = null
 fun FileAttachmentView(attachment: Attachment) {
     var hasPermission by remember { mutableStateOf<Boolean?>(null) }
     RequestMediaPermissions { granted -> hasPermission = granted }
+    val isAudio = attachment.isAudio()
 
     Surface(
         modifier = Modifier.padding(vertical = 4.dp).widthIn(max = 400.dp).fillMaxWidth(),
@@ -262,16 +264,22 @@ fun FileAttachmentView(attachment: Attachment) {
         shape = RoundedCornerShape(8.dp),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
-        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(imageVector = Icons.Filled.Description, contentDescription = null, modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.primary)
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(text = attachment.filename, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                Text(text = "${attachment.size / 1024} KB", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-                    val scope = rememberCoroutineScope()
-                    var isDownloading by remember { mutableStateOf(false) }
-            IconButton(onClick = {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = if (isAudio) Icons.Filled.MusicNote2 else Icons.Filled.Description,
+                    contentDescription = null,
+                    modifier = Modifier.size(32.dp),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = attachment.filename, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                    Text(text = "${attachment.size / 1024} KB", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                val scope = rememberCoroutineScope()
+                var isDownloading by remember { mutableStateOf(false) }
+                IconButton(onClick = {
                         if (hasPermission == false) {
                             showToast("Storage permission required to download")
                             return@IconButton
@@ -292,12 +300,19 @@ fun FileAttachmentView(attachment: Attachment) {
                                 }
                             } else showToast("Download failed")
                         }
-            }) {
+                    }) {
                         if (isDownloading) {
                             CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                         } else {
                             Icon(imageVector = Icons.Filled.Download, contentDescription = "Download", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
+                }
+            }
+            if (isAudio) {
+                AudioPlayer(
+                    url = attachment.url,
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                )
             }
         }
     }

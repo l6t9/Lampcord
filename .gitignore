@@ -13,6 +13,12 @@ build/
 # Downloaded Material Symbols fonts (fetched by scripts/generate_material_symbols.py)
 /scripts/.fonts
 
+# Local decompiled Discord reference archive
+/discord-jadx-main.zip
+
+# Local agent instructions
+/AGENTS.md
+
 # Signing keys
 *.keystore
 *.jks
