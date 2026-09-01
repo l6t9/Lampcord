@@ -9,8 +9,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.rememberCoroutineScope
-import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -23,13 +21,6 @@ import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.AudioPlayer
 import me.lampu.lampcord.shared.ui.components.VideoPlayer
 import me.lampu.lampcord.shared.ui.icons.Icons
-import me.lampu.lampcord.shared.utils.SnackbarManager
-import me.lampu.lampcord.shared.utils.openDownloadsFolderAndSelect
-import me.lampu.lampcord.shared.utils.sanitizeFilename
-import me.lampu.lampcord.shared.utils.ensureUniqueDownloadFilename
-import me.lampu.lampcord.shared.utils.downloadToDownloads
-import me.lampu.lampcord.shared.utils.showToast
-import me.lampu.lampcord.shared.utils.RequestMediaPermissions
 import me.lampu.lampcord.shared.utils.getPlatformName
 import me.lampu.lampcord.shared.settings.Settings
 
@@ -47,7 +38,6 @@ fun AttachmentImage(
     // playback path; otherwise the image can be treated as already playing
     // and lose its click target.
     val isGifv = isVideo && media.isGifv()
-    val isAndroid = getPlatformName() == "android"
     val reduceMotion = Settings.shared.reduceMotion
     var isInlinePlaying by remember(isGifv, reduceMotion) { mutableStateOf(isGifv && !reduceMotion) }
     
@@ -82,7 +72,7 @@ fun AttachmentImage(
     } else {
         Modifier
     }
-    val inlineFullscreenClick = if (isGifv && !isAndroid) null else onClick?.let { openFullscreen ->
+    val inlineFullscreenClick = if (isGifv) null else onClick?.let { openFullscreen ->
         {
             // The fullscreen viewer creates its own decoder. Remove this
             // inline instance first so both audio streams never play at once.
@@ -100,9 +90,10 @@ fun AttachmentImage(
         VideoPlayer(
             url = url,
             loop = isGifv && !reduceMotion,
-            // Android's PlayerView otherwise exposes GIF/video previews as
-            // an unlabelled seek bar with no fullscreen control.
-            showControls = !isGifv || reduceMotion || isAndroid,
+            // GIFV media loops like an image and must not expose video
+            // playback controls such as a seek bar.
+            showControls = !isGifv || reduceMotion,
+            showSeekBar = !isGifv,
             title = title ?: (media as? Attachment)?.filename,
             subtitle = subtitle ?: (media as? Attachment)?.content_type,
             compact = true,
@@ -254,8 +245,6 @@ fun MessageMosaic(items: List<DiscordMedia>, onOpenItem: ((Int) -> Unit)? = null
 
 @Composable
 fun FileAttachmentView(attachment: Attachment) {
-    var hasPermission by remember { mutableStateOf<Boolean?>(null) }
-    RequestMediaPermissions { granted -> hasPermission = granted }
     val isAudio = attachment.isAudio()
 
     Surface(
@@ -277,35 +266,16 @@ fun FileAttachmentView(attachment: Attachment) {
                     Text(text = attachment.filename, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                     Text(text = "${attachment.size / 1024} KB", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                val scope = rememberCoroutineScope()
-                var isDownloading by remember { mutableStateOf(false) }
+                val uriHandler = LocalUriHandler.current
+                val downloadUrl = attachment.url.ifBlank { attachment.proxy_url }
                 IconButton(onClick = {
-                        if (hasPermission == false) {
-                            showToast("Storage permission required to download")
-                            return@IconButton
-                        }
-                        scope.launch {
-                            isDownloading = true
-                            val raw = attachment.filename
-                            val sanitized = sanitizeFilename(raw)
-                            val filename = ensureUniqueDownloadFilename(sanitized)
-                            val ok = downloadToDownloads(attachment.url, filename)
-                            isDownloading = false
-                            if (ok) {
-                                // show in-app snackbar with Open action
-                                try {
-                                    SnackbarManager.show("Downloaded $filename to Downloads", "Open") { openDownloadsFolderAndSelect(filename) }
-                                } catch (e: Exception) {
-                                    showToast("Downloaded $filename to Downloads")
-                                }
-                            } else showToast("Download failed")
-                        }
+                        uriHandler.openUri(downloadUrl)
                     }) {
-                        if (isDownloading) {
-                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                        } else {
-                            Icon(imageVector = Icons.Filled.Download, contentDescription = "Download", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
+                        Icon(
+                            imageVector = Icons.Filled.OpenInNew,
+                            contentDescription = "Open file in browser",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                 }
             }
             if (isAudio) {

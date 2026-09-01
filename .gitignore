@@ -14,7 +14,7 @@ build/
 /scripts/.fonts
 
 # Local decompiled Discord reference archive
-/discord-jadx-main.zip
+/discord-jadx-main
 
 # Local agent instructions
 /AGENTS.md

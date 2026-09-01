@@ -38,10 +38,8 @@ class GuildStore(
         Logging.i("GuildStore", "Setting ${newGuilds.size} guilds")
         newGuilds.forEach { entityStore.updateGuild(it) }
         val sortedIds = if (order.isNotEmpty()) {
-            newGuilds.map { it.id }.sortedBy { id ->
-                val pos = order.indexOf(id)
-                if (pos == -1) Int.MAX_VALUE else pos
-            }
+            val orderIndex = order.withIndex().associate { it.value to it.index }
+            newGuilds.map { it.id }.sortedWith(compareBy({ orderIndex[it] ?: -1 }, { it }))
         } else {
             // Mirror Discord's StoreGuildsSorted ordering:
             // 1) unmuted before muted
@@ -74,10 +72,8 @@ class GuildStore(
         if (guild.id !in _guildIds.value) {
             val newList = _guildIds.value + guild.id
             _guildIds.value = if (order.isNotEmpty()) {
-                newList.sortedBy { id ->
-                    val pos = order.indexOf(id)
-                    if (pos == -1) Int.MAX_VALUE else pos
-                }
+                val orderIndex = order.withIndex().associate { it.value to it.index }
+                newList.sortedWith(compareBy({ orderIndex[it] ?: -1 }, { it }))
             } else {
                 // Recompute full ordering using current guild list
                 val allGuilds = newList.mapNotNull { id -> entityStore.guilds.value[id] }

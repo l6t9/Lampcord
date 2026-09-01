@@ -33,6 +33,7 @@ import me.lampu.lampcord.shared.model.Poll
 import me.lampu.lampcord.shared.model.ReactionCountDetails
 import me.lampu.lampcord.shared.model.User
 import me.lampu.lampcord.shared.utils.Logging
+import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.utils.Backoff
 import me.lampu.lampcord.shared.utils.ResourceLoader
 import me.lampu.lampcord.shared.utils.getCurrentTimeMillis
@@ -53,8 +54,6 @@ class MessageStore(
 ) {
     private companion object {
         const val CACHE_MAX_CHANNELS = 50
-        const val MAX_MESSAGES_PER_CHANNEL = 200
-        const val MAX_MESSAGES_PER_CHANNEL_TRIM = 100
     }
 
     // Exact replica of Discord's internal message storage philosophy:
@@ -151,11 +150,6 @@ class MessageStore(
         }
     }
 
-    private fun trimMessages(list: List<Message>): List<Message> {
-        if (list.size <= MAX_MESSAGES_PER_CHANNEL) return list
-        return list.take(MAX_MESSAGES_PER_CHANNEL_TRIM)
-    }
-
     private fun updateAllMessagesFlow() {
         _allMessages.value = messageCache.toMap()
     }
@@ -189,8 +183,10 @@ class MessageStore(
 
         if (changed) {
             val sorted = channelMessages.sortedByDescending { it.id }
-            val trimmed = trimMessages(sorted)
-            messageCache[channelId] = trimmed
+            // Keep the complete loaded history. Trimming this list while paging older
+            // messages removes the viewport's anchor and makes reverse-layout scrolling
+            // jump back when the cache limit is crossed.
+            messageCache[channelId] = sorted
             recordAccess(channelId)
             updateAllMessagesFlow()
         }
@@ -230,8 +226,7 @@ class MessageStore(
         }
         
         val sorted = channelMessages.sortedByDescending { it.id }
-        val trimmed = trimMessages(sorted)
-        messageCache[channelId] = trimmed
+        messageCache[channelId] = sorted
         recordAccess(channelId)
         updateAllMessagesFlow()
     }
@@ -399,7 +394,11 @@ class MessageStore(
         _isLoadingHistory.value = true
         historyLoadingJob = scope.launch {
             try {
-                val more = messageApi.getChannelMessages(threadId ?: channelId, before = before)
+                val more = messageApi.getChannelMessagesPage(threadId ?: channelId, before = before)
+                if (more == null) {
+                    // Keep history enabled so the next scroll event can retry.
+                    return@launch
+                }
                 if (more.isEmpty()) {
                     _hasMoreHistory.update { it + (channelId to false) }
                 } else {
@@ -613,6 +612,9 @@ class MessageStore(
     }
 
     fun sendTyping(channelId: String) {
+        // Silent typing only suppresses our outbound signal. Incoming typing
+        // events are handled independently by TypingStore and remain visible.
+        if (Settings.shared.silentTyping) return
         scope.launch {
             try {
                 channelApi.triggerTyping(channelId)

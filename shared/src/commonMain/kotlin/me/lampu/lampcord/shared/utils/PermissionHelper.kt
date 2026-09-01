@@ -140,6 +140,22 @@ object PermissionHelper {
         return hasPermission(member, guild, channel, Permission.VIEW_CHANNEL, userId)
     }
 
+    /**
+     * Returns whether the current user may create a message in this channel.
+     * Threads use their dedicated permission and locked threads additionally
+     * require MANAGE_THREADS.
+     */
+    fun canSendMessages(member: Member, guild: Guild, channel: Channel, userId: String? = null): Boolean {
+        val isThread = channel.type == 10 || channel.type == 11 || channel.type == 12
+        if (!isThread) {
+            return hasPermission(member, guild, channel, Permission.SEND_MESSAGES, userId)
+        }
+
+        val canManageThreads = hasPermission(member, guild, channel, Permission.MANAGE_THREADS, userId)
+        val canSendInThreads = hasPermission(member, guild, channel, Permission.SEND_MESSAGES_IN_THREADS, userId)
+        return canSendInThreads && (channel.thread_metadata?.locked != true || canManageThreads)
+    }
+
     fun isChannelPrivate(guild: Guild, channel: Channel): Boolean {
         if (channel.guild_id == null) return false
         val overwrites = channel.permission_overwrites ?: return false

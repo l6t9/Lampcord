@@ -32,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.coerceAtMost
 import androidx.compose.ui.zIndex
 import kotlin.time.Duration.Companion.milliseconds
@@ -49,7 +50,6 @@ import me.lampu.lampcord.shared.utils.setClipboardText
 import me.lampu.lampcord.shared.utils.showToast
 import me.lampu.lampcord.shared.model.EmbedImage
 import me.lampu.lampcord.shared.utils.getPlatformName
-import me.lampu.lampcord.shared.utils.downloadToDownloads
 import me.lampu.lampcord.shared.utils.EmojiIndex
 import me.lampu.lampcord.shared.model.toTwemojiUrl
 import org.koin.compose.koinInject
@@ -447,6 +447,7 @@ fun EmojiGrid(
     onToggleFavorite: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val uriHandler = LocalUriHandler.current
     if (groups.all { it.emojis.isEmpty() }) {
         Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("No custom emojis available", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -507,12 +508,9 @@ fun EmojiGrid(
 
                         // Save / Clone actions
                         if (url != null) {
-                            val filename = (emoji.name ?: "emoji") + if (emoji.animated == true) ".gif" else ".png"
+                            val u = url
                             menuItems.add(ContextMenuItem("Save Image", Icons.Filled.Download, onClick = {
-                                coroutineScope.launch {
-                                    val ok = downloadToDownloads(url, filename)
-                                    if (ok) showToast("Saved to Downloads") else showToast("Save failed")
-                                }
+                                uriHandler.openUri(u)
                             }))
                             menuItems.add(ContextMenuItem("Clone to other server", Icons.Filled.Upload, onClick = {
                                 onCloneRequested(url)

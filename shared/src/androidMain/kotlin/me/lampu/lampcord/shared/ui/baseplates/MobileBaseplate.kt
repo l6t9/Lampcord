@@ -8,6 +8,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,6 +19,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -26,6 +31,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.SettingsScreen
 import me.lampu.lampcord.shared.ui.AboutContent
@@ -58,8 +65,15 @@ actual fun MobileBaseplate(
 ) {
     val presenceStore: PresenceStore = koinInject()
     val settingsStore: SettingsStore = koinInject()
+    val tokenStore: TokenStore = koinInject()
     val allUsers by userStore.users.collectAsState()
     val currentUser by userStore.currentUser.collectAsState()
+
+    val scope = rememberCoroutineScope()
+    val haptic = LocalHapticFeedback.current
+    var showUserStatusSheet by remember { mutableStateOf(false) }
+    var showCustomStatusDialog by remember { mutableStateOf(false) }
+    var showAddAccountDialog by remember { mutableStateOf(false) }
 
     val initialStartRoute = remember { 
         if (navigationStore.isFriendsSelected) Screen.Friends else Screen.Chat
@@ -217,13 +231,16 @@ actual fun MobileBaseplate(
 
     val currentRoute = navigationState.topLevelRoute
     val isChat = currentRoute == Screen.Chat
+    val isSettingsRoot = currentRoute == Screen.Settings &&
+        navigationState.backStacks[Screen.Settings]?.lastOrNull() == Screen.Settings
     val isTabRoute = currentRoute in setOf(
-        Screen.Chat, Screen.Friends, Screen.Mentions, Screen.GlobalSearch, Screen.Settings
+        Screen.Chat, Screen.Friends, Screen.Mentions, Screen.GlobalSearch
     )
+    val showSettingsTabBar = currentRoute == Screen.Settings && isSettingsRoot
 
-    val targetNavBarVisibleAmount = remember(panelState.progress, currentRoute, isTabRoute) {
+    val targetNavBarVisibleAmount = remember(panelState.progress, currentRoute, isTabRoute, showSettingsTabBar) {
         val progress = panelState.progress
-        if (isTabRoute) {
+        if (isTabRoute || showSettingsTabBar) {
             if (currentRoute == Screen.Chat) {
                 progress.coerceIn(0f, 1f)
             } else {
@@ -528,7 +545,7 @@ actual fun MobileBaseplate(
         if (items.isEmpty()) listOf(Screen.EasterEgg) else items
     }
 
-    if (navBarVisibleAmount > 0.001f) {
+    if ((isTabRoute || showSettingsTabBar) && navBarVisibleAmount > 0.001f) {
         NavigationBar(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -599,6 +616,36 @@ actual fun MobileBaseplate(
                             onClick = {
                                 navigationStore.isSettingsVisible = true
                                 navigator.navigate(Screen.Settings)
+                            },
+                            modifier = Modifier.pointerInput(Unit) {
+                                awaitPointerEventScope {
+                                    while (true) {
+                                        val down = awaitFirstDown(
+                                            pass = PointerEventPass.Initial,
+                                            requireUnconsumed = false
+                                        )
+                                        val timedOut = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+                                            while (true) {
+                                                val event = awaitPointerEvent(PointerEventPass.Initial)
+                                                if (event.changes.none { it.pressed }) {
+                                                    return@withTimeoutOrNull false
+                                                }
+                                            }
+                                            false
+                                        } ?: true
+
+                                        if (timedOut) {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            showUserStatusSheet = true
+                                            down.consume()
+                                            while (true) {
+                                                val event = awaitPointerEvent(PointerEventPass.Initial)
+                                                event.changes.forEach { it.consume() }
+                                                if (event.changes.all { !it.pressed }) break
+                                            }
+                                        }
+                                    }
+                                }
                             },
                             icon = {
                                 val user = currentUser
@@ -699,13 +746,62 @@ actual fun MobileBaseplate(
         }
     }
 
+    if (showUserStatusSheet) {
+        UserStatusBottomSheet(
+            onDismiss = { showUserStatusSheet = false },
+            onSwitchAccount = { account ->
+                tokenStore.switchAccount(account.token)
+                me.lampu.lampcord.shared.utils.restartApp()
+            },
+            onSetCustomStatus = { showCustomStatusDialog = true },
+            onAddAccount = { showAddAccountDialog = true }
+        )
+    }
+
+    if (showCustomStatusDialog) {
+        CustomStatusDialog(
+            initialText = settingsStore.userSettings?.custom_status?.text ?: "",
+            onDismiss = { showCustomStatusDialog = false },
+            onSave = { text ->
+                scope.launch {
+                    presenceStore.updateCustomStatus(text.ifBlank { null })
+                    showCustomStatusDialog = false
+                }
+            }
+        )
+    }
+
+    if (showAddAccountDialog) {
+        androidx.compose.ui.window.Dialog(
+            onDismissRequest = { showAddAccountDialog = false },
+            properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = MaterialTheme.colorScheme.background
+            ) {
+                me.lampu.lampcord.shared.ui.LoginScreen(onLoginSuccess = { showAddAccountDialog = false })
+            }
+        }
+    }
+
     if (navigationStore.isServerMenuVisible) {
         navigationStore.selectedGuild?.let { guild ->
             ServerBottomSheet(guild, onDismiss = { navigationStore.isServerMenuVisible = false })
         }
     }
 
-    GlobalSnackbarHost(modifier = Modifier.fillMaxWidth())
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.BottomCenter
+    ) {
+        GlobalSnackbarHost(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(bottom = 12.dp)
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)

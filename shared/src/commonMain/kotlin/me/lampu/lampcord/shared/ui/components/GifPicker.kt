@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage as CoilAsyncImage
 import coil3.compose.AsyncImagePainter
 import coil3.compose.LocalPlatformContext
+import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import kotlinx.coroutines.delay
@@ -256,6 +257,9 @@ private fun GifThumbnail(
                     model = ImageRequest.Builder(context)
                         .data(imageUrl)
                         .memoryCacheKey("gif-preview:$imageUrl")
+                        .memoryCachePolicy(
+                            if (getPlatformName() != "android" && getPlatformName() != "ios" && Settings.shared.desktopLowMemoryMode) CachePolicy.DISABLED else CachePolicy.ENABLED
+                        )
                         .crossfade(false)
                         .build(),
                     contentDescription = null,
@@ -302,6 +306,9 @@ private fun GifPreviewImage(
             model = ImageRequest.Builder(context)
                 .data(imageUrl)
                 .memoryCacheKey("gif-preview:$imageUrl")
+                .memoryCachePolicy(
+                    if (getPlatformName() != "android" && getPlatformName() != "ios" && Settings.shared.desktopLowMemoryMode) CachePolicy.DISABLED else CachePolicy.ENABLED
+                )
                 .crossfade(false)
                 .build(),
             contentDescription = contentDescription,

@@ -196,6 +196,14 @@ class MessageApi(private val rest: RestClient) {
     }
 
     suspend fun getChannelMessages(channelId: String, limit: Int = 50, before: String? = null): List<Message> {
+        return getChannelMessagesPage(channelId, limit, before) ?: emptyList()
+    }
+
+    /**
+     * Returns null when the request failed, allowing history pagination to
+     * distinguish a retryable failure from a successful end-of-history page.
+     */
+    suspend fun getChannelMessagesPage(channelId: String, limit: Int = 50, before: String? = null): List<Message>? {
         return try {
             val response = rest.httpClient.get("${rest.apiBase}/channels/$channelId/messages") {
                 standardHeaders(rest)
@@ -204,11 +212,11 @@ class MessageApi(private val rest: RestClient) {
                     parameter("before", before)
                 }
             }
-            if (response.status.isSuccess()) response.body() else emptyList()
+            if (response.status.isSuccess()) response.body() else null
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             Logging.e("Messages", "Error fetching messages: ${e.message}")
-            emptyList()
+            null
         }
     }
 

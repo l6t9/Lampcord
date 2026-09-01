@@ -47,12 +47,6 @@ fun ExtensionsSettingsContent(settingsStore: SettingsStore = koinInject()) {
                     checked = Settings.shared.bypassUploadLimit,
                     onCheckedChange = { Settings.shared.bypassUploadLimit = it }
                 ),
-                switchSettingsItem(
-                    title = "Silent Typing",
-                    description = "Don't let others know when you're typing.",
-                    checked = Settings.shared.silentTyping,
-                    onCheckedChange = { Settings.shared.silentTyping = it }
-                )
             )
         )
 

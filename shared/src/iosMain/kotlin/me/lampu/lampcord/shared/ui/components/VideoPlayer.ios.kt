@@ -22,6 +22,7 @@ actual fun VideoPlayer(
     subtitle: String?,
     compact: Boolean,
     autoPlay: Boolean,
+    showSeekBar: Boolean,
     onFullscreenClick: (() -> Unit)?
 ) {
     val nsUrl = remember(url) { NSURL.URLWithString(url) }

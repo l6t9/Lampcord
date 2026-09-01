@@ -18,8 +18,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.net.URL
+import java.net.URLConnection
 import android.app.DownloadManager
 import android.net.Uri
+import io.ktor.client.call.body
+import io.ktor.client.request.get
+import io.ktor.http.isSuccess
+import me.lampu.lampcord.shared.api.RestClient
+import me.lampu.lampcord.shared.api.standardHeaders
 
 actual fun getPlatformName(): String = "android"
 
@@ -41,6 +47,7 @@ actual fun getMemoryMemory(): Long = Runtime.getRuntime().totalMemory() / (1024 
 
 private object AndroidContext : KoinComponent {
     val context: Context by inject()
+    val restClient: RestClient by inject()
 }
 
 actual suspend fun getLocalMedia(): List<LocalMedia> = withContext(Dispatchers.IO) {
@@ -314,6 +321,13 @@ actual fun base64Encode(bytes: ByteArray): String {
 
 actual suspend fun downloadToDownloads(url: String, filename: String): Boolean = withContext(Dispatchers.IO) {
     val ctx = AndroidContext.context
+
+    // DownloadManager's public-directory destination is unreliable under
+    // scoped storage and can report a false failure on modern Android.
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        return@withContext downloadToMediaStoreDownloads(ctx, url, filename)
+    }
+
     val systemService = ctx.getSystemService(Context.DOWNLOAD_SERVICE)
     val dm = if (systemService is DownloadManager) systemService else return@withContext false
 
@@ -402,6 +416,49 @@ actual suspend fun downloadToDownloads(url: String, filename: String): Boolean =
         }
     } catch (e: Exception) {
         withContext(Dispatchers.Main) { try { ctx.unregisterReceiver(receiver) } catch (_: Exception) {} }
+        false
+    }
+}
+
+private suspend fun downloadToMediaStoreDownloads(context: Context, url: String, filename: String): Boolean {
+    val resolver = context.contentResolver
+    val title = filename.ifBlank { Uri.parse(url).lastPathSegment ?: "download" }
+        .replace(Regex("[/\\\\]"), "_")
+    val mimeType = android.webkit.MimeTypeMap.getSingleton()
+        .getMimeTypeFromExtension(title.substringAfterLast('.', "").lowercase())
+        ?: URLConnection.guessContentTypeFromName(title)
+        ?: "application/octet-stream"
+
+    val values = android.content.ContentValues().apply {
+        put(android.provider.MediaStore.Downloads.DISPLAY_NAME, title)
+        put(android.provider.MediaStore.Downloads.MIME_TYPE, mimeType)
+        put(android.provider.MediaStore.Downloads.RELATIVE_PATH, android.os.Environment.DIRECTORY_DOWNLOADS)
+        put(android.provider.MediaStore.Downloads.IS_PENDING, 1)
+    }
+    val outputUri = resolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, values) ?: return false
+
+    return try {
+        val response = AndroidContext.restClient.httpClient.get(url) {
+            standardHeaders(AndroidContext.restClient)
+        }
+        if (!response.status.isSuccess()) throw java.io.IOException("Download request failed")
+        val bytes = response.body<ByteArray>()
+        if (bytes.isEmpty()) throw java.io.IOException("Download was empty")
+        val isApk = title.endsWith(".apk", ignoreCase = true)
+        if (isApk && (bytes.size < 2 || bytes[0] != 'P'.code.toByte() || bytes[1] != 'K'.code.toByte())) {
+            throw java.io.IOException("Downloaded APK content is invalid")
+        }
+        resolver.openOutputStream(outputUri).use { output ->
+            if (output == null) throw java.io.IOException("Unable to open Downloads output")
+            output.write(bytes)
+        }
+        val completed = android.content.ContentValues().apply {
+            put(android.provider.MediaStore.Downloads.IS_PENDING, 0)
+        }
+        resolver.update(outputUri, completed, null, null)
+        true
+    } catch (_: Exception) {
+        resolver.delete(outputUri, null, null)
         false
     }
 }

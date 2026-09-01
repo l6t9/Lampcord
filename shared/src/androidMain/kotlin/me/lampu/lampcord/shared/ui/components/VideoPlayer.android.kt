@@ -57,6 +57,7 @@ actual fun VideoPlayer(
     subtitle: String?,
     compact: Boolean,
     autoPlay: Boolean,
+    showSeekBar: Boolean,
     onFullscreenClick: (() -> Unit)?,
 ) {
     val context = LocalContext.current
@@ -247,7 +248,7 @@ actual fun VideoPlayer(
                         maxLines = 1,
                         overflow = TextOverflow.Clip,
                     )
-                    Slider(
+                    if (showSeekBar) Slider(
                         value = if (durationMs > 0L) {
                             (positionMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
                         } else {

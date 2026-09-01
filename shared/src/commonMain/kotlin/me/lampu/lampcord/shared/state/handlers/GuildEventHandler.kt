@@ -42,7 +42,12 @@ class GuildEventHandler(
         // EntityStore handles guilds and nested channels
         entityStore.updateGuild(guild)
         
-        val guildOrder = settingsStore.userSettings?.guild_positions?.mapNotNull { it.jsonPrimitive.contentOrNull ?: it.toString() } ?: emptyList()
+        val settings = settingsStore.userSettings
+        val guildOrder = settings?.guild_folders?.flatMap { folder ->
+            folder.guild_ids.mapNotNull { it.jsonPrimitive.contentOrNull }
+        }?.takeIf { it.isNotEmpty() }
+            ?: settings?.guild_positions?.mapNotNull { it.jsonPrimitive.contentOrNull ?: it.toString() }
+            ?: emptyList()
         guildStore.handleGuildCreate(guild, guildOrder)
         
         // Members go to UserStore

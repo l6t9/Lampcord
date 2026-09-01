@@ -45,16 +45,33 @@ import androidx.compose.ui.unit.sp
 import me.lampu.lampcord.shared.state.ReadStateStore
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import me.lampu.lampcord.shared.model.Channel
+import me.lampu.lampcord.shared.model.Guild
+import me.lampu.lampcord.shared.model.GuildFolder
+import me.lampu.lampcord.shared.model.UserSettings
 import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.api.CdnUrls
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.theme.*
+import kotlinx.serialization.json.JsonPrimitive
+import kotlin.math.abs
+import me.lampu.lampcord.shared.utils.getPlatformName
+
+private data class GuildRailEntry(
+    val key: String,
+    val guild: Guild? = null,
+    val folder: GuildFolder? = null
+)
+
+private fun GuildFolder.guildIds(): List<String> = guild_ids.mapNotNull { it.jsonPrimitive.contentOrNull }
 
 @Composable
 fun GuildRail(
@@ -84,6 +101,69 @@ fun GuildRail(
     }
 
     val haptic = LocalHapticFeedback.current
+    val folders = userSettings?.guild_folders ?: emptyList()
+    val canArrange = getPlatformName() == "android"
+    var arrangeMode by remember { mutableStateOf(false) }
+    var draggingKey by remember { mutableStateOf<String?>(null) }
+    var dragOffsetPx by remember { mutableFloatStateOf(0f) }
+
+    val railEntries = remember(guilds, folders) {
+        val guildsById = guilds.distinctBy { it.id }.associateBy { it.id }
+        // Discord's guild_folders array is already the complete sidebar
+        // sequence, including anonymous single-guild entries.
+        val entries = if (folders.isNotEmpty()) {
+            folders.mapIndexedNotNull { index, folder ->
+                val guildIds = folder.guildIds()
+                if (folder.id == null && guildIds.size == 1) {
+                    guildsById[guildIds.first()]?.let { guild ->
+                        GuildRailEntry(key = "guild:${guild.id}", guild = guild)
+                    }
+                } else {
+                    GuildRailEntry(key = folder.railKey(index), folder = folder)
+                }
+            }.toMutableList()
+        } else {
+            guilds.map { it.id }.distinct().mapNotNull { guildsById[it] }
+                .map { guild -> GuildRailEntry(key = "guild:${guild.id}", guild = guild) }
+                .toMutableList()
+        }
+
+        // Match Discord's ensureValidPositions behavior: a newly arrived guild
+        // missing from the snapshot is temporarily inserted at the top.
+        val representedGuildIds = folders.flatMap { it.guildIds() }.toSet()
+        val missingGuilds = guilds.filter { guild ->
+            guild.id !in representedGuildIds && entries.none { it.guild?.id == guild.id }
+        }
+        missingGuilds.asReversed().forEach { guild ->
+            entries.add(0, GuildRailEntry(key = "guild:${guild.id}", guild = guild))
+        }
+        entries
+    }
+
+    fun finishDrag() {
+        val sourceKey = draggingKey ?: return
+        val sourceInfo = railScrollState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == sourceKey }
+        val targetKey = sourceInfo?.let { info ->
+            val draggedCenter = info.offset + dragOffsetPx + info.size / 2
+            railScrollState.layoutInfo.visibleItemsInfo
+                .filter { it.key != sourceKey && (it.key.toString().startsWith("guild:") || it.key.toString().startsWith("folder:")) }
+                .minByOrNull { abs(it.offset + it.size / 2 - draggedCenter) }
+                ?.key as? String
+        }
+        if (canArrange && targetKey != null && targetKey != sourceKey) {
+            val partial = UserSettings.Partial(guild_folders = rearrangeGuildFolders(railEntries, sourceKey, targetKey))
+            settingsStore.handlePartialUpdate(partial)
+            settingsStore.updateUserSettings(partial)
+        }
+        draggingKey = null
+        dragOffsetPx = 0f
+        arrangeMode = false
+    }
+
+    fun cancelDrag() {
+        draggingKey = null
+        dragOffsetPx = 0f
+    }
 
     LazyColumn(
         state = railScrollState,
@@ -163,44 +243,104 @@ fun GuildRail(
             DMIcon(channel = channel)
         }
 
-        val folders = userSettings?.guild_folders ?: emptyList()
-
-        if (folders.isEmpty()) {
-            items(guilds.distinctBy { it.id }, key = { it.id }) { guild ->
+        items(railEntries, key = { it.key }) { entry ->
+            val folder = entry.folder
+            val guild = entry.guild
+            if (guild != null) {
                 GuildIcon(
                     guild = guild,
                     isSelected = navigationStore.selectedGuild?.id == guild.id,
+                    arrangeMode = canArrange,
+                    isDragging = draggingKey == entry.key,
+                    dragOffset = dragOffsetPx,
+                    onArrangeMode = { arrangeMode = true },
+                    onDragStart = { draggingKey = entry.key; dragOffsetPx = 0f },
+                    onDrag = { dragOffsetPx += it },
+                    onDragEnd = ::finishDrag,
+                    onDragCancel = ::cancelDrag,
                     onClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-
                         navigationStore.selectGuild(guild) { gatewayManager.sendSubscription(it) }
                     }
                 )
-            }
-        } else {
-            items(folders) { folder ->
-                val guildIds = folder.guild_ids.map { it.jsonPrimitive.contentOrNull ?: it.toString() }
+            } else if (folder != null) {
+                val guildIds = folder.guildIds()
                 if (folder.id == null && guildIds.size == 1) {
-                    val guildId = guildIds.first()
-                    val guild = guilds.find { it.id == guildId }
-                    if (guild != null) {
+                    val singletonGuild = guilds.firstOrNull { it.id == guildIds.first() }
+                    if (singletonGuild != null) {
                         GuildIcon(
-                            guild = guild,
-                            isSelected = navigationStore.selectedGuild?.id == guild.id,
+                            guild = singletonGuild,
+                            isSelected = navigationStore.selectedGuild?.id == singletonGuild.id,
                             onClick = {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-
-                                navigationStore.selectGuild(guild) { gatewayManager.sendSubscription(it) }
+                                navigationStore.selectGuild(singletonGuild) { gatewayManager.sendSubscription(it) }
                             }
                         )
                     }
                 } else {
-                    GuildFolderItem(folder)
+                    GuildFolderItem(
+                        folder = folder,
+                        arrangeMode = canArrange,
+                        onArrangeMode = { arrangeMode = true },
+                        onDragStart = { draggingKey = entry.key; dragOffsetPx = 0f },
+                        onDrag = { dragOffsetPx += it },
+                        onDragEnd = ::finishDrag,
+                        onDragCancel = ::cancelDrag
+                        , isDragging = draggingKey == entry.key
+                        , dragOffset = dragOffsetPx
+                    )
                 }
             }
         }
     }
 }
+
+private fun rearrangeGuildFolders(
+    entries: List<GuildRailEntry>,
+    sourceKey: String,
+    targetKey: String
+): List<GuildFolder> {
+    val current = entries.map { entry ->
+        entry.folder ?: GuildFolder(guild_ids = listOf(JsonPrimitive(entry.guild!!.id)))
+    }.toMutableList()
+    val sourceIndex = entries.indexOfFirst { it.key == sourceKey }
+    val targetIndex = entries.indexOfFirst { it.key == targetKey }
+    if (sourceIndex < 0 || targetIndex < 0) return current
+
+    val sourceFolder = entries[sourceIndex].folder
+    if (sourceFolder != null) {
+        val moved = current.removeAt(sourceIndex)
+        current.add((if (sourceIndex < targetIndex) targetIndex - 1 else targetIndex).coerceIn(0, current.size), moved)
+        return current
+    }
+
+    val guildId = entries[sourceIndex].guild?.id ?: return current
+    current.indices.forEach { index ->
+        current[index] = current[index].copy(
+            guild_ids = current[index].guild_ids.filterNot { it.jsonPrimitive.contentOrNull == guildId }
+        )
+    }
+    current.removeAll { it.guild_ids.isEmpty() }
+
+    val targetFolder = entries[targetIndex].folder
+    if (targetFolder != null) {
+        val actualTarget = current.indexOfFirst { it.id == targetFolder.id }
+        if (actualTarget >= 0) {
+            current[actualTarget] = current[actualTarget].copy(
+                guild_ids = current[actualTarget].guild_ids + JsonPrimitive(guildId)
+            )
+        }
+    } else {
+        val targetGuildId = entries[targetIndex].guild?.id
+        val insertionIndex = current.indexOfFirst { folder ->
+            folder.id == null && folder.guild_ids.any { it.jsonPrimitive.contentOrNull == targetGuildId }
+        }.takeIf { it >= 0 } ?: current.size
+        current.add(insertionIndex, GuildFolder(guild_ids = listOf(JsonPrimitive(guildId))))
+    }
+    return current.filter { it.guild_ids.isNotEmpty() }
+}
+
+private fun GuildFolder.railKey(index: Int): String = id?.let { "folder:$it" } ?: "folder:$index:${guildIds().joinToString(",")}"
 
 @Composable
 private fun DMIcon(

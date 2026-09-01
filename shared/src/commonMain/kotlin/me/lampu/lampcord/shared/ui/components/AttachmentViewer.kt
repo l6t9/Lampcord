@@ -113,13 +113,13 @@ fun AttachmentViewer(
                     VideoPlayer(
                         url = item.url ?: item.proxy_url ?: "",
                         loop = isGifv && !reduceMotion,
-                        // GIFV embeds need visible playback controls once
-                        // they are fullscreen on Android.
-                        showControls = !isGifv || getPlatformName() == "android",
+                        // GIFV media is an image-like loop, not seekable video.
+                        showControls = !isGifv || reduceMotion,
+                        showSeekBar = !isGifv,
                         autoPlay = !isGifv || !reduceMotion,
                         title = (item as? Attachment)?.filename,
                         subtitle = (item as? Attachment)?.content_type,
-                        onFullscreenClick = onDismiss,
+                        onFullscreenClick = if (isGifv) null else onDismiss,
                         modifier = Modifier
                             // Do not size fullscreen playback from attachment
                             // metadata. Discord occasionally omits it (or gives

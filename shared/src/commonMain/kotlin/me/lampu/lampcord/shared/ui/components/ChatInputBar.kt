@@ -3,6 +3,7 @@ package me.lampu.lampcord.shared.ui.components
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -48,7 +49,6 @@ import me.lampu.lampcord.shared.ui.components.chat.MediaPicker
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.components.PlatformBackHandler
 import me.lampu.lampcord.shared.utils.FilePicker
-import me.lampu.lampcord.shared.utils.Permission
 import me.lampu.lampcord.shared.utils.getClipboardFiles
 import me.lampu.lampcord.shared.utils.getPlatformName
 import org.koin.compose.koinInject
@@ -96,6 +96,7 @@ fun ChatInputBar(
     memberListStore: MemberListStore = koinInject(),
     relationshipStore: RelationshipStore = koinInject(),
     emojiStore: EmojiStore = koinInject()
+    , settingsStore: SettingsStore = koinInject()
 ) {
     var textFieldValue by remember(channel.id) { 
         val draft = messageStore.draftMessages[channel.id] ?: ""
@@ -123,17 +124,21 @@ fun ChatInputBar(
         derivedStateOf {
             val guild = navigationStore.selectedGuild
             val user = currentUser
-            if (user == null) true
+            if (channel.thread_metadata?.locked == true && (user == null || member == null)) false
+            else if (user == null) true
             else if (guild == null) true // DMs
-            else if (member == null) true // Member not loaded yet; don't block sending
-            else me.lampu.lampcord.shared.utils.PermissionHelper.hasPermission(
+            else if (member == null) channel.thread_metadata?.locked != true // Keep normal channels usable while the member loads, but never expose a locked thread input.
+            else me.lampu.lampcord.shared.utils.PermissionHelper.canSendMessages(
                 member,
                 guild,
                 channel,
-                Permission.SEND_MESSAGES,
                 user.id
             )
         }
+    }
+
+    LaunchedEffect(canSend) {
+        if (!canSend) navigationStore.isEmojiPickerVisible = false
     }
 
     fun applyAutocomplete(item: AutocompleteItem) {
@@ -236,6 +241,39 @@ fun ChatInputBar(
     val chatboxMinHeight = settings.chatboxHeight.dp * chatboxFontSize
     val buttonSize = chatboxMinHeight + (6.dp * chatboxFontSize)
     val iconSize = buttonSize * 0.55f
+
+    fun insertEmoji(emoji: me.lampu.lampcord.shared.model.Emoji) {
+        if (!canSend) return
+        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+        // Compute the canonical server-side emoji token while keeping the
+        // friendly token in the editor for autocomplete and mention ranges.
+        val hasNitro = (currentUser?.premium_type ?: 0) > 0
+        val serverReplacement = if (emoji.id != null) {
+            val forceF = settings.freeNitroEmojis && settings.realmojis && !hasNitro
+            val namePart = if (forceF) "F_${emoji.name}" else emoji.name ?: "emoji"
+            "<${if (emoji.animated == true) "a" else ""}:${namePart}:${emoji.id}>"
+        } else null
+
+        if (emoji.id != null && serverReplacement != null) {
+            applyAutocomplete(AutocompleteItem(
+                id = emoji.id,
+                title = ":${emoji.name}:",
+                replacement = serverReplacement,
+                inputText = ":${emoji.name}:"
+            ))
+        } else {
+            val emojiText = emoji.name ?: ""
+            val newText = textFieldValue.text.replaceRange(
+                textFieldValue.selection.start,
+                textFieldValue.selection.end,
+                emojiText
+            )
+            textFieldValue = TextFieldValue(
+                newText,
+                TextRange(textFieldValue.selection.start + emojiText.length)
+            )
+        }
+    }
 
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
         val platform = getPlatformName()
@@ -444,54 +482,60 @@ fun ChatInputBar(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             val uploadVisible = !settings.chatboxHideUploadButton && messageStore.editingMessage == null && canSend
+                            val voiceVisible = !settings.chatboxHideVoiceButton &&
+                                messageStore.editingMessage == null &&
+                                canSend &&
+                                getPlatformName() == "android"
                             
                             AnimatedVisibility(
-                                visible = uploadVisible,
+                                visible = uploadVisible || voiceVisible,
                                 enter = if (reduceMotion) EnterTransition.None else expandHorizontally(expandFrom = Alignment.End) + fadeIn(),
                                 exit = if (reduceMotion) ExitTransition.None else shrinkHorizontally(shrinkTowards = Alignment.End) + fadeOut()
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    if (getPlatformName() != "android") {
-                                        FilePicker(
-                                            show = showFilePicker,
-                                            onFileSelected = { it -> messageStore.pendingFiles.addAll(it.map { PendingFile(it.first, it.second) }) },
-                                            onDismiss = { showFilePicker = false }
-                                        )
+                                    if (uploadVisible) {
+                                        if (getPlatformName() != "android") {
+                                            FilePicker(
+                                                show = showFilePicker,
+                                                onFileSelected = { it -> messageStore.pendingFiles.addAll(it.map { PendingFile(it.first, it.second) }) },
+                                                onDismiss = { showFilePicker = false }
+                                            )
+                                        }
+
+                                        FilledIconButton(
+                                            onClick = {
+                                                if (getPlatformName() == "android") {
+                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                    navigationStore.isMediaPickerVisible = !navigationStore.isMediaPickerVisible
+                                                } else {
+                                                    showFilePicker = true
+                                                }
+                                            },
+                                            modifier = Modifier.size(buttonSize),
+                                            colors = IconButtonDefaults.filledIconButtonColors(
+                                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Filled.Add,
+                                                contentDescription = "Add",
+                                                modifier = Modifier.size(iconSize)
+                                            )
+                                        }
                                     }
 
-                                    FilledIconButton(
-                                        onClick = {
-                                            if (getPlatformName() == "android") {
-                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                navigationStore.isMediaPickerVisible = !navigationStore.isMediaPickerVisible
-                                            } else {
-                                                showFilePicker = true
-                                            }
-                                        },
-                                        modifier = Modifier.size(buttonSize),
-                                        colors = IconButtonDefaults.filledIconButtonColors(
-                                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Filled.Add,
-                                            contentDescription = "Add",
-                                            modifier = Modifier.size(iconSize)
-                                        )
-                                    }
-
-                                    if (getPlatformName() == "android") {
+                                    if (voiceVisible) {
                                         VoiceMessageRecorder(
                                             enabled = true,
                                             buttonSize = buttonSize,
                                             iconSize = iconSize,
-                                            modifier = Modifier.padding(start = 4.dp),
+                                            modifier = Modifier.padding(start = if (uploadVisible) 4.dp else 0.dp),
                                             onRecordingReady = { messageStore.pendingFiles.add(it) }
                                         )
                                     }
                                     
-                                    Spacer(modifier = Modifier.width(4.dp))
+                                    if (uploadVisible) Spacer(modifier = Modifier.width(4.dp))
                                 }
                             }
 
@@ -554,9 +598,7 @@ fun ChatInputBar(
                                                     autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild, channel)
                                                 }
 
-                                                if (it.text.isNotEmpty()) {
-                                                    messageStore.sendTyping(channel.id)
-                                                }
+                                                if (it.text.isNotEmpty()) messageStore.sendTyping(channel.id)
                                             }
                                         },
                                         visualTransformation = DiscordInputVisualTransformation(primaryColor),
@@ -675,7 +717,38 @@ fun ChatInputBar(
                                         }
                                     )
 
-                                    if (!settings.chatboxHideEmojiButton) {
+                                    val silentTypingEnabled = settingsStore.silentTyping
+                                    val silentTypingSlashColor = MaterialTheme.colorScheme.error
+                                    if (settingsStore.silentTypingButtonEnabled && canSend) {
+                                        IconButton(
+                                            onClick = {
+                                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                settingsStore.silentTyping = !settingsStore.silentTyping
+                                            },
+                                            modifier = Modifier.size(36.dp)
+                                        ) {
+                                            Box(modifier = Modifier.size(24.dp)) {
+                                                Icon(
+                                                    imageVector = Icons.AutoMirrored.Filled.Keyboard,
+                                                    contentDescription = if (silentTypingEnabled) "Silent typing enabled" else "Silent typing disabled",
+                                                    modifier = Modifier.fillMaxSize(),
+                                                    tint = if (silentTypingEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                                if (silentTypingEnabled) {
+                                                    Canvas(modifier = Modifier.fillMaxSize()) {
+                                                        drawLine(
+                                                            color = silentTypingSlashColor,
+                                                            start = androidx.compose.ui.geometry.Offset(2f, size.height - 2f),
+                                                            end = androidx.compose.ui.geometry.Offset(size.width - 2f, 2f),
+                                                            strokeWidth = 3f
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    if (!settings.chatboxHideEmojiButton && canSend) {
                                         IconButton(
                                             onClick = { 
                                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -695,7 +768,7 @@ fun ChatInputBar(
                                         }
                                     }
 
-                                    if (navigationStore.isEmojiPickerVisible && !isMobileView) {
+                                    if (navigationStore.isEmojiPickerVisible && canSend && !isMobileView) {
                                         androidx.compose.ui.window.Popup(
                                             alignment = Alignment.BottomEnd,
                                             offset = IntOffset(0, -48),
@@ -703,34 +776,7 @@ fun ChatInputBar(
                                             properties = androidx.compose.ui.window.PopupProperties(focusable = true)
                                         ) {
                                             EmojiPicker { emoji ->
-                                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                                // Compute canonical server-side emoji token (preserve F_ when
-                                                // realmojis are enabled so transformOutgoing can convert it).
-                                                val settings = me.lampu.lampcord.shared.settings.Settings.shared
-                                                val hasNitro = (currentUser?.premium_type ?: 0) > 0
-                                                val serverReplacement = if (emoji.id != null) {
-                                                    // Force F_ tokens for picker when user doesn't have Nitro but
-                                                    // freeNitro + realmojis are enabled so outgoing transform
-                                                    // will convert to the expected markdown. This keeps picker
-                                                    // behavior consistent with autocomplete.
-                                                    val forceF = settings.freeNitroEmojis && settings.realmojis && !hasNitro
-                                                    val namePart = if (forceF) "F_${emoji.name}" else emoji.name ?: "emoji"
-                                                    "<${if (emoji.animated == true) "a" else ""}:${namePart}:${emoji.id}>"
-                                                } else null
-
-                                                if (emoji.id != null && serverReplacement != null) {
-                                                    println("DEBUG emojiPicker: freeNitro=${settings.freeNitroEmojis} realmojis=${settings.realmojis} needsNitro=${(emoji.guild_id != null && emoji.guild_id != navigationStore.selectedGuild?.id) || emoji.animated == true} hasNitro=${(currentUser?.premium_type ?: 0) > 0} serverReplacement=$serverReplacement")
-                                                    applyAutocomplete(AutocompleteItem(
-                                                        id = emoji.id,
-                                                        title = ":${emoji.name}:",
-                                                        replacement = serverReplacement,
-                                                        inputText = ":${emoji.name}:"
-                                                    ))
-                                                } else {
-                                                    val emojiText = emoji.name ?: ""
-                                                    val newText = textFieldValue.text.replaceRange(textFieldValue.selection.start, textFieldValue.selection.end, emojiText)
-                                                    textFieldValue = TextFieldValue(newText, TextRange(textFieldValue.selection.start + emojiText.length))
-                                                }
+                                                insertEmoji(emoji)
                                                 navigationStore.isEmojiPickerVisible = false
                                             }
                                         }
@@ -776,7 +822,7 @@ fun ChatInputBar(
                                             textFieldValue = TextFieldValue("")
                                             clearMentions()
                                         },
-                                        enabled = commandStore.activeCommand == null || commandStore.isCommandValid(),
+                                        enabled = canSend && (commandStore.activeCommand == null || commandStore.isCommandValid()),
                                         colors = IconButtonDefaults.filledIconButtonColors(
                                             containerColor = MaterialTheme.colorScheme.primary,
                                             contentColor = MaterialTheme.colorScheme.onPrimary
@@ -795,7 +841,7 @@ fun ChatInputBar(
 
                         // Mobile Emoji Picker - Moved below input row
                         AnimatedVisibility(
-                            visible = navigationStore.isEmojiPickerVisible && !isDesktopTarget,
+                            visible = navigationStore.isEmojiPickerVisible && canSend && !isDesktopTarget,
                             enter = if (reduceMotion) EnterTransition.None else expandVertically() + fadeIn(),
                             exit = if (reduceMotion) ExitTransition.None else shrinkVertically() + fadeOut()
                         ) {
@@ -805,28 +851,7 @@ fun ChatInputBar(
                             EmojiPicker(
                                 modifier = Modifier.fillMaxWidth(),
                                 onEmojiSelected = { emoji ->
-                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    val settings = me.lampu.lampcord.shared.settings.Settings.shared
-                                    val hasNitro = (currentUser?.premium_type ?: 0) > 0
-                                    val serverReplacement = if (emoji.id != null) {
-                                        val forceF = settings.freeNitroEmojis && settings.realmojis && !hasNitro
-                                        val namePart = if (forceF) "F_${emoji.name}" else emoji.name ?: "emoji"
-                                        "<${if (emoji.animated == true) "a" else ""}:${namePart}:${emoji.id}>"
-                                    } else null
-
-                                    if (emoji.id != null && serverReplacement != null) {
-                                        println("DEBUG emojiPickerMobile: freeNitro=${settings.freeNitroEmojis} realmojis=${settings.realmojis} needsNitro=${(emoji.guild_id != null && emoji.guild_id != navigationStore.selectedGuild?.id) || emoji.animated == true} hasNitro=${(currentUser?.premium_type ?: 0) > 0} serverReplacement=$serverReplacement")
-                                        applyAutocomplete(AutocompleteItem(
-                                            id = emoji.id,
-                                            title = ":${emoji.name}:",
-                                            replacement = serverReplacement,
-                                            inputText = ":${emoji.name}:"
-                                        ))
-                                    } else {
-                                        val emojiText = emoji.name ?: ""
-                                        val newText = textFieldValue.text.replaceRange(textFieldValue.selection.start, textFieldValue.selection.end, emojiText)
-                                        textFieldValue = TextFieldValue(newText, TextRange(textFieldValue.selection.start + emojiText.length))
-                                    }
+                                    insertEmoji(emoji)
                                 }
                             )
                         }
