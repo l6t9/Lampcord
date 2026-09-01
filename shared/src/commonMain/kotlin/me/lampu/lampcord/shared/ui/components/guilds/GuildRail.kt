@@ -48,6 +48,8 @@ import androidx.compose.runtime.derivedStateOf
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import me.lampu.lampcord.shared.model.Channel
 import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.api.CdnUrls
@@ -81,6 +83,8 @@ fun GuildRail(
         }
     }
 
+    val haptic = LocalHapticFeedback.current
+
     LazyColumn(
         state = railScrollState,
         modifier = modifier
@@ -106,7 +110,10 @@ fun GuildRail(
                     Box(contentAlignment = Alignment.Center, modifier = Modifier.graphicsLayer(clip = false)) {
                         RegularGuildItem(
                             isSelected = isHomeSelected,
-                            onClick = { navigationStore.selectHome() },
+                            onClick = {
+                                navigationStore.selectHome()
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                },
                             selectedColor = MaterialTheme.colorScheme.primary,
                             unselectedColor = MaterialTheme.colorScheme.surfaceVariant
                         ) {
@@ -163,7 +170,11 @@ fun GuildRail(
                 GuildIcon(
                     guild = guild,
                     isSelected = navigationStore.selectedGuild?.id == guild.id,
-                    onClick = { navigationStore.selectGuild(guild) { gatewayManager.sendSubscription(it) } }
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+
+                        navigationStore.selectGuild(guild) { gatewayManager.sendSubscription(it) }
+                    }
                 )
             }
         } else {
@@ -176,7 +187,11 @@ fun GuildRail(
                         GuildIcon(
                             guild = guild,
                             isSelected = navigationStore.selectedGuild?.id == guild.id,
-                            onClick = { navigationStore.selectGuild(guild) { gatewayManager.sendSubscription(it) } }
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+
+                                navigationStore.selectGuild(guild) { gatewayManager.sendSubscription(it) }
+                            }
                         )
                     }
                 } else {
@@ -226,7 +241,7 @@ private fun DMIcon(
                 RegularGuildItem(
                     isSelected = isSelected,
                     isUnread = isUnread,
-                    onClick = { 
+                    onClick = {
                         navigationStore.selectedGuild = null
                         navigationStore.selectChannel(channel, explicitlySelected = true) 
                     },
