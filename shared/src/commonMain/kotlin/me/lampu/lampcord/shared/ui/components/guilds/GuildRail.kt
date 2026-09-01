@@ -1,5 +1,7 @@
 package me.lampu.lampcord.shared.ui.components.guilds
 
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -47,6 +49,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.derivedStateOf
 
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -110,17 +113,19 @@ fun GuildRail(
                     Box(contentAlignment = Alignment.Center, modifier = Modifier.graphicsLayer(clip = false)) {
                         RegularGuildItem(
                             isSelected = isHomeSelected,
+                            isMonogram = true,
                             onClick = {
                                 navigationStore.selectHome()
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                },
+                            },
                             selectedColor = MaterialTheme.colorScheme.primary,
-                            unselectedColor = MaterialTheme.colorScheme.surfaceVariant
+                            unselectedColor = MaterialTheme.colorScheme.surfaceVariant,
+                            monogramSelectedColor = MaterialTheme.colorScheme.onPrimary,
+                            monogramUnselectedColor = MaterialTheme.colorScheme.primary
                         ) {
                             Icon(
                                 imageVector = Icons.Brand.Discord,
                                 contentDescription = "Home",
-                                tint = if (isHomeSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(35.dp)
                             )
                         }
@@ -202,6 +207,7 @@ fun GuildRail(
     }
 }
 
+// This is for group DMs appearing in the guild rail, the icon that takes you to DMs/home is located in the GuildRail function
 @Composable
 private fun DMIcon(
     channel: Channel,
@@ -241,12 +247,15 @@ private fun DMIcon(
                 RegularGuildItem(
                     isSelected = isSelected,
                     isUnread = isUnread,
+                    isMonogram = (iconUrl == null),
                     onClick = {
                         navigationStore.selectedGuild = null
                         navigationStore.selectChannel(channel, explicitlySelected = true) 
                     },
                     selectedColor = if (iconUrl == null) MaterialTheme.colorScheme.primary else Color.Transparent,
-                    unselectedColor = if (iconUrl == null) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent
+                    unselectedColor = if (iconUrl == null) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent,
+                    monogramSelectedColor = MaterialTheme.colorScheme.onPrimary,
+                    monogramUnselectedColor = MaterialTheme.colorScheme.primary
                 ) {
                     if (iconUrl != null) {
                         AsyncImage(
@@ -258,8 +267,7 @@ private fun DMIcon(
                         val initials = (channel.name ?: recipient?.global_name ?: recipient?.username ?: "?").take(1)
                         Text(
                             text = initials,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary
+                            style = MaterialTheme.typography.titleMedium
                         )
                     }
                 }

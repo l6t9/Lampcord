@@ -115,10 +115,13 @@ fun GuildIcon(
                     RegularGuildItem(
                         isSelected = isSelected,
                         isUnread = isUnread,
+                        isMonogram = iconUrl == null,
                         isMuted = isMuted,
                         onClick = onClick,
                         selectedColor = if (iconUrl == null) MaterialTheme.colorScheme.primary else Color.Transparent,
-                        unselectedColor = if (iconUrl == null) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent
+                        unselectedColor = if (iconUrl == null) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent,
+                        monogramSelectedColor = if (iconUrl == null) MaterialTheme.colorScheme.onPrimary else Color.Transparent,
+                        monogramUnselectedColor = if (iconUrl == null) MaterialTheme.colorScheme.primary else Color.Transparent
                     ) {
                         if (iconUrl != null) {
                             AsyncImage(
@@ -133,7 +136,6 @@ fun GuildIcon(
                             Text(
                                 text = initials,
                                 style = MaterialTheme.typography.titleMedium,
-                                color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
                                 textAlign = TextAlign.Center,
                                 maxLines = 1,
                                 fontSize = if (initials.length > 3) 12.sp else 16.sp

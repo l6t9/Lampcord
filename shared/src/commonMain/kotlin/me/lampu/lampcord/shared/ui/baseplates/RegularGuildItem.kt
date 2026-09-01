@@ -12,6 +12,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,13 +28,16 @@ fun RegularGuildItem(
     isSelected: Boolean,
     isUnread: Boolean = false,
     isMuted: Boolean = false,
+    isMonogram: Boolean = false,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     selectedColor: Color = Color.Transparent,
     unselectedColor: Color = Color.Transparent,
-    content: @Composable BoxScope.() -> Unit
+    monogramSelectedColor: Color = Color.Transparent,   // These monogram color variables are also responsible for the colors of the DM/home icon in the top left.
+    monogramUnselectedColor: Color = Color.Transparent,
+    content: @Composable BoxScope.() -> Unit,
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
+    val interactionSource: MutableInteractionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
 
     val showHoverIndicator = isHovered && !isSelected
@@ -59,6 +63,13 @@ fun RegularGuildItem(
     val backgroundColor by animateColorAsState(
         if (isSelected || isHovered) selectedColor else unselectedColor,
         label = "backgroundColor",
+        animationSpec = if (reduceMotion) snap() else spring()
+    )
+
+    // Foreground color is for guild items that don't have a set icon, like the home/DMs button, servers without icons, etc.
+    val monogramColor by animateColorAsState(
+        if (isSelected || isHovered) monogramSelectedColor else monogramUnselectedColor,
+        label = "monogramColor",
         animationSpec = if (reduceMotion) snap() else spring()
     )
     
@@ -100,7 +111,13 @@ fun RegularGuildItem(
                     .background(backgroundColor),
                 contentAlignment = Alignment.Center
             ) {
-                content()
+                if (isMonogram) {
+                    CompositionLocalProvider(LocalContentColor provides monogramColor) {
+                        content()
+                    }
+                } else {
+                    content()
+                }
             }
         }
     }
