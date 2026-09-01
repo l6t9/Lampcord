@@ -5,9 +5,11 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.Spring
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,6 +20,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -26,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
+import kotlinx.coroutines.launch
 import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.SettingsScreen
 import me.lampu.lampcord.shared.ui.AboutContent
@@ -49,7 +54,7 @@ import me.lampu.lampcord.shared.ui.navigation.entry
 import me.lampu.lampcord.shared.ui.icons.Icons
 import org.koin.compose.koinInject
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class, ExperimentalFoundationApi::class)
 @Composable
 actual fun MobileBaseplate(
     navigationStore: NavigationStore,
@@ -58,8 +63,14 @@ actual fun MobileBaseplate(
 ) {
     val presenceStore: PresenceStore = koinInject()
     val settingsStore: SettingsStore = koinInject()
+    val tokenStore: TokenStore = koinInject()
     val allUsers by userStore.users.collectAsState()
     val currentUser by userStore.currentUser.collectAsState()
+    
+    val scope = rememberCoroutineScope()
+    var showUserStatusSheet by remember { mutableStateOf(false) }
+    var showCustomStatusDialog by remember { mutableStateOf(false) }
+    var showAddAccountDialog by remember { mutableStateOf(false) }
 
     val initialStartRoute = remember { 
         if (navigationStore.isFriendsSelected) Screen.Friends else Screen.Chat
@@ -218,7 +229,7 @@ actual fun MobileBaseplate(
     val currentRoute = navigationState.topLevelRoute
     val isChat = currentRoute == Screen.Chat
     val isTabRoute = currentRoute in setOf(
-        Screen.Chat, Screen.Friends, Screen.Mentions, Screen.GlobalSearch, Screen.Settings
+        Screen.Chat, Screen.Friends, Screen.Mentions, Screen.GlobalSearch
     )
 
     val targetNavBarVisibleAmount = remember(panelState.progress, currentRoute, isTabRoute) {
@@ -594,12 +605,25 @@ actual fun MobileBaseplate(
                         )
                     }
                     Screen.Settings -> {
+                        val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
                         NavigationBarItem(
                             selected = currentRoute == Screen.Settings,
                             onClick = {
                                 navigationStore.isSettingsVisible = true
                                 navigator.navigate(Screen.Settings)
                             },
+                            modifier = Modifier.combinedClickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = {
+                                    navigationStore.isSettingsVisible = true
+                                    navigator.navigate(Screen.Settings)
+                                },
+                                onLongClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    showUserStatusSheet = true
+                                }
+                            ),
                             icon = {
                                 val user = currentUser
                                 val avatarUrl = user?.avatar?.let { "https://cdn.discordapp.com/avatars/${user.id}/$it.png?size=64" }
@@ -695,6 +719,49 @@ actual fun MobileBaseplate(
                 Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
                     ContainedLoadingIndicator()
                 }
+            }
+        }
+    }
+
+    if (showUserStatusSheet) {
+        UserStatusBottomSheet(
+            onDismiss = { showUserStatusSheet = false },
+            onSwitchAccount = { account ->
+                tokenStore.switchAccount(account.token)
+                me.lampu.lampcord.shared.utils.restartApp()
+            },
+            onSetCustomStatus = {
+                showCustomStatusDialog = true
+            },
+            onAddAccount = {
+                showAddAccountDialog = true
+            }
+        )
+    }
+
+    if (showCustomStatusDialog) {
+        CustomStatusDialog(
+            initialText = settingsStore.userSettings?.custom_status?.text ?: "",
+            onDismiss = { showCustomStatusDialog = false },
+            onSave = { text ->
+                scope.launch {
+                    presenceStore.updateCustomStatus(text.ifBlank { null })
+                    showCustomStatusDialog = false
+                }
+            }
+        )
+    }
+
+    if (showAddAccountDialog) {
+        androidx.compose.ui.window.Dialog(
+            onDismissRequest = { showAddAccountDialog = false },
+            properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = MaterialTheme.colorScheme.background
+            ) {
+                me.lampu.lampcord.shared.ui.LoginScreen(onLoginSuccess = { showAddAccountDialog = false })
             }
         }
     }
