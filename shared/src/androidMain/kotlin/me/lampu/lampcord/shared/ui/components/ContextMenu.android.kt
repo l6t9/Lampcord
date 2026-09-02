@@ -26,6 +26,7 @@ actual fun ContextMenu(
     header: (@Composable () -> Unit)?,
     reactions: (@Composable (onDismiss: () -> Unit) -> Unit)?,
     enabled: Boolean,
+    respectChildGestures: Boolean,
     openRequest: Int,
     content: @Composable () -> Unit
 ) {
@@ -37,23 +38,22 @@ actual fun ContextMenu(
     }
 
     Box(
-        modifier = modifier.pointerInput(items, enabled) {
+        modifier = modifier.pointerInput(items, enabled, respectChildGestures) {
             if (!enabled) return@pointerInput
             awaitPointerEventScope {
                 while (true) {
-                    val down = awaitFirstDown(pass = PointerEventPass.Initial, requireUnconsumed = false)
-                    
+                    val pass = if (respectChildGestures) PointerEventPass.Final else PointerEventPass.Initial
+                    val down = awaitFirstDown(pass = pass, requireUnconsumed = false)
+                    if (respectChildGestures && down.isConsumed) continue
+
                     val longPressTriggered = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
                         while (true) {
-                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                            val event = awaitPointerEvent(pass)
                             val change = event.changes.firstOrNull { it.id == down.id }
-                            if (change == null || !change.pressed) return@withTimeoutOrNull false
-                            
-                            val mainEvent = awaitPointerEvent(PointerEventPass.Main)
-                            val mainChange = mainEvent.changes.firstOrNull { it.id == down.id }
-                            if (mainChange == null || mainChange.isConsumed) return@withTimeoutOrNull false
-                            
-                            if ((mainChange.position - down.position).getDistance() > viewConfiguration.touchSlop) {
+                            if (change == null || !change.pressed || respectChildGestures && change.isConsumed) {
+                                return@withTimeoutOrNull false
+                            }
+                            if ((change.position - down.position).getDistance() > viewConfiguration.touchSlop) {
                                 return@withTimeoutOrNull false
                             }
                         }

@@ -21,6 +21,7 @@ actual fun ContextMenu(
     header: (@Composable () -> Unit)?,
     reactions: (@Composable (onDismiss: () -> Unit) -> Unit)?,
     enabled: Boolean,
+    respectChildGestures: Boolean,
     openRequest: Int,
     content: @Composable () -> Unit
 ) {

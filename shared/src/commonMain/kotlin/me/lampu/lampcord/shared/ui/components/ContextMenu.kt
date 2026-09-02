@@ -15,6 +15,7 @@ expect fun ContextMenu(
     header: (@Composable () -> Unit)? = null,
     reactions: (@Composable (onDismiss: () -> Unit) -> Unit)? = null,
     enabled: Boolean = true,
+    respectChildGestures: Boolean = false,
     openRequest: Int = 0,
     content: @Composable () -> Unit
 )

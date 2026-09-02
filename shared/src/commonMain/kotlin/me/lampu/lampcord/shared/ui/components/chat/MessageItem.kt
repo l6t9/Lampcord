@@ -471,6 +471,7 @@ fun MessageItem(
                         }
                     }
                 } else null,
+                respectChildGestures = true,
                 openRequest = messageLongPressRequest
             ) {
                 val guilds by guildStore.guilds.collectAsState()
