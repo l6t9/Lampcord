@@ -11,6 +11,11 @@ compose.resources {
     publicResClass = true
 }
 
+val unpackTwemoji = tasks.register<Sync>("unpackTwemoji") {
+    from(zipTree("src/commonMain/twemoji.zip"))
+    into(layout.buildDirectory.dir("generated/twemojiResources"))
+}
+
 kotlin {
     targets.all {
         compilations.all {
@@ -29,7 +34,7 @@ kotlin {
     }
     
     jvm("desktop")
-    
+
     listOf(
         iosArm64(),
         iosSimulatorArm64()
@@ -39,10 +44,14 @@ kotlin {
             isStatic = true
         }
     }
-    
+
     applyDefaultHierarchyTemplate()
     
     sourceSets {
+        commonMain {
+            resources.srcDir(unpackTwemoji)
+        }
+
         commonMain.dependencies {
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
@@ -78,6 +87,12 @@ kotlin {
             
             implementation(libs.coil.compose)
             implementation(libs.coil.network.ktor)
+        }
+
+        getByName("desktopTest") {
+            dependencies {
+                implementation(kotlin("test-junit"))
+            }
         }
         
         getByName("androidMain") {

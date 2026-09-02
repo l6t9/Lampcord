@@ -36,8 +36,10 @@ import coil3.compose.LocalPlatformContext
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import me.lampu.lampcord.shared.settings.Settings
 import kotlin.io.encoding.ExperimentalEncodingApi
+import me.lampu.lampcord.shared.model.TWEMOJI_CDN_BASE_URL
+import me.lampu.lampcord.shared.settings.Settings
+import me.lampu.lampcord.shared.utils.ResourceLoader
 import me.lampu.lampcord.shared.utils.getPlatformName
 
 @OptIn(ExperimentalEncodingApi::class)
@@ -70,8 +72,13 @@ fun AsyncImage(
     val effectiveModel = if (useOriginalModel) model else staticModel
     
     val request = remember(effectiveModel, reducedMotion, lowMemoryMode) {
+        val requestModel = (effectiveModel as? String)
+            ?.takeIf { it.startsWith("$TWEMOJI_CDN_BASE_URL/") }
+            ?.substringAfterLast('/')
+            ?.let { ResourceLoader.readBytes("twemoji/72x72/$it") }
+            ?: effectiveModel
         ImageRequest.Builder(context)
-            .data(effectiveModel)
+            .data(requestModel)
             // Keep lazy-list cells from reusing a request for a different URL.
             .memoryCacheKey(effectiveModel?.toString())
             .memoryCachePolicy(if (lowMemoryMode) CachePolicy.DISABLED else CachePolicy.ENABLED)

@@ -28,8 +28,11 @@ fun Emoji.getDisplayUrl(): String? {
     return unicode?.toTwemojiUrl()
 }
 
+internal const val TWEMOJI_CDN_BASE_URL = "https://cdn.jsdelivr.net/gh/jdecked/twemoji@v17.0.3/assets/72x72"
+
 fun String.toTwemojiUrl(): String {
     val codepoints = mutableListOf<String>()
+    val hasJoiner = contains('\u200D')
     var i = 0
     while (i < length) {
         val c1 = this[i]
@@ -42,7 +45,7 @@ fun String.toTwemojiUrl(): String {
                 continue
             }
         }
-        if (c1.code == 0xFE0F) {
+        if (c1.code == 0xFE0F && !hasJoiner) {
             i++
             continue
         }
@@ -50,6 +53,10 @@ fun String.toTwemojiUrl(): String {
         i++
     }
     if (codepoints.isEmpty()) return ""
-    val codepointStr = codepoints.joinToString("-")
-    return "https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/72x72/$codepointStr.png"
+    // Twemoji's eye-in-speech-bubble asset omits both variation selectors.
+    val codepointStr = codepoints.joinToString("-").replace(
+        "1f441-fe0f-200d-1f5e8-fe0f",
+        "1f441-200d-1f5e8"
+    )
+    return "$TWEMOJI_CDN_BASE_URL/$codepointStr.png"
 }
