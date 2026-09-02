@@ -221,24 +221,35 @@ fun DiscordMarkdownText(
 
                                 // Link presses are owned by this text gesture
                                 // and must not open the parent message menu.
-                                pressed.consume()
+                                var isSlopExceeded = false
                                 val completedTap = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
                                     while (true) {
                                         val event = awaitPointerEvent(PointerEventPass.Main)
                                         val change = event.changes.firstOrNull { it.id == pressed.id }
                                             ?: continue
                                         if (change.isConsumed) return@withTimeoutOrNull false
-                                        if (!change.pressed) return@withTimeoutOrNull true
+                                        if ((change.position - pressed.position).getDistance() > viewConfiguration.touchSlop) {
+                                            isSlopExceeded = true
+                                            return@withTimeoutOrNull false
+                                        }
+                                        if (!change.pressed) {
+                                            change.consume()
+                                            return@withTimeoutOrNull true
+                                        }
                                     }
                                 }
 
                                 when {
+                                    isSlopExceeded -> {
+                                        // Ignore tap if pointer moved beyond touch slop.
+                                    }
                                     completedTap == null -> {
                                         contextMenuUrl = url
                                         contextMenuOffset = IntOffset(
                                             pressed.position.x.roundToInt(),
                                             pressed.position.y.roundToInt()
                                         )
+                                        pressed.consume()
                                     }
                                     completedTap == true -> uriHandler.openUri(url)
                                 }
