@@ -124,17 +124,6 @@ fun ProfileBanner(
             }
         }
 
-        // Drag Handle Overlay
-        if (platform == "android") {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 12.dp)
-                    .size(width = 40.dp, height = 4.dp)
-                    .background(Color.White.copy(alpha = 0.4f), RoundedCornerShape(2.dp))
-            )
-        }
-
         // More Options Overlay
         var menuExpanded by remember { mutableStateOf(false) }
         var showNicknameDialog by remember { mutableStateOf(false) }

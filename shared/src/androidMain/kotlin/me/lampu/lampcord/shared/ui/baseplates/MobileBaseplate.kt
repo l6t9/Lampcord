@@ -48,6 +48,7 @@ import me.lampu.lampcord.shared.ui.components.guilds.ServerBottomSheet
 import me.lampu.lampcord.shared.ui.components.guilds.ServerSettings
 import me.lampu.lampcord.shared.ui.components.members.MemberHeader
 import me.lampu.lampcord.shared.ui.components.profiles.ProfileCard
+import me.lampu.lampcord.shared.ui.components.profiles.ProfileCardSkeleton
 import me.lampu.lampcord.shared.ui.navigation.Navigator
 import me.lampu.lampcord.shared.ui.navigation.Screen
 import me.lampu.lampcord.shared.ui.navigation.rememberNavigationState
@@ -713,10 +714,6 @@ actual fun MobileBaseplate(
     if (profileStore.isProfileLoading || profileStore.selectedProfile != null) {
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-        LaunchedEffect(Unit) {
-            sheetState.expand()
-        }
-
         AdaptiveModalBottomSheet(
             onDismissRequest = {
                 profileStore.selectedProfile = null
@@ -724,17 +721,15 @@ actual fun MobileBaseplate(
                 profileStore.isProfileLoading = false
             },
             sheetState = sheetState,
-            dragHandle = null,
-            containerColor = Color.Transparent,
-            contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
-            peekHeight = 350.dp
+            peekHeight = 350.dp,
         ) {
             if (profileStore.selectedProfile != null) {
                 ProfileCard(
                     profile = profileStore.selectedProfile!!,
-                    modifier = Modifier.fillMaxWidth().wrapContentHeight(),
+                    modifier = Modifier.fillMaxWidth(),
                     showBorder = false,
                     isExpanded = true,
+                    fillAvailableHeight = true,
                     onExpand = null,
                     onDismiss = {
                         profileStore.selectedProfile = null
@@ -743,9 +738,10 @@ actual fun MobileBaseplate(
                     }
                 )
             } else {
-                Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-                    ContainedLoadingIndicator()
-                }
+                ProfileCardSkeleton(
+                    modifier = Modifier.fillMaxWidth(),
+                    isExpanded = true
+                )
             }
         }
     }
@@ -791,7 +787,12 @@ actual fun MobileBaseplate(
 
     if (navigationStore.isServerMenuVisible) {
         navigationStore.selectedGuild?.let { guild ->
-            ServerBottomSheet(guild, onDismiss = { navigationStore.isServerMenuVisible = false })
+            val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+            ServerBottomSheet(
+                guild = guild,
+                onDismiss = { navigationStore.isServerMenuVisible = false },
+                sheetState = sheetState
+            )
         }
     }
 

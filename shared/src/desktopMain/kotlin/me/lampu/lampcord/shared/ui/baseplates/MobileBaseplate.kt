@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -80,6 +81,7 @@ import me.lampu.lampcord.shared.ui.components.chat.ChannelSettingsScreen
 import me.lampu.lampcord.shared.ui.components.guilds.ServerSettings
 import me.lampu.lampcord.shared.ui.components.members.MemberHeader
 import me.lampu.lampcord.shared.ui.components.profiles.ProfileCard
+import me.lampu.lampcord.shared.ui.components.profiles.ProfileCardSkeleton
 import me.lampu.lampcord.shared.ui.components.rememberDiscordPanelsState
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.components.GlobalSnackbarHost
@@ -377,23 +379,22 @@ actual fun MobileBaseplate(
                     profileStore.isProfileExpanded = false
                     profileStore.isProfileLoading = false
                 },
-                sheetState = sheetState,
-                shape = RoundedCornerShape(0.dp),
-                containerColor = Color.Transparent,
-                contentWindowInsets = { WindowInsets(0, 0, 0, 0) }
+                sheetState = sheetState
             ) {
                 if (profileStore.selectedProfile != null) {
                     ProfileCard(
                         profile = profileStore.selectedProfile!!,
-                        modifier = Modifier.fillMaxWidth().wrapContentHeight(),
+                        modifier = Modifier.fillMaxWidth(),
                         showBorder = false,
                         isExpanded = true,
+                        fillAvailableHeight = true,
                         onExpand = null
                     )
                 } else {
-                    Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-                        ContainedLoadingIndicator()
-                    }
+                    ProfileCardSkeleton(
+                        modifier = Modifier.fillMaxWidth(),
+                        isExpanded = true
+                    )
                 }
                 Spacer(Modifier.navigationBarsPadding())
             }
@@ -417,7 +418,12 @@ actual fun MobileBaseplate(
         // Server Menu Bottom Sheet
         if (navigationStore.isServerMenuVisible) {
             navigationStore.selectedGuild?.let { guild ->
-                ServerBottomSheet(guild, onDismiss = { navigationStore.isServerMenuVisible = false })
+                val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+                ServerBottomSheet(
+                    guild = guild,
+                    onDismiss = { navigationStore.isServerMenuVisible = false },
+                    sheetState = sheetState
+                )
             }
         }
 

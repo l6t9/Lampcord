@@ -192,6 +192,12 @@ fun MessageItem(
         items.add(ContextMenuItem("Reply", Icons.Rounded.Reply, onClick = { messageStore.replyingTo = message }, group = "Primary"))
         items.add(ContextMenuItem("Forward", Icons.Filled.Forward, onClick = { navigationStore.forwardingMessage = message }, group = "Primary"))
         
+        message.author?.let { author ->
+            items.add(ContextMenuItem("Profile", Icons.Filled.AccountCircle, onClick = { 
+                profileStore.showProfile(author.id, guildId) 
+            }, group = "Primary"))
+        }
+
         if (canManageThreads) {
             items.add(ContextMenuItem("Create Thread", Icons.Filled.Tag, onClick = { showCreateThreadDialog = true }, group = "Primary"))
         }
@@ -438,9 +444,7 @@ fun MessageItem(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Frequently used emojis are intentionally not
-                            // shown in the context menu.
-                            val commonReactions = emptyList<String>()
+                            val commonReactions = emojiStore.frequentEmojis.take(5)
                             commonReactions.forEach { emojiKey ->
                                 IconButton(
                                     onClick = {

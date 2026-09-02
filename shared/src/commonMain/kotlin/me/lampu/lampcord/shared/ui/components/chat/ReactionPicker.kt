@@ -5,6 +5,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.Emoji
 import me.lampu.lampcord.shared.ui.components.AdaptiveModalBottomSheet
 import me.lampu.lampcord.shared.ui.components.EmojiPicker
@@ -20,7 +21,8 @@ fun ReactionPickerSheet(
     AdaptiveModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
+        peekHeight = 350.dp
     ) {
         EmojiPicker(
             onEmojiSelected = { emoji ->

@@ -47,10 +47,10 @@ fun ReactionUsersDialog(
     if (isMobile) {
         me.lampu.lampcord.shared.ui.components.AdaptiveModalBottomSheet(
             onDismissRequest = onDismiss,
-            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false),
             containerColor = MaterialTheme.colorScheme.surface,
             dragHandle = { BottomSheetDefaults.DragHandle() },
-            peekHeight = 300.dp
+            peekHeight = 350.dp
         ) {
             ReactionUsersContent(
                 channelId = channelId,
@@ -92,7 +92,7 @@ private fun ReactionUsersContent(
 ) {
     val scope = rememberCoroutineScope()
 
-    Column(modifier = Modifier.fillMaxWidth().fillMaxHeight(0.85f)) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         SecondaryScrollableTabRow(
             selectedTabIndex = pagerState.currentPage,
             containerColor = Color.Transparent,

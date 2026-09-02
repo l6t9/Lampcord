@@ -42,7 +42,8 @@ fun ChannelItem(
     guildStore: GuildStore = koinInject(),
     voiceStore: VoiceStore = koinInject(),
     presenceStore: PresenceStore = koinInject(),
-    typingStore: TypingStore = koinInject()
+    typingStore: TypingStore = koinInject(),
+    profileStore: ProfileStore = koinInject()
 ) {
     val isSelected = navigationStore.selectedChannel?.id == channel.id
     val readStates by readStateStore.readStates.collectAsState()
@@ -104,14 +105,24 @@ fun ChannelItem(
     val contextMenuItems = remember(channel, userSettings, isMuted, canView, canManageChannel) {
         val items = mutableListOf<ContextMenuItem>()
         if (canView) {
+            if (isDmChannel) {
+                val recipientId = channel.recipients?.firstOrNull()?.id ?: channel.recipient_ids?.firstOrNull()
+                if (recipientId != null) {
+                    items.add(ContextMenuItem("Profile", Icons.Filled.AccountCircle, onClick = {
+                        profileStore.showProfile(recipientId, null)
+                    }, group = "Primary"))
+                }
+            }
+
             // Primary group
-            items.add(ContextMenuItem(if (isMuted) "Unmute Channel" else "Mute Channel", if (isMuted) Icons.Filled.Notifications else Icons.AutoMirrored.Filled.VolumeOff, onClick = {
-                guildStore.toggleMuteChannel(channel.guild_id ?: "@me", channel.id)
-            }, group = "Primary"))
             items.add(ContextMenuItem("Mark as Read", Icons.Filled.Check, onClick = {
                 scope.launch {
                     readStateStore.ackMessage(channel.id, channel.lastMessageId() ?: "0")
                 }
+            }, group = "Primary"))
+            
+            items.add(ContextMenuItem(if (isMuted) "Unmute Channel" else "Mute Channel", if (isMuted) Icons.Filled.Notifications else Icons.AutoMirrored.Filled.VolumeOff, onClick = {
+                guildStore.toggleMuteChannel(channel.guild_id ?: "@me", channel.id)
             }, group = "Primary"))
 
             val canManageThreads = if (guild == null || member == null) false 
@@ -152,7 +163,31 @@ fun ChannelItem(
         items
     }
 
-    ContextMenu(items = contextMenuItems) {
+    ContextMenu(
+        items = contextMenuItems,
+        header = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = when(channel.type) {
+                        15 -> Icons.Rounded.Forum
+                        2, 13 -> Icons.AutoMirrored.Filled.VolumeUp
+                        5 -> Icons.Filled.Campaign
+                        else -> Icons.Filled.Tag
+                    },
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    text = channel.name ?: "unnamed",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()

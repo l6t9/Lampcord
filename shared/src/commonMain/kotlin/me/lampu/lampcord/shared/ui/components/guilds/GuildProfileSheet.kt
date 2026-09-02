@@ -24,8 +24,61 @@ import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.ui.components.AdaptiveModalBottomSheet
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
+import me.lampu.lampcord.shared.ui.components.ShimmerBox
 import me.lampu.lampcord.shared.ui.icons.Icons
 import org.koin.compose.koinInject
+
+@Composable
+fun GuildProfileSkeleton() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 32.dp)
+    ) {
+        // Banner Placeholder
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(120.dp)
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+        )
+
+        Box(modifier = Modifier.fillMaxWidth()) {
+            // Icon Placeholder
+            Surface(
+                modifier = Modifier
+                    .padding(start = 16.dp)
+                    .offset(y = (-40).dp)
+                    .size(80.dp),
+                shape = RoundedCornerShape(24.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                border = androidx.compose.foundation.BorderStroke(4.dp, MaterialTheme.colorScheme.surfaceContainerLow)
+            ) {
+                ShimmerBox(modifier = Modifier.fillMaxSize(), shape = RoundedCornerShape(24.dp))
+            }
+        }
+
+        Column(modifier = Modifier.padding(horizontal = 16.dp).offset(y = (-32).dp)) {
+            ShimmerBox(modifier = Modifier.width(150.dp).height(24.dp), shape = RoundedCornerShape(12.dp))
+            Spacer(Modifier.height(8.dp))
+            ShimmerBox(modifier = Modifier.fillMaxWidth().height(40.dp), shape = RoundedCornerShape(8.dp))
+            
+            Spacer(Modifier.height(16.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                ShimmerBox(modifier = Modifier.size(8.dp), shape = CircleShape)
+                Spacer(Modifier.width(4.dp))
+                ShimmerBox(modifier = Modifier.width(60.dp).height(12.dp), shape = RoundedCornerShape(6.dp))
+                Spacer(Modifier.width(16.dp))
+                ShimmerBox(modifier = Modifier.size(8.dp), shape = CircleShape)
+                Spacer(Modifier.width(4.dp))
+                ShimmerBox(modifier = Modifier.width(80.dp).height(12.dp), shape = RoundedCornerShape(6.dp))
+            }
+
+            Spacer(Modifier.height(24.dp))
+            ShimmerBox(modifier = Modifier.fillMaxWidth().height(40.dp), shape = RoundedCornerShape(8.dp))
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,12 +119,10 @@ fun GuildProfileSheet(
     AdaptiveModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false),
-        peekHeight = 300.dp
+        peekHeight = 350.dp
     ) {
         if (isLoading) {
-            Box(Modifier.fillMaxWidth().height(300.dp), contentAlignment = Alignment.Center) {
-                ContainedLoadingIndicator()
-            }
+            GuildProfileSkeleton()
         } else if (error != null) {
             Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
                 Text(error!!, color = MaterialTheme.colorScheme.error)

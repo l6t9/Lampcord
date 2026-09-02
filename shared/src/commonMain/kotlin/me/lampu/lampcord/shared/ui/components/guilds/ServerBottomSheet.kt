@@ -30,6 +30,7 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SheetState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -75,6 +76,7 @@ import org.koin.compose.koinInject
 fun ServerBottomSheet(
     guild: Guild,
     onDismiss: () -> Unit,
+    sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false),
     userGuildSettingsStore: UserGuildSettingsStore = koinInject(),
     memberListStore: MemberListStore = koinInject(),
     navigationStore: NavigationStore = koinInject(),
@@ -106,17 +108,12 @@ fun ServerBottomSheet(
 
     AdaptiveModalBottomSheet(
         onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        dragHandle = null,
-        containerColor = Color.Transparent,
-        contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
-        peekHeight = 300.dp
+        sheetState = sheetState,
+        peekHeight = 350.dp
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
-                .background(MaterialTheme.colorScheme.surface)
                 .verticalScroll(rememberScrollState())
                 .padding(bottom = 32.dp)
         ) {
@@ -141,18 +138,6 @@ fun ServerBottomSheet(
                     )
                 }
                 
-                // Drag Handle Overlay
-                if (getPlatformName() == "android") {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .padding(top = 12.dp)
-                            .size(width = 40.dp, height = 4.dp)
-                            .clip(RoundedCornerShape(2.dp))
-                            .background(Color.White.copy(alpha = 0.4f))
-                    )
-                }
-
                 Surface(
                     modifier = Modifier
                         .padding(start = 16.dp)

@@ -25,13 +25,10 @@ import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import me.lampu.lampcord.shared.api.UserApi
 import me.lampu.lampcord.shared.model.Member
-import me.lampu.lampcord.shared.model.User
 import me.lampu.lampcord.shared.model.UserProfile
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.state.*
-import me.lampu.lampcord.shared.utils.Logging
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.DiscordMarkdownText
 import me.lampu.lampcord.shared.ui.components.UserActivity
@@ -83,22 +80,11 @@ fun ProfileSections(
     var showMutualFriends by remember { mutableStateOf(false) }
     var showMutualServers by remember { mutableStateOf(false) }
 
-    var manualMutualFriends by remember { mutableStateOf<List<User>?>(null) }
-    val userApi: UserApi = koinInject()
-
-    LaunchedEffect(user.id) {
-        if (user.id != currentUser?.id) {
-            val friends = userApi.getMutualFriends(user.id)
-            Logging.d("Profile", "Fetched ${friends.size} manual mutual friends for ${user.username}")
-            manualMutualFriends = friends
-        }
-    }
-
     if (showMutualFriends) {
         MutualFriendsBottomSheet(
             userId = user.id,
             username = user.username ?: "",
-            initialFriends = profile.mutual_friends ?: manualMutualFriends,
+            initialFriends = profile.mutual_friends,
             onDismiss = { showMutualFriends = false }
         )
     }
@@ -253,9 +239,10 @@ fun ProfileSections(
                 }
             }
 
-            val mutualFriendsCount = manualMutualFriends?.size ?: profile.mutual_friends_count ?: profile.mutual_friends?.size ?: 0
-            val hasMutuals = user.id != currentUser?.id && (mutualFriendsCount > 0 || !profile.mutual_guilds.isNullOrEmpty())
-            
+            val isOwnProfile = user.id == currentUser?.id
+            val mutualFriendsCount = profile.mutual_friends_count ?: profile.mutual_friends?.size ?: 0
+            val hasMutuals = !isOwnProfile && (mutualFriendsCount > 0 || !profile.mutual_guilds.isNullOrEmpty())
+
             // Connections & Mutuals (Combined as in modern Discord)
             if (profile.connected_accounts.isNotEmpty() || hasMutuals) {
                 Column {
@@ -264,7 +251,7 @@ fun ProfileSections(
                         horizontalPadding = 0.dp,
                         items = buildList {
                             // Mutual Friends
-                            if (mutualFriendsCount > 0) {
+                            if (!isOwnProfile && mutualFriendsCount > 0) {
                                 add(
                                     Material3SettingsItem(
                                         icon = Icons.Rounded.Person,
@@ -276,9 +263,9 @@ fun ProfileSections(
                                     )
                                 )
                             }
-                            
+
                             // Mutual Servers
-                            profile.mutual_guilds?.takeIf { it.isNotEmpty() }?.let { guilds ->
+                            if (!isOwnProfile) profile.mutual_guilds?.takeIf { it.isNotEmpty() }?.let { guilds ->
                                 add(
                                     Material3SettingsItem(
                                         icon = Icons.Rounded.Group,
@@ -290,7 +277,7 @@ fun ProfileSections(
                                     )
                                 )
                             }
-                            
+
                             // Actual Connections
                             addAll(profile.connected_accounts.map { account ->
                                 Material3SettingsItem(

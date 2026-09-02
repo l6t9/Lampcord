@@ -43,6 +43,120 @@ import me.lampu.lampcord.shared.utils.Logging
 import org.koin.compose.koinInject
 import androidx.compose.material3.LocalContentColor
 
+import me.lampu.lampcord.shared.ui.components.ShimmerBox
+import androidx.compose.ui.zIndex
+
+@Composable
+fun ProfileCardSkeleton(
+    modifier: Modifier = Modifier,
+    isExpanded: Boolean = false,
+    fillAvailableHeight: Boolean = false,
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val surface = colorScheme.surfaceContainer
+    val onSurface = colorScheme.onSurface
+    
+    val theme = remember(colorScheme) {
+        ProfileTheme(
+            backgroundBrush = Brush.verticalGradient(listOf(surface, colorScheme.surface)),
+            outerBorderBrush = Brush.verticalGradient(listOf(onSurface.copy(alpha = 0.2f), onSurface.copy(alpha = 0.1f))),
+            bodyOverlayColor = Color.Black.copy(alpha = 0.45f),
+            cardColor = colorScheme.surfaceContainerHigh,
+            tagColor = onSurface.copy(alpha = 0.1f),
+            contentColor = onSurface,
+            cutoutColor = surface,
+            pfpBorderBrush = Brush.verticalGradient(listOf(colorScheme.outline, colorScheme.outline)),
+            primaryAccent = colorScheme.primary,
+            buttonColor = colorScheme.primary,
+            buttonTextColor = colorScheme.onPrimary
+        )
+    }
+
+    val sheetShape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)
+    val expandedShape = RoundedCornerShape(0.dp)
+
+    Box(
+        modifier = modifier
+    ) {
+        Column(
+            modifier = Modifier
+                .then(if (fillAvailableHeight) Modifier.fillMaxWidth().fillMaxHeight() else Modifier.fillMaxWidth().wrapContentHeight())
+                .clip(if (isExpanded) expandedShape else sheetShape)
+                .background(theme.backgroundBrush)
+        ) {
+            Column(
+                modifier = Modifier
+                    .then(if (fillAvailableHeight) Modifier.weight(1f) else Modifier.wrapContentHeight())
+                    .verticalScroll(rememberScrollState())
+            ) {
+                // Banner Placeholder
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(if (isExpanded) 160.dp else 105.dp)
+                        .background(colorScheme.surfaceContainerHighest)
+                )
+
+                Column(modifier = Modifier.padding(start = if (isExpanded) 16.dp else 10.dp, end = 16.dp)) {
+                    // Header Placeholder
+                    Row(
+                        verticalAlignment = Alignment.Top,
+                        modifier = Modifier.fillMaxWidth().padding(end = 16.dp).zIndex(1f)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .offset(y = (-45).dp)
+                                .size(94.dp)
+                                .background(theme.cutoutColor, CircleShape)
+                                .padding(6.dp)
+                        ) {
+                            ShimmerBox(
+                                modifier = Modifier.fillMaxSize(),
+                                shape = CircleShape
+                            )
+                        }
+                    }
+
+                    Column(modifier = Modifier.offset(y = (-35).dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            ShimmerBox(
+                                modifier = Modifier.width(150.dp).height(24.dp),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                        }
+                        Spacer(Modifier.height(4.dp))
+                        ShimmerBox(
+                            modifier = Modifier.width(100.dp).height(16.dp),
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                        
+                        Spacer(Modifier.height(8.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            repeat(3) {
+                                ShimmerBox(modifier = Modifier.size(22.dp), shape = RoundedCornerShape(4.dp))
+                            }
+                        }
+
+                        Spacer(Modifier.height(24.dp))
+                        // Sections Placeholder
+                        repeat(2) {
+                            ShimmerBox(
+                                modifier = Modifier.fillMaxWidth().height(60.dp),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            Spacer(Modifier.height(8.dp))
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+        }
+    }
+}
+
 @Composable
 fun UserProfileDialog(
     profile: UserProfile?,
@@ -88,6 +202,7 @@ fun ProfileCard(
     modifier: Modifier = Modifier,
     isExpanded: Boolean = false,
     isSidebar: Boolean = false,
+    fillAvailableHeight: Boolean = false,
     showMemberSince: Boolean = false,
     onExpand: (() -> Unit)? = null,
     onDismiss: (() -> Unit)? = null,
@@ -268,6 +383,7 @@ fun ProfileCard(
     val outerShape = RoundedCornerShape(16.dp)
     val innerShape = RoundedCornerShape(12.dp)
     val sheetShape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)
+    val expandedShape = RoundedCornerShape(0.dp)
 
     Box(
         modifier = modifier
@@ -275,10 +391,10 @@ fun ProfileCard(
     ) {
         Column(
             modifier = Modifier
-                .then(if (isSidebar) Modifier.fillMaxSize() else Modifier.fillMaxWidth().wrapContentHeight())
+                .then(if (isSidebar) Modifier.fillMaxSize() else if (fillAvailableHeight) Modifier.fillMaxWidth().fillMaxHeight() else Modifier.fillMaxWidth().wrapContentHeight())
                 .then(
-                    if (showBorder) Modifier.clip(innerShape) 
-                    else if (!isSidebar) Modifier.clip(sheetShape)
+                    if (showBorder) Modifier.clip(innerShape)
+                    else if (!isSidebar) Modifier.clip(if (isExpanded) expandedShape else sheetShape)
                     else Modifier
                 )
                 .background(theme.backgroundBrush)
@@ -286,7 +402,7 @@ fun ProfileCard(
             CompositionLocalProvider(LocalContentColor provides theme.contentColor) {
                 Column(
                     modifier = Modifier
-                        .then(if (isSidebar) Modifier.weight(1f) else Modifier.wrapContentHeight())
+                        .then(if (isSidebar || fillAvailableHeight) Modifier.weight(1f) else Modifier.wrapContentHeight())
                         .verticalScroll(rememberScrollState())
                 ) {
                     ProfileBanner(profile, theme, isExpanded, onDismiss = onDismiss, onEdit = onEditBanner, customProfileOverride = customProfile)
@@ -311,28 +427,7 @@ fun ProfileCard(
                 }
             }
 
-            if (!isExpanded && user.id != currentUser?.id) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
-                ) {
-                    Button(
-                        onClick = { onExpand?.invoke() },
-                        modifier = Modifier.fillMaxWidth().height(32.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = theme.buttonColor,
-                            contentColor = theme.buttonTextColor
-                        ),
-                        shape = CircleShape,
-                        contentPadding = PaddingValues(horizontal = 12.dp)
-                    ) {
-                        Text("View Full Profile", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Medium)
-                    }
-                }
-            } else {
-                Spacer(Modifier.height(16.dp))
-            }
+            Spacer(Modifier.height(16.dp))
         }
     }
 }
