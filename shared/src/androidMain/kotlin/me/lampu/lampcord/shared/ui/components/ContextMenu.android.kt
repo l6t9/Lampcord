@@ -45,12 +45,12 @@ actual fun ContextMenu(
                     val down = awaitFirstDown(
                         // Let child controls such as reaction chips claim
                         // their long press before the surrounding message.
-                        pass = PointerEventPass.Main,
-                        requireUnconsumed = true
+                        pass = PointerEventPass.Initial,
+                        requireUnconsumed = false
                     )
                     val longPressed = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
                         while (true) {
-                            val event = awaitPointerEvent(PointerEventPass.Main)
+                            val event = awaitPointerEvent(PointerEventPass.Initial)
                             val change = event.changes.firstOrNull { it.id == down.id }
                             if (change == null || !change.pressed) return@withTimeoutOrNull false
                             if (change.isConsumed) return@withTimeoutOrNull false

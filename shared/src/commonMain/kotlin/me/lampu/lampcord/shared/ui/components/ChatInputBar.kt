@@ -718,7 +718,6 @@ fun ChatInputBar(
                                     )
 
                                     val silentTypingEnabled = settingsStore.silentTyping
-                                    val silentTypingSlashColor = MaterialTheme.colorScheme.error
                                     if (settingsStore.silentTypingButtonEnabled && canSend) {
                                         IconButton(
                                             onClick = {
@@ -727,24 +726,12 @@ fun ChatInputBar(
                                             },
                                             modifier = Modifier.size(36.dp)
                                         ) {
-                                            Box(modifier = Modifier.size(24.dp)) {
-                                                Icon(
-                                                    imageVector = Icons.AutoMirrored.Filled.Keyboard,
-                                                    contentDescription = if (silentTypingEnabled) "Silent typing enabled" else "Silent typing disabled",
-                                                    modifier = Modifier.fillMaxSize(),
-                                                    tint = if (silentTypingEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
-                                                if (silentTypingEnabled) {
-                                                    Canvas(modifier = Modifier.fillMaxSize()) {
-                                                        drawLine(
-                                                            color = silentTypingSlashColor,
-                                                            start = androidx.compose.ui.geometry.Offset(2f, size.height - 2f),
-                                                            end = androidx.compose.ui.geometry.Offset(size.width - 2f, 2f),
-                                                            strokeWidth = 3f
-                                                        )
-                                                    }
-                                                }
-                                            }
+                                            Icon(
+                                                imageVector = if (silentTypingEnabled) Icons.Filled.KeyboardOff else Icons.Filled.Keyboard,
+                                                contentDescription = if (silentTypingEnabled) "Silent typing enabled" else "Silent typing disabled",
+                                                modifier = Modifier.size(24.dp),
+                                                tint = if (silentTypingEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
                                         }
                                     }
 
