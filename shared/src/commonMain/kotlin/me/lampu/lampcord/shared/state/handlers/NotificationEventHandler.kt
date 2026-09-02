@@ -46,6 +46,8 @@ class NotificationEventHandler(
 
     private fun handleMessageCreate(data: JsonElement) {
         val notifier = notifier ?: return
+        // Discord already applies the account's notification settings before sending FCM pushes.
+        if (!notifier.isInForeground) return
         val message = try {
             json.decodeFromJsonElement<Message>(data)
         } catch (e: Exception) {
