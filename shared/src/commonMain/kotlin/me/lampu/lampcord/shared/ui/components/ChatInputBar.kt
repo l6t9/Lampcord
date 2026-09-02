@@ -484,6 +484,7 @@ fun ChatInputBar(
                             val uploadVisible = !settings.chatboxHideUploadButton && messageStore.editingMessage == null && canSend
                             val voiceVisible = !settings.chatboxHideVoiceButton &&
                                 messageStore.editingMessage == null &&
+                                textFieldValue.text.isEmpty() &&
                                 canSend &&
                                 getPlatformName() == "android"
                             
