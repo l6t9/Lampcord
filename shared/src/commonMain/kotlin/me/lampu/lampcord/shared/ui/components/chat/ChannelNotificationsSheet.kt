@@ -79,7 +79,7 @@ fun ChannelNotificationsSheet(
         Duration.INFINITE to "Until I turn it back on"
     )
 
-    AdaptiveModalBottomSheet(onDismissRequest = onDismiss) {
+    AdaptiveModalBottomSheet(onDismissRequest = onDismiss, peekHeight = 300.dp) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()

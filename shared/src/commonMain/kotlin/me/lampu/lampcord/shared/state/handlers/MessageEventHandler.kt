@@ -14,6 +14,7 @@ import me.lampu.lampcord.shared.model.MessageReactionRemove
 import me.lampu.lampcord.shared.model.MessageReactionRemoveAll
 import me.lampu.lampcord.shared.model.MessageReactionRemoveEmoji
 import me.lampu.lampcord.shared.state.*
+import me.lampu.lampcord.shared.utils.Logging
 
 class MessageEventHandler(
     private val json: Json,
@@ -53,7 +54,12 @@ class MessageEventHandler(
     }
 
     private fun handleMessageCreate(data: JsonElement) {
-        val message = json.decodeFromJsonElement<Message>(data)
+        val message = try {
+            json.decodeFromJsonElement<Message>(data)
+        } catch (e: Exception) {
+            me.lampu.lampcord.shared.utils.Logging.e("MessageHandler", "Failed to parse MESSAGE_CREATE", e)
+            return
+        }
         messageLogger.logMessage(message)
         
         // Cache author and member in UserStore (StoreUsers / StoreMembers)

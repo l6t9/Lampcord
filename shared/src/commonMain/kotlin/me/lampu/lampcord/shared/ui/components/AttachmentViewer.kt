@@ -46,8 +46,11 @@ import me.lampu.lampcord.shared.model.DiscordMedia
 import me.lampu.lampcord.shared.model.EmbedVideo
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.utils.downloadToDownloads
 import me.lampu.lampcord.shared.utils.getPlatformName
 import me.lampu.lampcord.shared.utils.setClipboardText
+import me.lampu.lampcord.shared.utils.showToast
+import kotlinx.coroutines.launch
 
 /**
  * Fullscreen attachment viewer: zoomable images, inline video playback,
@@ -183,6 +186,17 @@ fun AttachmentViewer(
                     }
                     
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        val scope = rememberCoroutineScope()
+                        ViewerRoundButton(onClick = {
+                            scope.launch {
+                                val url = item.url ?: item.proxy_url ?: ""
+                                val filename = (item as? Attachment)?.filename ?: "image.png"
+                                val ok = downloadToDownloads(url, filename)
+                                if (ok) showToast("Saved to Downloads") else showToast("Download failed")
+                            }
+                        }) {
+                            Icon(Icons.Filled.Download, "Download", tint = Color.White, modifier = Modifier.size(20.dp))
+                        }
                         ViewerRoundButton(onClick = {
                             setClipboardText(item.url ?: item.proxy_url ?: "")
                         }) {

@@ -12,9 +12,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.CancellationException
-import kotlinx.serialization.json.JsonNull
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
+import kotlinx.serialization.json.*
 import me.lampu.lampcord.shared.model.ConnectedAccount
 import me.lampu.lampcord.shared.model.Gif
 import me.lampu.lampcord.shared.model.GuildFolder
@@ -52,9 +50,9 @@ class UserApi(private val rest: RestClient) {
     suspend fun getUserProfile(userId: String, guildId: String? = null): UserProfile? {
         return try {
             val url = if (guildId != null) {
-                "${rest.apiBase}/users/$userId/profile?guild_id=$guildId&with_mutual_guilds=true&with_mutual_friends_count=true"
+                "${rest.apiBase}/users/$userId/profile?guild_id=$guildId&with_mutual_guilds=true&with_mutual_friends=true&with_mutual_friends_count=true"
             } else {
-                "${rest.apiBase}/users/$userId/profile?with_mutual_guilds=true&with_mutual_friends_count=true"
+                "${rest.apiBase}/users/$userId/profile?with_mutual_guilds=true&with_mutual_friends=true&with_mutual_friends_count=true"
             }
             val response = rest.httpClient.get(url) {
                 standardHeaders(rest)
@@ -122,8 +120,26 @@ class UserApi(private val rest: RestClient) {
                 standardHeaders(rest)
             }
             if (response.status.isSuccess()) {
-                response.body<List<me.lampu.lampcord.shared.model.MutualFriendResponse>>().map { it.user }
-            } else emptyList()
+                val bodyText = response.bodyAsText()
+                Logging.d("Relationship", "Mutual friends response for $userId: $bodyText")
+                // Discord mutual friends API returns a list of relationship objects
+                // but sometimes the fields might vary (e.g. mutual_friend vs relationship)
+                // We'll use a generic approach to extract the 'user' field.
+                val json = rest.json
+                val list = json.parseToJsonElement(bodyText).jsonArray
+                list.mapNotNull { element ->
+                    try {
+                        val obj = element.jsonObject
+                        val userObj = obj["user"] ?: obj["mutual_friend"]
+                        userObj?.let { u -> json.decodeFromJsonElement<User>(u) }
+                    } catch (e: Exception) {
+                        null
+                    }
+                }
+            } else {
+                Logging.e("Relationship", "Failed to fetch mutual friends for $userId: ${response.status}")
+                emptyList()
+            }
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             Logging.e("Relationship", "Error fetching mutual friends for $userId: ${e.message}")

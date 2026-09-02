@@ -36,11 +36,25 @@ class SessionManager(
 
     init {
         scope.launch {
-            gatewayManager.events.collect { 
-                if (it.op == -1 && it.t == "AUTH_FAILED") {
-                    logout(Settings.shared.discordToken)
-                } else {
-                    gatewayHandler.handleGatewayEvent(it)
+            // Never let a single malformed event kill the collector. The gateway
+            // event flow has no replay buffer, so once this coroutine dies any
+            // events arriving afterwards are silently dropped and the app stops
+            // syncing until a restart.
+            gatewayManager.events.collect { payload ->
+                try {
+                    if (payload.op == -1 && payload.t == "AUTH_FAILED") {
+                        logout(Settings.shared.discordToken)
+                    } else {
+                        gatewayHandler.handleGatewayEvent(payload)
+                    }
+                } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    me.lampu.lampcord.shared.utils.Logging.e(
+                        tag = "SessionManager",
+                        message = "Failed to handle gateway event ${payload.op}:${payload.t}",
+                        throwable = e
+                    )
                 }
             }
         }

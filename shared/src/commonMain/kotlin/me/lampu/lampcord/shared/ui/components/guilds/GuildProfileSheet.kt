@@ -65,7 +65,8 @@ fun GuildProfileSheet(
 
     AdaptiveModalBottomSheet(
         onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false),
+        peekHeight = 300.dp
     ) {
         if (isLoading) {
             Box(Modifier.fillMaxWidth().height(300.dp), contentAlignment = Alignment.Center) {

@@ -49,7 +49,8 @@ fun ReactionUsersDialog(
             onDismissRequest = onDismiss,
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
             containerColor = MaterialTheme.colorScheme.surface,
-            dragHandle = { BottomSheetDefaults.DragHandle() }
+            dragHandle = { BottomSheetDefaults.DragHandle() },
+            peekHeight = 300.dp
         ) {
             ReactionUsersContent(
                 channelId = channelId,

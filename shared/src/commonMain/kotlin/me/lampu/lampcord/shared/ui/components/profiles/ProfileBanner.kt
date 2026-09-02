@@ -10,10 +10,12 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.layout.ContentScale
@@ -120,6 +122,17 @@ fun ProfileBanner(
                     )
                 }
             }
+        }
+
+        // Drag Handle Overlay
+        if (platform == "android") {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 12.dp)
+                    .size(width = 40.dp, height = 4.dp)
+                    .background(Color.White.copy(alpha = 0.4f), RoundedCornerShape(2.dp))
+            )
         }
 
         // More Options Overlay

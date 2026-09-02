@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import me.lampu.lampcord.shared.api.CdnUrls
 import me.lampu.lampcord.shared.api.UserApi
 import me.lampu.lampcord.shared.model.MutualGuild
@@ -31,17 +32,19 @@ fun MutualFriendsBottomSheet(
     userId: String,
     username: String,
     onDismiss: () -> Unit,
+    initialFriends: List<User>? = null,
     userApi: UserApi = koinInject(),
     presenceStore: PresenceStore = koinInject(),
     userStore: UserStore = koinInject(),
     profileStore: ProfileStore = koinInject(),
     settingsStore: SettingsStore = koinInject()
 ) {
-    var mutualFriends by remember { mutableStateOf<List<User>?>(null) }
-    var isLoading by remember { mutableStateOf(true) }
+    var mutualFriends by remember { mutableStateOf<List<User>?>(initialFriends) }
+    var isLoading by remember { mutableStateOf(initialFriends == null) }
     val currentUser by userStore.currentUser.collectAsState()
 
     LaunchedEffect(userId) {
+        if (initialFriends != null) return@LaunchedEffect
         isLoading = true
         Logging.d("MutualFriends", "Fetching mutual friends for $userId")
         mutualFriends = userApi.getMutualFriends(userId)
@@ -49,7 +52,7 @@ fun MutualFriendsBottomSheet(
         isLoading = false
     }
 
-    AdaptiveModalBottomSheet(onDismissRequest = onDismiss) {
+    AdaptiveModalBottomSheet(onDismissRequest = onDismiss, peekHeight = 300.dp) {
         Column(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
             Text(
                 text = "Mutual Friends",
@@ -135,7 +138,7 @@ fun MutualServersBottomSheet(
 ) {
     val allGuilds by guildStore.guilds.collectAsState()
 
-    AdaptiveModalBottomSheet(onDismissRequest = onDismiss) {
+    AdaptiveModalBottomSheet(onDismissRequest = onDismiss, peekHeight = 300.dp) {
         Column(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
             Text(
                 text = "Mutual Servers",

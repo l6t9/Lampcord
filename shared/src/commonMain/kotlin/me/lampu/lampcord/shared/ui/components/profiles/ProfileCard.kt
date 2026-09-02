@@ -267,6 +267,7 @@ fun ProfileCard(
 
     val outerShape = RoundedCornerShape(16.dp)
     val innerShape = RoundedCornerShape(12.dp)
+    val sheetShape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)
 
     Box(
         modifier = modifier
@@ -275,7 +276,11 @@ fun ProfileCard(
         Column(
             modifier = Modifier
                 .then(if (isSidebar) Modifier.fillMaxSize() else Modifier.fillMaxWidth().wrapContentHeight())
-                .then(if (showBorder) Modifier.clip(innerShape) else Modifier)
+                .then(
+                    if (showBorder) Modifier.clip(innerShape) 
+                    else if (!isSidebar) Modifier.clip(sheetShape)
+                    else Modifier
+                )
                 .background(theme.backgroundBrush)
         ) {
             CompositionLocalProvider(LocalContentColor provides theme.contentColor) {

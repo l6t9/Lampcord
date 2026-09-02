@@ -21,8 +21,11 @@ import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.AudioPlayer
 import me.lampu.lampcord.shared.ui.components.VideoPlayer
 import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.utils.downloadToDownloads
 import me.lampu.lampcord.shared.utils.getPlatformName
+import me.lampu.lampcord.shared.utils.showToast
 import me.lampu.lampcord.shared.settings.Settings
+import kotlinx.coroutines.launch
 
 @Composable
 fun AttachmentImage(
@@ -266,16 +269,19 @@ fun FileAttachmentView(attachment: Attachment) {
                     Text(text = attachment.filename, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                     Text(text = "${attachment.size / 1024} KB", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                val uriHandler = LocalUriHandler.current
+                val scope = rememberCoroutineScope()
                 val downloadUrl = attachment.url.ifBlank { attachment.proxy_url }
                 IconButton(onClick = {
-                        uriHandler.openUri(downloadUrl)
-                    }) {
-                        Icon(
-                            imageVector = Icons.Filled.OpenInNew,
-                            contentDescription = "Open file in browser",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                    scope.launch {
+                        val ok = downloadToDownloads(downloadUrl, attachment.filename)
+                        if (ok) showToast("Saved to Downloads") else showToast("Download failed")
+                    }
+                }) {
+                    Icon(
+                        imageVector = Icons.Filled.Download,
+                        contentDescription = "Download file",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
             if (isAudio) {

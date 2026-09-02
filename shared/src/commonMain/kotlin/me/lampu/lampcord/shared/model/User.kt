@@ -87,6 +87,7 @@ data class UserProfile(
     val badges: List<ProfileBadge> = emptyList(),
     val guild_badges: List<ProfileBadge> = emptyList(),
     val mutual_guilds: List<MutualGuild>? = null,
+    val mutual_friends: List<User>? = null,
     @kotlinx.serialization.SerialName("mutual_friends_count")
     val mutual_friends_count: Int? = null,
     val connected_accounts: List<ConnectedAccount> = emptyList(),

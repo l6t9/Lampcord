@@ -220,6 +220,18 @@ fun MessageItem(
             setClipboardText("https://discord.com/channels/$guildId/$channelId/$messageId")
         }, group = "Content"))
 
+        if (message.attachments.isNotEmpty()) {
+            items.add(ContextMenuItem("Save Files", Icons.Filled.Download, onClick = {
+                scope.launch {
+                    message.attachments.forEach { attachment ->
+                        val url = attachment.url.ifBlank { attachment.proxy_url }
+                        downloadToDownloads(url, attachment.filename)
+                    }
+                    showToast("Downloads started")
+                }
+            }, group = "Content"))
+        }
+
         // Group 4: Destructive (Discord Group 4)
         if (isMe || canManageMessages) {
             items.add(ContextMenuItem("Delete Message", Icons.Filled.Delete, color = Color.Red, onClick = { showDeleteDialog = true }, group = "Destructive"))

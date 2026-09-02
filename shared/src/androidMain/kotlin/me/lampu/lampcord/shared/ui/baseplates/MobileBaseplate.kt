@@ -711,7 +711,7 @@ actual fun MobileBaseplate(
     }
 
     if (profileStore.isProfileLoading || profileStore.selectedProfile != null) {
-        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
         LaunchedEffect(Unit) {
             sheetState.expand()
@@ -724,6 +724,10 @@ actual fun MobileBaseplate(
                 profileStore.isProfileLoading = false
             },
             sheetState = sheetState,
+            dragHandle = null,
+            containerColor = Color.Transparent,
+            contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
+            peekHeight = 350.dp
         ) {
             if (profileStore.selectedProfile != null) {
                 ProfileCard(

@@ -31,6 +31,7 @@ import me.lampu.lampcord.shared.model.User
 import me.lampu.lampcord.shared.model.UserProfile
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.state.*
+import me.lampu.lampcord.shared.utils.Logging
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.DiscordMarkdownText
 import me.lampu.lampcord.shared.ui.components.UserActivity
@@ -86,8 +87,10 @@ fun ProfileSections(
     val userApi: UserApi = koinInject()
 
     LaunchedEffect(user.id) {
-        if (user.id != currentUser?.id && profile.mutual_friends_count == null) {
-            manualMutualFriends = userApi.getMutualFriends(user.id)
+        if (user.id != currentUser?.id) {
+            val friends = userApi.getMutualFriends(user.id)
+            Logging.d("Profile", "Fetched ${friends.size} manual mutual friends for ${user.username}")
+            manualMutualFriends = friends
         }
     }
 
@@ -95,6 +98,7 @@ fun ProfileSections(
         MutualFriendsBottomSheet(
             userId = user.id,
             username = user.username ?: "",
+            initialFriends = profile.mutual_friends ?: manualMutualFriends,
             onDismiss = { showMutualFriends = false }
         )
     }
@@ -249,70 +253,75 @@ fun ProfileSections(
                 }
             }
 
-            val mutualFriendsCount = profile.mutual_friends_count ?: manualMutualFriends?.size ?: 0
-            if (user.id != currentUser?.id && (mutualFriendsCount > 0 || !profile.mutual_guilds.isNullOrEmpty())) {
-                Column {
-                    ProfileSectionHeader("Mutuals")
-                    Material3SettingsGroup(
-                        horizontalPadding = 0.dp,
-                        items = listOfNotNull(
-                            if (mutualFriendsCount > 0) {
-                                Material3SettingsItem(
-                                    icon = Icons.Rounded.Person,
-                                    iconTint = profileTextColor,
-                                    containerColor = theme.cardColor.copy(alpha = 0.3f),
-                                    title = { Text("Mutual Friends", color = profileTextColor) },
-                                    description = { Text("$mutualFriendsCount Mutual Friends", color = profileSecondaryTextColor) },
-                                    onClick = { showMutualFriends = true }
-                                )
-                            } else null,
-                            profile.mutual_guilds?.takeIf { it.isNotEmpty() }?.let { guilds ->
-                                Material3SettingsItem(
-                                    icon = Icons.Rounded.Group,
-                                    iconTint = profileTextColor,
-                                    containerColor = theme.cardColor.copy(alpha = 0.3f),
-                                    title = { Text("Mutual Servers", color = profileTextColor) },
-                                    description = { Text("${guilds.size} Mutual Servers", color = profileSecondaryTextColor) },
-                                    onClick = { showMutualServers = true }
-                                )
-                            }
-                        )
-                    )
-                }
-            }
-
-            // Connections
-            if (profile.connected_accounts.isNotEmpty()) {
+            val mutualFriendsCount = manualMutualFriends?.size ?: profile.mutual_friends_count ?: profile.mutual_friends?.size ?: 0
+            val hasMutuals = user.id != currentUser?.id && (mutualFriendsCount > 0 || !profile.mutual_guilds.isNullOrEmpty())
+            
+            // Connections & Mutuals (Combined as in modern Discord)
+            if (profile.connected_accounts.isNotEmpty() || hasMutuals) {
                 Column {
                     ProfileSectionHeader("Connections")
                     Material3SettingsGroup(
                         horizontalPadding = 0.dp,
-                        items = profile.connected_accounts.map { account ->
-                            Material3SettingsItem(
-                                icon = getConnectionIcon(account.type, account.name),
-                                iconTint = profileTextColor,
-                                containerColor = theme.cardColor.copy(alpha = 0.3f),
-                                title = { Text(account.name, color = profileTextColor) },
-                                trailingContent = if (account.verified) {
-                                    {
-                                        Icon(
-                                            Icons.AutoMirrored.Filled.OpenInNew,
-                                            contentDescription = "Open Link",
-                                            modifier = Modifier.size(16.dp),
-                                            tint = profileSecondaryTextColor
-                                        )
+                        items = buildList {
+                            // Mutual Friends
+                            if (mutualFriendsCount > 0) {
+                                add(
+                                    Material3SettingsItem(
+                                        icon = Icons.Rounded.Person,
+                                        iconTint = profileTextColor,
+                                        containerColor = theme.cardColor.copy(alpha = 0.3f),
+                                        title = { Text("Mutual Friends", color = profileTextColor) },
+                                        description = { Text("$mutualFriendsCount Mutual Friends", color = profileSecondaryTextColor) },
+                                        onClick = { showMutualFriends = true }
+                                    )
+                                )
+                            }
+                            
+                            // Mutual Servers
+                            profile.mutual_guilds?.takeIf { it.isNotEmpty() }?.let { guilds ->
+                                add(
+                                    Material3SettingsItem(
+                                        icon = Icons.Rounded.Group,
+                                        iconTint = profileTextColor,
+                                        containerColor = theme.cardColor.copy(alpha = 0.3f),
+                                        title = { Text("Mutual Servers", color = profileTextColor) },
+                                        description = { Text("${guilds.size} Mutual Servers", color = profileSecondaryTextColor) },
+                                        onClick = { showMutualServers = true }
+                                    )
+                                )
+                            }
+                            
+                            // Actual Connections
+                            addAll(profile.connected_accounts.map { account ->
+                                Material3SettingsItem(
+                                    icon = getConnectionIcon(account.type, account.name),
+                                    iconTint = profileTextColor,
+                                    containerColor = theme.cardColor.copy(alpha = 0.3f),
+                                    title = { Text(account.name, color = profileTextColor) },
+                                    description = if (account.type == "facebook" || account.type == "contacts") {
+                                        { Text("Mutual Friend", color = profileSecondaryTextColor) }
+                                    } else null,
+                                    trailingContent = if (account.verified) {
+                                        {
+                                            Icon(
+                                                Icons.AutoMirrored.Filled.OpenInNew,
+                                                contentDescription = "Open Link",
+                                                modifier = Modifier.size(16.dp),
+                                                tint = profileSecondaryTextColor
+                                            )
+                                        }
+                                    } else null,
+                                    onClick = {
+                                        val url = getConnectionUrl(account.type, account.name, account.id)
+                                        if (url != null) {
+                                            uriHandler.openUri(url)
+                                        } else {
+                                            setClipboardText(account.name)
+                                            showToast("Copied ${account.name} to clipboard")
+                                        }
                                     }
-                                } else null,
-                                onClick = {
-                                    val url = getConnectionUrl(account.type, account.name, account.id)
-                                    if (url != null) {
-                                        uriHandler.openUri(url)
-                                    } else {
-                                        setClipboardText(account.name)
-                                        showToast("Copied ${account.name} to clipboard")
-                                    }
-                                }
-                            )
+                                )
+                            })
                         }
                     )
                 }
