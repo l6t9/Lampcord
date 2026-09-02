@@ -13,19 +13,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import me.lampu.lampcord.shared.api.CdnUrls
 import me.lampu.lampcord.shared.api.UserApi
 import me.lampu.lampcord.shared.model.MutualGuild
 import me.lampu.lampcord.shared.model.User
-import me.lampu.lampcord.shared.state.GuildStore
-import me.lampu.lampcord.shared.state.PresenceStore
-import me.lampu.lampcord.shared.state.UserStore
+import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.components.AdaptiveModalBottomSheet
 import me.lampu.lampcord.shared.ui.components.AsyncImage
-import me.lampu.lampcord.shared.ui.components.LoadingIndicators
 import me.lampu.lampcord.shared.ui.components.StatusIndicator
 import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.utils.Logging
 import org.koin.compose.koinInject
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MutualFriendsBottomSheet(
     userId: String,
@@ -33,7 +33,9 @@ fun MutualFriendsBottomSheet(
     onDismiss: () -> Unit,
     userApi: UserApi = koinInject(),
     presenceStore: PresenceStore = koinInject(),
-    userStore: UserStore = koinInject()
+    userStore: UserStore = koinInject(),
+    profileStore: ProfileStore = koinInject(),
+    settingsStore: SettingsStore = koinInject()
 ) {
     var mutualFriends by remember { mutableStateOf<List<User>?>(null) }
     var isLoading by remember { mutableStateOf(true) }
@@ -41,7 +43,9 @@ fun MutualFriendsBottomSheet(
 
     LaunchedEffect(userId) {
         isLoading = true
+        Logging.d("MutualFriends", "Fetching mutual friends for $userId")
         mutualFriends = userApi.getMutualFriends(userId)
+        Logging.d("MutualFriends", "Found ${mutualFriends?.size ?: 0} mutual friends")
         isLoading = false
     }
 
@@ -70,13 +74,16 @@ fun MutualFriendsBottomSheet(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clickable { /* TODO: Open profile? */ }
+                                    .clickable { 
+                                        onDismiss()
+                                        profileStore.showProfile(friend.id)
+                                    }
                                     .padding(horizontal = 16.dp, vertical = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Box(modifier = Modifier.size(40.dp)) {
                                     AsyncImage(
-                                        model = "https://cdn.discordapp.com/avatars/${friend.id}/${friend.avatar}.png?size=128",
+                                        model = CdnUrls.getUserAvatarUrl(friend.id, friend.avatar, 128),
                                         contentDescription = null,
                                         modifier = Modifier.fillMaxSize().clip(CircleShape)
                                     )
@@ -88,7 +95,7 @@ fun MutualFriendsBottomSheet(
                                             .padding(2.dp)
                                     ) {
                                         StatusIndicator(
-                                            status = presenceStore.getUserStatus(friend.id, currentUser?.id, null),
+                                            status = presenceStore.getUserStatus(friend.id, currentUser?.id, settingsStore.userSettings?.status),
                                             size = 10.dp,
                                             borderWidth = 0.dp
                                         )
@@ -116,13 +123,15 @@ fun MutualFriendsBottomSheet(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MutualServersBottomSheet(
     userId: String,
     username: String,
     mutualGuilds: List<MutualGuild>,
     onDismiss: () -> Unit,
-    guildStore: GuildStore = koinInject()
+    guildStore: GuildStore = koinInject(),
+    navigationStore: NavigationStore = koinInject()
 ) {
     val allGuilds by guildStore.guilds.collectAsState()
 
@@ -146,13 +155,18 @@ fun MutualServersBottomSheet(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { /* TODO: Navigate to guild? */ }
+                                .clickable { 
+                                    onDismiss()
+                                    if (guild != null) {
+                                        navigationStore.selectedGuild = guild
+                                    }
+                                }
                                 .padding(horizontal = 16.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             if (guild?.icon != null) {
                                 AsyncImage(
-                                    model = "https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=128",
+                                    model = CdnUrls.getGuildIconUrl(guild.id, guild.icon, 128),
                                     contentDescription = null,
                                     modifier = Modifier.size(40.dp).clip(CircleShape)
                                 )

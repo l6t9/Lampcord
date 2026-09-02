@@ -52,9 +52,9 @@ class UserApi(private val rest: RestClient) {
     suspend fun getUserProfile(userId: String, guildId: String? = null): UserProfile? {
         return try {
             val url = if (guildId != null) {
-                "${rest.apiBase}/users/$userId/profile?guild_id=$guildId"
+                "${rest.apiBase}/users/$userId/profile?guild_id=$guildId&with_mutual_guilds=true&with_mutual_friends_count=true"
             } else {
-                "${rest.apiBase}/users/$userId/profile"
+                "${rest.apiBase}/users/$userId/profile?with_mutual_guilds=true&with_mutual_friends_count=true"
             }
             val response = rest.httpClient.get(url) {
                 standardHeaders(rest)
@@ -112,6 +112,21 @@ class UserApi(private val rest: RestClient) {
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             Logging.e("Relationship", "Error fetching relationships: ${e.message}")
+            emptyList()
+        }
+    }
+
+    suspend fun getMutualFriends(userId: String): List<User> {
+        return try {
+            val response = rest.httpClient.get("${rest.apiBase}/users/$userId/relationships") {
+                standardHeaders(rest)
+            }
+            if (response.status.isSuccess()) {
+                response.body<List<me.lampu.lampcord.shared.model.MutualFriendResponse>>().map { it.user }
+            } else emptyList()
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            Logging.e("Relationship", "Error fetching mutual friends for $userId: ${e.message}")
             emptyList()
         }
     }
