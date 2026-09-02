@@ -2,6 +2,7 @@ import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.google.services)
     alias(libs.plugins.kotlin.multiplatform) apply false
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.compose.compiler)
@@ -81,6 +82,7 @@ android {
 dependencies {
     implementation(project(":shared"))
     implementation(libs.koin.android)
+    implementation(libs.firebase.messaging)
     implementation(libs.material)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.appcompat)

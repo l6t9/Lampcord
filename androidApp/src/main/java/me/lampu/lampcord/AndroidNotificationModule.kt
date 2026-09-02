@@ -3,6 +3,7 @@ package me.lampu.lampcord
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import me.lampu.lampcord.shared.notifications.MessageNotifier
+import me.lampu.lampcord.shared.notifications.PushTokenRegistrar
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
 
@@ -15,4 +16,5 @@ val androidNotificationModule = module {
             scope = CoroutineScope(Dispatchers.Main)
         )
     }
+    single<PushTokenRegistrar> { AndroidPushTokenRegistrar(get()) }
 }

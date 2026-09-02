@@ -280,6 +280,28 @@ class UserApi(private val rest: RestClient) {
         }
     }
 
+    suspend fun registerPushToken(token: String): Boolean {
+        if (rest.token == null || token.isBlank()) return false
+        return try {
+            val response = rest.httpClient.post("${rest.apiBase}/users/@me/devices") {
+                standardHeaders(rest)
+                contentType(ContentType.Application.Json)
+                setBody(buildJsonObject {
+                    put("provider", "gcm")
+                    put("token", token)
+                })
+            }
+            response.status.isSuccess().also { success ->
+                if (success) Logging.i("FCM", "Push token registered")
+                else Logging.e("FCM", "Discord rejected push registration: ${response.status}")
+            }
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            Logging.e("FCM", "Error registering push token: ${e.message}")
+            false
+        }
+    }
+
     suspend fun getDevices(): List<DiscordDevice> {
         return try {
             val response = rest.httpClient.get("${rest.apiBase}/users/@me/devices") {

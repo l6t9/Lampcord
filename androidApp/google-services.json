@@ -1,0 +1,49 @@
+{
+  "project_info": {
+    "project_number": "162066849712",
+    "firebase_url": "https://adept-ethos-91518.firebaseio.com",
+    "project_id": "adept-ethos-91518",
+    "storage_bucket": "adept-ethos-91518.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:162066849712:android:db38e83be74de1b6",
+        "android_client_info": {
+          "package_name": "com.discord"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "162066849712-o63evu2i36kqp7qai3r8np9c5m6ce3ff.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCY8pVLbcOlWDz6NdLbaGckvwhOmfNu02U"
+        }
+      ]
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:162066849712:android:db38e83be74de1b6",
+        "android_client_info": {
+          "package_name": "me.lampu.lampcord"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "162066849712-o63evu2i36kqp7qai3r8np9c5m6ce3ff.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCY8pVLbcOlWDz6NdLbaGckvwhOmfNu02U"
+        }
+      ]
+    }
+  ],
+  "configuration_version": "1"
+}

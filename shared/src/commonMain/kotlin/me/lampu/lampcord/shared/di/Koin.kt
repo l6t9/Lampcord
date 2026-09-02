@@ -19,6 +19,7 @@ import me.lampu.lampcord.shared.database.getRoomDatabase
 import me.lampu.lampcord.shared.gateway.GatewayManager
 import me.lampu.lampcord.shared.gateway.VoiceGatewayManager
 import me.lampu.lampcord.shared.notifications.MessageNotifier
+import me.lampu.lampcord.shared.notifications.PushTokenRegistrar
 import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.state.handlers.*
 import me.lampu.lampcord.shared.utils.getDatabaseBuilder
@@ -135,7 +136,7 @@ val storeModule = module {
             tokenStore = get(), userStore = get(), gatewayHandler = get(), entityStore = get(),
             readStateStore = get(), userGuildSettingsStore = get(), presenceStore = get(),
             relationshipStore = get(), guildStore = get(), memberListStore = get(), messageStore = get(),
-            typingStore = get(), commandStore = get()
+            typingStore = get(), commandStore = get(), pushTokenRegistrar = getOrNull<PushTokenRegistrar>()
         )
     }
 

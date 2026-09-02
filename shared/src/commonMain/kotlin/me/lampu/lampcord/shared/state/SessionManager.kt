@@ -9,6 +9,7 @@ import me.lampu.lampcord.shared.gateway.VoiceGatewayManager
 import me.lampu.lampcord.shared.model.LoginRequest
 import me.lampu.lampcord.shared.model.LoginResponse
 import me.lampu.lampcord.shared.model.MFALoginRequest
+import me.lampu.lampcord.shared.notifications.PushTokenRegistrar
 import me.lampu.lampcord.shared.settings.Settings
 
 class SessionManager(
@@ -28,7 +29,8 @@ class SessionManager(
     val memberListStore: MemberListStore,
     val messageStore: MessageStore,
     val typingStore: TypingStore,
-    val commandStore: CommandStore
+    val commandStore: CommandStore,
+    val pushTokenRegistrar: PushTokenRegistrar? = null
 ) {
     private val scope = CoroutineScope(Dispatchers.Main)
 
@@ -58,6 +60,7 @@ class SessionManager(
         Settings.shared.discordToken = token
         navigationStore.isConnecting = true
         gatewayManager.connect(token)
+        pushTokenRegistrar?.register()
     }
 
     fun disconnect() {

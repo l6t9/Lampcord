@@ -20,10 +20,19 @@ data class ChannelNotificationMeta(
 
 object NotificationMessageCache {
     private const val MAX_MESSAGES_PER_CHANNEL = 12
+    private const val MAX_SEEN_MESSAGES = 100
 
     private val messagesByChannel = LinkedHashMap<String, MutableList<NotificationMessage>>()
+    private val seenMessageIds = LinkedHashSet<String>()
     private val metaByChannel = mutableMapOf<String, ChannelNotificationMeta>()
     private val avatarCache = LruCache<String, Bitmap>(24)
+
+    @Synchronized
+    fun markMessageSeen(messageId: String): Boolean {
+        if (!seenMessageIds.add(messageId)) return false
+        if (seenMessageIds.size > MAX_SEEN_MESSAGES) seenMessageIds.remove(seenMessageIds.first())
+        return true
+    }
 
     @Synchronized
     fun addMessage(channelId: String, message: NotificationMessage) {

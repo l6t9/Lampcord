@@ -43,6 +43,21 @@
             android:exported="false" />
 
         <service
+            android:name=".LampcordFirebaseMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_stat_notify" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="messages" />
+
+        <service
             android:name=".MusicPresenceService"
             android:exported="true"
             android:label="@string/music_presence_label"

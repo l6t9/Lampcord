@@ -61,8 +61,9 @@ class AndroidMessageNotifier(
 
         NotificationHelper.ensureMessageChannel(context)
 
-        val avatar = NotificationHelper.loadAvatar(data.authorAvatarUrl)
         val channelId = data.message.channel_id
+        if (!NotificationMessageCache.markMessageSeen(data.message.id)) return
+        val avatar = NotificationHelper.loadAvatar(data.authorAvatarUrl)
         val timestamp = parseTimestamp(data.message.timestamp)
 
         NotificationMessageCache.addMessage(
