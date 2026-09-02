@@ -16,7 +16,6 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.withTimeoutOrNull
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -42,30 +41,39 @@ actual fun ContextMenu(
             if (!enabled) return@pointerInput
             awaitPointerEventScope {
                 while (true) {
-                    val down = awaitFirstDown(
-                        // Let child controls such as reaction chips claim
-                        // their long press before the surrounding message.
-                        pass = PointerEventPass.Initial,
-                        requireUnconsumed = false
-                    )
-                    val longPressed = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+                    val down = awaitFirstDown(pass = PointerEventPass.Initial, requireUnconsumed = false)
+                    
+                    val longPressTriggered = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
                         while (true) {
-                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                            val event = awaitPointerEvent(PointerEventPass.Main)
                             val change = event.changes.firstOrNull { it.id == down.id }
-                            if (change == null || !change.pressed) return@withTimeoutOrNull false
-                            if (change.isConsumed) return@withTimeoutOrNull false
+                            if (change == null || !change.pressed || change.isConsumed) {
+                                // Cancel detection if the pointer was released, moved, or consumed by child
+                                return@withTimeoutOrNull false
+                            }
                             if ((change.position - down.position).getDistance() > viewConfiguration.touchSlop) {
                                 return@withTimeoutOrNull false
                             }
                         }
-                        false
-                    } ?: true
+                    } == null
 
-                    if (!longPressed) continue
-
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    showSheet = true
-                    down.consume()
+                    if (longPressTriggered) {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        showSheet = true
+                        
+                        // Consume all subsequent events for this pointer in the Initial pass
+                        // to prevent children from seeing the release and triggering a click.
+                        while (true) {
+                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                            val change = event.changes.firstOrNull { it.id == down.id }
+                            if (change != null) {
+                                change.consume()
+                                if (!change.pressed) break
+                            } else {
+                                break
+                            }
+                        }
+                    }
                 }
             }
         }

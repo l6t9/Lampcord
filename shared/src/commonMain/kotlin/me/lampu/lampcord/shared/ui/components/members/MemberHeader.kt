@@ -35,6 +35,7 @@ import me.lampu.lampcord.shared.state.AutocompleteStore
 import me.lampu.lampcord.shared.state.GuildStore
 import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.state.SearchStore
+import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.icons.Icons
@@ -52,6 +53,7 @@ fun MemberHeader(
     userStore: UserStore = koinInject(),
     searchStore: SearchStore = koinInject(),
     autocompleteStore: AutocompleteStore = koinInject(),
+    settingsStore: SettingsStore = koinInject(),
 ) {
     val currentUser by userStore.currentUser.collectAsState()
     val allUsers by userStore.users.collectAsState()
@@ -269,8 +271,54 @@ fun MemberHeader(
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
                 )
+
+                if (isDm) {
+                    var showMenu by remember { mutableStateOf(false) }
+                    Box {
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(
+                                imageVector = Icons.Filled.MoreVert,
+                                contentDescription = "More options",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Close DM") },
+                                onClick = {
+                                    showMenu = false
+                                    navigationStore.closeDm(channel.id)
+                                },
+                                leadingIcon = { Icon(Icons.Filled.Close, null, tint = Color.Red) }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Pinned Messages") },
+                                onClick = {
+                                    showMenu = false
+                                    navigationStore.isPinsVisible = true
+                                },
+                                leadingIcon = { Icon(Icons.Filled.PushPin, null) }
+                            )
+                            if (settingsStore.userSettings?.developer_mode == true) {
+                                DropdownMenuItem(
+                                    text = { Text("Copy ID") },
+                                    onClick = {
+                                        showMenu = false
+                                        me.lampu.lampcord.shared.utils.setClipboardText(channel.id)
+                                    },
+                                    leadingIcon = { Icon(Icons.Filled.Dns, null) }
+                                )
+                            }
+                        }
+                    }
+                }
             }
 
             if (channel.topic?.isNotBlank() == true) {
