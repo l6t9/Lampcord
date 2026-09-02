@@ -69,6 +69,7 @@ actual fun VideoPlayer(
     subtitle: String?,
     compact: Boolean,
     autoPlay: Boolean,
+    showSeekBar: Boolean,
     onFullscreenClick: (() -> Unit)?
 ) {
     var videoFrame by remember { mutableStateOf<ImageBitmap?>(null) }
@@ -742,8 +743,9 @@ private class DesktopVideoPlayer(
                     val nativeWidth = candidateGrabber.imageWidth
                     val nativeHeight = candidateGrabber.imageHeight
                     if (nativeWidth > 0 && nativeHeight > 0) {
-                        val scale = if (nativeHeight > MAX_DECODE_HEIGHT) {
-                            MAX_DECODE_HEIGHT.toFloat() / nativeHeight
+                        val maxDecodeHeight = if (Settings.shared.desktopLowMemoryMode) MAX_DECODE_HEIGHT else Int.MAX_VALUE
+                        val scale = if (nativeHeight > maxDecodeHeight) {
+                            maxDecodeHeight.toFloat() / nativeHeight
                         } else {
                             1f
                         }

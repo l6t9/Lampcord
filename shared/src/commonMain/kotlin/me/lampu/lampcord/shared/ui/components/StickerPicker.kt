@@ -20,6 +20,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalUriHandler
 import kotlinx.coroutines.launch
 import me.lampu.lampcord.shared.api.MediaApi
 import me.lampu.lampcord.shared.settings.Settings
@@ -33,7 +34,6 @@ import me.lampu.lampcord.shared.utils.setClipboardText
 import me.lampu.lampcord.shared.utils.showToast
 import me.lampu.lampcord.shared.model.EmbedImage
 import org.koin.compose.koinInject
-import me.lampu.lampcord.shared.utils.downloadToDownloads
 
 @Composable
 fun StickerPicker(
@@ -45,6 +45,7 @@ fun StickerPicker(
 ) {
     val guilds by guildStore.guilds.collectAsState()
     val selectedGuild = navigationStore.selectedGuild
+    val uriHandler = LocalUriHandler.current
     var officialPacks by remember { mutableStateOf<List<StickerPack>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
 
@@ -202,14 +203,9 @@ fun StickerPicker(
                                 )
 
                                 // Save and Clone
-                                val downloadFilename = "sticker_${sticker.id}.png"
                                 val extra = listOf(
                                     ContextMenuItem("Save Image", Icons.Filled.Download, onClick = {
-                                        val scope = coroutineScope
-                                        scope.launch {
-                                            val ok = downloadToDownloads(stickerUrl, downloadFilename)
-                                            if (ok) showToast("Saved to Downloads") else showToast("Save failed")
-                                        }
+                                        uriHandler.openUri(stickerUrl)
                                     }),
                                     ContextMenuItem("Clone to other server", Icons.Filled.Upload, onClick = {
                                         cloneImageUrl = stickerUrl

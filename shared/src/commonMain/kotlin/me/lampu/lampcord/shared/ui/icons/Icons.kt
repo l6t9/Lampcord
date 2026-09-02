@@ -31,6 +31,13 @@ object Icons {
         }
 
         object Filled {
+            /** Material keyboard glyph used by the silent-typing control. */
+            val Keyboard: ImageVector by lazy {
+                materialSymbol(
+                    "Rounded_filled.Keyboard",
+                    "M800-200H160C116-200 80-164 80-120V-680C80-724 116-760 160-760H800C844-760 880-724 880-680V-280C880-236 844-200 800-200ZM440-320H520V-400H440V-320ZM440-440H520V-520H440V-440ZM320-320H400V-400H320V-320ZM320-440H400V-520H320V-440ZM280-440H200V-520H280V-440ZM280-320H200V-400H280V-320ZM600-560H360C338-560 320-578 320-600C320-622 338-640 360-640H600C622-640 640-622 640-600C640-578 622-560 600-560ZM640-320H560V-400H640V-320ZM640-440H560V-520H640V-440ZM760-320H680V-400H760V-320ZM760-440H680V-520H760V-440Z"
+                )
+            }
             val ArrowBack: ImageVector by lazy { materialSymbol("Rounded_filled.ArrowBack", IconsRoundedFilled.ArrowBack_Path, autoMirror = true) }
             val ArrowForward: ImageVector by lazy { materialSymbol("Rounded_filled.ArrowForward", IconsRoundedFilled.ArrowForward_Path, autoMirror = true) }
             val KeyboardArrowLeft: ImageVector by lazy { materialSymbol("Rounded_filled.ChevronLeft", IconsRoundedFilled.ChevronLeft_Path, autoMirror = true) }

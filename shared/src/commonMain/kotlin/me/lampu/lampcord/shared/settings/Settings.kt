@@ -29,6 +29,7 @@ class Settings(private val settings: KmpSettings) {
     var animateStickers by preferenceEnum("animate_stickers", StickerAnimation.ALWAYS)
     var panelAnimation by preferenceEnum("panel_animation", PanelAnimation.MINIMAL)
     var reduceMotion by preferenceBoolean("reduce_motion", false)
+    var desktopLowMemoryMode by preferenceBoolean("desktop_low_memory_mode", false)
 
     // Theme Settings
     var transparencyMode by preferenceEnum("transparency_mode", TransparencyMode.NONE)
@@ -41,6 +42,7 @@ class Settings(private val settings: KmpSettings) {
     var chatboxHeight by preferenceInt("chatbox_height", 40)
     var chatboxHideUploadButton by preferenceBoolean("chatbox_hide_upload_button", false)
     var chatboxHideEmojiButton by preferenceBoolean("chatbox_hide_emoji_button", false)
+    var chatboxHideVoiceButton by preferenceBoolean("chatbox_hide_voice_button", true)
     var chatboxFontSize by preferenceFloat("chatbox_font_size", 1.0f)
 
     // Free Nitro Emojis
@@ -75,6 +77,7 @@ class Settings(private val settings: KmpSettings) {
     var compactMode by preferenceBoolean("compact_mode", false)
     var chatBubbles by preferenceBoolean("chat_bubbles", false)
     var silentTyping by preferenceBoolean("silent_typing", false)
+    var silentTypingButtonEnabled by preferenceBoolean("silent_typing_button_enabled", false)
     var musicPresenceEnabled by preferenceBoolean("music_presence_enabled", true)
     var hideBlockedMessages by preferenceBoolean("hide_blocked_messages", false)
     var showPermissions by preferenceBoolean("show_permissions", true)

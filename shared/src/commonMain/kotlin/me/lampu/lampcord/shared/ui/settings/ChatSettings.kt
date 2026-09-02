@@ -15,6 +15,7 @@ import me.lampu.lampcord.shared.settings.ChatGestures
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.showToast
+import me.lampu.lampcord.shared.utils.getPlatformName
 import org.koin.compose.koinInject
 
 @Composable
@@ -36,6 +37,8 @@ fun ChatSettingsContent(
     messageLogger: MessageLogger = koinInject()
 ) {
     val userSettings = settingsStore.userSettings
+    val platform = remember { getPlatformName() }
+    val isDesktop = platform != "android" && platform != "ios"
     var showClearLoggerConfirmation by remember { mutableStateOf(false) }
     Column(modifier = Modifier.fillMaxWidth()) {
         Material3SettingsGroup(
@@ -74,6 +77,20 @@ fun ChatSettingsContent(
             )
         )
 
+        if (isDesktop) {
+            Material3SettingsGroup(
+                title = "Performance",
+                items = listOf(
+                    switchSettingsItem(
+                        title = "Reduce RAM Usage",
+                        description = "Use less memory for images and video on desktop. Changes apply immediately.",
+                        checked = settingsStore.desktopLowMemoryMode,
+                        onCheckedChange = { settingsStore.desktopLowMemoryMode = it }
+                    )
+                )
+            )
+        }
+
         Material3SettingsGroup(
             title = "Chatbox Customization",
             items = listOf(
@@ -107,8 +124,28 @@ fun ChatSettingsContent(
                     title = "Hide Emoji Button",
                     checked = settingsStore.chatboxHideEmojiButton,
                     onCheckedChange = { settingsStore.chatboxHideEmojiButton = it }
+                ),
+                switchSettingsItem(
+                        title = "Silent Typing",
+                        description = "Show a keyboard control for hiding your typing indicator.",
+                        checked = settingsStore.silentTypingButtonEnabled,
+                        onCheckedChange = { settingsStore.silentTypingButtonEnabled = it }
                 )
-            )
+            ).let { items ->
+                if (platform == "android") {
+                    items.toMutableList().apply {
+                        add(
+                            5,
+                            switchSettingsItem(
+                                title = "Hide Voice Message Button",
+                                description = "Remove the voice message recording button from the chat box.",
+                                checked = settingsStore.chatboxHideVoiceButton,
+                                onCheckedChange = { settingsStore.chatboxHideVoiceButton = it }
+                            )
+                        )
+                    }
+                } else items
+            }
         )
 
         Material3SettingsGroup(

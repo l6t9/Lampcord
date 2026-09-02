@@ -61,7 +61,12 @@ class GatewayHandler(
                 
                 userGuildSettingsStore.handleReady(ready)
                 
-                val guildOrder = settingsStore.userSettings?.guild_positions?.mapNotNull { it.jsonPrimitive.contentOrNull ?: it.toString() } ?: emptyList()
+                val settings = settingsStore.userSettings
+                val guildOrder = settings?.guild_folders?.flatMap { folder ->
+                    folder.guild_ids.mapNotNull { it.jsonPrimitive.contentOrNull }
+                }?.takeIf { it.isNotEmpty() }
+                    ?: settings?.guild_positions?.mapNotNull { it.jsonPrimitive.contentOrNull ?: it.toString() }
+                    ?: emptyList()
                 
                 guildStore.setGuilds(ready.guilds, guildOrder)
                 guildStore.setPrivateChannels(ready.private_channels)

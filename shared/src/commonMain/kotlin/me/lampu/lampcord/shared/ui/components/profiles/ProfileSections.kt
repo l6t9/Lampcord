@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -24,7 +25,9 @@ import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import me.lampu.lampcord.shared.api.UserApi
 import me.lampu.lampcord.shared.model.Member
+import me.lampu.lampcord.shared.model.User
 import me.lampu.lampcord.shared.model.UserProfile
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.state.*
@@ -75,6 +78,35 @@ fun ProfileSections(
 
     val profileTextColor = MaterialTheme.colorScheme.onSurface
     val profileSecondaryTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+
+    var showMutualFriends by remember { mutableStateOf(false) }
+    var showMutualServers by remember { mutableStateOf(false) }
+
+    var manualMutualFriends by remember { mutableStateOf<List<User>?>(null) }
+    val userApi: UserApi = koinInject()
+
+    LaunchedEffect(user.id) {
+        if (user.id != currentUser?.id && profile.mutual_friends_count == null) {
+            manualMutualFriends = userApi.getMutualFriends(user.id)
+        }
+    }
+
+    if (showMutualFriends) {
+        MutualFriendsBottomSheet(
+            userId = user.id,
+            username = user.username ?: "",
+            onDismiss = { showMutualFriends = false }
+        )
+    }
+
+    if (showMutualServers) {
+        MutualServersBottomSheet(
+            userId = user.id,
+            username = user.username ?: "",
+            mutualGuilds = profile.mutual_guilds ?: emptyList(),
+            onDismiss = { showMutualServers = false }
+        )
+    }
 
     Column(modifier = Modifier.padding(bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         // Bio Priority: Guild Member Bio -> User Profile Bio -> Base User Bio
@@ -214,6 +246,38 @@ fun ProfileSections(
                     if (showManageRoles) {
                         ManageRolesSheet(profile = profile, guild = guild, onDismiss = { showManageRoles = false })
                     }
+                }
+            }
+
+            val mutualFriendsCount = profile.mutual_friends_count ?: manualMutualFriends?.size ?: 0
+            if (user.id != currentUser?.id && (mutualFriendsCount > 0 || !profile.mutual_guilds.isNullOrEmpty())) {
+                Column {
+                    ProfileSectionHeader("Mutuals")
+                    Material3SettingsGroup(
+                        horizontalPadding = 0.dp,
+                        items = listOfNotNull(
+                            if (mutualFriendsCount > 0) {
+                                Material3SettingsItem(
+                                    icon = Icons.Rounded.Person,
+                                    iconTint = profileTextColor,
+                                    containerColor = theme.cardColor.copy(alpha = 0.3f),
+                                    title = { Text("Mutual Friends", color = profileTextColor) },
+                                    description = { Text("$mutualFriendsCount Mutual Friends", color = profileSecondaryTextColor) },
+                                    onClick = { showMutualFriends = true }
+                                )
+                            } else null,
+                            profile.mutual_guilds?.takeIf { it.isNotEmpty() }?.let { guilds ->
+                                Material3SettingsItem(
+                                    icon = Icons.Rounded.Group,
+                                    iconTint = profileTextColor,
+                                    containerColor = theme.cardColor.copy(alpha = 0.3f),
+                                    title = { Text("Mutual Servers", color = profileTextColor) },
+                                    description = { Text("${guilds.size} Mutual Servers", color = profileSecondaryTextColor) },
+                                    onClick = { showMutualServers = true }
+                                )
+                            }
+                        )
+                    )
                 }
             }
 

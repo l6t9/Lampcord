@@ -32,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.coerceAtMost
 import androidx.compose.ui.zIndex
 import kotlin.time.Duration.Companion.milliseconds
@@ -49,7 +50,6 @@ import me.lampu.lampcord.shared.utils.setClipboardText
 import me.lampu.lampcord.shared.utils.showToast
 import me.lampu.lampcord.shared.model.EmbedImage
 import me.lampu.lampcord.shared.utils.getPlatformName
-import me.lampu.lampcord.shared.utils.downloadToDownloads
 import me.lampu.lampcord.shared.utils.EmojiIndex
 import me.lampu.lampcord.shared.model.toTwemojiUrl
 import org.koin.compose.koinInject
@@ -65,14 +65,14 @@ fun EmojiPicker(
     emojiStore: EmojiStore = koinInject(),
     messageStore: MessageStore = koinInject(),
     mediaApi: MediaApi = koinInject(),
-    settingsStore: me.lampu.lampcord.shared.state.SettingsStore = koinInject(),
+    settingsStore: SettingsStore = koinInject(),
     modifier: Modifier = Modifier,
     onEmojiSelected: (Emoji) -> Unit
 ) {
     var selectedTab by remember { mutableStateOf(0) }
     val reduceMotion = Settings.shared.reduceMotion
     val currentUser by userStore.currentUser.collectAsState()
-    val nitro = (currentUser?.premium_type ?: 0) > 0 || me.lampu.lampcord.shared.settings.Settings.shared.freeNitroEmojis
+    val nitro = (currentUser?.premium_type ?: 0) > 0 || Settings.shared.freeNitroEmojis
     
     var categorizedEmojis: Map<String, List<Emoji>> by remember { mutableStateOf(emptyMap<String, List<Emoji>>()) }
     LaunchedEffect(Unit) {
@@ -85,8 +85,6 @@ fun EmojiPicker(
         val groups = mutableListOf<EmojiGroup>()
         val customEmojisById = guilds.flatMap { it.emojis }.associateBy { it.id }
         fun emojiFromKey(key: String): Emoji? {
-            // Discord clients have used several equivalent keys over time:
-            // name:id, <:name:id>, <a:name:id>, and sometimes just the ID.
             val normalized = key.trim().removePrefix("<a:").removePrefix("<:").removeSuffix(">")
             val parts = normalized.split(":")
             val id = parts.lastOrNull()?.takeIf { it.isNotEmpty() && it.all(Char::isDigit) }
@@ -105,7 +103,6 @@ fun EmojiPicker(
                 }
             }
         }
-        // Favorites from persistent settings
         val favoriteKeys = try {
             val json = Settings.shared.favoriteEmojisJson
             Json.decodeFromString<List<String>>(json)
@@ -117,9 +114,6 @@ fun EmojiPicker(
             if (favEmojis.isNotEmpty()) groups.add(EmojiGroup("favorites", "Favorites", favEmojis, null))
         }
 
-        // Discord stores picker frecency in the account settings proto. Keep
-        // the synced order at the top of the picker, then supplement it with
-        // emojis used locally in Lampcord.
         val frequentEmojis = emojiStore.frequentEmojis.mapNotNull(::emojiFromKey)
         if (frequentEmojis.isNotEmpty()) {
             groups.add(EmojiGroup("frequent", "Frequently Used", frequentEmojis, null))
@@ -229,7 +223,7 @@ fun EmojiPicker(
 
     val favoriteKeys = remember { 
         try {
-            Json.decodeFromString<List<String>>(me.lampu.lampcord.shared.settings.Settings.shared.favoriteEmojisJson)
+            Json.decodeFromString<List<String>>(Settings.shared.favoriteEmojisJson)
         } catch (e: Exception) { emptyList() }
     }
 
@@ -354,25 +348,25 @@ fun EmojiPicker(
                             0 -> Column {
                                 EmojiGrid(
                                     groups = filteredGroups,
-                                                                state = gridState,
-                                                                emojiStore = emojiStore,
-                                                                navigationStore = navigationStore,
-                                                                coroutineScope = coroutineScope,
-                                                                onCloneRequested = { url ->
-                                                                    cloneImageUrl = url
-                                                                    showCloneModal = true
+                                    state = gridState,
+                                    emojiStore = emojiStore,
+                                    navigationStore = navigationStore,
+                                    coroutineScope = coroutineScope,
+                                    onCloneRequested = { url ->
+                                        cloneImageUrl = url
+                                        showCloneModal = true
                                                                 },
-                                                                onEmojiSelected = onEmojiSelected,
-                                                                favorites = favoriteKeys,
-                                                                onToggleFavorite = { key ->
-                                                                    // persist favorites
-                                                                    val current = try {
-                                                                        Json.decodeFromString<List<String>>(Settings.shared.favoriteEmojisJson).toMutableList()
-                                                                    } catch (e: Exception) { mutableListOf() }
-                                                                    if (current.contains(key)) current.remove(key) else current.add(0, key)
-                                                                    Settings.shared.favoriteEmojisJson = Json.encodeToString(current)
+                                    onEmojiSelected = onEmojiSelected,
+                                    favorites = favoriteKeys,
+                                    onToggleFavorite = { key ->
+                                        // persist favorites
+                                        val current = try {
+                                            Json.decodeFromString<List<String>>(Settings.shared.favoriteEmojisJson).toMutableList()
+                                        } catch (e: Exception) { mutableListOf() }
+                                        if (current.contains(key)) current.remove(key) else current.add(0, key)
+                                        Settings.shared.favoriteEmojisJson = Json.encodeToString(current)
                                                                 },
-                                                                modifier = Modifier.weight(1f)
+                                    modifier = Modifier.weight(1f)
                                 )
                                 if (filteredGroups.size > 1 && searchQuery.isEmpty()) {
                                     EmojiServerBar(
@@ -392,10 +386,6 @@ fun EmojiPicker(
                                 onQueryChange = { searchQuery = it },
                                 mediaApi = mediaApi,
                                 onGifSelected = { gif ->
-                                    // Klipy's canonical URL is the shareable
-                                    // page URL. Sending its CDN preview URL
-                                    // makes Discord post a raw WebP instead of
-                                    // a GIF embed.
                                     messageStore.sendMessageDraft(
                                         gif.url.takeIf { it.isNotBlank() }
                                             ?: gif.gifSrc?.takeIf { it.isNotBlank() }
@@ -447,6 +437,7 @@ fun EmojiGrid(
     onToggleFavorite: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val uriHandler = LocalUriHandler.current
     if (groups.all { it.emojis.isEmpty() }) {
         Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("No custom emojis available", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -476,8 +467,6 @@ fun EmojiGrid(
                         val displayUrl = if (Settings.shared.reduceMotion &&
                             emoji.animated == true && emoji.id != null
                         ) {
-                            // Request a PNG directly instead of allowing the
-                            // picker to decode and autoplay the GIF.
                             "https://cdn.discordapp.com/emojis/${emoji.id}.png?size=48"
                         } else {
                             url
@@ -507,12 +496,9 @@ fun EmojiGrid(
 
                         // Save / Clone actions
                         if (url != null) {
-                            val filename = (emoji.name ?: "emoji") + if (emoji.animated == true) ".gif" else ".png"
+                            val u = url
                             menuItems.add(ContextMenuItem("Save Image", Icons.Filled.Download, onClick = {
-                                coroutineScope.launch {
-                                    val ok = downloadToDownloads(url, filename)
-                                    if (ok) showToast("Saved to Downloads") else showToast("Save failed")
-                                }
+                                uriHandler.openUri(u)
                             }))
                             menuItems.add(ContextMenuItem("Clone to other server", Icons.Filled.Upload, onClick = {
                                 onCloneRequested(url)

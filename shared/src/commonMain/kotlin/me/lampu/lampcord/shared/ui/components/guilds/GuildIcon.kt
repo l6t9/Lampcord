@@ -23,6 +23,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
@@ -40,6 +43,8 @@ import me.lampu.lampcord.shared.ui.baseplates.RegularGuildItem
 import me.lampu.lampcord.shared.ui.components.*
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.setClipboardText
+import me.lampu.lampcord.shared.utils.getPlatformName
+import kotlinx.coroutines.withTimeoutOrNull
 import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -54,8 +59,18 @@ fun GuildIcon(
     settingsStore: SettingsStore = koinInject(),
     navigationStore: NavigationStore = koinInject(),
     profileStore: ProfileStore = koinInject(),
-    userStore: UserStore = koinInject()
+    userStore: UserStore = koinInject(),
+    arrangeMode: Boolean = false,
+    onArrangeMode: () -> Unit = {},
+    onDragStart: () -> Unit = {},
+    onDrag: (Float) -> Unit = {},
+    onDragEnd: () -> Unit = {},
+    onDragCancel: () -> Unit = {},
+    isDragging: Boolean = false,
+    dragOffset: Float = 0f
 ) {
+    val canArrange = getPlatformName() == "android"
+    var contextMenuRequest by remember { mutableStateOf(0) }
     val isAnimated = guild.icon?.startsWith("a_") == true
     val iconUrl = if (guild.icon != null) {
         val ext = if (isAnimated && isSelected && !me.lampu.lampcord.shared.settings.Settings.shared.reduceMotion) "gif" else "png"
@@ -110,8 +125,58 @@ fun GuildIcon(
         anchorPosition = TooltipAnchorPosition.End,
         content = tooltipText(guild.name ?: "Server"),
         anchor = {
-            ContextMenu(items = contextMenuItems) {
-                Box(contentAlignment = Alignment.Center, modifier = Modifier.graphicsLayer(clip = false)) {
+            ContextMenu(
+                items = contextMenuItems
+                , enabled = !canArrange
+                , openRequest = contextMenuRequest
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .graphicsLayer(clip = false)
+                        .graphicsLayer { translationY = if (isDragging) dragOffset else 0f }
+                        .pointerInput(canArrange) {
+                            if (canArrange) {
+                                awaitPointerEventScope {
+                                    while (true) {
+                                        val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                                        val movedEarly = withTimeoutOrNull<Boolean>(220L) {
+                                            while (true) {
+                                                val change = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == down.id }
+                                                if (change == null || !change.pressed) return@withTimeoutOrNull true
+                                                if ((change.position - down.position).getDistance() > viewConfiguration.touchSlop) return@withTimeoutOrNull true
+                                            }
+                                            false
+                                        } ?: false
+                                        if (movedEarly) continue
+                                        onDragStart()
+                                        val movedDuringGrace = withTimeoutOrNull<Boolean>(280L) {
+                                            while (true) {
+                                                val change = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == down.id }
+                                                if (change == null || !change.pressed) return@withTimeoutOrNull false
+                                                if ((change.position - down.position).getDistance() > viewConfiguration.touchSlop) return@withTimeoutOrNull true
+                                            }
+                                            false
+                                        } ?: false
+                                        if (!movedDuringGrace) {
+                                            onDragCancel()
+                                            contextMenuRequest++
+                                            continue
+                                        }
+                                        while (true) {
+                                            val change = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == down.id }
+                                            if (change == null || !change.pressed) {
+                                                onDragEnd()
+                                                break
+                                            }
+                                            change.consume()
+                                            onDrag((change.position - change.previousPosition).y)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                ) {
                     RegularGuildItem(
                         isSelected = isSelected,
                         isUnread = isUnread,

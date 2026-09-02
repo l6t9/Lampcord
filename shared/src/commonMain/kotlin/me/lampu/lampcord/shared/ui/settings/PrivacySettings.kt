@@ -114,14 +114,8 @@ fun PrivacySettingsContent(settingsStore: SettingsStore = koinInject()) {
         )
 
         Material3SettingsGroup(
-            title = "Enhancements",
+            title = "Content Controls",
             items = listOf(
-                switchSettingsItem(
-                    title = "Silent Typing",
-                    description = "Don't let others know when you are typing.",
-                    checked = Settings.shared.silentTyping,
-                    onCheckedChange = { Settings.shared.silentTyping = it }
-                ),
                 switchSettingsItem(
                     title = "Hide Blocked Messages",
                     description = "Completely remove messages from blocked users.",
@@ -130,5 +124,6 @@ fun PrivacySettingsContent(settingsStore: SettingsStore = koinInject()) {
                 )
             )
         )
+
     }
 }

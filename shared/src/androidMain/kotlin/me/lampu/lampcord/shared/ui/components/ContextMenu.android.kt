@@ -2,7 +2,6 @@ package me.lampu.lampcord.shared.ui.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -17,6 +16,7 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.withTimeoutOrNull
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -38,37 +38,37 @@ actual fun ContextMenu(
     }
 
     Box(
-        modifier = modifier
-            .pointerInput(items, enabled) {
-                if (!enabled) return@pointerInput
-                awaitPointerEventScope {
-                    while (true) {
-                        // Observe the final pass so nested controls, such as
-                        // reaction chips, can claim their own long-press.
-                        val down = awaitFirstDown(
-                            pass = PointerEventPass.Final,
-                            requireUnconsumed = false
-                        )
-                        // Nested controls and link gestures own their press.
-                        // Only unclaimed message text belongs to this menu.
-                        if (down.isConsumed) continue
-                        // A nested gesture can cancel this wait after claiming
-                        // the pointer. Only a real timeout belongs to the
-                        // message context menu.
-                        val timedOut = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
-                            waitForUpOrCancellation(pass = PointerEventPass.Final)
-                                ?: return@withTimeoutOrNull false
-                            false
-                        } ?: true
-                        
-                        if (timedOut) {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            showSheet = true
-                            down.consume()
+        modifier = modifier.pointerInput(items, enabled) {
+            if (!enabled) return@pointerInput
+            awaitPointerEventScope {
+                while (true) {
+                    val down = awaitFirstDown(
+                        // Let child controls such as reaction chips claim
+                        // their long press before the surrounding message.
+                        pass = PointerEventPass.Initial,
+                        requireUnconsumed = false
+                    )
+                    val longPressed = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+                        while (true) {
+                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                            val change = event.changes.firstOrNull { it.id == down.id }
+                            if (change == null || !change.pressed) return@withTimeoutOrNull false
+                            if (change.isConsumed) return@withTimeoutOrNull false
+                            if ((change.position - down.position).getDistance() > viewConfiguration.touchSlop) {
+                                return@withTimeoutOrNull false
+                            }
                         }
-                    }
+                        false
+                    } ?: true
+
+                    if (!longPressed) continue
+
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    showSheet = true
+                    down.consume()
                 }
             }
+        }
     ) {
         content()
     }

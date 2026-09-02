@@ -225,6 +225,39 @@ class SettingsStore(
             me.lampu.lampcord.shared.settings.Settings.shared.chatboxHideEmojiButton = value
         }
 
+    private var _chatboxHideVoiceButton by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.chatboxHideVoiceButton)
+    var chatboxHideVoiceButton: Boolean
+        get() = _chatboxHideVoiceButton
+        set(value) {
+            _chatboxHideVoiceButton = value
+            me.lampu.lampcord.shared.settings.Settings.shared.chatboxHideVoiceButton = value
+        }
+
+    private var _silentTyping by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.silentTyping)
+    var silentTyping: Boolean
+        get() = _silentTyping
+        set(value) {
+            _silentTyping = value
+            me.lampu.lampcord.shared.settings.Settings.shared.silentTyping = value
+        }
+
+    private var _silentTypingButtonEnabled by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.silentTypingButtonEnabled)
+    var silentTypingButtonEnabled: Boolean
+        get() = _silentTypingButtonEnabled
+        set(value) {
+            _silentTypingButtonEnabled = value
+            me.lampu.lampcord.shared.settings.Settings.shared.silentTypingButtonEnabled = value
+            if (!value) silentTyping = false
+        }
+
+    private var _desktopLowMemoryMode by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.desktopLowMemoryMode)
+    var desktopLowMemoryMode: Boolean
+        get() = _desktopLowMemoryMode
+        set(value) {
+            _desktopLowMemoryMode = value
+            me.lampu.lampcord.shared.settings.Settings.shared.desktopLowMemoryMode = value
+        }
+
     private var _chatboxFontSize by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.chatboxFontSize)
     var chatboxFontSize: Float
         get() = _chatboxFontSize

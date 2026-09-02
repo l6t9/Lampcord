@@ -41,7 +41,6 @@ import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.DiscordMarkdownText
 import me.lampu.lampcord.shared.ui.components.VideoPlayer
 import me.lampu.lampcord.shared.settings.Settings
-import me.lampu.lampcord.shared.utils.getPlatformName
 import org.koin.compose.koinInject
 
 @Composable
@@ -50,15 +49,15 @@ fun GifvView(
     modifier: Modifier = Modifier,
     onFullscreenClick: (() -> Unit)? = null
 ) {
-    val isAndroid = getPlatformName() == "android"
     Box(modifier = modifier.clip(RoundedCornerShape(8.dp)).background(Color.Black)) {
         VideoPlayer(
             url = video.url ?: "",
             loop = !Settings.shared.reduceMotion,
-            showControls = Settings.shared.reduceMotion || isAndroid,
+            showControls = Settings.shared.reduceMotion,
+            showSeekBar = false,
             compact = true,
             autoPlay = !Settings.shared.reduceMotion,
-            onFullscreenClick = if (isAndroid) onFullscreenClick else null,
+            onFullscreenClick = null,
             modifier = Modifier.fillMaxSize()
         )
     }

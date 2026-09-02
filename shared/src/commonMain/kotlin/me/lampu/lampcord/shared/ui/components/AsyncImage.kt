@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImagePainter
 import coil3.compose.AsyncImage as CoilAsyncImage
 import coil3.compose.LocalPlatformContext
+import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import me.lampu.lampcord.shared.settings.Settings
@@ -57,6 +58,8 @@ fun AsyncImage(
     placeholderHash: String? = null
 ) {
     val context = LocalPlatformContext.current
+    val isDesktop = remember { getPlatformName() != "android" && getPlatformName() != "ios" }
+    val lowMemoryMode = isDesktop && Settings.shared.desktopLowMemoryMode
     val reducedMotion = Settings.shared.reduceMotion
     val staticModel = remember(model, reducedMotion) {
         if (reducedMotion) model.toStaticDiscordGif() else model
@@ -66,12 +69,13 @@ fun AsyncImage(
     var useOriginalModel by remember(model, reducedMotion) { mutableStateOf(false) }
     val effectiveModel = if (useOriginalModel) model else staticModel
     
-    val request = remember(effectiveModel, reducedMotion) {
+    val request = remember(effectiveModel, reducedMotion, lowMemoryMode) {
         ImageRequest.Builder(context)
             .data(effectiveModel)
             // Keep lazy-list cells from reusing a request for a different URL.
             .memoryCacheKey(effectiveModel?.toString())
-            .crossfade(!reducedMotion)
+            .memoryCachePolicy(if (lowMemoryMode) CachePolicy.DISABLED else CachePolicy.ENABLED)
+            .crossfade(!reducedMotion && !lowMemoryMode)
             .build()
     }
 

@@ -5,6 +5,7 @@ import kotlin.math.min
 fun sanitizeFilename(name: String): String {
     var n = name.trim()
     if (n.isEmpty()) return "download"
+    if (n == "." || n == "..") return "download"
     // Remove any path separators and control characters
     n = n.replace(Regex("[\\\\/:*?\"<>|\\r\\n\\t]"), "_")
     // Collapse multiple dots

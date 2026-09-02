@@ -11,6 +11,7 @@ import androidx.compose.ui.input.pointer.*
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.withTimeoutOrNull
 
 @Composable
 actual fun ContextMenu(
@@ -37,35 +38,37 @@ actual fun ContextMenu(
                 if (!enabled) return@pointerInput
                 awaitPointerEventScope {
                     while (true) {
-                        // Let nested content handle the Main pass first. A
-                        // link consumes its own click; non-link message text
-                        // remains available for this menu on the Final pass.
-                        val event = awaitPointerEvent(PointerEventPass.Final)
-                        val down = event.changes.find { it.changedToDown() && !it.isConsumed }
-                        
-                        if (down != null) {
-                            if (event.buttons.isSecondaryPressed) {
-                                offset = with(density) { DpOffset(down.position.x.toDp(), down.position.y.toDp()) }
-                                expanded = true
-                                event.changes.forEach { it.consume() }
-                            } else if (down.type != PointerType.Mouse) {
-                                val timedOut = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
-                                    var upOrCanceled = false
-                                    while (!upOrCanceled) {
-                                        val nextEvent = awaitPointerEvent()
-                                        if (nextEvent.changes.any { it.changedToUp() || it.isConsumed }) {
-                                            upOrCanceled = true
-                                        }
-                                    }
-                                    false
-                                } ?: true
-                                
-                                if (timedOut) {
-                                    offset = with(density) { DpOffset(down.position.x.toDp(), down.position.y.toDp()) }
-                                    expanded = true
+                        // Let nested content (notably Markdown links) inspect
+                        // secondary clicks before the message menu claims them.
+                        val event = awaitPointerEvent(PointerEventPass.Main)
+                        val down = event.changes.find { it.changedToDown() } ?: continue
+
+                        if (event.buttons.isSecondaryPressed) {
+                            if (down.isConsumed) continue
+                            offset = with(density) { DpOffset(down.position.x.toDp(), down.position.y.toDp()) }
+                            expanded = true
+                            down.consume()
+                            continue
+                        }
+                        if (down.type == PointerType.Mouse) continue
+
+                        val longPressed = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+                            while (true) {
+                                val nextEvent = awaitPointerEvent(PointerEventPass.Main)
+                                val change = nextEvent.changes.firstOrNull { it.id == down.id }
+                                if (change == null || !change.pressed) return@withTimeoutOrNull false
+                                if ((change.position - down.position).getDistance() > viewConfiguration.touchSlop) {
+                                    return@withTimeoutOrNull false
                                 }
                             }
-                        }
+                            false
+                        } ?: true
+
+                        if (!longPressed) continue
+
+                        offset = with(density) { DpOffset(down.position.x.toDp(), down.position.y.toDp()) }
+                        expanded = true
+                        down.consume()
                     }
                 }
             }
