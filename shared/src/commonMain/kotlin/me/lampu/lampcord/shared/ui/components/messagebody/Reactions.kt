@@ -2,6 +2,7 @@ package me.lampu.lampcord.shared.ui.components.messagebody
 
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -27,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -68,19 +70,21 @@ fun ReactionsView(
                         .clip(RoundedCornerShape(8.dp)),
                     shape = RoundedCornerShape(8.dp),
                     color = if (isMe) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                    border = if (isMe) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)) else null
+                    border = if (isMe) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)) else null,
+                    onClick = {
+                        messageStore.toggleReaction(message, reaction.emoji)
+                    }
                 ) {
                     Row(
                         modifier = Modifier
                             .padding(horizontal = 8.dp)
-                            .combinedClickable(
-                                onClick = {
-                                    messageStore.toggleReaction(message, reaction.emoji)
-                                },
-                                onLongClick = {
-                                    showReactionUsers = reaction
-                                }
-                            ),
+                            .pointerInput(reaction) {
+                                detectTapGestures(
+                                    onLongPress = {
+                                        showReactionUsers = reaction
+                                    }
+                                )
+                            },
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {

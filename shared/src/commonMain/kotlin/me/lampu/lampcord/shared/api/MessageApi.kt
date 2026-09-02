@@ -296,7 +296,8 @@ class MessageApi(private val rest: RestClient) {
 
     suspend fun getReactionUsers(channelId: String, messageId: String, emoji: String): List<me.lampu.lampcord.shared.model.User> {
         return try {
-            val response = rest.httpClient.get("${rest.apiBase}/channels/$channelId/messages/$messageId/reactions/$emoji") {
+            val encodedEmoji = emoji.encodeURLQueryComponent()
+            val response = rest.httpClient.get("${rest.apiBase}/channels/$channelId/messages/$messageId/reactions/$encodedEmoji") {
                 standardHeaders(rest)
             }
             if (response.status.isSuccess()) response.body() else emptyList()
