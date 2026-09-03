@@ -225,7 +225,8 @@ fun MemberItem(
                                 overflow = TextOverflow.Ellipsis,
                                 marquee = true,
                                 ignoreEffects = false,
-                                ignoreColors = true
+                                ignoreColors = true,
+                                modifier = Modifier.weight(1f, fill = false)
                             )
                             displayUser.primary_guild?.let {
                                 ClanTagView(it)

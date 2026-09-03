@@ -233,6 +233,14 @@ class SettingsStore(
             me.lampu.lampcord.shared.settings.Settings.shared.chatboxHideVoiceButton = value
         }
 
+    private var _chatboxShowAvatar by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.chatboxShowAvatar)
+    var chatboxShowAvatar: Boolean
+        get() = _chatboxShowAvatar
+        set(value) {
+            _chatboxShowAvatar = value
+            me.lampu.lampcord.shared.settings.Settings.shared.chatboxShowAvatar = value
+        }
+
     private var _silentTyping by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.silentTyping)
     var silentTyping: Boolean
         get() = _silentTyping

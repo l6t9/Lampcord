@@ -1,9 +1,8 @@
 package me.lampu.lampcord.shared.ui.components.profiles
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
@@ -22,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import me.lampu.lampcord.shared.model.UserProfile
+import me.lampu.lampcord.shared.model.EmbedImage
 import me.lampu.lampcord.shared.api.CdnUrls
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.state.*
@@ -36,7 +36,7 @@ import me.lampu.lampcord.shared.utils.setClipboardText
 import me.lampu.lampcord.shared.utils.showToast
 import org.koin.compose.koinInject
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun ProfileHeader(
     profile: UserProfile,
@@ -116,22 +116,25 @@ fun ProfileHeader(
                 modifier = Modifier
                     .fillMaxSize()
                     .hoverable(avatarInteractionSource)
-                    .then(if (onEditAvatar != null) Modifier.clickable { onEditAvatar() } else Modifier)
+                    .combinedClickable(
+                        onClick = {
+                            if (onEditAvatar != null) {
+                                onEditAvatar()
+                            } else {
+                                navigationStore.openAttachmentViewer(listOf(EmbedImage(url = avatarUrl, proxy_url = avatarUrl)))
+                            }
+                        },
+                        onLongClick = {
+                            setClipboardText(user.id)
+                            showToast("Copied User ID: ${user.id}")
+                        }
+                    )
             ) {
                 AvatarWithDecoration(
                     avatarUrl = avatarUrl,
                     decorationData = profile.guild_member?.avatar_decoration_data ?: user.avatar_decoration_data,
                     size = 82.dp,
-                    status = status,
-                    modifier = Modifier.then(
-                        if (onEditAvatar == null) {
-                            Modifier.clickable(
-                                enabled = !isExpanded,
-                                indication = null,
-                                interactionSource = remember { MutableInteractionSource() }
-                            ) { onExpand?.invoke() }
-                        } else Modifier
-                    )
+                    status = status
                 )
 
                 if (onEditAvatar != null && isAvatarHovered) {
@@ -221,7 +224,8 @@ fun ProfileHeader(
                 baseStyle = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = profileTextColor,
-                marquee = !Settings.shared.reduceMotion
+                marquee = !Settings.shared.reduceMotion,
+                modifier = Modifier.weight(1f, fill = false)
             )
             user.primary_guild?.let {
                 ClanTagView(it)

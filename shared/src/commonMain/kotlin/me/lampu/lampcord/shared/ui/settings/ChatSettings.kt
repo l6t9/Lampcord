@@ -126,6 +126,12 @@ fun ChatSettingsContent(
                     onCheckedChange = { settingsStore.chatboxHideEmojiButton = it }
                 ),
                 switchSettingsItem(
+                    title = "Show Avatar in Chatbox",
+                    description = "Displays your current avatar inside the chat input bar.",
+                    checked = settingsStore.chatboxShowAvatar,
+                    onCheckedChange = { settingsStore.chatboxShowAvatar = it }
+                ),
+                switchSettingsItem(
                         title = "Silent Typing",
                         description = "Show a keyboard control for hiding your typing indicator.",
                         checked = settingsStore.silentTypingButtonEnabled,

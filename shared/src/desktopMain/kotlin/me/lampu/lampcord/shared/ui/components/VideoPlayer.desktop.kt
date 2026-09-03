@@ -18,7 +18,17 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -26,7 +36,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -35,10 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
-import me.lampu.lampcord.shared.model.Attachment
-import me.lampu.lampcord.shared.model.DiscordMedia
 import me.lampu.lampcord.shared.playback.ffmpeg.AudioRenderer
-import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
 import me.lampu.lampcord.shared.playback.ffmpeg.FFmpegFrameGrabber
 import me.lampu.lampcord.shared.playback.ffmpeg.FFmpegLogCallback
 import me.lampu.lampcord.shared.playback.ffmpeg.Frame
@@ -152,14 +158,14 @@ actual fun VideoPlayer(
         }
     }
 
+    var isDraggingSlider by remember { mutableStateOf(false) }
+
     // Progress polling
-    LaunchedEffect(isPlaying) {
-        while (isPlaying) {
+    LaunchedEffect(isPlaying, isDraggingSlider) {
+        if (!isPlaying || isDraggingSlider) return@LaunchedEffect
+        while (true) {
             currentTime = player.getCurrentPosition()
-            // The decoder already presents frames at the video frame rate;
-            // refreshing only the progress label five times a second avoids
-            // needless UI recomposition while preserving responsive seeking.
-            delay(200)
+            delay(32)
         }
     }
 
@@ -169,20 +175,10 @@ actual fun VideoPlayer(
             .hoverable(interactionSource),
         contentAlignment = Alignment.Center
     ) {
-        val frame = videoFrame
-        val isPortraitVideo = frame?.let { it.height > it.width } == true
-        if (frame != null) {
-            Image(
-                bitmap = frame,
-                contentDescription = null,
-                contentScale = ContentScale.Fit,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
-                        togglePlayback()
-                    }
-            )
-        } else if (isResolving) {
+        // Video Surface (Isolated for performance)
+        DesktopVideoSurface(videoFrame, togglePlayback)
+
+        if (isResolving) {
             ContainedLoadingIndicator(indicatorColor = Color.White)
         } else if (loadError != null) {
             Surface(
@@ -256,13 +252,15 @@ actual fun VideoPlayer(
                     title = title,
                     subtitle = subtitle,
                     compact = compact,
-                    showSeekBar = !compact || !isPortraitVideo,
+                    showSeekBar = !compact || videoFrame?.let { it.height > it.width } != true,
                     onTogglePlay = togglePlayback,
                     onSeek = { 
-                        val target = (it * duration).toLong()
-                        currentTime = target
-                        hasEnded = false
-                        player.seekTo(target)
+                        isDraggingSlider = true
+                        currentTime = (it * duration).toLong()
+                    },
+                    onSeekFinished = {
+                        isDraggingSlider = false
+                        player.seekTo(currentTime)
                     },
                     onVolumeChange = {
                         volume = it
@@ -273,6 +271,25 @@ actual fun VideoPlayer(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun DesktopVideoSurface(
+    frame: ImageBitmap?,
+    onClick: () -> Unit
+) {
+    if (frame != null) {
+        Image(
+            bitmap = frame,
+            contentDescription = null,
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .fillMaxSize()
+                .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
+                    onClick()
+                }
+        )
     }
 }
 
@@ -312,7 +329,6 @@ private fun HoverablePlayControls(
     }
 }
 
-@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun BottomVideoControls(
     url: String,
@@ -326,6 +342,7 @@ private fun BottomVideoControls(
     showSeekBar: Boolean,
     onTogglePlay: () -> Unit,
     onSeek: (Float) -> Unit,
+    onSeekFinished: () -> Unit,
     onVolumeChange: (Float) -> Unit,
     onVolumeMenuOpenChanged: (Boolean) -> Unit,
     onFullscreenClick: (() -> Unit)?
@@ -378,16 +395,12 @@ private fun BottomVideoControls(
                     )
 
                     if (showSeekBar) {
-                        Slider(
+                        VideoSlider(
                             value = if (duration > 0) (currentTime.toFloat() / duration).coerceIn(0f, 1f) else 0f,
                             onValueChange = onSeek,
-                            enabled = duration > 0,
-                            modifier = Modifier.weight(1f),
-                            colors = SliderDefaults.colors(
-                                thumbColor = Color.White,
-                                activeTrackColor = MaterialTheme.colorScheme.primary,
-                                inactiveTrackColor = Color.White.copy(alpha = 0.3f)
-                            )
+                            onValueChangeFinished = onSeekFinished,
+                            bufferedFraction = 0f,
+                            modifier = Modifier.weight(1f)
                         )
                     }
 
@@ -411,16 +424,12 @@ private fun BottomVideoControls(
                         style = MaterialTheme.typography.labelMedium,
                         color = Color.White.copy(alpha = 0.9f)
                     )
-                    Slider(
+                    VideoSlider(
                         value = if (duration > 0) (currentTime.toFloat() / duration).coerceIn(0f, 1f) else 0f,
                         onValueChange = onSeek,
-                        enabled = duration > 0,
-                        modifier = Modifier.weight(1f),
-                        colors = SliderDefaults.colors(
-                            thumbColor = Color.White,
-                            activeTrackColor = MaterialTheme.colorScheme.primary,
-                            inactiveTrackColor = Color.White.copy(alpha = 0.3f)
-                        )
+                        onValueChangeFinished = onSeekFinished,
+                        bufferedFraction = 0f,
+                        modifier = Modifier.weight(1f)
                     )
                     Text(
                         text = formatDuration(duration, unknownWhenZero = true),

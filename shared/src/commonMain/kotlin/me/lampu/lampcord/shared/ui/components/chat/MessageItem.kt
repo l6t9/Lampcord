@@ -541,6 +541,7 @@ fun MessageItem(
                                 color = if (isDm) Color.White else displayColor,
                                 roleGradient = roleGradient,
                                 modifier = Modifier
+                                    .weight(1f, fill = false)
                                     .onGloballyPositioned { namePosition = it.positionInRoot() }
                                     .clickable(enabled = !isPreview) { profileStore.showProfile(message.author.id, guildId, namePosition) },
                                 ignoreEffects = !isHovered,

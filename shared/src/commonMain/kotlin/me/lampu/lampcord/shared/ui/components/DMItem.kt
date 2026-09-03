@@ -171,7 +171,8 @@ fun DMItem(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         ignoreEffects = !isHovered,
-                        ignoreColors = !isHovered
+                        ignoreColors = !isHovered,
+                        modifier = Modifier.weight(1f, fill = false)
                     )
                     recipient?.primary_guild?.let {
                         Spacer(Modifier.width(4.dp))

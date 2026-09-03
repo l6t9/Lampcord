@@ -2,36 +2,19 @@ package me.lampu.lampcord.shared.ui.components
 
 import androidx.annotation.OptIn
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -46,7 +29,7 @@ import androidx.media3.ui.PlayerView
 import kotlinx.coroutines.delay
 import me.lampu.lampcord.shared.ui.icons.Icons
 
-@OptIn(UnstableApi::class)
+@OptIn(UnstableApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 actual fun VideoPlayer(
     url: String,
@@ -74,6 +57,10 @@ actual fun VideoPlayer(
     var playerError by remember(url) { mutableStateOf(false) }
     var positionMs by remember(url) { mutableLongStateOf(0L) }
     var durationMs by remember(url) { mutableLongStateOf(0L) }
+    var bufferedPositionMs by remember(url) { mutableLongStateOf(0L) }
+
+    var areControlsVisible by remember { mutableStateOf(showControls) }
+    var isDraggingSlider by remember { mutableStateOf(false) }
 
     fun retry() {
         playerError = false
@@ -114,19 +101,36 @@ actual fun VideoPlayer(
         }
     }
 
-    LaunchedEffect(exoPlayer) {
+    LaunchedEffect(exoPlayer, isDraggingSlider) {
         while (true) {
-            positionMs = exoPlayer.currentPosition.coerceAtLeast(0L)
-            durationMs = exoPlayer.duration.takeIf { it >= 0L } ?: durationMs
-            isPlaying = exoPlayer.isPlaying
-            isBuffering = exoPlayer.playbackState == Player.STATE_BUFFERING ||
-                exoPlayer.playbackState == Player.STATE_IDLE
-            delay(200)
+            withFrameMillis {
+                if (!isDraggingSlider) {
+                    positionMs = exoPlayer.currentPosition.coerceAtLeast(0L)
+                }
+                bufferedPositionMs = exoPlayer.bufferedPosition.coerceAtLeast(0L)
+                durationMs = exoPlayer.duration.takeIf { it >= 0L } ?: durationMs
+                isPlaying = exoPlayer.isPlaying
+                isBuffering = (exoPlayer.playbackState == Player.STATE_BUFFERING ||
+                    exoPlayer.playbackState == Player.STATE_IDLE)
+            }
+        }
+    }
+
+    LaunchedEffect(isPlaying, areControlsVisible, isDraggingSlider) {
+        if (isPlaying && areControlsVisible && !isDraggingSlider) {
+            delay(3000)
+            areControlsVisible = false
         }
     }
 
     Box(
-        modifier = modifier.background(Color.Black),
+        modifier = modifier
+            .background(Color.Black)
+            .pointerInput(Unit) {
+                detectTapGestures {
+                    areControlsVisible = !areControlsVisible
+                }
+            },
         contentAlignment = Alignment.Center,
     ) {
         AndroidView(
@@ -148,12 +152,12 @@ actual fun VideoPlayer(
             update = { view ->
                 view.player = exoPlayer
                 view.useController = false
-            },
+            }
         )
 
         if (isBuffering) {
-            CircularProgressIndicator(
-                color = MaterialTheme.colorScheme.primary,
+            ContainedLoadingIndicator(
+                indicatorColor = Color.White,
                 modifier = Modifier.size(if (compact) 32.dp else 48.dp),
             )
         } else if (playerError) {
@@ -166,13 +170,13 @@ actual fun VideoPlayer(
                 Text(
                     text = "Unable to play video\nTap to retry",
                     style = MaterialTheme.typography.bodyMedium,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    textAlign = TextAlign.Center,
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp),
                 )
             }
         }
 
-        if (showControls && !isBuffering && !playerError && !isPlaying) {
+        if (showControls && areControlsVisible && !isBuffering && !playerError && !isPlaying) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -197,7 +201,7 @@ actual fun VideoPlayer(
             }
         }
 
-        if (showControls && !isBuffering && !playerError) {
+        if (showControls && areControlsVisible && !isBuffering && !playerError) {
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -248,23 +252,28 @@ actual fun VideoPlayer(
                         maxLines = 1,
                         overflow = TextOverflow.Clip,
                     )
-                    if (showSeekBar) Slider(
-                        value = if (durationMs > 0L) {
-                            (positionMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
-                        } else {
-                            0f
-                        },
-                        onValueChange = { value -> positionMs = (value * durationMs).toLong() },
-                        onValueChangeFinished = { exoPlayer.seekTo(positionMs) },
-                        enabled = durationMs > 0L,
-                        colors = SliderDefaults.colors(
-                            thumbColor = Color.Transparent,
-                            disabledThumbColor = Color.Transparent,
-                            activeTrackColor = MaterialTheme.colorScheme.primary,
-                            inactiveTrackColor = Color.White.copy(alpha = 0.35f),
-                        ),
-                        modifier = Modifier.weight(1f),
-                    )
+                    if (showSeekBar) {
+                        val progress = remember(positionMs, durationMs) {
+                            if (durationMs > 0L) (positionMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f) else 0f
+                        }
+                        val bufferedProgress = remember(bufferedPositionMs, durationMs) {
+                            if (durationMs > 0L) (bufferedPositionMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f) else 0f
+                        }
+
+                        VideoSlider(
+                            value = progress,
+                            onValueChange = { 
+                                isDraggingSlider = true
+                                positionMs = (it * durationMs).toLong() 
+                            },
+                            onValueChangeFinished = {
+                                isDraggingSlider = false
+                                exoPlayer.seekTo(positionMs)
+                            },
+                            bufferedFraction = bufferedProgress,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
 
                     if (onFullscreenClick != null) {
                         Surface(

@@ -4,6 +4,7 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,13 +15,16 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.AnnotatedString
@@ -44,6 +48,7 @@ import me.lampu.lampcord.shared.model.InteractionOption
 import me.lampu.lampcord.shared.model.Member
 import me.lampu.lampcord.shared.model.PendingFile
 import me.lampu.lampcord.shared.model.Role
+import me.lampu.lampcord.shared.api.CdnUrls
 import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.components.chat.MediaPicker
 import me.lampu.lampcord.shared.ui.icons.Icons
@@ -95,8 +100,9 @@ fun ChatInputBar(
     guildStore: GuildStore = koinInject(),
     memberListStore: MemberListStore = koinInject(),
     relationshipStore: RelationshipStore = koinInject(),
-    emojiStore: EmojiStore = koinInject()
-    , settingsStore: SettingsStore = koinInject()
+    emojiStore: EmojiStore = koinInject(),
+    settingsStore: SettingsStore = koinInject(),
+    profileStore: ProfileStore = koinInject()
 ) {
     var textFieldValue by remember(channel.id) { 
         val draft = messageStore.draftMessages[channel.id] ?: ""
@@ -109,6 +115,7 @@ fun ChatInputBar(
     // text that map to the server values to send (e.g. "#general" -> "<#id>").
     var mentionRanges by remember(channel.id) { mutableStateOf<Map<IntRange, String>>(emptyMap()) }
     
+    var isFocused by remember { mutableStateOf(false) }
     var showFilePicker by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -481,62 +488,84 @@ fun ChatInputBar(
                                 .padding(start = 8.dp, end = 8.dp, top = 2.dp, bottom = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            val density = LocalDensity.current
+                            val isKeyboardVisible = WindowInsets.ime.getBottom(density) > 0
+                            val showCollapsibleItems = textFieldValue.text.isEmpty() && (!isFocused || !isKeyboardVisible)
+
                             val uploadVisible = !settings.chatboxHideUploadButton && messageStore.editingMessage == null && canSend
                             val voiceVisible = !settings.chatboxHideVoiceButton &&
                                 messageStore.editingMessage == null &&
-                                textFieldValue.text.isEmpty() &&
+                                showCollapsibleItems &&
                                 canSend &&
                                 getPlatformName() == "android"
                             
+                            if (uploadVisible) {
+                                if (getPlatformName() != "android") {
+                                    FilePicker(
+                                        show = showFilePicker,
+                                        onFileSelected = { it -> messageStore.pendingFiles.addAll(it.map { PendingFile(it.first, it.second) }) },
+                                        onDismiss = { showFilePicker = false }
+                                    )
+                                }
+
+                                FilledIconButton(
+                                    onClick = {
+                                        if (getPlatformName() == "android") {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            navigationStore.isMediaPickerVisible = !navigationStore.isMediaPickerVisible
+                                        } else {
+                                            showFilePicker = true
+                                        }
+                                    },
+                                    modifier = Modifier.size(buttonSize),
+                                    colors = IconButtonDefaults.filledIconButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Add,
+                                        contentDescription = "Add",
+                                        modifier = Modifier.size(iconSize)
+                                    )
+                                }
+                                
+                                Spacer(modifier = Modifier.width(4.dp))
+                            }
+
                             AnimatedVisibility(
-                                visible = uploadVisible || voiceVisible,
-                                enter = if (reduceMotion) EnterTransition.None else expandHorizontally(expandFrom = Alignment.End) + fadeIn(),
-                                exit = if (reduceMotion) ExitTransition.None else shrinkHorizontally(shrinkTowards = Alignment.End) + fadeOut()
+                                visible = voiceVisible,
+                                enter = if (reduceMotion) EnterTransition.None else expandHorizontally(expandFrom = Alignment.Start) + fadeIn(),
+                                exit = if (reduceMotion) ExitTransition.None else shrinkHorizontally(shrinkTowards = Alignment.Start) + fadeOut()
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    if (uploadVisible) {
-                                        if (getPlatformName() != "android") {
-                                            FilePicker(
-                                                show = showFilePicker,
-                                                onFileSelected = { it -> messageStore.pendingFiles.addAll(it.map { PendingFile(it.first, it.second) }) },
-                                                onDismiss = { showFilePicker = false }
-                                            )
-                                        }
+                                    VoiceMessageRecorder(
+                                        enabled = true,
+                                        buttonSize = buttonSize,
+                                        iconSize = iconSize,
+                                        onRecordingReady = { messageStore.pendingFiles.add(it) }
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                }
+                            }
 
-                                        FilledIconButton(
-                                            onClick = {
-                                                if (getPlatformName() == "android") {
-                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                    navigationStore.isMediaPickerVisible = !navigationStore.isMediaPickerVisible
-                                                } else {
-                                                    showFilePicker = true
-                                                }
-                                            },
-                                            modifier = Modifier.size(buttonSize),
-                                            colors = IconButtonDefaults.filledIconButtonColors(
-                                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Filled.Add,
-                                                contentDescription = "Add",
-                                                modifier = Modifier.size(iconSize)
-                                            )
-                                        }
-                                    }
-
-                                    if (voiceVisible) {
-                                        VoiceMessageRecorder(
-                                            enabled = true,
-                                            buttonSize = buttonSize,
-                                            iconSize = iconSize,
-                                            modifier = Modifier.padding(start = if (uploadVisible) 4.dp else 0.dp),
-                                            onRecordingReady = { messageStore.pendingFiles.add(it) }
-                                        )
-                                    }
-                                    
-                                    if (uploadVisible) Spacer(modifier = Modifier.width(4.dp))
+                            AnimatedVisibility(
+                                visible = settings.chatboxShowAvatar && currentUser != null && showCollapsibleItems,
+                                enter = if (reduceMotion) EnterTransition.None else expandHorizontally(expandFrom = Alignment.Start) + fadeIn(),
+                                exit = if (reduceMotion) ExitTransition.None else shrinkHorizontally(shrinkTowards = Alignment.Start) + fadeOut()
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    AvatarWithDecoration(
+                                        avatarUrl = CdnUrls.getUserAvatarUrl(currentUser!!.id, currentUser!!.avatar, 128),
+                                        decorationData = currentUser!!.avatar_decoration_data,
+                                        size = buttonSize,
+                                        status = null,
+                                        modifier = Modifier
+                                            .clickable {
+                                                profileStore.showProfile(currentUser!!.id, navigationStore.selectedGuild?.id)
+                                            }
+                                    )
+                                    Spacer(Modifier.width(4.dp))
                                 }
                             }
 
@@ -607,6 +636,7 @@ fun ChatInputBar(
                                             .weight(1f)
                                             .padding(start = 12.dp, top = 8.dp, bottom = 8.dp)
                                             .focusRequester(focusRequester)
+                                            .onFocusChanged { isFocused = it.isFocused }
                                             .onPreviewKeyEvent { event ->
                                                 if (!canSend) return@onPreviewKeyEvent false
                                                 if (event.type == KeyEventType.KeyDown) {
@@ -710,7 +740,9 @@ fun ChatInputBar(
                                                         style = MaterialTheme.typography.bodyLarge.copy(
                                                             fontSize = MaterialTheme.typography.bodyLarge.fontSize * chatboxFontSize
                                                         ),
-                                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
                                                     )
                                                 }
                                                 innerTextField()

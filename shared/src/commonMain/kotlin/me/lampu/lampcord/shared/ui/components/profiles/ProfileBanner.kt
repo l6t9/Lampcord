@@ -5,6 +5,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
@@ -21,12 +22,16 @@ import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.UserProfile
+import me.lampu.lampcord.shared.model.EmbedImage
 import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.utils.setClipboardText
+import me.lampu.lampcord.shared.utils.showToast
 import org.koin.compose.koinInject
 import coil3.compose.AsyncImagePainter
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun ProfileBanner(
     profile: UserProfile,
@@ -38,7 +43,8 @@ fun ProfileBanner(
     relationshipStore: RelationshipStore = koinInject(),
     userStore: UserStore = koinInject(),
     clientProfileStore: ClientProfileStore = koinInject(),
-    settingsStore: SettingsStore = koinInject()
+    settingsStore: SettingsStore = koinInject(),
+    navigationStore: NavigationStore = koinInject()
 ) {
     val user = profile.user
     val guildMeta = profile.guild_member_profile
@@ -80,7 +86,19 @@ fun ProfileBanner(
             modifier = Modifier
                 .fillMaxSize()
                 .hoverable(interactionSource)
-                .then(if (onEdit != null) Modifier.clickable { onEdit() } else Modifier)
+                .combinedClickable(
+                    onClick = {
+                        if (onEdit != null) {
+                            onEdit()
+                        } else if (bannerUrl != null) {
+                            navigationStore.openAttachmentViewer(listOf(EmbedImage(url = bannerUrl, proxy_url = bannerUrl)))
+                        }
+                    },
+                    onLongClick = {
+                        setClipboardText(user.id)
+                        showToast("Copied User ID: ${user.id}")
+                    }
+                )
         ) {
             var isImageLoaded by remember { mutableStateOf(false) }
             

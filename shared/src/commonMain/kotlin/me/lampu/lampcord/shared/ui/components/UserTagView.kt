@@ -57,7 +57,9 @@ fun UserTagView(
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.5.sp
                 ),
-                color = Color.White.copy(alpha = alpha)
+                color = Color.White.copy(alpha = alpha),
+                maxLines = 1,
+                softWrap = false
             )
         }
     }

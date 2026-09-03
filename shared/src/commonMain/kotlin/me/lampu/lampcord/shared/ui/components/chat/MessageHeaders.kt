@@ -271,7 +271,10 @@ fun ReplyBar(
             text = referencedMessage.author?.global_name ?: referencedMessage.author?.username ?: "Unknown User",
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
-            color = if (isHovered) Color.White else roleColor.copy(alpha = 0.8f) // Whiter on hover
+            color = if (isHovered) Color.White else roleColor.copy(alpha = 0.8f), // Whiter on hover
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f, fill = false)
         )
 
         referencedMessage.author?.let { author ->
