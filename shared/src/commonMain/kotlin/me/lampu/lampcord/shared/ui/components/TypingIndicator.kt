@@ -1,6 +1,7 @@
 package me.lampu.lampcord.shared.ui.components
 
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.StartOffset
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.keyframes
@@ -14,7 +15,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -102,7 +102,7 @@ fun TypingDots(modifier: Modifier = Modifier) {
         initialValue = 0.2f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = keyframes { durationMillis = 600; 0.2f at 0; 1f at 300; 0.2f at 600 },
+            animation = keyframes { durationMillis = 1200; 0.2f at 0; 1f at 400; 0.2f at 800; 0.2f at 1200 },
             repeatMode = RepeatMode.Restart
         ),
         label = "alpha1"
@@ -111,8 +111,9 @@ fun TypingDots(modifier: Modifier = Modifier) {
         initialValue = 0.2f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = keyframes { durationMillis = 600; 0.2f at 150; 1f at 450; 0.2f at 600 },
-            repeatMode = RepeatMode.Restart
+            animation = keyframes { durationMillis = 1200; 0.2f at 0; 1f at 400; 0.2f at 800; 0.2f at 1200},
+            repeatMode = RepeatMode.Restart,
+            initialStartOffset = StartOffset(200),
         ),
         label = "alpha2"
     )
@@ -120,8 +121,9 @@ fun TypingDots(modifier: Modifier = Modifier) {
         initialValue = 0.2f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = keyframes { durationMillis = 600; 0.2f at 300; 1f at 600; 0.2f at 600 },
-            repeatMode = RepeatMode.Restart
+            animation = keyframes { durationMillis = 1200; 0.2f at 0; 1f at 400; 0.2f at 800; 0.2f at 1200 },
+            repeatMode = RepeatMode.Restart,
+            initialStartOffset = StartOffset(400)
         ),
         label = "alpha3"
     )
