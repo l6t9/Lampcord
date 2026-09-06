@@ -55,6 +55,7 @@ import com.sun.jna.platform.win32.WinUser.WM_SIZE
 import com.sun.jna.platform.win32.WinUser.WS_CAPTION
 import com.sun.jna.platform.win32.WinUser.WS_SYSMENU
 import com.sun.jna.ptr.IntByReference
+import me.lampu.lampcord.window.jna.structure.WinUserConst.WM_NCLBUTTONDOWN
 import org.jetbrains.skiko.currentSystemTheme
 import java.awt.Window
 
@@ -229,6 +230,8 @@ internal class ComposeWindowProcedure(
             WM_SIZE -> {
                 width = lParam.toInt() and 0xFFFF
                 height = (lParam.toInt() shr 16) and 0xFFFF
+                val user32 = User32Extend.instance ?: return LRESULT(0)
+                isMaximized = user32.isWindowInMaximized(hWnd)
                 User32Extend.instance?.CallWindowProc(defaultWindowProcedure, hWnd, uMsg, wParam, lParam) ?: LRESULT(0)
             }
 

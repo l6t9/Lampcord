@@ -60,7 +60,7 @@ class SkiaLayerWindowProcedure(
 
             WM_NCLBUTTONUP -> {
                 User32Extend.instance?.SendMessage(contentHandle, WM_LBUTTONUP, wParam, lParam)
-                return LRESULT(0)
+                LRESULT(0)
             }
 
             else -> {
