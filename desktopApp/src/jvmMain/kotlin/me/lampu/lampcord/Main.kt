@@ -2,6 +2,7 @@ package me.lampu.lampcord
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.snap
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -12,17 +13,24 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
+import androidx.compose.ui.window.WindowPlacement
+import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.application
+import androidx.compose.ui.window.rememberWindowState
 import me.lampu.lampcord.shared.di.appModule
 import me.lampu.lampcord.shared.rpc.DesktopRPCServer
 import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.settings.Settings
+import me.lampu.lampcord.shared.settings.ThemeMode
 import me.lampu.lampcord.shared.ui.App
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.reloadTrigger
 import me.lampu.lampcord.ui.WaylandDensityProvider
 import me.lampu.lampcord.utils.WaylandScale
+import me.lampu.lampcord.window.WindowFrame
 import org.koin.compose.koinInject
 import org.koin.core.context.GlobalContext.get
 import org.koin.core.context.startKoin
@@ -90,14 +98,41 @@ fun main() {
             }
         }
 
+        val savedWidth = 1200
+        val savedHeight = 800
+
+        val windowPlacement = WindowPlacement.Floating
+        val windowState =
+            rememberWindowState(
+                placement = windowPlacement,
+                position = WindowPosition.PlatformDefault,
+                size = DpSize(savedWidth.dp, savedHeight.dp),
+            )
+        val lastNormalPlacement = remember { mutableStateOf(windowPlacement) }
+
+        fun onClose() {
+            exitApplication()
+        }
+
         Window(
-            onCloseRequest = ::exitApplication, 
+            onCloseRequest = { onClose() },
             title = "Lampcord",
             icon = dynamicIcon
         ) {
-            key(reloadKey) {
-                WaylandDensityProvider {
-                    App()
+            WindowFrame(
+                onCloseRequest = { onClose() },
+                lastNormalPlacement = lastNormalPlacement.value,
+                darkTheme = when (settingsStore.themeMode) {
+                    ThemeMode.LIGHT -> false
+                    ThemeMode.DARK -> true
+                    ThemeMode.AUTO -> isSystemInDarkTheme()
+                },
+                state = windowState,
+            ) { _, contentInset, onMaximized, toggleFullscreen ->
+                key(reloadKey) {
+                    WaylandDensityProvider {
+                        App()
+                    }
                 }
             }
         }

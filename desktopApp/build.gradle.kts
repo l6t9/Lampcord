@@ -36,7 +36,8 @@ kotlin {
                implementation(compose.desktop.currentOs)
                implementation(libs.ktor.client.cio)
                implementation(libs.kotlinx.coroutines.swing)
-               implementation(libs.jna.core)
+               implementation(libs.jna)
+               implementation(libs.jna.platform)
                implementation(libs.koin.compose)
            }
        }

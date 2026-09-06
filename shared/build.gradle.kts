@@ -129,7 +129,7 @@ kotlin {
                 implementation("org.bytedeco:ffmpeg:${libs.versions.ffmpegPlatform.get()}")
                 implementation("org.bytedeco:ffmpeg:${libs.versions.ffmpegPlatform.get()}:$javacppPlatform")
 
-                implementation(libs.jna.core)
+                implementation(libs.jna)
                 implementation(libs.jna.platform)
             }
         }
