@@ -749,7 +749,8 @@ fun ChatInputBar(
                                                 }
                                                 innerTextField()
                                             }
-                                        }
+                                        },
+                                        enabled = canSend
                                     )
 
                                     val silentTypingEnabled = settingsStore.silentTyping
