@@ -46,12 +46,12 @@ import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Instant
 
 @Composable
-private fun ProfileSectionHeader(text: String) {
+private fun ProfileSectionHeader(text: String, color: Color) {
     Text(
         text = text,
         style = MaterialTheme.typography.titleSmall,
         fontWeight = FontWeight.Normal,
-        color = MaterialTheme.colorScheme.onSurface,
+        color = color,
         modifier = Modifier.padding(bottom = 8.dp)
     )
 }
@@ -74,8 +74,8 @@ fun ProfileSections(
     val currentUser by userStore.currentUser.collectAsState()
     val uriHandler = LocalUriHandler.current
 
-    val profileTextColor = MaterialTheme.colorScheme.onSurface
-    val profileSecondaryTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val profileTextColor = theme.customTextColor ?: MaterialTheme.colorScheme.onSurface
+    val profileSecondaryTextColor = theme.customTextColor ?: MaterialTheme.colorScheme.onSurfaceVariant
 
     var showMutualFriends by remember { mutableStateOf(false) }
     var showMutualServers by remember { mutableStateOf(false) }
@@ -106,7 +106,7 @@ fun ProfileSections(
             
         if (!bio.isNullOrBlank()) {
             Column {
-                ProfileSectionHeader("About Me")
+                ProfileSectionHeader("About Me", color = profileTextColor)
                 DiscordMarkdownText(content = bio, style = MaterialTheme.typography.bodyMedium, color = profileTextColor)
             }
         }
@@ -114,7 +114,7 @@ fun ProfileSections(
         // Dates
         if (isExpanded || showMemberSince) {
             Column {
-                ProfileSectionHeader("Member Since")
+                ProfileSectionHeader("Member Since", color = profileTextColor)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     // Discord Join Date
                     Surface(modifier = Modifier.size(16.dp), color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f), shape = CircleShape) {
@@ -147,7 +147,7 @@ fun ProfileSections(
 
         if (activities.isNotEmpty()) {
             Column {
-                ProfileSectionHeader("Activity")
+                ProfileSectionHeader("Activity", profileTextColor)
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     activities.forEach { activity ->
                         UserActivity(
@@ -165,7 +165,7 @@ fun ProfileSections(
             val musicAccount = profile.connected_accounts.find { it.type == "lastfm" || it.type == "spotify" }
             if (musicAccount != null && activities.none { it.type == 2 }) {
                 Column {
-                    ProfileSectionHeader("Music Stats")
+                    ProfileSectionHeader("Music Stats", profileTextColor)
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(8.dp),
@@ -192,7 +192,7 @@ fun ProfileSections(
             val roles = profile.guild_member?.roles
             if (!roles.isNullOrEmpty() && guild != null) {
                 Column {
-                    ProfileSectionHeader("Roles")
+                    ProfileSectionHeader("Roles", profileTextColor)
                     androidx.compose.foundation.layout.FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -246,7 +246,7 @@ fun ProfileSections(
             // Connections & Mutuals (Combined as in modern Discord)
             if (profile.connected_accounts.isNotEmpty() || hasMutuals) {
                 Column {
-                    ProfileSectionHeader("Connections")
+                    ProfileSectionHeader("Connections", profileTextColor)
                     Material3SettingsGroup(
                         horizontalPadding = 0.dp,
                         items = buildList {

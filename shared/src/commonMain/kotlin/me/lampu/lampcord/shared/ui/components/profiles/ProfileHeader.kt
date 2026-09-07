@@ -88,8 +88,8 @@ fun ProfileHeader(
     val otherActivity = activities.find { it.type != 4 }
     val displayActivity = customStatus ?: otherActivity
 
-    val profileTextColor = MaterialTheme.colorScheme.onSurface
-    val profileSecondaryTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val profileTextColor = theme.customTextColor ?: MaterialTheme.colorScheme.onSurface
+    val profileSecondaryTextColor = theme.customTextColor ?: MaterialTheme.colorScheme.onSurfaceVariant
 
     Row(
         verticalAlignment = Alignment.Top, // Align to top to ensure downward expansion

@@ -34,6 +34,7 @@ data class ProfileTheme(
     val buttonColor: Color,
     val buttonTextColor: Color,
     val isCustom: Boolean = false,
+    val customTextColor: Color? = null,
     val themeColors: List<Color> = emptyList()
 )
 

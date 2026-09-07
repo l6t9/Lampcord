@@ -357,6 +357,7 @@ fun ProfileCard(
                 buttonColor = profileScheme.secondary,
                 buttonTextColor = profileScheme.onSecondary,
                 isCustom = true,
+                customTextColor = if (isLightMode) Color.Black else Color.White,
                 themeColors = listOf(Color(primary or 0xFF000000.toInt()), Color(accent or 0xFF000000.toInt()))
             )
         } else {
@@ -375,7 +376,7 @@ fun ProfileCard(
                 pfpBorderBrush = Brush.verticalGradient(listOf(primary, primary)),
                 primaryAccent = primary,
                 buttonColor = profileScheme.primary,
-                buttonTextColor = profileScheme.onPrimary
+                buttonTextColor = profileScheme.onPrimary,
             )
         }
     }
