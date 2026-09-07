@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -16,6 +17,7 @@ import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.showToast
 import me.lampu.lampcord.shared.utils.getPlatformName
+import me.lampu.lampcord.shared.ui.settings.TextReplaceSettings
 import org.koin.compose.koinInject
 
 @Composable
@@ -23,23 +25,48 @@ fun ChatSettings(
     onBack: () -> Unit,
     settingsStore: SettingsStore = koinInject()
 ) {
+    var currentSubTab by remember { mutableStateOf("main") }
+
     SettingsSubScreen(
-        title = "Chat",
-        onNavigateBack = onBack
+        title = if (currentSubTab == "text_replace") "Text Replacement" else "Chat",
+        onNavigateBack = {
+            if (currentSubTab == "text_replace") {
+                currentSubTab = "main"
+            } else {
+                onBack()
+            }
+        }
     ) {
-        ChatSettingsContent(settingsStore = settingsStore)
+        if (currentSubTab == "text_replace") {
+            TextReplaceSettings(settingsStore = settingsStore)
+        } else {
+            ChatSettingsContent(
+                settingsStore = settingsStore,
+                onNavigateToTextReplace = { currentSubTab = "text_replace" }
+            )
+        }
     }
 }
 
 @Composable
 fun ChatSettingsContent(
     settingsStore: SettingsStore = koinInject(),
-    messageLogger: MessageLogger = koinInject()
+    messageLogger: MessageLogger = koinInject(),
+    onNavigateToTextReplace: () -> Unit = {}
 ) {
     val userSettings = settingsStore.userSettings
     val platform = remember { getPlatformName() }
     val isDesktop = platform != "android" && platform != "ios"
     var showClearLoggerConfirmation by remember { mutableStateOf(false) }
+    var currentSubTab by remember { mutableStateOf("main") }
+
+    if (currentSubTab == "text_replace") {
+        SettingsSubScreen(title = "Text Replacement", onNavigateBack = { currentSubTab = "main" }) {
+            TextReplaceSettings(settingsStore = settingsStore)
+        }
+        return
+    }
+
     Column(modifier = Modifier.fillMaxWidth()) {
         Material3SettingsGroup(
             title = "Display",
@@ -290,6 +317,24 @@ fun ChatSettingsContent(
                     onClick = { showClearLoggerConfirmation = true }
                 ))
             }
+        )
+
+        Material3SettingsGroup(
+            title = "Text Replacement",
+            items = listOf(
+                Material3SettingsItem(
+                    icon = Icons.Rounded.TextFields,
+                    title = { Text("Text Replacement Rules") },
+                    description = { Text("Manage automatic text substitution rules.") },
+                    onClick = {
+                        if (platform != "android" && platform != "ios") {
+                            currentSubTab = "text_replace"
+                        } else {
+                            onNavigateToTextReplace()
+                        }
+                    }
+                )
+            )
         )
     }
 

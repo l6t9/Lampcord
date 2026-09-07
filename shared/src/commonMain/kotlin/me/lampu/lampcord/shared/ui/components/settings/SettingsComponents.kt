@@ -241,6 +241,23 @@ fun SettingsSubScreen(
     contentScrollable: Boolean = true,
     content: @Composable () -> Unit,
 ) {
+    val platform = remember { me.lampu.lampcord.shared.utils.getPlatformName() }
+    val isMobile = platform == "android" || platform == "ios"
+
+    if (!isMobile) {
+        Column(modifier = modifier.fillMaxWidth()) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(16.dp)) {
+                IconButton(onClick = onNavigateBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                }
+                Spacer(Modifier.width(8.dp))
+                Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            }
+            content()
+        }
+        return
+    }
+
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     
     Scaffold(

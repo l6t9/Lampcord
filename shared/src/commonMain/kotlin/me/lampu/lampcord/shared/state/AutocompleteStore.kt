@@ -2,17 +2,26 @@ package me.lampu.lampcord.shared.state
 
 import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
+import me.lampu.lampcord.shared.api.GuildApi
 import me.lampu.lampcord.shared.model.*
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.EmojiIndex
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 
 class AutocompleteStore(
     private val memberListStore: MemberListStore,
     private val relationshipStore: RelationshipStore,
     private val guildStore: GuildStore,
     private val userStore: UserStore,
-    private val commandStore: CommandStore
+    private val commandStore: CommandStore,
+    private val guildApi: GuildApi
 ) {
+    private val scope = CoroutineScope(Dispatchers.Main)
+    private var memberSearchJob: Job? = null
+
     var autocompleteType by mutableStateOf<AutocompleteType?>(null)
     var autocompleteQuery by mutableStateOf("")
     var autocompleteSelectedIndex by mutableStateOf(0)
@@ -24,6 +33,7 @@ class AutocompleteStore(
     val searchAutocompleteItems = mutableStateListOf<AutocompleteItem>()
 
     fun updateAutocomplete(type: AutocompleteType?, query: String, selectedGuild: Guild?, selectedChannel: Channel? = null, isSearch: Boolean = false) {
+        memberSearchJob?.cancel()
         if (type == null) {
             if (isSearch) {
                 searchAutocompleteType = null
@@ -59,10 +69,29 @@ class AutocompleteStore(
                 }
 
                 val members = if (guildId != null) {
-                     memberListStore.memberListItems.filterNotNull().mapNotNull { it.member }.filter { member ->
-                         val name = member.nick ?: member.user?.global_name ?: member.user?.username ?: ""
-                         name.contains(query, ignoreCase = true) || member.user?.username?.contains(query, ignoreCase = true) == true
-                     }.take(10)
+                    val local = memberListStore.memberListItems.filterNotNull().mapNotNull { it.member }.filter { member ->
+                        val name = member.nick ?: member.user?.global_name ?: member.user?.username ?: ""
+                        name.contains(query, ignoreCase = true) || member.user?.username?.contains(query, ignoreCase = true) == true
+                    }.take(10).toMutableList()
+
+                    if (local.size < 5 && query.isNotEmpty()) {
+                        memberSearchJob = scope.launch {
+                            val remote = guildApi.searchGuildMembers(guildId, query, limit = 10)
+                            if (remote.isNotEmpty()) {
+                                var changed = false
+                                remote.forEach { rm ->
+                                    if (local.none { it.user?.id == rm.user?.id }) {
+                                        local.add(rm)
+                                        changed = true
+                                    }
+                                }
+                                if (changed) {
+                                    updateAutocompleteResults(type, query, selectedGuild, isSearch, local)
+                                }
+                            }
+                        }
+                    }
+                    local
                 } else if (selectedChannel != null && selectedChannel.guild_id == null) {
                     val recipients = selectedChannel.recipients?.filter { user ->
                         user.global_name?.contains(query, ignoreCase = true) == true ||
@@ -85,38 +114,7 @@ class AutocompleteStore(
                     }.mapNotNull { rel -> rel.user?.let { u -> Member(user = u) } }.take(10)
                 }
                 
-                results.addAll(members.map { member ->
-                    val user = member.user!!
-                    val name = member.nick ?: user.global_name ?: user.username ?: "Unknown User"
-                    
-                    val roleData = if (selectedGuild != null) {
-                        val colorRole = member.getRoleColorRole(selectedGuild)
-                        if (colorRole != null) {
-                            val primaryInt = colorRole.colors?.primary_color ?: colorRole.color
-                            val gradient = if (colorRole.colors?.secondary_color != null) {
-                                listOfNotNull(
-                                    Color(primaryInt or 0xFF000000.toInt()),
-                                    Color(colorRole.colors.secondary_color or 0xFF000000.toInt()),
-                                    colorRole.colors.tertiary_color?.let { Color(it or 0xFF000000.toInt()) }
-                                )
-                            } else null
-                            val color = if (primaryInt != 0) Color(primaryInt or 0xFF000000.toInt()) else null
-                            color to gradient
-                        } else null
-                    } else null
-
-                    AutocompleteItem(
-                        id = user.id,
-                        title = name,
-                        subtitle = user.username,
-                        icon = user.avatar?.let { "https://cdn.discordapp.com/avatars/${user.id}/$it.png?size=64" },
-                        replacement = if (isSearch) user.id else "<@${user.id}>",
-                        searchReplacement = user.username,
-                        color = roleData?.first,
-                        gradient = roleData?.second,
-                        inputText = if (isSearch) user.id else "@$name"
-                    )
-                })
+                addMembersToResults(members, results, selectedGuild, isSearch)
 
                 if (type == AutocompleteType.MENTION) {
                     val roles = selectedGuild?.roles?.filter { role ->
@@ -286,6 +284,99 @@ class AutocompleteStore(
             autocompleteItems.clear()
             autocompleteItems.addAll(results)
             autocompleteSelectedIndex = 0
+        }
+    }
+
+    private fun addMembersToResults(
+        members: List<Member>,
+        results: MutableList<AutocompleteItem>,
+        selectedGuild: Guild?,
+        isSearch: Boolean
+    ) {
+        results.addAll(members.map { member ->
+            val user = member.user!!
+            val name = member.nick ?: user.global_name ?: user.username ?: "Unknown User"
+
+            val roleData = if (selectedGuild != null) {
+                val colorRole = member.getRoleColorRole(selectedGuild)
+                if (colorRole != null) {
+                    val primaryInt = colorRole.colors?.primary_color ?: colorRole.color
+                    val gradient = if (colorRole.colors?.secondary_color != null) {
+                        listOfNotNull(
+                            Color(primaryInt or 0xFF000000.toInt()),
+                            Color(colorRole.colors.secondary_color or 0xFF000000.toInt()),
+                            colorRole.colors.tertiary_color?.let { Color(it or 0xFF000000.toInt()) }
+                        )
+                    } else null
+                    val color = if (primaryInt != 0) Color(primaryInt or 0xFF000000.toInt()) else null
+                    color to gradient
+                } else null
+            } else null
+
+            AutocompleteItem(
+                id = user.id,
+                title = name,
+                subtitle = user.username,
+                icon = user.avatar?.let { "https://cdn.discordapp.com/avatars/${user.id}/$it.png?size=64" },
+                replacement = if (isSearch) user.id else "<@${user.id}>",
+                searchReplacement = user.username,
+                color = roleData?.first,
+                gradient = roleData?.second,
+                inputText = if (isSearch) user.id else "@$name"
+            )
+        })
+    }
+
+    private fun updateAutocompleteResults(
+        type: AutocompleteType,
+        query: String,
+        selectedGuild: Guild?,
+        isSearch: Boolean,
+        members: List<Member>
+    ) {
+        val newResults = mutableListOf<AutocompleteItem>()
+        if (type == AutocompleteType.MENTION) {
+            if (query.isEmpty() || "everyone".contains(query, ignoreCase = true)) {
+                newResults.add(AutocompleteItem(id = "everyone", title = "everyone", replacement = "@everyone", searchReplacement = "everyone", iconType = Icons.Filled.Group, inputText = "@everyone"))
+            }
+            if (query.isEmpty() || "here".contains(query, ignoreCase = true)) {
+                newResults.add(AutocompleteItem(id = "here", title = "here", replacement = "@here", searchReplacement = "here", iconType = Icons.Filled.Group, inputText = "@here"))
+            }
+        }
+        
+        addMembersToResults(members, newResults, selectedGuild, isSearch)
+        
+        if (type == AutocompleteType.MENTION) {
+            val roles = selectedGuild?.roles?.filter { role ->
+                role.name.contains(query, ignoreCase = true)
+            }?.take(5) ?: emptyList()
+            newResults.addAll(roles.map { role ->
+                val primaryInt = role.colors?.primary_color ?: role.color
+                AutocompleteItem(
+                    id = role.id,
+                    title = role.name,
+                    iconType = Icons.Filled.Group,
+                    replacement = "<@&${role.id}>",
+                    searchReplacement = role.name,
+                    color = if (primaryInt != 0) Color(primaryInt or 0xFF000000.toInt()) else null,
+                    gradient = if (role.colors?.secondary_color != null) {
+                        listOfNotNull(
+                            Color(primaryInt or 0xFF000000.toInt()),
+                            Color(role.colors.secondary_color or 0xFF000000.toInt()),
+                            role.colors.tertiary_color?.let { Color(it or 0xFF000000.toInt()) }
+                        )
+                    } else null,
+                    inputText = "@${role.name}"
+                )
+            })
+        }
+
+        if (isSearch) {
+            searchAutocompleteItems.clear()
+            searchAutocompleteItems.addAll(newResults)
+        } else {
+            autocompleteItems.clear()
+            autocompleteItems.addAll(newResults)
         }
     }
 

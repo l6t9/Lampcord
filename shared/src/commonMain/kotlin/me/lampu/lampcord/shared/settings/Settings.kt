@@ -103,6 +103,7 @@ class Settings(private val settings: KmpSettings) {
     var showNavSettings by preferenceBoolean("show_nav_settings", true)
     var navTabsOrderJson by preference("nav_tabs_order", "[\"home\",\"friends\",\"search\",\"mentions\",\"settings\"]")
     var secretTabEnabled by preferenceBoolean("secret_tab_enabled", false)
+    var textReplaceJson by preference("text_replace_v1", "[]")
 
     fun getLastChannel(guildId: String): String? {
         val id = settings.getString("last_channel_$guildId", "")

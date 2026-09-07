@@ -252,6 +252,17 @@ fun SettingsScreen(
             }
         }
 
+        val finalOnNavigateToNavigation = {
+            if (isCompact) {
+                onNavigateToNavigation()
+            } else {
+                selectedCategory = SettingsSection.APPEARANCE
+                // In Desktop, we don't have a separate navigation state for subpages yet,
+                // but the Appearance page handles it. However, if we want to deep-link:
+                // navigationStore.settingsCategory = "NAVIGATION"
+            }
+        }
+
         fun openSearchEntry(entry: SettingsSearchEntry) {
             if (entry.destination == SettingsSearchDestination.Theming) {
                 finalOnNavigateToTheming()
@@ -493,18 +504,19 @@ fun SettingsScreen(
                     onEditingThemeJsonChanged = { editingThemeJson = it },
                     onShowDebugLogsChanged = { showDebugLogs = it },
                     onNavigateToTheming = finalOnNavigateToTheming,
-                    onNavigateToNavigation = onNavigateToNavigation,
+                    onNavigateToNavigation = finalOnNavigateToNavigation,
                     onDismiss = onDismiss,
                     onCategorySelected = { selectedCategory = it },
                     onLogoutConfirmationChanged = { showLogoutConfirmation = it },
-                    railState = railState
+                    railState = railState,
+                    finalOnNavigateToTheming = finalOnNavigateToTheming,
+                    finalOnNavigateToNavigation = finalOnNavigateToNavigation
                 )
             }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SettingsDesktopOverlay(
     selectedCategory: SettingsSection?,
@@ -519,7 +531,9 @@ fun SettingsDesktopOverlay(
     onDismiss: () -> Unit,
     onCategorySelected: (SettingsSection) -> Unit,
     onLogoutConfirmationChanged: (Boolean) -> Unit,
-    railState: WideNavigationRailState
+    railState: WideNavigationRailState,
+    finalOnNavigateToTheming: () -> Unit = {},
+    finalOnNavigateToNavigation: () -> Unit = {}
 ) {
     val activeCategory = selectedCategory ?: SettingsSection.ACCOUNT
     val reduceMotion = Settings.shared.reduceMotion
@@ -775,8 +789,8 @@ fun SettingsDesktopOverlay(
                                     SettingsSection.CONNECTIONS -> ConnectionsSettingsContent()
                                     SettingsSection.DEVICES -> DevicesSettingsContent()
                                     SettingsSection.APPEARANCE -> AppearanceSettingsContent(
-                                        onNavigateToTheming = onNavigateToTheming,
-                                        onNavigateToNavigation = onNavigateToNavigation
+                                        onNavigateToTheming = finalOnNavigateToTheming,
+                                        onNavigateToNavigation = finalOnNavigateToNavigation
                                     )
                                     SettingsSection.ACCESSIBILITY -> AccessibilitySettingsContent()
                                     SettingsSection.VOICE_VIDEO -> { /* TODO */ }

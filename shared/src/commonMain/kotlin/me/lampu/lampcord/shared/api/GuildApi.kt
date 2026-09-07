@@ -51,6 +51,30 @@ class GuildApi(private val rest: RestClient) {
         }
     }
 
+    suspend fun getGuildPreview(guildId: String): Guild? {
+        return try {
+            val response = rest.httpClient.get("${rest.apiBase}/guilds/$guildId/preview") {
+                standardHeaders(rest)
+            }
+            if (response.status.isSuccess()) response.body() else null
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            Logging.e("Guild", "Error fetching guild preview: ${e.message}")
+            null
+        }
+    }
+
+    suspend fun getGuildWidget(guildId: String): kotlinx.serialization.json.JsonObject? {
+        return try {
+            val response = rest.httpClient.get("${rest.apiBase}/guilds/$guildId/widget.json") {
+                standardHeaders(rest)
+            }
+            if (response.status.isSuccess()) response.body() else null
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     suspend fun updateGuild(guildId: String, partial: Guild.Partial): Boolean {
         return try {
             val response = rest.httpClient.patch("${rest.apiBase}/guilds/$guildId") {

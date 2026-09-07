@@ -50,6 +50,7 @@ fun InviteEmbedView(
 
     val data = invite ?: return
     val guild = data.guild ?: return
+    val isMember = guildStore.guilds.value.any { it.id == guild.id }
 
     Surface(
         onClick = { showProfile = true },
@@ -91,11 +92,18 @@ fun InviteEmbedView(
                 Spacer(Modifier.width(12.dp))
 
                 Column(modifier = Modifier.weight(1f)) {
+                    val inviteHeader = when {
+                        isMember -> "YOU ARE A MEMBER"
+                        data.inviter != null -> "${data.inviter.global_name ?: data.inviter.username} INVITED YOU TO JOIN"
+                        else -> "YOU WERE INVITED TO JOIN"
+                    }
                     Text(
-                        text = "YOU SENT AN INVITE" , // This is usually contextual, but simplifying
+                        text = inviteHeader.uppercase(),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
                     Text(
                         text = guild.name ?: "Server",
@@ -122,7 +130,6 @@ fun InviteEmbedView(
                     }
                 }
 
-                val isMember = guildStore.guilds.value.any { it.id == guild.id }
                 Button(
                     onClick = { showProfile = true },
                     shape = RoundedCornerShape(8.dp),

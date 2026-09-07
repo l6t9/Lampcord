@@ -3,6 +3,7 @@ package me.lampu.lampcord.shared.state.handlers
 import kotlinx.serialization.json.*
 import me.lampu.lampcord.shared.model.Guild
 import me.lampu.lampcord.shared.model.Channel
+import me.lampu.lampcord.shared.model.Member
 import me.lampu.lampcord.shared.state.*
 
 /**
@@ -51,9 +52,10 @@ class GuildEventHandler(
         guildStore.handleGuildCreate(guild, guildOrder)
         
         // Members go to UserStore
-        guild.members?.forEach { member ->
+        data.jsonObject["members"]?.jsonArray?.forEach { memberData ->
+            val member = json.decodeFromJsonElement<Member>(memberData)
             val userId = member.userId() ?: return@forEach
-            userStore.cacheMember(guild.id, userId, member)
+            userStore.cacheMember(guild.id, userId, member, memberData.jsonObject)
         }
 
         // Presences go to PresenceStore

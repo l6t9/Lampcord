@@ -5,17 +5,33 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import me.lampu.lampcord.shared.api.UserApi
 import me.lampu.lampcord.shared.model.UserSettings
+import me.lampu.lampcord.shared.model.TextReplaceRule
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.encodeToString
 import kotlin.time.Duration.Companion.milliseconds
 
 class SettingsStore(
     private val userApi: UserApi
 ) {
     var userSettings by mutableStateOf<UserSettings?>(null)
+
+    private val json = Json { ignoreUnknownKeys = true }
+
+    var textReplaceRules by mutableStateOf(
+        try {
+            json.decodeFromString<List<TextReplaceRule>>(me.lampu.lampcord.shared.settings.Settings.shared.textReplaceJson)
+        } catch (e: Exception) { emptyList() }
+    )
+
+    fun updateTextReplaceRules(rules: List<TextReplaceRule>) {
+        textReplaceRules = rules
+        me.lampu.lampcord.shared.settings.Settings.shared.textReplaceJson = json.encodeToString(rules)
+    }
     
     private var _pureBlack by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.pureBlack)
     var pureBlack: Boolean

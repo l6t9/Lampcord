@@ -12,6 +12,7 @@ import me.lampu.lampcord.shared.model.Attachment
 import me.lampu.lampcord.shared.model.DiscordMedia
 import me.lampu.lampcord.shared.model.Embed
 import me.lampu.lampcord.shared.model.EmbedImage
+import me.lampu.lampcord.shared.model.EmbedVideo
 import me.lampu.lampcord.shared.model.Message
 import me.lampu.lampcord.shared.model.MessageComponent
 import me.lampu.lampcord.shared.model.Poll
@@ -72,7 +73,7 @@ fun MessageAttachments(
 
     poll?.let { PollView(it) }
 
-    val inviteRegex = Regex("""discord(?:\.com/invite|\.gg)/([a-zA-Z0-9\-]+)""")
+    val inviteRegex = Regex("""(?:discord\.gg/|discord\.com/invite/|discordapp\.com/invite/|discord\.me/|discord\.li/|discord\.io/)([a-zA-Z0-9\-]+)""")
     val processedInvites = mutableSetOf<String>()
 
     embeds.forEach { embed ->
@@ -88,29 +89,52 @@ fun MessageAttachments(
         }
     }
 
-    // Discord does not always create an embed for direct GIF links. Render
-    // those URLs as media as a fallback, especially for media.tenor.com links.
-    val embeddedGifUrls = embeds.flatMap { embed ->
+    // Also look for invites in content for messages that don't have embeds yet
+    content?.let {
+        inviteRegex.findAll(it).forEach { match ->
+            val code = match.groupValues[1]
+            if (processedInvites.add(code)) {
+                InviteEmbedView(code)
+            }
+        }
+    }
+
+    // Discord does not always create an embed for direct GIF/Video links. Render
+    // those URLs as media as a fallback.
+    val embeddedMediaUrls = embeds.flatMap { embed ->
         listOfNotNull(
             embed.image?.url,
             embed.image?.proxy_url,
+            embed.video?.url,
             embed.url
-        ).filter { it.isGifUrl() }
+        )
     }.map { it.normalizedMediaUrl() }.toSet()
 
-    extractGifUrls(content)
-        .filterNot { it.normalizedMediaUrl() in embeddedGifUrls }
+    extractMediaUrls(content)
+        .filterNot { it.normalizedMediaUrl() in embeddedMediaUrls }
         .forEach { url ->
-            val gif = EmbedImage(url = url, proxy_url = url)
-            AttachmentImage(
-                media = gif,
-                onClick = { navigationStore.openAttachmentViewer(listOf(gif), 0) },
-                modifier = Modifier
-                    .padding(vertical = 4.dp)
-                    .widthIn(max = 400.dp)
-                    .fillMaxWidth()
-                    .aspectRatio(1f)
-            )
+            if (url.isGifUrl()) {
+                val gif = EmbedImage(url = url, proxy_url = url)
+                AttachmentImage(
+                    media = gif,
+                    onClick = { navigationStore.openAttachmentViewer(listOf(gif), 0) },
+                    modifier = Modifier
+                        .padding(vertical = 4.dp)
+                        .widthIn(max = 400.dp)
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
+                )
+            } else {
+                val video = EmbedVideo(url = url, proxy_url = url)
+                GifvView(
+                    video = video,
+                    modifier = Modifier
+                        .padding(vertical = 4.dp)
+                        .widthIn(max = 500.dp)
+                        .fillMaxWidth()
+                        .aspectRatio(16/9f)
+                )
+            }
         }
 
     components?.let {
@@ -118,13 +142,13 @@ fun MessageAttachments(
     }
 }
 
-private val directGifUrlPattern = Regex(
-    """https?://[^\s<>()\[\]]+\.gif(?:\?[^\s<>()\[\]]*)?(?:#[^\s<>()\[\]]*)?""",
+private val mediaUrlPattern = Regex(
+    """https?://[^\s<>()\[\]]+\.(gif|mp4|webm|mov)(?:\?[^\s<>()\[\]]*)?(?:#[^\s<>()\[\]]*)?""",
     RegexOption.IGNORE_CASE
 )
 
-private fun extractGifUrls(content: String?): List<String> = content
-    ?.let { directGifUrlPattern.findAll(it).map { match -> match.value.trimEnd('.', ',', '!', '?', ';', ':') }.distinct().toList() }
+private fun extractMediaUrls(content: String?): List<String> = content
+    ?.let { mediaUrlPattern.findAll(it).map { match -> match.value.trimEnd('.', ',', '!', '?', ';', ':') }.distinct().toList() }
     ?: emptyList()
 
 private fun String.isGifUrl(): Boolean {

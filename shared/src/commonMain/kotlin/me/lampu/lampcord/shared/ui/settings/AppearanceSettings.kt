@@ -59,7 +59,6 @@ fun AppearanceSettings(
     }
 }
 
-@OptIn(ExperimentalEncodingApi::class)
 @Composable
 fun AppearanceSettingsContent(
     onNavigateToTheming: () -> Unit,
@@ -67,6 +66,15 @@ fun AppearanceSettingsContent(
     settingsStore: SettingsStore = koinInject(),
     themeStore: ThemeStore = koinInject()
 ) {
+    val platform = remember { me.lampu.lampcord.shared.utils.getPlatformName() }
+    val isDesktop = platform != "android" && platform != "ios"
+    var currentSubTab by remember { mutableStateOf("main") }
+
+    if (currentSubTab == "navigation") {
+        NavigationSettings(onBack = { currentSubTab = "main" }, settingsStore = settingsStore)
+        return
+    }
+
     fun updateTheme(theme: String) {
         settingsStore.updateUserSettings(UserSettings.Partial(theme = theme))
     }
@@ -263,7 +271,13 @@ fun AppearanceSettingsContent(
                     icon = Icons.Filled.BottomAppBar,
                     title = { Text("Navigation Tabs") },
                     description = { Text("Reorder and toggle visibility of navigation tabs") },
-                    onClick = onNavigateToNavigation
+                    onClick = {
+                        if (me.lampu.lampcord.shared.utils.getPlatformName() != "android" && me.lampu.lampcord.shared.utils.getPlatformName() != "ios") {
+                            currentSubTab = "navigation"
+                        } else {
+                            onNavigateToNavigation()
+                        }
+                    }
                 )
             )
         )

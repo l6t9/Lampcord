@@ -85,7 +85,7 @@ val storeModule = module {
     single {
         MessageStore(
             messageApi = get(), channelApi = get(), userStore = get(), errorStore = get(),
-            selectionStore = get(), messageLogger = get(), scope = get()
+            selectionStore = get(), messageLogger = get(), settingsStore = get(), scope = get()
         )
     }
     single { TypingStore(scope = get()) }
@@ -103,7 +103,7 @@ val storeModule = module {
     single {
         AutocompleteStore(
             memberListStore = get(), relationshipStore = get(), guildStore = get(),
-            userStore = get(), commandStore = get()
+            userStore = get(), commandStore = get(), guildApi = get()
         )
     }
     single { CommandStore(guildApi = get(), gatewayManager = get(), scope = get()) }

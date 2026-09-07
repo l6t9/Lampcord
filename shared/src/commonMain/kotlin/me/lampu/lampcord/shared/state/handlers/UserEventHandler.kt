@@ -33,7 +33,7 @@ class UserEventHandler(
     private fun handleUserUpdate(data: JsonElement) {
         try {
             val user = json.decodeFromJsonElement<User>(data)
-            userStore.handleUserUpdate(user)
+            userStore.handleUserUpdate(user, data.jsonObject)
         } catch (e: Exception) { }
     }
 
@@ -63,7 +63,7 @@ class UserEventHandler(
             val member = json.decodeFromJsonElement<Member>(data)
             val guildId = data.jsonObject["guild_id"]?.jsonPrimitive?.content ?: return
             val userId = member.userId() ?: return
-            userStore.cacheMember(guildId, userId, member)
+            userStore.cacheMember(guildId, userId, member, data.jsonObject)
         } catch (e: Exception) { }
     }
 }

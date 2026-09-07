@@ -43,6 +43,7 @@ import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.ui.components.AsyncImage
+import me.lampu.lampcord.shared.ui.components.DiscordMarkdownText
 import me.lampu.lampcord.shared.ui.components.ClanTagView
 import me.lampu.lampcord.shared.ui.components.UserTagView
 import me.lampu.lampcord.shared.utils.DateTimeUtils
@@ -287,17 +288,19 @@ fun ReplyBar(
 
         Spacer(modifier = Modifier.width(4.dp))
 
-        Text(
-            text = when {
-                referencedMessage.content.isNotBlank() -> referencedMessage.content
-                referencedMessage.attachments.isNotEmpty() -> "Click to see attachment"
-                referencedMessage.embeds.isNotEmpty() -> "Click to see embed"
-                else -> "Original message"
-            },
+        val replyContent = when {
+            referencedMessage.content.isNotBlank() -> referencedMessage.content
+            referencedMessage.attachments.isNotEmpty() -> "Click to see attachment"
+            referencedMessage.embeds.isNotEmpty() -> "Click to see embed"
+            else -> "Original message"
+        }
+
+        DiscordMarkdownText(
+            content = replyContent,
             style = MaterialTheme.typography.labelSmall,
-            color = if (isHovered) Color.White.copy(alpha = 0.6f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f), // Whiter on hover
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+            color = if (isHovered) Color.White.copy(alpha = 0.6f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+            modifier = Modifier.weight(1f, fill = false),
+            maxLines = 1
         )
     }
 }

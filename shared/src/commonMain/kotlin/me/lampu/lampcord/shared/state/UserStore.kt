@@ -17,13 +17,13 @@ class UserStore {
     private val _members = MutableStateFlow<Map<String, Map<String, Member>>>(emptyMap())
     val members: StateFlow<Map<String, Map<String, Member>>> = _members.asStateFlow()
 
-    fun setCurrentUser(user: User?) {
+    fun setCurrentUser(user: User?, raw: kotlinx.serialization.json.JsonObject? = null) {
         Logging.i("UserStore", "Setting current user: ${user?.username} (${user?.id})")
         _currentUser.value = user
-        if (user != null) handleUserUpdate(user)
+        if (user != null) handleUserUpdate(user, raw)
     }
 
-    fun handleUserUpdate(user: User) {
+    fun handleUserUpdate(user: User, raw: kotlinx.serialization.json.JsonObject? = null) {
         Logging.d("UserStore", "Updating user: ${user.username} (${user.id})")
         _users.update { current ->
             val existing = current[user.id]
@@ -31,7 +31,7 @@ class UserStore {
                 username = user.username ?: existing.username,
                 global_name = user.global_name ?: existing.global_name,
                 avatar = user.avatar ?: existing.avatar,
-                avatar_decoration_data = user.avatar_decoration_data ?: existing.avatar_decoration_data,
+                avatar_decoration_data = if (raw?.containsKey("avatar_decoration_data") == true) user.avatar_decoration_data else (user.avatar_decoration_data ?: existing.avatar_decoration_data),
                 discriminator = user.discriminator ?: existing.discriminator,
                 public_flags = user.public_flags ?: existing.public_flags,
                 flags = user.flags ?: existing.flags,
@@ -39,7 +39,7 @@ class UserStore {
                 banner = user.banner ?: existing.banner,
                 bio = user.bio ?: existing.bio,
                 pronouns = user.pronouns ?: existing.pronouns,
-                display_name_styles = user.display_name_styles ?: existing.display_name_styles
+                display_name_styles = if (raw?.containsKey("display_name_styles") == true) user.display_name_styles else (user.display_name_styles ?: existing.display_name_styles)
             )
                 ?: user
             current + (user.id to updated)
@@ -53,7 +53,7 @@ class UserStore {
         }
     }
 
-    fun cacheMember(guildId: String, userId: String, member: Member) {
+    fun cacheMember(guildId: String, userId: String, member: Member, raw: kotlinx.serialization.json.JsonObject? = null) {
         _members.update { current ->
             val guildMembers = current[guildId]?.toMutableMap() ?: mutableMapOf()
             val existing = guildMembers[userId]
@@ -63,7 +63,7 @@ class UserStore {
                 nick = member.nick ?: existing.nick,
                 avatar = member.avatar ?: existing.avatar,
                 roles = member.roles.ifEmpty { existing.roles },
-                display_name_styles = member.display_name_styles ?: existing.display_name_styles,
+                display_name_styles = if (raw?.containsKey("display_name_styles") == true) member.display_name_styles else (member.display_name_styles ?: existing.display_name_styles),
                 premium_since = member.premium_since ?: existing.premium_since,
                 pending = member.pending ?: existing.pending,
                 permissions = member.permissions ?: existing.permissions,
@@ -79,7 +79,7 @@ class UserStore {
             current + (guildId to guildMembers)
         }
         
-        member.user?.let { handleUserUpdate(it) }
+        member.user?.let { handleUserUpdate(it, raw) }
     }
 
     fun getUser(userId: String): User? = _users.value[userId]

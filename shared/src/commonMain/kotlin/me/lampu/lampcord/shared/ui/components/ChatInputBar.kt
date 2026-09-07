@@ -215,12 +215,10 @@ fun ChatInputBar(
         }
     }
 
-    // Keep local messageText in sync with draft changes from outside
-    LaunchedEffect(messageStore.draftMessages[channel.id]) {
+    // Sync messageText only when channel changes
+    LaunchedEffect(channel.id) {
         val draft = messageStore.draftMessages[channel.id] ?: ""
-        if (draft != textFieldValue.text) {
-            textFieldValue = TextFieldValue(draft, TextRange(draft.length))
-        }
+        textFieldValue = TextFieldValue(draft, TextRange(draft.length))
     }
 
     // Sync messageText when editing starts
@@ -717,7 +715,10 @@ fun ChatInputBar(
                                                                 messageStore.editingMessage = null
                                                             } else {
                                                                 val allowedMentions = if (messageStore.replyingTo != null) {
-                                                                    me.lampu.lampcord.shared.model.AllowedMentions(replied_user = navigationStore.shouldMentionReply)
+                                                                    me.lampu.lampcord.shared.model.AllowedMentions(
+                                                                        parse = listOf("users", "roles", "everyone"),
+                                                                        replied_user = navigationStore.shouldMentionReply
+                                                                    )
                                                                 } else null
                                                                 messageStore.sendMessageDraft(resolveContent(currentText), allowedMentions = allowedMentions)
                                                             }
@@ -837,7 +838,10 @@ fun ChatInputBar(
                                                     messageStore.editingMessage = null
                                                 } else {
                                                     val allowedMentions = if (messageStore.replyingTo != null) {
-                                                        me.lampu.lampcord.shared.model.AllowedMentions(replied_user = navigationStore.shouldMentionReply)
+                                                        me.lampu.lampcord.shared.model.AllowedMentions(
+                                                            parse = listOf("users", "roles", "everyone"),
+                                                            replied_user = navigationStore.shouldMentionReply
+                                                        )
                                                     } else null
                                                     messageStore.sendMessageDraft(resolveContent(textFieldValue.text), allowedMentions = allowedMentions)
                                                 }

@@ -37,6 +37,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalUriHandler
@@ -63,6 +64,7 @@ fun DiscordMarkdownText(
     modifier: Modifier = Modifier,
     style: TextStyle = MaterialTheme.typography.bodyLarge,
     color: Color = Color.Unspecified,
+    maxLines: Int = Int.MAX_VALUE,
     navigationStore: NavigationStore = koinInject(),
     guildStore: GuildStore = koinInject(),
     userStore: UserStore = koinInject(),
@@ -75,6 +77,7 @@ fun DiscordMarkdownText(
     val fontSize = style.fontSize.takeIf { it.isSp } ?: 16.sp
     
     val isJumbo = remember(content) {
+        if (maxLines != Int.MAX_VALUE) return@remember false
         val trimmed = content.trim()
         if (trimmed.isEmpty()) return@remember false
         val customEmojiRegex = me.lampu.lampcord.shared.utils.FreeNitroEmojis.emojiRegex
@@ -290,7 +293,9 @@ fun DiscordMarkdownText(
                     },
                 style = style.copy(color = if (color != Color.Unspecified) color else LocalContentColor.current),
                 inlineContent = inlineContent,
-                onTextLayout = { textLayoutResult = it }
+                onTextLayout = { textLayoutResult = it },
+                maxLines = maxLines,
+                overflow = if (maxLines != Int.MAX_VALUE) TextOverflow.Ellipsis else TextOverflow.Clip
             )
 
             if (contextMenuUrl != null && getPlatformName() == "android") {
@@ -568,12 +573,22 @@ private fun AnnotatedString.Builder.appendDiscordMarkdown(
                 val id = if (tag == "EVERYONE" || tag == "HERE") "" else match!!.groupValues[1]
                 var name = id
                 var prefix = "@"
-                val mentionBg = primaryColor.copy(alpha = 0.1f)
+                var mentionBg = primaryColor.copy(alpha = 0.1f)
+                var mentionColor = primaryColor
                 
                 when(tag) {
                     "MENTION" -> {
                         val member = userStore.getMember(navigationStore.selectedGuild?.id ?: "", id)
-                        name = member?.nick ?: userStore.getUser(id)?.let { it.global_name ?: it.username } ?: id
+                        val user = userStore.getUser(id)
+                        name = member?.nick ?: user?.let { it.global_name ?: it.username } ?: id
+                        
+                        if (member != null && navigationStore.selectedGuild != null) {
+                            val colorRole = member.getRoleColorRole(navigationStore.selectedGuild)
+                            if (colorRole != null && colorRole.color != 0) {
+                                mentionColor = Color(colorRole.color or 0xFF000000.toInt())
+                                mentionBg = mentionColor.copy(alpha = 0.15f)
+                            }
+                        }
                     }
                     "CHANNEL" -> {
                         prefix = "#"
@@ -582,6 +597,10 @@ private fun AnnotatedString.Builder.appendDiscordMarkdown(
                     "ROLE" -> {
                         val role = navigationStore.selectedGuild?.roles?.find { it.id == id }
                         name = role?.name ?: id
+                        if (role != null && role.color != 0) {
+                            mentionColor = Color(role.color or 0xFF000000.toInt())
+                            mentionBg = mentionColor.copy(alpha = 0.15f)
+                        }
                     }
                     "EVERYONE" -> name = "everyone"
                     "HERE" -> name = "here"
@@ -594,7 +613,7 @@ private fun AnnotatedString.Builder.appendDiscordMarkdown(
                     )
                 } else null
 
-                withStyle(style = SpanStyle(color = primaryColor, fontWeight = FontWeight.Medium, background = mentionBg)) {
+                withStyle(style = SpanStyle(color = mentionColor, fontWeight = FontWeight.Bold, background = mentionBg)) {
                     if (link != null) {
                         pushLink(link)
                         append("$prefix$name")

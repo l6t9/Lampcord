@@ -50,6 +50,7 @@ class MessageStore(
     private val errorStore: AppErrorStore,
     private val selectionStore: SelectionStore,
     private val messageLogger: MessageLogger,
+    private val settingsStore: SettingsStore,
     private val scope: CoroutineScope
 ) {
     private companion object {
@@ -92,9 +93,47 @@ class MessageStore(
     // Nonce tracking to replace local messages with server ones (Discord logic)
     private val messageNonceIds = mutableMapOf<String, String>()
 
-    private fun transformOutgoingContent(content: String): String = me.lampu.lampcord.shared.utils.FreeNitroEmojis.transformOutgoing(content)
+    private fun transformOutgoingContent(content: String): String {
+        var processed = content
+        settingsStore.textReplaceRules.filter { it.enabled && it.matchUnsent }.forEach { rule ->
+            processed = try {
+                if (rule.isRegex) {
+                    val options = if (rule.ignoreCase) setOf(RegexOption.IGNORE_CASE) else emptySet()
+                    processed.replace(Regex(rule.pattern, options), rule.replacement)
+                } else {
+                    processed.replace(rule.pattern, rule.replacement, ignoreCase = rule.ignoreCase)
+                }
+            } catch (e: Exception) { processed }
+        }
+        return me.lampu.lampcord.shared.utils.FreeNitroEmojis.transformOutgoing(processed)
+    }
 
-    private fun preprocess(message: Message): Message = me.lampu.lampcord.shared.utils.FreeNitroEmojis.preprocessIncoming(message)
+    private fun preprocess(message: Message): Message {
+        var preprocessed = me.lampu.lampcord.shared.utils.FreeNitroEmojis.preprocessIncoming(message)
+        
+        var content = preprocessed.content
+        var changed = false
+        settingsStore.textReplaceRules.filter { it.enabled && it.matchSent }.forEach { rule ->
+            try {
+                val newContent = if (rule.isRegex) {
+                    val options = if (rule.ignoreCase) setOf(RegexOption.IGNORE_CASE) else emptySet()
+                    content.replace(Regex(rule.pattern, options), rule.replacement)
+                } else {
+                    content.replace(rule.pattern, rule.replacement, ignoreCase = rule.ignoreCase)
+                }
+                if (newContent != content) {
+                    content = newContent
+                    changed = true
+                }
+            } catch (e: Exception) { }
+        }
+        
+        if (changed) {
+            preprocessed = preprocessed.copy(content = content)
+        }
+        
+        return preprocessed
+    }
 
     init {
         scope.launch {

@@ -12,6 +12,8 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.decodeFromJsonElement
 
 object NonceSerializer : KSerializer<String?> {
     override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("nonce", PrimitiveKind.STRING)
@@ -71,11 +73,14 @@ data class Message(
     val isDeleted: Boolean = false,
     val oldContent: String? = null
 ) {
-    fun merge(data: kotlinx.serialization.json.JsonObject): Message {
+    fun merge(data: kotlinx.serialization.json.JsonObject, json: kotlinx.serialization.json.Json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }): Message {
         return this.copy(
             content = data["content"]?.jsonPrimitive?.content ?: content,
             pinned = data["pinned"]?.jsonPrimitive?.boolean ?: pinned,
-            edited_timestamp = data["edited_timestamp"]?.jsonPrimitive?.contentOrNull ?: edited_timestamp
+            edited_timestamp = data["edited_timestamp"]?.jsonPrimitive?.contentOrNull ?: edited_timestamp,
+            embeds = data["embeds"]?.jsonArray?.map { json.decodeFromJsonElement<Embed>(it) } ?: embeds,
+            attachments = data["attachments"]?.jsonArray?.map { json.decodeFromJsonElement<Attachment>(it) } ?: attachments,
+            components = data["components"]?.jsonArray?.map { json.decodeFromJsonElement<MessageComponent>(it) } ?: components
         )
     }
 }

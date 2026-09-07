@@ -18,6 +18,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.api.GuildApi
 import me.lampu.lampcord.shared.model.Invite
+import me.lampu.lampcord.shared.model.Guild
 import me.lampu.lampcord.shared.state.GuildStore
 import me.lampu.lampcord.shared.state.MemberListStore
 import me.lampu.lampcord.shared.state.NavigationStore
@@ -26,6 +27,8 @@ import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
 import me.lampu.lampcord.shared.ui.components.ShimmerBox
 import me.lampu.lampcord.shared.ui.icons.Icons
+import kotlinx.serialization.json.*
+import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 @Composable
@@ -106,11 +109,29 @@ fun GuildProfileSheet(
             isLoading = false
         } else {
             // Try to fetch via API if possible
-            val fetched = guildApi.getGuild(guildId)
+            val fetched = guildApi.getGuildPreview(guildId)
             if (fetched != null) {
-                inviteData = Invite(code = "", guild = fetched, approximate_member_count = fetched.member_count)
+                inviteData = Invite(
+                    code = "", 
+                    guild = fetched, 
+                    approximate_member_count = fetched.approximate_member_count,
+                    approximate_presence_count = fetched.approximate_presence_count
+                )
             } else {
-                error = "Could not load server profile."
+                // Try widget as last resort
+                val widget = guildApi.getGuildWidget(guildId)
+                if (widget != null) {
+                    val name = widget["name"]?.jsonPrimitive?.contentOrNull
+                    val invite = widget["instant_invite"]?.jsonPrimitive?.contentOrNull
+                    val presenceCount = widget["presence_count"]?.jsonPrimitive?.intOrNull
+                    inviteData = Invite(
+                        code = invite ?: "",
+                        guild = Guild(id = guildId, name = name),
+                        approximate_presence_count = presenceCount
+                    )
+                } else {
+                    error = "Could not load server profile."
+                }
             }
             isLoading = false
         }
@@ -208,20 +229,33 @@ fun GuildProfileSheet(
                     Spacer(Modifier.height(24.dp))
 
                     val isMember = guildStore.guilds.value.any { it.id == guild.id }
-                    
+                    val scope = rememberCoroutineScope()
+
                     Button(
                         onClick = {
                             if (isMember) {
                                 navigationStore.selectGuild(guild) { /* subscribe */ }
                                 onDismiss()
                             } else {
-                                // Join logic
+                                inviteData?.code?.let { code ->
+                                    if (code.isNotBlank()) {
+                                        scope.launch {
+                                            val joined = guildApi.joinGuild(code)
+                                            if (joined != null) {
+                                                guildStore.handleGuildCreate(joined, emptyList())
+                                                navigationStore.selectGuild(joined) { }
+                                                onDismiss()
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(8.dp)
+                        shape = RoundedCornerShape(8.dp),
+                        enabled = isMember || (inviteData?.code?.isNotBlank() == true)
                     ) {
-                        Text(if (isMember) "Joined" else "Join Server")
+                        Text(if (isMember) "Joined" else if (inviteData?.code?.isNotBlank() == true) "Join Server" else "Invite Required")
                     }
                 }
             }

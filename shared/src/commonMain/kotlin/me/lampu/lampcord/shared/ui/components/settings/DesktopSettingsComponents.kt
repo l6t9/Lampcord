@@ -16,12 +16,12 @@ import androidx.compose.ui.unit.dp
 fun SettingsLayout(
     content: @Composable ColumnScope.() -> Unit
 ) {
-    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
         val isCompact = maxWidth < 600.dp
         
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
                 .padding(
                     vertical = if (isCompact) 16.dp else 24.dp
                 ),

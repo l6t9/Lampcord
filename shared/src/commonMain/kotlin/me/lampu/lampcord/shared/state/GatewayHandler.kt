@@ -44,7 +44,7 @@ class GatewayHandler(
             } catch (e: Exception) { null }
 
             user?.let { u ->
-                userStore.setCurrentUser(u)
+                userStore.setCurrentUser(u, data.jsonObject["user"]?.jsonObject)
                 val token = Settings.shared.discordToken
                 if (token.isNotBlank()) {
                     tokenStore.addAccount(token, u)
@@ -73,13 +73,17 @@ class GatewayHandler(
                 
                 ready.merged_members?.forEachIndexed { index, members ->
                     val guild = ready.guilds.getOrNull(index) ?: return@forEachIndexed
-                    members.forEach { member ->
-                        val userId = member.userId() ?: return@forEach
-                        userStore.cacheMember(guild.id, userId, member)
+                    val membersJson = data.jsonObject["merged_members"]?.jsonArray?.get(index)?.jsonArray
+                    members.forEachIndexed { memberIndex, member ->
+                        val userId = member.userId() ?: return@forEachIndexed
+                        userStore.cacheMember(guild.id, userId, member, membersJson?.get(memberIndex)?.jsonObject)
                     }
                 }
                 
-                ready.users?.forEach { userStore.handleUserUpdate(it) }
+                ready.users?.forEachIndexed { index, user ->
+                    val usersJson = data.jsonObject["users"]?.jsonArray
+                    userStore.handleUserUpdate(user, usersJson?.get(index)?.jsonObject)
+                }
 
                 presenceStore.handleReady(ready)
                 ready.sessions?.let { sessions ->

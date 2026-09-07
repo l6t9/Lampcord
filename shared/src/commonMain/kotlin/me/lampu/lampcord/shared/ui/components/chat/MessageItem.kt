@@ -139,6 +139,19 @@ fun MessageItem(
 
     val authorId = message.author?.id
 
+    val author by remember(message.author, currentUser) {
+        derivedStateOf {
+            if (authorId == currentUser?.id) currentUser ?: message.author else message.author
+        }
+    }
+
+    val member by remember(message.member, authorId, members, guildId) {
+        derivedStateOf {
+            val cached = if (guildId != null && authorId != null) members[guildId]?.get(authorId) else null
+            if (authorId == currentUser?.id) cached ?: message.member else message.member ?: cached
+        }
+    }
+
     LaunchedEffect(authorId, guildId) {
         if (authorId != null && guildId != null && message.member == null) {
             val existing = userStore.getMember(guildId, authorId)
@@ -159,6 +172,9 @@ fun MessageItem(
         userStore.getMember(gId, uId)
     }
 
+    val cAuthor = author
+    val cMember = member
+
     val guild = navigationStore.selectedGuild
     val channel = navigationStore.selectedChannel
     val canAddReaction = remember(guild, currentMember, channel, currentUser?.id) {
@@ -166,7 +182,7 @@ fun MessageItem(
         else PermissionHelper.hasPermission(currentMember, guild, channel, Permission.ADD_REACTIONS, currentUser?.id)
     }
 
-    val contextMenuItems = remember(message, currentUser, userSettings, priorMessage, currentMember, canAddReaction) {
+    val contextMenuItems = remember(message, currentUser, userSettings, priorMessage, currentMember, canAddReaction, cAuthor) {
         if (message.isPending) {
             return@remember listOf(
                 ContextMenuItem("Delete", Icons.Default.Delete, onClick = { messageStore.deletePendingMessage(message) }, group = "Destructive")
@@ -192,9 +208,9 @@ fun MessageItem(
         items.add(ContextMenuItem("Reply", Icons.Rounded.Reply, onClick = { messageStore.replyingTo = message }, group = "Primary"))
         items.add(ContextMenuItem("Forward", Icons.Filled.Forward, onClick = { navigationStore.forwardingMessage = message }, group = "Primary"))
         
-        message.author?.let { author ->
+        cAuthor?.let { a ->
             items.add(ContextMenuItem("Profile", Icons.Filled.AccountCircle, onClick = { 
-                profileStore.showProfile(author.id, guildId) 
+                profileStore.showProfile(a.id, guildId) 
             }, group = "Primary"))
         }
 
@@ -424,7 +440,7 @@ fun MessageItem(
                     {
                         Column(modifier = Modifier.padding(horizontal = 4.dp)) {
                             Text(
-                                text = message.author?.global_name ?: message.author?.username ?: "Unknown",
+                                text = cAuthor?.global_name ?: cAuthor?.username ?: "Unknown",
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
@@ -491,15 +507,15 @@ fun MessageItem(
                 openRequest = messageLongPressRequest
             ) {
                 val guilds by guildStore.guilds.collectAsState()
-                val roleData by remember(message, guilds, navigationStore.selectedGuild, members) {
+                val roleData by remember(message, guilds, navigationStore.selectedGuild, members, cAuthor, cMember) {
                     derivedStateOf {
                         val guild = (if (message.guild_id != null) guilds.find { it.id == message.guild_id } else null)
                             ?: navigationStore.selectedGuild
                             ?: return@derivedStateOf null
 
-                        val authorId = message.author?.id ?: return@derivedStateOf null
-                        val member = message.member ?: userStore.getMember(guild.id, authorId) ?: return@derivedStateOf null
-                        val colorRole = member.getRoleColorRole(guild)
+                        val authorId = cAuthor?.id ?: return@derivedStateOf null
+                        val m = cMember ?: userStore.getMember(guild.id, authorId) ?: return@derivedStateOf null
+                        val colorRole = m.getRoleColorRole(guild)
 
                         if (colorRole != null) {
                             val primaryInt = colorRole.colors?.primary_color ?: colorRole.color
@@ -523,7 +539,7 @@ fun MessageItem(
 
                 @Composable
                 fun MessageMainContent() {
-                    if (!isInline && message.author != null) {
+                    if (!isInline && cAuthor != null) {
                         val isDm = message.guild_id == null && navigationStore.selectedGuild == null
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -531,8 +547,8 @@ fun MessageItem(
                         ) {
                             var namePosition by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
                             UsernameView(
-                                name = message.member?.nick ?: message.author.global_name ?: message.author.username ?: "Unknown User",
-                                style = message.member?.display_name_styles ?: message.author.display_name_styles,
+                                name = cMember?.nick ?: cAuthor.global_name ?: cAuthor.username ?: "Unknown User",
+                                style = cMember?.display_name_styles ?: cAuthor.display_name_styles,
                                 baseStyle = if (useBubbles) MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
                                 else MaterialTheme.typography.titleSmall.copy(
                                     fontWeight = FontWeight.Bold,
@@ -543,20 +559,20 @@ fun MessageItem(
                                 modifier = Modifier
                                     .weight(1f, fill = false)
                                     .onGloballyPositioned { namePosition = it.positionInRoot() }
-                                    .clickable(enabled = !isPreview) { profileStore.showProfile(message.author.id, guildId, namePosition) },
+                                    .clickable(enabled = !isPreview) { profileStore.showProfile(cAuthor.id, guildId, namePosition) },
                                 ignoreEffects = !isHovered,
                                 ignoreColors = if (isDm) !isHovered else false
                             )
                             val guild = navigationStore.selectedGuild
-                            val roleIcon = message.member?.getRoleIcon(guild) ?: userStore.getMember(guild?.id ?: "", message.author.id)?.getRoleIcon(guild)
+                            val roleIcon = cMember?.getRoleIcon(guild) ?: userStore.getMember(guild?.id ?: "", cAuthor.id)?.getRoleIcon(guild)
                             if (roleIcon != null) {
                                 RoleIcon(roleIcon, modifier = Modifier.padding(start = 4.dp))
                             }
-                            message.author.primary_guild?.let {
+                            cAuthor.primary_guild?.let {
                                 Spacer(Modifier.width(4.dp))
                                 ClanTagView(it)
                             }
-                            UserTagView(message.author, modifier = Modifier.padding(start = 4.dp))
+                            UserTagView(cAuthor, modifier = Modifier.padding(start = 4.dp))
                             Spacer(Modifier.width(8.dp))
                             MessageTimestamp(
                                 timestamp = message.timestamp,
@@ -662,7 +678,7 @@ fun MessageItem(
 
                     if (isCompact) {
                         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-                            if (message.author != null) {
+                            if (cAuthor != null) {
                                 var avatarPosition by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
 
                                 Box(
@@ -672,10 +688,10 @@ fun MessageItem(
                                         .onGloballyPositioned { avatarPosition = it.positionInRoot() }
                                 ) {
                                     UserAvatar(
-                                        user = message.author,
+                                        user = cAuthor,
                                         size = 20.dp,
-                                        decorationData = message.member?.avatar_decoration_data,
-                                        modifier = Modifier.clickable(enabled = !isPreview) { profileStore.showProfile(message.author.id, guildId, avatarPosition) }
+                                        decorationData = cMember?.avatar_decoration_data,
+                                        modifier = Modifier.clickable(enabled = !isPreview) { profileStore.showProfile(cAuthor.id, guildId, avatarPosition) }
                                     )
                                 }
                             } else {
@@ -689,7 +705,7 @@ fun MessageItem(
                                     modifier = Modifier.fillMaxWidth(),
                                     verticalArrangement = Arrangement.Center
                                 ) {
-                                    if (message.author != null) {
+                                    if (cAuthor != null) {
                                         val isDm = message.guild_id == null && navigationStore.selectedGuild == null
                                         var namePosition by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
 
@@ -698,27 +714,27 @@ fun MessageItem(
                                             modifier = Modifier.padding(end = 4.dp)
                                         ) {
                                             UsernameView(
-                                                name = message.member?.nick ?: message.author.global_name ?: message.author.username ?: "Unknown User",
-                                                style = message.member?.display_name_styles ?: message.author.display_name_styles,
+                                                name = cMember?.nick ?: cAuthor.global_name ?: cAuthor.username ?: "Unknown User",
+                                                style = cMember?.display_name_styles ?: cAuthor.display_name_styles,
                                                 baseStyle = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                                 color = if (isDm) Color.White else displayColor,
                                                 roleGradient = roleGradient,
                                                 modifier = Modifier
                                                     .onGloballyPositioned { namePosition = it.positionInRoot() }
-                                                    .clickable { profileStore.showProfile(message.author.id, guildId, namePosition) },
+                                                    .clickable { profileStore.showProfile(cAuthor.id, guildId, namePosition) },
                                                 ignoreEffects = !isHovered,
                                                 ignoreColors = if (isDm) !isHovered else false
                                             )
                                             val guild = navigationStore.selectedGuild
-                                            val roleIcon = message.member?.getRoleIcon(guild) ?: userStore.getMember(guild?.id ?: "", message.author.id)?.getRoleIcon(guild)
+                                            val roleIcon = cMember?.getRoleIcon(guild) ?: userStore.getMember(guild?.id ?: "", cAuthor.id)?.getRoleIcon(guild)
                                             if (roleIcon != null) {
                                                 RoleIcon(roleIcon, modifier = Modifier.padding(start = 4.dp))
                                             }
-                                            message.author.primary_guild?.let {
+                                            cAuthor.primary_guild?.let {
                                                 Spacer(Modifier.width(4.dp))
                                                 ClanTagView(it)
                                             }
-                                            UserTagView(message.author, modifier = Modifier.padding(start = 4.dp))
+                                            UserTagView(cAuthor, modifier = Modifier.padding(start = 4.dp))
                                             Text(
                                                 ": ",
                                                 style = MaterialTheme.typography.bodyMedium,
@@ -778,7 +794,7 @@ fun MessageItem(
                         }
                     } else if (useBubbles) {
                         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-                            if (!isInline && message.author != null) {
+                            if (!isInline && cAuthor != null) {
                                 var avatarPosition by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
 
                                 Box(
@@ -787,10 +803,10 @@ fun MessageItem(
                                         .onGloballyPositioned { avatarPosition = it.positionInRoot() }
                                 ) {
                                     UserAvatar(
-                                        user = message.author,
+                                        user = cAuthor,
                                         size = 40.dp,
-                                        decorationData = message.member?.avatar_decoration_data,
-                                        modifier = Modifier.clickable { profileStore.showProfile(message.author.id, guildId, avatarPosition) }
+                                        decorationData = cMember?.avatar_decoration_data,
+                                        modifier = Modifier.clickable { profileStore.showProfile(cAuthor.id, guildId, avatarPosition) }
                                     )
                                 }
                             } else {
@@ -820,7 +836,7 @@ fun MessageItem(
                         }
                     } else {
                         Row(modifier = Modifier.fillMaxWidth()) {
-                            if (!isInline && message.author != null) {
+                            if (!isInline && cAuthor != null) {
                                 var avatarPosition by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
 
                                 Box(
@@ -829,10 +845,10 @@ fun MessageItem(
                                         .onGloballyPositioned { avatarPosition = it.positionInRoot() }
                                 ) {
                                     UserAvatar(
-                                        user = message.author,
+                                        user = cAuthor,
                                         size = 40.dp,
-                                        decorationData = message.member?.avatar_decoration_data,
-                                        modifier = Modifier.clickable { profileStore.showProfile(message.author.id, guildId, avatarPosition) }
+                                        decorationData = cMember?.avatar_decoration_data,
+                                        modifier = Modifier.clickable { profileStore.showProfile(cAuthor.id, guildId, avatarPosition) }
                                     )
                                 }
                             } else {
