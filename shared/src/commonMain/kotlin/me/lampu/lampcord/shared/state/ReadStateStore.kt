@@ -60,13 +60,19 @@ class ReadStateStore(private val channelApi: ChannelApi) {
         )
         
         if (hasMention) {
-            mentionedMessageIds.getOrPut(message.channel_id) { mutableSetOf() }.add(message.id)
-            
-            _readStates.update { current ->
-                val existing = current[message.channel_id]
-                val updated = existing?.copy(mention_count = (existing.mention_count) + 1)
-                    ?: ReadState(id = message.channel_id, mention_count = 1)
-                current + (message.channel_id to updated)
+            val state = _readStates.value[message.channel_id]
+            val ackedId = state?.lastMessageId() ?: "0"
+            // Ignore mentions that are older than or equal to the current acked message
+            if ((message.id.toLongOrNull() ?: 0L) <= (ackedId.toLongOrNull() ?: 0L)) return
+
+            val ids = mentionedMessageIds.getOrPut(message.channel_id) { mutableSetOf() }
+            if (ids.add(message.id)) {
+                _readStates.update { current ->
+                    val existing = current[message.channel_id]
+                    val updated = existing?.copy(mention_count = (existing.mention_count) + 1)
+                        ?: ReadState(id = message.channel_id, mention_count = 1)
+                    current + (message.channel_id to updated)
+                }
             }
         }
     }
@@ -85,7 +91,7 @@ class ReadStateStore(private val channelApi: ChannelApi) {
 
     fun isUnread(channel: Channel): Boolean {
         val lastMsgId = channel.lastMessageId() ?: return false
-        val state = _readStates.value[channel.id] ?: return true
+        val state = _readStates.value[channel.id] ?: return false
         val ackedId = state.lastMessageId() ?: "0"
         if (ackedId == "0") return lastMsgId != "0"
         return (lastMsgId.toLongOrNull() ?: 0L) > (ackedId.toLongOrNull() ?: 0L)

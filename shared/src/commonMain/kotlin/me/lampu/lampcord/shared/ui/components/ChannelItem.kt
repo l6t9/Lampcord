@@ -207,7 +207,7 @@ fun ChannelItem(
                     .height(itemHeight),
                 contentAlignment = Alignment.CenterStart
             ) {
-                if (isUnread && !isSelected && canView) {
+                if (isUnread && !isMuted && !isSelected && canView) {
                     Box(
                         modifier = Modifier
                             .size(width = 4.dp, height = 12.dp)
@@ -241,7 +241,7 @@ fun ChannelItem(
                     ) {
                         val contentColor = when {
                             isSelected -> MaterialTheme.colorScheme.onSurface
-                            isUnread && canView -> MaterialTheme.colorScheme.onSurface
+                            isUnread && !isMuted && canView -> MaterialTheme.colorScheme.onSurface
                             isHovered -> MaterialTheme.colorScheme.onSurface
                             else -> MaterialTheme.colorScheme.onSurfaceVariant
                         }
@@ -259,7 +259,7 @@ fun ChannelItem(
                                 },
                                 contentDescription = null,
                                 modifier = Modifier.matchParentSize(),
-                                tint = contentColor.copy(alpha = if (isSelected || isUnread || isHovered) 1f else 0.6f)
+                                tint = contentColor.copy(alpha = if (isSelected || (isUnread && !isMuted) || isHovered) 1f else 0.6f)
                             )
                             
                             if (canView && isPrivate && channel.type != 4) {
@@ -288,7 +288,7 @@ fun ChannelItem(
                         Text(
                             text = me.lampu.lampcord.shared.utils.CleanUtils.cleanChannelName(channel.name ?: "unnamed"),
                             style = MaterialTheme.typography.bodyLarge.copy(
-                                fontWeight = if (isUnread) FontWeight.Bold else FontWeight.Medium
+                                fontWeight = if (isUnread && !isMuted) FontWeight.Bold else FontWeight.Medium
                             ),
                             color = contentColor,
                             maxLines = 1,

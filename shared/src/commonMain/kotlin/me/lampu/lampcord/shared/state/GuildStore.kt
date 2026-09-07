@@ -321,7 +321,9 @@ class GuildStore(
 
     fun isGuildUnread(guildId: String): Boolean {
         if (userGuildSettingsStore.isGuildMuted(guildId)) return false
-        return allGuildChannels.value.values.filter { it.guild_id == guildId }.any { readStateStore.isUnread(it) }
+        return allGuildChannels.value.values.any { 
+            it.guild_id == guildId && !userGuildSettingsStore.isChannelMuted(it.guild_id, it.id) && readStateStore.isUnread(it) 
+        }
     }
 
     fun getGuildMentionCount(guildId: String): Int {
