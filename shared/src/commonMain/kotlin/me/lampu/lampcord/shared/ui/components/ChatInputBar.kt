@@ -600,6 +600,8 @@ fun ChatInputBar(
                                 ) {
                                     BasicTextField(
                                         value = textFieldValue,
+                                        enabled = canSend,
+                                        readOnly = !canSend,
                                         onValueChange = { 
                                             if (canSend) {
                                                 val oldText = textFieldValue.text
@@ -964,7 +966,15 @@ private fun resolveServerContent(
                 }
             }
             ":" -> {
-                val emoji = emojis.firstOrNull { it.name?.equals(token, ignoreCase = true) == true }
+                val parts = token.split('-')
+                val baseName = if (parts.size > 1 && parts.last().toIntOrNull() != null) {
+                    token.substringBeforeLast('-')
+                } else token
+                val index = if (parts.size > 1) parts.last().toIntOrNull() ?: 0 else 0
+
+                val matches = emojis.filter { it.name?.equals(baseName, ignoreCase = true) == true }
+                    .sortedWith(compareBy({ it.guild_id != selectedGuildId }, { it.id }))
+                val emoji = matches.getOrNull(index)
                 if (emoji != null) {
                     me.lampu.lampcord.shared.utils.FreeNitroEmojis.getReplacement(emoji, currentUser, selectedGuildId)
                 } else null

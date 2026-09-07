@@ -30,6 +30,9 @@ class Settings(private val settings: KmpSettings) {
     var panelAnimation by preferenceEnum("panel_animation", PanelAnimation.MINIMAL)
     var reduceMotion by preferenceBoolean("reduce_motion", false)
     var desktopLowMemoryMode by preferenceBoolean("desktop_low_memory_mode", false)
+    var enableSystemWindowFrame by preferenceBoolean("enable_system_window_frame", false)
+    var waylandDefaultFrameApplied by preferenceBoolean("wayland_default_frame_applied", false)
+    var macDefaultFrameApplied by preferenceBoolean("mac_default_frame_applied", false)
 
     // Theme Settings
     var transparencyMode by preferenceEnum("transparency_mode", TransparencyMode.NONE)

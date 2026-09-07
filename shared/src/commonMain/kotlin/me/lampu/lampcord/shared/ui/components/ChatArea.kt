@@ -124,6 +124,16 @@ fun ChatArea(
                 }
             }
     }
+
+    LaunchedEffect(channelId) {
+        if (channelId != null && messages.isEmpty()) {
+            messageStore.loadMoreMessages(
+                channelId,
+                navigationStore.selectedGuild?.id,
+                navigationStore.selectedThread?.id
+            )
+        }
+    }
     
     val latestMessageId = messages.firstOrNull()?.id
     val coroutineScope = rememberCoroutineScope()

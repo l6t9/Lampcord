@@ -27,6 +27,7 @@ import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.settings.ThemeMode
 import me.lampu.lampcord.shared.ui.App
 import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.utils.getPlatformName
 import me.lampu.lampcord.shared.utils.reloadTrigger
 import me.lampu.lampcord.ui.WaylandDensityProvider
 import me.lampu.lampcord.utils.WaylandScale
@@ -50,6 +51,19 @@ fun main() {
 
     val rpcServer = DesktopRPCServer(get().get())
     rpcServer.start()
+
+    val isLinux = getPlatformName() == "linux"
+    val isMac = getPlatformName() == "macos"
+
+    if (WaylandScale.isWayland() && !Settings.shared.waylandDefaultFrameApplied) {
+        Settings.shared.enableSystemWindowFrame = true
+        Settings.shared.waylandDefaultFrameApplied = true
+    }
+    if (isMac && !Settings.shared.macDefaultFrameApplied) {
+        Settings.shared.enableSystemWindowFrame = true
+        Settings.shared.macDefaultFrameApplied = true
+    }
+    val useSystemWindowFrame = Settings.shared.enableSystemWindowFrame
 
     application {
         val reloadKey by reloadTrigger.collectAsState()
@@ -117,8 +131,24 @@ fun main() {
         Window(
             onCloseRequest = { onClose() },
             title = "Lampcord",
-            icon = dynamicIcon
+            icon = dynamicIcon,
+            undecorated = isLinux && !useSystemWindowFrame,
+            transparent = false,
         ) {
+            DisposableEffect(useSystemWindowFrame) {
+                if (isMac && useSystemWindowFrame) {
+                    try {
+                        val rootPane = window.rootPane
+                        rootPane.putClientProperty("apple.awt.fullWindowContent", true)
+                        rootPane.putClientProperty("apple.awt.transparentTitleBar", true)
+                        rootPane.putClientProperty("apple.awt.windowTitleVisible", false)
+                        rootPane.putClientProperty("apple.awt.draggableWindowBackground", false)
+                    } catch (_: Exception) {
+                    }
+                }
+                onDispose { }
+            }
+
             WindowFrame(
                 onCloseRequest = { onClose() },
                 lastNormalPlacement = lastNormalPlacement.value,

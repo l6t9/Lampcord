@@ -1,14 +1,20 @@
 package me.lampu.lampcord.shared.ui.components.guilds.settings
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -20,14 +26,15 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import me.lampu.lampcord.shared.model.Guild
 import me.lampu.lampcord.shared.state.GuildStore
+import me.lampu.lampcord.shared.ui.components.settings.Material3SettingsGroup
 import me.lampu.lampcord.shared.ui.components.settings.SettingsButtonGroup
 import me.lampu.lampcord.shared.ui.components.settings.SettingsLayout
-import me.lampu.lampcord.shared.ui.components.settings.SettingsSection
 import me.lampu.lampcord.shared.ui.icons.Icons
 import org.koin.compose.koinInject
 
@@ -52,47 +59,80 @@ fun ServerOverview(guild: Guild, guildStore: GuildStore = koinInject()) {
                      draftVerificationLevel != (guild.verification_level ?: 0) ||
                      draftExplicitContentFilter != (guild.explicit_content_filter ?: 0)
 
-    ServerOverviewContent(
-        guild = guild,
-        guildStore = guildStore,
-        draftName = draftName,
-        onNameChange = { draftName = it },
-        draftAfkChannelId = draftAfkChannelId,
-        onAfkChannelChange = { draftAfkChannelId = it },
-        draftAfkTimeout = draftAfkTimeout,
-        onAfkTimeoutChange = { draftAfkTimeout = it },
-        draftSystemChannelId = draftSystemChannelId,
-        onSystemChannelChange = { draftSystemChannelId = it },
-        draftDefaultNotifications = draftDefaultNotifications,
-        onDefaultNotificationsChange = { draftDefaultNotifications = it },
-        draftVerificationLevel = draftVerificationLevel,
-        onVerificationLevelChange = { draftVerificationLevel = it },
-        draftExplicitContentFilter = draftExplicitContentFilter,
-        onExplicitContentFilterChange = { draftExplicitContentFilter = it },
-        hasChanges = hasChanges,
-        onSave = {
-            scope.launch {
-                guildStore.updateGuild(guild.id, Guild.Partial(
-                    name = draftName,
-                    afk_channel_id = draftAfkChannelId,
-                    afk_timeout = draftAfkTimeout,
-                    system_channel_id = draftSystemChannelId,
-                    default_message_notifications = draftDefaultNotifications,
-                    verification_level = draftVerificationLevel,
-                    explicit_content_filter = draftExplicitContentFilter
-                ))
+    Box(modifier = Modifier.fillMaxSize()) {
+        ServerOverviewContent(
+            guild = guild,
+            guildStore = guildStore,
+            draftName = draftName,
+            onNameChange = { draftName = it },
+            draftAfkChannelId = draftAfkChannelId,
+            onAfkChannelChange = { draftAfkChannelId = it },
+            draftAfkTimeout = draftAfkTimeout,
+            onAfkTimeoutChange = { draftAfkTimeout = it },
+            draftSystemChannelId = draftSystemChannelId,
+            onSystemChannelChange = { draftSystemChannelId = it },
+            draftDefaultNotifications = draftDefaultNotifications,
+            onDefaultNotificationsChange = { draftDefaultNotifications = it },
+            draftVerificationLevel = draftVerificationLevel,
+            onVerificationLevelChange = { draftVerificationLevel = it },
+            draftExplicitContentFilter = draftExplicitContentFilter,
+            onExplicitContentFilterChange = { draftExplicitContentFilter = it }
+        )
+
+        if (hasChanges) {
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                shape = RoundedCornerShape(12.dp),
+                tonalElevation = 4.dp
+            ) {
+                Row(
+                    modifier = Modifier.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        "You have unsaved changes!",
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    TextButton(onClick = {
+                        draftName = guild.name ?: ""
+                        draftAfkChannelId = guild.afk_channel_id
+                        draftAfkTimeout = guild.afk_timeout ?: 300
+                        draftSystemChannelId = guild.system_channel_id
+                        draftDefaultNotifications = guild.default_message_notifications ?: 0
+                        draftVerificationLevel = guild.verification_level ?: 0
+                        draftExplicitContentFilter = guild.explicit_content_filter ?: 0
+                    }) {
+                        Text("Reset")
+                    }
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                guildStore.updateGuild(guild.id, Guild.Partial(
+                                    name = draftName,
+                                    afk_channel_id = draftAfkChannelId,
+                                    afk_timeout = draftAfkTimeout,
+                                    system_channel_id = draftSystemChannelId,
+                                    default_message_notifications = draftDefaultNotifications,
+                                    verification_level = draftVerificationLevel,
+                                    explicit_content_filter = draftExplicitContentFilter
+                                ))
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF43B581))
+                    ) {
+                        Text("Save Changes")
+                    }
+                }
             }
-        },
-        onReset = {
-            draftName = guild.name ?: ""
-            draftAfkChannelId = guild.afk_channel_id
-            draftAfkTimeout = guild.afk_timeout ?: 300
-            draftSystemChannelId = guild.system_channel_id
-            draftDefaultNotifications = guild.default_message_notifications ?: 0
-            draftVerificationLevel = guild.verification_level ?: 0
-            draftExplicitContentFilter = guild.explicit_content_filter ?: 0
         }
-    )
+    }
 }
 
 @Composable
@@ -112,42 +152,34 @@ private fun ServerOverviewContent(
     draftVerificationLevel: Int,
     onVerificationLevelChange: (Int) -> Unit,
     draftExplicitContentFilter: Int,
-    onExplicitContentFilterChange: (Int) -> Unit,
-    hasChanges: Boolean,
-    onSave: () -> Unit,
-    onReset: () -> Unit
+    onExplicitContentFilterChange: (Int) -> Unit
 ) {
     SettingsLayout {
-        SettingsSection(
-            title = "Server Details",
-            icon = Icons.Filled.Info
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Server Name", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
+        Material3SettingsGroup(title = "Server Details") {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Server Name", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     OutlinedTextField(
                         value = draftName,
                         onValueChange = onNameChange,
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(8.dp)
                     )
                 }
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Server ID", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
-                    Text(guild.id, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Server ID", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(guild.id, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
                 }
             }
         }
 
-        SettingsSection(
-            title = "Channels",
-            icon = Icons.Filled.Tag
-        ) {
-            val allChannels by guildStore.allGuildChannels.collectAsState()
-            Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+        val allChannels by guildStore.allGuildChannels.collectAsState()
+        
+        Material3SettingsGroup(title = "Channel Settings") {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("AFK Channel", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
+                    Text("AFK Channel", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     val voiceChannels = allChannels.values.filter { it.guild_id == guild.id && it.type == 2 }
                     SettingsButtonGroup(
                         options = listOf(null) + voiceChannels.map { it.id },
@@ -159,7 +191,7 @@ private fun ServerOverviewContent(
                 
                 if (draftAfkChannelId != null) {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text("AFK Timeout", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
+                        Text("AFK Timeout", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                         SettingsButtonGroup(
                             options = listOf(60, 300, 900, 1800, 3600),
                             selectedOption = draftAfkTimeout,
@@ -178,7 +210,7 @@ private fun ServerOverviewContent(
                 }
 
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("System Messages Channel", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
+                    Text("System Messages Channel", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     val textChannels = allChannels.values.filter { it.guild_id == guild.id && it.type == 0 }
                     SettingsButtonGroup(
                         options = listOf(null) + textChannels.map { it.id },
@@ -190,25 +222,22 @@ private fun ServerOverviewContent(
             }
         }
 
-        SettingsSection(
-            title = "Default Notifications",
-            icon = Icons.Filled.Notifications
-        ) {
-            SettingsButtonGroup(
-                options = listOf(0, 1),
-                selectedOption = draftDefaultNotifications,
-                onOptionSelected = onDefaultNotificationsChange,
-                labelProvider = { if (it == 0) "All Messages" else "Only @mentions" }
-            )
+        Material3SettingsGroup(title = "Notification Settings") {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("Default Notification Level", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 12.dp))
+                SettingsButtonGroup(
+                    options = listOf(0, 1),
+                    selectedOption = draftDefaultNotifications,
+                    onOptionSelected = onDefaultNotificationsChange,
+                    labelProvider = { if (it == 0) "All Messages" else "Only @mentions" }
+                )
+            }
         }
 
-        SettingsSection(
-            title = "Safety Setup",
-            icon = Icons.Filled.Security
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
+        Material3SettingsGroup(title = "Safety Setup") {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Verification Level", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Verification Level", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     SettingsButtonGroup(
                         options = listOf(0, 1, 2, 3, 4),
                         selectedOption = draftVerificationLevel,
@@ -234,7 +263,7 @@ private fun ServerOverviewContent(
                 }
 
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Explicit Content Filter", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Explicit Content Filter", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     SettingsButtonGroup(
                         options = listOf(0, 1, 2),
                         selectedOption = draftExplicitContentFilter,
@@ -258,19 +287,6 @@ private fun ServerOverviewContent(
             }
         }
         
-        if (hasChanges) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End)
-            ) {
-                TextButton(onClick = onReset) {
-                    Text("Reset")
-                }
-                Button(onClick = onSave) {
-                    Text("Save Changes")
-                }
-            }
-        }
+        Spacer(modifier = Modifier.height(100.dp))
     }
 }
-

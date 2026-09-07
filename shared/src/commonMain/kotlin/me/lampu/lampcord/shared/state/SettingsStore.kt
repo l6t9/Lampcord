@@ -266,6 +266,14 @@ class SettingsStore(
             me.lampu.lampcord.shared.settings.Settings.shared.desktopLowMemoryMode = value
         }
 
+    private var _enableSystemWindowFrame by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.enableSystemWindowFrame)
+    var enableSystemWindowFrame: Boolean
+        get() = _enableSystemWindowFrame
+        set(value) {
+            _enableSystemWindowFrame = value
+            me.lampu.lampcord.shared.settings.Settings.shared.enableSystemWindowFrame = value
+        }
+
     private var _chatboxFontSize by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.chatboxFontSize)
     var chatboxFontSize: Float
         get() = _chatboxFontSize

@@ -29,7 +29,7 @@ class GuildStore(
     private val _privateChannelIds = MutableStateFlow<Set<String>>(emptySet())
     val privateChannels: StateFlow<List<Channel>> = combine(_privateChannelIds, entityStore.channels) { ids, allChannels ->
         ids.mapNotNull { allChannels[it] }
-            .sortedByDescending { it.lastMessageId() ?: "" }
+            .sortedByDescending { it.lastMessageId()?.toLongOrNull() ?: 0L }
     }.stateIn(scope, SharingStarted.Eagerly, emptyList())
 
     val allGuildChannels = entityStore.channels
@@ -102,6 +102,16 @@ class GuildStore(
         Logging.i("GuildStore", "Handling GUILD_DELETE: $guildId")
         _guildIds.value -= guildId
         entityStore.removeGuild(guildId)
+    }
+
+    fun reorderGuilds(order: List<String>) {
+        if (order.isEmpty()) return
+        val currentIds = _guildIds.value
+        val orderIndex = order.withIndex().associate { it.value to it.index }
+        val sortedIds = currentIds.sortedWith(compareBy({ orderIndex[it] ?: -1 }, { it }))
+        if (sortedIds != currentIds) {
+            _guildIds.value = sortedIds
+        }
     }
 
     fun setPrivateChannels(channels: List<Channel>) {

@@ -148,11 +148,20 @@ class AutocompleteStore(
                     channel.guild_id == selectedGuild?.id && 
                     channel.type in listOf(0, 2, 4, 5, 13, 15, 16) && 
                     channel.name?.contains(query, ignoreCase = true) == true 
-                }.take(10)
+                }.sortedWith(compareBy(
+                    { !(it.name?.equals(query, ignoreCase = true) == true) },
+                    { !(it.name?.startsWith(query, ignoreCase = true) == true) },
+                    { it.position ?: 0 }
+                )).take(15)
+                
                 results.addAll(channels.map { channel ->
+                    val categoryName = channel.parent_id?.let { pid ->
+                        guildStore.allGuildChannels.value[pid]?.name
+                    }
                     AutocompleteItem(
                         id = channel.id,
                         title = channel.name ?: "unnamed",
+                        subtitle = categoryName,
                         iconType = when (channel.type) {
                             4 -> Icons.Filled.Folder
                             15 -> Icons.Rounded.Forum
@@ -196,56 +205,75 @@ class AutocompleteStore(
                 val guildEmojis = mutableListOf<Emoji>()
                 if (hasNitro || freeNitro) {
                     guildStore.guilds.value.forEach { guild ->
-                        guildEmojis.addAll(guild.emojis)
+                        guildEmojis.addAll(guild.emojis.map { it.copy(guild_id = guild.id) })
                     }
                 } else {
-                    selectedGuild?.emojis?.let { guildEmojis.addAll(it) }
+                    selectedGuild?.emojis?.let { emojis ->
+                        guildEmojis.addAll(emojis.map { it.copy(guild_id = selectedGuild.id) })
+                    }
                 }
 
-                val filteredEmojis = guildEmojis.filter { emo ->
-                    emo.name?.contains(query, ignoreCase = true) == true 
-                }.distinctBy { it.id }.sortedBy { it.guild_id != selectedGuild?.id }.take(20)
+                val customMatches = guildEmojis.filter { emo ->
+                    emo.name?.contains(query, ignoreCase = true) == true
+                }.distinctBy { it.id }.sortedWith(compareBy(
+                    { !(it.name?.equals(query, ignoreCase = true) == true) },
+                    { !(it.name?.startsWith(query, ignoreCase = true) == true) },
+                    { it.guild_id != selectedGuild?.id },
+                    { it.name }
+                ))
 
-                results.addAll(filteredEmojis.map { emoji ->
-                    val isExternal = emoji.guild_id != null && emoji.guild_id != selectedGuild?.id
-                    val isAnimated = emoji.animated == true
+                val standardMatches = EmojiIndex.getAllEmojis().filter { emo ->
+                    emo.name?.contains(query, ignoreCase = true) == true
+                }.sortedWith(compareBy(
+                    { !(it.name?.equals(query, ignoreCase = true) == true) },
+                    { !(it.name?.startsWith(query, ignoreCase = true) == true) },
+                    { it.name }
+                ))
+
+                val allMatches = (customMatches.map { it to true } + standardMatches.map { it to false })
+                    .take(30)
+
+                val nameCounts = mutableMapOf<String, Int>()
+                
+                results.addAll(allMatches.map { (emoji, isCustom) ->
+                    val rawName = emoji.name ?: "emoji"
+                    val count = nameCounts[rawName] ?: 0
+                    nameCounts[rawName] = count + 1
+                    val disambiguatedName = if (count > 0) "$rawName-$count" else rawName
                     
-                    val replacement = if (emoji.id != null) {
+                    if (isCustom) {
+                        val isExternal = emoji.guild_id != null && emoji.guild_id != selectedGuild?.id
+                        val isAnimated = emoji.animated == true
                         val needsNitro = isExternal || isAnimated
-                        if (needsNitro && !hasNitro && freeNitro) {
+                        
+                        val replacement = if (needsNitro && !hasNitro && freeNitro) {
                             if (realmojis) {
-                                "<${if (isAnimated) "a" else ""}:F_${emoji.name}:${emoji.id}>"
+                                "<${if (isAnimated) "a" else ""}:F_$rawName:${emoji.id}>"
                             } else {
-                                "https://cdn.discordapp.com/emojis/${emoji.id}.${if (isAnimated) "gif" else "png"}?size=48&name=${emoji.name}"
+                                "https://cdn.discordapp.com/emojis/${emoji.id}.${if (isAnimated) "gif" else "png"}?size=48&name=$rawName"
                             }
                         } else {
-                            "<${if (isAnimated) "a" else ""}:${emoji.name}:${emoji.id}>"
+                            "<${if (isAnimated) "a" else ""}:$rawName:${emoji.id}>"
                         }
-                    } else ":${emoji.name}:"
 
-                    AutocompleteItem(
-                        id = emoji.id ?: emoji.name ?: "",
-                        title = ":${emoji.name}:",
-                        icon = if (emoji.id != null) "https://cdn.discordapp.com/emojis/${emoji.id}.png?size=64" else null,
-                        replacement = replacement,
-                        inputText = ":${emoji.name}:"
-                    )
-                })
-
-                // Add standard emojis
-                if (results.size < 25) {
-                    val standardEmojis = EmojiIndex.getAllEmojis().filter { emo ->
-                        emo.name?.contains(query, ignoreCase = true) == true
-                    }.take(20 - results.size)
-                    results.addAll(standardEmojis.map { emoji ->
+                        AutocompleteItem(
+                            id = emoji.id ?: disambiguatedName,
+                            title = ":$disambiguatedName:",
+                            subtitle = if (isExternal) guildStore.guilds.value.find { it.id == emoji.guild_id }?.name else null,
+                            icon = if (emoji.id != null) "https://cdn.discordapp.com/emojis/${emoji.id}.png?size=64" else null,
+                            replacement = replacement,
+                            inputText = ":$disambiguatedName:"
+                        )
+                    } else {
                         AutocompleteItem(
                             id = emoji.name ?: "",
-                            title = ":${emoji.name}:",
+                            title = ":$disambiguatedName:",
                             icon = emoji.url,
-                            replacement = EmojiIndex.getCharForName(emoji.name ?: "") ?: emoji.name ?: ""
+                            replacement = EmojiIndex.getCharForName(emoji.name ?: "") ?: emoji.name ?: "",
+                            inputText = ":$disambiguatedName:"
                         )
-                    })
-                }
+                    }
+                })
             }
             AutocompleteType.ROLE -> { }
         }

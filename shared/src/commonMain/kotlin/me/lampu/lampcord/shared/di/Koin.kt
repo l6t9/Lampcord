@@ -160,7 +160,7 @@ val storeModule = module {
         RelationshipEventHandler(json = get(), relationshipStore = get())
     }
     single {
-        UserEventHandler(json = get(), userStore = get(), settingsStore = get())
+        UserEventHandler(json = get(), userStore = get(), settingsStore = get(), guildStore = get())
     }
     single {
         TypingEventHandler(json = get(), userStore = get(), typingStore = get()) {

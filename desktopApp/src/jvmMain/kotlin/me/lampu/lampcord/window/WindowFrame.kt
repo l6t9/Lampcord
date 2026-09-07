@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.FrameWindowScope
 import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowState
+import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.utils.getPlatformName
 import me.lampu.lampcord.window.jna.structure.isWindows10OrLater
 
@@ -80,7 +81,7 @@ fun FrameWindowScope.WindowFrame(
                         }
                 }
                 content(WindowInsets(0), WindowInsets(0), { onMaximized() }, { toggleFullscreen() })
-                if (state.placement != WindowPlacement.Fullscreen) {
+                if (state.placement != WindowPlacement.Fullscreen && !Settings.shared.enableSystemWindowFrame) {
                     Row(modifier = Modifier.fillMaxWidth().height(32.dp)) {
                         Box(Modifier.weight(1f))
                         CaptionButton(

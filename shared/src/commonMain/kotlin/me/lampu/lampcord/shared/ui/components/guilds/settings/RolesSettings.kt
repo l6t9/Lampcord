@@ -6,16 +6,19 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -36,8 +39,8 @@ import me.lampu.lampcord.shared.model.Guild
 import me.lampu.lampcord.shared.ui.components.ExpressiveSwitch
 import me.lampu.lampcord.shared.ui.components.HsvColorPicker
 import me.lampu.lampcord.shared.ui.components.RoleIcon
+import me.lampu.lampcord.shared.ui.components.settings.Material3SettingsGroup
 import me.lampu.lampcord.shared.ui.components.settings.SettingsLayout
-import me.lampu.lampcord.shared.ui.components.settings.SettingsSection
 import me.lampu.lampcord.shared.ui.components.settings.SettingsSubScreen
 import me.lampu.lampcord.shared.ui.icons.Icons
 import org.koin.compose.koinInject
@@ -46,45 +49,44 @@ import me.lampu.lampcord.shared.model.Role as DiscordRole
 @Composable
 fun ServerRoles(guild: Guild, onRoleClick: (DiscordRole) -> Unit) {
     SettingsLayout {
-        SettingsSection(
-            title = "Roles",
-            icon = Icons.Filled.Flag
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Material3SettingsGroup(title = "Roles") {
+            Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 guild.roles.sortedByDescending { it.position }.forEach { role ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 48.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f))
-                            .clickable { onRoleClick(role) }
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
+                        onClick = { onRoleClick(role) }
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(16.dp)
-                                .background(
-                                    if (role.color != 0) Color(role.color.toLong() or 0xFF000000L) else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    CircleShape
-                                )
-                        )
-                        RoleIcon(role, size = 16.dp)
-                        Text(role.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
-                        if (role.managed) {
-                            Icon(
-                                Icons.Filled.Security,
-                                null,
-                                modifier = Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .background(
+                                        if (role.color != 0) Color(role.color.toLong() or 0xFF000000L) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        CircleShape
+                                    )
                             )
+                            RoleIcon(role, size = 18.dp)
+                            Text(role.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+                            if (role.managed) {
+                                Icon(
+                                    Icons.Filled.Security,
+                                    null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
                 }
             }
         }
+        Spacer(modifier = Modifier.height(100.dp))
     }
 }
 
@@ -115,25 +117,25 @@ fun RoleEditor(role: DiscordRole, guild: Guild, guildApi: GuildApi = koinInject(
     }
 
     SettingsLayout {
-        SettingsSection(title = "Display", icon = Icons.Filled.Info) {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Role Name", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
+        Material3SettingsGroup(title = "Display Settings") {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Role Name", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     OutlinedTextField(
                         value = draftName,
                         onValueChange = { draftName = it },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(8.dp)
                     )
                 }
                 
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Role Color", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Role Color", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Box(
                         modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
+                            .size(48.dp)
+                            .clip(RoundedCornerShape(8.dp))
                             .background(if (draftColor != 0) Color(draftColor.toLong() or 0xFF000000L) else Color.Gray)
                             .clickable { showColorPicker = true }
                     )
@@ -141,78 +143,92 @@ fun RoleEditor(role: DiscordRole, guild: Guild, guildApi: GuildApi = koinInject(
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Display role members separately from online members", style = MaterialTheme.typography.bodyLarge)
+                        Text("Display separately", style = MaterialTheme.typography.bodyLarge)
+                        Text("Display role members separately from online members", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     ExpressiveSwitch(checked = draftHoist, onCheckedChange = { draftHoist = it })
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Allow anyone to @mention this role", style = MaterialTheme.typography.bodyLarge)
+                        Text("Allow mention", style = MaterialTheme.typography.bodyLarge)
+                        Text("Allow anyone to @mention this role", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     ExpressiveSwitch(checked = draftMentionable, onCheckedChange = { draftMentionable = it })
                 }
             }
         }
 
-        SettingsSection(title = "Permissions", icon = Icons.Filled.Security) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Material3SettingsGroup(title = "Permissions") {
+            Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 me.lampu.lampcord.shared.utils.Permission.entries.forEach { permission ->
                     val permissionsLong = draftPermissions.toULongOrNull()?.toLong() ?: 0L
                     val isEnabled = (permissionsLong and permission.value) != 0L
                     
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .clickable {
-                                val newPerms = if (isEnabled) permissionsLong and permission.value.inv() else permissionsLong or permission.value
-                                draftPermissions = newPerms.toULong().toString()
-                            }
-                            .padding(8.dp)
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
+                        onClick = {
+                            val newPerms = if (isEnabled) permissionsLong and permission.value.inv() else permissionsLong or permission.value
+                            draftPermissions = newPerms.toULong().toString()
+                        }
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(12.dp)
+                        ) {
                             Text(
                                 permission.name.lowercase().split("_").joinToString(" ") { it.replaceFirstChar { char -> char.uppercase() } },
-                                style = MaterialTheme.typography.bodyLarge
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.weight(1f)
                             )
+                            ExpressiveSwitch(checked = isEnabled, onCheckedChange = {
+                                val newPerms = if (it) permissionsLong or permission.value else permissionsLong and permission.value.inv()
+                                draftPermissions = newPerms.toULong().toString()
+                            })
                         }
-                        ExpressiveSwitch(checked = isEnabled, onCheckedChange = {
-                            val newPerms = if (it) permissionsLong or permission.value else permissionsLong and permission.value.inv()
-                            draftPermissions = newPerms.toULong().toString()
-                        })
                     }
                 }
             }
         }
         
         if (hasChanges) {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End), modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) {
-                TextButton(onClick = {
-                    draftName = role.name
-                    draftColor = role.color
-                    draftHoist = role.hoist
-                    draftMentionable = role.mentionable
-                    draftPermissions = role.permissions
-                }) {
-                    Text("Reset")
-                }
-                Button(onClick = {
-                    scope.launch {
-                        guildApi.updateRole(guild.id, role.id, DiscordRole.Partial(
-                            name = draftName,
-                            color = draftColor,
-                            hoist = draftHoist,
-                            mentionable = draftMentionable,
-                            permissions = draftPermissions
-                        ))
+            Surface(
+                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End), modifier = Modifier.padding(12.dp)) {
+                    TextButton(onClick = {
+                        draftName = role.name
+                        draftColor = role.color
+                        draftHoist = role.hoist
+                        draftMentionable = role.mentionable
+                        draftPermissions = role.permissions
+                    }) {
+                        Text("Reset")
                     }
-                }) {
-                    Text("Save Changes")
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                guildApi.updateRole(guild.id, role.id, DiscordRole.Partial(
+                                    name = draftName,
+                                    color = draftColor,
+                                    hoist = draftHoist,
+                                    mentionable = draftMentionable,
+                                    permissions = draftPermissions
+                                ))
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF43B581))
+                    ) {
+                        Text("Save Changes")
+                    }
                 }
             }
         }
+        Spacer(modifier = Modifier.height(100.dp))
     }
 }
 

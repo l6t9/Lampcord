@@ -182,7 +182,7 @@ class MessageStore(
         }
 
         if (changed) {
-            val sorted = channelMessages.sortedByDescending { it.id }
+            val sorted = channelMessages.sortedByDescending { it.id.toLongOrNull() ?: 0L }
             // Keep the complete loaded history. Trimming this list while paging older
             // messages removes the viewport's anchor and makes reverse-layout scrolling
             // jump back when the cache limit is crossed.
@@ -225,7 +225,7 @@ class MessageStore(
             }
         }
         
-        val sorted = channelMessages.sortedByDescending { it.id }
+        val sorted = channelMessages.sortedByDescending { it.id.toLongOrNull() ?: 0L }
         messageCache[channelId] = sorted
         recordAccess(channelId)
         updateAllMessagesFlow()
@@ -390,7 +390,7 @@ class MessageStore(
         val hasMore = _hasMoreHistory.value[channelId] ?: true
         if (!hasMore) return
         
-        val before = currentChannelMessages.lastOrNull()?.id ?: return
+        val before = currentChannelMessages.lastOrNull()?.id
         _isLoadingHistory.value = true
         historyLoadingJob = scope.launch {
             try {
@@ -680,7 +680,7 @@ class MessageStore(
                         val current = messageCache[channelId]?.toMutableList() ?: mutableListOf()
                         if (!current.any { it.id == id }) {
                             current.add(restored)
-                            messageCache[channelId] = current.sortedByDescending { it.id }
+                            messageCache[channelId] = current.sortedByDescending { it.id.toLongOrNull() ?: 0L }
                             updateAllMessagesFlow()
                         }
                     }
@@ -692,7 +692,7 @@ class MessageStore(
                     val current = messageCache[channelId]?.toMutableList() ?: mutableListOf()
                     if (!current.any { it.id == id }) {
                         current.add(restored)
-                        messageCache[channelId] = current.sortedByDescending { it.id }
+                        messageCache[channelId] = current.sortedByDescending { it.id.toLongOrNull() ?: 0L }
                         updateAllMessagesFlow()
                     }
                 }

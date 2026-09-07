@@ -3,11 +3,12 @@ package me.lampu.lampcord.shared.ui.components.guilds.settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -18,6 +19,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -39,8 +41,8 @@ import me.lampu.lampcord.shared.model.Sticker
 import me.lampu.lampcord.shared.model.Guild
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
+import me.lampu.lampcord.shared.ui.components.settings.Material3SettingsGroup
 import me.lampu.lampcord.shared.ui.components.settings.SettingsLayout
-import me.lampu.lampcord.shared.ui.components.settings.SettingsSection
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.FilePicker
 import org.koin.compose.koinInject
@@ -117,61 +119,65 @@ fun ServerEmoji(guild: Guild, guildApi: GuildApi = koinInject()) {
     }
 
     SettingsLayout {
-        SettingsSection(
-            title = "Emoji",
-            icon = Icons.Filled.Mood,
-            actions = {
-                Button(onClick = { showUploadPicker = true }) {
-                    Icon(Icons.Rounded.Upload, null, Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Upload Emoji")
-                }
+        Material3SettingsGroup(title = "Emojis") {
+            Button(
+                onClick = { showUploadPicker = true },
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Icon(Icons.Rounded.Upload, null, Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Upload Emoji")
             }
-        ) {
+
             if (isLoading) {
-                ContainedLoadingIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+                Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                    ContainedLoadingIndicator()
+                }
             } else if (emojis.isEmpty()) {
-                Text("No custom emojis", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("No custom emojis", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(16.dp))
             } else {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     emojis.forEach { emoji ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = 56.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f))
-                                .clickable { 
-                                    newEmojiName = emoji.name ?: ""
-                                    emojiToRename = emoji 
-                                }
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            AsyncImage(
-                                model = "https://cdn.discordapp.com/emojis/${emoji.id}.png?size=96",
-                                contentDescription = emoji.name,
-                                modifier = Modifier.size(32.dp)
-                            )
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(emoji.name ?: "unnamed", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
-                                Text("Added by ${emoji.user?.global_name ?: emoji.user?.username ?: "Unknown"}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
+                            onClick = {
+                                newEmojiName = emoji.name ?: ""
+                                emojiToRename = emoji
                             }
-                            IconButton(onClick = {
-                                scope.launch {
-                                    if (guildApi.deleteEmoji(guild.id, emoji.id!!)) {
-                                        emojis = emojis.filter { it.id != emoji.id }
-                                    }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                AsyncImage(
+                                    model = "https://cdn.discordapp.com/emojis/${emoji.id}.png?size=96",
+                                    contentDescription = emoji.name,
+                                    modifier = Modifier.size(36.dp)
+                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(emoji.name ?: "unnamed", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                                    Text("Added by ${emoji.user?.global_name ?: emoji.user?.username ?: "Unknown"}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
-                            }) {
-                                Icon(Icons.Default.Delete, "Delete", tint = MaterialTheme.colorScheme.error)
+                                IconButton(onClick = {
+                                    scope.launch {
+                                        if (guildApi.deleteEmoji(guild.id, emoji.id!!)) {
+                                            emojis = emojis.filter { it.id != emoji.id }
+                                        }
+                                    }
+                                }) {
+                                    Icon(Icons.Default.Delete, "Delete", tint = MaterialTheme.colorScheme.error)
+                                }
                             }
                         }
                     }
                 }
             }
         }
+        Spacer(modifier = Modifier.height(100.dp))
     }
 }
 
@@ -211,60 +217,68 @@ fun ServerStickers(guild: Guild, guildApi: GuildApi = koinInject()) {
     )
 
     SettingsLayout {
-        SettingsSection(title = "Stickers", icon = Icons.Filled.StickyNote2, actions = {
-            Button(onClick = { showUploadPicker = true }) {
+        Material3SettingsGroup(title = "Stickers") {
+            Button(
+                onClick = { showUploadPicker = true },
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                shape = RoundedCornerShape(8.dp)
+            ) {
                 Icon(Icons.Rounded.Upload, null, Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text("Upload Sticker")
             }
-        }) {
+
             if (isLoading) {
-                ContainedLoadingIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+                Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                    ContainedLoadingIndicator()
+                }
             } else if (stickers.isEmpty()) {
-                Text("No custom stickers", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("No custom stickers", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(16.dp))
             } else {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     stickers.forEach { sticker ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = 56.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f))
-                                .clickable {
-                                    newStickerName = sticker.name
-                                    newStickerDescription = sticker.description ?: ""
-                                    newStickerTags = sticker.tags ?: ""
-                                    stickerToEdit = sticker
-                                }
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            AsyncImage(
-                                model = "https://cdn.discordapp.com/stickers/${sticker.id}.png?size=96",
-                                contentDescription = sticker.name,
-                                modifier = Modifier.size(32.dp)
-                            )
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(sticker.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
-                                Text(sticker.description ?: "", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
+                            onClick = {
+                                newStickerName = sticker.name
+                                newStickerDescription = sticker.description ?: ""
+                                newStickerTags = sticker.tags ?: ""
+                                stickerToEdit = sticker
                             }
-                            IconButton(onClick = {
-                                scope.launch {
-                                    val guildId = sticker.guild_id ?: return@launch
-                                    if (guildApi.deleteSticker(guildId, sticker.id)) {
-                                        stickers = stickers.filter { it.id != sticker.id }
-                                    }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                AsyncImage(
+                                    model = "https://cdn.discordapp.com/stickers/${sticker.id}.png?size=96",
+                                    contentDescription = sticker.name,
+                                    modifier = Modifier.size(36.dp)
+                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(sticker.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                                    Text(sticker.description ?: "", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
-                            }) {
-                                Icon(Icons.Default.Delete, "Delete", tint = MaterialTheme.colorScheme.error)
+                                IconButton(onClick = {
+                                    scope.launch {
+                                        val guildId = sticker.guild_id ?: return@launch
+                                        if (guildApi.deleteSticker(guildId, sticker.id)) {
+                                            stickers = stickers.filter { it.id != sticker.id }
+                                        }
+                                    }
+                                }) {
+                                    Icon(Icons.Default.Delete, "Delete", tint = MaterialTheme.colorScheme.error)
+                                }
                             }
                         }
                     }
                 }
             }
         }
+        Spacer(modifier = Modifier.height(100.dp))
     }
 
     if (stickerToEdit != null) {
@@ -272,10 +286,10 @@ fun ServerStickers(guild: Guild, guildApi: GuildApi = koinInject()) {
             onDismissRequest = { stickerToEdit = null },
             title = { Text("Edit Sticker") },
             text = {
-                Column {
-                    OutlinedTextField(value = newStickerName, onValueChange = { newStickerName = it }, label = { Text("Name") }, singleLine = true)
-                    OutlinedTextField(value = newStickerDescription, onValueChange = { newStickerDescription = it }, label = { Text("Description") })
-                    OutlinedTextField(value = newStickerTags, onValueChange = { newStickerTags = it }, label = { Text("Tags (comma separated)") })
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(value = newStickerName, onValueChange = { newStickerName = it }, label = { Text("Name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = newStickerDescription, onValueChange = { newStickerDescription = it }, label = { Text("Description") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = newStickerTags, onValueChange = { newStickerTags = it }, label = { Text("Tags") }, modifier = Modifier.fillMaxWidth())
                 }
             },
             confirmButton = {
