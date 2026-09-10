@@ -212,6 +212,11 @@ fun DiscordMarkdownText(
 
                                 val pressed = down ?: return@awaitEachGesture
                                 val offset = textLayoutResult?.getOffsetForPosition(pressed.position)
+                                val mentionsAtOffset = offset?.let {
+                                    annotatedString.getStringAnnotations("MENTION", it, it)
+                                        .firstOrNull()
+                                        ?.item
+                                }
                                 val url = offset?.let {
                                     annotatedString.getStringAnnotations("URL", it, it)
                                         .firstOrNull()
@@ -220,7 +225,7 @@ fun DiscordMarkdownText(
 
                                 // Leave ordinary text untouched so the
                                 // enclosing message context menu can handle it.
-                                if (url == null) return@awaitEachGesture
+                                if (url == null && mentionsAtOffset == null) return@awaitEachGesture
 
                                 // Link presses are owned by this text gesture
                                 // and must not open the parent message menu.
@@ -243,28 +248,45 @@ fun DiscordMarkdownText(
                                 }
 
                                 when {
-                                    isSlopExceeded -> {
-                                        // Ignore tap if pointer moved beyond touch slop.
+                                        isSlopExceeded -> {
+                                            // Ignore tap if pointer moved beyond touch slop.
+                                        }
+                                        completedTap == null -> {
+                                            if (url != null) {
+                                                contextMenuUrl = url
+                                                contextMenuOffset = IntOffset(
+                                                    pressed.position.x.roundToInt(),
+                                                    pressed.position.y.roundToInt()
+                                                )
+                                                pressed.consume()
+                                            }
+                                        }
+                                        completedTap == true -> {
+                                            val mentionId = mentionsAtOffset
+                                            if (url != null) uriHandler.openUri(url)
+                                            else if (mentionId != null) {
+                                                profileStore.showProfile(mentionId, navigationStore.selectedGuild?.id)
+                                                pressed.consume()
+                                            }
+                                        }
                                     }
-                                    completedTap == null -> {
-                                        contextMenuUrl = url
-                                        contextMenuOffset = IntOffset(
-                                            pressed.position.x.roundToInt(),
-                                            pressed.position.y.roundToInt()
-                                        )
-                                        pressed.consume()
-                                    }
-                                    completedTap == true -> uriHandler.openUri(url)
-                                }
                             }
                         } else {
                             detectTapGestures(
                                 onTap = { position ->
                                     val offset = textLayoutResult?.getOffsetForPosition(position)
                                         ?: return@detectTapGestures
-                                    annotatedString.getStringAnnotations("URL", offset, offset)
+                                    val url = annotatedString.getStringAnnotations("URL", offset, offset)
                                         .firstOrNull()
-                                        ?.let { uriHandler.openUri(it.item) }
+                                        ?.item
+                                    if (url != null) {
+                                        uriHandler.openUri(url)
+                                    } else {
+                                        annotatedString.getStringAnnotations("MENTION", offset, offset)
+                                            .firstOrNull()
+                                            ?.item
+                                            ?.let { profileStore.showProfile(it, navigationStore.selectedGuild?.id) }
+                                    }
                                 }
                             )
                         }
@@ -606,20 +628,14 @@ private fun AnnotatedString.Builder.appendDiscordMarkdown(
                     "HERE" -> name = "here"
                 }
                 
-                val link = if (tag == "MENTION") {
-                    LinkAnnotation.Clickable(
-                        tag = "MENTION",
-                        linkInteractionListener = { profileStore.showProfile(id, navigationStore.selectedGuild?.id) }
-                    )
-                } else null
-
+                val isMentionLink = tag == "MENTION"
                 withStyle(style = SpanStyle(color = mentionColor, fontWeight = FontWeight.Bold, background = mentionBg)) {
-                    if (link != null) {
-                        pushLink(link)
-                        append("$prefix$name")
+                    if (isMentionLink) {
+                        pushStringAnnotation("MENTION", id)
+                    }
+                    append("$prefix$name")
+                    if (isMentionLink) {
                         pop()
-                    } else {
-                        append("$prefix$name")
                     }
                 }
             }
