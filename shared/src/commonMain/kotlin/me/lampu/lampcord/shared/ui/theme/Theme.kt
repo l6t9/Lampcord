@@ -133,9 +133,12 @@ fun LampcordTheme(
     
     val font = rememberAppFontFamily(finalFontOption, finalFontPath)
 
+    // Remember Typography to avoid invalidating readers on every frame during color scheme animations.
+    val typography = remember(font, fontScale) { LampcordTypography(font, scale = fontScale) }
+
     MaterialExpressiveTheme(
         colorScheme = animatedColorScheme,
-        typography = LampcordTypography(font, scale = fontScale),
+        typography = typography,
         shapes = LampcordShapes,
         content = content
     )
