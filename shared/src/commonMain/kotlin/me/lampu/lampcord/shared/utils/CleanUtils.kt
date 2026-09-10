@@ -32,7 +32,7 @@ object CleanUtils {
         if (settings.cleanChannelsNormalizeLetters) {
             val normalized = StringBuilder()
             for (ch in result) {
-                normalized.append(letterNormalizationMap.getOrDefault(ch, ch))
+                normalized.append(letterNormalizationMap[ch] ?: ch)
             }
             result = normalized.toString()
         }
