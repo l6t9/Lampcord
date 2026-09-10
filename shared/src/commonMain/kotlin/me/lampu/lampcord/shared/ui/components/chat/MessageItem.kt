@@ -75,6 +75,7 @@ import me.lampu.lampcord.shared.state.ReadStateStore
 import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.settings.Settings
+import me.lampu.lampcord.shared.settings.TapTapAction
 import me.lampu.lampcord.shared.ui.components.ClanTagView
 import me.lampu.lampcord.shared.ui.components.ContextMenu
 import me.lampu.lampcord.shared.ui.components.ContextMenuItem
@@ -312,7 +313,7 @@ fun MessageItem(
     }
     val isHighlighted = messageStore.highlightedMessageId == message.id
     
-    val tapTapEnabled = remember { me.lampu.lampcord.shared.settings.Settings.shared.tapTap }
+    val tapTapMode = remember { me.lampu.lampcord.shared.settings.Settings.shared.tapTap }
     val gestureMode = remember { me.lampu.lampcord.shared.settings.Settings.shared.chatGestures }
     var offsetX by remember { mutableFloatStateOf(0f) }
 
@@ -347,18 +348,24 @@ fun MessageItem(
                     )
                 }
             }
-            .pointerInput(message.id, tapTapEnabled) {
-                if (!isPreview && tapTapEnabled) {
+            .pointerInput(message.id, tapTapMode) {
+                if (!isPreview && tapTapMode != me.lampu.lampcord.shared.settings.TapTapAction.DISABLED) {
                     detectTapGestures(
                         onLongPress = if (getPlatformName() == "android") {
                             { _ -> messageLongPressRequest++ }
                         } else null,
                         onDoubleTap = {
-                            val isMe = message.author?.id == currentUser?.id
-                            if (isMe) {
-                                messageStore.editingMessage = message
-                            } else {
-                                messageStore.replyingTo = message
+                            when (tapTapMode) {
+                                TapTapAction.REPLY_OR_EDIT -> {
+                                    val isMe = message.author?.id == currentUser?.id
+                                    if (isMe) {
+                                        messageStore.editingMessage = message
+                                    } else {
+                                        messageStore.replyingTo = message
+                                    }
+                                }
+                                TapTapAction.EMOJI_PICKER -> if (canAddReaction) { showReactionPicker = true }
+
                             }
                         }
                     )

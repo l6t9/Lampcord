@@ -24,6 +24,12 @@ enum class FontOption {
     CUSTOM,
 }
 
+enum class TapTapAction {
+    REPLY_OR_EDIT,
+    EMOJI_PICKER,
+    DISABLED
+}
+
 enum class ChatGestures {
     SWIPE_TO_MEMBERS,
     SWIPE_TO_REPLY,

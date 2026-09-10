@@ -14,6 +14,7 @@ import me.lampu.lampcord.shared.model.UserSettings
 import me.lampu.lampcord.shared.ui.components.settings.*
 import me.lampu.lampcord.shared.settings.ChatGestures
 import me.lampu.lampcord.shared.settings.Settings
+import me.lampu.lampcord.shared.settings.TapTapAction
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.showToast
 import me.lampu.lampcord.shared.utils.getPlatformName
@@ -184,11 +185,31 @@ fun ChatSettingsContent(
         Material3SettingsGroup(
             title = "Gestures",
             items = buildList {
-                add(switchSettingsItem(
-                    title = "TapTap",
-                    description = "Double tap a message to edit or reply.",
-                    checked = Settings.shared.tapTap,
-                    onCheckedChange = { Settings.shared.tapTap = it }
+                add(Material3SettingsItem(
+                    title = { Text("TapTap Action") },
+                    description = {
+                        Column(modifier = Modifier.padding(top = 8.dp)) {
+                            SettingsButtonGroup(
+                                options = TapTapAction.entries.toList(),
+                                selectedOption = Settings.shared.tapTap,
+                                onOptionSelected = { Settings.shared.tapTap = it },
+                                iconProvider = { gesture: TapTapAction, isSelected ->
+                                    when (gesture) {
+                                        TapTapAction.REPLY_OR_EDIT -> if (isSelected) Icons.Filled.Reply else Icons.Rounded.Reply
+                                        TapTapAction.EMOJI_PICKER -> if (isSelected) Icons.Filled.AddReaction else Icons.Rounded.AddReaction
+                                        TapTapAction.DISABLED -> if (isSelected) Icons.Filled.Close else Icons.Rounded.Close
+                                    }
+                                },
+                                labelProvider = {
+                                    when (it) {
+                                        TapTapAction.REPLY_OR_EDIT -> "Reply/Edit"
+                                        TapTapAction.EMOJI_PICKER -> "React"
+                                        TapTapAction.DISABLED -> "Disabled"
+                                    }
+                                }
+                            )
+                        }
+                    }
                 ))
                 add(Material3SettingsItem(
                     title = { Text("Swipe Gesture") },

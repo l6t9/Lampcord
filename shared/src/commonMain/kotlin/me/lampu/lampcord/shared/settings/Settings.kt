@@ -24,7 +24,9 @@ class Settings(private val settings: KmpSettings) {
     var activeThemeJson by preference("active_theme_json", "")
     var installedThemesJson by preference("installed_themes_json", "[]")
     var searchHistoryJson by preference("search_history", "[]")
-    var tapTap by preferenceBoolean("tap_tap", true)
+    var tapTap by preferenceEnum("taptap_action", TapTapAction.REPLY_OR_EDIT)
+    var tapTapEmoji by preference("taptap_emoji", "")
+
     var chatGestures by preferenceEnum("chat_gestures", ChatGestures.SWIPE_TO_MEMBERS)
     var animateStickers by preferenceEnum("animate_stickers", StickerAnimation.ALWAYS)
     var panelAnimation by preferenceEnum("panel_animation", PanelAnimation.MINIMAL)
