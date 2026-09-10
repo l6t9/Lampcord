@@ -22,6 +22,11 @@ set(REQUIRE_BORINGSSL ON CACHE BOOL "" FORCE)
 set(MLS_CXX_NAMESPACE mlspp CACHE STRING "" FORCE)
 set(MLS_EXPORT_NAMESPACE MLSPP CACHE STRING "" FORCE)
 
+# BoringSSL uses NASM on Windows.
+if(WIN32 AND CMAKE_SYSTEM_PROCESSOR MATCHES "AMD64|x86_64|amd64|x86|i[3-6]86")
+    find_program(NASM nasm REQUIRED)
+endif()
+
 include(FetchContent)
 # A pinned source bundle of Discord libdave, MLSpp and BoringSSL. No prebuilt crypto binaries.
 FetchContent_Declare(dave_deps
@@ -30,6 +35,16 @@ FetchContent_Declare(dave_deps
     SOURCE_SUBDIR unused)
 FetchContent_MakeAvailable(dave_deps)
 set(DEPS "${dave_deps_SOURCE_DIR}/natives")
+# Disable P-256 ADX on Windows/MinGW to avoid missing symbols.
+set(p256 "${DEPS}/boringssl/third_party/fiat/p256_64.h")
+file(READ "${p256}" p256_source)
+if(NOT p256_source MATCHES "OPENSSL_WINDOWS")
+    string(REPLACE
+        "#if !defined(OPENSSL_NO_ASM) && defined(__GNUC__) && defined(__x86_64__)"
+        "#if !defined(OPENSSL_NO_ASM) && defined(__GNUC__) && defined(__x86_64__) && !defined(OPENSSL_WINDOWS)"
+        p256_source "${p256_source}")
+    file(WRITE "${p256}" "${p256_source}")
+endif()
 # The bundle's package configs assume they are at the project root.
 file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/packages")
 foreach(package OpenSSL MLSPP)
