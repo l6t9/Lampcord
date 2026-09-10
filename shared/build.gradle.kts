@@ -16,6 +16,26 @@ val unpackTwemoji = tasks.register<Sync>("unpackTwemoji") {
     into(layout.buildDirectory.dir("generated/twemojiResources"))
 }
 
+val voiceDesktopDir = rootProject.layout.buildDirectory.dir("voice-desktop")
+val configureVoiceDesktop = tasks.register<Exec>("configureVoiceDesktop") {
+    inputs.file(rootProject.file("native/voice/CMakeLists.txt"))
+    outputs.file(voiceDesktopDir.map { it.file("CMakeCache.txt") })
+    environment("JAVA_HOME", System.getProperty("java.home"))
+    commandLine("cmake", "-S", rootProject.file("native/voice"), "-B", voiceDesktopDir.get().asFile,
+        "-DCMAKE_BUILD_TYPE=Release", "-DFETCHCONTENT_BASE_DIR=${rootProject.layout.buildDirectory.get()}/voice-deps")
+}
+val buildVoiceDesktop = tasks.register<Exec>("buildVoiceDesktop") {
+    dependsOn(configureVoiceDesktop)
+    inputs.dir(rootProject.file("native/voice"))
+    outputs.dir(voiceDesktopDir.map { it.dir("out") })
+    commandLine("cmake", "--build", voiceDesktopDir.get().asFile, "--config", "Release", "--target", "lampcord_voice", "--parallel", "2")
+}
+val packageVoiceDesktop = tasks.register<Sync>("packageVoiceDesktop") {
+    dependsOn(buildVoiceDesktop)
+    from(voiceDesktopDir.map { it.dir("out") }) { include("*.so", "*.dll", "*.dylib"); into("voice") }
+    into(layout.buildDirectory.dir("generated/voiceResources"))
+}
+
 kotlin {
     targets.all {
         compilations.all {
@@ -48,6 +68,11 @@ kotlin {
     applyDefaultHierarchyTemplate()
     
     sourceSets {
+        val jvmSharedMain by creating { dependsOn(commonMain.get()) }
+        getByName("androidMain").dependsOn(jvmSharedMain)
+        getByName("desktopMain").dependsOn(jvmSharedMain)
+        getByName("desktopMain").resources.srcDir(packageVoiceDesktop)
+
         commonMain {
             resources.srcDir(unpackTwemoji)
         }

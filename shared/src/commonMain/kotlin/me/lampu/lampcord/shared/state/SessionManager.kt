@@ -30,6 +30,7 @@ class SessionManager(
     val messageStore: MessageStore,
     val typingStore: TypingStore,
     val commandStore: CommandStore,
+    val voiceStore: VoiceStore,
     val pushTokenRegistrar: PushTokenRegistrar? = null
 ) {
     private val scope = CoroutineScope(Dispatchers.Main)
@@ -78,8 +79,8 @@ class SessionManager(
     }
 
     fun disconnect() {
+        voiceStore.disconnectFromVoice()
         gatewayManager.disconnect()
-        voiceGatewayManager.disconnect()
         navigationStore.isConnected = false
         navigationStore.isConnecting = false
         authApi.setToken(null)
@@ -113,6 +114,7 @@ class SessionManager(
         messageStore.clear()
         typingStore.clear()
         commandStore.clear()
+        voiceStore.clear()
     }
 
     suspend fun login(email: String, pass: String): LoginResponse? {

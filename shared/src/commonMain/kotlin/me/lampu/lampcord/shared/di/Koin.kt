@@ -91,7 +91,8 @@ val storeModule = module {
     single { TypingStore(scope = get()) }
     single {
         VoiceStore(
-            gatewayManager = get(), voiceGatewayManager = get(), json = get(), scope = get()
+            gatewayManager = get(), voiceGatewayManager = get(), channelApi = get(), userStore = get(),
+            guildStore = get(), settingsStore = get(), json = get(), scope = get()
         )
     }
     single {
@@ -136,7 +137,7 @@ val storeModule = module {
             tokenStore = get(), userStore = get(), gatewayHandler = get(), entityStore = get(),
             readStateStore = get(), userGuildSettingsStore = get(), presenceStore = get(),
             relationshipStore = get(), guildStore = get(), memberListStore = get(), messageStore = get(),
-            typingStore = get(), commandStore = get(), pushTokenRegistrar = getOrNull<PushTokenRegistrar>()
+            typingStore = get(), commandStore = get(), voiceStore = get(), pushTokenRegistrar = getOrNull<PushTokenRegistrar>()
         )
     }
 
@@ -188,7 +189,8 @@ val storeModule = module {
                 get<UserEventHandler>(),
                 get<TypingEventHandler>(),
                 get<MemberListEventHandler>(),
-                get<NotificationEventHandler>()
+                get<NotificationEventHandler>(),
+                get<VoiceStore>()
             )
         )
     }
@@ -202,7 +204,7 @@ val gatewayModule = module {
             guildStore = get(), messageStore = get(), readStateStore = get(),
             experimentStore = get(), relationshipStore = get(), presenceStore = get(),
             navigationStore = get(), gatewayManager = get(), tokenStore = get(),
-            memberListStore = get()
+            memberListStore = get(), voiceStore = get()
         )
     }
 }

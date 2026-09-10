@@ -78,10 +78,6 @@ fun Sidebar(
             }
         }
 
-        if (voiceStore.isVoiceConnected) {
-            VoiceConnectionPanel()
-        }
-
         if (!isMobile) {
             Box(
                 modifier = Modifier

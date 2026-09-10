@@ -22,7 +22,8 @@ class GatewayHandler(
     private val navigationStore: NavigationStore,
     private val gatewayManager: GatewayManager,
     private val tokenStore: TokenStore,
-    private val memberListStore: MemberListStore
+    private val memberListStore: MemberListStore,
+    private val voiceStore: VoiceStore
 ) {
     fun handleGatewayEvent(payload: GatewayPayload) {
         when (payload.t) {
@@ -94,12 +95,7 @@ class GatewayHandler(
                 experimentStore.handleReady(ready.experiments)
                 ready.relationships?.let { relationshipStore.handleReady(it) }
 
-                gatewayManager.sendVoiceStateUpdate(
-                    guildId = null,
-                    channelId = null,
-                    selfMute = true,
-                    selfDeaf = true
-                )
+                voiceStore.handleReady(data.jsonObject)
                 
                 navigationStore.isConnected = true
                 navigationStore.isConnecting = false

@@ -8,14 +8,14 @@ data class VoiceState(
     val channel_id: String? = null,
     val user_id: String,
     val member: Member? = null,
-    val session_id: String,
-    val deaf: Boolean,
-    val mute: Boolean,
-    val self_deaf: Boolean,
-    val self_mute: Boolean,
+    val session_id: String = "",
+    val deaf: Boolean = false,
+    val mute: Boolean = false,
+    val self_deaf: Boolean = false,
+    val self_mute: Boolean = false,
     val self_stream: Boolean? = null,
-    val self_video: Boolean,
-    val suppress: Boolean,
+    val self_video: Boolean = false,
+    val suppress: Boolean = false,
     val request_to_speak_timestamp: String? = null
 )
 
@@ -35,6 +35,7 @@ data class VoiceStateUpdate(
 @Serializable
 data class VoiceServerUpdate(
     val token: String,
-    val guild_id: String,
+    val guild_id: String? = null,
+    val channel_id: String? = null,
     val endpoint: String? = null
 )

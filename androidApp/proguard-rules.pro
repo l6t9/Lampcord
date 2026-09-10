@@ -1,1 +1,2 @@
-# Add app-specific R8 rules here when reflection or JNI requires them.
+# JNI entry points are resolved by their class and method names.
+-keep class me.lampu.lampcord.shared.voice.NativeVoice { *; }

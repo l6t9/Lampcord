@@ -22,7 +22,8 @@ fun MainScreen(
     navigationStore: NavigationStore = koinInject(),
     messageStore: MessageStore = koinInject(),
     errorStore: AppErrorStore = koinInject(),
-    profileStore: ProfileStore = koinInject()
+    profileStore: ProfileStore = koinInject(),
+    voiceStore: VoiceStore = koinInject()
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val isMobile = getPlatformName() == "android" || getPlatformName() == "ios" || maxWidth < 600.dp
@@ -36,56 +37,62 @@ fun MainScreen(
             } else ""
         }
 
-        AnimatedContent(
-            targetState = navigationStore.isConnected to navigationStore.isConnecting,
-            transitionSpec = {
-                if (reduceMotion) {
-                    EnterTransition.None togetherWith ExitTransition.None
-                } else {
-                    fadeIn(tween(300)).togetherWith(fadeOut(tween(300)))
-                }
-            },
-            label = "MainScreenContentTransition"
-        ) { (isConnected, isConnecting) ->
-            when {
-                isConnected -> {
-                    if (isMobile) {
-                        MobileBaseplate(
-                            navigationStore = navigationStore,
-                            profileStore = profileStore,
-                            userStore = koinInject(),
-                        )
+        val hasVoice = voiceStore.activeChannel != null
+        Column(Modifier.fillMaxSize().then(if (hasVoice) Modifier.statusBarsPadding() else Modifier)) {
+            if (hasVoice) VoiceConnectionPanel(voiceStore)
+            AnimatedContent(
+                modifier = Modifier.weight(1f),
+                targetState = navigationStore.isConnected to navigationStore.isConnecting,
+                transitionSpec = {
+                    if (reduceMotion) {
+                        EnterTransition.None togetherWith ExitTransition.None
                     } else {
-                        DesktopBaseplate(
-                            navigationStore = navigationStore,
-                            profileStore = profileStore,
-                            voiceStore = koinInject(),
-                        )
+                        fadeIn(tween(300)).togetherWith(fadeOut(tween(300)))
                     }
-                }
-                isConnecting || me.lampu.lampcord.shared.settings.Settings.shared.discordToken.isNotBlank() -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            ContainedLoadingIndicator(modifier = Modifier.size(48.dp))
-                            Spacer(Modifier.height(16.dp))
-                            Text(
-                                text = loadingMessage,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                },
+                label = "MainScreenContentTransition"
+            ) { (isConnected, isConnecting) ->
+                when {
+                    isConnected -> {
+                        if (isMobile) {
+                            MobileBaseplate(
+                                navigationStore = navigationStore,
+                                profileStore = profileStore,
+                                userStore = koinInject(),
+                            )
+                        } else {
+                            DesktopBaseplate(
+                                navigationStore = navigationStore,
+                                profileStore = profileStore,
+                                voiceStore = voiceStore,
                             )
                         }
                     }
-                }
-                else -> {
-                    LoginScreen(
-                        onLoginSuccess = { /* No-op, navigationStore updates will trigger re-compose */ }
-                    )
+                    isConnecting || me.lampu.lampcord.shared.settings.Settings.shared.discordToken.isNotBlank() -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                ContainedLoadingIndicator(modifier = Modifier.size(48.dp))
+                                Spacer(Modifier.height(16.dp))
+                                Text(
+                                    text = loadingMessage,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                    else -> {
+                        LoginScreen(
+                            onLoginSuccess = { /* No-op, navigationStore updates will trigger re-compose */ }
+                        )
+                    }
                 }
             }
         }
+        if (navigationStore.isConnected) VoiceCallDialogs()
 
         // Global Overlays
         if (navigationStore.isConnected) {

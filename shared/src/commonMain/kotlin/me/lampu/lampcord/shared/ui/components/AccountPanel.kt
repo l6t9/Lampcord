@@ -90,9 +90,8 @@ fun AccountPanel(
     var showAddAccountDialog by remember { mutableStateOf(false) }
     var showCustomStatusDialog by remember { mutableStateOf(false) }
     
-    val currentVoiceState = voiceStore.currentVoiceState
-    val isMuted = currentVoiceState?.self_mute ?: false
-    val isDeafened = currentVoiceState?.self_deaf ?: false
+    val isMuted = voiceStore.selfMuted
+    val isDeafened = voiceStore.selfDeafened
 
     if (showCustomStatusDialog) {
         CustomStatusDialog(

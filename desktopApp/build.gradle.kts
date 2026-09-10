@@ -79,6 +79,11 @@ compose.desktop {
            linux {
                jvmArgs += listOf("-Djava.locale.providers=COMPAT,SPI")
            }
+           macOS {
+               infoPlist {
+                   extraKeysRawXml = "<key>NSMicrophoneUsageDescription</key><string>Lampcord uses your microphone for voice calls you join.</string>"
+               }
+           }
        }
    }
 }

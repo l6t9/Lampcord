@@ -951,6 +951,7 @@ private fun MainBaseplateContent(
                                 }
                             },
                             actions = {
+                                if (activeChannel?.type == 1 || activeChannel?.type == 3) VoiceCallButton(activeChannel!!)
                                 if (!navigationStore.isBubble && activeChannel != null && (activeChannel.guild_id != null || activeChannel.type == 1 || activeChannel.type == 3)) {
                                     if (settingsStore.showChatSearch) {
                                         IconButton(onClick = { navigationStore.isSearchVisible = true }) {

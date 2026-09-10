@@ -35,6 +35,13 @@ android {
         versionCode = 1
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        ndk { abiFilters += (providers.gradleProperty("voiceAbis").orNull ?: "armeabi-v7a,arm64-v8a,x86,x86_64").split(",") }
+        externalNativeBuild {
+            cmake {
+                arguments += listOf("-DANDROID_STL=c++_static", "-DCMAKE_INTERPROCEDURAL_OPTIMIZATION=OFF")
+                targets += "lampcord_voice"
+            }
+        }
     }
 
     signingConfigs {
@@ -68,6 +75,11 @@ android {
             )
         }
     }
+    externalNativeBuild {
+        cmake { path = rootProject.file("native/voice/CMakeLists.txt"); version = "4.1.2" }
+    }
+    ndkVersion = "27.2.12479018"
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11

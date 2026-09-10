@@ -29,6 +29,25 @@ import me.lampu.lampcord.shared.utils.Logging
  */
 class ChannelApi(private val rest: RestClient) {
 
+    suspend fun ringCall(channelId: String): Boolean = callAction(channelId, "ring", all = true)
+
+    suspend fun stopRinging(channelId: String, all: Boolean = false): Boolean = callAction(channelId, "stop-ringing", all)
+
+    private suspend fun callAction(channelId: String, action: String, all: Boolean): Boolean {
+        require(channelId.toULongOrNull() != null)
+        return try {
+            rest.httpClient.post("${rest.apiBase}/channels/$channelId/call/$action") {
+                standardHeaders(rest)
+                contentType(ContentType.Application.Json)
+                setBody(buildJsonObject { if (all) put("recipients", JsonNull) })
+            }.status.isSuccess()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     suspend fun getGuildChannels(guildId: String): List<Channel> {
         return try {
             val response = rest.httpClient.get("${rest.apiBase}/guilds/$guildId/channels") {

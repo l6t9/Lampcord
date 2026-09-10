@@ -15,6 +15,7 @@ on:
       - 'settings.gradle.kts'
       - 'shared/**'
       - 'androidApp/**'
+      - 'native/**'
   pull_request:
     branches: [ main ]
     paths:
@@ -29,6 +30,7 @@ on:
       - 'settings.gradle.kts'
       - 'shared/**'
       - 'androidApp/**'
+      - 'native/**'
 
 concurrency:
   group: android-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

@@ -141,6 +141,7 @@ fun ChannelHeader(
         },
         actions = {
             if (!isChannelsAndRoles && channel != null) {
+                if (channel.type == 1 || channel.type == 3) VoiceCallButton(channel)
                 if (settingsStore.showChatSearch) {
                     IconButton(onClick = { navigationStore.isSearchVisible = !navigationStore.isSearchVisible }) {
                         Icon(

@@ -75,6 +75,7 @@ fun ChatArea(
     voiceStore: VoiceStore = koinInject(),
     readStateStore: me.lampu.lampcord.shared.state.ReadStateStore = koinInject()
 ) {
+    val joinVoice = me.lampu.lampcord.shared.voice.rememberVoiceJoin(voiceStore)
     val scrollState = rememberLazyListState()
     var isHovered by remember { mutableStateOf(false) }
     val messages by messageStore.messages.collectAsState()
@@ -325,10 +326,10 @@ fun ChatArea(
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
 
-                    if ((navigationStore.selectedChannel?.type == 2 || navigationStore.selectedChannel?.type == 13) && voiceStore.currentVoiceState?.channel_id != navigationStore.selectedChannel?.id) {
+                    if (navigationStore.selectedChannel?.type == 2 && voiceStore.activeChannel?.id != navigationStore.selectedChannel?.id) {
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(
-                            onClick = { navigationStore.selectedChannel?.let { voiceStore.connectToVoice(it) } },
+                            onClick = { navigationStore.selectedChannel?.let { joinVoice(it, false) } },
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                         ) {
                             Icon(Icons.AutoMirrored.Filled.VolumeUp, null, modifier = Modifier.size(18.dp))
