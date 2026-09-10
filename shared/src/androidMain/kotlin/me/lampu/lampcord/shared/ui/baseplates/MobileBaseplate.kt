@@ -834,7 +834,18 @@ private fun MainBaseplateContent(
                         TopAppBar(
                             windowInsets = TopAppBarDefaults.windowInsets,
                             title = {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                val isDmHeader = activeChannel?.type == 1 && !navigationStore.isChannelsAndRolesVisible
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = if (isDmHeader) {
+                                        Modifier.clickable(
+                                            interactionSource = remember { MutableInteractionSource() },
+                                            indication = null
+                                        ) { panelState.openEnd() }
+                                    } else {
+                                        Modifier
+                                    }
+                                ) {
                                     if (navigationStore.isChannelsAndRolesVisible) {
                                         Text(
                                             text = "Browse Channels",
@@ -847,11 +858,11 @@ private fun MainBaseplateContent(
                                             val recipient = recipientId?.let { allUsers[it] } ?: activeChannel.recipients?.firstOrNull()
 
                                             if (recipient != null) {
-                                                Box(modifier = Modifier.size(24.dp)) {
+                                                Box(modifier = Modifier.size(32.dp)) {
                                                     AvatarWithDecoration(
                                                         avatarUrl = recipient.avatar?.let { "https://cdn.discordapp.com/avatars/${recipient.id}/$it.png?size=64" },
                                                         decorationData = recipient.avatar_decoration_data,
-                                                        size = 24.dp,
+                                                        size = 32.dp,
                                                         status = presenceStore.getUserStatus(recipient.id, currentUser?.id, settingsStore.userSettings?.status)
                                                     )
                                                 }
@@ -940,7 +951,14 @@ private fun MainBaseplateContent(
                                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
                                         }
-                                    } else if (activeChannel?.type != 1 && activeChannel?.type != 3) {
+                                    } else if (activeChannel?.type == 1 || activeChannel?.type == 3) {
+                                        IconButton(onClick = { panelState.openStart() }) {
+                                            Icon(
+                                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                                contentDescription = "Back"
+                                            )
+                                        }
+                                    } else {
                                         IconButton(onClick = { panelState.openStart() }) {
                                             Icon(
                                                 imageVector = Icons.Filled.Menu,
