@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
@@ -85,7 +85,7 @@ fun ChatArea(
 
     val themeBackgroundUrl = themeStore.themeBackgroundUrl ?: ""
     val themeBackgroundAlpha = themeStore.themeBackgroundAlpha
-    
+
     val backgroundUrl = if (themeBackgroundUrl.isNotEmpty()) themeBackgroundUrl else settingsStore.chatBackground
 
     val channelId = navigationStore.selectedChannel?.id
@@ -135,10 +135,10 @@ fun ChatArea(
             )
         }
     }
-    
+
     val latestMessageId = messages.firstOrNull()?.id
     val coroutineScope = rememberCoroutineScope()
-    
+
     LaunchedEffect(latestMessageId) {
         if (latestMessageId != null) {
             if (scrollState.firstVisibleItemIndex <= 1) {
@@ -152,7 +152,7 @@ fun ChatArea(
             val index = messages.indexOfFirst { it.id == messageId }
             if (index != -1) {
                 messageStore.highlightedMessageId = messageId
-                
+
                 val visibleItems = scrollState.layoutInfo.visibleItemsInfo
                 val viewportHeight = scrollState.layoutInfo.viewportSize.height
 
@@ -221,14 +221,13 @@ fun ChatArea(
                 .fillMaxSize(),
             reverseLayout = true
         ) {
-            items(
+            itemsIndexed(
                 items = filteredMessages,
-                key = { it.id }
-            ) { message ->
-                val index = filteredMessages.indexOf(message)
+                key = { _, message -> message.id }
+            ) { index, message ->
                 val priorMessage = filteredMessages.getOrNull(index + 1)
                 val nextMessage = filteredMessages.getOrNull(index - 1)
-                
+
                 val showDateSeparator = remember(message, priorMessage) {
                     if (priorMessage == null) return@remember true
                     try {
@@ -369,7 +368,7 @@ fun ChatArea(
                     Icon(
                         imageVector = Icons.Filled.ArrowDownward, 
                         contentDescription = null, 
-                        modifier = Modifier.size(14.dp), 
+                        modifier = Modifier.size(14.dp),
                         tint = MaterialTheme.colorScheme.onPrimary
                     )
                     Spacer(Modifier.width(6.dp))
