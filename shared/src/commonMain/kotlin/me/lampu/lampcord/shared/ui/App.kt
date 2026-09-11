@@ -6,6 +6,7 @@ import androidx.compose.ui.graphics.Color
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.compose.setSingletonImageLoaderFactory
+import coil3.memory.MemoryCache
 import coil3.request.crossfade
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.settings.ThemeMode
@@ -55,6 +56,8 @@ fun App() {
 
 fun newImageLoader(context: PlatformContext): ImageLoader {
     return addPlatformImageDecoders(ImageLoader.Builder(context))
+        // Limit the heap cache to 15%.
+        .memoryCache { MemoryCache.Builder().maxSizePercent(context, 0.15).build() }
         .crossfade(!Settings.shared.reduceMotion)
         .build()
 }

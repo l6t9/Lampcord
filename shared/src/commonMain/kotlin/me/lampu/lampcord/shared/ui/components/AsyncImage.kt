@@ -36,6 +36,7 @@ import coil3.compose.LocalPlatformContext
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import coil3.size.Precision
 import kotlin.io.encoding.ExperimentalEncodingApi
 import me.lampu.lampcord.shared.model.TWEMOJI_CDN_BASE_URL
 import me.lampu.lampcord.shared.settings.Settings
@@ -57,7 +58,8 @@ fun AsyncImage(
     filterQuality: FilterQuality = FilterQuality.High,
     shape: Shape? = null,
     showPlaceholder: Boolean = true,
-    placeholderHash: String? = null
+    placeholderHash: String? = null,
+    size: Int? = null
 ) {
     val context = LocalPlatformContext.current
     val isDesktop = remember { getPlatformName() != "android" && getPlatformName() != "ios" }
@@ -71,7 +73,7 @@ fun AsyncImage(
     var useOriginalModel by remember(model, reducedMotion) { mutableStateOf(false) }
     val effectiveModel = if (useOriginalModel) model else staticModel
     
-    val request = remember(effectiveModel, reducedMotion, lowMemoryMode) {
+    val request = remember(effectiveModel, reducedMotion, lowMemoryMode, size) {
         val requestModel = (effectiveModel as? String)
             ?.takeIf { it.startsWith("$TWEMOJI_CDN_BASE_URL/") }
             ?.substringAfterLast('/')

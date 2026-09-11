@@ -12,6 +12,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.AvatarDecorationData
@@ -25,7 +26,8 @@ fun AvatarWithDecoration(
     decorationData: AvatarDecorationData?,
     size: Dp,
     modifier: Modifier = Modifier,
-    status: String? = null
+    status: String? = null,
+    animated: Boolean = !Settings.shared.reduceMotion
 ) {
     val avatarCandidates = remember(avatarUrl, fallbackAvatarUrl) {
         buildList {
@@ -38,6 +40,9 @@ fun AvatarWithDecoration(
         }.distinct()
     }
     var avatarCandidateIndex by remember(avatarCandidates) { mutableStateOf(0) }
+    // Decode straight to the drawn size instead of the CDN size.
+    val sizePx = with(LocalDensity.current) { size.roundToPx() }
+
     Box(modifier = modifier.size(size)) {
         Surface(
             modifier = Modifier.fillMaxSize(),
@@ -52,6 +57,7 @@ fun AvatarWithDecoration(
                     modifier = Modifier.fillMaxSize(),
                     contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                     filterQuality = androidx.compose.ui.graphics.FilterQuality.High,
+                    size = sizePx,
                     onState = { state ->
                         if (state is AsyncImagePainter.State.Error && avatarCandidateIndex < avatarCandidates.lastIndex) {
                             avatarCandidateIndex++
@@ -61,17 +67,20 @@ fun AvatarWithDecoration(
             }
         }
 
-        // Decorations can be animated APNGs. Hide them while motion is
-        // reduced instead of letting the CDN animation continue.
-        if (decorationData != null && !Settings.shared.reduceMotion) {
-            val decorationUrl = "https://cdn.discordapp.com/avatar-decoration-presets/${decorationData.asset}.png"
+        // Decorations can be animated APNGs.
+        if (decorationData != null) {
+            val decorationUrl = remember(decorationData.asset, animated) {
+                val base = "https://cdn.discordapp.com/avatar-decoration-presets/${decorationData.asset}.png"
+                if (animated) base else "$base?size=96&passthrough=false"
+            }
             AsyncImage(
                 model = decorationUrl,
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxSize()
                     .scale(1.15f),
-                filterQuality = androidx.compose.ui.graphics.FilterQuality.High
+                filterQuality = androidx.compose.ui.graphics.FilterQuality.High,
+                size = sizePx
             )
         }
 
