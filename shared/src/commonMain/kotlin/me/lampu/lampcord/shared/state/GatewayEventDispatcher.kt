@@ -7,6 +7,9 @@ import me.lampu.lampcord.shared.utils.Logging
 interface GatewayEventHandler {
     val supportedEvents: Set<String>
     fun handleEvent(type: String, data: JsonElement?)
+    fun handlePayload(payload: GatewayPayload) {
+        handleEvent(payload.t ?: return, payload.d)
+    }
 }
 
 class GatewayEventDispatcher(
@@ -33,7 +36,7 @@ class GatewayEventDispatcher(
             // the collector dies), which is exactly the "messages stop syncing
             // until I restart" symptom.
             try {
-                handler.handleEvent(type, payload.d)
+                handler.handlePayload(payload)
             } catch (e: kotlin.coroutines.cancellation.CancellationException) {
                 throw e
             } catch (e: Exception) {

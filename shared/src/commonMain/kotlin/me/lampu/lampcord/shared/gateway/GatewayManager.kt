@@ -9,16 +9,26 @@ import io.ktor.websocket.Frame
 import io.ktor.websocket.close
 import io.ktor.websocket.readText
 import io.ktor.websocket.send
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.ClosedReceiveChannelException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
@@ -26,6 +36,7 @@ import kotlinx.serialization.json.add
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
@@ -38,8 +49,10 @@ import me.lampu.lampcord.shared.model.Activity
 import me.lampu.lampcord.shared.model.GatewayPayload
 import me.lampu.lampcord.shared.model.Identify
 import me.lampu.lampcord.shared.model.IdentifyClientState
+import me.lampu.lampcord.shared.model.MemberListUpdate
 import me.lampu.lampcord.shared.model.Resume
 import me.lampu.lampcord.shared.utils.Logging
+import me.lampu.lampcord.shared.utils.NetworkMonitor
 import me.lampu.lampcord.shared.utils.getCpuCoreCount
 import me.lampu.lampcord.shared.utils.getCurrentTimeMillis
 import me.lampu.lampcord.shared.utils.getDeviceName
@@ -47,24 +60,39 @@ import me.lampu.lampcord.shared.utils.getMemoryMemory
 import me.lampu.lampcord.shared.utils.getOsSdkVersion
 import me.lampu.lampcord.shared.utils.getPlatformName
 import me.lampu.lampcord.shared.utils.randomUUID
+import kotlin.concurrent.Volatile
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
+
+private const val SEND_WINDOW_MS = 60_000L
+private const val SEND_LIMIT = 110
 
 class GatewayManager(
     private val client: HttpClient,
     private val authApi: AuthApi,
     private val rest: RestClient,
     private val readStateStore: me.lampu.lampcord.shared.state.ReadStateStore? = null,
-    private val json: Json = Json { 
-        ignoreUnknownKeys = true 
+    private val json: Json = Json {
+        ignoreUnknownKeys = true
         explicitNulls = false
     }
 ) {
     private var session: DefaultClientWebSocketSession? = null
     private var connectionJob: Job? = null
-    private val _events = MutableSharedFlow<GatewayPayload>()
+    private val _events = MutableSharedFlow<GatewayPayload>(
+        extraBufferCapacity = 4096,
+        onBufferOverflow = BufferOverflow.SUSPEND
+    )
     val events: SharedFlow<GatewayPayload> = _events.asSharedFlow()
+
+    // Rate-limited queue except for HEARTBEAT, IDENTIFY, and RESUME bypass).
+    private val queue = ArrayDeque<GatewayPayload>()
+    private val lazyQueue = LinkedHashMap<String, GatewayPayload>()
+    private val queueLock = Mutex()
+    private val queueChannel = Channel<Unit>(Channel.CONFLATED)
+    private val sendTimes = ArrayDeque<Long>()
+    @Volatile private var authenticated = false
 
     private var heartbeatJob: Job? = null
     private var heartbeatAckReceived = true
@@ -76,7 +104,7 @@ class GatewayManager(
     private var clientHeartbeatSessionId = randomUUID()
     private val clientLaunchId = randomUUID()
     private val launchSignature = (getCurrentTimeMillis() * 1_000_000L).toString()
-    
+
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     private var reconnectAttempt = 0
@@ -104,7 +132,7 @@ class GatewayManager(
     }
 
     fun connect(token: String) {
-        disconnect()
+        destroy()
         Logging.i("Gateway", "Connecting to Discord Gateway...")
         connectionJob = scope.launch {
             try {
@@ -144,99 +172,193 @@ class GatewayManager(
                     Logging.i("Gateway", "WebSocket connected.")
                     session = this
                     reconnectAttempt = 0
-                    
+                    authenticated = false
+                    sendTimes.clear()
+                    val sender = launch { drainQueue(this@webSocket) }
+
                     while (isActive) {
                         try {
                             val frame = incoming.receive()
                             if (frame is Frame.Text) {
-                                val text = frame.readText()
-                                val payload = json.decodeFromString<GatewayPayload>(text)
+                                val payload = decodePayload(frame.readText())
                                 lastSequence = payload.s ?: lastSequence
                                 handlePayload(payload, token)
-                                _events.emit(payload)
-                            } else if (frame is Frame.Close) {
-                                val reason = closeReason.await()
-                                Logging.w("Gateway", "WebSocket closed: $reason")
-                                val code = reason?.code?.toInt() ?: 0
-                                if (code == 4004 || code == 4003) {
-                                    _events.emit(GatewayPayload(op = -1, t = "AUTH_FAILED"))
-                                    disconnect()
-                                    return@webSocket
+                                if (payload.op == 0) _events.emit(payload)
+                            }
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: ClosedReceiveChannelException) {
+                            // A closed incoming channel is the normal end of a socket.
+                            Logging.w("Gateway", "WebSocket terminated unexpectedly", e)
+                            val reason = withTimeoutOrNull(2.seconds) { closeReason.await() }
+                            when (reason?.code?.toInt()) {
+                                4003, 4004 -> {
+                                    _events.tryEmit(GatewayPayload(op = -1, t = "AUTH_FAILED"))
+                                    disconnect("auth failed ${reason.code}")
                                 }
                             }
+                            break
                         } catch (e: Exception) {
                             Logging.e("Gateway", "Error in WebSocket loop", e)
                             break
                         }
                     }
+                    sender.cancel()
+                    val reason = withContext(NonCancellable) {
+                        withTimeoutOrNull(1.seconds) { closeReason.await() }
+                    }
+                    Logging.w("Gateway", "WebSocket closed: code=${reason?.code} reason=${reason?.message}")
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Logging.e("Gateway", "Connection failed", e)
             } finally {
                 Logging.i("Gateway", "Cleaning up connection...")
                 session = null
+                authenticated = false
                 stopHeartbeat()
                 stopTimeSpentUpdates()
                 stopHelloTimeout()
-                
+                // A new session starts with no server side subscriptions.
+                withContext(NonCancellable) { queueLock.withLock { lazyQueue.clear() } }
+
                 if (isActive) {
                     reconnectAttempt++
-                    val delay = (1000 * (1 shl (reconnectAttempt - 1))).milliseconds.coerceAtMost(maxReconnectDelay)
+                    // 1 shl 22 * 1000 overflows Int and would produce a zero delay.
+                    val delay = (1.seconds * (1 shl (reconnectAttempt - 1).coerceAtMost(5))).coerceAtMost(maxReconnectDelay)
                     Logging.i("Gateway", "Reconnecting in $delay (attempt $reconnectAttempt)...")
                     delay(delay)
+                    if (!NetworkMonitor.isOnline.value) {
+                        Logging.i("Gateway", "Offline. Waiting for network...")
+                        NetworkMonitor.isOnline.first { it }
+                        reconnectAttempt = 0
+                    }
                     connect(token)
                 }
             }
         }
     }
 
-    fun disconnect() {
+    fun disconnect(reason: String = "requested") {
+        Logging.i("Gateway", "Disconnecting: $reason")
+        destroy()
+    }
+
+    private fun destroy() {
         connectionJob?.cancel()
         connectionJob = null
         session = null
+        authenticated = false
         stopHeartbeat()
         stopTimeSpentUpdates()
         stopHelloTimeout()
         guildSubscriptions.clear()
+        scope.launch { queueLock.withLock { lazyQueue.clear() } }
+    }
+
+    // Decode the heavy dispatch events outside the UI thread.
+    private fun decodePayload(text: String): GatewayPayload {
+        val payload = json.decodeFromString<GatewayPayload>(text)
+
+        if (payload.t != "GUILD_MEMBER_LIST_UPDATE") return payload
+        val data = payload.d ?: return payload
+
+        val update = runCatching { json.decodeFromJsonElement<MemberListUpdate>(data) }.getOrNull() ?: return payload
+        return payload.copy(d = null).also { it.decoded = update }
+    }
+
+    private fun enqueue(payload: GatewayPayload) {
+        scope.launch {
+            queueLock.withLock { queue.addLast(payload) }
+            queueChannel.trySend(Unit)
+        }
+    }
+
+    private fun enqueueLazy(guildId: String, payload: GatewayPayload) {
+        scope.launch {
+            queueLock.withLock { lazyQueue[guildId] = payload }
+            queueChannel.trySend(Unit)
+        }
+    }
+
+    private suspend fun drainQueue(socket: DefaultClientWebSocketSession) {
+        for (signal in queueChannel) {
+            while (true) {
+                var next = queueLock.withLock { if (authenticated) queue.removeFirstOrNull() else null }
+                if (next == null) {
+                    val hasLazy = queueLock.withLock { authenticated && lazyQueue.isNotEmpty() }
+                    if (!hasLazy) break
+                    delay(100.milliseconds)
+                    next = queueLock.withLock {
+                        lazyQueue.keys.firstOrNull()?.let { lazyQueue.remove(it) }
+                    } ?: continue
+                }
+                awaitSendSlot()
+                if (Logging.debugEnabled) Logging.d("Gateway", "send op=${next.op} window60s=${sendTimes.size}")
+                try {
+                    socket.send(json.encodeToString(next))
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Logging.e("Gateway", "Send failed for op ${next.op}", e)
+                    return
+                }
+            }
+        }
+    }
+
+    private suspend fun awaitSendSlot() {
+        while (true) {
+            val now = getCurrentTimeMillis()
+            while (sendTimes.isNotEmpty() && now - sendTimes.first() >= SEND_WINDOW_MS) sendTimes.removeFirst()
+            if (sendTimes.size < SEND_LIMIT) break
+            val wait = SEND_WINDOW_MS - (now - sendTimes.first())
+            Logging.w("Gateway", "Send budget exhausted, pausing ${wait}ms")
+            delay(wait.milliseconds)
+        }
+        sendTimes.addLast(getCurrentTimeMillis())
     }
 
     private suspend fun handlePayload(payload: GatewayPayload, token: String) {
         when (payload.op) {
-            10 -> { 
+            10 -> {
                 stopHelloTimeout()
                 val heartbeatInterval = payload.d?.jsonObject?.get("heartbeat_interval")?.jsonPrimitive?.let {
                     it.longOrNull ?: it.doubleOrNull?.toLong()
                 } ?: 41250
                 startHeartbeat(heartbeatInterval)
-                
+
                 if (sessionId != null && lastSequence != null) {
                     resume(token)
                 } else {
                     identify(token)
                 }
             }
-            0 -> { 
+            0 -> {
                 when (payload.t) {
                     "READY" -> {
                         val data = payload.d?.jsonObject
                         sessionId = data?.get("session_id")?.jsonPrimitive?.content
                         resumeGatewayUrl = data?.get("resume_gateway_url")?.jsonPrimitive?.content
                         Logging.i("Gateway", "READY. Session: $sessionId")
+                        markAuthenticated()
                         startTimeSpentUpdates()
                     }
                     "RESUMED" -> {
                         Logging.i("Gateway", "RESUMED session $sessionId")
+                        markAuthenticated()
                     }
                 }
             }
-            1 -> { 
+            1 -> {
                 sendHeartbeat()
             }
-            7 -> { 
-                disconnect()
+            7 -> {
+                disconnect("server requested reconnect (op 7)")
                 connect(token)
             }
-            9 -> { 
+            9 -> {
                 val resumable = payload.d?.jsonPrimitive?.boolean ?: false
                 Logging.w("Gateway", "Invalid session. Resumable: $resumable")
                 if (!resumable) {
@@ -274,11 +396,16 @@ class GatewayManager(
         heartbeatJob = null
     }
 
+    private fun markAuthenticated() {
+        authenticated = true
+        queueChannel.trySend(Unit)
+    }
+
     private fun startHelloTimeout(token: String) {
         helloTimeoutJob?.cancel()
         helloTimeoutJob = scope.launch {
             delay(20.seconds)
-            disconnect()
+            disconnect("no HELLO within 20s")
             connect(token)
         }
     }
@@ -309,7 +436,7 @@ class GatewayManager(
             op = 1,
             d = lastSequence?.let { JsonPrimitive(it) } ?: JsonNull
         )
-        sendPayload(payload)
+        sendNow(payload)
     }
 
     fun sendExpeditedHeartbeat() {
@@ -318,7 +445,7 @@ class GatewayManager(
         }
     }
 
-    private suspend fun sendUpdateTimeSpent() {
+    private fun sendUpdateTimeSpent() {
         val payload = GatewayPayload(
             op = 41,
             d = buildJsonObject {
@@ -327,25 +454,27 @@ class GatewayManager(
                 put("client_launch_id", JsonPrimitive(clientHeartbeatSessionId))
             }
         )
-        sendPayload(payload)
+        enqueue(payload)
     }
 
     private suspend fun resume(token: String) {
-        Logging.i("Gateway", "Resuming session $sessionId at sequence $lastSequence")
+        val id = sessionId ?: return identify(token)
+        val seq = lastSequence ?: return identify(token)
+        Logging.i("Gateway", "Resuming session $id at sequence $seq")
         val resume = Resume(
             token = token,
-            session_id = sessionId!!,
-            seq = lastSequence!!
+            session_id = id,
+            seq = seq
         )
         val payload = GatewayPayload(op = 6, d = json.encodeToJsonElement(resume))
-        sendPayload(payload)
+        sendNow(payload)
     }
 
     private suspend fun identify(token: String) {
         Logging.i("Gateway", "Identifying...")
         val platform = getPlatformName()
         val isMobile = platform == "android" || platform == "ios"
-        
+
         val properties = buildMap {
             if (isMobile) {
                 put("os", JsonPrimitive(if (platform == "android") "Android" else "iOS"))
@@ -388,7 +517,7 @@ class GatewayManager(
             properties = properties,
             capabilities = 351,
             large_threshold = 100,
-            compress = false, 
+            compress = false,
             client_state = IdentifyClientState(
                 guild_hashes = emptyMap(),
                 highest_last_message_id = highestLastMessageId,
@@ -397,12 +526,16 @@ class GatewayManager(
             )
         )
         val payload = GatewayPayload(op = 2, d = json.encodeToJsonElement(identify))
-        sendPayload(payload)
+        sendNow(payload)
     }
 
+    // Public sends are queued behind authentication and the rate limit.
     suspend fun sendPayload(payload: GatewayPayload) {
-        val jsonString = json.encodeToString(payload)
-        session?.send(jsonString)
+        enqueue(payload)
+    }
+
+    private suspend fun sendNow(payload: GatewayPayload) {
+        session?.send(json.encodeToString(payload))
     }
 
     fun updatePresence(status: String?, activities: List<Activity>?) {
@@ -419,7 +552,7 @@ class GatewayManager(
                 put("since", JsonPrimitive(0))
             }
         )
-        scope.launch { sendPayload(payload) }
+        enqueue(payload)
     }
 
     fun sendSubscription(guildId: String) {
@@ -432,7 +565,7 @@ class GatewayManager(
                 put("threads", state.threads)
                 put("activities", state.activities)
                 put("members", buildJsonArray { state.members.forEach { add(it) } })
-                put("channels", buildJsonObject { 
+                put("channels", buildJsonObject {
                     state.channels.forEach { (chanId, ranges) ->
                         put(chanId, buildJsonArray {
                             ranges.forEach { range ->
@@ -444,7 +577,7 @@ class GatewayManager(
                 put("thread_member_lists", buildJsonArray { })
             }
         )
-        scope.launch { sendPayload(payload) }
+        enqueueLazy(guildId, payload)
     }
 
     fun sendVoiceStateUpdate(guildId: String?, channelId: String?, selfMute: Boolean = false, selfDeaf: Boolean = false, selfVideo: Boolean = false) {
@@ -458,12 +591,12 @@ class GatewayManager(
                 put("self_video", JsonPrimitive(selfVideo))
             }
         )
-        scope.launch { sendPayload(payload) }
+        enqueue(payload)
     }
 
     fun sendLazyRequest(guildId: String, channelId: String, ranges: List<List<Int>>) {
         val state = guildSubscriptions.getOrPut(guildId) { GuildSubscriptionState() }
-        
+
         state.updateChannel(channelId, ranges)
 
         val payload = GatewayPayload(
@@ -489,6 +622,6 @@ class GatewayManager(
                 })
             }
         )
-        scope.launch { sendPayload(payload) }
+        enqueueLazy(guildId, payload)
     }
 }

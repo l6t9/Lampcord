@@ -1,6 +1,7 @@
 package me.lampu.lampcord.shared.model
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import kotlinx.serialization.json.*
 
 @Serializable
@@ -9,7 +10,10 @@ data class GatewayPayload(
     val d: JsonElement? = null,
     val s: Int? = null,
     val t: String? = null
-)
+) {
+    @Transient
+    var decoded: Any? = null
+}
 
 @Serializable
 data class Identify(
