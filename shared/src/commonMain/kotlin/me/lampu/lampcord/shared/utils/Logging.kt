@@ -31,6 +31,9 @@ object Logging {
     @Volatile
     private var clearRequested = false
 
+    @Volatile
+    var debugEnabled: Boolean = false
+
     data class LogEntry(
         val timestamp: Long = DateTimeUtils.now(),
         val level: String,
@@ -99,7 +102,7 @@ object Logging {
             throwable = throwable?.stackTraceToString()
         )
 
-        println(entry.toString())
+        if (debugEnabled) println(entry.toString())
         incoming.trySend(entry)
         platformLog(level, tag, message, throwable)
     }
@@ -112,6 +115,7 @@ object Logging {
     }
 
     fun d(tag: String = TAG, message: String, throwable: Throwable? = null) {
+        if (!debugEnabled) return
         addLog("D", tag, message, throwable)
     }
 

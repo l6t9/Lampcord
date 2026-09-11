@@ -8,7 +8,6 @@ import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.cookies.HttpCookies
 import io.ktor.client.plugins.websocket.WebSockets
-import io.ktor.client.plugins.observer.ResponseObserver
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.header
 import io.ktor.client.statement.HttpResponse
@@ -17,7 +16,6 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.buildJsonObject
@@ -27,6 +25,7 @@ import me.lampu.lampcord.shared.utils.getDeviceName
 import me.lampu.lampcord.shared.utils.getOsVersion
 import me.lampu.lampcord.shared.utils.getPlatformName
 import me.lampu.lampcord.shared.utils.randomUUID
+import me.lampu.lampcord.shared.utils.Logging as SharedLogging
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
@@ -154,8 +153,8 @@ fun createHttpClient() = HttpClient(CIO) {
         socketTimeoutMillis = 15000
     }
     install(Logging) {
-        logger = me.lampu.lampcord.shared.utils.Logging.ktorLogger
-        level = LogLevel.INFO
+        logger = SharedLogging.ktorLogger
+        level = if (SharedLogging.debugEnabled) LogLevel.INFO else LogLevel.NONE
     }
     install(ContentNegotiation) {
         json(Json {

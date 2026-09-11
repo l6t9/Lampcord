@@ -27,6 +27,7 @@ import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.settings.ThemeMode
 import me.lampu.lampcord.shared.ui.App
 import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.utils.Logging
 import me.lampu.lampcord.shared.utils.getPlatformName
 import me.lampu.lampcord.shared.utils.reloadTrigger
 import me.lampu.lampcord.ui.WaylandDensityProvider
@@ -38,8 +39,11 @@ import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
 
 fun main() {
+    // Read before building the HTTP client.
+    Logging.debugEnabled = Settings.shared.verboseLogging
+
     WaylandScale.detectAndApply()
-    
+
     fun initApp() {
         stopKoin()
         startKoin {

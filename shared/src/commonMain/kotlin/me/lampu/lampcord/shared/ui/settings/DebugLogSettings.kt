@@ -22,7 +22,6 @@ import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.Logging
 import me.lampu.lampcord.shared.utils.DateTimeUtils
 import me.lampu.lampcord.shared.settings.Settings
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,7 +31,8 @@ fun DebugLogScreen(onBack: () -> Unit) {
     var filterTag by remember { mutableStateOf<String?>(null) }
     var searchQuery by remember { mutableStateOf("") }
     var autoScroll by remember { mutableStateOf(true) }
-    
+    var verboseLogging by remember { mutableStateOf(Settings.shared.verboseLogging) }
+
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
 
@@ -93,6 +93,16 @@ fun DebugLogScreen(onBack: () -> Unit) {
                     selected = autoScroll,
                     onClick = { autoScroll = !autoScroll },
                     label = { Text("Auto-scroll") }
+                )
+
+                FilterChip(
+                    selected = verboseLogging,
+                    onClick = {
+                        verboseLogging = !verboseLogging
+                        Settings.shared.verboseLogging = verboseLogging
+                        Logging.debugEnabled = verboseLogging
+                    },
+                    label = { Text("Debug") }
                 )
             }
 
