@@ -173,8 +173,9 @@ fun DiscordPanels(
                             scaleX = scale
                             scaleY = scale
                         } else {
-                            // Minimal: Slight parallax translation, no scale/alpha
-                            translationX = (progress - 1f) * (sidePanelWidthPx * 0.1f)
+                            // Minimal matches Discord's OverlappingPanelsLayout:
+                            // side panels stay fixed, only the center panel slides over them.
+                            translationX = 0f
                         }
                     }
                     .zIndex(if (progress > 0) 1f else 0f)
@@ -209,8 +210,9 @@ fun DiscordPanels(
                             scaleX = scale
                             scaleY = scale
                         } else {
-                            // Minimal: Slight parallax translation, no scale/alpha
-                            translationX = (progress + 1f) * (sidePanelWidthPx * 0.1f)
+                            // Minimal matches Discord's OverlappingPanelsLayout:
+                            // side panels stay fixed, only the center panel slides over them.
+                            translationX = 0f
                         }
                     }
                     .zIndex(if (progress < 0) 1f else 0f)
