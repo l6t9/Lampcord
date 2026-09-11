@@ -1,20 +1,13 @@
 package me.lampu.lampcord.shared.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.compose.setSingletonImageLoaderFactory
 import coil3.request.crossfade
+import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.settings.ThemeMode
 import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.theme.LampcordTheme
@@ -25,7 +18,7 @@ import org.koin.compose.koinInject
 @Composable
 fun App() {
     val settingsStore: SettingsStore = koinInject()
-    
+
     val useDarkTheme = when (settingsStore.themeMode) {
         ThemeMode.LIGHT -> false
         ThemeMode.DARK -> true
@@ -37,7 +30,7 @@ fun App() {
     val seedColor = remember(settingsStore.accentColor) {
         try {
             Color(settingsStore.accentColor.removePrefix("#").toLong(16) or 0xFF000000)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             Color(0xFF6750A4)
         }
     }
@@ -62,7 +55,7 @@ fun App() {
 
 fun newImageLoader(context: PlatformContext): ImageLoader {
     return addPlatformImageDecoders(ImageLoader.Builder(context))
-        .crossfade(true)
+        .crossfade(!Settings.shared.reduceMotion)
         .build()
 }
 
