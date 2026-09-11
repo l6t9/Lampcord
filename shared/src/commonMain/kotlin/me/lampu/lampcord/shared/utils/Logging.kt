@@ -3,21 +3,33 @@ package me.lampu.lampcord.shared.utils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import kotlin.concurrent.Volatile
+import kotlin.time.Duration.Companion.milliseconds
 
 object Logging {
-    private val logger: Logger = LoggerFactory.getLogger("lampcord")
+    private const val TAG = "lampcord"
     private val _logs = MutableStateFlow<List<LogEntry>>(emptyList())
     val logs: StateFlow<List<LogEntry>> = _logs.asStateFlow()
     private const val MAX_LOGS = 2000
+    private val FLUSH_INTERVAL_MS = 2000L.milliseconds
 
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+
+    // Logging must never block the thread that is logging.
+    private val incoming = Channel<LogEntry>(
+        capacity = 1024,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
+
+    @Volatile
+    private var clearRequested = false
 
     data class LogEntry(
         val timestamp: Long = DateTimeUtils.now(),
@@ -29,8 +41,54 @@ object Logging {
         override fun toString(): String = "${DateTimeUtils.formatLogTimestamp(timestamp)} $level/$tag: $message"
     }
 
+    @Volatile
+    private var pendingChanges: List<LogEntry>? = null
+
     init {
+        scope.launch { dumpLoop() }
+        scope.launch { flushLoop() }
         i("System", "Lampcord Logging initialized. Platform: ${getPlatformName()}, Version: 1.0.0")
+    }
+
+    private suspend fun dumpLoop() {
+        val buffer = ArrayDeque<LogEntry>()
+
+        while (true) {
+            // Block receive without timeout and clearing buffer before appending prevents data loss.
+            val entry = incoming.receive()
+
+            if (clearRequested) {
+                clearRequested = false
+                buffer.clear()
+            }
+
+            buffer.append(entry)
+
+            // Stack queue and dump it in a single go.
+            while (true) {
+                val next = incoming.tryReceive().getOrNull() ?: break
+                buffer.append(next)
+            }
+
+            val snapshot = buffer.toList()
+            _logs.value = snapshot
+            pendingChanges = snapshot
+        }
+    }
+
+    private suspend fun flushLoop() {
+        while (true) {
+            delay(FLUSH_INTERVAL_MS)
+
+            val snapshot = pendingChanges ?: continue
+            pendingChanges = null
+
+            try {
+                writeInternalFile("lampcord_debug.log", snapshot.joinToString("\n"))
+            } catch (e: Exception) {
+                e("Logging", "Error writing log file", e)
+            }
+        }
     }
 
     private fun addLog(level: String, tag: String, message: String, throwable: Throwable? = null) {
@@ -40,75 +98,37 @@ object Logging {
             message = message,
             throwable = throwable?.stackTraceToString()
         )
-        
-        println(entry.toString())
-        throwable?.printStackTrace()
-        
-        _logs.update { current ->
-            val newList = current.toMutableList()
-            if (newList.size >= MAX_LOGS) {
-                newList.removeAt(0)
-            }
-            newList.add(entry)
-            newList
-        }
 
-        // Periodically flush to disk
-        scope.launch(Dispatchers.Default) {
-            try {
-                // We'll write the full log buffer to a file every 50 logs
-                if (_logs.value.size % 50 == 0) {
-                    val logContent = _logs.value.joinToString("\n")
-                    writeInternalFile("lampcord_debug.log", logContent)
-                }
-            } catch (_: Exception) {}
-        }
+        println(entry.toString())
+        incoming.trySend(entry)
+        platformLog(level, tag, message, throwable)
     }
 
     fun getLogs(): List<LogEntry> = _logs.value
 
     fun clear() {
+        clearRequested = true
         _logs.value = emptyList()
     }
 
-    fun d(tag: String = "lampcord", message: String, throwable: Throwable? = null) {
+    fun d(tag: String = TAG, message: String, throwable: Throwable? = null) {
         addLog("D", tag, message, throwable)
-        when (throwable) {
-            null -> logger.debug("[$tag] $message")
-            else -> logger.debug("[$tag] $message", throwable)
-        }
     }
 
-    fun i(tag: String = "lampcord", message: String, throwable: Throwable? = null) {
+    fun i(tag: String = TAG, message: String, throwable: Throwable? = null) {
         addLog("I", tag, message, throwable)
-        when (throwable) {
-            null -> logger.info("[$tag] $message")
-            else -> logger.info("[$tag] $message", throwable)
-        }
     }
 
-    fun w(tag: String = "lampcord", message: String, throwable: Throwable? = null) {
+    fun w(tag: String = TAG, message: String, throwable: Throwable? = null) {
         addLog("W", tag, message, throwable)
-        when (throwable) {
-            null -> logger.warn("[$tag] $message")
-            else -> logger.warn("[$tag] $message", throwable)
-        }
     }
 
-    fun e(tag: String = "lampcord", message: String, throwable: Throwable? = null) {
+    fun e(tag: String = TAG, message: String, throwable: Throwable? = null) {
         addLog("E", tag, message, throwable)
-        when (throwable) {
-            null -> logger.error("[$tag] $message")
-            else -> logger.error("[$tag] $message", throwable)
-        }
     }
 
-    fun wtf(tag: String = "lampcord", message: String, throwable: Throwable? = null) {
+    fun wtf(tag: String = TAG, message: String, throwable: Throwable? = null) {
         addLog("WTF", tag, message, throwable)
-        when (throwable) {
-            null -> logger.error("[$tag] $message")
-            else -> logger.error("[$tag] $message", throwable)
-        }
     }
 
     val ktorLogger = object : io.ktor.client.plugins.logging.Logger {
@@ -117,5 +137,10 @@ object Logging {
             // Ktor logs can be very verbose, so we log them as Debug by default
             d("Ktor", message)
         }
+    }
+
+    private fun ArrayDeque<LogEntry>.append(entry: LogEntry) {
+        addLast(entry)
+        while (size > MAX_LOGS) removeFirst()
     }
 }

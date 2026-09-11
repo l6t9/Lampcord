@@ -68,7 +68,13 @@ kotlin {
     applyDefaultHierarchyTemplate()
     
     sourceSets {
-        val jvmSharedMain by creating { dependsOn(commonMain.get()) }
+        val jvmSharedMain by creating {
+            dependsOn(commonMain.get())
+            dependencies {
+                // slf4j is JVM-only.
+                implementation(libs.slf4j.simple)
+            }
+        }
         getByName("androidMain").dependsOn(jvmSharedMain)
         getByName("desktopMain").dependsOn(jvmSharedMain)
         getByName("desktopMain").resources.srcDir(packageVoiceDesktop)
@@ -93,7 +99,6 @@ kotlin {
             implementation(libs.ktor.client.content.negotiation)
             implementation(libs.ktor.serialization.kotlinx.json)
             implementation(libs.ktor.client.websockets)
-            implementation(libs.slf4j.simple)
             implementation(libs.ktor.client.logging)
             
             api(libs.koin.core)
