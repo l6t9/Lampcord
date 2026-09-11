@@ -1,6 +1,5 @@
 package me.lampu.lampcord.shared.ui.components.members
 
-import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,7 +16,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -25,23 +24,25 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.Member
+import me.lampu.lampcord.shared.model.User
 import me.lampu.lampcord.shared.api.CdnUrls
 import me.lampu.lampcord.shared.state.MessageStore
 import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.state.PresenceStore
 import me.lampu.lampcord.shared.state.ProfileStore
 import me.lampu.lampcord.shared.state.RelationshipStore
-import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.AvatarWithDecoration
@@ -58,28 +59,32 @@ import org.koin.compose.koinInject
 @Composable
 fun MemberItem(
     member: Member,
+    env: MemberRowEnv,
     userStore: UserStore = koinInject(),
     navigationStore: NavigationStore = koinInject(),
-    settingsStore: SettingsStore = koinInject(),
     profileStore: ProfileStore = koinInject(),
     messageStore: MessageStore = koinInject(),
-    presenceStore: PresenceStore = koinInject()
+    presenceStore: PresenceStore = koinInject(),
+    relationshipStore: RelationshipStore = koinInject()
 ) {
     val user = remember(member, userStore) {
         member.user ?: member.userId()?.let { userStore.getUser(it) }
     }
-    
-    val displayUser = user ?: member.user ?: me.lampu.lampcord.shared.model.User(id = member.userId() ?: return)
-    
-    val guildId = navigationStore.selectedGuild?.id
-    val avatarUrl = member.avatar?.let {
-        "https://cdn.discordapp.com/guilds/$guildId/users/${displayUser.id}/avatars/$it.png"
-    } ?: CdnUrls.getUserAvatarUrl(displayUser.id, displayUser.avatar, 64)
 
-    val roleData = remember(member.roles, navigationStore.selectedGuild) {
-        val guild = navigationStore.selectedGuild ?: return@remember null
-        val colorRole = member.getRoleColorRole(guild)
-        
+    val displayUser = user ?: member.user ?: User(id = member.userId() ?: return)
+    val userId = displayUser.id
+
+    val guild = env.guild
+    val guildId = guild?.id
+    val avatarUrl = remember(member.avatar, guildId, userId, displayUser.avatar, env.animate) {
+        member.avatar?.let {
+            "https://cdn.discordapp.com/guilds/$guildId/users/$userId/avatars/$it.png"
+        } ?: CdnUrls.getUserAvatarUrl(userId, displayUser.avatar, 64)
+    }
+
+    val roleData = remember(member.roles, guild) {
+        val colorRole = member.getRoleColorRole(guild ?: return@remember null)
+
         if (colorRole != null) {
             val primaryInt = colorRole.colors?.primary_color ?: colorRole.color
             val gradient = if (colorRole.colors?.secondary_color != null) {
@@ -97,82 +102,81 @@ fun MemberItem(
     val roleColor = roleData?.first ?: Color.Unspecified
     val roleGradient = roleData?.second
 
-    val relationshipStore = koinInject<RelationshipStore>()
-    val relationships by relationshipStore.relationships.collectAsState()
-    val currentUserId = userStore.currentUser.collectAsState().value?.id
-    val relationshipType = remember(relationships, displayUser.id) {
-        relationships.find { (it.id ?: it.user?.id ?: it.user_id) == displayUser.id }?.type
+    // Row only recomposes when there is entry changes.
+    val relationshipType by remember(userId, env) {
+        derivedStateOf { env.relationshipTypes.value[userId] }
+    }
+    val presence by remember(member.presence, userId, env) {
+        derivedStateOf { member.presence ?: env.presences.value[userId] }
     }
 
     val errorColor = MaterialTheme.colorScheme.error
-    val contextMenuItems = remember(displayUser, settingsStore.userSettings, relationshipType, currentUserId, errorColor) {
-        val isMe = displayUser.id == currentUserId
+    val contextMenuItems = remember(displayUser, env.developerMode, relationshipType, env.currentUserId, errorColor) {
+        val isMe = userId == env.currentUserId
         val items = mutableListOf<ContextMenuItem>()
-        items.add(ContextMenuItem("Profile", Icons.Filled.AccountCircle, onClick = { profileStore.showProfile(displayUser.id, guildId) }, group = "Primary"))
+        items.add(ContextMenuItem("Profile", Icons.Filled.AccountCircle, onClick = { profileStore.showProfile(userId, guildId) }, group = "Primary"))
         items.add(ContextMenuItem("Mention", Icons.Rounded.AlternateEmail, onClick = {
             val channelId = navigationStore.selectedChannel?.id ?: return@ContextMenuItem
             val current = messageStore.draftMessages[channelId] ?: ""
-            messageStore.draftMessages[channelId] = "$current <@${displayUser.id}> "
+            messageStore.draftMessages[channelId] = "$current <@$userId> "
         }, group = "Primary"))
-        items.add(ContextMenuItem("Message", Icons.Filled.Chat, onClick = { navigationStore.openDm(displayUser.id) }, group = "Primary"))
+        items.add(ContextMenuItem("Message", Icons.Filled.Chat, onClick = { navigationStore.openDm(userId) }, group = "Primary"))
 
         if (!isMe) {
             when (relationshipType) {
                 1 -> items.add(ContextMenuItem("Remove Friend", Icons.Filled.PersonRemove, onClick = {
-                    relationshipStore.removeFriend(displayUser.id)
+                    relationshipStore.removeFriend(userId)
                 }, group = "Social"))
                 2 -> items.add(ContextMenuItem("Unblock", Icons.Filled.Block, onClick = {
-                    relationshipStore.unblockUser(displayUser.id)
+                    relationshipStore.unblockUser(userId)
                 }, group = "Social"))
                 3 -> items.add(ContextMenuItem("Accept Friend Request", Icons.Filled.PersonAdd, onClick = {
-                    relationshipStore.addFriend(displayUser.id)
+                    relationshipStore.addFriend(userId)
                 }, group = "Social"))
                 else -> items.add(ContextMenuItem("Add Friend", Icons.Filled.PersonAdd, onClick = {
-                    relationshipStore.addFriend(displayUser.id)
+                    relationshipStore.addFriend(userId)
                 }, group = "Social"))
             }
             items.add(ContextMenuItem("Block", Icons.Filled.Block, onClick = {
-                relationshipStore.blockUser(displayUser.id)
+                relationshipStore.blockUser(userId)
             }, color = errorColor, group = "Destructive"))
         }
-        if (settingsStore.userSettings?.developer_mode == true) {
-            items.add(ContextMenuItem("Copy User ID", Icons.Filled.Dns, onClick = { setClipboardText(displayUser.id) }, group = "Developer"))
+        if (env.developerMode) {
+            items.add(ContextMenuItem("Copy User ID", Icons.Filled.Dns, onClick = { setClipboardText(userId) }, group = "Developer"))
         }
         items
     }
 
-    var itemPosition by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+    // Position changes every scroll frame and is only read when the row is clicked.
+    val coordinates = remember { arrayOfNulls<LayoutCoordinates>(1) }
     var isHovered by remember { mutableStateOf(false) }
 
-    val presences by presenceStore.presences.collectAsState()
-    val presence = remember(member.presence, presences[displayUser.id]) {
-        member.presence ?: presences[displayUser.id]
-    }
-    val isStreaming = presence?.activities?.any { it.type == 1 } == true
     val isListening = presence?.activities?.any { it.type == 2 } == true
     val isStatusVisible = presenceStore.isStatusVisible(displayUser, presence)
-    
+
     val isOffline = !isStatusVisible && !isListening
 
     val nameplate = member.collectibles?.nameplate ?: displayUser.collectibles?.nameplate
+
+    val hoverModifier = if (env.isTouch) Modifier else Modifier.pointerInput(Unit) {
+        awaitPointerEventScope {
+            while (true) {
+                val event = awaitPointerEvent()
+                when (event.type) {
+                    PointerEventType.Enter -> isHovered = true
+                    PointerEventType.Exit -> isHovered = false
+                }
+            }
+        }
+    }
 
     ContextMenu(
         items = contextMenuItems,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 4.dp)
-            .onGloballyPositioned { itemPosition = it.positionInRoot() }
-            .pointerInput(Unit) {
-                awaitPointerEventScope {
-                    while (true) {
-                        val event = awaitPointerEvent()
-                        when (event.type) {
-                            PointerEventType.Enter -> isHovered = true
-                            PointerEventType.Exit -> isHovered = false
-                        }
-                    }
-                }
-            }
+            .onGloballyPositioned { coordinates[0] = it }
+            .then(hoverModifier)
             .graphicsLayer {
                 alpha = if (isOffline && !isHovered) 0.4f else 1f
             },
@@ -180,12 +184,15 @@ fun MemberItem(
     ) {
         Surface(
             modifier = Modifier.fillMaxWidth().height(44.dp),
-            onClick = { profileStore.showProfile(displayUser.id, guildId, position = itemPosition) },
+            onClick = {
+                val position = coordinates[0]?.positionInRoot() ?: Offset.Zero
+                profileStore.showProfile(userId, guildId, position = position)
+            },
             color = Color.Transparent,
             shape = RoundedCornerShape(8.dp)
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
-                if (nameplate != null) {
+                if (nameplate != null && env.loadImages) {
                     val decoUrl = "https://cdn.discordapp.com/assets/collectibles/${nameplate.asset}img.png?passthrough=true"
                     AsyncImage(
                         model = decoUrl,
@@ -201,12 +208,12 @@ fun MemberItem(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(modifier = Modifier.size(32.dp)) {
-                        val currentUser by userStore.currentUser.collectAsState()
                         AvatarWithDecoration(
-                            avatarUrl = avatarUrl,
+                            avatarUrl = if (env.loadImages) avatarUrl else null,
                             decorationData = member.avatar_decoration_data ?: displayUser.avatar_decoration_data,
                             size = 32.dp,
-                            status = presenceStore.getUserStatus(displayUser.id, currentUser?.id, settingsStore.userSettings?.status)
+                            status = presenceStore.getUserStatus(userId, presence, env.currentUserId, env.currentUserStatus),
+                            animated = env.animate
                         )
                     }
                     Spacer(modifier = Modifier.width(12.dp))
@@ -232,9 +239,8 @@ fun MemberItem(
                                 ClanTagView(it)
                             }
                             UserTagView(displayUser)
-                            
-                            val guild = navigationStore.selectedGuild
-                            if (displayUser.id == guild?.owner_id) {
+
+                            if (userId == guild?.owner_id) {
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Icon(
                                     imageVector = Icons.Filled.Crown,
@@ -244,11 +250,11 @@ fun MemberItem(
                                 )
                             }
                         }
-                        
-                        val activities = (member.presence ?: presence)?.activities ?: emptyList()
+
+                        val activities = presence?.activities ?: emptyList()
                         val customStatus = activities.find { it.type == 4 }
                         val otherActivity = activities.find { it.type != 4 }
-                        
+
                         if (customStatus != null) {
                             UserActivity(customStatus, compact = true, modifier = Modifier.alpha(0.7f))
                         } else if (otherActivity != null) {

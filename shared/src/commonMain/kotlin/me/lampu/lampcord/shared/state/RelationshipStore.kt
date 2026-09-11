@@ -2,8 +2,11 @@ package me.lampu.lampcord.shared.state
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.lampu.lampcord.shared.api.UserApi
@@ -17,8 +20,20 @@ class RelationshipStore(
     private val _relationships = MutableStateFlow<List<Relationship>>(emptyList())
     val relationships: StateFlow<List<Relationship>> = _relationships.asStateFlow()
 
+    val relationshipTypes: StateFlow<Map<String, Int>> = _relationships
+        .map { list ->
+            HashMap<String, Int>(list.size * 2).also { map ->
+                for (rel in list) {
+                    val id = rel.id ?: rel.user?.id ?: rel.user_id ?: continue
+                    val type = rel.type ?: continue
+                    map[id] = type
+                }
+            }
+        }
+        .stateIn(scope, SharingStarted.Eagerly, emptyMap())
+
     fun handleReady(rels: List<Relationship>) {
-        rels.forEach { rel -> rel.user?.let { userStore.handleUserUpdate(it) } }
+        userStore.handleUserUpdates(rels.mapNotNull { rel -> rel.user?.let { it to null } })
         _relationships.value = rels.map { hydrate(it) }.distinctBy { it.id ?: it.user?.id ?: it.user_id }
     }
 

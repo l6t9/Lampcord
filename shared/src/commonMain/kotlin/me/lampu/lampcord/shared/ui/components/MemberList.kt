@@ -17,16 +17,27 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
+import me.lampu.lampcord.shared.model.Member
+import me.lampu.lampcord.shared.model.User
+import me.lampu.lampcord.shared.settings.Settings
+import me.lampu.lampcord.shared.state.GuildStore
 import me.lampu.lampcord.shared.state.MemberListStore
 import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.state.PresenceStore
+import me.lampu.lampcord.shared.state.RelationshipStore
 import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.ui.components.members.MemberGroupItem
 import me.lampu.lampcord.shared.ui.components.members.MemberHeader
 import me.lampu.lampcord.shared.ui.components.members.MemberItem
+import me.lampu.lampcord.shared.ui.components.members.MemberRowEnv
 import me.lampu.lampcord.shared.ui.components.members.MemberSkeleton
+import me.lampu.lampcord.shared.utils.getCurrentTimeMillis
+import me.lampu.lampcord.shared.utils.getPlatformName
 import org.koin.compose.koinInject
+import kotlin.math.abs
+import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -36,6 +47,7 @@ fun MemberList(
     userStore: UserStore = koinInject(),
     presenceStore: PresenceStore = koinInject(),
     settingsStore: SettingsStore = koinInject(),
+    relationshipStore: RelationshipStore = koinInject(),
     header: @Composable (() -> Unit)? = null
 ) {
     val scrollState = rememberLazyListState()
@@ -44,19 +56,64 @@ fun MemberList(
     val activeChannel = navigationStore.selectedThread ?: navigationStore.selectedChannel
     val isDm = activeChannel?.type == 1 || activeChannel?.type == 3
 
+    // Skip rendering images decodes while scrolling faster than they can be loaded.
+    var loadImages by remember { mutableStateOf(true) }
+    LaunchedEffect(scrollState) {
+        var lastIndex = scrollState.firstVisibleItemIndex
+        var lastTime = getCurrentTimeMillis()
+        snapshotFlow { scrollState.firstVisibleItemIndex to scrollState.isScrollInProgress }
+            .collect { (index, moving) ->
+                val now = getCurrentTimeMillis()
+                if (!moving) {
+                    loadImages = true
+                    lastIndex = index
+                    lastTime = now
+                    return@collect
+                }
+                val elapsed = now - lastTime
+                if (elapsed < 100) return@collect
+                loadImages = abs(index - lastIndex) * 1000L / elapsed < 12L
+                lastIndex = index
+                lastTime = now
+            }
+    }
+
+    val presences = presenceStore.presences.collectAsState()
+    val relationshipTypes = relationshipStore.relationshipTypes.collectAsState()
+    val currentUser by userStore.currentUser.collectAsState()
+    val currentUserId = currentUser?.id
+    val userSettings = settingsStore.userSettings
+    val currentUserStatus = userSettings?.status
+    val developerMode = userSettings?.developer_mode == true
+    val selectedGuild = navigationStore.selectedGuild
+    val isTouch = remember { getPlatformName().let { it == "android" || it == "ios" } }
+    val reduceMotion = Settings.shared.reduceMotion
+    val env = remember(selectedGuild, currentUserId, currentUserStatus, developerMode, reduceMotion, loadImages) {
+        MemberRowEnv(
+            guild = selectedGuild,
+            currentUserId = currentUserId,
+            currentUserStatus = currentUserStatus,
+            developerMode = developerMode,
+            presences = presences,
+            relationshipTypes = relationshipTypes,
+            animate = !isTouch && !reduceMotion,
+            isTouch = isTouch,
+            loadImages = loadImages
+        )
+    }
+
     if (isDm) {
-        val currentUser by userStore.currentUser.collectAsState()
         val allUsers by userStore.users.collectAsState()
-        val privateChannels by koinInject<me.lampu.lampcord.shared.state.GuildStore>().privateChannels.collectAsState()
-        val recipients = remember(activeChannel, privateChannels, allUsers) {
-            val channel = privateChannels.find { it.id == activeChannel?.id } ?: activeChannel
-            val list = mutableListOf<me.lampu.lampcord.shared.model.User>()
+        val privateChannels by koinInject<GuildStore>().privateChannels.collectAsState()
+        val recipients = remember(activeChannel, privateChannels, allUsers, currentUser) {
+            val channel = privateChannels.find { it.id == activeChannel.id } ?: activeChannel
+            val list = mutableListOf<User>()
             currentUser?.let { list.add(it) }
-            
-            channel?.recipients?.let { list.addAll(it) }
-            
-            if (channel?.recipients.isNullOrEmpty() && !channel?.recipient_ids.isNullOrEmpty()) {
-                channel?.recipient_ids?.forEach { id ->
+
+            channel.recipients?.let { list.addAll(it) }
+
+            if (channel.recipients.isNullOrEmpty() && !channel.recipient_ids.isNullOrEmpty()) {
+                channel.recipient_ids.forEach { id ->
                     allUsers[id]?.let { list.add(it) }
                 }
             }
@@ -76,7 +133,7 @@ fun MemberList(
                 contentPadding = PaddingValues(top = 8.dp, bottom = 52.dp)
             ) {
                 stickyHeader {
-                    activeChannel?.let { MemberHeader(it) }
+                    MemberHeader(activeChannel)
                 }
                 item {
                     Text(
@@ -91,7 +148,7 @@ fun MemberList(
                     )
                 }
                 items(recipients, key = { it.id }) { user ->
-                    MemberItem(me.lampu.lampcord.shared.model.Member(user = user))
+                    MemberItem(Member(user = user), env)
                 }
             }
         }
@@ -104,38 +161,26 @@ fun MemberList(
         scrollState.scrollToItem(0)
     }
 
-    // Scrolling range logic: keep current and surrounding blocks subscribed.
-    val firstVisible = scrollState.firstVisibleItemIndex
+    val block by remember { derivedStateOf { scrollState.firstVisibleItemIndex / 100 } }
+    val settled by remember { derivedStateOf { !scrollState.isScrollInProgress } }
     val rowCount = memberListStore.memberListRowCount
-    val ranges = remember(firstVisible, rowCount) {
-        val currentBlock = (firstVisible / 100) * 100
-        val blocks = mutableSetOf(0)
-        
-        blocks.add(currentBlock)
-        if (currentBlock >= 100) blocks.add(currentBlock - 100)
-        blocks.add(currentBlock + 100)
-        blocks.add(currentBlock + 200)
-        
-        val filtered = blocks.filter { it < rowCount }.sorted()
-        if (filtered.isEmpty()) {
-            listOf(listOf(0, 99))
-        } else {
-            filtered.map { listOf(it, it + 99) }
-        }
+    val ranges = remember(block, rowCount) {
+        val start = block * 100
+        val blocks = linkedSetOf(0, start, start + 100).filter { it == 0 || it < rowCount }
+        blocks.map { listOf(it, it + 99) }
     }
 
     val channelId = navigationStore.selectedChannel?.id
     var lastRequestedChannelId by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(ranges, channelId) {
-        if (channelId != null) {
-            if (channelId != lastRequestedChannelId) {
-                memberListStore.requestMemberListRange(ranges)
-                lastRequestedChannelId = channelId
-            } else {
-                kotlinx.coroutines.delay(300)
-                memberListStore.requestMemberListRange(ranges)
-            }
+    LaunchedEffect(ranges, channelId, settled) {
+        if (channelId == null || !settled) return@LaunchedEffect
+        if (channelId != lastRequestedChannelId) {
+            memberListStore.requestMemberListRange(ranges)
+            lastRequestedChannelId = channelId
+        } else {
+            delay(300.milliseconds)
+            memberListStore.requestMemberListRange(ranges)
         }
     }
 
@@ -167,9 +212,9 @@ fun MemberList(
                         .fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 52.dp)
                 ) {
-                        stickyHeader {
-                            activeChannel?.let { MemberHeader(it) }
-                        }
+                    stickyHeader {
+                        activeChannel?.let { MemberHeader(it) }
+                    }
                     if (header != null) {
                         stickyHeader {
                             Surface(
@@ -181,25 +226,35 @@ fun MemberList(
                         }
                     }
 
-                    if (memberListStore.memberListRowCount == 0) {
+                    val rows = memberListStore.memberListItems
+                    val liveCount = rows.size
+                    if (liveCount == 0) {
                         items(20) {
                             MemberSkeleton()
                         }
                     } else {
                         items(
-                            count = memberListStore.memberListRowCount,
-                            key = { index -> 
-                                val item = memberListStore.memberListItems[index]
+                            count = liveCount,
+                            key = { index ->
+                                val item = rows.getOrNull(index)
                                 val baseId = item?.member?.userId() ?: item?.group?.id ?: "null"
                                 // 126.21 Parity: Discord member lists are index-based.
                                 // We include the index in the key to prevent crashes if the state is temporarily inconsistent
                                 // (e.g. during a channel switch or rapid gateway updates).
                                 "$index-$baseId"
+                            },
+                            contentType = { index ->
+                                val item = rows.getOrNull(index)
+                                when {
+                                    item?.member != null -> 0
+                                    item?.group != null -> 1
+                                    else -> 2
+                                }
                             }
                         ) { index ->
-                            val item = memberListStore.memberListItems[index]
+                            val item = rows.getOrNull(index)
                             when {
-                                item?.member != null -> MemberItem(item.member)
+                                item?.member != null -> MemberItem(item.member, env)
                                 item?.group != null -> MemberGroupItem(item.group)
                                 else -> {
                                     MemberSkeleton()

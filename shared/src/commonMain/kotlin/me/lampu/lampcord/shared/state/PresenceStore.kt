@@ -17,18 +17,30 @@ class PresenceStore(private val userApi: UserApi) {
     val presences: StateFlow<Map<String, PresenceUpdate>> = flattenedPresences.asStateFlow()
     val allPresences: StateFlow<Map<String, PresenceUpdate>> = flattenedPresences.asStateFlow()
 
-    private fun updateFlattened() {
-        val current = _presences.value
-        val flattened = current.mapValues { (_, guildMap) ->
-            // Priority: online > idle > dnd > offline
-            val presences = guildMap.values
-            presences.find { it.status == "online" }
-                ?: presences.find { it.status == "idle" }
-                ?: presences.find { it.status == "dnd" }
-                ?: presences.firstOrNull()
-                ?: PresenceUpdate(status = "offline")
+    // Priority: online > idle > dnd > offline
+    private fun flattenOne(presences: Collection<PresenceUpdate>): PresenceUpdate =
+        presences.find { it.status == "online" }
+            ?: presences.find { it.status == "idle" }
+            ?: presences.find { it.status == "dnd" }
+            ?: presences.firstOrNull()
+            ?: PresenceUpdate(status = "offline")
+
+    private fun rebuildFlattened() {
+        flattenedPresences.value = _presences.value.mapValues { (_, guildMap) -> flattenOne(guildMap.values) }
+    }
+
+    // Only refresh the users that had their status changed.
+    private fun updateFlattened(changed: Set<String>) {
+        if (changed.isEmpty()) return
+        val source = _presences.value
+        flattenedPresences.update { current ->
+            val next = current.toMutableMap()
+            for (userId in changed) {
+                val guildMap = source[userId]
+                if (guildMap == null) next.remove(userId) else next[userId] = flattenOne(guildMap.values)
+            }
+            next
         }
-        flattenedPresences.value = flattened
     }
 
     fun handleReady(ready: ReadyPayload) {
@@ -61,28 +73,35 @@ class PresenceStore(private val userApi: UserApi) {
         }
         
         _presences.value = newPresences
-        
+        rebuildFlattened()
+
         ready.sessions?.let { sessions ->
             val userId = ready.user?.id ?: return@let
             handleSessions(userId, sessions)
         }
-
-        updateFlattened()
     }
 
     fun handlePresenceUpdate(update: PresenceUpdate) {
-        val userId = update.user?.id ?: update.user_id ?: return
-        val guildId = update.guild_id ?: "global"
+        applyPresences(listOf(update))
+    }
+
+    // Batch version of handlePresenceUpdate.
+    fun applyPresences(updates: List<PresenceUpdate>) {
+        if (updates.isEmpty()) return
+        val changed = HashSet<String>(updates.size * 2)
         _presences.update { current ->
-            val userMap = current[userId]?.toMutableMap() ?: mutableMapOf()
-            if (update.status == "offline") {
-                userMap.remove(guildId)
-            } else {
-                userMap[guildId] = update
+            val next = current.toMutableMap()
+            for (update in updates) {
+                val userId = update.user?.id ?: update.user_id ?: continue
+                val guildId = update.guild_id ?: "global"
+                val userMap = next[userId]?.toMutableMap() ?: HashMap(4)
+                if (update.status == "offline") userMap.remove(guildId) else userMap[guildId] = update
+                if (userMap.isEmpty()) next.remove(userId) else next[userId] = userMap
+                changed.add(userId)
             }
-            if (userMap.isEmpty()) current - userId else current + (userId to userMap)
+            next
         }
-        updateFlattened()
+        updateFlattened(changed)
     }
 
     fun handleSessions(userId: String, sessions: List<Session>) {
@@ -105,7 +124,7 @@ class PresenceStore(private val userApi: UserApi) {
             userMap["global"] = newPresence
             current + (userId to userMap)
         }
-        updateFlattened()
+        updateFlattened(setOf(userId))
     }
 
     fun clear() {

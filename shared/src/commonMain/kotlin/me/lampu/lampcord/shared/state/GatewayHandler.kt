@@ -71,19 +71,25 @@ class GatewayHandler(
                 
                 guildStore.setGuilds(ready.guilds, guildOrder)
                 guildStore.setPrivateChannels(ready.private_channels)
-                
+
                 ready.merged_members?.forEachIndexed { index, members ->
                     val guild = ready.guilds.getOrNull(index) ?: return@forEachIndexed
-                    val membersJson = data.jsonObject["merged_members"]?.jsonArray?.get(index)?.jsonArray
+                    val membersJson = data.jsonObject["merged_members"]?.jsonArray?.getOrNull(index)?.jsonArray
+                    val pairs = ArrayList<Pair<String, Member>>(members.size)
+                    val raws = ArrayList<JsonObject?>(members.size)
                     members.forEachIndexed { memberIndex, member ->
                         val userId = member.userId() ?: return@forEachIndexed
-                        userStore.cacheMember(guild.id, userId, member, membersJson?.get(memberIndex)?.jsonObject)
+                        pairs.add(userId to member)
+                        raws.add(membersJson?.getOrNull(memberIndex)?.jsonObject)
                     }
+                    userStore.cacheMembers(guild.id, pairs, raws)
                 }
-                
-                ready.users?.forEachIndexed { index, user ->
+
+                ready.users?.let { users ->
                     val usersJson = data.jsonObject["users"]?.jsonArray
-                    userStore.handleUserUpdate(user, usersJson?.get(index)?.jsonObject)
+                    userStore.handleUserUpdates(
+                        users.mapIndexed { index, user -> user to usersJson?.getOrNull(index)?.jsonObject }
+                    )
                 }
 
                 presenceStore.handleReady(ready)

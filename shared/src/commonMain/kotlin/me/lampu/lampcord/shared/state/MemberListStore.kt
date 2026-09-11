@@ -1,6 +1,7 @@
 package me.lampu.lampcord.shared.state
 
 import androidx.compose.runtime.*
+import androidx.compose.runtime.snapshots.Snapshot
 import me.lampu.lampcord.shared.gateway.GatewayManager
 import me.lampu.lampcord.shared.model.*
 
@@ -67,7 +68,8 @@ class MemberListStore(
     fun resubscribe() {
         val guild = selectionStore.selectedGuild ?: return
         val channel = selectionStore.selectedChannel ?: return
-        gatewayManager.sendLazyRequest(guild.id, channel.id, lastRanges.ifEmpty { listOf(listOf(0, 99)) })
+        val ranges = lastRanges.take(2).ifEmpty { listOf(listOf(0, 99)) }
+        gatewayManager.sendLazyRequest(guild.id, channel.id, ranges)
     }
 
     fun setExpectedId(guildId: String, id: String, initialSize: Int) {
@@ -75,8 +77,10 @@ class MemberListStore(
         if (currentGuildId == guildId && currentListId == id) return
         
         // Persist the currently displayed list into its per-guild cache entry.
-        if (currentGuildId != null && currentListId != null) {
-            val old = cacheFor(currentGuildId!!).getOrPut(currentListId!!) {
+        val previousGuildId = currentGuildId
+        val previousListId = currentListId
+        if (previousGuildId != null && previousListId != null) {
+            val old = cacheFor(previousGuildId).getOrPut(previousListId) {
                 MemberListCacheEntry(mutableListOf(), mutableMapOf())
             }
             if (memberListItems.isNotEmpty()) {
@@ -109,6 +113,8 @@ class MemberListStore(
     }
 
     fun handleMemberListUpdate(update: MemberListUpdate) {
+        val diagnosticItems = update.ops.sumOf { (it.items?.size ?: 0) + (if (it.item != null) 1 else 0) }
+
         // An update only touches the live list when it belongs to the guild/list
         // currently on screen. Everything else goes to that list's cache entry so
         // background guilds keep their own data (list ids like "everyone" repeat
@@ -119,131 +125,105 @@ class MemberListStore(
             MemberListCacheEntry(mutableListOf(), mutableMapOf(), update.online_count, update.member_count)
         }
 
-        if (isCurrent) {
-            update.online_count?.let { onlineCount = it }
-            update.member_count?.let { memberCount = it }
+        // Members and presences are collected first and pushed to their stores in one
+        // batch each, so a 100 member SYNC costs one map copy instead of one per member.
+        val members = ArrayList<Pair<String, Member>>(diagnosticItems)
+        val presences = ArrayList<PresenceUpdate>(diagnosticItems)
+        fun collect(item: MemberListListItem) {
+            val m = item.member ?: return
+            val userId = m.userId() ?: return
+            members.add(userId to m)
+            val p = m.presence
+            presences.add(
+                when {
+                    p == null -> PresenceUpdate(user_id = userId, guild_id = update.guild_id, status = "offline")
+                    p.user?.id == null && p.user_id == null -> p.copy(user_id = userId, guild_id = update.guild_id)
+                    else -> p.copy(guild_id = update.guild_id)
+                }
+            )
         }
-        update.online_count?.let { 
-            entry.onlineCount = it
-            guildOnlineCounts[update.guild_id] = it
-        }
-        update.member_count?.let { 
-            entry.memberCount = it
-            guildMemberCounts[update.guild_id] = it
-        }
 
-        val targetItems: MutableList<MemberListListItem?> = if (isCurrent) memberListItems else entry.items
-        val targetGroups: MutableMap<String, MemberListGroup> = if (isCurrent) memberListGroups else entry.groups
+        // One snapshot apply for the whole update instead of one per row write.
+        Snapshot.withMutableSnapshot {
+            if (isCurrent) {
+                update.online_count?.let { onlineCount = it }
+                update.member_count?.let { memberCount = it }
+            }
+            update.online_count?.let {
+                entry.onlineCount = it
+                guildOnlineCounts[update.guild_id] = it
+            }
+            update.member_count?.let {
+                entry.memberCount = it
+                guildMemberCounts[update.guild_id] = it
+            }
 
-        for (op in update.ops) {
-            when (op.op) {
-                "SYNC" -> {
-                    val range = op.range ?: continue
-                    val start = range[0]
-                    val items = op.items ?: emptyList()
-                    
-                    val end = start + items.size
-                    while (targetItems.size < end) targetItems.add(null)
+            val targetItems: MutableList<MemberListListItem?> = if (isCurrent) memberListItems else entry.items
+            val targetGroups: MutableMap<String, MemberListGroup> = if (isCurrent) memberListGroups else entry.groups
 
-                    items.forEachIndexed { i, item ->
-                        val index = start + i
-                        
-                        item.member?.let { m ->
-                            val userId = m.userId()
-                            if (userId != null) {
-                                userStore.cacheMember(update.guild_id, userId, m)
-                                val pWithId = if (m.presence != null) {
-                                    val p = m.presence
-                                    if (p.user?.id == null && p.user_id == null) {
-                                        p.copy(user_id = userId, guild_id = update.guild_id)
-                                    } else p.copy(guild_id = update.guild_id)
-                                } else {
-                                    PresenceUpdate(user_id = userId, guild_id = update.guild_id, status = "offline")
-                                }
-                                presenceStore.handlePresenceUpdate(pWithId)
-                            }
-                        }
-
-                        if (index < targetItems.size) {
-                            targetItems[index] = item
+            for (op in update.ops) {
+                when (op.op) {
+                    "SYNC" -> {
+                        val range = op.range ?: continue
+                        val start = range[0]
+                        val items = op.items ?: emptyList()
+                        val end = start + items.size
+                        while (targetItems.size < end) targetItems.add(null)
+                        items.forEachIndexed { i, item ->
+                            collect(item)
+                            targetItems[start + i] = item
                         }
                     }
-                }
-                "INSERT" -> {
-                    val index = op.index ?: continue
-                    val item = op.item ?: continue
-                    item.member?.let { m ->
-                        val userId = m.userId()
-                        if (userId != null) {
-                            userStore.cacheMember(update.guild_id, userId, m)
-                            val pWithId = if (m.presence != null) {
-                                val p = m.presence
-                                if (p.user?.id == null && p.user_id == null) {
-                                    p.copy(user_id = userId, guild_id = update.guild_id)
-                                } else p.copy(guild_id = update.guild_id)
-                            } else {
-                                PresenceUpdate(user_id = userId, guild_id = update.guild_id, status = "offline")
-                            }
-                            presenceStore.handlePresenceUpdate(pWithId)
-                        }
+                    "INSERT" -> {
+                        val index = op.index ?: continue
+                        val item = op.item ?: continue
+                        collect(item)
+                        if (index <= targetItems.size) targetItems.add(index, item)
                     }
-                    if (index <= targetItems.size) targetItems.add(index, item)
-                }
-                "UPDATE" -> {
-                    val index = op.index ?: continue
-                    val item = op.item ?: continue
-                    item.member?.let { m ->
-                        val userId = m.userId()
-                        if (userId != null) {
-                            userStore.cacheMember(update.guild_id, userId, m)
-                            val pWithId = if (m.presence != null) {
-                                val p = m.presence
-                                if (p.user?.id == null && p.user_id == null) {
-                                    p.copy(user_id = userId, guild_id = update.guild_id)
-                                } else p.copy(guild_id = update.guild_id)
-                            } else {
-                                PresenceUpdate(user_id = userId, guild_id = update.guild_id, status = "offline")
-                            }
-                            presenceStore.handlePresenceUpdate(pWithId)
-                        }
+                    "UPDATE" -> {
+                        val index = op.index ?: continue
+                        val item = op.item ?: continue
+                        collect(item)
+                        if (index < targetItems.size) targetItems[index] = item
                     }
-                    if (index < targetItems.size) targetItems[index] = item
+                    "DELETE" -> {
+                        val index = op.index ?: continue
+                        if (index < targetItems.size) targetItems.removeAt(index)
+                    }
+                    "INVALIDATE" -> {
+                        val range = op.range ?: continue
+                        val end = minOf(range[1], targetItems.size - 1)
+                        for (i in range[0]..end) targetItems[i] = null
+                    }
                 }
-                "DELETE" -> {
-                    val index = op.index ?: continue
-                    if (index < targetItems.size) targetItems.removeAt(index)
+            }
+
+            update.groups?.let { groups ->
+                val totalSize = groups.sumOf { (it.count ?: it.member_count ?: 0) + 1 }
+
+                // 126.21 Parity: Re-size the list to match the new group structure
+                if (targetItems.size < totalSize) {
+                    repeat(totalSize - targetItems.size) { targetItems.add(null) }
+                } else if (targetItems.size > totalSize) {
+                    while (targetItems.size > totalSize) targetItems.removeAt(targetItems.size - 1)
                 }
-                "INVALIDATE" -> {
-                    val range = op.range ?: continue
-                    val start = range[0]
-                    val end = range[1]
-                    for (i in start..end) if (i < targetItems.size) targetItems[i] = null
+
+                // Clear old group headers
+                for (i in targetItems.indices) if (targetItems[i]?.group != null) targetItems[i] = null
+
+                targetGroups.clear()
+                var currentOffset = 0
+                groups.forEach { group ->
+                    targetGroups[group.id] = group
+                    if (currentOffset < targetItems.size) {
+                        targetItems[currentOffset] = MemberListListItem(group = group)
+                    }
+                    currentOffset += (group.count ?: group.member_count ?: 0) + 1
                 }
             }
         }
 
-        update.groups?.let { groups ->
-            val totalSize = groups.sumOf { (it.count ?: it.member_count ?: 0) + 1 }
-            
-            // 126.21 Parity: Re-size the list to match the new group structure
-            if (targetItems.size < totalSize) {
-                repeat(totalSize - targetItems.size) { targetItems.add(null) }
-            } else if (targetItems.size > totalSize) {
-                while (targetItems.size > totalSize) targetItems.removeAt(targetItems.size - 1)
-            }
-
-            // Clear old group headers
-            for (i in targetItems.indices) if (targetItems[i]?.group != null) targetItems[i] = null
-
-            targetGroups.clear()
-            var currentOffset = 0
-            groups.forEach { group ->
-                targetGroups[group.id] = group
-                if (currentOffset < targetItems.size) {
-                    targetItems[currentOffset] = MemberListListItem(group = group)
-                }
-                currentOffset += (group.count ?: group.member_count ?: 0) + 1
-            }
-        }
+        userStore.cacheMembers(update.guild_id, members)
+        presenceStore.applyPresences(presences)
     }
 }
