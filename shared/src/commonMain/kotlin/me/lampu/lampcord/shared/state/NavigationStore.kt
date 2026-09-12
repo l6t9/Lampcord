@@ -392,6 +392,14 @@ class NavigationStore(
         isServerSettingsVisible = false
         selectedThread = channel
         if (explicitlySelected) triggerFocusChat()
+
+        // Pre-size the member list store based on thread ID
+        val guild = selectedGuild
+        if (guild != null) {
+            val expectedId = channel.member_list_id ?: channel.id
+            memberListStore.setExpectedId(guild.id, expectedId, channel.member_count ?: 0)
+        }
+
         messageStore.loadLoggedMessages(channel.id)
         scope.launch {
             val channelMessages = messageApi.getChannelMessages(channel.id)

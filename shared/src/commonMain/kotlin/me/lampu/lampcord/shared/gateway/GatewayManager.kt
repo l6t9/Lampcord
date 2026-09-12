@@ -90,15 +90,21 @@ class GatewayManager(
         var activities: Boolean = true
         val members = mutableSetOf<String>()
         val channels = mutableMapOf<String, List<List<Int>>>()
+        val threadMemberLists = mutableSetOf<String>()
         private val channelOrder = mutableListOf<String>()
 
-        fun updateChannel(channelId: String, ranges: List<List<Int>>) {
-            channels[channelId] = ranges
-            channelOrder.remove(channelId)
-            channelOrder.add(channelId)
-            if (channelOrder.size > 5) {
-                val oldest = channelOrder.removeAt(0)
-                channels.remove(oldest)
+        fun updateChannel(channelId: String, listId: String, ranges: List<List<Int>>, isThread: Boolean) {
+            if (isThread) {
+                threadMemberLists.add(channelId)
+            } else {
+                channels[channelId] = ranges
+                // We use channelId for LRU tracking and map key
+                channelOrder.remove(channelId)
+                channelOrder.add(channelId)
+                if (channelOrder.size > 5) {
+                    val oldest = channelOrder.removeAt(0)
+                    channels.remove(oldest)
+                }
             }
         }
     }
@@ -427,11 +433,11 @@ class GatewayManager(
         val payload = GatewayPayload(
             op = 14,
             d = buildJsonObject {
-                put("guild_id", guildId)
+                put("guild_id", guildId.toLong())
                 put("typing", state.typing)
                 put("threads", state.threads)
                 put("activities", state.activities)
-                put("members", buildJsonArray { state.members.forEach { add(it) } })
+                put("members", buildJsonArray { state.members.forEach { add(it.toLong()) } })
                 put("channels", buildJsonObject { 
                     state.channels.forEach { (chanId, ranges) ->
                         put(chanId, buildJsonArray {
@@ -441,7 +447,7 @@ class GatewayManager(
                         })
                     }
                 })
-                put("thread_member_lists", buildJsonArray { })
+                put("thread_member_lists", buildJsonArray { state.threadMemberLists.forEach { add(it.toLong()) } })
             }
         )
         scope.launch { sendPayload(payload) }
@@ -451,8 +457,8 @@ class GatewayManager(
         val payload = GatewayPayload(
             op = 4,
             d = buildJsonObject {
-                put("guild_id", guildId?.let { JsonPrimitive(it) } ?: JsonNull)
-                put("channel_id", channelId?.let { JsonPrimitive(it) } ?: JsonNull)
+                put("guild_id", guildId?.toLongOrNull())
+                put("channel_id", channelId?.toLongOrNull())
                 put("self_mute", JsonPrimitive(selfMute))
                 put("self_deaf", JsonPrimitive(selfDeaf))
                 put("self_video", JsonPrimitive(selfVideo))
@@ -461,23 +467,23 @@ class GatewayManager(
         scope.launch { sendPayload(payload) }
     }
 
-    fun sendLazyRequest(guildId: String, channelId: String, ranges: List<List<Int>>) {
+    fun sendLazyRequest(guildId: String, channelId: String, listId: String, ranges: List<List<Int>>, isThread: Boolean = false) {
         val state = guildSubscriptions.getOrPut(guildId) { GuildSubscriptionState() }
         
-        state.updateChannel(channelId, ranges)
+        state.updateChannel(channelId, listId, ranges, isThread)
 
         val payload = GatewayPayload(
             op = 14,
             d = buildJsonObject {
-                put("guild_id", guildId)
+                put("guild_id", guildId.toLong())
                 put("typing", state.typing)
                 put("threads", state.threads)
                 put("activities", state.activities)
-                put("members", buildJsonArray { state.members.forEach { add(it) } })
-                put("thread_member_lists", buildJsonArray { })
+                put("members", buildJsonArray { state.members.forEach { add(it.toLong()) } })
+                put("thread_member_lists", buildJsonArray { state.threadMemberLists.forEach { add(it.toLong()) } })
                 put("channels", buildJsonObject {
-                    state.channels.forEach { (cid, r) ->
-                        put(cid, buildJsonArray {
+                    state.channels.forEach { (lid, r) ->
+                        put(lid, buildJsonArray {
                             r.forEach { range ->
                                 add(buildJsonArray {
                                     add(range[0])

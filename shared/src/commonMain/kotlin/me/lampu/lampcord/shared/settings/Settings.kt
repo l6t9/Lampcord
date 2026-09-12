@@ -35,6 +35,7 @@ class Settings(private val settings: KmpSettings) {
     var enableSystemWindowFrame by preferenceBoolean("enable_system_window_frame", false)
     var waylandDefaultFrameApplied by preferenceBoolean("wayland_default_frame_applied", false)
     var macDefaultFrameApplied by preferenceBoolean("mac_default_frame_applied", false)
+    var disableWaylandScaling by preferenceBoolean("disable_wayland_scaling", false)
 
     // Theme Settings
     var transparencyMode by preferenceEnum("transparency_mode", TransparencyMode.NONE)
@@ -98,6 +99,7 @@ class Settings(private val settings: KmpSettings) {
     var hideNavLabels by preferenceBoolean("hide_nav_labels", false)
     var showChatSearch by preferenceBoolean("show_chat_search", false)
     var showChatPins by preferenceBoolean("show_chat_pins", false)
+    var showCallButton by preferenceBoolean("show_call_button", true)
     var showNavHome by preferenceBoolean("show_nav_home", true)
     var showNavFriends by preferenceBoolean("show_nav_friends", true)
     var showNavSearch by preferenceBoolean("show_nav_search", true)

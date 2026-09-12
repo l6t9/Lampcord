@@ -59,10 +59,12 @@ private fun hasPermission(bits: String?, flag: Long): Boolean {
 }
 
 fun Channel.memberListId(guild: Guild): String {
+    // Check if the channel already has a member_list_id (e.g. threads)
+    member_list_id?.let { return it }
+
     // 126.21 Fallback: Most channels use "everyone"
     val overwrites = permission_overwrites ?: emptyList()
-    if (overwrites.isEmpty()) return "everyone"
-
+    
     val everyoneRole = guild.roles.firstOrNull { it.id == guild.id }
     val everyoneCanView = everyoneRole != null && hasPermission(everyoneRole.permissions, VIEW_CHANNEL)
 
@@ -78,8 +80,6 @@ fun Channel.memberListId(guild: Guild): String {
             entries.add("deny:${overwrite.id}")
         }
     }
-    
-    if (entries.isEmpty()) return "everyone"
     
     entries.sort()
     return murmurhash32(entries.joinToString(",")).toString()

@@ -129,6 +129,14 @@ class SettingsStore(
             me.lampu.lampcord.shared.settings.Settings.shared.showChatPins = value
         }
 
+    private var _showCallButton by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.showCallButton)
+    var showCallButton: Boolean
+        get() = _showCallButton
+        set(value) {
+            _showCallButton = value
+            me.lampu.lampcord.shared.settings.Settings.shared.showCallButton = value
+        }
+
     private var _showNavHome by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.showNavHome)
     var showNavHome: Boolean
         get() = _showNavHome
@@ -288,6 +296,14 @@ class SettingsStore(
         set(value) {
             _enableSystemWindowFrame = value
             me.lampu.lampcord.shared.settings.Settings.shared.enableSystemWindowFrame = value
+        }
+
+    private var _disableWaylandScaling by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.disableWaylandScaling)
+    var disableWaylandScaling: Boolean
+        get() = _disableWaylandScaling
+        set(value) {
+            _disableWaylandScaling = value
+            me.lampu.lampcord.shared.settings.Settings.shared.disableWaylandScaling = value
         }
 
     private var _chatboxFontSize by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.chatboxFontSize)

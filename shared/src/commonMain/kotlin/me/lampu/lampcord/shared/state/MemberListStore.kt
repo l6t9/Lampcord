@@ -56,9 +56,17 @@ class MemberListStore(
 
     fun requestMemberListRange(ranges: List<List<Int>>) {
         val guild = selectionStore.selectedGuild ?: return
+        val thread = selectionStore.selectedThread
         val channel = selectionStore.selectedChannel ?: return
+        
         if (ranges.isNotEmpty()) lastRanges = ranges
-        gatewayManager.sendLazyRequest(guild.id, channel.id, ranges)
+        
+        if (thread != null) {
+            gatewayManager.sendLazyRequest(guild.id, thread.id, thread.id, ranges, isThread = true)
+        } else {
+            val listId = currentListId ?: channel.memberListId(guild)
+            gatewayManager.sendLazyRequest(guild.id, channel.id, listId, ranges, isThread = false)
+        }
     }
 
     // Re-send the subscription for the current channel after a reconnect. A fresh
@@ -66,8 +74,17 @@ class MemberListStore(
     // cached list would otherwise go stale.
     fun resubscribe() {
         val guild = selectionStore.selectedGuild ?: return
+        val thread = selectionStore.selectedThread
         val channel = selectionStore.selectedChannel ?: return
-        gatewayManager.sendLazyRequest(guild.id, channel.id, lastRanges.ifEmpty { listOf(listOf(0, 99)) })
+        
+        val ranges = lastRanges.ifEmpty { listOf(listOf(0, 99)) }
+        
+        if (thread != null) {
+            gatewayManager.sendLazyRequest(guild.id, thread.id, thread.id, ranges, isThread = true)
+        } else {
+            val listId = currentListId ?: channel.memberListId(guild)
+            gatewayManager.sendLazyRequest(guild.id, channel.id, listId, ranges, isThread = false)
+        }
     }
 
     fun setExpectedId(guildId: String, id: String, initialSize: Int) {

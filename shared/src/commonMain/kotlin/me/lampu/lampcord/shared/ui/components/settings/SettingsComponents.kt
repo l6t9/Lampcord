@@ -241,7 +241,7 @@ fun SettingsSubScreen(
     contentScrollable: Boolean = true,
     content: @Composable () -> Unit,
 ) {
-    val platform = remember { me.lampu.lampcord.shared.utils.getPlatformName() }
+val platform = remember { me.lampu.lampcord.shared.utils.getPlatformName() }
     val isMobile = platform == "android" || platform == "ios"
 
     if (!isMobile) {
