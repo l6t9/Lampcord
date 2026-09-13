@@ -48,6 +48,14 @@ fun AdvancedSettingsContent(settingsStore: SettingsStore = koinInject()) {
                     onCheckedChange = {
                         settingsStore.showHiddenChannels = it
                     }
+                ),
+                switchSettingsItem(
+                    title = "Disable Wayland Scaling Fix",
+                    description = "Prevents the app from trying to automatically scale on Wayland. Requires restart.",
+                    checked = settingsStore.disableWaylandScaling,
+                    onCheckedChange = {
+                        settingsStore.disableWaylandScaling = it
+                    }
                 )
             )
         )

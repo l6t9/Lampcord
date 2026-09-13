@@ -101,6 +101,12 @@ fun ChatSettingsContent(
                     description = "Show the pinned messages button in the chat header.",
                     checked = settingsStore.showChatPins,
                     onCheckedChange = { settingsStore.showChatPins = it }
+                ),
+                switchSettingsItem(
+                    title = "Show Call Button",
+                    description = "Show the call button in DM headers.",
+                    checked = settingsStore.showCallButton,
+                    onCheckedChange = { settingsStore.showCallButton = it }
                 )
             )
         )

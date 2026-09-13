@@ -19,6 +19,7 @@ import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.state.PresenceStore
 import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.state.UserStore
+import me.lampu.lampcord.shared.state.VoiceStore
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.CleanUtils
 import org.koin.compose.koinInject
@@ -30,7 +31,8 @@ fun ChannelHeader(
     navigationStore: NavigationStore = koinInject(),
     userStore: UserStore = koinInject(),
     presenceStore: PresenceStore = koinInject(),
-    settingsStore: SettingsStore = koinInject()
+    settingsStore: SettingsStore = koinInject(),
+    voiceStore: VoiceStore = koinInject()
 ) {
     val currentUser by userStore.currentUser.collectAsState()
     val allUsers by userStore.users.collectAsState()
@@ -167,13 +169,24 @@ fun ChannelHeader(
                     }
                 }
 
-                if (channel.type != 2 && channel.type != 13 && (settingsStore.showChatPins || isDesktop)) {
+                if (settingsStore.showChatPins || isDesktop) {
                     IconButton(onClick = { navigationStore.isPinsVisible = !navigationStore.isPinsVisible }) {
                         Icon(
                             Icons.Filled.PushPin,
                             "Pins",
                             modifier = Modifier.size(22.dp),
                             tint = if (navigationStore.isPinsVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                if (settingsStore.showCallButton && channel.type == 1) {
+                    IconButton(onClick = { voiceStore.connectToVoice(channel) }) {
+                        Icon(
+                            Icons.Rounded.Call,
+                            "Call",
+                            modifier = Modifier.size(22.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }

@@ -10,55 +10,46 @@ import java.awt.event.ComponentAdapter
 import java.awt.event.ComponentEvent
 
 @Composable
-fun WindowScope.WaylandDensityProvider(
-    content: @Composable () -> Unit
-) {
-    // Wayland scaling is Linux-only. Avoid starting listeners and a polling
-    // coroutine on Windows and macOS, where the scale is always the default.
-    val isWayland = remember { WaylandScale.isWayland() }
-    if (!isWayland) {
+fun WindowScope.WaylandDensityProvider(content: @Composable () -> Unit) {
+    // Only override density on Wayland. On X11/Windows/macOS the compositor
+    // and skiko.uiScale already handle HiDPI; forcing Density(1f) would shrink the UI.
+    if (!WaylandScale.isWayland() || me.lampu.lampcord.shared.settings.Settings.shared.disableWaylandScaling) {
         content()
         return
     }
 
-    var scale by remember { mutableFloatStateOf(1.0f) }
     val window = window // access the AWT window from WindowScope
-
-    // Cache scale to avoid redundant recompositions
-    LaunchedEffect(window) {
-        // Initial detection
-        scale = WaylandScale.getWindowScale(window.x, window.y)
-    }
+    var scale by remember { mutableFloatStateOf(WaylandScale.getWindowScale(window.x, window.y)) }
 
     DisposableEffect(window) {
-        val listener = object : ComponentAdapter() {
-            override fun componentMoved(e: ComponentEvent) {
-                // Instantly check scale when moved
-                val newScale = WaylandScale.getWindowScale(window.x, window.y)
-                if (newScale != scale) {
-                    scale = newScale
+        val listener =
+            object : ComponentAdapter() {
+                override fun componentMoved(e: ComponentEvent) {
+                    // Instantly check scale when moved
+                    val newScale = WaylandScale.getWindowScale(window.x, window.y)
+                    if (newScale != scale) {
+                        scale = newScale
+                    }
+                }
+                
+                override fun componentResized(e: ComponentEvent) {
+                    val newScale = WaylandScale.getWindowScale(window.x, window.y)
+                    if (newScale != scale) {
+                        scale = newScale
+                    }
                 }
             }
-            
-            override fun componentResized(e: ComponentEvent) {
-                val newScale = WaylandScale.getWindowScale(window.x, window.y)
-                if (newScale != scale) {
-                    scale = newScale
-                }
-            }
-        }
-        
+
         window.addComponentListener(listener)
         onDispose {
             window.removeComponentListener(listener)
         }
     }
 
-    // Faster polling (200ms) for smoother transitions during dragging
-    // Compositors sometimes "swallow" move events during active drag
+    // Compositors sometimes swallow move events during active drag, so poll the in-memory monitor cache.
     LaunchedEffect(Unit) {
         while (true) {
-            kotlinx.coroutines.delay(200)
+            delay(200)
             val newScale = WaylandScale.getWindowScale(window.x, window.y)
             if (newScale != scale) {
                 scale = newScale

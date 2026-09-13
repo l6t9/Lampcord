@@ -819,7 +819,8 @@ private fun MainBaseplateContent(
     allUsers: Map<String, me.lampu.lampcord.shared.model.User>,
     currentUser: me.lampu.lampcord.shared.model.User?,
     panelState: DiscordPanelsState,
-    activeChannel: me.lampu.lampcord.shared.model.Channel?
+    activeChannel: me.lampu.lampcord.shared.model.Channel?,
+    voiceStore: VoiceStore = koinInject()
 ) {
     key(navigationStore.selectedGuild?.id ?: "home") {
         Surface(
@@ -985,6 +986,15 @@ private fun MainBaseplateContent(
                                             Icon(
                                                 imageVector = Icons.Filled.PushPin,
                                                 contentDescription = "Pins",
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                    if (settingsStore.showCallButton && activeChannel.type == 1) {
+                                        IconButton(onClick = { voiceStore.connectToVoice(activeChannel) }) {
+                                            Icon(
+                                                imageVector = Icons.Rounded.Call,
+                                                contentDescription = "Call",
                                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
                                         }

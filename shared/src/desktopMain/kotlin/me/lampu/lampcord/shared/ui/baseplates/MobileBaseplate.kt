@@ -42,6 +42,8 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -61,6 +63,7 @@ import androidx.compose.ui.zIndex
 import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.state.ProfileStore
 import me.lampu.lampcord.shared.state.UserStore
+import me.lampu.lampcord.shared.model.User
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.ui.SettingsScreen
 import me.lampu.lampcord.shared.ui.components.AttachmentViewer
@@ -99,6 +102,12 @@ actual fun MobileBaseplate(
     val activeChannel = selectedThread ?: selectedChannel
     val keyboardController = LocalSoftwareKeyboardController.current
     val reduceMotion = Settings.shared.reduceMotion
+
+    val settingsStore: me.lampu.lampcord.shared.state.SettingsStore = org.koin.compose.koinInject()
+    val presenceStore: me.lampu.lampcord.shared.state.PresenceStore = org.koin.compose.koinInject()
+    val currentUser by userStore.currentUser.collectAsState()
+    val allUsers by userStore.users.collectAsState()
+    val voiceStore: me.lampu.lampcord.shared.state.VoiceStore = org.koin.compose.koinInject()
 
     LaunchedEffect(panelState.currentValue) {
         if (panelState.currentValue != DiscordPanelValue.Center) {
@@ -151,7 +160,8 @@ actual fun MobileBaseplate(
                                             Column {
                                                 Text(
                                                     text = if (activeChannel.type == 1) {
-                                                        val recipient = activeChannel.recipients?.firstOrNull()
+                                                        val recipientId = activeChannel.recipients?.firstOrNull()?.id ?: activeChannel.recipient_ids?.firstOrNull()
+                                                        val recipient = recipientId?.let { allUsers[it] } ?: activeChannel.recipients?.firstOrNull()
                                                         recipient?.let { it.global_name ?: it.username } ?: "Chat"
                                                     } else activeChannel.name ?: "Chat",
                                                     style = MaterialTheme.typography.titleMedium,
@@ -220,6 +230,15 @@ actual fun MobileBaseplate(
                                                     Icon(
                                                         imageVector = Icons.Filled.PushPin,
                                                         contentDescription = "Pins",
+                                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    )
+                                                }
+                                            }
+                                            if (settingsStore.showCallButton && activeChannel.type == 1) {
+                                                IconButton(onClick = { voiceStore.connectToVoice(activeChannel) }) {
+                                                    Icon(
+                                                        imageVector = Icons.Rounded.Call,
+                                                        contentDescription = "Call",
                                                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                                                     )
                                                 }
