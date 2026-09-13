@@ -72,9 +72,45 @@ FetchContent_Declare(opus
     URL_HASH SHA256=9480e329e989f70d69886ded470c7f8cfe6c0667cc4196d4837ac9e668fb7404)
 FetchContent_MakeAvailable(opus)
 
+# Pin rnnoise to the stable master branch head. Note: do NOT use the main
+# branch, it is a rewrite that needs a generated rnnoise_data.h.
 FetchContent_Declare(rnnoise
-    URL https://codeload.github.com/xiph/rnnoise/tar.gz/master)
+    URL https://codeload.github.com/xiph/rnnoise/tar.gz/6cbfd53eb348a8d394e0757b4025c6ded34eb2b6
+    URL_HASH SHA256=5900832175a507e1ee5d4d596ff2c2b3a4eb66c59d2a12d33095c79e673e953d)
 FetchContent_MakeAvailable(rnnoise)
+
+# rnnoise master is C99 and MSVC rejects its VLAs and bare M_PI. Patch the
+# pinned sources at configure time (MSVC only, other toolchains unchanged).
+if(MSVC)
+    function(msvc_patch_rnnoise src old new)
+        file(READ "${src}" content)
+        string(FIND "${content}" "${old}" found)
+        if(found EQUAL -1)
+            message(FATAL_ERROR "Expected pattern not found in ${src}: ${old}")
+        endif()
+        string(REPLACE "${old}" "${new}" content "${content}")
+        file(WRITE "${src}" "${content}")
+    endfunction()
+    msvc_patch_rnnoise("${rnnoise_SOURCE_DIR}/src/denoise.c"
+        "#include <math.h>"
+        "#include <math.h>\n#ifndef M_PI\n#define M_PI 3.14159265358979323846\n#endif")
+    # Fixed sizes: len<=PITCH_FRAME_SIZE(960), max_pitch<=PITCH_MAX_PERIOD(768).
+    msvc_patch_rnnoise("${rnnoise_SOURCE_DIR}/src/celt_lpc.c"
+        "   opus_val16 xx[n];"
+        "   opus_val16 xx[864];")
+    msvc_patch_rnnoise("${rnnoise_SOURCE_DIR}/src/pitch.c"
+        "   opus_val16 x_lp4[len>>2];"
+        "   opus_val16 x_lp4[240];")
+    msvc_patch_rnnoise("${rnnoise_SOURCE_DIR}/src/pitch.c"
+        "   opus_val16 y_lp4[lag>>2];"
+        "   opus_val16 y_lp4[432];")
+    msvc_patch_rnnoise("${rnnoise_SOURCE_DIR}/src/pitch.c"
+        "   opus_val32 xcorr[max_pitch>>1];"
+        "   opus_val32 xcorr[384];")
+    msvc_patch_rnnoise("${rnnoise_SOURCE_DIR}/src/pitch.c"
+        "   opus_val32 yy_lookup[maxperiod+1];"
+        "   opus_val32 yy_lookup[385];")
+endif()
 
 set(RNNOISE_SOURCES
     "${rnnoise_SOURCE_DIR}/src/denoise.c"
@@ -124,3 +160,4 @@ configure_file("${DEPS}/mlspp/LICENSE" "licenses/mlspp.txt" COPYONLY)
 configure_file("${DEPS}/boringssl/LICENSE" "licenses/boringssl.txt" COPYONLY)
 configure_file("${DEPS}/json-cpp/LICENSE.MIT" "licenses/nlohmann-json.txt" COPYONLY)
 configure_file("${opus_SOURCE_DIR}/COPYING" "licenses/opus.txt" COPYONLY)
+configure_file("${rnnoise_SOURCE_DIR}/COPYING" "licenses/rnnoise.txt" COPYONLY)
