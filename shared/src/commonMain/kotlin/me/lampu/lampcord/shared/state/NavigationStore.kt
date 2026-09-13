@@ -77,6 +77,7 @@ class NavigationStore(
     var isPinsVisible by mutableStateOf(false)
     var isThreadPanelVisible by mutableStateOf(false)
     var isProfilePanelVisible by mutableStateOf(true)
+    var isMemberListModalVisible by mutableStateOf(false)
 
     var settingsCategory by mutableStateOf<String?>(null)
 

@@ -16,6 +16,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,7 +60,8 @@ fun AsyncImage(
     shape: Shape? = null,
     showPlaceholder: Boolean = true,
     placeholderHash: String? = null,
-    size: Int? = null
+    size: Int? = null,
+    playAnimatedVideo: Boolean = true
 ) {
     val context = LocalPlatformContext.current
     val isDesktop = remember { getPlatformName() != "android" && getPlatformName() != "ios" }
@@ -90,10 +92,30 @@ fun AsyncImage(
 
     var isLoading by remember(effectiveModel) { mutableStateOf(true) }
 
+    val isAnimated = remember(effectiveModel, reducedMotion) {
+        if (reducedMotion) return@remember false
+        val url = effectiveModel as? String ?: return@remember false
+        url.contains(".gif", ignoreCase = true) ||
+            url.contains("animated=true", ignoreCase = true) ||
+            url.contains("/a_", ignoreCase = true)
+    }
+
     Box(
         modifier = modifier.then(if (shape != null) Modifier.clip(shape) else Modifier),
         contentAlignment = Alignment.Center
     ) {
+        if (isDesktop && isAnimated && playAnimatedVideo && effectiveModel is String) {
+            VideoPlayer(
+                url = effectiveModel,
+                modifier = Modifier.fillMaxSize(),
+                loop = true,
+                showControls = false,
+                autoPlay = true,
+                showSeekBar = false
+            )
+            // The video player has its own loading state and surface.
+            SideEffect { isLoading = false }
+        } else {
         CoilAsyncImage(
             model = request,
             contentDescription = contentDescription,
@@ -116,6 +138,7 @@ fun AsyncImage(
             colorFilter = colorFilter,
             filterQuality = filterQuality
         )
+        }
 
         if (showPlaceholder && isLoading) {
             ImageLoadingPlaceholder(Modifier.fillMaxSize())

@@ -32,7 +32,8 @@ fun ChannelHeader(
     userStore: UserStore = koinInject(),
     presenceStore: PresenceStore = koinInject(),
     settingsStore: SettingsStore = koinInject(),
-    voiceStore: VoiceStore = koinInject()
+    voiceStore: VoiceStore = koinInject(),
+    isCompactMemberList: Boolean = false
 ) {
     val currentUser by userStore.currentUser.collectAsState()
     val allUsers by userStore.users.collectAsState()
@@ -181,12 +182,21 @@ fun ChannelHeader(
                 }
 
                 if (isDesktop && channel.type != 15 && (channel.guild_id != null || channel.type == 1 || channel.type == 3)) {
-                    IconButton(onClick = { navigationStore.isProfilePanelVisible = !navigationStore.isProfilePanelVisible }) {
+                    val memberListVisible =
+                        if (isCompactMemberList) navigationStore.isMemberListModalVisible
+                        else navigationStore.isProfilePanelVisible
+                    IconButton(onClick = {
+                        if (isCompactMemberList) {
+                            navigationStore.isMemberListModalVisible = !navigationStore.isMemberListModalVisible
+                        } else {
+                            navigationStore.isProfilePanelVisible = !navigationStore.isProfilePanelVisible
+                        }
+                    }) {
                         Icon(
                             imageVector = if (channel.type == 1) Icons.Filled.AccountCircle else Icons.Filled.Group,
                             contentDescription = "Toggle Member List",
                             modifier = Modifier.size(24.dp),
-                            tint = if (navigationStore.isProfilePanelVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = if (memberListVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }

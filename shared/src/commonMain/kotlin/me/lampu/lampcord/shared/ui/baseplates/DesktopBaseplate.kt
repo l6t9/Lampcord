@@ -136,7 +136,7 @@ fun DesktopBaseplate(
                     ) { target ->
                         if (activeChannel != null && target == activeChannel.id) {
                             Column(modifier = Modifier.fillMaxSize()) {
-                                ChannelHeader(activeChannel, navigationStore)
+                                ChannelHeader(activeChannel, navigationStore, isCompactMemberList = widthBreakpoint == WindowWidthBreakpoint.MEDIUM)
                                 
                                 Box(modifier = Modifier.weight(1f)) {
                                     if ((activeChannel.type == 2 || activeChannel.type == 13) && !voiceStore.isVoiceChatTextVisible) {
@@ -212,7 +212,7 @@ fun DesktopBaseplate(
                             activeChannel.type != 15 && 
                             (activeChannel.guild_id != null || activeChannel.type == 1 || activeChannel.type == 3) &&
                             widthBreakpoint == WindowWidthBreakpoint.MEDIUM &&
-                            navigationStore.isProfilePanelVisible
+                            navigationStore.isMemberListModalVisible
 
         AnimatedVisibility(
             visible = showModalSidePanel,
@@ -226,7 +226,7 @@ fun DesktopBaseplate(
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null
-                    ) { navigationStore.isProfilePanelVisible = false }
+                    ) { navigationStore.isMemberListModalVisible = false }
             ) {
                 Surface(
                     modifier = Modifier

@@ -9,7 +9,6 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontFamily
@@ -74,12 +73,6 @@ actual fun rememberPlatformColorScheme(
             val activity = view.context.findActivity()
             if (activity != null) {
                 val window = activity.window
-                // Use surfaceContainerHigh (Guild Rail background) for status bar
-                val statusBarColor = if (isDark) DiscordClassicGuildRail else scheme.surfaceContainerHigh
-                window.statusBarColor = statusBarColor.toArgb()
-                val navBarColor = if (isDark) DiscordClassicGuildRail else scheme.surfaceContainerHigh
-                window.navigationBarColor = navBarColor.toArgb()
-                
                 WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !isDark
                 WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = !isDark
             }

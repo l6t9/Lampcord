@@ -603,7 +603,7 @@ class GatewayManager(
     fun sendLazyRequest(guildId: String, channelId: String, listId: String, ranges: List<List<Int>>, isThread: Boolean = false) {
         val state = guildSubscriptions.getOrPut(guildId) { GuildSubscriptionState() }
 
-        state.updateChannel(channelId, ranges)
+        state.updateChannel(channelId, listId, ranges, isThread)
 
         val payload = GatewayPayload(
             op = 14,

@@ -78,7 +78,12 @@ class MemberListStore(
         val thread = selectionStore.selectedThread
         val channel = selectionStore.selectedChannel ?: return
         val ranges = lastRanges.take(2).ifEmpty { listOf(listOf(0, 99)) }
-        gatewayManager.sendLazyRequest(guild.id, channel.id, ranges)
+        if (thread != null) {
+            gatewayManager.sendLazyRequest(guild.id, thread.id, thread.id, ranges, isThread = true)
+        } else {
+            val listId = currentListId ?: channel.memberListId(guild)
+            gatewayManager.sendLazyRequest(guild.id, channel.id, listId, ranges, isThread = false)
+        }
     }
 
     fun setExpectedId(guildId: String, id: String, initialSize: Int) {

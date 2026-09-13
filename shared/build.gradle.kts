@@ -117,7 +117,6 @@ kotlin {
             
             implementation(libs.coil.compose)
             implementation(libs.coil.network.ktor)
-            implementation(libs.coil.gif)
             implementation("io.github.kdroidfilter:composewebview:1.0.0-beta-02")
         }
 
@@ -136,6 +135,7 @@ kotlin {
                 implementation(libs.androidx.security.crypto)
                 
                 implementation(libs.androidx.navigation3.ui)
+                implementation(libs.coil.gif)
             }
         }
         
@@ -160,7 +160,6 @@ kotlin {
                 implementation("org.bytedeco:ffmpeg:${libs.versions.ffmpegPlatform.get()}")
                 implementation("org.bytedeco:ffmpeg:${libs.versions.ffmpegPlatform.get()}:$javacppPlatform")
 
-                implementation(libs.coil.gif)
                 implementation(libs.jna)
                 implementation(libs.jna.platform)
             }

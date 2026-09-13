@@ -17,6 +17,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.AvatarDecorationData
 import me.lampu.lampcord.shared.settings.Settings
+import me.lampu.lampcord.shared.api.CdnUrls
+import me.lampu.lampcord.shared.utils.getPlatformName
 import coil3.compose.AsyncImagePainter
 
 @Composable
@@ -27,7 +29,9 @@ fun AvatarWithDecoration(
     size: Dp,
     modifier: Modifier = Modifier,
     status: String? = null,
-    animated: Boolean = !Settings.shared.reduceMotion
+    animated: Boolean = !Settings.shared.reduceMotion,
+    isHovered: Boolean = false,
+    forceAnimate: Boolean = false
 ) {
     val avatarCandidates = remember(avatarUrl, fallbackAvatarUrl) {
         buildList {
@@ -67,19 +71,31 @@ fun AvatarWithDecoration(
             }
         }
 
-        // Decorations can be animated APNGs.
+        // Decorations can be animated APNGs. Request the video-capable variant
+        // only when hovered/visible, and always honor reduce-motion.
         if (decorationData != null) {
-            val decorationUrl = remember(decorationData.asset, animated) {
-                val base = "https://cdn.discordapp.com/avatar-decoration-presets/${decorationData.asset}.png"
-                if (animated) base else "$base?size=96&passthrough=false"
+            val shouldAnimate = animated && (isHovered || forceAnimate)
+            val decorationUrl = CdnUrls.getAvatarDecorationUrl(decorationData.asset)
+            val isAndroid = remember { getPlatformName() == "android" }
+            val effectiveUrl = if (shouldAnimate) {
+                // On Android, use .gif for better animation support in Coil
+                if (isAndroid) {
+                    decorationUrl?.replace(".png", ".gif")
+                } else {
+                    decorationUrl
+                }
+            } else {
+                decorationUrl?.replace("passthrough=true", "passthrough=false")
             }
             AsyncImage(
-                model = decorationUrl,
+                model = effectiveUrl,
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxSize()
-                    .scale(1.15f),
+                    .scale(1.2f),
                 filterQuality = androidx.compose.ui.graphics.FilterQuality.High,
+                showPlaceholder = false,
+                playAnimatedVideo = false,
                 size = sizePx
             )
         }
