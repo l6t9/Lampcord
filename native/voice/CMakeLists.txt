@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.26)
+cmake_minimum_required(VERSION 3.22.1)
 project(lampcord_voice LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
