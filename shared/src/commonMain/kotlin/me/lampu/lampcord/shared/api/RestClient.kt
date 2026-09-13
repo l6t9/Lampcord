@@ -47,7 +47,7 @@ class RestClient(
 
     init {
         httpClient.receivePipeline.intercept(HttpReceivePipeline.Before) { response ->
-            if (response is HttpResponse && response.status == HttpStatusCode.Unauthorized) {
+            if (response.status == HttpStatusCode.Unauthorized) {
                 if (token != null) {
                     unauthorizedEvents.emit(Unit)
                 }

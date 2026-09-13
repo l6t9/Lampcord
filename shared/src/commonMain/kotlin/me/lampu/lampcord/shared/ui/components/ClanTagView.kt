@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.*
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import me.lampu.lampcord.shared.model.PrimaryGuild
@@ -23,7 +24,8 @@ import me.lampu.lampcord.shared.ui.components.guilds.GuildProfileSheet
 fun ClanTagView(
     primaryGuild: PrimaryGuild?,
     modifier: Modifier = Modifier,
-    alpha: Float = 1f
+    alpha: Float = 1f,
+    fontSize: TextUnit = 12.sp
 ) {
     if (primaryGuild == null) return
     if (primaryGuild.identity_enabled == false) return
@@ -41,41 +43,27 @@ fun ClanTagView(
         shape = RoundedCornerShape(4.dp),
         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f * alpha))
     ) {
-        val density = LocalDensity.current
-        val maxTagWidthPx = remember(density) { with(density) { 50.dp.toPx() } }
-
         Row(
             modifier = Modifier
-                .padding(horizontal = 4.dp, vertical = 1.dp)
-                .widthIn(max = 50.dp)
-                .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-                .drawWithContent {
-                    drawContent()
-                    if (size.width >= maxTagWidthPx - 1f) {
-                        drawRect(
-                            brush = Brush.horizontalGradient(
-                                0.8f to Color.Black,
-                                1f to Color.Transparent
-                            ),
-                            blendMode = BlendMode.DstIn
-                        )
-                    }
-                },
+                .padding(horizontal = 4.dp, vertical = 1.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (badge != null) {
                 val badgeUrl = "https://cdn.discordapp.com/guild-tag-badges/$guildId/$badge.png?size=32"
+                val badgeSize = (fontSize.value + 2).sp
+                val density = LocalDensity.current
+                val badgeSizeDp = remember(badgeSize, density) { with(density) { badgeSize.toDp() } }
                 AsyncImage(
                     model = badgeUrl,
                     contentDescription = null,
-                    modifier = Modifier.size(14.dp)
+                    modifier = Modifier.size(badgeSizeDp)
                 )
                 Spacer(Modifier.width(2.dp))
             }
             Text(
                 text = tag,
                 style = MaterialTheme.typography.labelSmall.copy(
-                    fontSize = 12.sp,
+                    fontSize = fontSize,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.1.sp
                 ),

@@ -28,6 +28,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
@@ -390,6 +391,19 @@ fun ProfileCard(
         modifier = modifier
             .then(if (showBorder) Modifier.background(theme.outerBorderBrush, outerShape).padding(4.dp) else Modifier)
     ) {
+        val profileEffectId = remember(profile) {
+            profile.guild_member_profile?.profile_effect?.sku_id ?: profile.user_profile?.profile_effect?.sku_id
+        }
+
+        if (profileEffectId != null) {
+            ProfileEffectView(
+                skuId = profileEffectId,
+                modifier = Modifier
+                    .matchParentSize()
+                    .clip(if (showBorder) innerShape else if (!isSidebar) (if (isExpanded) expandedShape else sheetShape) else RectangleShape)
+            )
+        }
+
         Column(
             modifier = Modifier
                 .then(if (isSidebar) Modifier.fillMaxSize() else if (fillAvailableHeight) Modifier.fillMaxWidth().fillMaxHeight() else Modifier.fillMaxWidth().wrapContentHeight())

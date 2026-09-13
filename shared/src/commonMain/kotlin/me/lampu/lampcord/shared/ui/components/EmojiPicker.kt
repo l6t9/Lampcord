@@ -127,7 +127,7 @@ fun EmojiPicker(
                 } else {
                     val out = mutableListOf<me.lampu.lampcord.shared.model.Guild>()
                     val seen = mutableSetOf<String>()
-                    settings!!.guild_folders.forEach { folder ->
+                    settings.guild_folders.forEach { folder ->
                         val guildIds = folder.guild_ids.mapNotNull { el -> el.jsonPrimitive.contentOrNull }
                         if (folder.id == null && guildIds.size == 1) {
                             val g = guilds.find { it.id == guildIds.first() }

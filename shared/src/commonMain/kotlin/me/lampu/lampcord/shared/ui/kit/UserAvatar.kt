@@ -16,7 +16,9 @@ fun UserAvatar(
     user: User?,
     size: Dp = 40.dp,
     modifier: Modifier = Modifier,
-    decorationData: AvatarDecorationData? = null
+    decorationData: AvatarDecorationData? = null,
+    isHovered: Boolean = false,
+    forceAnimate: Boolean = false
 ) {
     val avatarUrl = user?.avatar?.let {
         val extension = if (it.startsWith("a_")) "gif" else "png"
@@ -35,6 +37,8 @@ fun UserAvatar(
         fallbackAvatarUrl = fallbackUrl,
         decorationData = decorationData ?: user?.avatar_decoration_data,
         size = size,
-        modifier = modifier
+        modifier = modifier,
+        isHovered = isHovered,
+        forceAnimate = forceAnimate
     )
 }

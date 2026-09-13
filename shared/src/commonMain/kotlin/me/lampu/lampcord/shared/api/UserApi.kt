@@ -16,6 +16,8 @@ import kotlinx.serialization.json.*
 import me.lampu.lampcord.shared.model.ConnectedAccount
 import me.lampu.lampcord.shared.model.Gif
 import me.lampu.lampcord.shared.model.GuildFolder
+import me.lampu.lampcord.shared.model.RecentAvatar
+import me.lampu.lampcord.shared.model.RecentAvatarsResponse
 import me.lampu.lampcord.shared.model.Relationship
 import me.lampu.lampcord.shared.model.User
 import me.lampu.lampcord.shared.model.UserProfile
@@ -58,7 +60,7 @@ class UserApi(private val rest: RestClient) {
                 standardHeaders(rest)
             }
             if (response.status.isSuccess()) {
-                response.body()
+                response.body<UserProfile>()
             } else {
                 val errorBody = response.bodyAsText()
                 Logging.e("Profile", "Error fetching user profile: ${response.status}, body: $errorBody")
@@ -78,7 +80,7 @@ class UserApi(private val rest: RestClient) {
                 contentType(ContentType.Application.Json)
                 setBody(partial)
             }
-            if (response.status.isSuccess()) response.body() else null
+            if (response.status.isSuccess()) response.body<User>() else null
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             Logging.e("User", "Error patching user: ${e.message}")
@@ -101,12 +103,52 @@ class UserApi(private val rest: RestClient) {
         }
     }
 
+    suspend fun getCollectibleProduct(skuId: String): JsonObject? {
+        return try {
+            val response = rest.httpClient.get("${rest.apiBase}/collectibles-products/$skuId") {
+                standardHeaders(rest)
+            }
+            if (response.status.isSuccess()) response.body<JsonObject>() else null
+        } catch (e: Exception) {
+            Logging.e("Profile", "Error fetching collectible product $skuId: ${e.message}")
+            null
+        }
+    }
+
+    suspend fun getRecentAvatars(): List<RecentAvatar> {
+        return try {
+            val response = rest.httpClient.get("${rest.apiBase}/users/@me/avatars") {
+                standardHeaders(rest)
+            }
+            if (response.status.isSuccess()) {
+                response.body<me.lampu.lampcord.shared.model.RecentAvatarsResponse>().avatars
+            } else emptyList()
+        } catch (e: Exception) {
+            Logging.e("User", "Error fetching recent avatars: ${e.message}")
+            emptyList()
+        }
+    }
+
+    suspend fun updateAvatarId(avatarId: String): Boolean {
+        return try {
+            val response = rest.httpClient.patch("${rest.apiBase}/users/@me") {
+                standardHeaders(rest)
+                contentType(ContentType.Application.Json)
+                setBody(buildJsonObject { put("avatar_id", avatarId) })
+            }
+            response.status.isSuccess()
+        } catch (e: Exception) {
+            Logging.e("User", "Error updating avatar id: ${e.message}")
+            false
+        }
+    }
+
     suspend fun getRelationships(): List<Relationship> {
         return try {
             val response = rest.httpClient.get("${rest.apiBase}/users/@me/relationships") {
                 standardHeaders(rest)
             }
-            if (response.status.isSuccess()) response.body() else emptyList()
+            if (response.status.isSuccess()) response.body<List<Relationship>>() else emptyList()
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             Logging.e("Relationship", "Error fetching relationships: ${e.message}")
@@ -122,9 +164,6 @@ class UserApi(private val rest: RestClient) {
             if (response.status.isSuccess()) {
                 val bodyText = response.bodyAsText()
                 Logging.d("Relationship", "Mutual friends response for $userId: $bodyText")
-                // Discord mutual friends API returns a list of relationship objects
-                // but sometimes the fields might vary (e.g. mutual_friend vs relationship)
-                // We'll use a generic approach to extract the 'user' field.
                 val json = rest.json
                 val list = json.parseToJsonElement(bodyText).jsonArray
                 list.mapNotNull { element ->
@@ -245,7 +284,7 @@ class UserApi(private val rest: RestClient) {
             val response = rest.httpClient.get("${rest.apiBase}/users/@me/settings") {
                 standardHeaders(rest)
             }
-            if (response.status.isSuccess()) response.body() else null
+            if (response.status.isSuccess()) response.body<UserSettings>() else null
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             Logging.e("Settings", "Error fetching user settings: ${e.message}")
@@ -289,7 +328,7 @@ class UserApi(private val rest: RestClient) {
         return try {
             rest.httpClient.get("${rest.apiBase}/users/@me/connections") {
                 standardHeaders(rest)
-            }.body()
+            }.body<List<ConnectedAccount>>()
         } catch (e: Exception) {
             Logging.e("Auth", "Error fetching connections: ${e.message}")
             emptyList()
@@ -323,7 +362,7 @@ class UserApi(private val rest: RestClient) {
             val response = rest.httpClient.get("${rest.apiBase}/users/@me/devices") {
                 standardHeaders(rest)
             }
-            if (response.status.isSuccess()) response.body() else emptyList()
+            if (response.status.isSuccess()) response.body<List<DiscordDevice>>() else emptyList()
         } catch (e: Exception) {
             Logging.e("Devices", "Error fetching devices: ${e.message}")
             emptyList()

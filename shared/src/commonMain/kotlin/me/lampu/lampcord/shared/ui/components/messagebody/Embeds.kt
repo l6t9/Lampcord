@@ -2,27 +2,14 @@ package me.lampu.lampcord.shared.ui.components.messagebody
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,7 +28,25 @@ import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.DiscordMarkdownText
 import me.lampu.lampcord.shared.ui.components.VideoPlayer
 import me.lampu.lampcord.shared.settings.Settings
+import androidx.compose.runtime.LaunchedEffect
+import me.lampu.lampcord.shared.utils.getPlatformName
+import io.github.kdroidfilter.webview.web.WebView
+import io.github.kdroidfilter.webview.web.rememberWebViewNavigator
+import io.github.kdroidfilter.webview.web.rememberWebViewState
 import org.koin.compose.koinInject
+
+private val spotifyUrlRe = Regex("https://open\\.spotify\\.com/(\\w+)/(\\w+)")
+private val youtubeUrlRe =
+    Regex(
+        "(?:https?://)?(?:(?:www|m)\\.)?(?:youtu\\.be/|youtube(?:-nocookie)?\\.com/" +
+                "(?:embed/|v/|watch\\?v=|watch\\?.+&v=|shorts/))((\\w|-){11})" +
+                "(?:(?:\\?|&)(?:star)?t=(\\d+))?(?:\\S+)?"
+    )
+private val youtubeClipRe =
+    Regex(
+        "(?:https?://)?(?:(?:www|m)\\.)?(?:youtu\\.be/|youtube(?:-nocookie)?\\.com/clip/)" +
+                "((\\w|-){36})(?:(?:\\?|&)(?:star)?t=(\\d+))?(?:\\S+)?"
+    )
 
 @Composable
 fun GifvView(
@@ -64,6 +69,41 @@ fun GifvView(
 }
 
 @Composable
+fun PlayableEmbedView(
+    url: String,
+    provider: String,
+    modifier: Modifier = Modifier
+) {
+    val navigator = rememberWebViewNavigator()
+    val webViewState = rememberWebViewState(url)
+    
+    // Set user agent and allow JS to ensure YouTube loads correctly
+    LaunchedEffect(webViewState) {
+        val platform = getPlatformName()
+        val isMobile = platform == "android" || platform == "ios"
+        webViewState.webSettings.apply {
+            isJavaScriptEnabled = true
+            customUserAgentString = if (isMobile) {
+                "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36"
+            } else {
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
+            }
+        }
+        
+        // "webview refer fix" - spoofing Referer to avoid embed restrictions
+        navigator.loadUrl(url, mapOf("Referer" to "https://discord.com"))
+    }
+    
+    Box(modifier = modifier.clip(RoundedCornerShape(8.dp)).background(Color.Black)) {
+        WebView(
+            state = webViewState,
+            navigator = navigator,
+            modifier = Modifier.fillMaxSize()
+        )
+    }
+}
+
+@Composable
 fun EmbedView(
     embed: Embed,
     navigationStore: NavigationStore = koinInject()
@@ -77,6 +117,34 @@ fun EmbedView(
             modifier = Modifier.padding(vertical = 4.dp).widthIn(max = 500.dp).fillMaxWidth().aspectRatio(embed.video.aspectRatio ?: 1f)
         )
         return
+    }
+
+    val playableUrl = remember(embed) {
+        val embedUrl = embed.url ?: return@remember null
+        when (embed.provider?.name) {
+            "YouTube" -> {
+                youtubeUrlRe.find(embedUrl)?.let { res ->
+                    val videoId = res.groupValues[1]
+                    val timestamp = res.groupValues[3].takeIf { it.isNotBlank() }
+                    "https://www.youtube-nocookie.com/embed/$videoId${if (timestamp != null) "?start=$timestamp" else ""}"
+                } ?: youtubeClipRe.find(embedUrl)?.let { res ->
+                    // Clips are harder to embed directly via URL, but we can try the same no-nocookie logic
+                    val clipId = res.groupValues[1]
+                    "https://www.youtube-nocookie.com/clip/$clipId"
+                }
+            }
+            "Spotify" -> {
+                spotifyUrlRe.find(embedUrl)?.let { res ->
+                    val type = res.groupValues[1]
+                    val itemId = res.groupValues[2]
+                    "https://open.spotify.com/embed/$type/$itemId"
+                }
+            }
+            else -> {
+                // Generic video support if provider is unknown but has video
+                if (embed.video != null) embedUrl else null
+            }
+        }
     }
 
     // Some providers (including Tenor) only return the GIF as the embed URL,
@@ -140,7 +208,7 @@ fun EmbedView(
                         }
                     }
                     embed.thumbnail?.let { thumb ->
-                        if (embed.image == null) {
+                        if (embed.image == null && playableUrl == null) {
                             Box(modifier = Modifier.padding(start = 8.dp).size(72.dp).clip(RoundedCornerShape(6.dp))) {
                                 AttachmentImage(
                                     media = thumb,
@@ -166,6 +234,18 @@ fun EmbedView(
                             }
                         }
                     }
+                    Spacer(Modifier.height(8.dp))
+                }
+                if (playableUrl != null) {
+                    PlayableEmbedView(
+                        url = playableUrl,
+                        provider = embed.provider?.name ?: "",
+                        modifier = Modifier
+                            .padding(vertical = 4.dp)
+                            .fillMaxWidth()
+                            .aspectRatio(if (embed.provider?.name == "Spotify") 1.8f else 1.77f)
+                            .heightIn(max = if (embed.provider?.name == "Spotify") 152.dp else 400.dp)
+                    )
                     Spacer(Modifier.height(8.dp))
                 }
                 embed.image?.let { image ->

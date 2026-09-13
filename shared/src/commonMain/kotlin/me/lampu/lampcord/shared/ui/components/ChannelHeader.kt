@@ -143,7 +143,7 @@ fun ChannelHeader(
         },
         actions = {
             if (!isChannelsAndRoles && channel != null) {
-                if (channel.type == 1 || channel.type == 3) VoiceCallButton(channel)
+                if (settingsStore.showCallButton && (channel.type == 1 || channel.type == 3)) VoiceCallButton(channel)
                 if (settingsStore.showChatSearch) {
                     IconButton(onClick = { navigationStore.isSearchVisible = !navigationStore.isSearchVisible }) {
                         Icon(
@@ -180,23 +180,12 @@ fun ChannelHeader(
                     }
                 }
 
-                if (settingsStore.showCallButton && channel.type == 1) {
-                    IconButton(onClick = { voiceStore.connectToVoice(channel) }) {
-                        Icon(
-                            Icons.Rounded.Call,
-                            "Call",
-                            modifier = Modifier.size(22.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-                
-                if (isDesktop && channel.type == 1) {
+                if (isDesktop && channel.type != 15 && (channel.guild_id != null || channel.type == 1 || channel.type == 3)) {
                     IconButton(onClick = { navigationStore.isProfilePanelVisible = !navigationStore.isProfilePanelVisible }) {
                         Icon(
-                            Icons.Filled.AccountCircle,
-                            "User Profile",
-                            modifier = Modifier.size(22.dp),
+                            imageVector = if (channel.type == 1) Icons.Filled.AccountCircle else Icons.Filled.Group,
+                            contentDescription = "Toggle Member List",
+                            modifier = Modifier.size(24.dp),
                             tint = if (navigationStore.isProfilePanelVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }

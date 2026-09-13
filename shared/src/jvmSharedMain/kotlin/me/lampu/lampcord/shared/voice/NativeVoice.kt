@@ -26,7 +26,7 @@ internal object NativeVoice {
     external fun transition(handle: Long, id: Int, prepare: Boolean)
     external fun removeUser(handle: Long, user: String)
     external fun authenticator(handle: Long): ByteArray
-    external fun encode(handle: Long, pcm: ShortArray): ByteArray
+    external fun encode(handle: Long, pcm: ShortArray, denoise: Boolean): ByteArray
     external fun encrypt(handle: Long, ssrc: Int, opus: ByteArray): ByteArray?
     external fun decrypt(handle: Long, user: String, frame: ByteArray): ByteArray?
     external fun decode(handle: Long, user: String, opus: ByteArray?): ShortArray?

@@ -23,10 +23,10 @@ fun MainScreen(
     messageStore: MessageStore = koinInject(),
     errorStore: AppErrorStore = koinInject(),
     profileStore: ProfileStore = koinInject(),
-    voiceStore: VoiceStore = koinInject()
+    voiceStore: VoiceStore = koinInject(),
+    userStore: UserStore = koinInject()
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        val isMobile = getPlatformName() == "android" || getPlatformName() == "ios" || maxWidth < 600.dp
         val reduceMotion = Settings.shared.reduceMotion
 
         val loadingMessage = remember(navigationStore.isConnecting, messageStore.loadingMessages.size) {
@@ -54,19 +54,12 @@ fun MainScreen(
             ) { (isConnected, isConnecting) ->
                 when {
                     isConnected -> {
-                        if (isMobile) {
-                            MobileBaseplate(
-                                navigationStore = navigationStore,
-                                profileStore = profileStore,
-                                userStore = koinInject(),
-                            )
-                        } else {
-                            DesktopBaseplate(
-                                navigationStore = navigationStore,
-                                profileStore = profileStore,
-                                voiceStore = voiceStore,
-                            )
-                        }
+                        MainAdaptiveScaffold(
+                            navigationStore = navigationStore,
+                            profileStore = profileStore,
+                            userStore = userStore,
+                            voiceStore = voiceStore
+                        )
                     }
                     isConnecting || me.lampu.lampcord.shared.settings.Settings.shared.discordToken.isNotBlank() -> {
                         Box(

@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.json.*
 import me.lampu.lampcord.shared.voice.*
+import me.lampu.lampcord.shared.settings.Settings
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetSocketAddress
@@ -317,7 +318,7 @@ actual class VoiceGatewayManager actual constructor(private val client: HttpClie
                             send(31, buildJsonObject { put("transition_id", transition) })
                             initializeDave()
                         }
-                        2 -> { resetCount = 0; transitionReady(transition) }
+                        1, 2 -> { resetCount = 0; transitionReady(transition) }
                     }
                 }
             }
@@ -359,8 +360,9 @@ actual class VoiceGatewayManager actual constructor(private val client: HttpClie
                         transmitting = true
                     }
                     silence = 5
+                    val denoise = Settings.shared.noiseCancellation
                     val packet = synchronized(lock) {
-                        NativeVoice.encrypt(handle, ssrc, NativeVoice.encode(handle, pcm))?.let { packets?.encrypt(it) }
+                        NativeVoice.encrypt(handle, ssrc, NativeVoice.encode(handle, pcm, denoise))?.let { packets?.encrypt(it) }
                     }
                     packet?.let { socket?.send(DatagramPacket(it, it.size)) }
                     if (pcm.any { kotlin.math.abs(it.toInt()) > 600 }) speaking[userId] = System.nanoTime()
@@ -411,11 +413,10 @@ actual class VoiceGatewayManager actual constructor(private val client: HttpClie
         }
 
         private suspend fun keepAlive() {
-            var ping = 0
             var tick = 0
             while (currentCoroutineContext().isActive) {
                 if (tick++ % 25 == 0) {
-                    val packet = ByteBuffer.allocate(8).putInt(0x1337cafe).putInt(ping++).array()
+                    val packet = ByteBuffer.allocate(74).putShort(1).putShort(70).putInt(ssrc).array()
                     socket?.send(DatagramPacket(packet, packet.size))
                 }
                 val cutoff = System.nanoTime() - 300_000_000L

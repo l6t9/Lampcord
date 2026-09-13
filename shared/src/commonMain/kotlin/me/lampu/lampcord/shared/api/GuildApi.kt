@@ -313,7 +313,7 @@ class GuildApi(private val rest: RestClient) {
             val response = rest.httpClient.post("${rest.apiBase}/invites/$inviteCode") {
                 standardHeaders(rest)
             }
-            if (response.status.isSuccess()) response.body<Invite>()?.guild else null
+            if (response.status.isSuccess()) response.body<Invite>().guild else null
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             Logging.e("Invite", "Error joining with code $inviteCode: ${e.message}")

@@ -5,6 +5,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -16,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import me.lampu.lampcord.shared.model.*
 import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.HsvColorPicker
@@ -24,6 +28,7 @@ import me.lampu.lampcord.shared.ui.components.settings.*
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.showToast
 import org.koin.compose.koinInject
+import me.lampu.lampcord.shared.ui.components.CropImageDialog
 import me.lampu.lampcord.shared.model.UserProfile
 import me.lampu.lampcord.shared.model.UserProfileMetadata
 
@@ -104,6 +109,87 @@ fun ProfileSettingsContent(
     var showAvatarPicker by remember { mutableStateOf(false) }
     var showBannerPicker by remember { mutableStateOf(false) }
     var showGuildPicker by remember { mutableStateOf(false) }
+    var showRecentAvatars by remember { mutableStateOf(false) }
+    var recentAvatars by remember { mutableStateOf<List<RecentAvatar>>(emptyList()) }
+    
+    var pendingCropImage by remember { mutableStateOf<ByteArray?>(null) }
+
+    LaunchedEffect(showRecentAvatars) {
+        if (showRecentAvatars) {
+            recentAvatars = userApi.getRecentAvatars()
+        }
+    }
+
+    if (pendingCropImage != null) {
+        CropImageDialog(
+            imageBytes = pendingCropImage!!,
+            onConfirm = { croppedBytes ->
+                val mimeType = "image/png"
+                val base64 = me.lampu.lampcord.shared.utils.base64Encode(croppedBytes)
+                val dataUri = "data:$mimeType;base64,$base64"
+                
+                scope.launch {
+                    if (selectedGuildId == null) {
+                        val updated = userApi.patchUser(me.lampu.lampcord.shared.model.User.Partial(avatar = dataUri))
+                        if (updated != null) userStore.handleUserUpdate(updated)
+                    } else {
+                        val updated = guildApi.updateSelfMember(selectedGuildId!!, me.lampu.lampcord.shared.model.Member.Partial(avatar = dataUri))
+                        if (updated != null) userStore.cacheMember(selectedGuildId!!, userVal.id, updated)
+                    }
+                    showToast("Avatar updated!")
+                }
+                pendingCropImage = null
+            },
+            onDismiss = { pendingCropImage = null }
+        )
+    }
+
+    if (showRecentAvatars) {
+        AlertDialog(
+            onDismissRequest = { showRecentAvatars = false },
+            title = { Text("Recent Avatars") },
+            text = {
+                if (recentAvatars.isEmpty()) {
+                    Box(Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) {
+                        Text("No recent avatars found.")
+                    }
+                } else {
+                    LazyVerticalGrid(
+                        columns = GridCells.Adaptive(80.dp),
+                        modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp),
+                        contentPadding = PaddingValues(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(recentAvatars) { avatar ->
+                            val url = "https://cdn.discordapp.com/avatars/${userVal.id}/${avatar.storage_hash}.png?size=160"
+                            AsyncImage(
+                                model = url,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(80.dp)
+                                    .clip(CircleShape)
+                                    .clickable {
+                                        scope.launch {
+                                            if (userApi.updateAvatarId(avatar.id)) {
+                                                showToast("Avatar updated!")
+                                                userApi.getUserProfile(userVal.id)?.user?.let {
+                                                    userStore.handleUserUpdate(it)
+                                                }
+                                            }
+                                            showRecentAvatars = false
+                                        }
+                                    }
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showRecentAvatars = false }) { Text("Close") }
+            }
+        )
+    }
 
     val hasNitro = (userVal.premium_type ?: 0) > 0
 
@@ -149,7 +235,6 @@ fun ProfileSettingsContent(
     }
 
     LaunchedEffect(selectedGuildId, customProfile, userVal, currentMember) {
-        // Initial set from stores/userVal
         if (selectedGuildId == null) {
             displayName = userVal.global_name ?: ""
             bio = userVal.bio?.let { me.lampu.lampcord.shared.ui.components.profiles.Profile3y3.strip(it) } ?: ""
@@ -172,7 +257,6 @@ fun ProfileSettingsContent(
         isLoadingProfile = false
         serverProfile = profile
 
-        // Helper to extract 3y3 theme if present
         fun get3y3Theme(rawBio: String?): List<Int>? {
             return rawBio?.let { b ->
                 me.lampu.lampcord.shared.ui.components.profiles.Profile3y3.decode(b)?.let { json ->
@@ -191,10 +275,7 @@ fun ProfileSettingsContent(
             profile?.guild_member_profile?.let {
                 bio = it.bio?.let { b -> me.lampu.lampcord.shared.ui.components.profiles.Profile3y3.strip(b) } ?: ""
                 pronouns = it.pronouns ?: ""
-                
                 val encodedTheme = get3y3Theme(it.bio)
-                
-                // Use customProfile if set, otherwise fallback to server values (Nitro or 3y3)
                 bannerColor = customProfile?.accent_color ?: it.accent_color
                 bannerUri = customProfile?.banner
                 themePrimaryColor = it.theme_colors?.getOrNull(0) ?: customProfile?.theme_colors?.getOrNull(0) ?: encodedTheme?.getOrNull(0)
@@ -204,17 +285,13 @@ fun ProfileSettingsContent(
             displayName = userVal.global_name ?: ""
             bio = userVal.bio?.let { b -> me.lampu.lampcord.shared.ui.components.profiles.Profile3y3.strip(b) } ?: ""
             pronouns = userVal.pronouns ?: ""
-            
             val encodedTheme = get3y3Theme(userVal.bio)
-            
             bannerColor = customProfile?.accent_color ?: userVal.accent_color
             bannerUri = customProfile?.banner
             themePrimaryColor = profile?.user_profile?.theme_colors?.getOrNull(0) ?: customProfile?.theme_colors?.getOrNull(0) ?: encodedTheme?.getOrNull(0)
             themeSecondaryColor = profile?.user_profile?.theme_colors?.getOrNull(1) ?: customProfile?.theme_colors?.getOrNull(1) ?: encodedTheme?.getOrNull(1)
         }
     }
-
-
 
     if (showGuildPicker) {
         AlertDialog(
@@ -229,9 +306,7 @@ fun ProfileSettingsContent(
                                 selectedGuildId = null
                                 showGuildPicker = false
                             },
-                            leadingContent = {
-                                Icon(Icons.Rounded.Public, null)
-                            }
+                            leadingContent = { Icon(Icons.Rounded.Public, null) }
                         )
                     }
                     items(guilds) { guild ->
@@ -255,9 +330,7 @@ fun ProfileSettingsContent(
                     }
                 }
             },
-            confirmButton = {
-                TextButton(onClick = { showGuildPicker = false }) { Text("Cancel") }
-            }
+            confirmButton = { TextButton(onClick = { showGuildPicker = false }) { Text("Cancel") } }
         )
     }
 
@@ -296,30 +369,7 @@ fun ProfileSettingsContent(
         onDismiss = { showAvatarPicker = false },
         onFileSelected = { files ->
             val file = files.firstOrNull() ?: return@FilePicker
-            val fileName = file.first.lowercase()
-            val mimeType = when {
-                fileName.endsWith(".png") -> "image/png"
-                fileName.endsWith(".jpg") || fileName.endsWith(".jpeg") -> "image/jpeg"
-                fileName.endsWith(".gif") -> "image/gif"
-                fileName.endsWith(".webp") -> "image/webp"
-                else -> "image/png"
-            }
-            val base64 = me.lampu.lampcord.shared.utils.base64Encode(file.second)
-            val dataUri = "data:$mimeType;base64,$base64"
-            
-            scope.launch {
-                if (selectedGuildId == null) {
-                    val updated = userApi.patchUser(me.lampu.lampcord.shared.model.User.Partial(avatar = dataUri))
-                    if (updated != null) {
-                        userStore.handleUserUpdate(updated)
-                    }
-                } else {
-                    val updated = guildApi.updateSelfMember(selectedGuildId!!, me.lampu.lampcord.shared.model.Member.Partial(avatar = dataUri))
-                    if (updated != null) {
-                        userStore.cacheMember(selectedGuildId!!, userVal.id, updated)
-                    }
-                }
-            }
+            pendingCropImage = file.second
             showAvatarPicker = false
         }
     )
@@ -338,9 +388,7 @@ fun ProfileSettingsContent(
                 else -> "image/png"
             }
             val base64 = me.lampu.lampcord.shared.utils.base64Encode(file.second)
-            val dataUri = "data:$mimeType;base64,$base64"
-            
-            bannerUri = dataUri
+            bannerUri = "data:$mimeType;base64,$base64"
             showBannerPicker = false
         }
     )
@@ -400,8 +448,21 @@ fun ProfileSettingsContent(
                             customProfileOverride = previewCustomProfile,
                             modifier = Modifier.fillMaxWidth().heightIn(max = 600.dp)
                         )
+                        
+                        Button(
+                            onClick = { showRecentAvatars = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = CircleShape,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        ) {
+                            Icon(Icons.Rounded.History, null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Recent Avatars")
+                        }
 
-                        // Action Buttons: Remove Avatar/Banner and Save
                         Column(
                             modifier = Modifier.fillMaxWidth(),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -488,83 +549,34 @@ fun ProfileSettingsContent(
                                 onClick = {
                                     scope.launch {
                                         val themeColors = listOfNotNull(themePrimaryColor, themeSecondaryColor)
-                                        
                                         var finalBio = bio
                                         if (!hasNitro && settingsStore.profile3y3) {
-                                            val custom = me.lampu.lampcord.shared.model.CustomProfile(
-                                                theme_colors = themeColors.ifEmpty { null }
-                                            )
-                                            val encoded = me.lampu.lampcord.shared.ui.components.profiles.Profile3y3.encode(
-                                                kotlinx.serialization.json.Json.encodeToString(custom)
-                                            )
-                                            me.lampu.lampcord.shared.utils.Logging.i("Profile3y3", "Encoding 3y3 (theme only) for ${userVal.username}. Data length: ${encoded.length}")
+                                            val custom = me.lampu.lampcord.shared.model.CustomProfile(theme_colors = themeColors.ifEmpty { null })
+                                            val encoded = me.lampu.lampcord.shared.ui.components.profiles.Profile3y3.encode(kotlinx.serialization.json.Json.encodeToString(custom))
                                             finalBio += encoded
                                         }
 
                                         if (selectedGuildId == null) {
-                                            val updated = userApi.patchUser(
-                                                me.lampu.lampcord.shared.model.User.Partial(
-                                                    global_name = displayName
-                                                )
-                                            )
-                                            if (updated != null) {
-                                                userStore.handleUserUpdate(updated)
-                                            }
-
-                                            userApi.patchUserProfile(
-                                                me.lampu.lampcord.shared.model.UserProfileMetadata.Partial(
-                                                    bio = finalBio,
-                                                    pronouns = pronouns,
-                                                    theme_colors = if (hasNitro) themeColors.ifEmpty { null } else null,
-                                                    accent_color = if (hasNitro) bannerColor else null,
-                                                    banner = if (hasNitro) bannerUri else null
-                                                )
-                                            )
-
-                                            if (!hasNitro) {
-                                                val custom = me.lampu.lampcord.shared.model.CustomProfile(
-                                                    user_id = userVal.id,
-                                                    theme_colors = themeColors.ifEmpty { null },
-                                                    accent_color = bannerColor,
-                                                    banner = bannerUri
-                                                )
-                                                clientProfileStore.setLocalOverride(userVal.id, custom)
-                                            }
+                                            val updated = userApi.patchUser(me.lampu.lampcord.shared.model.User.Partial(global_name = displayName))
+                                            if (updated != null) userStore.handleUserUpdate(updated)
+                                            userApi.patchUserProfile(me.lampu.lampcord.shared.model.UserProfileMetadata.Partial(
+                                                bio = finalBio, pronouns = pronouns,
+                                                theme_colors = if (hasNitro) themeColors.ifEmpty { null } else null,
+                                                accent_color = if (hasNitro) bannerColor else null,
+                                                banner = if (hasNitro) bannerUri else null
+                                            ))
                                         } else {
-                                            val updated = guildApi.updateSelfMember(
-                                                selectedGuildId!!,
-                                                me.lampu.lampcord.shared.model.Member.Partial(
-                                                    nick = displayName,
-                                                    bio = finalBio,
-                                                    pronouns = pronouns,
-                                                    banner = if (hasNitro) bannerUri else null
-                                                )
-                                            )
-                                            if (updated != null) {
-                                                userStore.cacheMember(selectedGuildId!!, userVal.id, updated)
-                                            }
-                                            
-                                            if (!hasNitro) {
-                                                val custom = me.lampu.lampcord.shared.model.CustomProfile(
-                                                    user_id = userVal.id,
-                                                    theme_colors = themeColors.ifEmpty { null },
-                                                    accent_color = bannerColor,
-                                                    banner = bannerUri
-                                                )
-                                                clientProfileStore.setLocalOverride(userVal.id, custom)
-                                            }
+                                            val updated = guildApi.updateSelfMember(selectedGuildId!!, me.lampu.lampcord.shared.model.Member.Partial(
+                                                nick = displayName, bio = finalBio, pronouns = pronouns, banner = if (hasNitro) bannerUri else null
+                                            ))
+                                            if (updated != null) userStore.cacheMember(selectedGuildId!!, userVal.id, updated)
                                         }
+                                        showToast("Profile saved!")
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth(),
-                                shape = CircleShape,
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.primary,
-                                    contentColor = MaterialTheme.colorScheme.onPrimary
-                                )
-                            ) {
-                                Text("Save Changes")
-                            }
+                                shape = CircleShape
+                            ) { Text("Save Changes") }
                         }
                     }
                 }
@@ -582,28 +594,10 @@ fun ProfileSettingsContent(
                                     title = { Text("Details") },
                                     description = {
                                         Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                                            OutlinedTextField(
-                                                value = displayName,
-                                                onValueChange = { displayName = it },
-                                                label = { Text(if (selectedGuildId == null) "Display Name" else "Server Nickname") },
-                                                modifier = Modifier.fillMaxWidth()
-                                            )
-
+                                            OutlinedTextField(value = displayName, onValueChange = { displayName = it }, label = { Text(if (selectedGuildId == null) "Display Name" else "Server Nickname") }, modifier = Modifier.fillMaxWidth())
                                             if (selectedGuildId == null) {
-                                                OutlinedTextField(
-                                                    value = pronouns,
-                                                    onValueChange = { pronouns = it },
-                                                    label = { Text("Pronouns") },
-                                                    modifier = Modifier.fillMaxWidth()
-                                                )
-
-                                                OutlinedTextField(
-                                                    value = bio,
-                                                    onValueChange = { bio = it },
-                                                    label = { Text("About Me") },
-                                                    modifier = Modifier.fillMaxWidth(),
-                                                    minLines = 3
-                                                )
+                                                OutlinedTextField(value = pronouns, onValueChange = { pronouns = it }, label = { Text("Pronouns") }, modifier = Modifier.fillMaxWidth())
+                                                OutlinedTextField(value = bio, onValueChange = { bio = it }, label = { Text("About Me") }, modifier = Modifier.fillMaxWidth(), minLines = 3)
                                             }
                                         }
                                     }
@@ -619,15 +613,9 @@ fun ProfileSettingsContent(
                                     description = {
                                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 8.dp)) {
                                             Text("Used when no banner image is set:", style = MaterialTheme.typography.bodyMedium)
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(32.dp)
-                                                    .background(bannerColor?.let { Color(it or 0xFF000000.toInt()) } ?: Color.Gray, CircleShape)
-                                                    .clickable { 
-                                                        colorPickerTarget = 0
-                                                        showColorPicker = true 
-                                                    }
-                                            )
+                                            Box(modifier = Modifier.size(32.dp).background(bannerColor?.let { Color(it or 0xFF000000.toInt()) } ?: Color.Gray, CircleShape).clickable { 
+                                                colorPickerTarget = 0; showColorPicker = true 
+                                            })
                                         }
                                     }
                                 )
@@ -641,39 +629,18 @@ fun ProfileSettingsContent(
                                     title = { Text("Theme Colors") },
                                     description = {
                                         Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                            if (hasNitro) {
-                                                Text("Set nitro profile colors. These will be visible to everyone.", style = MaterialTheme.typography.bodySmall)
-                                            } else {
-                                                val localNotice = if (settingsStore.profile3y3) 
-                                                    "Profile colors are shared via invisible text in your bio since you don't have Nitro."
-                                                    else "Nitro is required for global profile colors. These colors will only be visible to you locally."
-                                                Text(localNotice, style = MaterialTheme.typography.bodySmall, color = if (settingsStore.profile3y3) Color.Unspecified else MaterialTheme.colorScheme.onSurfaceVariant)
-                                            }
-                                            
+                                            Text(if (hasNitro) "Set nitro profile colors." else if (settingsStore.profile3y3) "Shared via 3y3." else "Nitro required.", style = MaterialTheme.typography.bodySmall)
                                             Row(modifier = Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                                    Box(
-                                                        modifier = Modifier
-                                                            .size(40.dp)
-                                                            .background(themePrimaryColor?.let { Color(it or 0xFF000000.toInt()) } ?: Color.Gray, CircleShape)
-                                                            .clickable { 
-                                                                colorPickerTarget = 1
-                                                                showColorPicker = true 
-                                                            }
-                                                    )
+                                                    Box(modifier = Modifier.size(40.dp).background(themePrimaryColor?.let { Color(it or 0xFF000000.toInt()) } ?: Color.Gray, CircleShape).clickable { 
+                                                        colorPickerTarget = 1; showColorPicker = true 
+                                                    })
                                                     Text("Primary", style = MaterialTheme.typography.labelSmall)
                                                 }
-                                                
                                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                                    Box(
-                                                        modifier = Modifier
-                                                            .size(40.dp)
-                                                            .background(themeSecondaryColor?.let { Color(it or 0xFF000000.toInt()) } ?: Color.Gray, CircleShape)
-                                                            .clickable { 
-                                                                colorPickerTarget = 2
-                                                                showColorPicker = true 
-                                                            }
-                                                    )
+                                                    Box(modifier = Modifier.size(40.dp).background(themeSecondaryColor?.let { Color(it or 0xFF000000.toInt()) } ?: Color.Gray, CircleShape).clickable { 
+                                                        colorPickerTarget = 2; showColorPicker = true 
+                                                    })
                                                     Text("Secondary", style = MaterialTheme.typography.labelSmall)
                                                 }
                                             }
@@ -686,140 +653,35 @@ fun ProfileSettingsContent(
                 }
 
                 if (isCompact) {
-                    Column(
-                        modifier = adaptiveModifier,
-                        verticalArrangement = Arrangement.spacedBy(24.dp)
-                    ) {
+                    Column(modifier = adaptiveModifier, verticalArrangement = Arrangement.spacedBy(24.dp)) {
                         PreviewSide(Modifier.fillMaxWidth())
                         SettingsSide(Modifier.fillMaxWidth())
                     }
                 } else {
-                    Row(
-                        modifier = adaptiveModifier,
-                        horizontalArrangement = Arrangement.spacedBy(24.dp)
-                    ) {
+                    Row(modifier = adaptiveModifier, horizontalArrangement = Arrangement.spacedBy(24.dp)) {
                         PreviewSide(Modifier.width(300.dp))
                         SettingsSide(Modifier.weight(1f))
                     }
                 }
             }
 
-    var show3y3Confirmation by remember { mutableStateOf(false) }
-    var showUserBgConfirmation by remember { mutableStateOf(false) }
-    var showUserPfpConfirmation by remember { mutableStateOf(false) }
+            var show3y3Confirmation by remember { mutableStateOf(false) }
+            var showUserBgConfirmation by remember { mutableStateOf(false) }
+            var showUserPfpConfirmation by remember { mutableStateOf(false) }
 
-    if (show3y3Confirmation) {
-        AlertDialog(
-            onDismissRequest = { show3y3Confirmation = false },
-            title = { Text("Enable 3y3 Profile Colors?") },
-            text = { Text("By enabling this, your profile customizations will be embedded into your profile's bio using invisible text. This allows other Lampcord users to see your custom theme and banner without needing Nitro.") },
-            confirmButton = {
-                Button(onClick = {
-                    settingsStore.profile3y3 = true
-                    show3y3Confirmation = false
-                }) {
-                    Text("Enable")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { show3y3Confirmation = false }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
+            if (show3y3Confirmation) AlertDialog(onDismissRequest = { show3y3Confirmation = false }, title = { Text("Enable 3y3?") }, text = { Text("Embed customizations in bio?") }, confirmButton = { Button(onClick = { settingsStore.profile3y3 = true; show3y3Confirmation = false }) { Text("Enable") } }, dismissButton = { TextButton(onClick = { show3y3Confirmation = false }) { Text("Cancel") } })
+            if (showUserBgConfirmation) AlertDialog(onDismissRequest = { showUserBgConfirmation = false }, title = { Text("Enable UserBG?") }, text = { Text("See custom banners?") }, confirmButton = { Button(onClick = { settingsStore.userBg = true; showUserBgConfirmation = false }) { Text("Enable") } }, dismissButton = { TextButton(onClick = { showUserBgConfirmation = false }) { Text("Cancel") } })
+            if (showUserPfpConfirmation) AlertDialog(onDismissRequest = { showUserPfpConfirmation = false }, title = { Text("Enable UserPFP?") }, text = { Text("See custom icons?") }, confirmButton = { Button(onClick = { settingsStore.userPfp = true; showUserPfpConfirmation = false }) { Text("Enable") } }, dismissButton = { TextButton(onClick = { showUserPfpConfirmation = false }) { Text("Cancel") } })
 
-    if (showUserBgConfirmation) {
-        AlertDialog(
-            onDismissRequest = { showUserBgConfirmation = false },
-            title = { Text("Enable UserBG Banners?") },
-            text = { Text("By enabling this, you will see custom banners from the UserBG database. This feature relies on external community-maintained data.") },
-            confirmButton = {
-                Button(onClick = {
-                    settingsStore.userBg = true
-                    showUserBgConfirmation = false
-                }) {
-                    Text("Enable")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showUserBgConfirmation = false }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
-
-    if (showUserPfpConfirmation) {
-        AlertDialog(
-            onDismissRequest = { showUserPfpConfirmation = false },
-            title = { Text("Enable UserPFP Icons?") },
-            text = { Text("By enabling this, you will see custom profile icons from the UserPFP database. This feature relies on external community-maintained data.") },
-            confirmButton = {
-                Button(onClick = {
-                    settingsStore.userPfp = true
-                    showUserPfpConfirmation = false
-                }) {
-                    Text("Enable")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showUserPfpConfirmation = false }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
-
-    Material3SettingsGroup(
-        title = "Profile Enhancements",
-        items = listOf(
-            switchSettingsItem(
-                title = "3y3 Profile Colors",
-                description = "Share and see custom profile colors via invisible bio text.",
-                checked = settingsStore.profile3y3,
-                onCheckedChange = { checked ->
-                    if (checked) {
-                        show3y3Confirmation = true
-                    } else {
-                        settingsStore.profile3y3 = false
-                    }
-                }
-            ),
-            switchSettingsItem(
-                title = "UserBG Banners",
-                description = "See custom banners set via the UserBG database.",
-                checked = settingsStore.userBg,
-                onCheckedChange = { checked ->
-                    if (checked) {
-                        showUserBgConfirmation = true
-                    } else {
-                        settingsStore.userBg = false
-                    }
-                }
-            ),
-            switchSettingsItem(
-                title = "UserPFP Icons",
-                description = "See custom icons set via the UserPFP database.",
-                checked = settingsStore.userPfp,
-                onCheckedChange = { checked ->
-                    if (checked) {
-                        showUserPfpConfirmation = true
-                    } else {
-                        settingsStore.userPfp = false
-                    }
-                }
-            ),
-            Material3SettingsItem(
-                icon = Icons.Rounded.Public,
-                title = { Text("Set UserBG Banner") },
-                description = { Text("Join the Blackbox Discord server to set your custom banner for the UserBG database.") },
-                onClick = {
-                    uriHandler.openUri("https://discord.gg/ECg96KZ3Fh")
-                }
-            ),
-        )
-    )
+            Material3SettingsGroup(
+                title = "Profile Enhancements",
+                items = listOf(
+                    switchSettingsItem(title = "3y3 Profile Colors", description = "Invisible bio text.", checked = settingsStore.profile3y3, onCheckedChange = { if (it) show3y3Confirmation = true else settingsStore.profile3y3 = false }),
+                    switchSettingsItem(title = "UserBG Banners", description = "Custom banners database.", checked = settingsStore.userBg, onCheckedChange = { if (it) showUserBgConfirmation = true else settingsStore.userBg = false }),
+                    switchSettingsItem(title = "UserPFP Icons", description = "Custom icons database.", checked = settingsStore.userPfp, onCheckedChange = { if (it) showUserPfpConfirmation = true else settingsStore.userPfp = false }),
+                    Material3SettingsItem(icon = Icons.Rounded.Public, title = { Text("Set UserBG Banner") }, description = { Text("Join server.") }, onClick = { uriHandler.openUri("https://discord.gg/ECg96KZ3Fh") }),
+                )
+            )
         }
     }
 }

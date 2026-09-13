@@ -999,6 +999,19 @@ private fun MainBaseplateContent(
                                             )
                                         }
                                     }
+
+                                    if (activeChannel.type != 15 && (activeChannel.guild_id != null || activeChannel.type == 1 || activeChannel.type == 3)) {
+                                        IconButton(onClick = { 
+                                            if (panelState.currentValue == DiscordPanelValue.End) panelState.close() 
+                                            else panelState.openEnd() 
+                                        }) {
+                                            Icon(
+                                                imageVector = if (activeChannel.type == 1) Icons.Filled.AccountCircle else Icons.Filled.Group,
+                                                contentDescription = "Toggle Member List",
+                                                tint = if (panelState.currentValue == DiscordPanelValue.End) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
                                 }
                             },
                             colors = TopAppBarDefaults.topAppBarColors(

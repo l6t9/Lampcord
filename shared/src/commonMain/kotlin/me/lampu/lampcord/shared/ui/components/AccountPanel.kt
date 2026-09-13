@@ -146,7 +146,8 @@ fun AccountPanel(
                         avatarUrl = avatarUrl,
                         decorationData = member?.avatar_decoration_data ?: user.avatar_decoration_data ?: member?.collectibles?.avatar_decoration ?: user.collectibles?.avatar_decoration,
                         size = 32.dp,
-                        status = status
+                        status = status,
+                        forceAnimate = true
                     )
                 }
                 

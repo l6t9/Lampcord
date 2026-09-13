@@ -76,7 +76,7 @@ android {
         }
     }
     externalNativeBuild {
-        cmake { path = rootProject.file("native/voice/CMakeLists.txt"); version = "4.1.2" }
+        cmake { path = rootProject.file("native/voice/CMakeLists.txt"); version = "4.4.3" }
     }
     ndkVersion = "27.2.12479018"
 

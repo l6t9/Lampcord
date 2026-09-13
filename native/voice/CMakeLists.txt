@@ -72,8 +72,32 @@ FetchContent_Declare(opus
     URL_HASH SHA256=9480e329e989f70d69886ded470c7f8cfe6c0667cc4196d4837ac9e668fb7404)
 FetchContent_MakeAvailable(opus)
 
+FetchContent_Declare(rnnoise
+    URL https://codeload.github.com/xiph/rnnoise/tar.gz/master)
+FetchContent_MakeAvailable(rnnoise)
+
+set(RNNOISE_SOURCES
+    "${rnnoise_SOURCE_DIR}/src/denoise.c"
+    "${rnnoise_SOURCE_DIR}/src/rnn.c"
+    "${rnnoise_SOURCE_DIR}/src/rnn_data.c"
+    "${rnnoise_SOURCE_DIR}/src/kiss_fft.c"
+    "${rnnoise_SOURCE_DIR}/src/celt_lpc.c"
+    "${rnnoise_SOURCE_DIR}/src/pitch.c"
+)
+add_library(rnnoise_static STATIC ${RNNOISE_SOURCES})
+target_include_directories(rnnoise_static PUBLIC "${rnnoise_SOURCE_DIR}/include")
+target_compile_definitions(rnnoise_static PRIVATE HAVE_CONFIG_H)
+# RNNoise expects a config.h. We can provide a minimal one or just define the needed macros.
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/config.h" "
+#define PACKAGE_NAME \"rnnoise\"
+#define PACKAGE_VERSION \"0.1\"
+#define TRAIN_SET 1
+")
+target_include_directories(rnnoise_static PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+target_compile_options(rnnoise_static PRIVATE -w) # Suppress warnings from 3rd party code
+
 add_library(lampcord_voice SHARED voice.cpp)
-target_link_libraries(lampcord_voice PRIVATE libdave opus OpenSSL::Crypto)
+target_link_libraries(lampcord_voice PRIVATE libdave opus OpenSSL::Crypto rnnoise_static)
 if(NOT ANDROID)
     find_package(JNI REQUIRED)
     target_include_directories(lampcord_voice PRIVATE ${JNI_INCLUDE_DIRS})

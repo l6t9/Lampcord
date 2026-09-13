@@ -2,9 +2,11 @@
 #include <dave/dave_interfaces.h>
 #include <openssl/aead.h>
 #include <opus.h>
+#include <rnnoise.h>
 #include <algorithm>
 #include <array>
 #include <stdexcept>
+#include <iostream>
 
 namespace dave = discord::dave;
 using Bytes = std::vector<uint8_t>;
@@ -32,11 +34,11 @@ struct Voice {
     std::map<std::string, Peer> peers;
     std::set<std::string> roster;
     std::map<int, std::unique_ptr<dave::IKeyRatchet>> transitions;
+    DenoiseState* rnnoise = nullptr;
     bool ready = false;
 
     Voice(std::string userId, uint64_t channelId) : user(std::move(userId)), channel(channelId) {
         session = dave::mls::CreateSession(nullptr, "", [this](const auto&, const auto&) {
-            // Never forward MLS material or protocol payloads to application logs.
             mlsError = "DAVE could not process the MLS message";
         });
         if (!session || !encryptor) throw std::runtime_error("Could not create DAVE session");
@@ -48,6 +50,11 @@ struct Voice {
         opus_encoder_ctl(encoder.get(), OPUS_SET_COMPLEXITY(5));
         opus_encoder_ctl(encoder.get(), OPUS_SET_INBAND_FEC(1));
         opus_encoder_ctl(encoder.get(), OPUS_SET_PACKET_LOSS_PERC(10));
+        rnnoise = rnnoise_create(nullptr);
+    }
+
+    ~Voice() {
+        if (rnnoise) rnnoise_destroy(rnnoise);
     }
 
     Bytes initialize(int version) {
@@ -55,7 +62,6 @@ struct Voice {
         transitions.clear(); roster.clear(); peers.clear();
         encryptor->SetKeyRatchet(nullptr);
         if (version != 1 || version > daveMaxSupportedProtocolVersion()) throw std::runtime_error("Unsupported DAVE version");
-        // ponytail: a full MLS reset drops in-flight audio; retain expiring old decryptors if seamless resets are needed.
         session->Init(static_cast<uint16_t>(version), channel, user, signingKey);
         auto package = session->GetMarshalledKeyPackage();
         if (package.empty()) throw std::runtime_error("Missing MLS key package");
@@ -80,6 +86,7 @@ struct Voice {
         for (const auto& uid : roster) {
             auto key = session->GetKeyRatchet(uid);
             if (!key) throw std::runtime_error("DAVE group has no receiver key");
+            // ponytail: some versions of Discord might re-send the same key; libdave handles this.
             peers[uid].decryptor->TransitionToKeyRatchet(std::move(key));
         }
         if (transitions.size() >= 32) throw std::runtime_error("Too many pending DAVE transitions");
@@ -89,7 +96,10 @@ struct Voice {
 
     void execute(int transition) {
         auto it = transitions.find(transition);
-        if (it == transitions.end()) throw std::runtime_error("Unknown DAVE transition");
+        if (it == transitions.end()) {
+            // ponytail: ignore executions for transitions we didn't prepare (e.g. ignored commits).
+            return;
+        }
         encryptor->SetKeyRatchet(std::move(it->second));
         transitions.erase(it);
         ready = true;
@@ -136,11 +146,11 @@ std::set<std::string> users(JNIEnv* env, jobjectArray ids) {
     return result;
 }
 
-// No C++ exception may cross JNI, including allocation failures.
 template <typename T, typename F> T checked(JNIEnv* env, T fallback, F fn) {
     try { return fn(); }
-    catch (const std::exception&) {
-        if (!env->ExceptionCheck()) env->ThrowNew(env->FindClass("java/lang/IllegalStateException"), "Native voice operation failed");
+    catch (const std::exception& e) {
+        std::cerr << "Native voice error: " << e.what() << std::endl;
+        if (!env->ExceptionCheck()) env->ThrowNew(env->FindClass("java/lang/IllegalStateException"), e.what());
         return fallback;
     }
     catch (...) {
@@ -154,7 +164,6 @@ template <typename T, typename F> T checked(JNIEnv* env, T fallback, F fn) {
 
 extern "C" JNIEXPORT jlong JNICALL JNI(create)(JNIEnv* env, jobject, jstring user, jstring channel) {
     return checked<jlong>(env, 0, [&] {
-        // libdave's default verbose sink can log key packages. Disable it completely.
         daveSetLogSinkCallback([](DAVELoggingSeverity, const char*, int, const char*) {});
         return reinterpret_cast<jlong>(new Voice(string(env, user), std::stoull(string(env, channel))));
     });
@@ -190,7 +199,6 @@ extern "C" JNIEXPORT jbyteArray JNICALL JNI(proposals)(JNIEnv* env, jobject, jlo
     });
 }
 
-// 0: invalid (reset/rejoin), 1: ignored, 2: prepared successfully.
 extern "C" JNIEXPORT jint JNICALL JNI(commit)(JNIEnv* env, jobject, jlong handle, jbyteArray payload, jobjectArray ids, jint transition, jboolean welcome) {
     return checked<jint>(env, 0, [&] {
         auto& v = voice(handle);
@@ -232,13 +240,32 @@ extern "C" JNIEXPORT jbyteArray JNICALL JNI(authenticator)(JNIEnv* env, jobject,
     return checked<jbyteArray>(env, nullptr, [&] { return array(env, voice(handle).session->GetLastEpochAuthenticator()); });
 }
 
-extern "C" JNIEXPORT jbyteArray JNICALL JNI(encode)(JNIEnv* env, jobject, jlong handle, jshortArray pcm) {
+extern "C" JNIEXPORT jbyteArray JNICALL JNI(encode)(JNIEnv* env, jobject, jlong handle, jshortArray pcm, jboolean denoise) {
     return checked<jbyteArray>(env, nullptr, [&] {
+        auto& v = voice(handle);
         if (!pcm || env->GetArrayLength(pcm) != 1920) throw std::runtime_error("Expected 20ms stereo PCM");
         std::array<jshort, 1920> samples;
         env->GetShortArrayRegion(pcm, 0, 1920, samples.data());
+
+        if (denoise && v.rnnoise) {
+            float frame[480];
+            for (int f = 0; f < 2; ++f) {
+                for (int i = 0; i < 480; ++i) {
+                    int idx = (f * 480 + i) * 2;
+                    frame[i] = (samples[idx] + samples[idx+1]) / 2.0f;
+                }
+                rnnoise_process_frame(v.rnnoise, frame, frame);
+                for (int i = 0; i < 480; ++i) {
+                    int idx = (f * 480 + i) * 2;
+                    jshort s = static_cast<jshort>(std::clamp(frame[i], -32768.0f, 32767.0f));
+                    samples[idx] = s;
+                    samples[idx+1] = s;
+                }
+            }
+        }
+
         Bytes out(1275);
-        int length = opus_encode(voice(handle).encoder.get(), samples.data(), 960, out.data(), static_cast<opus_int32>(out.size()));
+        int length = opus_encode(v.encoder.get(), samples.data(), 960, out.data(), static_cast<opus_int32>(out.size()));
         if (length < 0) throw std::runtime_error("Opus encoding failed");
         out.resize(length);
         return array(env, out);
@@ -248,7 +275,7 @@ extern "C" JNIEXPORT jbyteArray JNICALL JNI(encode)(JNIEnv* env, jobject, jlong 
 extern "C" JNIEXPORT jbyteArray JNICALL JNI(encrypt)(JNIEnv* env, jobject, jlong handle, jint ssrc, jbyteArray opus) {
     return checked<jbyteArray>(env, nullptr, [&]() -> jbyteArray {
         auto& v = voice(handle);
-        if (!v.ready) return nullptr; // Never send plaintext while joining/rekeying.
+        if (!v.ready) return nullptr;
         auto in = fromJavaBytes(env, opus);
         if (in.size() > 1275) throw std::runtime_error("Oversized Opus frame");
         v.encryptor->AssignSsrcToCodec(ssrc, dave::Opus);
@@ -293,7 +320,6 @@ extern "C" JNIEXPORT jshortArray JNICALL JNI(decode)(JNIEnv* env, jobject, jlong
     });
 }
 
-// Discord's RTP-size transport AEAD. The header is authenticated; the counter is a suffix.
 extern "C" JNIEXPORT jbyteArray JNICALL JNI(aead)(JNIEnv* env, jobject, jboolean encrypt, jboolean aes, jbyteArray key, jbyteArray nonce, jbyteArray header, jbyteArray payload) {
     return checked<jbyteArray>(env, nullptr, [&]() -> jbyteArray {
         auto k = fromJavaBytes(env, key), n = fromJavaBytes(env, nonce), h = fromJavaBytes(env, header), in = fromJavaBytes(env, payload);

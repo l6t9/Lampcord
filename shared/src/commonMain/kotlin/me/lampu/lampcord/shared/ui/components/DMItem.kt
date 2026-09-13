@@ -159,7 +159,8 @@ fun DMItem(
                             avatarUrl = avatarUrl,
                             decorationData = recipient?.avatar_decoration_data ?: recipient?.collectibles?.avatar_decoration,
                             size = 32.dp,
-                            status = status
+                            status = status,
+                            isHovered = isHovered
                         )
                     }
                     Spacer(modifier = Modifier.width(12.dp))
@@ -169,14 +170,14 @@ fun DMItem(
                         baseStyle = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                        overflow = TextOverflow.Clip,
                         ignoreEffects = !isHovered,
                         ignoreColors = !isHovered,
-                        modifier = Modifier.weight(1f, fill = false)
+                        modifier = Modifier
                     )
                     recipient?.primary_guild?.let {
                         Spacer(Modifier.width(4.dp))
-                        ClanTagView(it)
+                        ClanTagView(it, modifier = Modifier.weight(1f, fill = false))
                     }
                     recipient?.let { 
                         UserTagView(it, modifier = Modifier.padding(start = 4.dp)) 

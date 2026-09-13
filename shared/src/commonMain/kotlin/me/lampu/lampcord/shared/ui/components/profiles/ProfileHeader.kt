@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
@@ -134,7 +135,8 @@ fun ProfileHeader(
                     avatarUrl = avatarUrl,
                     decorationData = profile.guild_member?.avatar_decoration_data ?: user.avatar_decoration_data,
                     size = 82.dp,
-                    status = status
+                    status = status,
+                    forceAnimate = true
                 )
 
                 if (onEditAvatar != null && isAvatarHovered) {
@@ -225,10 +227,11 @@ fun ProfileHeader(
                 fontWeight = FontWeight.Bold,
                 color = profileTextColor,
                 marquee = !Settings.shared.reduceMotion,
-                modifier = Modifier.weight(1f, fill = false)
+                overflow = TextOverflow.Clip,
+                modifier = Modifier
             )
             user.primary_guild?.let {
-                ClanTagView(it)
+                ClanTagView(it, fontSize = 15.sp, modifier = Modifier.weight(1f, fill = false))
             }
             UserTagView(user)
         }

@@ -17,6 +17,20 @@ class ProfileStore(
     var isProfileLoading by mutableStateOf(false)
     var profilePosition by mutableStateOf<Offset?>(null)
 
+    private val collectibleCache = mutableStateMapOf<String, kotlinx.serialization.json.JsonObject>()
+
+    fun getCollectible(skuId: String): kotlinx.serialization.json.JsonObject? {
+        val cached = collectibleCache[skuId]
+        if (cached != null) return cached
+
+        scope.launch {
+            userApi.getCollectibleProduct(skuId)?.let {
+                collectibleCache[skuId] = it
+            }
+        }
+        return null
+    }
+
     fun showProfile(userId: String, guildId: String? = null, position: Offset? = null) {
         selectedProfile = null
         isProfileExpanded = false

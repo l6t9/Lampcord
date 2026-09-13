@@ -111,6 +111,18 @@ fun ChatSettingsContent(
             )
         )
 
+        Material3SettingsGroup(
+            title = "Voice",
+            items = listOf(
+                switchSettingsItem(
+                    title = "Noise Cancellation",
+                    description = "Remove background noise from your microphone using RNNoise.",
+                    checked = settingsStore.noiseCancellation,
+                    onCheckedChange = { settingsStore.noiseCancellation = it }
+                )
+            )
+        )
+
         if (isDesktop) {
             Material3SettingsGroup(
                 title = "Performance",

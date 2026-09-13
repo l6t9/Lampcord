@@ -124,13 +124,21 @@ data class ProfileBadge(
 )
 
 @Serializable
+data class ProfileEffect(
+    val sku_id: String? = null,
+    val expires_at: Long? = null
+)
+
+@Serializable
 data class UserProfileMetadata(
     val bio: String? = null,
     val accent_color: Int? = null,
     val banner: String? = null,
     val theme_colors: List<Int>? = null,
     val pronouns: String? = null,
-    val display_name_styles: DisplayNameStyles? = null
+    val display_name_styles: DisplayNameStyles? = null,
+    val profile_effect: ProfileEffect? = null,
+    val profile_frame: ProfileEffect? = null
 ) {
     @Serializable
     data class Partial(
@@ -139,7 +147,8 @@ data class UserProfileMetadata(
         val banner: String? = null,
         val theme_colors: List<Int>? = null,
         val pronouns: String? = null,
-        val display_name_styles: DisplayNameStyles? = null
+        val display_name_styles: DisplayNameStyles? = null,
+        val profile_effect: ProfileEffect? = null
     )
 }
 
@@ -247,4 +256,15 @@ data class UserAffinity(
 data class UserAffinities(
     val user_affinities: List<UserAffinity>,
     val inverse_user_affinities: List<UserAffinity>
+)
+
+@Serializable
+data class RecentAvatar(
+    val id: String,
+    val storage_hash: String
+)
+
+@Serializable
+data class RecentAvatarsResponse(
+    val avatars: List<RecentAvatar>
 )

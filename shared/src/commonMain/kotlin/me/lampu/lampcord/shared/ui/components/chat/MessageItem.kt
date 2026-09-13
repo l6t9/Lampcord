@@ -52,6 +52,7 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -563,21 +564,21 @@ fun MessageItem(
                                 ),
                                 color = if (isDm) Color.White else displayColor,
                                 roleGradient = roleGradient,
+                                overflow = TextOverflow.Clip,
                                 modifier = Modifier
-                                    .weight(1f, fill = false)
                                     .onGloballyPositioned { namePosition = it.positionInRoot() }
                                     .clickable(enabled = !isPreview) { profileStore.showProfile(cAuthor.id, guildId, namePosition) },
                                 ignoreEffects = !isHovered,
                                 ignoreColors = if (isDm) !isHovered else false
                             )
+                            cAuthor.primary_guild?.let {
+                                Spacer(Modifier.width(4.dp))
+                                ClanTagView(it, modifier = Modifier.weight(1f, fill = false))
+                            }
                             val guild = navigationStore.selectedGuild
                             val roleIcon = cMember?.getRoleIcon(guild) ?: userStore.getMember(guild?.id ?: "", cAuthor.id)?.getRoleIcon(guild)
                             if (roleIcon != null) {
                                 RoleIcon(roleIcon, modifier = Modifier.padding(start = 4.dp))
-                            }
-                            cAuthor.primary_guild?.let {
-                                Spacer(Modifier.width(4.dp))
-                                ClanTagView(it)
                             }
                             UserTagView(cAuthor, modifier = Modifier.padding(start = 4.dp))
                             Spacer(Modifier.width(8.dp))
@@ -698,7 +699,8 @@ fun MessageItem(
                                         user = cAuthor,
                                         size = 20.dp,
                                         decorationData = cMember?.avatar_decoration_data,
-                                        modifier = Modifier.clickable(enabled = !isPreview) { profileStore.showProfile(cAuthor.id, guildId, avatarPosition) }
+                                        modifier = Modifier.clickable(enabled = !isPreview) { profileStore.showProfile(cAuthor.id, guildId, avatarPosition) },
+                                        isHovered = isHovered
                                     )
                                 }
                             } else {
@@ -726,20 +728,21 @@ fun MessageItem(
                                                 baseStyle = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                                 color = if (isDm) Color.White else displayColor,
                                                 roleGradient = roleGradient,
+                                                overflow = TextOverflow.Clip,
                                                 modifier = Modifier
                                                     .onGloballyPositioned { namePosition = it.positionInRoot() }
                                                     .clickable { profileStore.showProfile(cAuthor.id, guildId, namePosition) },
                                                 ignoreEffects = !isHovered,
                                                 ignoreColors = if (isDm) !isHovered else false
                                             )
+                                            cAuthor.primary_guild?.let {
+                                                Spacer(Modifier.width(4.dp))
+                                                ClanTagView(it, modifier = Modifier.weight(1f, fill = false))
+                                            }
                                             val guild = navigationStore.selectedGuild
                                             val roleIcon = cMember?.getRoleIcon(guild) ?: userStore.getMember(guild?.id ?: "", cAuthor.id)?.getRoleIcon(guild)
                                             if (roleIcon != null) {
                                                 RoleIcon(roleIcon, modifier = Modifier.padding(start = 4.dp))
-                                            }
-                                            cAuthor.primary_guild?.let {
-                                                Spacer(Modifier.width(4.dp))
-                                                ClanTagView(it)
                                             }
                                             UserTagView(cAuthor, modifier = Modifier.padding(start = 4.dp))
                                             Text(
@@ -813,7 +816,8 @@ fun MessageItem(
                                         user = cAuthor,
                                         size = 40.dp,
                                         decorationData = cMember?.avatar_decoration_data,
-                                        modifier = Modifier.clickable { profileStore.showProfile(cAuthor.id, guildId, avatarPosition) }
+                                        modifier = Modifier.clickable { profileStore.showProfile(cAuthor.id, guildId, avatarPosition) },
+                                        isHovered = isHovered
                                     )
                                 }
                             } else {
@@ -855,7 +859,8 @@ fun MessageItem(
                                         user = cAuthor,
                                         size = 40.dp,
                                         decorationData = cMember?.avatar_decoration_data,
-                                        modifier = Modifier.clickable { profileStore.showProfile(cAuthor.id, guildId, avatarPosition) }
+                                        modifier = Modifier.clickable { profileStore.showProfile(cAuthor.id, guildId, avatarPosition) },
+                                        isHovered = isHovered
                                     )
                                 }
                             } else {

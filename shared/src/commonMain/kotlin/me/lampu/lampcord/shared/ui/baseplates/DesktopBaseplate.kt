@@ -8,7 +8,12 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,6 +36,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -70,8 +76,13 @@ import org.koin.compose.koinInject
 fun DesktopBaseplate(
     navigationStore: NavigationStore = koinInject(),
     profileStore: ProfileStore = koinInject(),
-    voiceStore: VoiceStore = koinInject()
+    voiceStore: VoiceStore = koinInject(),
+    widthBreakpoint: WindowWidthBreakpoint = WindowWidthBreakpoint.EXPANDED
 ) {
+    val selectedChannel = navigationStore.selectedChannel
+    val selectedThread = navigationStore.selectedThread
+    val activeChannel = selectedThread ?: selectedChannel
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -85,13 +96,13 @@ fun DesktopBaseplate(
                 .padding(8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Sidebar(modifier = Modifier.width(312.dp))
+            val sidebarWidth = when (widthBreakpoint) {
+                WindowWidthBreakpoint.MEDIUM -> 240.dp
+                else -> 312.dp
+            }
+            Sidebar(modifier = Modifier.width(sidebarWidth))
 
             // Main Content Area (Chat)
-            val selectedChannel = navigationStore.selectedChannel
-            val selectedThread = navigationStore.selectedThread
-            val activeChannel = selectedThread ?: selectedChannel
-
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -155,9 +166,17 @@ fun DesktopBaseplate(
             }
 
             // Member List / Thread Panel (End Panel)
-            val showSidePanel = activeChannel != null && activeChannel.type != 15 && (activeChannel.guild_id != null || activeChannel.type == 1 || activeChannel.type == 3)
+            val showPersistentSidePanel = activeChannel != null && 
+                                activeChannel.type != 15 && 
+                                (activeChannel.guild_id != null || activeChannel.type == 1 || activeChannel.type == 3) &&
+                                widthBreakpoint >= WindowWidthBreakpoint.EXPANDED &&
+                                navigationStore.isProfilePanelVisible
 
-            if (navigationStore.isThreadPanelVisible) {
+            AnimatedVisibility(
+                visible = navigationStore.isThreadPanelVisible,
+                enter = expandHorizontally(expandFrom = Alignment.End) + fadeIn(),
+                exit = shrinkHorizontally(shrinkTowards = Alignment.End) + fadeOut()
+            ) {
                 Surface(
                     modifier = Modifier.fillMaxHeight().width(340.dp),
                     shape = RoundedCornerShape(16.dp),
@@ -168,12 +187,61 @@ fun DesktopBaseplate(
                 }
             }
 
-            if (showSidePanel) {
+            AnimatedVisibility(
+                visible = showPersistentSidePanel,
+                enter = expandHorizontally(expandFrom = Alignment.End) + fadeIn(),
+                exit = shrinkHorizontally(shrinkTowards = Alignment.End) + fadeOut()
+            ) {
+                val endPanelWidth = when (widthBreakpoint) {
+                    WindowWidthBreakpoint.EXTRA_LARGE -> 300.dp
+                    else -> 240.dp
+                }
                 Surface(
-                    modifier = Modifier.fillMaxHeight().width(240.dp),
+                    modifier = Modifier.fillMaxHeight().width(endPanelWidth),
                     shape = RoundedCornerShape(16.dp),
                     color = MaterialTheme.colorScheme.background,
                     tonalElevation = 0.dp
+                ) {
+                    MemberList()
+                }
+            }
+        }
+
+        // Modal Side Sheet for Medium Breakpoint
+        val showModalSidePanel = activeChannel != null && 
+                            activeChannel.type != 15 && 
+                            (activeChannel.guild_id != null || activeChannel.type == 1 || activeChannel.type == 3) &&
+                            widthBreakpoint == WindowWidthBreakpoint.MEDIUM &&
+                            navigationStore.isProfilePanelVisible
+
+        AnimatedVisibility(
+            visible = showModalSidePanel,
+            enter = fadeIn(),
+            exit = fadeOut()
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.4f))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { navigationStore.isProfilePanelVisible = false }
+            ) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(320.dp)
+                        .align(Alignment.CenterEnd)
+                        .padding(8.dp)
+                        .clickable(enabled = false) {}
+                        .animateEnterExit(
+                            enter = slideInHorizontally { it },
+                            exit = slideOutHorizontally { it }
+                        ),
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 8.dp
                 ) {
                     MemberList()
                 }

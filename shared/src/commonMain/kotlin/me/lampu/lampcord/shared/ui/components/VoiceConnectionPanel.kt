@@ -42,6 +42,9 @@ fun VoiceConnectionPanel(voiceStore: VoiceStore = koinInject(), userStore: UserS
             IconButton(onClick = voiceStore::toggleVoiceDeaf) {
                 Icon(if (voiceStore.selfDeafened) Icons.Filled.HeadsetOff else Icons.Filled.Headphones, if (voiceStore.selfDeafened) "Undeafen" else "Deafen")
             }
+            IconButton(onClick = { /* TODO: Implement Screenshare */ }) {
+                Icon(Icons.Filled.ScreenShare, "Share your screen")
+            }
             if (getPlatformName() == "android") {
                 IconButton(onClick = voiceStore::toggleSpeaker) {
                     Icon(Icons.AutoMirrored.Filled.VolumeUp, if (voiceStore.speakerEnabled) "Use headset or earpiece" else "Use speaker",

@@ -154,10 +154,10 @@ fun UsernameView(
                 end = Offset(offset, 0f),
                 tileMode = TileMode.Repeated
             )
-        } else if (useStyleColors && styleColors != null && styleColors.size > 1) {
+        } else if (useStyleColors && styleColors.size > 1) {
             // Static gradient for display name styles
             Brush.linearGradient(colors = styleColors)
-        } else if (useStyleColors && styleColors != null && styleColors.size == 1 && effectId == DisplayNameCatalog.Effect.GRADIENT) {
+        } else if (useStyleColors && styleColors.size == 1 && effectId == DisplayNameCatalog.Effect.GRADIENT) {
             // Discord sometimes sends GRADIENT effect with only 1 color, which should be SOLID
             null
         } else null

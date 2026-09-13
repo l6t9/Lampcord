@@ -171,7 +171,6 @@ actual fun VideoPlayer(
 
     Box(
         modifier = modifier
-            .background(Color.Black)
             .hoverable(interactionSource),
         contentAlignment = Alignment.Center
     ) {
@@ -780,7 +779,7 @@ private class DesktopVideoPlayer(
         }
 
         if (lastFailure != null) {
-            println("[VideoPlayer] Unable to load video after all retries: ${lastFailure?.message}")
+            println("[VideoPlayer] Unable to load video after all retries: ${lastFailure.message}")
         }
         close()
         return false

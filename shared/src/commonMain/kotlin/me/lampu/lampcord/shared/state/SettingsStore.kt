@@ -413,6 +413,14 @@ class SettingsStore(
             _notificationSound = value
             me.lampu.lampcord.shared.settings.Settings.shared.notificationSound = value
         }
+
+    private var _noiseCancellation by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.noiseCancellation)
+    var noiseCancellation: Boolean
+        get() = _noiseCancellation
+        set(value) {
+            _noiseCancellation = value
+            me.lampu.lampcord.shared.settings.Settings.shared.noiseCancellation = value
+        }
     
     private val scope = CoroutineScope(Dispatchers.Main)
     private var pendingUpdateJob: Job? = null

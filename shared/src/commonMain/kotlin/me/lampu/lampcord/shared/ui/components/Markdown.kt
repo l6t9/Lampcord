@@ -210,7 +210,7 @@ fun DiscordMarkdownText(
                                 // handler below, which shows the desktop link menu.
                                 if (downEvent.buttons.isSecondaryPressed) return@awaitEachGesture
 
-                                val pressed = down ?: return@awaitEachGesture
+                                val pressed = down
                                 val offset = textLayoutResult?.getOffsetForPosition(pressed.position)
                                 val mentionsAtOffset = offset?.let {
                                     annotatedString.getStringAnnotations("MENTION", it, it)

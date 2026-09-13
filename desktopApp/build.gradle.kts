@@ -48,11 +48,16 @@ tasks.withType<org.gradle.api.tasks.JavaExec>().configureEach {
     workingDir = rootProject.projectDir
     environment("MALLOC_ARENA_MAX", "4")
     if (platform == "linux") {
+        environment("MALLOC_MMAP_THRESHOLD_", "131072")
         environment("LC_NUMERIC", "C")
         environment("GDK_BACKEND", "wayland")
         environment("_JAVA_AWT_WM_NONREPARENTING", "1")
         environment("SKIKO_RENDER_API", "OPENGL")
         environment("SKIKO_WAYLAND", "1")
+        
+        // WebView fix for black screen / GBM buffer errors on Linux (WebKitGTK)
+        environment("WEBKIT_DISABLE_DMABUF_RENDERER", "1")
+        environment("WEBKIT_DISABLE_COMPOSITING_MODE", "1")
     }
 }
 
@@ -66,7 +71,8 @@ compose.desktop {
            "-Dsun.java2d.uiScale.enabled=true",
            "--enable-native-access=ALL-UNNAMED",
            "-XX:NativeMemoryTracking=summary",
-           "-Xmx512m"
+           "-Xmx512m",
+           "-Dskiko.gpu.resourceCacheLimit=64m"
        )
        nativeDistributions {
            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb, TargetFormat.AppImage)
@@ -77,7 +83,7 @@ compose.desktop {
            vendor = "Lampcord"
            
            linux {
-               jvmArgs += listOf("-Djava.locale.providers=COMPAT,SPI")
+               jvmArgs += listOf("-Djava.locale.providers=COMPAT,SPI", "-Dwebkit.disable.dmabuf.renderer=1")
            }
            macOS {
                infoPlist {
@@ -139,6 +145,11 @@ export _JAVA_AWT_WM_NONREPARENTING="${'$'}{_JAVA_AWT_WM_NONREPARENTING:-1}"
 
 # Limit glibc malloc arenas to reduce memory fragmentation
 export MALLOC_ARENA_MAX="${'$'}{MALLOC_ARENA_MAX:-4}"
+export MALLOC_MMAP_THRESHOLD_="${'$'}{MALLOC_MMAP_THRESHOLD_:-131072}"
+
+# WebView compatibility (fix black screen / GBM errors)
+export WEBKIT_DISABLE_DMABUF_RENDERER=1
+export WEBKIT_DISABLE_COMPOSITING_MODE=1
 
 if [ -z "${'$'}XCURSOR_THEME" ]; then
     CURSOR_THEME="$(hyprctl getoption cursor:theme 2>/dev/null | sed -n 's/.*string: *//p')"
@@ -208,6 +219,9 @@ tasks.register("createAppImageLocal") {
             "#!/bin/sh\n" +
                 """
 export MALLOC_ARENA_MAX=4
+export MALLOC_MMAP_THRESHOLD_="${'$'}{MALLOC_MMAP_THRESHOLD_:-131072}"
+export WEBKIT_DISABLE_DMABUF_RENDERER=1
+export WEBKIT_DISABLE_COMPOSITING_MODE=1
 exec "${'$'}APPDIR/bin/Lampcord" "${'$'}@"
                 """.trimIndent(),
         )

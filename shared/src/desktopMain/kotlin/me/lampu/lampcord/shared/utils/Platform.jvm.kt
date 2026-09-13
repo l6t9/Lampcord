@@ -7,6 +7,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import me.lampu.lampcord.shared.database.AppDatabase
 import java.io.File
+import java.net.URI
 import java.net.URL
 import java.util.Base64
 
@@ -100,12 +101,12 @@ actual fun RequestMediaPermissions(onResult: (Boolean) -> Unit) {
 
 suspend fun safeReadUrl(url: String): ByteArray? = try {
     with(java.lang.Runnable { }) {
-        URL(url).readBytes()
+        URI(url).toURL().readBytes()
     }
 } catch (e: Exception) { null }
 
 actual suspend fun fetchUrlBytes(url: String): ByteArray? = try {
-    URL(url).readBytes()
+    URI(url).toURL().readBytes()
 } catch (e: Exception) { null }
 
 actual fun base64Encode(bytes: ByteArray): String = Base64.getEncoder().encodeToString(bytes)

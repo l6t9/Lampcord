@@ -110,6 +110,9 @@ class Settings(private val settings: KmpSettings) {
     var secretTabEnabled by preferenceBoolean("secret_tab_enabled", false)
     var textReplaceJson by preference("text_replace_v1", "[]")
 
+    // Voice Settings
+    var noiseCancellation by preferenceBoolean("noise_cancellation", true)
+
     fun getLastChannel(guildId: String): String? {
         val id = settings.getString("last_channel_$guildId", "")
         return if (id.isBlank()) null else id
