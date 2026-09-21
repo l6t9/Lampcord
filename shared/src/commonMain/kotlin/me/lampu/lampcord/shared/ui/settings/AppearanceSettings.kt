@@ -24,6 +24,7 @@ import me.lampu.lampcord.shared.settings.FontOption
 import me.lampu.lampcord.shared.settings.ThemeMode
 import me.lampu.lampcord.shared.settings.ThemePaletteStyle
 import me.lampu.lampcord.shared.settings.PanelAnimation
+import me.lampu.lampcord.shared.settings.PanelType
 import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.state.ThemeStore
 import me.lampu.lampcord.shared.ui.components.AsyncImage
@@ -233,6 +234,30 @@ fun AppearanceSettingsContent(
                                     }
                                 },
                                 labelProvider = { it.name.lowercase().replaceFirstChar { char -> char.uppercase() } }
+                            )
+                        }
+                    }
+                ),
+                Material3SettingsItem(
+                    title = { Text("Panel Layout") },
+                    description = {
+                        Column(modifier = Modifier.padding(top = 8.dp)) {
+                            SettingsButtonGroup(
+                                options = PanelType.entries.toList(),
+                                selectedOption = settingsStore.panelType,
+                                onOptionSelected = { settingsStore.panelType = it },
+                                iconProvider = { type, isSelected ->
+                                    when (type) {
+                                        PanelType.CENTER -> if (isSelected) Icons.Filled.List else Icons.Rounded.List
+                                        PanelType.OVERLAPPING -> if (isSelected) Icons.Filled.MenuOpen else Icons.Rounded.MenuOpen
+                                    }
+                                },
+                                labelProvider = { type ->
+                                    when (type) {
+                                        PanelType.CENTER -> "Center Panel"
+                                        PanelType.OVERLAPPING -> "Overlapping"
+                                    }
+                                }
                             )
                         }
                     }

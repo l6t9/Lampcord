@@ -29,7 +29,7 @@ import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.setClipboardText
 import me.lampu.lampcord.shared.utils.showToast
 import org.koin.compose.koinInject
-import coil3.compose.AsyncImagePainter
+import com.github.panpf.sketch.PainterState
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
@@ -110,7 +110,7 @@ fun ProfileBanner(
                     modifier = Modifier.fillMaxSize(),
                     filterQuality = FilterQuality.Medium,
                     onState = { state ->
-                        if (state is AsyncImagePainter.State.Success) {
+                        if (state is PainterState.Success) {
                             isImageLoaded = true
                         }
                     }

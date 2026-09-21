@@ -47,8 +47,12 @@ import me.lampu.lampcord.shared.ui.components.chat.SearchScreen
 import me.lampu.lampcord.shared.ui.components.guilds.ServerBottomSheet
 import me.lampu.lampcord.shared.ui.components.guilds.ServerSettings
 import me.lampu.lampcord.shared.ui.components.members.MemberHeader
+import androidx.compose.foundation.shape.CircleShape
+import me.lampu.lampcord.shared.utils.PermissionHelper
 import me.lampu.lampcord.shared.ui.components.profiles.ProfileCard
 import me.lampu.lampcord.shared.ui.components.profiles.ProfileCardSkeleton
+import me.lampu.lampcord.shared.settings.PanelType
+import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.ui.navigation.Navigator
 import me.lampu.lampcord.shared.ui.navigation.Screen
 import me.lampu.lampcord.shared.ui.navigation.rememberNavigationState
@@ -449,10 +453,38 @@ actual fun MobileBaseplate(
     )
 
 
+    val lightPanelColor = MaterialTheme.colorScheme.surfaceContainerHigh
+    val darkPanelColor = MaterialTheme.colorScheme.surfaceContainerLowest
+    val chatBackground = MaterialTheme.colorScheme.background
+    val memberHeaderColor = MaterialTheme.colorScheme.surface
+
+    val activePanelColor = remember(currentRoute, panelState.progress, lightPanelColor, darkPanelColor, chatBackground, memberHeaderColor, Settings.shared.panelType) {
+        if (currentRoute == Screen.Chat) {
+            val isOverlapping = Settings.shared.panelType == PanelType.OVERLAPPING
+            val progress = panelState.progress
+            val absProgress = kotlin.math.abs(progress).coerceIn(0f, 1f)
+            
+            if (progress > 0) { // Sliding to Sidebar (Start)
+                androidx.compose.ui.graphics.lerp(chatBackground, lightPanelColor, absProgress)
+            } else if (progress < 0) { // Sliding to Member List (End)
+                if (isOverlapping) {
+                    // Match MemberHeader background (Surface) in overlapping mode
+                    androidx.compose.ui.graphics.lerp(chatBackground, memberHeaderColor, absProgress)
+                } else {
+                    androidx.compose.ui.graphics.lerp(chatBackground, lightPanelColor, absProgress)
+                }
+            } else {
+                chatBackground
+            }
+        } else {
+            darkPanelColor
+        }
+    }
+
     Box(
         Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .background(activePanelColor)
     ) {
         DiscordPanels(
             state = panelState,
@@ -890,20 +922,6 @@ private fun MainBaseplateContent(
                                                     Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 3000, velocity = 30.dp)
                                                 }
                                             )
-                                            if (activeChannel.topic?.isNotBlank() == true) {
-                                                Text(
-                                                    text = activeChannel.topic,
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis,
-                                                    modifier = if (me.lampu.lampcord.shared.settings.Settings.shared.reduceMotion) {
-                                                        Modifier
-                                                    } else {
-                                                        Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 3000, velocity = 30.dp)
-                                                    }
-                                                )
-                                            }
                                         }
                                     }
                                 }
@@ -937,6 +955,11 @@ private fun MainBaseplateContent(
                                             5 -> Icons.Filled.Campaign
                                             else -> Icons.Filled.Tag
                                         }
+                                        val isChannelPrivate = remember(activeChannel, navigationStore.selectedGuild) {
+                                            val g = navigationStore.selectedGuild
+                                            if (g == null) false
+                                            else PermissionHelper.isChannelPrivate(g, activeChannel)
+                                        }
                                         Box(
                                             modifier = Modifier
                                                 .padding(start = 4.dp)
@@ -947,12 +970,31 @@ private fun MainBaseplateContent(
                                                 ) { panelState.openStart() },
                                             contentAlignment = Alignment.Center
                                         ) {
-                                            Icon(
-                                                imageVector = channelIcon,
-                                                contentDescription = "Channels",
-                                                modifier = Modifier.size(22.dp),
-                                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
+                                            Box(modifier = Modifier.size(22.dp)) {
+                                                Icon(
+                                                    imageVector = channelIcon,
+                                                    contentDescription = "Channels",
+                                                    modifier = Modifier.fillMaxSize(),
+                                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                                if (isChannelPrivate && activeChannel.type != 4) {
+                                                    Surface(
+                                                        modifier = Modifier
+                                                            .align(Alignment.TopEnd)
+                                                            .offset(x = 2.dp, y = (-2).dp)
+                                                            .size(11.dp),
+                                                        shape = CircleShape,
+                                                        color = MaterialTheme.colorScheme.surfaceContainerLowest,
+                                                    ) {
+                                                        Icon(
+                                                            imageVector = Icons.Filled.Lock,
+                                                            contentDescription = null,
+                                                            modifier = Modifier.padding(1.dp).fillMaxSize(),
+                                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                                        )
+                                                    }
+                                                }
+                                            }
                                         }
                                     } else {
                                         IconButton(onClick = { panelState.openStart() }) {
@@ -988,7 +1030,8 @@ private fun MainBaseplateContent(
                                 }
                             },
                             colors = TopAppBarDefaults.topAppBarColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
+                                containerColor = MaterialTheme.colorScheme.background,
+                                scrolledContainerColor = MaterialTheme.colorScheme.background
                             )
                         )
                     }

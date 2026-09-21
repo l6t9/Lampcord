@@ -3,12 +3,11 @@ package me.lampu.lampcord.shared.ui
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
-import coil3.ImageLoader
-import coil3.PlatformContext
-import coil3.compose.setSingletonImageLoaderFactory
-import coil3.memory.MemoryCache
-import coil3.request.crossfade
-import me.lampu.lampcord.shared.settings.Settings
+import com.github.panpf.sketch.PlatformContext
+import com.github.panpf.sketch.SingletonSketch
+import com.github.panpf.sketch.Sketch
+import com.github.panpf.sketch.cache.MemoryCache
+import me.lampu.lampcord.shared.image.apngDecoderFactory
 import me.lampu.lampcord.shared.settings.ThemeMode
 import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.theme.LampcordTheme
@@ -36,8 +35,8 @@ fun App() {
         }
     }
 
-    setSingletonImageLoaderFactory { context ->
-        newImageLoader(context)
+    SingletonSketch.setSafe { context ->
+        newSketch(context)
     }
 
     LampcordTheme(
@@ -54,12 +53,12 @@ fun App() {
     }
 }
 
-fun newImageLoader(context: PlatformContext): ImageLoader {
-    return addPlatformImageDecoders(ImageLoader.Builder(context))
+fun newSketch(context: PlatformContext): Sketch {
+    return Sketch.Builder(context)
         // Limit the heap cache to 15%.
-        .memoryCache { MemoryCache.Builder().maxSizePercent(context, 0.15).build() }
-        .crossfade(!Settings.shared.reduceMotion)
+        .memoryCache { MemoryCache.Builder(context).maxSizePercent(0.15).build() }
+        .components {
+            add(apngDecoderFactory())
+        }
         .build()
 }
-
-expect fun addPlatformImageDecoders(builder: ImageLoader.Builder): ImageLoader.Builder

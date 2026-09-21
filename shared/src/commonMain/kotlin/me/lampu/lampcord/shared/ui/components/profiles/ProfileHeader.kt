@@ -75,8 +75,8 @@ fun ProfileHeader(
     val customProfile = customProfileOverride ?: remember(dbProfile) { dbProfile }
 
     val avatarUrl = customProfile?.avatar ?: profile.guild_member?.avatar?.let {
-        "https://cdn.discordapp.com/guilds/${profile.guild_id}/users/${user.id}/avatars/$it.png?size=160"
-    } ?: CdnUrls.getUserAvatarUrl(user.id, user.avatar, 160)
+        "https://cdn.discordapp.com/guilds/${profile.guild_id}/users/${user.id}/avatars/$it.png?size=512"
+    } ?: CdnUrls.getUserAvatarUrl(user.id, user.avatar, 512)
 
     val presences by presenceStore.presences.collectAsState()
     val presence = profile.guild_member?.presence ?: profile.presence ?: presences[user.id]

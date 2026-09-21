@@ -105,6 +105,14 @@ class SettingsStore(
             me.lampu.lampcord.shared.settings.Settings.shared.panelAnimation = value
         }
 
+    private var _panelType by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.panelType)
+    var panelType: me.lampu.lampcord.shared.settings.PanelType
+        get() = _panelType
+        set(value) {
+            _panelType = value
+            me.lampu.lampcord.shared.settings.Settings.shared.panelType = value
+        }
+
     private var _hideNavLabels by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.hideNavLabels)
     var hideNavLabels: Boolean
         get() = _hideNavLabels

@@ -16,7 +16,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -31,13 +30,15 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImagePainter
-import coil3.compose.AsyncImage as CoilAsyncImage
-import coil3.compose.LocalPlatformContext
-import coil3.request.CachePolicy
-import coil3.request.ImageRequest
-import coil3.request.crossfade
-import coil3.size.Precision
+import com.github.panpf.sketch.AsyncImage as SketchAsyncImage
+import com.github.panpf.sketch.LocalPlatformContext
+import com.github.panpf.sketch.PainterState
+import com.github.panpf.sketch.cache.CachePolicy
+import com.github.panpf.sketch.fetch.newBase64Uri
+import com.github.panpf.sketch.rememberAsyncImageState
+import com.github.panpf.sketch.request.ImageRequest
+import com.github.panpf.sketch.request.disallowAnimatedImage
+import com.github.panpf.sketch.util.Size
 import kotlin.io.encoding.ExperimentalEncodingApi
 import me.lampu.lampcord.shared.model.TWEMOJI_CDN_BASE_URL
 import me.lampu.lampcord.shared.settings.Settings
@@ -50,8 +51,7 @@ fun AsyncImage(
     model: Any?,
     contentDescription: String?,
     modifier: Modifier = Modifier,
-    transform: (AsyncImagePainter.State) -> AsyncImagePainter.State = AsyncImagePainter.DefaultTransform,
-    onState: ((AsyncImagePainter.State) -> Unit)? = null,
+    onState: ((PainterState) -> Unit)? = null,
     alignment: Alignment = Alignment.Center,
     contentScale: ContentScale = ContentScale.Fit,
     alpha: Float = DefaultAlpha,
@@ -61,7 +61,7 @@ fun AsyncImage(
     showPlaceholder: Boolean = true,
     placeholderHash: String? = null,
     size: Int? = null,
-    playAnimatedVideo: Boolean = true
+    allowAnimation: Boolean = true
 ) {
     val context = LocalPlatformContext.current
     val isDesktop = remember { getPlatformName() != "android" && getPlatformName() != "ios" }
@@ -74,76 +74,84 @@ fun AsyncImage(
     // leave an avatar blank in that case; retry its original CDN URL.
     var useOriginalModel by remember(model, reducedMotion) { mutableStateOf(false) }
     val effectiveModel = if (useOriginalModel) model else staticModel
-    
-    val request = remember(effectiveModel, reducedMotion, lowMemoryMode, size) {
-        val requestModel = (effectiveModel as? String)
-            ?.takeIf { it.startsWith("$TWEMOJI_CDN_BASE_URL/") }
-            ?.substringAfterLast('/')
-            ?.let { ResourceLoader.readBytes("twemoji/72x72/$it") }
-            ?: effectiveModel
-        ImageRequest.Builder(context)
-            .data(requestModel)
-            // Keep lazy-list cells from reusing a request for a different URL.
-            .memoryCacheKey(effectiveModel?.toString())
-            .memoryCachePolicy(if (lowMemoryMode) CachePolicy.DISABLED else CachePolicy.ENABLED)
-            .crossfade(!reducedMotion && !lowMemoryMode)
-            .build()
+
+    val request = remember(effectiveModel, reducedMotion, lowMemoryMode, allowAnimation) {
+        effectiveModel.toRequestUri()?.let { uri ->
+            ImageRequest.Builder(context, uri)
+                // Keep lazy-list cells from reusing a request for a different URL, and
+                // keep the animated and static variants of the same URL in separate
+                // cache entries. Otherwise whichever renders first (the static first
+                // frame, or the animated image) is served to the other and decoration
+                // hover/profile animation never starts.
+                .memoryCacheKey(effectiveModel?.toString() + if (allowAnimation) "#animated" else "#static")
+                .memoryCachePolicy(if (lowMemoryMode) CachePolicy.DISABLED else CachePolicy.ENABLED)
+                .crossfade(!reducedMotion && !lowMemoryMode)
+                // Decode at the image's full resolution. Sketch's default auto-size
+                // resolver downsamples to the exact on-screen pixel size with a cheap
+                // box sample, which aliases ("pixelates") static images. Full-res decode
+                // + Compose's high-quality filter renders as crisp as the animated images.
+                .size(Size.Empty)
+                .disallowAnimatedImage(!allowAnimation)
+                .build()
+        }
     }
 
-    var isLoading by remember(effectiveModel) { mutableStateOf(true) }
-
-    val isAnimated = remember(effectiveModel, reducedMotion) {
-        if (reducedMotion) return@remember false
-        val url = effectiveModel as? String ?: return@remember false
-        url.contains(".gif", ignoreCase = true) ||
-            url.contains("animated=true", ignoreCase = true) ||
-            url.contains("/a_", ignoreCase = true)
+    val sketchState = rememberAsyncImageState()
+    // Keep the callbacks on the shared state so AsyncImageTarget can invoke
+    // them when the painter state changes.
+    sketchState.onPainterState = { painterState ->
+        val retryOriginal = painterState is PainterState.Error &&
+            !reducedMotion &&
+            !useOriginalModel && staticModel != model
+        if (retryOriginal) {
+            useOriginalModel = true
+        } else {
+            onState?.invoke(painterState)
+        }
     }
+
+    val isLoading = sketchState.painterState == null || sketchState.painterState is PainterState.Loading
 
     Box(
         modifier = modifier.then(if (shape != null) Modifier.clip(shape) else Modifier),
         contentAlignment = Alignment.Center
     ) {
-        if (isDesktop && isAnimated && playAnimatedVideo && effectiveModel is String) {
-            VideoPlayer(
-                url = effectiveModel,
+        if (request != null) {
+            SketchAsyncImage(
+                request = request,
+                contentDescription = contentDescription,
                 modifier = Modifier.fillMaxSize(),
-                loop = true,
-                showControls = false,
-                autoPlay = true,
-                showSeekBar = false
+                state = sketchState,
+                alignment = alignment,
+                contentScale = contentScale,
+                alpha = alpha,
+                colorFilter = colorFilter,
+                filterQuality = filterQuality
             )
-            // The video player has its own loading state and surface.
-            SideEffect { isLoading = false }
-        } else {
-        CoilAsyncImage(
-            model = request,
-            contentDescription = contentDescription,
-            modifier = Modifier.fillMaxSize(),
-            transform = transform,
-            onState = { state ->
-                val retryOriginal = state is AsyncImagePainter.State.Error &&
-                    !reducedMotion &&
-                    !useOriginalModel && staticModel != model
-                if (retryOriginal) {
-                    useOriginalModel = true
-                } else {
-                    onState?.invoke(state)
-                }
-                isLoading = state is AsyncImagePainter.State.Loading
-            },
-            alignment = alignment,
-            contentScale = contentScale,
-            alpha = alpha,
-            colorFilter = colorFilter,
-            filterQuality = filterQuality
-        )
         }
 
-        if (showPlaceholder && isLoading) {
+        if (showPlaceholder && isLoading && request != null) {
             ImageLoadingPlaceholder(Modifier.fillMaxSize())
         }
     }
+}
+
+/** Sketch's ImageRequest only accepts a URI; Coil accepted arbitrary bytes. */
+@OptIn(ExperimentalEncodingApi::class)
+private fun Any?.toRequestUri(): String? = when (this) {
+    is ByteArray -> newBase64Uri("image/png", this)
+    is String -> {
+        if (startsWith("$TWEMOJI_CDN_BASE_URL/")) {
+            // Prefer the bundled Twemoji copy instead of downloading it.
+            substringAfterLast('/')
+                .let { ResourceLoader.readBytes("twemoji/72x72/$it") }
+                ?.let { newBase64Uri("image/png", it) }
+                ?: this
+        } else {
+            this
+        }
+    }
+    else -> this?.toString()
 }
 
 /** Discord's media proxy can return the first frame of GIF media as PNG. */

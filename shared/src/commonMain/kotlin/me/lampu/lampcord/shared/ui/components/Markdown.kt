@@ -172,7 +172,7 @@ fun DiscordMarkdownText(
                             filterQuality = FilterQuality.Medium,
                             showPlaceholder = false,
                             onState = { state ->
-                                if (state is coil3.compose.AsyncImagePainter.State.Error) {
+                                if (state is com.github.panpf.sketch.PainterState.Error) {
                                     loadFailed = true
                                 }
                             }

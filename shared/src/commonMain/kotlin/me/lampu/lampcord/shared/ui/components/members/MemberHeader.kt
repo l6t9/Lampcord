@@ -259,12 +259,37 @@ fun MemberHeader(
                     }
                 }
 
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                val isPrivate = remember(channel, guild) {
+                    if (guild == null) false
+                    else PermissionHelper.isChannelPrivate(guild, channel)
+                }
+
+                Box(modifier = Modifier.size(24.dp)) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    if (isPrivate && channel.type != 4 && !isDm) {
+                        Surface(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .offset(x = 2.dp, y = (-2).dp)
+                                .size(12.dp),
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.surface,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Lock,
+                                contentDescription = null,
+                                modifier = Modifier.padding(1.dp).fillMaxSize(),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
                 Spacer(Modifier.width(12.dp))
                 Text(
                     text = name,
@@ -338,8 +363,6 @@ fun MemberHeader(
         }
 
         Spacer(Modifier.height(16.dp))
-        
-        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
         
         if (!isDesktop) {
             Spacer(Modifier.height(16.dp))

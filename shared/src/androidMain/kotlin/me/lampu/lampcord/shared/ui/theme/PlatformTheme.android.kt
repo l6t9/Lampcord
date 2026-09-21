@@ -68,16 +68,37 @@ actual fun rememberPlatformColorScheme(
     )
 
     val view = LocalView.current
+    val navigationStore: me.lampu.lampcord.shared.state.NavigationStore = org.koin.compose.koinInject()
+    val isOverlapping = me.lampu.lampcord.shared.settings.Settings.shared.panelType == me.lampu.lampcord.shared.settings.PanelType.OVERLAPPING
+
     if (!view.isInEditMode) {
         SideEffect {
             val activity = view.context.findActivity()
             if (activity != null) {
                 val window = activity.window
-                WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !isDark
-                WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = !isDark
+                val isAppearanceLight = !isDark
+                
+                // On Android, we set the status bar color based on the current panel state
+                // to ensure it matches the header color of the panel currently on top.
+                val statusBarColor = if (isOverlapping && navigationStore.isProfilePanelVisible) {
+                     scheme.surface // Match MemberHeader (Surface)
+                } else {
+                     scheme.background // Match ChannelHeader (Background)
+                }
+                
+                window.statusBarColor = statusBarColor.toArgb()
+                WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = isAppearanceLight
+                WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = isAppearanceLight
             }
         }
     }
     
     return scheme
+}
+
+private fun Color.toArgb(): Int {
+    return (this.alpha * 255.0f + 0.5f).toInt() shl 24 or
+           ((this.red * 255.0f + 0.5f).toInt() shl 16) or
+           ((this.green * 255.0f + 0.5f).toInt() shl 8) or
+           (this.blue * 255.0f + 0.5f).toInt()
 }

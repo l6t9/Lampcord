@@ -46,6 +46,11 @@ enum class PanelAnimation {
     EXPRESSIVE
 }
 
+enum class PanelType {
+    CENTER,
+    OVERLAPPING
+}
+
 enum class TransparencyMode {
     NONE,
     CHAT,

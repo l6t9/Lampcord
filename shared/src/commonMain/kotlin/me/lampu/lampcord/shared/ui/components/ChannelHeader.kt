@@ -74,6 +74,27 @@ fun ChannelHeader(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
+
+                    if (isDesktop && channel.topic?.isNotBlank() == true) {
+                        Text(
+                            text = " • ",
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                            ),
+                            modifier = Modifier.padding(horizontal = 4.dp)
+                        )
+                        Text(
+                            text = channel.topic,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            ),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                    }
                 }
             }
         },

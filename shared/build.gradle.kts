@@ -115,8 +115,10 @@ kotlin {
             implementation(libs.materialKolor)
             implementation(libs.qrcode.kotlin)
             
-            implementation(libs.coil.compose)
-            implementation(libs.coil.network.ktor)
+            implementation(libs.sketch.compose)
+            implementation(libs.sketch.http)
+            implementation(libs.sketch.animated.gif)
+            implementation(libs.sketch.animated.webp)
             implementation("io.github.kdroidfilter:composewebview:1.0.0-beta-02")
         }
 
@@ -135,13 +137,13 @@ kotlin {
                 implementation(libs.androidx.security.crypto)
                 
                 implementation(libs.androidx.navigation3.ui)
-                implementation(libs.coil.gif)
             }
         }
         
         getByName("desktopMain") {
             dependencies {
                 implementation(compose.desktop.currentOs)
+                implementation(libs.tianscar.imageio.apng)
                 implementation(libs.vlcj)
                 
                 implementation("io.ktor:ktor-server-core:${libs.versions.ktor.get()}")

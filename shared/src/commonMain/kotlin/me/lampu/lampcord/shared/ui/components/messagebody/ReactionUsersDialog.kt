@@ -121,7 +121,7 @@ private fun ReactionUsersContent(
                                 contentDescription = null, 
                                 modifier = Modifier.size(16.dp),
                                 showPlaceholder = false,
-                                onState = { state -> if (state is coil3.compose.AsyncImagePainter.State.Error) loadFailed = true }
+                                onState = { state -> if (state is com.github.panpf.sketch.PainterState.Error) loadFailed = true }
                             )
                         } else {
                             Text(reaction.emoji.name ?: "", fontSize = 14.sp)

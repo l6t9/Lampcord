@@ -18,12 +18,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage as CoilAsyncImage
-import coil3.compose.AsyncImagePainter
-import coil3.compose.LocalPlatformContext
-import coil3.request.CachePolicy
-import coil3.request.ImageRequest
-import coil3.request.crossfade
+import com.github.panpf.sketch.AsyncImage as SketchAsyncImage
+import com.github.panpf.sketch.LocalPlatformContext
+import com.github.panpf.sketch.PainterState
+import com.github.panpf.sketch.cache.CachePolicy
+import com.github.panpf.sketch.request.ImageRequest
+import com.github.panpf.sketch.rememberAsyncImageState
 import kotlinx.coroutines.delay
 import me.lampu.lampcord.shared.api.MediaApi
 import me.lampu.lampcord.shared.api.UserApi
@@ -253,9 +253,14 @@ private fun GifThumbnail(
                     autoPlay = true
                 )
             } else {
-                CoilAsyncImage(
-                    model = ImageRequest.Builder(context)
-                        .data(imageUrl)
+                val state = rememberAsyncImageState()
+                state.onPainterState = { painterState ->
+                    if (painterState is PainterState.Error && candidateIndex < candidates.lastIndex) {
+                        candidateIndex++
+                    }
+                }
+                SketchAsyncImage(
+                    request = ImageRequest.Builder(context, imageUrl)
                         .memoryCacheKey("gif-preview:$imageUrl")
                         .memoryCachePolicy(
                             if (getPlatformName() != "android" && getPlatformName() != "ios" && Settings.shared.desktopLowMemoryMode) CachePolicy.DISABLED else CachePolicy.ENABLED
@@ -265,11 +270,7 @@ private fun GifThumbnail(
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
-                    onState = { state ->
-                        if (state is AsyncImagePainter.State.Error && candidateIndex < candidates.lastIndex) {
-                            candidateIndex++
-                        }
-                    }
+                    state = state
                 )
             }
         }
@@ -302,9 +303,14 @@ private fun GifPreviewImage(
             autoPlay = true
         )
     } else if (imageUrl != null) {
-        CoilAsyncImage(
-            model = ImageRequest.Builder(context)
-                .data(imageUrl)
+        val state = rememberAsyncImageState()
+        state.onPainterState = { painterState ->
+            if (painterState is PainterState.Error && candidateIndex < candidates.lastIndex) {
+                candidateIndex++
+            }
+        }
+        SketchAsyncImage(
+            request = ImageRequest.Builder(context, imageUrl)
                 .memoryCacheKey("gif-preview:$imageUrl")
                 .memoryCachePolicy(
                     if (getPlatformName() != "android" && getPlatformName() != "ios" && Settings.shared.desktopLowMemoryMode) CachePolicy.DISABLED else CachePolicy.ENABLED
@@ -314,11 +320,7 @@ private fun GifPreviewImage(
             contentDescription = contentDescription,
             modifier = modifier,
             contentScale = contentScale,
-            onState = { state ->
-                if (state is AsyncImagePainter.State.Error && candidateIndex < candidates.lastIndex) {
-                    candidateIndex++
-                }
-            }
+            state = state
         )
     }
 }

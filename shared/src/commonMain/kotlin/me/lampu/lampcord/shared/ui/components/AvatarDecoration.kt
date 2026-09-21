@@ -19,7 +19,7 @@ import me.lampu.lampcord.shared.model.AvatarDecorationData
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.api.CdnUrls
 import me.lampu.lampcord.shared.utils.getPlatformName
-import coil3.compose.AsyncImagePainter
+import com.github.panpf.sketch.PainterState
 
 @Composable
 fun AvatarWithDecoration(
@@ -63,7 +63,7 @@ fun AvatarWithDecoration(
                     filterQuality = androidx.compose.ui.graphics.FilterQuality.High,
                     size = sizePx,
                     onState = { state ->
-                        if (state is AsyncImagePainter.State.Error && avatarCandidateIndex < avatarCandidates.lastIndex) {
+                        if (state is PainterState.Error && avatarCandidateIndex < avatarCandidates.lastIndex) {
                             avatarCandidateIndex++
                         }
                     }
@@ -71,22 +71,13 @@ fun AvatarWithDecoration(
             }
         }
 
-        // Decorations can be animated APNGs. Request the video-capable variant
-        // only when hovered/visible, and always honor reduce-motion.
+        // Decorations are animated APNGs. The same APNG is shown statically (first
+        // frame) when not hovered, and animates while hovered/visible. This keeps the
+        // colors identical in both states.
         if (decorationData != null) {
             val shouldAnimate = animated && (isHovered || forceAnimate)
-            val decorationUrl = CdnUrls.getAvatarDecorationUrl(decorationData.asset)
-            val isAndroid = remember { getPlatformName() == "android" }
-            val effectiveUrl = if (shouldAnimate) {
-                // On Android, use .gif for better animation support in Coil
-                if (isAndroid) {
-                    decorationUrl?.replace(".png", ".gif")
-                } else {
-                    decorationUrl
-                }
-            } else {
-                decorationUrl?.replace("passthrough=true", "passthrough=false")
-            }
+            val effectiveUrl = CdnUrls.getAvatarDecorationUrl(decorationData.asset)
+
             AsyncImage(
                 model = effectiveUrl,
                 contentDescription = null,
@@ -95,8 +86,8 @@ fun AvatarWithDecoration(
                     .scale(1.2f),
                 filterQuality = androidx.compose.ui.graphics.FilterQuality.High,
                 showPlaceholder = false,
-                playAnimatedVideo = false,
-                size = sizePx
+                size = sizePx,
+                allowAnimation = shouldAnimate
             )
         }
 
