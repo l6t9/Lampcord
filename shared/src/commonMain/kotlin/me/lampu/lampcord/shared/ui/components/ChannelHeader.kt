@@ -181,6 +181,17 @@ fun ChannelHeader(
                     }
                 }
 
+                if (channel.type == 2 || channel.type == 13) {
+                    IconButton(onClick = { voiceStore.isVoiceChatTextVisible = !voiceStore.isVoiceChatTextVisible }) {
+                        Icon(
+                            Icons.Rounded.Chat,
+                            if (voiceStore.isVoiceChatTextVisible) "Hide chat" else "Show chat",
+                            modifier = Modifier.size(22.dp),
+                            tint = if (voiceStore.isVoiceChatTextVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
                 if (isDesktop && channel.type != 15 && (channel.guild_id != null || channel.type == 1 || channel.type == 3)) {
                     val memberListVisible =
                         if (isCompactMemberList) navigationStore.isMemberListModalVisible

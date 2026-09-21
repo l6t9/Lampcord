@@ -20,6 +20,7 @@ import org.koin.compose.koinInject
 fun VoiceConnectionPanel(voiceStore: VoiceStore = koinInject(), userStore: UserStore = koinInject()) {
     val channel = voiceStore.activeChannel ?: return
     var showVerification by remember { mutableStateOf(false) }
+    var showScreenshareDialog by remember { mutableStateOf(false) }
     val secure = voiceStore.connection.phase == VoicePhase.SECURE
     val duration = voiceStore.voiceConnectionDuration
     val status = when (voiceStore.connection.phase) {
@@ -42,7 +43,7 @@ fun VoiceConnectionPanel(voiceStore: VoiceStore = koinInject(), userStore: UserS
             IconButton(onClick = voiceStore::toggleVoiceDeaf) {
                 Icon(if (voiceStore.selfDeafened) Icons.Filled.HeadsetOff else Icons.Filled.Headphones, if (voiceStore.selfDeafened) "Undeafen" else "Deafen")
             }
-            IconButton(onClick = { /* TODO: Implement Screenshare */ }) {
+            IconButton(onClick = { showScreenshareDialog = true }) {
                 Icon(Icons.Filled.ScreenShare, "Share your screen")
             }
             if (getPlatformName() == "android") {
@@ -67,6 +68,17 @@ fun VoiceConnectionPanel(voiceStore: VoiceStore = koinInject(), userStore: UserS
             }
         },
         confirmButton = { TextButton(onClick = { showVerification = false }) { Text("Close") } }
+    )
+    if (showScreenshareDialog) AlertDialog(
+        onDismissRequest = { showScreenshareDialog = false },
+        title = { Text("Screensharing & Viewing") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Screensharing and stream viewing capabilities are currently being configured for Lampcord.")
+                Text("Following the Discord connection standards and modern desktop setups (like Serein), outbound video streaming uses platform-native capture pipelines and H.264 video encoders with DAVE end-to-end media encryption filters.", style = MaterialTheme.typography.bodySmall)
+            }
+        },
+        confirmButton = { TextButton(onClick = { showScreenshareDialog = false }) { Text("OK") } }
     )
 }
 

@@ -62,7 +62,8 @@ import org.koin.compose.koinInject
 actual fun MobileBaseplate(
     navigationStore: NavigationStore,
     profileStore: ProfileStore,
-    userStore: UserStore
+    userStore: UserStore,
+    voiceStore: VoiceStore
 ) {
     val presenceStore: PresenceStore = koinInject()
     val settingsStore: SettingsStore = koinInject()
@@ -274,6 +275,7 @@ actual fun MobileBaseplate(
                         profileStore,
                         presenceStore,
                         settingsStore,
+                        voiceStore,
                         allUsers,
                         currentUser,
                         panelState,
@@ -816,11 +818,11 @@ private fun MainBaseplateContent(
     profileStore: ProfileStore,
     presenceStore: PresenceStore,
     settingsStore: SettingsStore,
+    voiceStore: VoiceStore,
     allUsers: Map<String, me.lampu.lampcord.shared.model.User>,
     currentUser: me.lampu.lampcord.shared.model.User?,
     panelState: DiscordPanelsState,
-    activeChannel: me.lampu.lampcord.shared.model.Channel?,
-    voiceStore: VoiceStore = koinInject()
+    activeChannel: me.lampu.lampcord.shared.model.Channel?
 ) {
     key(navigationStore.selectedGuild?.id ?: "home") {
         Surface(
@@ -952,13 +954,6 @@ private fun MainBaseplateContent(
                                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
                                         }
-                                    } else if (activeChannel?.type == 1 || activeChannel?.type == 3) {
-                                        IconButton(onClick = { panelState.openStart() }) {
-                                            Icon(
-                                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                                contentDescription = "Back"
-                                            )
-                                        }
                                     } else {
                                         IconButton(onClick = { panelState.openStart() }) {
                                             Icon(
@@ -970,7 +965,7 @@ private fun MainBaseplateContent(
                                 }
                             },
                             actions = {
-                                if (activeChannel?.type == 1 || activeChannel?.type == 3) VoiceCallButton(activeChannel!!)
+                                if (settingsStore.showCallButton && (activeChannel?.type == 1 || activeChannel?.type == 3)) VoiceCallButton(activeChannel!!)
                                 if (!navigationStore.isBubble && activeChannel != null && (activeChannel.guild_id != null || activeChannel.type == 1 || activeChannel.type == 3)) {
                                     if (settingsStore.showChatSearch) {
                                         IconButton(onClick = { navigationStore.isSearchVisible = true }) {
@@ -987,28 +982,6 @@ private fun MainBaseplateContent(
                                                 imageVector = Icons.Filled.PushPin,
                                                 contentDescription = "Pins",
                                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        }
-                                    }
-                                    if (settingsStore.showCallButton && activeChannel.type == 1) {
-                                        IconButton(onClick = { voiceStore.connectToVoice(activeChannel) }) {
-                                            Icon(
-                                                imageVector = Icons.Rounded.Call,
-                                                contentDescription = "Call",
-                                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        }
-                                    }
-
-                                    if (activeChannel.type != 15 && (activeChannel.guild_id != null || activeChannel.type == 1 || activeChannel.type == 3)) {
-                                        IconButton(onClick = { 
-                                            if (panelState.currentValue == DiscordPanelValue.End) panelState.close() 
-                                            else panelState.openEnd() 
-                                        }) {
-                                            Icon(
-                                                imageVector = if (activeChannel.type == 1) Icons.Filled.AccountCircle else Icons.Filled.Group,
-                                                contentDescription = "Toggle Member List",
-                                                tint = if (panelState.currentValue == DiscordPanelValue.End) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                                             )
                                         }
                                     }
@@ -1044,7 +1017,8 @@ private fun MainBaseplateContent(
                 ) { target ->
                     Box(Modifier.fillMaxSize()) {
                         if (activeChannel != null && target == activeChannel.id) {
-                            if (activeChannel.type == 2 || activeChannel.type == 13) {
+                            val isVoice = activeChannel.type == 2 || activeChannel.type == 13
+                            if (isVoice && !voiceStore.isVoiceChatTextVisible) {
                                 VoiceArea(activeChannel)
                             } else {
                                 Column(

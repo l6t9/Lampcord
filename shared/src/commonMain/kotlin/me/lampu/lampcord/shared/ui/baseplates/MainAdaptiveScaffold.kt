@@ -45,14 +45,14 @@ fun MainAdaptiveScaffold(
         when (widthBreakpoint) {
             WindowWidthBreakpoint.COMPACT -> {
                 // Compact: Single pane with drawers (Mobile-like)
-                MobileBaseplate(navigationStore, profileStore, userStore)
+                MobileBaseplate(navigationStore, profileStore, userStore, voiceStore)
             }
             WindowWidthBreakpoint.MEDIUM -> {
                 // Medium: 2 panes on Desktop (Sidebar + Chat), Single pane on Mobile
                 if (isDesktop) {
                     DesktopBaseplate(navigationStore, profileStore, voiceStore, widthBreakpoint)
                 } else {
-                    MobileBaseplate(navigationStore, profileStore, userStore)
+                    MobileBaseplate(navigationStore, profileStore, userStore, voiceStore)
                 }
             }
             WindowWidthBreakpoint.EXPANDED, WindowWidthBreakpoint.LARGE, WindowWidthBreakpoint.EXTRA_LARGE -> {

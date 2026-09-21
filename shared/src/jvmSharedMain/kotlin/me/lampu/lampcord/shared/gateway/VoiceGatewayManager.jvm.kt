@@ -420,8 +420,8 @@ actual class VoiceGatewayManager actual constructor(private val client: HttpClie
                     socket?.send(DatagramPacket(packet, packet.size))
                 }
                 val cutoff = System.nanoTime() - 300_000_000L
-                speaking.entries.removeIf { it.value < cutoff }
-                update()
+                val removed = speaking.entries.removeIf { it.value < cutoff }
+                if (removed || tick % 5 == 0) update()
                 delay(200)
             }
         }

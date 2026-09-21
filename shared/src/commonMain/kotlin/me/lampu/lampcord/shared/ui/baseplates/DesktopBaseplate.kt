@@ -135,12 +135,23 @@ fun DesktopBaseplate(
                         label = "MainContentTransition"
                     ) { target ->
                         if (activeChannel != null && target == activeChannel.id) {
+                            val isVoice = activeChannel.type == 2 || activeChannel.type == 13
                             Column(modifier = Modifier.fillMaxSize()) {
                                 ChannelHeader(activeChannel, navigationStore, isCompactMemberList = widthBreakpoint == WindowWidthBreakpoint.MEDIUM)
                                 
                                 Box(modifier = Modifier.weight(1f)) {
-                                    if ((activeChannel.type == 2 || activeChannel.type == 13) && !voiceStore.isVoiceChatTextVisible) {
-                                        VoiceArea(activeChannel)
+                                    if (isVoice) {
+                                        if (voiceStore.isVoiceChatTextVisible && widthBreakpoint >= WindowWidthBreakpoint.LARGE) {
+                                            Row(Modifier.fillMaxSize()) {
+                                                VoiceArea(activeChannel, modifier = Modifier.weight(1f))
+                                                Box(Modifier.fillMaxHeight().width(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
+                                                ChatArea(modifier = Modifier.width(400.dp))
+                                            }
+                                        } else if (voiceStore.isVoiceChatTextVisible) {
+                                            ChatArea(modifier = Modifier.fillMaxSize())
+                                        } else {
+                                            VoiceArea(activeChannel)
+                                        }
                                     } else if (activeChannel.type == 15 && selectedThread == null) {
                                         ForumPostList()
                                     } else {
@@ -150,7 +161,7 @@ fun DesktopBaseplate(
                                     }
                                 }
                                 
-                                if (activeChannel.type != 15 && ((activeChannel.type != 2 && activeChannel.type != 13) || voiceStore.isVoiceChatTextVisible)) {
+                                if (activeChannel.type != 15 && ((!isVoice) || voiceStore.isVoiceChatTextVisible)) {
                                     ChatInputBar(activeChannel)
                                 }
                             }

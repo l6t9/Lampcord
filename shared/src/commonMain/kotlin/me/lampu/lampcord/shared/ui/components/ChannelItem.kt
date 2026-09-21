@@ -2,6 +2,8 @@ package me.lampu.lampcord.shared.ui.components
 
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
@@ -28,9 +30,12 @@ import me.lampu.lampcord.shared.ui.components.chat.InviteDialog
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.Permission
 import me.lampu.lampcord.shared.utils.PermissionHelper
+import me.lampu.lampcord.shared.utils.getPlatformName
 import me.lampu.lampcord.shared.utils.setClipboardText
+import me.lampu.lampcord.shared.voice.rememberVoiceJoin
 import org.koin.compose.koinInject
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ChannelItem(
     channel: Channel,
@@ -84,9 +89,12 @@ fun ChannelItem(
 
     val userSettings = settingsStore.userSettings
     val scope = rememberCoroutineScope()
+    val isMobile = getPlatformName() == "android" || getPlatformName() == "ios"
+    var showVoiceJoinSheet by remember { mutableStateOf(false) }
 
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
+    val indication = ripple()
 
     var showNotificationsSheet by remember { mutableStateOf(false) }
     var showInviteDialog by remember { mutableStateOf(false) }
@@ -220,18 +228,29 @@ fun ChannelItem(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(itemHeight)
-                        .padding(horizontal = 8.dp),
-
-                    onClick = { 
-                        if (!canView) return@Surface
-                        navigationStore.selectChannel(channel, explicitlySelected = true)
-                    },
+                        .padding(horizontal = 8.dp)
+                        .clip(MaterialTheme.shapes.small)
+                        .combinedClickable(
+                            interactionSource = interactionSource,
+                            indication = indication,
+                            enabled = canView,
+                            onClick = {
+                                if (isMobile && (channel.type == 2 || channel.type == 13)) {
+                                    showVoiceJoinSheet = true
+                                } else {
+                                    navigationStore.selectChannel(channel, explicitlySelected = true)
+                                }
+                            },
+                            onDoubleClick = {
+                                if (!isMobile && (channel.type == 2 || channel.type == 13)) {
+                                    voiceStore.connectToVoice(channel)
+                                }
+                            }
+                        ),
                     color = if (isSelected) 
                         MaterialTheme.colorScheme.surfaceContainerHigh 
                     else Color.Transparent,
                     shape = MaterialTheme.shapes.small,
-                    enabled = canView,
-                    interactionSource = interactionSource
                 ) {
                     Row(
                         modifier = Modifier
@@ -373,6 +392,68 @@ fun ChannelItem(
             channel = channel,
             onDismiss = { showInviteDialog = false }
         )
+    }
+
+    if (showVoiceJoinSheet) {
+        VoiceJoinSheet(
+            channel = channel,
+            onDismiss = { showVoiceJoinSheet = false }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun VoiceJoinSheet(
+    channel: Channel,
+    onDismiss: () -> Unit,
+    voiceStore: VoiceStore = koinInject()
+) {
+    val join = rememberVoiceJoin(voiceStore)
+    
+    AdaptiveModalBottomSheet(
+        onDismissRequest = onDismiss
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = channel.name ?: "Voice Channel",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+            
+            Spacer(Modifier.height(24.dp))
+            
+            Button(
+                onClick = { 
+                    join(channel, false)
+                    onDismiss()
+                },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF23A559)
+                )
+            ) {
+                Icon(Icons.Filled.Call, null)
+                Spacer(Modifier.width(8.dp))
+                Text("Join Voice")
+            }
+            
+            Spacer(Modifier.height(8.dp))
+            
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Cancel")
+            }
+            
+            Spacer(Modifier.navigationBarsPadding())
+        }
     }
 }
 

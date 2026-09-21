@@ -63,6 +63,7 @@ import androidx.compose.ui.zIndex
 import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.state.ProfileStore
 import me.lampu.lampcord.shared.state.UserStore
+import me.lampu.lampcord.shared.state.VoiceStore
 import me.lampu.lampcord.shared.model.User
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.ui.SettingsScreen
@@ -88,13 +89,15 @@ import me.lampu.lampcord.shared.ui.components.profiles.ProfileCardSkeleton
 import me.lampu.lampcord.shared.ui.components.rememberDiscordPanelsState
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.components.GlobalSnackbarHost
+import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 actual fun MobileBaseplate(
     navigationStore: NavigationStore,
     profileStore: ProfileStore,
-    userStore: UserStore
+    userStore: UserStore,
+    voiceStore: VoiceStore
 ) {
     val panelState = rememberDiscordPanelsState()
     val selectedChannel = navigationStore.selectedChannel
@@ -290,7 +293,8 @@ actual fun MobileBaseplate(
                         ) { target ->
                             Box(Modifier.fillMaxSize()) {
                                 if (activeChannel != null && target == activeChannel.id) {
-                                    if (activeChannel.type == 2 || activeChannel.type == 13) {
+                                    val isVoice = activeChannel.type == 2 || activeChannel.type == 13
+                                    if (isVoice && !voiceStore.isVoiceChatTextVisible) {
                                         VoiceArea(activeChannel)
                                     } else {
                                         Column(
@@ -300,7 +304,9 @@ actual fun MobileBaseplate(
                                             Box(modifier = Modifier.weight(1f)) {
                                                 ChatArea(modifier = Modifier.fillMaxSize())
                                             }
-                                            ChatInputBar(activeChannel)
+                                            if (!isVoice) {
+                                                ChatInputBar(activeChannel)
+                                            }
                                         }
                                     }
                                 } else if (target == "roles") {

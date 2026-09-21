@@ -8,7 +8,8 @@ import me.lampu.lampcord.shared.state.*
 actual fun MobileBaseplate(
     navigationStore: NavigationStore,
     profileStore: ProfileStore,
-    userStore: UserStore
+    userStore: UserStore,
+    voiceStore: VoiceStore
 ) {
     // Basic fallback for iOS
     Text("Mobile UI for iOS")
