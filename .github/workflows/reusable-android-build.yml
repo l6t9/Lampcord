@@ -92,7 +92,9 @@ jobs:
           persist-configuration-cache: ${{ inputs.variant != 'release' }}
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools
 
       - name: Prepare Android signing
         if: inputs.variant == 'release'
