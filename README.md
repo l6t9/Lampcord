@@ -17,42 +17,40 @@ Lampcord was born out of a desire for a smooth, battery-friendly, responsive Dis
 
 ## Roadmap & Features
 
-Below is a breakdown of implemented features and current gaps relative to the official Discord client:
+### Core Features
 
-### Implemented Features
+- [x] **Authentication**
+  - [x] Password & Token Login
+  - [x] Remote QR Code Login
+  - [x] Multi-account Switcher
+- [x] **Messaging & Chat**
+  - [x] Real-time Chat & Gateway Sync
+  - [x] Markdown Parsing & Code Highlighting
+  - [x] Custom Emojis, Reactions & Stickers
+  - [x] Message Replies & Edit / Delete
+  - [x] Message Pinning & Thread Views
+  - [x] Local Message Deletion Logger
+- [x] **Voice & Media**
+  - [x] Native DAVE Voice Protocol (DAVE v1)
+  - [x] Voice Channels & In-call Controls
+  - [x] Image / Video Viewer & Audio Player
+  - [x] Custom Status & Activity / Rich Presence
+- [x] **Notifications**
+  - [x] Android System Notifications & Conversation Bubbles
+  - [x] Desktop System Notifications & Toasts
+  - [x] Background FCM Push Notification Sync
+- [x] **Customization & Themes**
+  - [x] Custom Material 3 Expressive (M3E) Themes & Matugen Color Sync
+  - [x] Custom Font Selection (Inter, Maple Mono, System)
+  - [x] Custom Client Profiles, UserBG & UserPFP
+  - [x] Client-side Free Nitro Emojis
 
-| Category | Feature | Status |
-| :--- | :--- | :---: |
-| **Authentication** | Password & Token Login | Completed |
-| | Remote QR Code Login | Completed |
-| | Multi-account Switcher | Completed |
-| **Messaging** | Real-time Chat & Gateway Sync | Completed |
-| | Markdown Parsing & Code Highlighting | Completed |
-| | Custom Emojis, Reactions & Stickers | Completed |
-| | Message Replies & Edit / Delete | Completed |
-| | Message Pinning & Thread Views | Completed |
-| | Message Local Deletion Logger | Completed |
-| **Voice & Media** | Native DAVE Voice Protocol (DAVE v1) | Completed |
-| | Voice Channels & In-call Controls | Completed |
-| | Image / Video Viewer & Audio Player | Completed |
-| | Custom Status & Activity / Rich Presence | Completed |
-| **Notifications** | Android System Notifications & Bubbles | Completed |
-| | Desktop System Notifications & Toasts | Completed |
-| | Background FCM Push Notification Sync | Completed |
-| **Customization** | Custom Material 3 Expressive (M3E) Themes | Completed |
-| | Font Selection (Inter, Maple Mono, System) | Completed |
-| | Custom Client Profiles & UserBG | Completed |
-| | Client-side Free Nitro Emojis | Completed |
+### Gaps & Planned Enhancements
 
-### Current Gaps / In Progress
-
-| Feature | Notes |
-| :--- | :--- |
-| **Video Calling & Screen Share** | Voice call is fully implemented; video/screenshare stream rendering is planned |
-| **Slash Commands & Autocomplete** | Basic command picker exists; complex application options in progress |
-| **Guild Management** | Server settings (roles, channels, emoji management) partially implemented |
-| **Stage & Forum Channels** | Basic viewing supported; creation/moderation controls in progress |
-| **Store & Nitro Purchases** | Not planned (out of scope for custom open-source client) |
+- [ ] **Video Calling & Screen Share** *(Voice calls supported; video stream rendering planned)*
+- [ ] **Slash Commands & Autocomplete** *(Basic command picker implemented; application options in progress)*
+- [ ] **Guild Management** *(Server settings: roles, channels, emoji management partially implemented)*
+- [ ] **Stage & Forum Channels** *(Basic viewing supported; creation and moderation controls in progress)*
 
 ---
 
