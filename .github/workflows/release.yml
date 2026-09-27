@@ -280,11 +280,11 @@ jobs:
         env:
           APP_VERSION: ${{ needs.prepare.outputs.version }}
           PIXELDRAIN_API_KEY: ${{ secrets.PIXELDRAIN_API_KEY }}
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_TESTER_WEBHOOK_URL }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_UPDATE_WEBHOOK_URL }}
         run: |
           set -euo pipefail
           test -n "$PIXELDRAIN_API_KEY" || { echo "PIXELDRAIN_API_KEY is not configured" >&2; exit 1; }
-          test -n "$DISCORD_WEBHOOK_URL" || { echo "DISCORD_TESTER_WEBHOOK_URL is not configured" >&2; exit 1; }
+          test -n "$DISCORD_WEBHOOK_URL" || { echo "DISCORD_WEBHOOK_URL is not configured" >&2; exit 1; }
 
           expected=(
             "release-assets/lampcord-android-${APP_VERSION}.apk"
@@ -376,11 +376,11 @@ jobs:
             --notes-file release-assets/CHANGELOG.md \
             --repo "$GITHUB_REPOSITORY"
 
-      - name: Notify testers on Discord
+      - name: Notify on Discord
         shell: bash
         env:
           APP_VERSION: ${{ needs.prepare.outputs.version }}
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_TESTER_WEBHOOK_URL }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_UPDATE_WEBHOOK_URL }}
           ANDROID_URL: ${{ steps.pixeldrain-android.outputs.pixeldrain_url }}
           LINUX_URL: ${{ steps.pixeldrain-linux.outputs.pixeldrain_url }}
           WINDOWS_URL: ${{ steps.pixeldrain-windows.outputs.pixeldrain_url }}
@@ -390,6 +390,7 @@ jobs:
           
           role1="1534704702585966642"
           role2="1534740463481913415"
+          role3="1534719840307253359"
 
           downloads="$(printf '%s\n%s\n%s' \
             "[Android]($ANDROID_URL)" \
@@ -399,16 +400,17 @@ jobs:
           timestamp="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
 
           jq -n \
-            --arg content "<@&$role1> <@&$role2>" \
+            --arg content "<@&$role1> <@&$role2> <@&$role3>" \
             --arg role1 "$role1" \
             --arg role2 "$role2" \
-            --arg title "Lampcord $APP_VERSION is ready for testing" \
+            --arg role3 "$role3" \
+            --arg title "Lampcord $APP_VERSION is ready" \
             --arg downloads "$downloads" \
             --arg build "[$GITHUB_SHA]($run_url) triggered by $GITHUB_ACTOR" \
             --arg timestamp "$timestamp" \
             '{
               content: $content,
-              allowed_mentions: {parse: [], roles: [$role1, $role2]},
+              allowed_mentions: {parse: [], roles: [$role1, $role2, $role3]},
               embeds: [{
                 title: $title,
                 color: 5793266,
