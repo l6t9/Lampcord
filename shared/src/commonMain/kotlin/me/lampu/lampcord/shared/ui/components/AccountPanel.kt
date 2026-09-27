@@ -51,6 +51,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.text.style.TextOverflow
@@ -116,8 +118,23 @@ fun AccountPanel(
     ) {
         val member = navigationStore.selectedGuild?.let { userStore.getMember(it.id, user.id) }
         val nameplate = member?.collectibles?.nameplate ?: user.collectibles?.nameplate
+        var isHovered by remember { mutableStateOf(false) }
         
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(Unit) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            when (event.type) {
+                                PointerEventType.Enter -> isHovered = true
+                                PointerEventType.Exit -> isHovered = false
+                            }
+                        }
+                    }
+                }
+        ) {
             if (nameplate != null) {
                 val decoUrl = "https://cdn.discordapp.com/assets/collectibles/${nameplate.asset}img.png?passthrough=true"
                 AsyncImage(
@@ -125,7 +142,8 @@ fun AccountPanel(
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                    alpha = 0.4f
+                    alpha = 0.4f,
+                    allowAnimation = isHovered
                 )
             }
 

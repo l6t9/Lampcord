@@ -67,8 +67,8 @@ fun AsyncImage(
     val isDesktop = remember { getPlatformName() != "android" && getPlatformName() != "ios" }
     val lowMemoryMode = isDesktop && Settings.shared.desktopLowMemoryMode
     val reducedMotion = Settings.shared.reduceMotion
-    val staticModel = remember(model, reducedMotion) {
-        if (reducedMotion) model.toStaticDiscordGif() else model
+    val staticModel = remember(model, reducedMotion, allowAnimation) {
+        if (reducedMotion || !allowAnimation) model.toStaticDiscordGif() else model
     }
     // Some animated-avatar hashes do not expose a PNG representation. Never
     // leave an avatar blank in that case; retry its original CDN URL.
@@ -85,12 +85,16 @@ fun AsyncImage(
                 // hover/profile animation never starts.
                 .memoryCacheKey(effectiveModel?.toString() + if (allowAnimation) "#animated" else "#static")
                 .memoryCachePolicy(if (lowMemoryMode) CachePolicy.DISABLED else CachePolicy.ENABLED)
+                .resultCachePolicy(CachePolicy.DISABLED)
                 .crossfade(!reducedMotion && !lowMemoryMode)
-                // Decode at the image's full resolution. Sketch's default auto-size
+                // Decode static images at full resolution: Sketch's default auto-size
                 // resolver downsamples to the exact on-screen pixel size with a cheap
                 // box sample, which aliases ("pixelates") static images. Full-res decode
                 // + Compose's high-quality filter renders as crisp as the animated images.
-                .size(Size.Empty)
+                // Animated images, however, buffer every composited frame in memory, so
+                // bound their decode size — nameplates/decorations only ever play inside
+                // small chips anyway.
+                .size(if (allowAnimation) Size(512, 512) else Size.Empty)
                 .disallowAnimatedImage(!allowAnimation)
                 .build()
         }
@@ -171,13 +175,16 @@ private fun Any?.toStaticDiscordGif(): Any? {
     }
 
     val gifSuffix = url.indexOf(".gif", ignoreCase = true)
-    if (gifSuffix < 0) return this
+    val webpSuffix = url.indexOf(".webp", ignoreCase = true)
+    
+    val suffixIndex = if (gifSuffix >= 0) gifSuffix else webpSuffix
+    if (suffixIndex < 0) return this
 
     // Asking the CDN for the PNG path is more reliable than format=png on
     // Android, especially for animated avatars and custom status emojis.
-    val suffixEnd = gifSuffix + 4
+    val suffixEnd = suffixIndex + (if (gifSuffix >= 0) 4 else 5)
     if (suffixEnd == url.length || url[suffixEnd] == '?') {
-        return url.substring(0, gifSuffix) + ".png" + url.substring(suffixEnd)
+        return url.substring(0, suffixIndex) + ".png" + url.substring(suffixEnd)
     }
 
     return if (url.contains(Regex("""[?&]format=""", RegexOption.IGNORE_CASE))) {

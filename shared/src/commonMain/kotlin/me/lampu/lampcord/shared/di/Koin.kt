@@ -145,7 +145,8 @@ val storeModule = module {
         MessageEventHandler(
             json = get(), userStore = get(), messageStore = get(), messageLogger = get(),
             readStateStore = get(), entityStore = get(), guildStore = get(),
-            navigationStore = get(), finderStore = get(), scope = get()
+            navigationStore = get(), finderStore = get(), channelApi = get(),
+            typingStore = get(), scope = get()
         )
     }
     single {

@@ -204,7 +204,7 @@ fun GuildRail(
                             monogramUnselectedColor = MaterialTheme.colorScheme.primary
                         ) {
                             Icon(
-                                imageVector = Icons.Brand.Discord,
+                                imageVector = Icons.Brand.DiscordRounded,
                                 contentDescription = "Home",
                                 modifier = Modifier.size(35.dp)
                             )

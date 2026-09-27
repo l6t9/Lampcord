@@ -80,10 +80,10 @@ actual fun rememberPlatformColorScheme(
                 
                 // On Android, we set the status bar color based on the current panel state
                 // to ensure it matches the header color of the panel currently on top.
-                val statusBarColor = if (isOverlapping && navigationStore.isProfilePanelVisible) {
-                     scheme.surface // Match MemberHeader (Surface)
-                } else {
-                     scheme.background // Match ChannelHeader (Background)
+                val statusBarColor = when {
+                    isOverlapping && navigationStore.isProfilePanelVisible -> scheme.surface // Match MemberHeader (Surface)
+                    navigationStore.isSettingsVisible -> scheme.surface // Match Settings collapsing header (Surface)
+                    else -> scheme.background // Match ChannelHeader (Background)
                 }
                 
                 window.statusBarColor = statusBarColor.toArgb()

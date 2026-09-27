@@ -199,7 +199,8 @@ fun MemberItem(
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop,
-                        alpha = 0.4f
+                        alpha = 0.4f,
+                        allowAnimation = isHovered
                     )
                 }
 

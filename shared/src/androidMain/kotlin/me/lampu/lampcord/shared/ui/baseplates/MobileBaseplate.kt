@@ -605,7 +605,7 @@ actual fun MobileBaseplate(
                                 navigationStore.isMentionsSelected = false
                                 navigator.navigate(Screen.Chat)
                             },
-                            icon = { Icon(Icons.Brand.Discord, "Home") },
+                            icon = { Icon(if (currentRoute == Screen.Chat) Icons.Brand.DiscordRounded else Icons.Brand.DiscordRoundedOutline, "Home") },
                             label = { Text("Home") },
                             alwaysShowLabel = !settingsStore.hideNavLabels
                         )

@@ -150,7 +150,7 @@ fun MessageItem(
     val member by remember(message.member, authorId, members, guildId) {
         derivedStateOf {
             val cached = if (guildId != null && authorId != null) members[guildId]?.get(authorId) else null
-            if (authorId == currentUser?.id) cached ?: message.member else message.member ?: cached
+            message.member ?: cached
         }
     }
 
@@ -472,9 +472,7 @@ fun MessageItem(
                             commonReactions.forEach { emojiKey ->
                                 IconButton(
                                     onClick = {
-                                        scope.launch {
-                                            messageApi.addReaction(message.channel_id, message.id, emojiKey)
-                                        }
+                                        messageStore.toggleReaction(message, emojiFromKey(emojiKey))
                                         onDismiss()
                                     },
                                     modifier = Modifier
@@ -681,7 +679,7 @@ fun MessageItem(
                     }
 
                     if (message.interaction != null) {
-                        InteractionHeader(message.interaction)
+                        InteractionHeader(message.interaction, guildId = guildId)
                     }
 
                     if (isCompact) {
@@ -698,6 +696,8 @@ fun MessageItem(
                                     UserAvatar(
                                         user = cAuthor,
                                         size = 20.dp,
+                                        guildId = guildId,
+                                        memberAvatar = cMember?.avatar,
                                         decorationData = cMember?.avatar_decoration_data,
                                         modifier = Modifier.clickable(enabled = !isPreview) { profileStore.showProfile(cAuthor.id, guildId, avatarPosition) },
                                         isHovered = isHovered
@@ -815,6 +815,8 @@ fun MessageItem(
                                     UserAvatar(
                                         user = cAuthor,
                                         size = 40.dp,
+                                        guildId = guildId,
+                                        memberAvatar = cMember?.avatar,
                                         decorationData = cMember?.avatar_decoration_data,
                                         modifier = Modifier.clickable { profileStore.showProfile(cAuthor.id, guildId, avatarPosition) },
                                         isHovered = isHovered
@@ -858,6 +860,8 @@ fun MessageItem(
                                     UserAvatar(
                                         user = cAuthor,
                                         size = 40.dp,
+                                        guildId = guildId,
+                                        memberAvatar = cMember?.avatar,
                                         decorationData = cMember?.avatar_decoration_data,
                                         modifier = Modifier.clickable { profileStore.showProfile(cAuthor.id, guildId, avatarPosition) },
                                         isHovered = isHovered
@@ -1001,10 +1005,7 @@ fun MessageItem(
                 ReactionPickerSheet(
                     onDismiss = { showReactionPicker = false },
                     onEmojiSelected = { emoji ->
-                        val emojiStr = if (emoji.id != null) "${emoji.name}:${emoji.id}" else emoji.name ?: ""
-                        scope.launch {
-                            messageApi.addReaction(message.channel_id, message.id, emojiStr)
-                        }
+                        messageStore.toggleReaction(message, emoji)
                     }
                 )
             } else {
@@ -1019,10 +1020,7 @@ fun MessageItem(
                         guildStore = guildStore,
                         navigationStore = navigationStore
                     ) { emoji ->
-                        val emojiStr = if (emoji.id != null) "${emoji.name}:${emoji.id}" else emoji.name ?: ""
-                        scope.launch {
-                            messageApi.addReaction(message.channel_id, message.id, emojiStr)
-                        }
+                        messageStore.toggleReaction(message, emoji)
                         showReactionPicker = false
                     }
                 }
@@ -1106,5 +1104,16 @@ fun CreateThreadDialog(
                 }
             }
         }
+    }
+}
+
+private fun emojiFromKey(key: String): Emoji {
+    val normalized = key.trim().removePrefix("<a:").removePrefix("<:").removeSuffix(">")
+    val parts = normalized.split(":")
+    val id = parts.lastOrNull()?.takeIf { it.isNotEmpty() && it.all(Char::isDigit) }
+    return if (id != null) {
+        Emoji(name = parts.dropLast(1).joinToString(":").takeIf { it.isNotBlank() }, id = id, animated = key.startsWith("<a:"))
+    } else {
+        Emoji(name = normalized.removeSurrounding(":"), id = null)
     }
 }

@@ -62,6 +62,7 @@ fun AvatarWithDecoration(
                     contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                     filterQuality = androidx.compose.ui.graphics.FilterQuality.High,
                     size = sizePx,
+                    allowAnimation = animated && (isHovered || forceAnimate),
                     onState = { state ->
                         if (state is PainterState.Error && avatarCandidateIndex < avatarCandidates.lastIndex) {
                             avatarCandidateIndex++

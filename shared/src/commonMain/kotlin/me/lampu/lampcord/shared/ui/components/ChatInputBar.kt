@@ -53,6 +53,7 @@ import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.components.chat.MediaPicker
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.components.PlatformBackHandler
+import me.lampu.lampcord.shared.utils.EmojiIndex
 import me.lampu.lampcord.shared.utils.FilePicker
 import me.lampu.lampcord.shared.utils.getClipboardFiles
 import me.lampu.lampcord.shared.utils.getPlatformName
@@ -267,16 +268,19 @@ fun ChatInputBar(
                 inputText = ":${emoji.name}:"
             ))
         } else {
-            val emojiText = emoji.name ?: ""
+            val name = emoji.name ?: "emoji"
+            val inputText = ":$name:"
+            val insertStart = textFieldValue.selection.start
             val newText = textFieldValue.text.replaceRange(
-                textFieldValue.selection.start,
+                insertStart,
                 textFieldValue.selection.end,
-                emojiText
+                inputText
             )
-            textFieldValue = TextFieldValue(
-                newText,
-                TextRange(textFieldValue.selection.start + emojiText.length)
-            )
+            textFieldValue = TextFieldValue(newText, TextRange(insertStart + inputText.length))
+            val unicode = EmojiIndex.getCharForName(name)
+            if (unicode != null && unicode != inputText) {
+                mentionRanges = mentionRanges + (insertStart until insertStart + inputText.length to unicode)
+            }
         }
     }
 
@@ -628,7 +632,7 @@ fun ChatInputBar(
                                                     autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild, channel)
                                                 }
 
-                                                if (it.text.isNotEmpty()) messageStore.sendTyping(channel.id)
+                                                if (it.text.isNotEmpty() && !it.text.startsWith('/')) messageStore.sendTyping(channel.id)
                                             }
                                         },
                                         visualTransformation = DiscordInputVisualTransformation(primaryColor),
@@ -724,6 +728,7 @@ fun ChatInputBar(
                                                             }
                                                             textFieldValue = TextFieldValue("")
                                                             clearMentions()
+                                                            messageStore.resetTypingEmission(channel.id)
                                                             return@onPreviewKeyEvent true
                                                         }
                                                     }
@@ -847,6 +852,7 @@ fun ChatInputBar(
                                             }
                                             textFieldValue = TextFieldValue("")
                                             clearMentions()
+                                            messageStore.resetTypingEmission(channel.id)
                                         },
                                         enabled = canSend && (commandStore.activeCommand == null || commandStore.isCommandValid()),
                                         colors = IconButtonDefaults.filledIconButtonColors(
@@ -989,6 +995,13 @@ private fun resolveServerContent(
     }.toList()
     subs.sortedByDescending { it.first.first }.forEach { (range, value) ->
         result = result.replaceRange(range.first, range.last + 1, value)
+    }
+
+    val unicodeRegex = Regex(""":([a-zA-Z0-9_+-]+):""")
+    result = unicodeRegex.replace(result) { m ->
+        val unmatchedBackticks = result.substring(0, m.range.first).count { it == '`' } % 2
+        if (unmatchedBackticks == 1) m.value
+        else EmojiIndex.getCharForName(m.groupValues[1]) ?: m.value
     }
 
     return result

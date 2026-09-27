@@ -35,12 +35,14 @@ fun TypingIndicator(
     navigationStore: NavigationStore = koinInject()
 ) {
     val typingUsers by typingStore.typingUsers.collectAsState()
-    val channelId = navigationStore.selectedChannel?.id ?: return
+    val channelId = navigationStore.selectedThread?.id ?: navigationStore.selectedChannel?.id ?: return
+    val guild = navigationStore.selectedGuild
+    if (guild != null && (guild.verification_level ?: 0) > 0) return
     val typingMap = typingUsers[channelId] ?: return
     val userIds = typingMap.keys.toList()
     if (userIds.isEmpty()) return
     
-    val names = userIds.map { id ->
+    val names = userIds.take(4).map { id ->
          val member = navigationStore.selectedGuild?.let { userStore.getMember(it.id, id) }
          val userFromStore = userStore.getUser(id)
          val userFromChannel = navigationStore.selectedChannel?.recipients?.find { it.id == id }
@@ -54,10 +56,10 @@ fun TypingIndicator(
     }
     
     val text = when (names.size) {
-        1 -> "${names[0]} is typing..."
-        2 -> "${names[0]} and ${names[1]} are typing..."
-        3 -> "${names[0]}, ${names[1]} and ${names[2]} are typing..."
-        else -> "Several people are typing..."
+        1 -> "${names[0]} is typing\u2026"
+        2 -> "${names[0]} and ${names[1]} are typing\u2026"
+        3 -> "${names[0]}, ${names[1]}, and ${names[2]} are typing\u2026"
+        else -> "Several people are typing\u2026"
     }
 
     Surface(

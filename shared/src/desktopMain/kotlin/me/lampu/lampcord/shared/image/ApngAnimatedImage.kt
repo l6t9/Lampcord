@@ -7,6 +7,9 @@ import com.github.panpf.sketch.util.Rect
 import java.awt.image.BufferedImage
 import java.io.ByteArrayInputStream
 import javax.imageio.ImageIO
+import javax.imageio.ImageReadParam
+import kotlin.math.max
+import kotlin.math.roundToInt
 import org.jetbrains.skia.Canvas
 import org.jetbrains.skia.ColorAlphaType
 import org.jetbrains.skia.ColorType
@@ -15,15 +18,36 @@ import org.jetbrains.skia.ColorType
  * [AnimatedImage] implementation that composites the raw APNG frame rectangles into full canvases
  * using the APNG dispose/alpha-blend semantics, then hands each frame to Sketch as a raster image.
  *
+ * Decorations like the animated Santa hat ship as very large APNGs (big canvas, dozens of frames);
+ * at full resolution compositing every frame would need hundreds of megabytes. The frames are
+ * therefore decoded with ImageIO source subsampling at a capped scale (see [MAX_DECODE_DIMENSION]),
+ * so the canvas stays bounded. The scaled fcTL rectangles mirror the per-frame pixel layout.
+ *
  * Frame rectangles are decoded lazily with the ImageIO reader only when the animation first plays.
  */
+private const val MAX_DECODE_DIMENSION = 512
+
 class ApngAnimatedImage(
     private val bytes: ByteArray,
     private val info: ApngInfo,
 ) : AnimatedImage {
 
-    override val width: Int = info.width
-    override val height: Int = info.height
+    override val width: Int
+    override val height: Int
+
+    private val sampleX: Int
+    private val sampleY: Int
+
+    init {
+        val maxDim = max(info.width, info.height)
+        val scale = if (maxDim > MAX_DECODE_DIMENSION) MAX_DECODE_DIMENSION.toFloat() / maxDim else 1f
+        val dw = max(1, (info.width * scale).roundToInt())
+        val dh = max(1, (info.height * scale).roundToInt())
+        sampleX = max(1, ceilDiv(info.width, dw))
+        sampleY = max(1, ceilDiv(info.height, dh))
+        width = ceilDiv(info.width, sampleX)
+        height = ceilDiv(info.height, sampleY)
+    }
 
     override val frameCount: Int = info.numFrames
 
@@ -42,6 +66,10 @@ class ApngAnimatedImage(
     override var animationStartCallback: (() -> Unit)? = null
     override var animationEndCallback: (() -> Unit)? = null
 
+    // Frame 0 is decoded on its own so that a static render (disallowAnimatedImage
+    // still asks for the first frame) never materializes the whole animation.
+    private val frame0: IntArray by lazy { decodeFrame0() }
+
     private val frames: Array<IntArray> by lazy { compositeFrames() }
 
     override fun checkValid(): Boolean = true
@@ -53,7 +81,7 @@ class ApngAnimatedImage(
     override fun createFrameBitmap(width: Int, height: Int): Bitmap = createBitmap(width, height)
 
     override fun readFrame(bitmap: Bitmap, frameIndex: Int) {
-        val argb = frames[frameIndex]
+        val argb = if (frameIndex == 0) frame0 else frames[frameIndex]
         val rgba = ByteArray(argb.size * 4)
         var i = 0
         for (p in argb) {
@@ -81,6 +109,20 @@ class ApngAnimatedImage(
         }
     }
 
+private fun decodeFrame0(): IntArray {
+        val reader = findReader() ?: return IntArray(width * height)
+        return try {
+            reader.setInput(ImageIO.createImageInputStream(ByteArrayInputStream(bytes)), true, true)
+            val out = IntArray(width * height)
+            blit(out, info.frames[0], reader.read(0, readParam(reader)))
+            out
+        } catch (_: javax.imageio.IIOException) {
+            IntArray(width * height)
+        } finally {
+            reader.dispose()
+        }
+    }
+
     private fun compositeFrames(): Array<IntArray> {
         val reader = findReader() ?: error("No APNG-capable ImageIO reader registered")
         return try {
@@ -96,15 +138,21 @@ class ApngAnimatedImage(
                     }
                 }
                 previous = canvas.copyOf()
-                val frame = reader.read(i)
-                blit(canvas, info.frames[i], frame)
+                blit(canvas, info.frames[i], reader.read(i, readParam(reader)))
                 frames[i] = canvas.copyOf()
             }
             frames
+        } catch (_: javax.imageio.IIOException) {
+            // A truncated/partial download shouldn't crash the list; fall back to
+            // transparent frames like the frame-0 path does.
+            Array(info.numFrames) { IntArray(width * height) }
         } finally {
             reader.dispose()
         }
     }
+
+    private fun readParam(reader: javax.imageio.ImageReader): ImageReadParam =
+        reader.defaultReadParam.apply { setSourceSubsampling(sampleX, sampleY, 0, 0) }
 
     private fun findReader(): javax.imageio.ImageReader? {
         val stream = ImageIO.createImageInputStream(ByteArrayInputStream(bytes)) ?: return null
@@ -117,15 +165,20 @@ class ApngAnimatedImage(
             }
     }
 
+    /** Source pixel (row/col) -> scaled canvas coordinate. */
+    private fun scaleCoord(v: Int, isX: Boolean): Int {
+        val factor = if (isX) width.toFloat() / info.width else height.toFloat() / info.height
+        return (v * factor).roundToInt()
+    }
+
     private fun blit(canvas: IntArray, meta: ApngFrameMeta, img: BufferedImage) {
-        val srcW = img.width.coerceAtMost(meta.width)
-        val srcH = img.height.coerceAtMost(meta.height)
-        for (j in 0 until srcH) {
-            val cy = meta.y + j
+        val x0 = maxOf(0, scaleCoord(meta.x, true))
+        for (j in 0 until img.height) {
+            val cy = scaleCoord(meta.y + j * sampleY, isX = false)
             if (cy < 0 || cy >= height) continue
-            var dst = cy * width + meta.x
-            for (k in 0 until srcW) {
-                val cx = meta.x + k
+            var dst = cy * width + x0
+            for (k in 0 until img.width) {
+                val cx = x0 + scaleCoord(k * sampleX, isX = true)
                 if (cx < 0 || cx >= width) {
                     dst++
                     continue
@@ -166,18 +219,20 @@ class ApngAnimatedImage(
     }
 
     private fun clearRegion(canvas: IntArray, meta: ApngFrameMeta) {
-        val startX = maxOf(0, meta.x)
-        val endX = minOf(width, meta.x + meta.width)
-        if (endX <= startX) return
+        val x0 = maxOf(0, scaleCoord(meta.x, true))
+        val x1 = minOf(width, scaleCoord(meta.x + meta.width, true))
+        if (x1 <= x0) return
         for (j in 0 until meta.height) {
-            val cy = meta.y + j
+            val cy = scaleCoord(meta.y + j, isX = false)
             if (cy < 0 || cy >= height) continue
-            val start = cy * width + startX
-            for (k in startX until endX) {
-                canvas[start + (k - startX)] = 0
+            val start = cy * width + x0
+            for (k in x0 until x1) {
+                canvas[start + (k - x0)] = 0
             }
         }
     }
+
+    private fun ceilDiv(a: Int, b: Int): Int = (a + b - 1) / b
 
     private fun delayMs(num: Int, den: Int): Int {
         if (num == 0) return 100
@@ -186,5 +241,5 @@ class ApngAnimatedImage(
     }
 
     override fun toString(): String = "ApngAnimatedImage(" +
-            "width=$width, height=$height, frameCount=$frameCount, repeatCount=$repeatCount)"
+            "width=$width, height=$height, decode=${MAX_DECODE_DIMENSION}px cap, frameCount=$frameCount, repeatCount=$repeatCount)"
 }

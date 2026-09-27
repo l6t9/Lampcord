@@ -55,11 +55,13 @@ class MessageStore(
 ) {
     private companion object {
         const val CACHE_MAX_CHANNELS = 50
+        const val TYPING_EMISSION_INTERVAL_MS = 10_000L
     }
 
     // Exact replica of Discord's internal message storage philosophy:
     // LRU channel access + sorted lists (TreeMap equivalent) for messages
     private val channelAccessOrder = mutableListOf<String>()
+    private val lastTypingEmissionMillis = mutableMapOf<String, Long>()
     private val messageCache = mutableMapOf<String, List<Message>>()
     
     private val _allMessages = MutableStateFlow<Map<String, List<Message>>>(emptyMap())
@@ -654,11 +656,19 @@ class MessageStore(
         // Silent typing only suppresses our outbound signal. Incoming typing
         // events are handled independently by TypingStore and remain visible.
         if (Settings.shared.silentTyping) return
+        val now = getCurrentTimeMillis()
+        val last = lastTypingEmissionMillis[channelId] ?: 0L
+        if (now - last < TYPING_EMISSION_INTERVAL_MS) return
+        lastTypingEmissionMillis[channelId] = now
         scope.launch {
             try {
                 channelApi.triggerTyping(channelId)
             } catch (e: Exception) { }
         }
+    }
+
+    fun resetTypingEmission(channelId: String) {
+        lastTypingEmissionMillis.remove(channelId)
     }
 
     fun editMessage(message: Message, content: String) {

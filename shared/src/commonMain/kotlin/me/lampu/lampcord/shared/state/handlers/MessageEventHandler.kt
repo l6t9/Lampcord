@@ -13,6 +13,7 @@ import me.lampu.lampcord.shared.model.MessageReactionAdd
 import me.lampu.lampcord.shared.model.MessageReactionRemove
 import me.lampu.lampcord.shared.model.MessageReactionRemoveAll
 import me.lampu.lampcord.shared.model.MessageReactionRemoveEmoji
+import me.lampu.lampcord.shared.api.ChannelApi
 import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.utils.Logging
 
@@ -26,8 +27,11 @@ class MessageEventHandler(
     private val guildStore: GuildStore,
     private val navigationStore: NavigationStore,
     private val finderStore: FinderStore,
+    private val channelApi: ChannelApi,
+    private val typingStore: TypingStore,
     private val scope: CoroutineScope
 ) : GatewayEventHandler {
+    private val fetchingDmChannels = mutableSetOf<String>()
     override val supportedEvents = setOf(
         "MESSAGE_CREATE", 
         "MESSAGE_UPDATE", 
@@ -64,6 +68,9 @@ class MessageEventHandler(
         
         // Cache author and member in UserStore (StoreUsers / StoreMembers)
         message.author?.let { userStore.handleUserUpdate(it) }
+        message.author?.let {
+            typingStore.handleUserSentMessage(message.channel_id, it.id)
+        }
         message.guild_id?.let { guildId ->
             message.member?.let { member ->
                 val userId = message.author?.id ?: return@let
@@ -80,6 +87,9 @@ class MessageEventHandler(
             entityStore.updateChannel(updated)
             if (updated.guild_id == null && (updated.type == 1 || updated.type == 3)) {
                 guildStore.handleChannelCreateOrUpdate(updated)
+                if (updated.recipients.isNullOrEmpty()) {
+                    hydrateDmChannel(message.channel_id, message.id)
+                }
             }
         } else if (message.guild_id == null) {
             val dummyChannel = me.lampu.lampcord.shared.model.Channel(
@@ -88,6 +98,7 @@ class MessageEventHandler(
                 last_message_id = kotlinx.serialization.json.JsonPrimitive(message.id)
             )
             guildStore.handleChannelCreateOrUpdate(dummyChannel)
+            hydrateDmChannel(message.channel_id, message.id)
         }
 
         // Clear draft if message is from us
@@ -155,5 +166,22 @@ class MessageEventHandler(
             val update = json.decodeFromJsonElement<MessageReactionRemoveEmoji>(data)
             messageStore.handleReactionRemoveEmoji(update)
         } catch (e: Exception) { }
+    }
+
+    private fun hydrateDmChannel(channelId: String, lastMessageId: String) {
+        val channel = entityStore.channels.value[channelId]
+        if (channel != null && !channel.recipients.isNullOrEmpty()) return
+        if (!fetchingDmChannels.add(channelId)) return
+        scope.launch {
+            try {
+                val real = channelApi.getChannel(channelId)
+                if (real != null) {
+                    val withLast = real.copy(last_message_id = kotlinx.serialization.json.JsonPrimitive(lastMessageId))
+                    guildStore.handleChannelCreateOrUpdate(withLast)
+                }
+            } finally {
+                fetchingDmChannels.remove(channelId)
+            }
+        }
     }
 }

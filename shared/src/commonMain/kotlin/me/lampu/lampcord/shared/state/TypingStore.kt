@@ -36,6 +36,15 @@ class TypingStore(private val scope: CoroutineScope) {
         }
     }
 
+    fun handleUserSentMessage(channelId: String, userId: String) {
+        typingJobs.remove(channelId to userId)?.cancel()
+        _typingUsers.update { current ->
+            val channelTyping = current[channelId]?.toMutableMap() ?: return@update current
+            if (channelTyping.remove(userId) == null) return@update current
+            if (channelTyping.isEmpty()) current - channelId else current + (channelId to channelTyping)
+        }
+    }
+
     fun clear() {
         _typingUsers.value = emptyMap()
         typingJobs.values.forEach { it.cancel() }

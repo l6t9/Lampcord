@@ -846,12 +846,19 @@ class FFmpegFrameGrabber : FrameGrabber {
                 if (isDeinterlace) throw Exception("Cannot deinterlace: Functionality moved to FFmpegFrameFilter.")
                 if (frame!!.imageWidth != picture_rgb!!.width() || frame!!.imageHeight != picture_rgb!!.height()) initPictureRGB()
                 av_frame_copy_props(picture_rgb, picture)
+                
+                var srcFmt = video_c!!.pix_fmt()
+                if (srcFmt == AV_PIX_FMT_YUVJ420P) srcFmt = AV_PIX_FMT_YUV420P
+                else if (srcFmt == AV_PIX_FMT_YUVJ422P) srcFmt = AV_PIX_FMT_YUV422P
+                else if (srcFmt == AV_PIX_FMT_YUVJ444P) srcFmt = AV_PIX_FMT_YUV444P
+                else if (srcFmt == AV_PIX_FMT_YUVJ440P) srcFmt = AV_PIX_FMT_YUV440P
+
                 img_convert_ctx =
                     sws_getCachedContext(
                         img_convert_ctx,
                         video_c!!.width(),
                         video_c!!.height(),
-                        video_c!!.pix_fmt(),
+                        srcFmt,
                         frame!!.imageWidth,
                         frame!!.imageHeight,
                         pixelFormat,

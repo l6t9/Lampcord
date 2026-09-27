@@ -95,7 +95,12 @@ fun MessageTimestamp(
 }
 
 @Composable
-fun InteractionHeader(interaction: MessageInteraction) {
+fun InteractionHeader(
+    interaction: MessageInteraction,
+    guildId: String? = null,
+    userStore: UserStore = koinInject(),
+    navigationStore: NavigationStore = koinInject()
+) {
     val lineColor = MaterialTheme.colorScheme.outlineVariant
     Row(
         modifier = Modifier
@@ -134,14 +139,25 @@ fun InteractionHeader(interaction: MessageInteraction) {
 
         Spacer(modifier = Modifier.width(4.dp))
 
-        val avatarUrl = interaction.user?.let { CdnUrls.getUserAvatarUrl(it.id, it.avatar, 48) }
+        val avatarUrl = remember(interaction, guildId, navigationStore.selectedGuild) {
+            val user = interaction.user ?: return@remember null
+            val gId = guildId ?: navigationStore.selectedGuild?.id
+            val member = if (gId != null) userStore.getMember(gId, user.id) else null
+            
+            if (gId != null && member?.avatar != null) {
+                CdnUrls.getMemberAvatarUrl(gId, user.id, member.avatar, user.avatar, 48)
+            } else {
+                CdnUrls.getUserAvatarUrl(user.id, user.avatar, 48)
+            }
+        }
 
         if (avatarUrl != null) {
             AsyncImage(
                 model = avatarUrl,
                 contentDescription = null,
                 modifier = Modifier.size(16.dp).clip(CircleShape),
-                filterQuality = FilterQuality.Medium
+                filterQuality = FilterQuality.Medium,
+                allowAnimation = false
             )
         } else {
             Surface(modifier = Modifier.size(16.dp), shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {}
@@ -240,8 +256,16 @@ fun ReplyBar(
 
         Spacer(modifier = Modifier.width(4.dp))
 
-        val avatarUrl = referencedMessage.author?.let {
-            CdnUrls.getUserAvatarUrl(it.id, it.avatar, 48)
+        val avatarUrl = remember(referencedMessage, navigationStore.selectedGuild) {
+            val author = referencedMessage.author ?: return@remember null
+            val guildId = referencedMessage.guild_id ?: navigationStore.selectedGuild?.id
+            val memberAvatar = referencedMessage.member?.avatar
+            
+            if (guildId != null && memberAvatar != null) {
+                CdnUrls.getMemberAvatarUrl(guildId, author.id, memberAvatar, author.avatar, 48)
+            } else {
+                CdnUrls.getUserAvatarUrl(author.id, author.avatar, 48)
+            }
         }
 
         if (avatarUrl != null) {
@@ -249,7 +273,8 @@ fun ReplyBar(
                 model = avatarUrl,
                 contentDescription = null,
                 modifier = Modifier.size(16.dp).clip(CircleShape),
-                filterQuality = FilterQuality.Medium
+                filterQuality = FilterQuality.Medium,
+                allowAnimation = false
             )
         } else {
             Surface(modifier = Modifier.size(16.dp), shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {}

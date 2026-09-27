@@ -14,8 +14,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -64,6 +64,8 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
 
+private const val MIN_SCROLLBACK = 15
+
 @Composable
 fun ChatArea(
     modifier: Modifier = Modifier,
@@ -76,7 +78,8 @@ fun ChatArea(
     readStateStore: me.lampu.lampcord.shared.state.ReadStateStore = koinInject()
 ) {
     val joinVoice = me.lampu.lampcord.shared.voice.rememberVoiceJoin(voiceStore)
-    val scrollState = rememberLazyListState()
+    val channelId = navigationStore.selectedChannel?.id
+    val scrollState = remember(channelId) { LazyListState() }
     var isHovered by remember { mutableStateOf(false) }
     val messages by messageStore.messages.collectAsState()
     val relationships by relationshipStore.relationships.collectAsState()
@@ -88,7 +91,6 @@ fun ChatArea(
 
     val backgroundUrl = if (themeBackgroundUrl.isNotEmpty()) themeBackgroundUrl else settingsStore.chatBackground
 
-    val channelId = navigationStore.selectedChannel?.id
     val ackedMessageId = remember(readStates, channelId) {
         if (channelId == null) "0" else readStates[channelId]?.last_message_id?.toString()?.removeSurrounding("\"") ?: "0"
     }
@@ -386,12 +388,8 @@ fun ChatArea(
             }
         }
 
-        val scrolledAway = remember { derivedStateOf {
-            val index = scrollState.firstVisibleItemIndex
-            val offset = scrollState.firstVisibleItemScrollOffset
-            // Mirror Discord: require a larger scrollback before showing jump-to-latest
-            val MIN_SCROLLBACK = 10
-            index >= MIN_SCROLLBACK || (index > 0 && offset > 200)
+        val scrolledAway = remember(scrollState) { derivedStateOf {
+            scrollState.firstVisibleItemIndex > MIN_SCROLLBACK
         } }
 
         if (scrolledAway.value) {
