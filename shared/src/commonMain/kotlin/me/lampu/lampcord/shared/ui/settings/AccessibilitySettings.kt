@@ -65,8 +65,8 @@ fun AccessibilitySettingsContent(settingsStore: SettingsStore = koinInject()) {
                     switchSettingsItem(
                         title = "High Contrast",
                         description = "Increases contrast between foreground and background elements.",
-                        checked = false, // TODO
-                        onCheckedChange = { }
+                        checked = Settings.shared.reduceMotion,
+                        onCheckedChange = { Settings.shared.reduceMotion = it }
                     )
                 )
             }

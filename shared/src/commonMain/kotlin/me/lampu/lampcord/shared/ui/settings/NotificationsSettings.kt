@@ -55,8 +55,8 @@ fun NotificationsSettingsContent(settingsStore: SettingsStore = koinInject()) {
                 switchSettingsItem(
                     title = "Incoming Call Sound",
                     description = "Play a sound when you are being called.",
-                    checked = true, // TODO: persistent state
-                    onCheckedChange = { }
+                    checked = settingsStore.notificationSound,
+                    onCheckedChange = { settingsStore.notificationSound = it }
                 )
             )
         )

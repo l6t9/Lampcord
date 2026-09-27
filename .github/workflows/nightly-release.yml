@@ -1,0 +1,109 @@
+name: Nightly & Open Beta Release
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nightly-release
+  cancel-in-progress: true
+
+jobs:
+  stage:
+    name: Prepare Nightly Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Read version
+        id: release
+        shell: bash
+        run: |
+          version=""
+          while IFS='=' read -r key value; do
+            if [[ "$key" == "appVersion" ]]; then version="$value"; break; fi
+          done < gradle.properties
+          
+          tag="nightly"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release delete "$tag" --yes --repo "$GITHUB_REPOSITORY" || true
+          fi
+          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${tag}" > /dev/null 2>&1; then
+            gh api --method DELETE "repos/${GITHUB_REPOSITORY}/git/refs/tags/${tag}" || true
+          fi
+          
+          gh release create "$tag" \
+            --prerelease \
+            --target "$GITHUB_SHA" \
+            --title "Lampcord Open Beta / Nightly ($version)" \
+            --notes "Automated nightly build generated from commit \`$GITHUB_SHA\` on $(date -u +'%Y-%m-%d %H:%M UTC')." \
+            --repo "$GITHUB_REPOSITORY"
+
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  android:
+    name: Android
+    needs: stage
+    uses: ./.github/workflows/reusable-android-build.yml
+    permissions:
+      contents: write
+    with:
+      variant: release
+      staging-release-tag: ${{ needs.stage.outputs.tag }}
+      require-signing: false
+    secrets:
+      GRADLE_ENCRYPTION_KEY: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+      KEYSTORE_PATH: ${{ secrets.KEYSTORE_PATH }}
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+      KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+  linux:
+    name: Linux
+    needs: stage
+    uses: ./.github/workflows/reusable-desktop-linux.yml
+    permissions:
+      contents: write
+    with:
+      staging-release-tag: ${{ needs.stage.outputs.tag }}
+    secrets:
+      GRADLE_ENCRYPTION_KEY: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+
+  windows:
+    name: Windows
+    needs: stage
+    uses: ./.github/workflows/reusable-desktop-windows.yml
+    permissions:
+      contents: write
+    with:
+      staging-release-tag: ${{ needs.stage.outputs.tag }}
+    secrets:
+      GRADLE_ENCRYPTION_KEY: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+
+  finalize:
+    name: Finalize Release
+    needs: [stage, android, linux, windows]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Finalize Nightly Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.stage.outputs.tag }}
+        run: |
+          echo "Nightly release build complete for tag $TAG."

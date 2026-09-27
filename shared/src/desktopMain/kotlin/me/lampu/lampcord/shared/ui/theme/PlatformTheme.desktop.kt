@@ -13,60 +13,63 @@ import kotlinx.coroutines.delay
 import java.io.File
 import kotlin.time.Duration.Companion.milliseconds
 
+private fun findMatugenCandidateFiles(home: String): List<File> {
+    return listOf(
+        File("$home/.local/state/quickshell/user/generated/colors.json"),
+        File("$home/.config/matugen/colors.json"),
+        File("$home/.config/matugen/generated/colors.json"),
+        File("$home/.config/matugen/templates/colors.json"),
+        File("$home/.cache/matugen/colors.json"),
+        File("$home/.cache/matugen/colors-json.json"),
+        File("$home/.local/state/matugen/colors.json"),
+        File("$home/.local/share/matugen/colors.json"),
+        File("$home/.config/hypr/colors.json"),
+        File("$home/.cache/wal/colors.json")
+    )
+}
+
 @Composable
 actual fun rememberDynamicSeedColor(): Color? {
-    // These color files are Linux-specific. Do not keep a background polling
-    // coroutine alive on Windows or macOS.
     if (remember { getPlatformName() != "linux" }) return null
 
     val home = remember { System.getProperty("user.home") }
-    // The dots' matugen config writes the current scheme to the quickshell generated
-    // folder; stock matugen uses ~/.cache/matugen/colors.json. Prefer the first.
-    val generatedColorsFile = remember(home) { File("$home/.local/state/quickshell/user/generated/colors.json") }
-    val matugenFile = remember(home) { File("$home/.cache/matugen/colors.json") }
+    val candidateFiles = remember(home) { findMatugenCandidateFiles(home) }
     val colorFile = remember(home) { File("$home/.local/state/quickshell/user/generated/color.txt") }
-    val alternativeColorFile = remember(home) { File("$home/.cache/wal/colors") } // common fallback for pywal
+    val alternativeColorFile = remember(home) { File("$home/.cache/wal/colors") }
 
-    var seedColor by remember { mutableStateOf<Color?>(null) }
+    fun loadSeed(): Color? {
+        for (file in candidateFiles) {
+            if (file.exists()) {
+                val seed = readMatugenPalette(file)?.seedColor(isDark = false)
+                if (seed != null) return seed
+            }
+        }
+        if (colorFile.exists()) {
+            try {
+                val hex = colorFile.readText().trim().removePrefix("#")
+                return Color(hex.toLong(16) or 0xFF000000)
+            } catch (_: Exception) {}
+        }
+        if (alternativeColorFile.exists()) {
+            try {
+                val firstLine = alternativeColorFile.readLines().firstOrNull()?.removePrefix("#")
+                if (firstLine != null) {
+                    return Color(firstLine.toLong(16) or 0xFF000000)
+                }
+            } catch (_: Exception) {}
+        }
+        return null
+    }
 
-    LaunchedEffect(generatedColorsFile, matugenFile, colorFile, alternativeColorFile) {
+    var seedColor by remember { mutableStateOf(loadSeed()) }
+
+    LaunchedEffect(candidateFiles, colorFile, alternativeColorFile) {
         while (true) {
-            var foundColor: Color? = null
-
-            // Matugen takes priority: it holds the full wallpaper-derived palette.
-            if (foundColor == null && generatedColorsFile.exists()) {
-                try {
-                    foundColor = readMatugenPalette(generatedColorsFile)?.seedColor(isDark = false)
-                } catch (_: Exception) {}
-            }
-            if (foundColor == null && matugenFile.exists()) {
-                try {
-                    foundColor = readMatugenPalette(matugenFile)?.seedColor(isDark = false)
-                } catch (_: Exception) {}
-            }
-
-            if (foundColor == null && colorFile.exists()) {
-                try {
-                    val hex = colorFile.readText().trim().removePrefix("#")
-                    foundColor = Color(hex.toLong(16) or 0xFF000000)
-                } catch (_: Exception) {}
-            }
-            
-            if (foundColor == null && alternativeColorFile.exists()) {
-                try {
-                    val firstLine = alternativeColorFile.readLines().firstOrNull()?.removePrefix("#")
-                    if (firstLine != null) {
-                        foundColor = Color(firstLine.toLong(16) or 0xFF000000)
-                    }
-                } catch (_: Exception) {}
-            }
-            
-            // TODO: Add GNOME/KDE wallpaper extraction if needed
-            
+            val foundColor = loadSeed()
             if (seedColor != foundColor) {
                 seedColor = foundColor
             }
-            delay(2000.milliseconds)
+            delay(1500.milliseconds)
         }
     }
     
@@ -84,10 +87,6 @@ actual fun rememberPlatformColorScheme(
     paletteStyle: PaletteStyle,
     useMaterialYou: Boolean
 ): ColorScheme {
-    // On Linux, when the dynamic (Material You) theme is enabled, use matugen's
-    // generated palette directly so the app matches the wallpaper colors exactly.
-    // Windows/macOS keep using the seed-derived scheme (Windows has its own
-    // system accent color handling).
     val matugen = if (useMaterialYou) rememberMatugenColorScheme(isDark) else null
     if (matugen != null) return matugen
 
@@ -102,20 +101,23 @@ actual fun rememberPlatformColorScheme(
 private fun rememberMatugenColorScheme(isDark: Boolean): ColorScheme? {
     if (remember { getPlatformName() != "linux" }) return null
     val home = remember { System.getProperty("user.home") }
-    val candidateFiles = remember(home) {
-        listOf(
-            File("$home/.local/state/quickshell/user/generated/colors.json"),
-            File("$home/.cache/matugen/colors.json")
-        )
+    val candidateFiles = remember(home) { findMatugenCandidateFiles(home) }
+
+    fun loadPalette(): MatugenPalette? {
+        return candidateFiles.firstNotNullOfOrNull { file ->
+            if (file.exists()) readMatugenPalette(file) else null
+        }
     }
 
-    var palette by remember { mutableStateOf<MatugenPalette?>(null) }
+    var palette by remember { mutableStateOf(loadPalette()) }
+
     LaunchedEffect(candidateFiles) {
         while (true) {
-            palette = candidateFiles.firstNotNullOfOrNull { file ->
-                if (file.exists()) readMatugenPalette(file) else null
+            val current = loadPalette()
+            if (current != palette) {
+                palette = current
             }
-            delay(2000.milliseconds)
+            delay(1500.milliseconds)
         }
     }
 

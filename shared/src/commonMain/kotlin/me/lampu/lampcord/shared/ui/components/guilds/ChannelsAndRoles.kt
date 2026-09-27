@@ -216,9 +216,6 @@ fun BrowseChannelItem(channel: me.lampu.lampcord.shared.model.Channel) {
     Surface(
         onClick = { 
             isSelected = !isSelected
-            scope.launch {
-                // TODO: Update opt-in status via API
-            }
         },
         shape = RoundedCornerShape(8.dp),
         color = MaterialTheme.colorScheme.surfaceContainerLow
