@@ -75,6 +75,13 @@ class EntityStore(
             val isDm = type == 1 || type == 3
             val newGuildId = if (isDm) null else (channel.guild_id ?: existing?.guild_id)
 
+            val updatedRecipients = if (!channel.recipients.isNullOrEmpty()) channel.recipients else existing?.recipients
+            val updatedRecipientIds = if (!channel.recipient_ids.isNullOrEmpty()) {
+                channel.recipient_ids
+            } else {
+                existing?.recipient_ids ?: updatedRecipients?.map { it.id }
+            }
+
             val updated = existing?.copy(
                 type = type,
                 guild_id = newGuildId,
@@ -84,8 +91,8 @@ class EntityStore(
                 nsfw = channel.nsfw ?: existing.nsfw,
                 last_message_id = channel.last_message_id ?: existing.last_message_id,
                 parent_id = channel.parent_id ?: existing.parent_id,
-                recipients = if (!channel.recipients.isNullOrEmpty()) channel.recipients else existing.recipients,
-                recipient_ids = if (!channel.recipient_ids.isNullOrEmpty()) channel.recipient_ids else existing.recipient_ids,
+                recipients = updatedRecipients,
+                recipient_ids = updatedRecipientIds,
                 icon = channel.icon ?: existing.icon,
                 thread_metadata = channel.thread_metadata ?: existing.thread_metadata,
                 message_count = channel.message_count ?: existing.message_count,
@@ -96,7 +103,10 @@ class EntityStore(
                 permission_overwrites = channel.permission_overwrites ?: existing.permission_overwrites,
                 member_list_id = channel.member_list_id ?: existing.member_list_id,
                 flags = channel.flags ?: existing.flags
-            ) ?: channel
+            ) ?: channel.copy(
+                recipients = updatedRecipients,
+                recipient_ids = updatedRecipientIds
+            )
             
             updated.recipients?.forEach { userStore.handleUserUpdate(it) }
             

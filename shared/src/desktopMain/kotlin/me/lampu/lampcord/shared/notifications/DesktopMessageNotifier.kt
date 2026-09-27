@@ -2,6 +2,7 @@ package me.lampu.lampcord.shared.notifications
 
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.state.NotificationStore
+import me.lampu.lampcord.shared.utils.getPlatformName
 import java.awt.SystemTray
 import java.awt.TrayIcon
 import java.awt.image.BufferedImage
@@ -40,9 +41,29 @@ class DesktopMessageNotifier(
         val title = if (data.isDm) data.authorDisplayName else "${data.authorDisplayName} (${data.channelLabel ?: "channel"})"
         val text = previewText(data)
 
-        try {
-            trayIcon?.displayMessage(title, text, TrayIcon.MessageType.INFO)
-        } catch (_: Exception) {}
+        sendSystemNotification(title, text)
+    }
+
+    private fun sendSystemNotification(title: String, text: String) {
+        var shown = false
+        if (trayIcon != null) {
+            try {
+                trayIcon?.displayMessage(title, text, TrayIcon.MessageType.INFO)
+                shown = true
+            } catch (_: Exception) {}
+        }
+
+        val os = getPlatformName()
+        if (os == "linux") {
+            try {
+                ProcessBuilder("notify-send", "-a", "Lampcord", title, text).start()
+            } catch (_: Exception) {}
+        } else if (os == "macos" && !shown) {
+            try {
+                val script = "display notification \"${text.replace("\"", "\\\"")}\" with title \"${title.replace("\"", "\\\"")}\""
+                ProcessBuilder("osascript", "-e", script).start()
+            } catch (_: Exception) {}
+        }
     }
 
     override fun dismissChannelNotifications(channelId: String) {

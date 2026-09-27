@@ -86,8 +86,6 @@ class NotificationEventHandler(
         val guildSettings = userGuildSettingsStore.userGuildSettings.value[guildId]
         val channelOverride = guildSettings?.channel_overrides?.find { it.channel_id == message.channel_id }
 
-        if (guildSettings?.mobile_push == false) return
-
         val guildMuted = guildSettings?.muted == true && (guildSettings.mute_config?.end_time?.let {
             try { kotlin.time.Instant.parse(it) > kotlin.time.Clock.System.now() } catch (_: Exception) { true }
         } ?: true)

@@ -82,8 +82,28 @@ class MessageEventHandler(
 
         // Update channel last message id for sorting and ensure it's in GuildStore if it's a DM
         val currentChannel = entityStore.channels.value[message.channel_id]
+        val currentUser = userStore.currentUser.value
+        val author = message.author
+        val recipientUser = if (author != null && author.id != currentUser?.id) author else null
+        val recipientList = recipientUser?.let { listOf(it) }
+        val recipientIdList = recipientUser?.let { listOf(it.id) }
+
         if (currentChannel != null) {
-            val updated = currentChannel.copy(last_message_id = kotlinx.serialization.json.JsonPrimitive(message.id))
+            val updatedRecipients = if (!currentChannel.recipients.isNullOrEmpty()) {
+                currentChannel.recipients
+            } else {
+                recipientList
+            }
+            val updatedRecipientIds = if (!currentChannel.recipient_ids.isNullOrEmpty()) {
+                currentChannel.recipient_ids
+            } else {
+                recipientIdList
+            }
+            val updated = currentChannel.copy(
+                last_message_id = kotlinx.serialization.json.JsonPrimitive(message.id),
+                recipients = updatedRecipients,
+                recipient_ids = updatedRecipientIds
+            )
             entityStore.updateChannel(updated)
             if (updated.guild_id == null && (updated.type == 1 || updated.type == 3)) {
                 guildStore.handleChannelCreateOrUpdate(updated)
@@ -95,10 +115,14 @@ class MessageEventHandler(
             val dummyChannel = me.lampu.lampcord.shared.model.Channel(
                 id = message.channel_id,
                 type = 1,
-                last_message_id = kotlinx.serialization.json.JsonPrimitive(message.id)
+                last_message_id = kotlinx.serialization.json.JsonPrimitive(message.id),
+                recipients = recipientList,
+                recipient_ids = recipientIdList
             )
             guildStore.handleChannelCreateOrUpdate(dummyChannel)
-            hydrateDmChannel(message.channel_id, message.id)
+            if (dummyChannel.recipients.isNullOrEmpty()) {
+                hydrateDmChannel(message.channel_id, message.id)
+            }
         }
 
         // Clear draft if message is from us
@@ -174,7 +198,8 @@ class MessageEventHandler(
         if (!fetchingDmChannels.add(channelId)) return
         scope.launch {
             try {
-                val real = channelApi.getChannel(channelId)
+                val privateChannels = channelApi.getPrivateChannels()
+                val real = privateChannels.find { it.id == channelId } ?: channelApi.getChannel(channelId)
                 if (real != null) {
                     val withLast = real.copy(last_message_id = kotlinx.serialization.json.JsonPrimitive(lastMessageId))
                     guildStore.handleChannelCreateOrUpdate(withLast)
