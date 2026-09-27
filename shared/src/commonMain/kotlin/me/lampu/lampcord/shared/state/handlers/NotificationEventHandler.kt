@@ -55,20 +55,11 @@ class NotificationEventHandler(
         val author = message.author ?: return
         val currentUser = userStore.currentUser.value ?: return
 
-        // 1. Never notify for messages sent by self
         if (author.id == currentUser.id) return
-
-        // 2. Ignore system / non-default message types
         if (message.type != null && message.type != 0 && message.type != 19) return
-
-        // 3. Ignore empty messages (no content, attachments, embeds, or stickers)
         if (message.content.isBlank() && message.attachments.isEmpty() && message.embeds.isEmpty() && message.sticker_items.isNullOrEmpty()) return
-
-        // 4. Do not notify if currently viewing this exact channel or thread in the foreground
         if (navigationStore.selectedChannel?.id == message.channel_id) return
         if (navigationStore.selectedThread?.id == message.channel_id) return
-
-        // 5. Do not notify if author is blocked
         if (relationshipStore.relationships.value.any { it.type == 2 && (it.user?.id == author.id || it.user_id == author.id) }) return
 
         val guildId = message.guild_id
@@ -78,7 +69,6 @@ class NotificationEventHandler(
         val isDirectMention = messageStore.isMessageMentioningMe(message, currentUser, currentMember)
 
         if (isDm) {
-            // Check DM / Group DM mute settings
             val meSettings = userGuildSettingsStore.userGuildSettings.value["@me"]
             val dmOverride = meSettings?.channel_overrides?.find { it.channel_id == message.channel_id }
             if (dmOverride?.muted == true) {
@@ -93,14 +83,11 @@ class NotificationEventHandler(
             return
         }
 
-        // Server (Guild) Notification Decision Logic
         val guildSettings = userGuildSettingsStore.userGuildSettings.value[guildId]
         val channelOverride = guildSettings?.channel_overrides?.find { it.channel_id == message.channel_id }
 
-        // Mobile push toggle
         if (guildSettings?.mobile_push == false) return
 
-        // Mute checks for Guild and Channel
         val guildMuted = guildSettings?.muted == true && (guildSettings.mute_config?.end_time?.let {
             try { kotlin.time.Instant.parse(it) > kotlin.time.Clock.System.now() } catch (_: Exception) { true }
         } ?: true)
@@ -109,13 +96,8 @@ class NotificationEventHandler(
             try { kotlin.time.Instant.parse(it) > kotlin.time.Clock.System.now() } catch (_: Exception) { true }
         } ?: true)
 
-        if (guildMuted || channelMuted) {
-            // Muted channels/guilds do not notify unless it's an explicit direct mention
-            if (!isDirectMention) return
-        }
+        if ((guildMuted || channelMuted) && !isDirectMention) return
 
-        // Effective message_notifications level
-        // 0 = ALL_MESSAGES, 1 = ONLY_MENTIONS, 2 = NO_MESSAGES, 3/null = INHERIT (defaults to 1 for servers)
         val channelLevel = channelOverride?.message_notifications
         val effectiveNotifyLevel = when (channelLevel) {
             NTF_CHANNEL_ALL -> NTF_ALL
