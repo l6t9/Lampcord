@@ -33,6 +33,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.Member
@@ -76,10 +77,11 @@ fun MemberItem(
 
     val guild = env.guild
     val guildId = guild?.id
-    val avatarUrl = remember(member.avatar, guildId, userId, displayUser.avatar, env.animate) {
+    val avatarSizePx = with(LocalDensity.current) { 32.dp.roundToPx() }
+    val avatarUrl = remember(member.avatar, guildId, userId, displayUser.avatar, env.animate, avatarSizePx) {
         member.avatar?.let {
-            "https://cdn.discordapp.com/guilds/$guildId/users/$userId/avatars/$it.png"
-        } ?: CdnUrls.getUserAvatarUrl(userId, displayUser.avatar, 64)
+            "https://cdn.discordapp.com/guilds/$guildId/users/$userId/avatars/$it.png?size=$avatarSizePx"
+        } ?: CdnUrls.getUserAvatarUrl(userId, displayUser.avatar, avatarSizePx)
     }
 
     val roleData = remember(member.roles, guild) {
@@ -210,7 +212,7 @@ fun MemberItem(
                 ) {
                     Box(modifier = Modifier.size(32.dp)) {
                         AvatarWithDecoration(
-                            avatarUrl = if (env.loadImages) avatarUrl else null,
+                            avatarUrl = avatarUrl,
                             decorationData = member.avatar_decoration_data ?: displayUser.avatar_decoration_data,
                             size = 32.dp,
                             status = presenceStore.getUserStatus(userId, presence, env.currentUserId, env.currentUserStatus),

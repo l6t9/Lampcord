@@ -322,7 +322,6 @@ fun AppearanceSettingsContent(
                                     when (it) {
                                         FontOption.SYSTEM -> "System"
                                         FontOption.INTER -> "Inter"
-                                        FontOption.GOOGLE_SANS -> "Google Sans"
                                         FontOption.MAPLE_MONO -> "Maple Mono"
                                         FontOption.CUSTOM -> "Custom"
                                     }

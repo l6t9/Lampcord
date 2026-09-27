@@ -8,6 +8,7 @@ import me.lampu.lampcord.shared.api.MessageApi
 import me.lampu.lampcord.shared.model.Channel
 import me.lampu.lampcord.shared.model.Guild
 import me.lampu.lampcord.shared.model.Message
+import me.lampu.lampcord.shared.model.User
 import me.lampu.lampcord.shared.settings.Settings
 
 class SearchStore(
@@ -75,18 +76,17 @@ class SearchStore(
                                                     it.user?.global_name?.equals(username, ignoreCase = true) == true
                                         }
                                     } else if (selectedChannel != null && selectedChannel.guild_id == null) {
-                                        val recipient = selectedChannel.recipients?.find {
-                                            it.username?.equals(username, ignoreCase = true) == true ||
-                                                    it.global_name?.equals(username, ignoreCase = true) == true
+                                        val dmUsers = mutableListOf<User>()
+                                        selectedChannel.recipients?.let { dmUsers.addAll(it) }
+                                        if (selectedChannel.recipients.isNullOrEmpty() && !selectedChannel.recipient_ids.isNullOrEmpty()) {
+                                            selectedChannel.recipient_ids.forEach { id ->
+                                                userStore.getUser(id)?.let { dmUsers.add(it) }
+                                            }
                                         }
-                                        if (recipient != null) {
-                                            me.lampu.lampcord.shared.model.Member(user = recipient)
-                                        } else {
-                                            val currentUser = userStore.currentUser.value
-                                            if (currentUser?.username?.equals(username, ignoreCase = true) == true ||
-                                                currentUser?.global_name?.equals(username, ignoreCase = true) == true) {
-                                                me.lampu.lampcord.shared.model.Member(user = currentUser)
-                                            } else null
+                                        userStore.currentUser.value?.let { dmUsers.add(it) }
+                                        dmUsers.distinctBy { it.id }.map { me.lampu.lampcord.shared.model.Member(user = it) }.find {
+                                            it.user?.username?.equals(username, ignoreCase = true) == true ||
+                                                    it.user?.global_name?.equals(username, ignoreCase = true) == true
                                         }
                                     } else null
 

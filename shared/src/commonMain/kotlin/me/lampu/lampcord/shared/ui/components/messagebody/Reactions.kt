@@ -1,5 +1,12 @@
 package me.lampu.lampcord.shared.ui.components.messagebody
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -97,12 +104,26 @@ fun ReactionsView(
                         } else {
                             Text(reaction.emoji.name ?: "", fontSize = 14.sp)
                         }
-                        Text(
-                            text = reaction.count.toString(), 
-                            style = MaterialTheme.typography.labelSmall, 
-                            fontWeight = FontWeight.Bold,
-                            color = if (isMe) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        AnimatedContent(
+                            targetState = reaction.count,
+                            contentAlignment = Alignment.CenterStart,
+                            transitionSpec = {
+                                if (targetState > initialState) {
+                                    (slideInVertically { it } + fadeIn(tween(150)))
+                                        .togetherWith(slideOutVertically { -it } + fadeOut(tween(150)))
+                                } else {
+                                    (slideInVertically { -it } + fadeIn(tween(150)))
+                                        .togetherWith(slideOutVertically { it } + fadeOut(tween(150)))
+                                }
+                            }
+                        ) { count ->
+                            Text(
+                                text = count.toString(),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isMe) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
             }

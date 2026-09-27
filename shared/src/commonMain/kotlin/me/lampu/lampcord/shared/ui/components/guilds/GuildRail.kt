@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
@@ -365,10 +366,11 @@ private fun DMIcon(
         allUsers[recipientId] ?: channel.recipients?.firstOrNull()
     }
 
+    val iconSizePx = with(LocalDensity.current) { 48.dp.roundToPx() }
     val iconUrl = if (channel.type == 3) {
-        if (channel.icon != null) "https://cdn.discordapp.com/channel-icons/${channel.id}/${channel.icon}.png?size=96"
+        if (channel.icon != null) "https://cdn.discordapp.com/channel-icons/${channel.id}/${channel.icon}.png?size=$iconSizePx"
         else null
-    } else recipient?.let { CdnUrls.getUserAvatarUrl(it.id, it.avatar, 96) }
+    } else recipient?.let { CdnUrls.getUserAvatarUrl(it.id, it.avatar, iconSizePx) }
 
     val mentionCount by remember(channel.id, readStates) {
         derivedStateOf { readStateStore.getMentionCount(channel.id) }

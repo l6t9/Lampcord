@@ -7,6 +7,7 @@ import androidx.compose.ui.text.font.FontFamily
 import com.materialkolor.PaletteStyle
 import com.materialkolor.rememberDynamicColorScheme
 import me.lampu.lampcord.shared.settings.FontOption
+import me.lampu.lampcord.shared.utils.appFontFamily
 import me.lampu.lampcord.shared.utils.getPlatformName
 import kotlinx.coroutines.delay
 import java.io.File
@@ -73,22 +74,8 @@ actual fun rememberDynamicSeedColor(): Color? {
 }
 
 @Composable
-actual fun rememberAppFontFamily(option: FontOption, customFontPath: String): FontFamily {
-    return when (option) {
-        FontOption.CUSTOM -> {
-            if (customFontPath.isNotEmpty()) {
-                try {
-                    FontFamily(me.lampu.lampcord.shared.utils.loadFont(customFontPath))
-                } catch (e: Exception) {
-                    FontFamily.Default
-                }
-            } else {
-                FontFamily.Default
-            }
-        }
-        else -> FontFamily.Default
-    }
-}
+actual fun rememberAppFontFamily(option: FontOption, customFontPath: String): FontFamily =
+    remember(option, customFontPath) { appFontFamily(option, customFontPath) }
 
 @Composable
 actual fun rememberPlatformColorScheme(

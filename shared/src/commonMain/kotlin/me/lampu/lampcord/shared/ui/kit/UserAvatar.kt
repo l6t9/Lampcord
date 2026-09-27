@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.AvatarDecorationData
@@ -23,7 +24,8 @@ fun UserAvatar(
     isHovered: Boolean = false,
     forceAnimate: Boolean = false
 ) {
-    val avatarUrl = remember(user, guildId, memberAvatar, size) {
+    val sizePx = with(LocalDensity.current) { size.roundToPx() }
+    val avatarUrl = remember(user, guildId, memberAvatar, sizePx) {
         if (user == null) return@remember null
         if (guildId != null && memberAvatar != null) {
             me.lampu.lampcord.shared.api.CdnUrls.getMemberAvatarUrl(
@@ -31,10 +33,10 @@ fun UserAvatar(
                 user.id,
                 memberAvatar,
                 user.avatar,
-                (size.value * 2).toInt()
+                sizePx
             )
         } else {
-            me.lampu.lampcord.shared.api.CdnUrls.getUserAvatarUrl(user.id, user.avatar, (size.value * 2).toInt())
+            me.lampu.lampcord.shared.api.CdnUrls.getUserAvatarUrl(user.id, user.avatar, sizePx)
         }
     }
 

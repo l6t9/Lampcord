@@ -19,7 +19,6 @@ enum class ThemePaletteStyle {
 enum class FontOption {
     SYSTEM,
     INTER,
-    GOOGLE_SANS,
     MAPLE_MONO,
     CUSTOM,
 }

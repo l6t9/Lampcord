@@ -13,6 +13,15 @@ class LampcordFirebaseMessagingService : FirebaseMessagingService() {
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
+        val type = message.data["type"]
+        if (type == "MESSAGE_ACK" || type == "READ_STATE_UPDATE") {
+            val channelId = message.data["channel_id"]
+            if (channelId != null) {
+                GlobalContext.get().get<MessageNotifier>().dismissChannelNotifications(channelId)
+            }
+            return
+        }
+
         val data = message.data.toIncomingNotificationData() ?: return
         GlobalContext.get().get<MessageNotifier>().showMessageNotification(data)
     }

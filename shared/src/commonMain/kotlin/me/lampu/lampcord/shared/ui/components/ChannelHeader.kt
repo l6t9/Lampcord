@@ -119,7 +119,7 @@ fun ChannelHeader(
                         if (recipient != null) {
                             Box(modifier = Modifier.size(28.dp)) {
                                 AvatarWithDecoration(
-                                    avatarUrl = recipient.avatar?.let { "https://cdn.discordapp.com/avatars/${recipient.id}/$it.png?size=64" },
+                                    avatarUrl = recipient.avatar?.let { "https://cdn.discordapp.com/avatars/${recipient.id}/$it.png?size=96" },
                                     decorationData = recipient.avatar_decoration_data,
                                     size = 28.dp,
                                     status = presenceStore.getUserStatus(

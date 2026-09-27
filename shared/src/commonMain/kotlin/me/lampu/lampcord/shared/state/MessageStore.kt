@@ -312,7 +312,6 @@ class MessageStore(
         var msgChanged = false
         val newList = channelMessages.map { msg ->
             if (msg.id == update.message_id) {
-                msgChanged = true
                 val reactions = msg.reactions?.toMutableList() ?: mutableListOf()
                 val index = reactions.indexOfFirst { 
                     (it.emoji.id != null && it.emoji.id == update.emoji.id) || 
@@ -320,7 +319,13 @@ class MessageStore(
                 }
                 val currentUserId = userStore.currentUser.value?.id
                 val isMe = update.user_id == currentUserId
-                
+                val existing = if (index != -1) reactions[index] else null
+
+                if (existing != null && !update.burst && isMe && existing.me) {
+                    return@map msg
+                }
+
+                msgChanged = true
                 if (index != -1) {
                     val reaction = reactions[index]
                     reactions[index] = reaction.copy(
@@ -363,7 +368,6 @@ class MessageStore(
         var msgChanged = false
         val newList = channelMessages.map { msg ->
             if (msg.id == update.message_id) {
-                msgChanged = true
                 val reactions = msg.reactions?.toMutableList() ?: return@map msg
                 val index = reactions.indexOfFirst { 
                     (it.emoji.id != null && it.emoji.id == update.emoji.id) || 
@@ -373,7 +377,13 @@ class MessageStore(
                     val reaction = reactions[index]
                     val currentUserId = userStore.currentUser.value?.id
                     val isMe = update.user_id == currentUserId
-                    
+
+                    if (!update.burst && isMe && !reaction.me) {
+                        return@map msg
+                    }
+
+                    msgChanged = true
+
                     val newNormalCount = if (!update.burst) (reaction.count_details.normal - 1).coerceAtLeast(0) else reaction.count_details.normal
                     val newBurstCount = if (update.burst) (reaction.count_details.burst - 1).coerceAtLeast(0) else reaction.count_details.burst
                     

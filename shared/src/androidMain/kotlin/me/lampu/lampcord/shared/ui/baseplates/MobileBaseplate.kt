@@ -239,16 +239,33 @@ actual fun MobileBaseplate(
     val isChat = currentRoute == Screen.Chat
     val isSettingsRoot = currentRoute == Screen.Settings &&
         navigationState.backStacks[Screen.Settings]?.lastOrNull() == Screen.Settings
+    val isSettingsRoute = currentRoute == Screen.Settings ||
+        currentRoute == Screen.AccountSettings ||
+        currentRoute == Screen.ProfilesSettings ||
+        currentRoute == Screen.AppearanceSettings ||
+        currentRoute == Screen.AccessibilitySettings ||
+        currentRoute == Screen.PrivacySettings ||
+        currentRoute == Screen.ConnectionsSettings ||
+        currentRoute == Screen.DevicesSettings ||
+        currentRoute == Screen.ChatSettings ||
+        currentRoute == Screen.NotificationsSettings ||
+        currentRoute == Screen.NavigationSettings ||
+        currentRoute == Screen.AdvancedSettings ||
+        currentRoute == Screen.AboutSettings
     val isTabRoute = currentRoute in setOf(
         Screen.Chat, Screen.Friends, Screen.Mentions, Screen.GlobalSearch
     )
     val showSettingsTabBar = currentRoute == Screen.Settings && isSettingsRoot
 
-    val targetNavBarVisibleAmount = remember(panelState.progress, currentRoute, isTabRoute, showSettingsTabBar) {
+    val targetNavBarVisibleAmount = remember(panelState.progress, panelState.currentValue, currentRoute, isTabRoute, showSettingsTabBar) {
         val progress = panelState.progress
         if (isTabRoute || showSettingsTabBar) {
             if (currentRoute == Screen.Chat) {
-                progress.coerceIn(0f, 1f)
+                if (panelState.currentValue == DiscordPanelValue.Start) {
+                    1f
+                } else {
+                    progress.coerceIn(0f, 1f)
+                }
             } else {
                 (1f + progress).coerceIn(0f, 1f)
             }
@@ -458,7 +475,9 @@ actual fun MobileBaseplate(
     val chatBackground = MaterialTheme.colorScheme.background
     val memberHeaderColor = MaterialTheme.colorScheme.surface
 
-    val activePanelColor = remember(currentRoute, panelState.progress, lightPanelColor, darkPanelColor, chatBackground, memberHeaderColor, Settings.shared.panelType) {
+    val settingsContainerColor = MaterialTheme.colorScheme.surfaceContainer
+
+    val activePanelColor = remember(currentRoute, panelState.progress, lightPanelColor, darkPanelColor, chatBackground, memberHeaderColor, settingsContainerColor, isSettingsRoute, Settings.shared.panelType) {
         if (currentRoute == Screen.Chat) {
             val isOverlapping = Settings.shared.panelType == PanelType.OVERLAPPING
             val progress = panelState.progress
@@ -476,6 +495,8 @@ actual fun MobileBaseplate(
             } else {
                 chatBackground
             }
+        } else if (isSettingsRoute || showSettingsTabBar) {
+            settingsContainerColor
         } else {
             darkPanelColor
         }
@@ -603,6 +624,18 @@ actual fun MobileBaseplate(
                                 navigationStore.isSettingsVisible = false
                                 navigationStore.isSearchVisible = false
                                 navigationStore.isMentionsSelected = false
+                                if (currentRoute != Screen.Chat) {
+                                    if (lastPanelValue == DiscordPanelValue.Center) {
+                                        lastPanelValue = DiscordPanelValue.Start
+                                    }
+                                    panelState.currentValue = lastPanelValue
+                                } else {
+                                    if (panelState.currentValue == DiscordPanelValue.Center) {
+                                        panelState.openStart()
+                                    } else {
+                                        panelState.close()
+                                    }
+                                }
                                 navigator.navigate(Screen.Chat)
                             },
                             icon = { Icon(if (currentRoute == Screen.Chat) Icons.Brand.DiscordRounded else Icons.Brand.DiscordRoundedOutline, "Home") },

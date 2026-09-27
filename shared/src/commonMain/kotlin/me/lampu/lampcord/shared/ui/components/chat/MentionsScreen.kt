@@ -29,7 +29,9 @@ fun MentionsScreen(
     mentionsStore: MentionsStore = koinInject(),
     navigationStore: NavigationStore = koinInject(),
     guildStore: GuildStore = koinInject(),
-    gatewayManager: GatewayManager = koinInject()
+    gatewayManager: GatewayManager = koinInject(),
+    messageStore: me.lampu.lampcord.shared.state.MessageStore = koinInject(),
+    channelNavigator: me.lampu.lampcord.shared.state.ChannelNavigator = koinInject()
 ) {
     LaunchedEffect(Unit) {
         mentionsStore.loadMentions(refresh = true)
@@ -77,12 +79,18 @@ fun MentionsScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable {
-                                if (guild != null) {
-                                    navigationStore.selectGuild(guild) { gatewayManager.sendSubscription(it) }
-                                }
-                                if (chan != null) {
-                                    navigationStore.selectChannel(chan, explicitlySelected = true)
-                                    // TODO: scroll to message
+                                navigationStore.isMentionsSelected = false
+                                navigationStore.isFriendsSelected = false
+                                val targetChan = chan ?: privateChannels.find { it.id == message.channel_id }
+                                if (targetChan != null) {
+                                    if (guild != null) {
+                                        navigationStore.selectGuild(guild) { gatewayManager.sendSubscription(it) }
+                                    }
+                                    navigationStore.selectChannel(targetChan, explicitlySelected = true)
+                                    messageStore.scrollToMessageId = message.id
+                                } else {
+                                    channelNavigator.navigateToChannel(message.channel_id, message.guild_id)
+                                    messageStore.scrollToMessageId = message.id
                                 }
                             }
                     ) {

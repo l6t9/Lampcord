@@ -2,19 +2,20 @@ package me.lampu.lampcord.shared.ui.theme
 
 import androidx.compose.material3.ColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import com.materialkolor.PaletteStyle
 import com.materialkolor.rememberDynamicColorScheme
 import me.lampu.lampcord.shared.settings.FontOption
+import me.lampu.lampcord.shared.utils.appFontFamily
 
 @Composable
 actual fun rememberDynamicSeedColor(): Color? = null
 
 @Composable
-actual fun rememberAppFontFamily(option: FontOption, customFontPath: String): FontFamily {
-    return FontFamily.Default
-}
+actual fun rememberAppFontFamily(option: FontOption, customFontPath: String): FontFamily =
+    remember(option, customFontPath) { appFontFamily(option, customFontPath) }
 
 @Composable
 actual fun rememberPlatformColorScheme(

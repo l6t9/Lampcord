@@ -87,14 +87,15 @@ fun AsyncImage(
                 .memoryCachePolicy(if (lowMemoryMode) CachePolicy.DISABLED else CachePolicy.ENABLED)
                 .resultCachePolicy(CachePolicy.DISABLED)
                 .crossfade(!reducedMotion && !lowMemoryMode)
-                // Decode static images at full resolution: Sketch's default auto-size
-                // resolver downsamples to the exact on-screen pixel size with a cheap
-                // box sample, which aliases ("pixelates") static images. Full-res decode
-                // + Compose's high-quality filter renders as crisp as the animated images.
-                // Animated images, however, buffer every composited frame in memory, so
-                // bound their decode size — nameplates/decorations only ever play inside
+                // Bound decode size to the drawn size when the caller knows it —
+                // those CDN URLs are already requested at display resolution, so
+                // this avoids decoding a larger source (or aliasing via Sketch's
+                // on-screen auto-size resolver) and keeps the result crisp. Images
+                // without an explicit size keep full-resolution decoding. Animated
+                // images, however, buffer every composited frame in memory, so cap
+                // their decode size — nameplates/decorations only ever play inside
                 // small chips anyway.
-                .size(if (allowAnimation) Size(512, 512) else Size.Empty)
+                .size(if (allowAnimation) Size(512, 512) else size?.let { Size(it, it) } ?: Size.Empty)
                 .disallowAnimatedImage(!allowAnimation)
                 .build()
         }

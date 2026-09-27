@@ -300,6 +300,7 @@ fun SettingsScreen(
                     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
                     Scaffold(
                         modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
                         topBar = {
                             LargeTopAppBar(
                                 title = { Text("Settings") },
@@ -308,6 +309,10 @@ fun SettingsScreen(
                                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
                                     }
                                 },
+                                colors = TopAppBarDefaults.largeTopAppBarColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer
+                                ),
                                 actions = {
                                     Box {
                                         IconButton(onClick = { showOptionsMenu = true }) {

@@ -47,7 +47,7 @@ fun main() {
     fun initApp() {
         stopKoin()
         startKoin {
-            modules(appModule)
+            modules(appModule, me.lampu.lampcord.shared.di.desktopNotificationModule)
         }
     }
 

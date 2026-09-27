@@ -8,6 +8,7 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -16,6 +17,7 @@ import androidx.core.view.WindowCompat
 import com.materialkolor.PaletteStyle
 import com.materialkolor.rememberDynamicColorScheme
 import me.lampu.lampcord.shared.settings.FontOption
+import me.lampu.lampcord.shared.utils.appFontFamily
 
 private fun Context.findActivity(): Activity? {
     var context = this
@@ -37,22 +39,8 @@ actual fun rememberDynamicSeedColor(): Color? {
 }
 
 @Composable
-actual fun rememberAppFontFamily(option: FontOption, customFontPath: String): FontFamily {
-    return when (option) {
-        FontOption.CUSTOM -> {
-            if (customFontPath.isNotEmpty()) {
-                try {
-                    FontFamily(me.lampu.lampcord.shared.utils.loadFont(customFontPath))
-                } catch (e: Exception) {
-                    FontFamily.Default
-                }
-            } else {
-                FontFamily.Default
-            }
-        }
-        else -> FontFamily.Default
-    }
-}
+actual fun rememberAppFontFamily(option: FontOption, customFontPath: String): FontFamily =
+    remember(option, customFontPath) { appFontFamily(option, customFontPath) }
 
 @Composable
 actual fun rememberPlatformColorScheme(
@@ -82,7 +70,7 @@ actual fun rememberPlatformColorScheme(
                 // to ensure it matches the header color of the panel currently on top.
                 val statusBarColor = when {
                     isOverlapping && navigationStore.isProfilePanelVisible -> scheme.surface // Match MemberHeader (Surface)
-                    navigationStore.isSettingsVisible -> scheme.surface // Match Settings collapsing header (Surface)
+                    navigationStore.isSettingsVisible -> scheme.surfaceContainer // Match Settings collapsing header & cards (surfaceContainer)
                     else -> scheme.background // Match ChannelHeader (Background)
                 }
                 

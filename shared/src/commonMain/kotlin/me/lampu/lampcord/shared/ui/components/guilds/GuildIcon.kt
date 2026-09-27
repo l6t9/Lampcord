@@ -28,6 +28,7 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -72,9 +73,10 @@ fun GuildIcon(
     val canArrange = getPlatformName() == "android"
     var contextMenuRequest by remember { mutableStateOf(0) }
     val isAnimated = guild.icon?.startsWith("a_") == true
+    val iconSizePx = with(LocalDensity.current) { 48.dp.roundToPx() }
     val iconUrl = if (guild.icon != null) {
         val ext = if (isAnimated && isSelected && !me.lampu.lampcord.shared.settings.Settings.shared.reduceMotion) "gif" else "png"
-        "https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.$ext?size=96"
+        "https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.$ext?size=$iconSizePx"
     } else null
 
     val userGuildSettings by userGuildSettingsStore.userGuildSettings.collectAsState()

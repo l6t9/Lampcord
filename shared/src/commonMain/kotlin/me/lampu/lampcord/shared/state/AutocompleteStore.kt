@@ -93,18 +93,21 @@ class AutocompleteStore(
                     }
                     local
                 } else if (selectedChannel != null && selectedChannel.guild_id == null) {
-                    val recipients = selectedChannel.recipients?.filter { user ->
-                        user.global_name?.contains(query, ignoreCase = true) == true ||
-                                user.username?.contains(query, ignoreCase = true) == true
-                    }?.map { Member(user = it) } ?: emptyList()
-
-                    val allMembers = recipients.toMutableList()
-                    userStore.currentUser.value?.let { currentUser ->
-                        if (currentUser.global_name?.contains(query, ignoreCase = true) == true ||
-                            currentUser.username?.contains(query, ignoreCase = true) == true) {
-                            allMembers.add(Member(user = currentUser))
+                    val dmUsers = mutableListOf<User>()
+                    selectedChannel.recipients?.let { dmUsers.addAll(it) }
+                    if (selectedChannel.recipients.isNullOrEmpty() && !selectedChannel.recipient_ids.isNullOrEmpty()) {
+                        selectedChannel.recipient_ids.forEach { id ->
+                            userStore.getUser(id)?.let { dmUsers.add(it) }
                         }
                     }
+                    userStore.currentUser.value?.let { dmUsers.add(it) }
+
+                    val allMembers = dmUsers.distinctBy { it.id }.filter { user ->
+                        query.isEmpty() ||
+                                user.username?.contains(query, ignoreCase = true) == true ||
+                                user.global_name?.contains(query, ignoreCase = true) == true ||
+                                user.id == query
+                    }.map { Member(user = it) }
                     allMembers.take(10)
                 } else {
                     relationshipStore.relationships.value.filter { rel ->
