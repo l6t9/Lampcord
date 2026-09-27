@@ -15,42 +15,38 @@ Lampcord was born out of a desire for a smooth, battery-friendly, responsive Dis
 
 ---
 
-## Roadmap & Features
+## Features & Roadmap
 
-### Core Features
-
-- [x] **Authentication**
-  - [x] Password & Token Login
-  - [x] Remote QR Code Login
-  - [x] Multi-account Switcher
-- [x] **Messaging & Chat**
-  - [x] Real-time Chat & Gateway Sync
-  - [x] Markdown Parsing & Code Highlighting
-  - [x] Custom Emojis, Reactions & Stickers
-  - [x] Message Replies & Edit / Delete
-  - [x] Message Pinning & Thread Views
-  - [x] Local Message Deletion Logger
-- [x] **Voice & Media**
-  - [x] Native DAVE Voice Protocol (DAVE v1)
-  - [x] Voice Channels & In-call Controls
-  - [x] Image / Video Viewer & Audio Player
-  - [x] Custom Status & Activity / Rich Presence
-- [x] **Notifications**
-  - [x] Android System Notifications & Conversation Bubbles
-  - [x] Desktop System Notifications & Toasts
-  - [x] Background FCM Push Notification Sync
-- [x] **Customization & Themes**
-  - [x] Custom Material 3 Expressive (M3E) Themes & Matugen Color Sync
-  - [x] Custom Font Selection (Inter, Maple Mono, System)
-  - [x] Custom Client Profiles, UserBG & UserPFP
-  - [x] Client-side Free Nitro Emojis
-
-### Gaps & Planned Enhancements
-
-- [ ] **Video Calling & Screen Share** *(Voice calls supported; video stream rendering planned)*
-- [ ] **Slash Commands & Autocomplete** *(Basic command picker implemented; application options in progress)*
-- [ ] **Guild Management** *(Server settings: roles, channels, emoji management partially implemented)*
-- [ ] **Stage & Forum Channels** *(Basic viewing supported; creation and moderation controls in progress)*
+* **Authentication**
+  * [x] Password & token login
+  * [x] Remote QR code login
+  * [x] Multi-account switcher
+* **Messaging & Chat**
+  * [x] Real-time chat & gateway sync
+  * [x] Markdown parsing & code highlighting
+  * [x] Custom emojis, reactions & stickers
+  * [x] Message replies & edit / delete
+  * [x] Message pinning & thread views
+  * [x] Local message deletion logger
+  * [ ] Slash commands & application options
+* **Voice & Media**
+  * [x] Native DAVE voice protocol (DAVE v1)
+  * [x] Voice channels & in-call controls
+  * [x] Image / video viewer & audio player
+  * [x] Custom status & activity / rich presence
+  * [ ] Video calling & screen share rendering
+* **Notifications**
+  * [x] Android system notifications & conversation bubbles
+  * [x] Desktop system notifications & toasts
+  * [x] Background FCM push notification sync
+* **Customization & Themes**
+  * [x] Custom Material 3 Expressive (M3E) themes & Matugen color sync
+  * [x] Custom font selection (Inter, Maple Mono, System)
+  * [x] Custom client profiles, UserBG & UserPFP
+  * [x] Client-side free Nitro emojis
+* **Guild & Channel Management**
+  * [ ] Server settings (roles, channels, emoji management)
+  * [ ] Stage & forum channel creation and moderation
 
 ---
 
