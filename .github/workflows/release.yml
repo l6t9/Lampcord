@@ -1,4 +1,4 @@
-name: Tester Release
+name: Release
 
 on:
   push:
@@ -16,12 +16,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: tester-release
+  group: release
   cancel-in-progress: false
 
 jobs:
   prepare:
-    name: Prepare tester release
+    name: Prepare release
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
@@ -46,7 +46,7 @@ jobs:
           set -euo pipefail
 
           if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
-            echo "Tester releases can only run from the main branch" >&2
+            echo "Releases can only run from the main branch" >&2
             exit 1
           fi
 
@@ -112,13 +112,13 @@ jobs:
           }
 
           version="$(read_version < gradle.properties)"
-          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+-a[0-9]+$ ]]; then
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-a[0-9]+)?$ ]]; then
             {
               echo "should-release=false"
               echo "version=$version"
               echo "base-sha="
             } >> "$GITHUB_OUTPUT"
-            echo "Skipping tester release for non-alpha appVersion \`$version\`." >> "$GITHUB_STEP_SUMMARY"
+            echo "Skipping release for non-matching appVersion \`$version\`." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
 
@@ -130,18 +130,16 @@ jobs:
             should_release=true
           else
             if [[ -z "$BEFORE_SHA" || "$BEFORE_SHA" =~ ^0+$ ]]; then
-              # Initial push or forced push, allow release if version matches alpha pattern
               should_release=true
             else
               previous_version="$(git show "$BEFORE_SHA:gradle.properties" 2>/dev/null | read_version || true)"
               if [[ -z "$previous_version" ]]; then
-                # Version was just added
                 should_release=true
               elif is_forward_version "$previous_version" "$version"; then
                 should_release=true
               else
                 should_release=false
-                echo "Skipping tester release for non-forward appVersion change from $previous_version to $version." >> "$GITHUB_STEP_SUMMARY"
+                echo "Skipping release for non-forward appVersion change from $previous_version to $version." >> "$GITHUB_STEP_SUMMARY"
               fi
             fi
           fi
@@ -159,7 +157,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
           {
-            echo "### Tester release"
+            echo "### Release"
             echo "- Version: \`$version\`"
             echo "- Commit range: \`${base_sha:0:8}..${GITHUB_SHA:0:8}\`"
             echo "- Publish: \`$should_release\`"
@@ -248,7 +246,7 @@ jobs:
       GRADLE_ENCRYPTION_KEY: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
   publish:
-    name: Publish tester release
+    name: Publish release
     if: needs.prepare.outputs.should-release == 'true'
     needs:
       - prepare
@@ -359,6 +357,24 @@ jobs:
         with:
           file-path: release-assets/SHA256SUMS
           upload-filename: lampcord-${{ needs.prepare.outputs.version }}-SHA256SUMS.txt
+
+      - name: Create GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APP_VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          set -euo pipefail
+          tag="v${APP_VERSION}"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release delete "$tag" --yes --repo "$GITHUB_REPOSITORY"
+          fi
+          gh release create "$tag" \
+            release-assets/* \
+            --target "$GITHUB_SHA" \
+            --title "Lampcord $APP_VERSION" \
+            --notes-file release-assets/CHANGELOG.md \
+            --repo "$GITHUB_REPOSITORY"
 
       - name: Notify testers on Discord
         shell: bash

@@ -1,8 +1,8 @@
-name: Nightly & Open Beta Release
+name: Nightly Release
 
 on:
-  schedule:
-    - cron: '0 2 * * *'
+  push:
+    branches: [ main ]
   workflow_dispatch:
 
 permissions:
@@ -29,6 +29,8 @@ jobs:
       - name: Read version
         id: release
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           version=""
           while IFS='=' read -r key value; do
@@ -46,7 +48,7 @@ jobs:
           gh release create "$tag" \
             --prerelease \
             --target "$GITHUB_SHA" \
-            --title "Lampcord Open Beta / Nightly ($version)" \
+            --title "Lampcord Nightly ($version)" \
             --notes "Automated nightly build generated from commit \`$GITHUB_SHA\` on $(date -u +'%Y-%m-%d %H:%M UTC')." \
             --repo "$GITHUB_REPOSITORY"
 
