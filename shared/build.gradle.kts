@@ -114,11 +114,7 @@ kotlin {
             
             implementation(libs.materialKolor)
             implementation(libs.qrcode.kotlin)
-            
-            implementation(libs.sketch.compose)
-            implementation(libs.sketch.http)
-            implementation(libs.sketch.animated.gif)
-            implementation(libs.sketch.animated.webp)
+
             implementation(libs.coil.compose)
             implementation(libs.coil.network.ktor3)
             implementation("io.github.kdroidfilter:composewebview:1.0.0-beta-02")
@@ -137,7 +133,8 @@ kotlin {
                 implementation(libs.androidx.media3.exoplayer)
                 implementation(libs.androidx.media3.ui)
                 implementation(libs.androidx.security.crypto)
-                
+                implementation(libs.coil.gif)
+
                 implementation(libs.androidx.navigation3.ui)
             }
         }

@@ -115,7 +115,7 @@ private fun ReactionUsersContent(
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         val url = reaction.emoji.getDisplayUrl()
-                        var loadFailed by remember { mutableStateOf(false) }
+                        var loadFailed by remember(url) { mutableStateOf(false) }
                         if (url != null && !loadFailed) {
                             AsyncImage(
                                 model = url, 

@@ -42,12 +42,12 @@ class VoiceProtocolTest {
         val native = NativeVoice.create("1234123412341234", "1234567890")
         try {
             assertTrue(NativeVoice.init(native, 1).isNotEmpty())
-            val frame = NativeVoice.encode(native, ShortArray(1920))
+            val frame = NativeVoice.encode(native, ShortArray(1920), false)
             assertTrue(frame.isNotEmpty())
             assertNull(NativeVoice.encrypt(native, 42, frame)) // No MLS group, no audio transmission.
             assertNull(NativeVoice.decrypt(native, "5678567856785678", frame))
             assertFailsWith<IllegalStateException> { NativeVoice.init(native, 0) }
-            assertFailsWith<IllegalStateException> { NativeVoice.encode(native, ShortArray(10)) }
+            assertFailsWith<IllegalStateException> { NativeVoice.encode(native, ShortArray(10), false) }
         } finally { NativeVoice.destroy(native) }
 
         val jitter = VoicePlayout()

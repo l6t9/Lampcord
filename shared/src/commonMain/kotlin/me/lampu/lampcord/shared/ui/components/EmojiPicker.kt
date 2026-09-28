@@ -42,6 +42,7 @@ import me.lampu.lampcord.shared.api.MediaApi
 import me.lampu.lampcord.shared.model.Emoji
 import me.lampu.lampcord.shared.model.Gif
 import me.lampu.lampcord.shared.model.getDisplayUrl
+import me.lampu.lampcord.shared.model.isUnicodeEmoji
 import me.lampu.lampcord.shared.state.*
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -96,12 +97,10 @@ fun EmojiPicker(
                     ?.let { name -> Emoji(name = name, id = id, animated = key.startsWith("<a:")) }
             } else {
                 val emojiName = normalized.removeSurrounding(":")
-                val unicode = EmojiIndex.getCharForName(emojiName)
-                when {
-                    unicode != null -> Emoji(name = emojiName, url = unicode.toTwemojiUrl())
-                    EmojiIndex.getNamesForChar(normalized) != null -> Emoji(name = normalized, url = normalized.toTwemojiUrl())
-                    else -> null
-                }
+                val unicode = EmojiIndex.getCharForName(emojiName) ?: emojiName
+                if (isUnicodeEmoji(unicode)) {
+                    Emoji(name = unicode, url = unicode.toTwemojiUrl())
+                } else null
             }
         }
         val favoriteKeys = try {
@@ -205,7 +204,11 @@ fun EmojiPicker(
         if (searchQuery.isBlank()) emojiGroups
         else {
             emojiGroups.map { group ->
-                group.copy(emojis = group.emojis.filter { it.name?.contains(searchQuery, ignoreCase = true) == true })
+                group.copy(emojis = group.emojis.filter { emoji ->
+                    val nameMatch = emoji.name?.contains(searchQuery, ignoreCase = true) == true
+                    val aliasesMatch = emoji.name?.let { EmojiIndex.getNamesForChar(it) }?.any { it.contains(searchQuery, ignoreCase = true) } == true
+                    nameMatch || aliasesMatch
+                })
             }.filter { it.emojis.isNotEmpty() }
         }
     }

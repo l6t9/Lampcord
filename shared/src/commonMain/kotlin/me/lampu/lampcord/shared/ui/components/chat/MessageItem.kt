@@ -1103,6 +1103,8 @@ private fun emojiFromKey(key: String): Emoji {
     return if (id != null) {
         Emoji(name = parts.dropLast(1).joinToString(":").takeIf { it.isNotBlank() }, id = id, animated = key.startsWith("<a:"))
     } else {
-        Emoji(name = normalized.removeSurrounding(":"), id = null)
+        val emojiName = normalized.removeSurrounding(":")
+        val unicode = EmojiIndex.getCharForName(emojiName) ?: emojiName
+        Emoji(name = unicode, id = null)
     }
 }

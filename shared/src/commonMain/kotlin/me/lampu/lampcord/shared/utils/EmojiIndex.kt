@@ -37,7 +37,7 @@ object EmojiIndex {
                     }
                     val emoji = Emoji(
                         id = null,
-                        name = entry.names.firstOrNull() ?: entry.surrogates,
+                        name = entry.surrogates,
                         url = entry.surrogates.toTwemojiUrl()
                     )
                     categoryEmojis.add(emoji)

@@ -18,14 +18,28 @@ data class Emoji(
     val guild_id: String? = null
 )
 
+fun isUnicodeEmoji(str: String): Boolean {
+    if (str.isEmpty()) return false
+    if (EmojiIndex.getNamesForChar(str) != null) return true
+    for (i in str.indices) {
+        val char = str[i]
+        if (char.code > 127 || char.code == 0x20E3 || char.code == 0xFE0F) return true
+    }
+    return false
+}
+
 fun Emoji.getDisplayUrl(): String? {
     if (url != null) return url
     if (id != null) {
         val ext = if (animated == true && !Settings.shared.reduceMotion) "gif" else "png"
         return "https://cdn.discordapp.com/emojis/$id.$ext?size=48"
     }
-    val unicode = name?.let { EmojiIndex.getCharForName(it) } ?: name
-    return unicode?.toTwemojiUrl()
+    val nameStr = name ?: return null
+    val unicode = EmojiIndex.getCharForName(nameStr) ?: nameStr
+    if (isUnicodeEmoji(unicode)) {
+        return unicode.toTwemojiUrl().ifEmpty { null }
+    }
+    return null
 }
 
 internal const val TWEMOJI_CDN_BASE_URL = "https://cdn.jsdelivr.net/gh/jdecked/twemoji@v17.0.3/assets/72x72"

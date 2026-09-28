@@ -27,6 +27,7 @@ import kotlinx.coroutines.delay
 import org.koin.compose.koinInject
 import kotlin.time.Duration.Companion.milliseconds
 
+import me.lampu.lampcord.shared.model.getDisplayUrl
 import me.lampu.lampcord.shared.model.toTwemojiUrl
 import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
@@ -148,11 +149,14 @@ fun CustomStatus(activity: Activity, modifier: Modifier = Modifier, compact: Boo
                     modifier = Modifier.size(20.dp)
                 )
             } else if (activity.emoji.name != null) {
-                AsyncImage(
-                    model = activity.emoji.name.toTwemojiUrl(),
-                    contentDescription = activity.emoji.name,
-                    modifier = Modifier.size(20.dp)
-                )
+                val displayUrl = activity.emoji.getDisplayUrl()
+                if (displayUrl != null) {
+                    AsyncImage(
+                        model = displayUrl,
+                        contentDescription = activity.emoji.name,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
 

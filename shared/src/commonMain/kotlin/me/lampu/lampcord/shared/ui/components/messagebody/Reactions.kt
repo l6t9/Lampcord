@@ -94,7 +94,7 @@ fun ReactionsView(
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         val emojiUrl = reaction.emoji.getDisplayUrl()
-                        var loadFailed by remember { mutableStateOf(false) }
+                        var loadFailed by remember(emojiUrl) { mutableStateOf(false) }
                         if (emojiUrl != null && !loadFailed) {
                             AsyncImage(
                                 model = emojiUrl, 

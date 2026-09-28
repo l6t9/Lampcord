@@ -9,11 +9,8 @@ import coil3.compose.setSingletonImageLoaderFactory
 import coil3.memory.MemoryCache as CoilMemoryCache
 import coil3.network.ktor3.KtorNetworkFetcherFactory
 import coil3.request.crossfade as coilCrossfade
-import com.github.panpf.sketch.PlatformContext
-import com.github.panpf.sketch.SingletonSketch
-import com.github.panpf.sketch.Sketch
-import com.github.panpf.sketch.cache.MemoryCache
-import me.lampu.lampcord.shared.image.apngDecoderFactory
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.cio.CIO
 import me.lampu.lampcord.shared.settings.ThemeMode
 import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.theme.LampcordTheme
@@ -41,9 +38,6 @@ fun App() {
         }
     }
 
-    SingletonSketch.setSafe { context ->
-        newSketch(context)
-    }
 
     setSingletonImageLoaderFactory { context ->
         newCoilImageLoader(context)
@@ -63,20 +57,10 @@ fun App() {
     }
 }
 
-fun newSketch(context: PlatformContext): Sketch {
-    return Sketch.Builder(context)
-        .memoryCache { MemoryCache.Builder(context).maxSizePercent(0.15).build() }
-        .components {
-            add(apngDecoderFactory())
-        }
-        .build()
-}
-
-/** Coil handles still images; Sketch is kept only for animated decorations, since Coil 3 animates on Android only. */
 fun newCoilImageLoader(context: CoilPlatformContext): ImageLoader =
     ImageLoader.Builder(context)
         .components {
-            add(KtorNetworkFetcherFactory())
+            add(KtorNetworkFetcherFactory(HttpClient(CIO)))
         }
         .memoryCache {
             CoilMemoryCache.Builder()
