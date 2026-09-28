@@ -22,6 +22,7 @@ inline fun <reified K : NavKey> androidx.navigation3.runtime.EntryProviderScope<
     metadata: Map<String, Any> = emptyMap(),
     noinline content: @Composable (K) -> Unit
 ) {
+    @Suppress("UNCHECKED_CAST")
     addEntryProvider(K::class, contentKey as (NavKey) -> Any, metadata, content as @Composable (NavKey) -> Unit)
 }
 

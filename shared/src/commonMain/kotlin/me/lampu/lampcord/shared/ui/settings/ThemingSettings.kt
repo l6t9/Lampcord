@@ -34,6 +34,8 @@ import kotlinx.serialization.encodeToString
 import me.lampu.lampcord.shared.ui.kit.clickableCursor
 import me.lampu.lampcord.shared.ui.kit.handCursor
 
+private val themeJsonFormat = Json { prettyPrint = true; ignoreUnknownKeys = true }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ThemingSettings(
@@ -142,7 +144,7 @@ fun ThemingSettingsContent(
                                     isLast = index == themeStore.availableThemes.lastIndex,
                                     isActive = theme.manifest.name in themeStore.enabledThemeNames,
                                     onToggle = { themeStore.toggleTheme(theme, it) },
-                                    onEdit = { onNavigateToEditor(Json { prettyPrint = true; ignoreUnknownKeys = true }.encodeToString(theme)) },
+                                    onEdit = { onNavigateToEditor(themeJsonFormat.encodeToString(theme)) },
                                     onDelete = { themeStore.deleteTheme(theme) }
                                 )
                             }

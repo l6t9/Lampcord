@@ -33,7 +33,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.rememberBottomSheetState
+import androidx.compose.material3.SheetValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -77,7 +78,7 @@ import me.lampu.lampcord.shared.ui.kit.handCursor
 fun ServerBottomSheet(
     guild: Guild,
     onDismiss: () -> Unit,
-    sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false),
+    sheetState: SheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden),
     userGuildSettingsStore: UserGuildSettingsStore = koinInject(),
     memberListStore: MemberListStore = koinInject(),
     navigationStore: NavigationStore = koinInject(),

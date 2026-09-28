@@ -63,7 +63,7 @@ actual fun notifyIncomingCall(channelId: String?) {
     )
     val intent = context.packageManager.getLaunchIntentForPackage(context.packageName) ?: return
     val pending = android.app.PendingIntent.getActivity(context, 4202, intent, android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE)
-    val builder = if (Build.VERSION.SDK_INT >= 26) android.app.Notification.Builder(context, "incoming_calls") else android.app.Notification.Builder(context)
+    val builder = androidx.core.app.NotificationCompat.Builder(context, "incoming_calls")
     val icon = context.resources.getIdentifier("ic_stat_notify", "drawable", context.packageName)
     manager.notify(4202, builder.setSmallIcon(icon).setContentTitle("Incoming Lampcord voice call")
         .setContentText("Open Lampcord to answer or decline").setCategory(android.app.Notification.CATEGORY_CALL)

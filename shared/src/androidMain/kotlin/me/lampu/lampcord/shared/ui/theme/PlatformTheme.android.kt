@@ -72,6 +72,7 @@ actual fun rememberPlatformColorScheme(
                     else -> scheme.background // Match ChannelHeader (Background)
                 }
                 
+                @Suppress("DEPRECATION")
                 window.statusBarColor = statusBarColor.toArgb()
                 WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = isAppearanceLight
                 WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = isAppearanceLight

@@ -150,7 +150,6 @@ fun AsyncImage(
 
                         else -> Unit
                     }
-                    state
                 },
                 alignment = alignment,
                 contentScale = contentScale,

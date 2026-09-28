@@ -5,6 +5,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
 import coil3.ImageLoader
 import coil3.PlatformContext as CoilPlatformContext
+import coil3.annotation.ExperimentalCoilApi
 import coil3.compose.setSingletonImageLoaderFactory
 import coil3.memory.MemoryCache as CoilMemoryCache
 import coil3.network.ktor3.KtorNetworkFetcherFactory
@@ -61,6 +62,7 @@ fun App() {
     }
 }
 
+@OptIn(ExperimentalCoilApi::class)
 fun newCoilImageLoader(context: CoilPlatformContext): ImageLoader {
     val platform = getPlatformName()
     val isMobile = platform == "android" || platform == "ios"
@@ -90,7 +92,7 @@ fun newCoilImageLoader(context: CoilPlatformContext): ImageLoader {
         }
         .memoryCache {
             CoilMemoryCache.Builder()
-                .maxSizePercent(context, 0.25)
+                .maxSizeBytes(32 * 1024 * 1024)
                 .build()
         }
         .coilCrossfade(true)

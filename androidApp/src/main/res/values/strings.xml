@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">lampcord</string>
+    <string name="app_name">Lampcord</string>
     <string name="notification_channel_messages">Messages</string>
     <string name="notification_channel_messages_description">Direct messages and channel mentions</string>
     <string name="notification_channel_service">Background connection</string>

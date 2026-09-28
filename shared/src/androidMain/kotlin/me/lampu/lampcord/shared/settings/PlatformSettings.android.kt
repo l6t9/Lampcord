@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package me.lampu.lampcord.shared.settings
 
 import android.content.Context
@@ -14,7 +16,7 @@ fun initSettings(context: Context) {
 
 actual fun createSettings(): Settings {
     val context = appContext ?: throw IllegalStateException("Settings not initialized with context")
-    
+
     val masterKey = MasterKey.Builder(context)
         .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
         .build()

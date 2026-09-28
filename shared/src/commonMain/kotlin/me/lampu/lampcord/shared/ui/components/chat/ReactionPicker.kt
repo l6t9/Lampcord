@@ -2,7 +2,8 @@ package me.lampu.lampcord.shared.ui.components.chat
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.rememberBottomSheetState
+import androidx.compose.material3.SheetValue
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -16,7 +17,7 @@ fun ReactionPickerSheet(
     onDismiss: () -> Unit,
     onEmojiSelected: (Emoji) -> Unit
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
     
     AdaptiveModalBottomSheet(
         onDismissRequest = onDismiss,

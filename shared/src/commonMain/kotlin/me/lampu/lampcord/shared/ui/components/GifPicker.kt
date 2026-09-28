@@ -260,7 +260,6 @@ private fun GifThumbnail(
                         if (state is CoilState.Error && candidateIndex < candidates.lastIndex) {
                             candidateIndex++
                         }
-                        state
                     }
                 )
             }
@@ -308,7 +307,6 @@ private fun GifPreviewImage(
                 if (state is CoilState.Error && candidateIndex < candidates.lastIndex) {
                     candidateIndex++
                 }
-                state
             }
         )
     }

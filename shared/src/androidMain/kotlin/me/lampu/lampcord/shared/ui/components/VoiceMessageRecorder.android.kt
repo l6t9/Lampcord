@@ -67,7 +67,7 @@ actual fun VoiceMessageRecorder(
         val extension = if (useOggOpus) "ogg" else "aac"
         val file = File(context.cacheDir, "lampcord_voice_${System.currentTimeMillis()}.$extension")
         try {
-            val recorder = MediaRecorder().apply {
+            val recorder = MediaRecorder(context).apply {
                 setAudioSource(MediaRecorder.AudioSource.MIC)
                 if (useOggOpus) {
                     setOutputFormat(MediaRecorder.OutputFormat.OGG)

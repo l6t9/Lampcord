@@ -306,7 +306,7 @@ fun SettingsScreen(
                                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
                                     }
                                 },
-                                colors = TopAppBarDefaults.largeTopAppBarColors(
+                                colors = TopAppBarDefaults.topAppBarColors(
                                     containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                                     scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer
                                 ),

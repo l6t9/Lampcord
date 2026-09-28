@@ -15,8 +15,8 @@ abstract class AppDatabase : RoomDatabase() {
 }
 
 private val MIGRATION_1_2 = object : Migration(1, 2) {
-    override fun migrate(db: SQLiteConnection) {
-        db.execSQL("CREATE INDEX IF NOT EXISTS `index_logged_messages_channelId` ON `logged_messages` (`channelId`)")
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("CREATE INDEX IF NOT EXISTS `index_logged_messages_channelId` ON `logged_messages` (`channelId`)")
     }
 }
 

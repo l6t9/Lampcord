@@ -13,6 +13,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
+import androidx.compose.material3.SheetValue
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -539,8 +540,8 @@ actual fun MobileBaseplate(
                                 val targetKey = targetState.key
                                 val initialKey = initialState.key
 
-                                val targetIndex = routeIndexMap[targetKey] ?: routeIndexMap[targetKey!!::class] ?: -1
-                                val initialIndex = routeIndexMap[initialKey] ?: routeIndexMap[initialKey!!::class] ?: -1
+                                val targetIndex = routeIndexMap[targetKey] ?: routeIndexMap[targetKey::class] ?: -1
+                                val initialIndex = routeIndexMap[initialKey] ?: routeIndexMap[initialKey::class] ?: -1
 
                                 val enterTransition =
                                     if (targetIndex == -1 || targetIndex > initialIndex) {
@@ -717,7 +718,7 @@ actual fun MobileBaseplate(
                             icon = {
                                 val user = currentUser
                                 val avatarUrl = user?.avatar?.let { "https://cdn.discordapp.com/avatars/${user.id}/$it.png?size=64" }
-                                if (avatarUrl != null && user != null) {
+                                if (avatarUrl != null) {
                                     Box(modifier = Modifier.size(24.dp)) {
                                         AvatarWithDecoration(
                                             avatarUrl = avatarUrl,
@@ -778,7 +779,7 @@ actual fun MobileBaseplate(
     }
 
     if (profileStore.isProfileLoading || profileStore.selectedProfile != null) {
-        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
 
         AdaptiveModalBottomSheet(
             onDismissRequest = {
@@ -853,7 +854,7 @@ actual fun MobileBaseplate(
 
     if (navigationStore.isServerMenuVisible) {
         navigationStore.selectedGuild?.let { guild ->
-            val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+            val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
             ServerBottomSheet(
                 guild = guild,
                 onDismiss = { navigationStore.isServerMenuVisible = false },
@@ -1039,7 +1040,7 @@ private fun MainBaseplateContent(
                                 }
                             },
                             actions = {
-                                if (settingsStore.showCallButton && (activeChannel?.type == 1 || activeChannel?.type == 3)) VoiceCallButton(activeChannel!!)
+                                if (settingsStore.showCallButton && activeChannel != null && (activeChannel.type == 1 || activeChannel.type == 3)) VoiceCallButton(activeChannel)
                                 if (!navigationStore.isBubble && activeChannel != null && (activeChannel.guild_id != null || activeChannel.type == 1 || activeChannel.type == 3)) {
                                     if (settingsStore.showChatSearch) {
                                         IconButton(onClick = { navigationStore.isSearchVisible = true }) {
