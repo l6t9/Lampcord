@@ -28,6 +28,14 @@ on:
         required: false
         default: false
         type: boolean
+      version:
+        description: >-
+          Version to name the package after. Defaults to appVersion, which is the tester
+          build identity. The release workflow passes its own release version so package
+          names match the release tag.
+        required: false
+        default: ''
+        type: string
       require-signing:
         description: Fail unless the release APK is signed
         required: false
@@ -64,6 +72,7 @@ jobs:
         shell: bash
         env:
           BUILD_VARIANT: ${{ inputs.variant }}
+          VERSION_OVERRIDE: ${{ inputs.version }}
         run: |
           set -euo pipefail
           if [[ "$BUILD_VARIANT" != "debug" && "$BUILD_VARIANT" != "release" ]]; then
@@ -78,12 +87,25 @@ jobs:
               break
             fi
           done < gradle.properties
+          [[ -n "$VERSION_OVERRIDE" ]] && version="$VERSION_OVERRIDE"
           [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-a[0-9]+)?$ ]] || {
-            echo "Invalid appVersion: $version" >&2
+            echo "Invalid package version: $version" >&2
             exit 1
           }
 
           echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      # Gradle's build cache does not cover CMake/ninja output, and the voice library is
+      # built for four ABIs. Caching the CMake tree lets ninja skip the compile on warm runs.
+      # Keyed on the native sources plus the NDK and CMake versions, since a toolchain bump
+      # invalidates every object file.
+      - name: Restore native build tree
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: androidApp/.cxx
+          key: android-native-${{ runner.os }}-${{ inputs.variant }}-ndk27.2.12479018-cmake3.22.1-${{ hashFiles('native/voice/**', 'androidApp/build.gradle.kts') }}
+          restore-keys: |
+            android-native-${{ runner.os }}-${{ inputs.variant }}-ndk27.2.12479018-cmake3.22.1-
 
       - name: Prepare CI Gradle
         uses: ./.github/actions/prepare-ci-gradle

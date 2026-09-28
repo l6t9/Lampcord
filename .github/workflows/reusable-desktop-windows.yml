@@ -23,6 +23,14 @@ on:
         required: false
         default: false
         type: boolean
+      version:
+        description: >-
+          Version to name the package after. Defaults to appVersion, which is the tester
+          build identity. The release workflow passes its own release version so package
+          names match the release tag.
+        required: false
+        default: ''
+        type: string
     secrets:
       GRADLE_ENCRYPTION_KEY:
         required: false
@@ -52,11 +60,14 @@ jobs:
 
       - name: Package Windows ZIP
         shell: pwsh
+        env:
+          VERSION_OVERRIDE: ${{ inputs.version }}
         run: |
           $version = ""
           Get-Content gradle.properties | ForEach-Object {
             if ($_ -match "appVersion=(.*)") { $version = $matches[1] }
           }
+          if ($env:VERSION_OVERRIDE) { $version = $env:VERSION_OVERRIDE }
           $appDir = "desktopApp/build/compose/binaries/main/app/Lampcord"
           $zipPath = "dist/lampcord-desktop-windows-x64-$version.zip"
           mkdir -p dist

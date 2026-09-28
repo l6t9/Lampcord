@@ -23,6 +23,14 @@ on:
         required: false
         default: false
         type: boolean
+      version:
+        description: >-
+          Version to name the package after. Defaults to appVersion, which is the tester
+          build identity. The release workflow passes its own release version so package
+          names match the release tag.
+        required: false
+        default: ''
+        type: string
     secrets:
       GRADLE_ENCRYPTION_KEY:
         required: false
@@ -66,12 +74,15 @@ jobs:
       - name: Collect Linux AppImage
         id: package
         shell: bash
+        env:
+          VERSION_OVERRIDE: ${{ inputs.version }}
         run: |
           set -euo pipefail
           version=""
           while IFS='=' read -r key value; do
             if [[ "$key" == "appVersion" ]]; then version="$value"; break; fi
           done < gradle.properties
+          [[ -n "$VERSION_OVERRIDE" ]] && version="$VERSION_OVERRIDE"
           source="dist/Lampcord.AppImage"
           test -f "$source" || { echo "Linux AppImage was not produced" >&2; exit 1; }
           output="dist/lampcord-desktop-linux-x64-${version}.AppImage"

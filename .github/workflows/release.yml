@@ -206,6 +206,7 @@ jobs:
       contents: write
     with:
       variant: release
+      version: ${{ needs.prepare.outputs.version }}
       staging-release-tag: ${{ needs.stage.outputs.tag }}
       require-signing: true
     secrets:
@@ -225,6 +226,7 @@ jobs:
     permissions:
       contents: write
     with:
+      version: ${{ needs.prepare.outputs.version }}
       staging-release-tag: ${{ needs.stage.outputs.tag }}
     secrets:
       GRADLE_ENCRYPTION_KEY: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
@@ -239,6 +241,7 @@ jobs:
     permissions:
       contents: write
     with:
+      version: ${{ needs.prepare.outputs.version }}
       staging-release-tag: ${{ needs.stage.outputs.tag }}
     secrets:
       GRADLE_ENCRYPTION_KEY: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
