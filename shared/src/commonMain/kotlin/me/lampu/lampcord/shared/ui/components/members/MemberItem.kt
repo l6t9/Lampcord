@@ -79,9 +79,11 @@ fun MemberItem(
     val guildId = guild?.id
     val avatarSizePx = with(LocalDensity.current) { 32.dp.roundToPx() }
     val avatarUrl = remember(member.avatar, guildId, userId, displayUser.avatar, env.animate, avatarSizePx) {
-        member.avatar?.let {
-            "https://cdn.discordapp.com/guilds/$guildId/users/$userId/avatars/$it.png?size=$avatarSizePx"
-        } ?: CdnUrls.getUserAvatarUrl(userId, displayUser.avatar, avatarSizePx)
+        if (guildId != null && member.avatar != null) {
+            CdnUrls.getMemberAvatarUrl(guildId, userId, member.avatar, displayUser.avatar, avatarSizePx)
+        } else {
+            CdnUrls.getUserAvatarUrl(userId, displayUser.avatar, avatarSizePx)
+        }
     }
 
     val roleData = remember(member.roles, guild) {

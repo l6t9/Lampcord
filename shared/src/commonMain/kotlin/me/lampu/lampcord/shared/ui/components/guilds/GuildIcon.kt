@@ -73,10 +73,9 @@ fun GuildIcon(
     var contextMenuRequest by remember { mutableStateOf(0) }
     val isAnimated = guild.icon?.startsWith("a_") == true
     val iconSizePx = with(LocalDensity.current) { 48.dp.roundToPx() }
-    val iconUrl = if (guild.icon != null) {
-        val ext = if (isAnimated && isSelected && !me.lampu.lampcord.shared.settings.Settings.shared.reduceMotion) "gif" else "png"
-        "https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.$ext?size=$iconSizePx"
-    } else null
+    val iconUrl = remember(guild.id, guild.icon, isSelected, isAnimated) {
+        me.lampu.lampcord.shared.api.CdnUrls.getGuildIconUrl(guild.id, guild.icon, iconSizePx)
+    }
 
     val userGuildSettings by userGuildSettingsStore.userGuildSettings.collectAsState()
     val readStates by readStateStore.readStates.collectAsState()

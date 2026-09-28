@@ -463,10 +463,10 @@ fun VoiceParticipantSidebarItem(
     val member = state.guild_id?.let { userStore.getMember(it, state.user_id) }
     val currentUser by userStore.currentUser.collectAsState()
     val name = member?.nick ?: user?.global_name ?: user?.username ?: "Unknown"
-    val avatarUrl = member?.avatar?.let {
-        "https://cdn.discordapp.com/guilds/${state.guild_id}/users/${state.user_id}/avatars/$it.png?size=40"
-    } ?: user?.avatar?.let {
-        "https://cdn.discordapp.com/avatars/${state.user_id}/$it.png?size=40"
+    val avatarUrl = if (state.guild_id != null && member?.avatar != null) {
+        me.lampu.lampcord.shared.api.CdnUrls.getMemberAvatarUrl(state.guild_id, state.user_id, member.avatar, user?.avatar, 64)
+    } else {
+        me.lampu.lampcord.shared.api.CdnUrls.getUserAvatarUrl(state.user_id, user?.avatar, 64)
     }
 
     Row(

@@ -117,8 +117,9 @@ fun AsyncImage(
                 .precision(CoilPrecision.INEXACT)
                 .scale(CoilScale.FIT)
                 .apply {
-                    if (size != null) {
-                        size(CoilSize(if (allowAnimation) minOf(size, MAX_ANIMATED_DECODE) else size, MAX_ANIMATED_DECODE))
+                    if (size != null && size > 0) {
+                        val targetSize = if (allowAnimation) minOf(size, MAX_ANIMATED_DECODE) else size
+                        size(CoilSize(targetSize, targetSize))
                     }
                 }
                 .build()

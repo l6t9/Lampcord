@@ -11,9 +11,14 @@ import coil3.network.ktor3.KtorNetworkFetcherFactory
 import coil3.request.crossfade as coilCrossfade
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.defaultRequest
+import io.ktor.client.request.header
+import io.ktor.http.HttpHeaders
 import me.lampu.lampcord.shared.settings.ThemeMode
 import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.theme.LampcordTheme
+import me.lampu.lampcord.shared.utils.getPlatformName
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.koin.compose.koinInject
 
@@ -38,7 +43,6 @@ fun App() {
         }
     }
 
-
     setSingletonImageLoaderFactory { context ->
         newCoilImageLoader(context)
     }
@@ -57,15 +61,38 @@ fun App() {
     }
 }
 
-fun newCoilImageLoader(context: CoilPlatformContext): ImageLoader =
-    ImageLoader.Builder(context)
+fun newCoilImageLoader(context: CoilPlatformContext): ImageLoader {
+    val platform = getPlatformName()
+    val isMobile = platform == "android" || platform == "ios"
+    val userAgent = if (isMobile) {
+        if (platform == "android") "Discord-Android/341200;RNA" else "Discord/105180 CFNetwork/1410.0.3 Darwin/22.4.0"
+    } else {
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) discord/0.0.398 Chrome/138.0.7204.251 Electron/37.6.0 Safari/537.36"
+    }
+
+    val imageHttpClient = HttpClient(CIO) {
+        install(HttpTimeout) {
+            requestTimeoutMillis = 15000
+            connectTimeoutMillis = 10000
+            socketTimeoutMillis = 15000
+        }
+        defaultRequest {
+            header(HttpHeaders.UserAgent, userAgent)
+            header(HttpHeaders.Accept, "image/webp,image/apng,image/png,image/jpeg,image/svg+xml,image/*,*/*;q=0.8")
+            header("Origin", "https://discord.com")
+            header("Referer", "https://discord.com/")
+        }
+    }
+
+    return ImageLoader.Builder(context)
         .components {
-            add(KtorNetworkFetcherFactory(HttpClient(CIO)))
+            add(KtorNetworkFetcherFactory(imageHttpClient))
         }
         .memoryCache {
             CoilMemoryCache.Builder()
-                .maxSizePercent(context, 0.20)
+                .maxSizePercent(context, 0.25)
                 .build()
         }
         .coilCrossfade(true)
         .build()
+}

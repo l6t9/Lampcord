@@ -32,7 +32,7 @@ fun Emoji.getDisplayUrl(): String? {
     if (url != null) return url
     if (id != null) {
         val ext = if (animated == true && !Settings.shared.reduceMotion) "gif" else "png"
-        return "https://cdn.discordapp.com/emojis/$id.$ext?size=48"
+        return "https://cdn.discordapp.com/emojis/$id.$ext?size=64"
     }
     val nameStr = name ?: return null
     val unicode = EmojiIndex.getCharForName(nameStr) ?: nameStr
