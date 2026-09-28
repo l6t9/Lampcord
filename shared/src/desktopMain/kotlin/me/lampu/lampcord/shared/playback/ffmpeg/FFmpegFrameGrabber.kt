@@ -525,11 +525,6 @@ class FFmpegFrameGrabber : FrameGrabber {
 
     override fun getLengthInTime(): Long = (oc?.takeUnless { it.isNull }?.duration() ?: 0L) * 1000000L / AV_TIME_BASE
 
-    /**
-     * Returns the video stream duration when the container does not expose a
-     * duration. This is common with mobile MP4 exports whose metadata is not
-     * written into the container header.
-     */
     fun getVideoDurationInTime(): Long {
         val stream = video_st ?: return 0L
         val streamDuration = stream.duration()

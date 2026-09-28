@@ -14,17 +14,7 @@ import org.jetbrains.skia.Canvas
 import org.jetbrains.skia.ColorAlphaType
 import org.jetbrains.skia.ColorType
 
-/**
- * [AnimatedImage] implementation that composites the raw APNG frame rectangles into full canvases
- * using the APNG dispose/alpha-blend semantics, then hands each frame to Sketch as a raster image.
- *
- * Decorations like the animated Santa hat ship as very large APNGs (big canvas, dozens of frames);
- * at full resolution compositing every frame would need hundreds of megabytes. The frames are
- * therefore decoded with ImageIO source subsampling at a capped scale (see [MAX_DECODE_DIMENSION]),
- * so the canvas stays bounded. The scaled fcTL rectangles mirror the per-frame pixel layout.
- *
- * Frame rectangles are decoded lazily with the ImageIO reader only when the animation first plays.
- */
+// [AnimatedImage] implementation that composites the raw APNG frame rectangles into full canvases using the APNG dispose/alpha-blend semantics, then hands each frame to Sketch as a raster image.
 private const val MAX_DECODE_DIMENSION = 512
 
 class ApngAnimatedImage(
@@ -66,8 +56,7 @@ class ApngAnimatedImage(
     override var animationStartCallback: (() -> Unit)? = null
     override var animationEndCallback: (() -> Unit)? = null
 
-    // Frame 0 is decoded on its own so that a static render (disallowAnimatedImage
-    // still asks for the first frame) never materializes the whole animation.
+    // Frame 0 is decoded on its own so that a static render (disallowAnimatedImage still asks for the first frame) never materializes the whole animation.
     private val frame0: IntArray by lazy { decodeFrame0() }
 
     private val frames: Array<IntArray> by lazy { compositeFrames() }
@@ -143,8 +132,7 @@ private fun decodeFrame0(): IntArray {
             }
             frames
         } catch (_: javax.imageio.IIOException) {
-            // A truncated/partial download shouldn't crash the list; fall back to
-            // transparent frames like the frame-0 path does.
+            // A truncated/partial download shouldn't crash the list; fall back to transparent frames like the frame-0 path does.
             Array(info.numFrames) { IntArray(width * height) }
         } finally {
             reader.dispose()
@@ -165,7 +153,6 @@ private fun decodeFrame0(): IntArray {
             }
     }
 
-    /** Source pixel (row/col) -> scaled canvas coordinate. */
     private fun scaleCoord(v: Int, isX: Boolean): Int {
         val factor = if (isX) width.toFloat() / info.width else height.toFloat() / info.height
         return (v * factor).roundToInt()

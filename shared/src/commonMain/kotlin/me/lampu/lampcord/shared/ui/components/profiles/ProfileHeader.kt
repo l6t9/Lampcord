@@ -36,6 +36,9 @@ import me.lampu.lampcord.shared.utils.getPlatformName
 import me.lampu.lampcord.shared.utils.setClipboardText
 import me.lampu.lampcord.shared.utils.showToast
 import org.koin.compose.koinInject
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
+import me.lampu.lampcord.shared.ui.kit.combinedClickableCursor
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
@@ -117,7 +120,10 @@ fun ProfileHeader(
                 modifier = Modifier
                     .fillMaxSize()
                     .hoverable(avatarInteractionSource)
-                    .combinedClickable(
+                    .pointerHoverIcon(PointerIcon.Hand)
+                    .combinedClickableCursor(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
                         onClick = {
                             if (onEditAvatar != null) {
                                 onEditAvatar()
@@ -165,7 +171,6 @@ fun ProfileHeader(
                         x = (-8).dp,
                         y = (-42).dp
                     )
-                    // Use layout to report a fixed small height so expansion doesn't push content below
                     .layout { measurable, constraints ->
                         val placeable = measurable.measure(constraints)
                         val fixedHeight = 24.dp.roundToPx()
@@ -174,7 +179,6 @@ fun ProfileHeader(
                         }
                     }
             ) {
-                // Smallest dot - lowered and solid
                 Surface(
                     modifier = Modifier
                         .offset(x = 10.dp, y = 14.dp)
@@ -185,7 +189,6 @@ fun ProfileHeader(
                     shadowElevation = 1.dp
                 ) {}
                 
-                // Medium dot - bigger and deeply submerged
                 Surface(
                     modifier = Modifier
                         .offset(x = 22.dp, y = 18.dp)

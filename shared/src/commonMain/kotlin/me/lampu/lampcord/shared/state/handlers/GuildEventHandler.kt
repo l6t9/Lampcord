@@ -6,10 +6,6 @@ import me.lampu.lampcord.shared.model.Channel
 import me.lampu.lampcord.shared.model.Member
 import me.lampu.lampcord.shared.state.*
 
-/**
- * GuildEventHandler handles server and channel lifecycle events,
- * distributing state updates to EntityStore and UserStore.
- */
 class GuildEventHandler(
     private val json: Json,
     private val entityStore: EntityStore,
@@ -40,7 +36,6 @@ class GuildEventHandler(
 
     private fun handleGuildCreate(data: JsonElement) {
         val guild = json.decodeFromJsonElement<Guild>(data)
-        // EntityStore handles guilds and nested channels
         entityStore.updateGuild(guild)
         
         val settings = settingsStore.userSettings
@@ -51,14 +46,12 @@ class GuildEventHandler(
             ?: emptyList()
         guildStore.handleGuildCreate(guild, guildOrder)
         
-        // Members go to UserStore
         data.jsonObject["members"]?.jsonArray?.forEach { memberData ->
             val member = json.decodeFromJsonElement<Member>(memberData)
             val userId = member.userId() ?: return@forEach
             userStore.cacheMember(guild.id, userId, member, memberData.jsonObject)
         }
 
-        // Presences go to PresenceStore
         guild.presences?.forEach { presence ->
             presenceStore.handlePresenceUpdate(presence.copy(guild_id = guild.id))
         }

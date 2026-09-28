@@ -168,7 +168,6 @@ class NavigationStore(
         Settings.shared.clearLastGuild()
         
         scope.launch {
-            // Wait for private channels to be populated if they are empty
             val channels = if (guildStore.privateChannels.value.isEmpty()) {
                 guildStore.privateChannels.first { it.isNotEmpty() }
             } else {
@@ -235,14 +234,12 @@ class NavigationStore(
         
         guildLoadingJob?.cancel()
         
-        // Optimistic state update
         selectedGuild = guild
         isChannelsAndRolesVisible = false
         isServerSettingsVisible = false
         lastRequestedKey = null
         Settings.shared.setLastGuild(guild.id)
 
-        // Optimistic channel resolution from EntityStore
         val lastChannelId = targetChannelId ?: Settings.shared.getLastChannel(guild.id)
         val allChannels = guildStore.allGuildChannels.value.values
         val optimisticChannel = if (lastChannelId != null) {
@@ -288,13 +285,11 @@ class NavigationStore(
                 selectChannel(finalChannelToSelect, explicitlySelected = targetChannelId != null)
             }
             
-            // Onboarding
             selectedGuildOnboarding = null
             if (guild.features?.contains("ONBOARDING") == true) {
                 selectedGuildOnboarding = channelApi.getGuildOnboarding(guild.id)
             }
             
-            // Fetch commands
             try {
                 val index = guildApi.getCommandIndex(guild.id)
                 commandStore.clear()
@@ -320,7 +315,6 @@ class NavigationStore(
         notifier?.dismissChannelNotifications(channel.id)
         if (explicitlySelected) triggerFocusChat()
 
-        // Pre-size the member list store based on expected list ID
         val guild = selectedGuild
         if (guild != null) {
             val expectedId = channel.member_list_id ?: channel.memberListId(guild)
@@ -394,7 +388,6 @@ class NavigationStore(
         selectedThread = channel
         if (explicitlySelected) triggerFocusChat()
 
-        // Pre-size the member list store based on thread ID
         val guild = selectedGuild
         if (guild != null) {
             val expectedId = channel.member_list_id ?: channel.id

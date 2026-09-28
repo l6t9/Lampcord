@@ -3,6 +3,8 @@ package me.lampu.lampcord.shared.utils
 import me.lampu.lampcord.shared.settings.Settings
 
 object CleanUtils {
+    private val WHITESPACE_RUN = Regex("\\s+")
+
     private val letterNormalizationMap = mapOf(
         'á' to 'a', 'é' to 'e', 'í' to 'i', 'ó' to 'o', 'ú' to 'u',
         'Á' to 'A', 'É' to 'E', 'Í' to 'I', 'Ó' to 'O', 'Ú' to 'U',
@@ -51,7 +53,7 @@ object CleanUtils {
             i++
         }
 
-        val normalized = sb.toString().replace(Regex("\\s+"), " ").trim()
+        val normalized = sb.toString().replace(WHITESPACE_RUN, " ").trim()
         return normalized.ifEmpty { name }
     }
 }

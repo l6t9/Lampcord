@@ -293,7 +293,6 @@ fun LoginScreen(
                     shape = MaterialTheme.shapes.large
                 ) {
                     if (isLoading) {
-                        // Contained loading indicator themed for the filled login button.
                         ContainedLoadingIndicator(
                             modifier = Modifier.size(24.dp),
                             containerColor = MaterialTheme.colorScheme.onPrimary,

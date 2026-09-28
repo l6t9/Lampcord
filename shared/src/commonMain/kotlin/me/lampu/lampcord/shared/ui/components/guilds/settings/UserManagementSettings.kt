@@ -89,7 +89,6 @@ fun ServerMembers(guild: Guild, guildApi: GuildApi = koinInject()) {
                                     Text(user.username ?: "", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                                 
-                                // Role chips
                                 val memberRoles = member.roles.mapNotNull { roleId -> guild.roles.find { it.id == roleId } }.sortedByDescending { it.position }
                                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                     memberRoles.take(2).forEach { role ->

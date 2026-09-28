@@ -58,6 +58,7 @@ import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.ui.components.ExpressiveSwitch
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.settings.Settings
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
 @Composable
 fun Material3SettingsGroup(
@@ -146,7 +147,7 @@ fun Material3SettingsItemRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable(
+                .clickableCursor(
                     interactionSource = interactionSource,
                     indication = null,
                     enabled = item.enabled && item.onClick != null,

@@ -8,11 +8,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.unit.dp
 
-/**
- * Brand icons for integrations and special UI elements.
- * These are custom icons sourced from drawable XML resources and Simple Icons,
- * converted to ImageVector format.
- */
+// Brand icons for integrations and special UI elements. These are custom icons sourced from drawable XML resources and Simple Icons, converted to ImageVector format.
 object IconsBrand {
     val Discord: ImageVector
         get() =

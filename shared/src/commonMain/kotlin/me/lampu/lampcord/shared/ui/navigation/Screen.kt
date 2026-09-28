@@ -50,7 +50,6 @@ sealed class Screen : NavKey {
     @Serializable
     data class Threads(val channelId: String) : Screen()
 
-    // Settings sub-screens
     @Serializable
     data object AccountSettings : Screen()
 

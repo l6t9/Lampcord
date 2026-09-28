@@ -25,6 +25,7 @@ import me.lampu.lampcord.shared.ui.components.StatusIndicator
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.Logging
 import org.koin.compose.koinInject
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -77,7 +78,7 @@ fun MutualFriendsBottomSheet(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clickable { 
+                                    .clickableCursor { 
                                         onDismiss()
                                         profileStore.showProfile(friend.id)
                                     }
@@ -158,7 +159,7 @@ fun MutualServersBottomSheet(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { 
+                                .clickableCursor { 
                                     onDismiss()
                                     if (guild != null) {
                                         navigationStore.selectedGuild = guild

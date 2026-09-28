@@ -11,5 +11,4 @@ actual fun VerticalScrollbar(
     isVisible: Boolean,
     reverseLayout: Boolean
 ) {
-    // Android has native scrollbars if enabled, no-op for custom component
 }

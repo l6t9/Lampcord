@@ -30,6 +30,7 @@ import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
 import me.lampu.lampcord.shared.utils.getPlatformName
 import org.koin.compose.koinInject
 import kotlinx.coroutines.launch
+import me.lampu.lampcord.shared.ui.components.ImageLoadState
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -121,7 +122,7 @@ private fun ReactionUsersContent(
                                 contentDescription = null, 
                                 modifier = Modifier.size(16.dp),
                                 showPlaceholder = false,
-                                onState = { state -> if (state is com.github.panpf.sketch.PainterState.Error) loadFailed = true }
+                                onState = { state -> if (state is ImageLoadState.Error) loadFailed = true }
                             )
                         } else {
                             Text(reaction.emoji.name ?: "", fontSize = 14.sp)

@@ -41,6 +41,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
+import me.lampu.lampcord.shared.ui.kit.handCursor
 
 enum class AboutContributorRole {
     CREATOR,
@@ -108,12 +110,10 @@ fun AboutContent(
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // App Header Card
         AppHeaderCard(version)
 
         Spacer(Modifier.height(24.dp))
 
-        // Lead Developer Card
         LeadDeveloperCard(
             contributor = leadDeveloper,
             text = text,
@@ -122,7 +122,6 @@ fun AboutContent(
 
         Spacer(Modifier.height(32.dp))
 
-        // Contributors Section (excluding lead if any others)
         val otherContributors = emptyList<AboutContributor>() // Add more here if needed
         if (otherContributors.isNotEmpty()) {
             ContributorsSection(
@@ -133,7 +132,6 @@ fun AboutContent(
             Spacer(Modifier.height(32.dp))
         }
 
-        // Links Section
         val links = listOf(
             Triple("Discord", "https://discord.gg/uHXJJzxSD8", Icons.Brand.Discord),
             Triple("GitHub Repository", "https://github.com/l6t9/lampcord", Icons.Brand.Github),
@@ -298,6 +296,7 @@ private fun DeveloperSocials(
             },
             menuContent = { menuState ->
                 DropdownMenuItem(
+                    modifier = Modifier.handCursor(),
                     leadingIcon = { Icon(Icons.Rounded.Language, contentDescription = null) },
                     text = { Text(text.openWebsite) },
                     enabled = contributor.websiteUrl != null,
@@ -324,6 +323,7 @@ private fun DeveloperSocials(
             },
             menuContent = { menuState ->
                 DropdownMenuItem(
+                    modifier = Modifier.handCursor(),
                     leadingIcon = { Icon(Icons.Brand.Github, contentDescription = null) },
                     text = { Text(text.openGithubProfile) },
                     enabled = contributor.githubUrl != null,
@@ -469,7 +469,7 @@ private fun AboutSection(
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onClick(index) },
+                        .clickableCursor { onClick(index) },
                     shape = shape,
                     color = MaterialTheme.colorScheme.surfaceContainer,
                 ) {

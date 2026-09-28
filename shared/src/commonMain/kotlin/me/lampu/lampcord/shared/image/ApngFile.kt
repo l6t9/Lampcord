@@ -4,10 +4,7 @@ import com.github.panpf.sketch.decode.Decoder
 
 private val PNG_SIGNATURE = byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A)
 
-/**
- * The [Decoder.Factory] for APNG images on the current platform (Android or desktop JVM).
- * iOS lacks an APNG decoder and renders decorations as their static preview instead.
- */
+// The [Decoder.Factory] for APNG images on the current platform (Android or desktop JVM). iOS lacks an APNG decoder and renders decorations as their static preview instead.
 expect fun apngDecoderFactory(): Decoder.Factory
 
 data class ApngFrameMeta(
@@ -29,10 +26,7 @@ data class ApngInfo(
     val frames: List<ApngFrameMeta>,
 )
 
-/**
- * Detect APNG: valid PNG signature plus an `acTL` chunk appearing before the first `IDAT`.
- * Only needs the leading bytes of the file, so it works with [com.github.panpf.sketch.fetch.FetchResult.headerBytes].
- */
+// Detect APNG: valid PNG signature plus an `acTL` chunk appearing before the first `IDAT`.
 fun isApngFile(headerBytes: ByteArray): Boolean {
     if (headerBytes.size < 8) return false
     for (i in 0 until PNG_SIGNATURE.size) {
@@ -52,9 +46,7 @@ fun isApngFile(headerBytes: ByteArray): Boolean {
     return false
 }
 
-/**
- * Parse the APNG header chunks (`IHDR`, `acTL`, `fcTL`) from the full file.
- */
+// Parse the APNG header chunks (`IHDR`, `acTL`, `fcTL`) from the full file.
 fun parseApngInfo(bytes: ByteArray): ApngInfo? {
     if (!isApngFile(bytes)) return null
     var offset = 8

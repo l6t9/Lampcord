@@ -67,7 +67,6 @@ object PermissionHelper {
         val effectiveUserId = userId ?: member.user?.id
         if (guild.owner_id != null && guild.owner_id == effectiveUserId) return -1L // All permissions
 
-        // Find @everyone role
         val everyoneRole = guild.roles.find { it.id == guild.id }
         var permissions = everyoneRole?.permissions?.toULongOrNull()?.toLong() ?: 0L
 
@@ -89,14 +88,12 @@ object PermissionHelper {
         var permissions = basePermissions
         val overwrites = channel.permission_overwrites ?: return permissions
 
-        // @everyone overwrite
         overwrites.find { it.id == guild.id }?.let { everyoneOverwrite ->
             val deny = everyoneOverwrite.denyString().toULongOrNull()?.toLong() ?: 0L
             val allow = everyoneOverwrite.allowString().toULongOrNull()?.toLong() ?: 0L
             permissions = (permissions and deny.inv()) or allow
         }
 
-        // Role overwrites
         var roleAllow = 0L
         var roleDeny = 0L
         for (roleId in member.roles) {
@@ -107,7 +104,6 @@ object PermissionHelper {
         }
         permissions = (permissions and roleDeny.inv()) or roleAllow
 
-        // Member overwrite
         val effectiveUserId = userId ?: member.user?.id
         effectiveUserId?.let { uid ->
             overwrites.find { it.id == uid }?.let { memberOverwrite ->
@@ -140,11 +136,7 @@ object PermissionHelper {
         return hasPermission(member, guild, channel, Permission.VIEW_CHANNEL, userId)
     }
 
-    /**
-     * Returns whether the current user may create a message in this channel.
-     * Threads use their dedicated permission and locked threads additionally
-     * require MANAGE_THREADS.
-     */
+    // Returns whether the current user may create a message in this channel. Threads use their dedicated permission and locked threads additionally require MANAGE_THREADS.
     fun canSendMessages(member: Member, guild: Guild, channel: Channel, userId: String? = null): Boolean {
         val isThread = channel.type == 10 || channel.type == 11 || channel.type == 12
         if (!isThread) {
@@ -160,7 +152,6 @@ object PermissionHelper {
         if (channel.guild_id == null) return false
         val overwrites = channel.permission_overwrites ?: return false
         
-        // Find @everyone overwrite
         val everyoneOverwrite = overwrites.find { it.id == guild.id } ?: return false
         val deny = everyoneOverwrite.denyString().toULongOrNull()?.toLong() ?: 0L
         

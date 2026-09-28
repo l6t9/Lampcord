@@ -1,9 +1,13 @@
 package me.lampu.lampcord.shared.database
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "logged_messages")
+@Entity(
+    tableName = "logged_messages",
+    indices = [Index("channelId")]
+)
 data class MessageEntity(
     @PrimaryKey val id: String,
     val channelId: String,

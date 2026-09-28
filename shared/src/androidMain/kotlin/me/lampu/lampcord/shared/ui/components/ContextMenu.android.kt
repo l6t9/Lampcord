@@ -16,6 +16,7 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -63,8 +64,6 @@ actual fun ContextMenu(
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         showSheet = true
                         
-                        // Consume all subsequent events for this pointer in the Initial pass
-                        // to prevent children from seeing the release and triggering a click.
                         while (true) {
                             val event = awaitPointerEvent(PointerEventPass.Initial)
                             val change = event.changes.firstOrNull { it.id == down.id }
@@ -149,7 +148,7 @@ actual fun ContextMenu(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(itemShape)
-                                    .clickable {
+                                    .clickableCursor {
                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                         item.onClick()
                                         showSheet = false

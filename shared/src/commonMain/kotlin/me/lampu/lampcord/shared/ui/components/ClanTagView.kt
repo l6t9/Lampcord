@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import me.lampu.lampcord.shared.model.PrimaryGuild
 import me.lampu.lampcord.shared.ui.components.guilds.GuildProfileSheet
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
 @Composable
 fun ClanTagView(
@@ -38,7 +39,7 @@ fun ClanTagView(
 
     Surface(
         modifier = modifier
-            .clickable { showGuildProfile = true },
+            .clickableCursor { showGuildProfile = true },
         color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = alpha),
         shape = RoundedCornerShape(4.dp),
         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f * alpha))

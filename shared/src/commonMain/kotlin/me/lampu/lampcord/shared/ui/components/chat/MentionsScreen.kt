@@ -22,6 +22,7 @@ import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
 import me.lampu.lampcord.shared.ui.icons.Icons
 import org.koin.compose.koinInject
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -78,7 +79,7 @@ fun MentionsScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable {
+                            .clickableCursor {
                                 navigationStore.isMentionsSelected = false
                                 navigationStore.isFriendsSelected = false
                                 val targetChan = chan ?: privateChannels.find { it.id == message.channel_id }

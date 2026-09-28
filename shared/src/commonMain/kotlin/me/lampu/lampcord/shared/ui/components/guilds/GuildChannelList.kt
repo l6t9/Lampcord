@@ -26,7 +26,6 @@ import androidx.compose.material3.Text
 import me.lampu.lampcord.shared.settings.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,6 +53,7 @@ import me.lampu.lampcord.shared.utils.PermissionHelper
 import me.lampu.lampcord.shared.utils.getPlatformName
 import me.lampu.lampcord.shared.utils.setClipboardText
 import org.koin.compose.koinInject
+import me.lampu.lampcord.shared.ui.kit.handCursor
 
 @Composable
 fun GuildChannelList(
@@ -96,12 +96,10 @@ fun GuildChannelList(
         )
     }
 
-    val alpha by remember(bannerUrl) {
-        derivedStateOf {
-            if (bannerUrl == null) 1f
-            else if (scrollState.firstVisibleItemIndex > 0) 1f
-            else (scrollState.firstVisibleItemScrollOffset.toFloat() / 200f).coerceIn(0f, 1f)
-        }
+    val alpha = remember(bannerUrl) {
+        if (bannerUrl == null) 1f
+        else if (scrollState.firstVisibleItemIndex > 0) 1f
+        else (scrollState.firstVisibleItemScrollOffset.toFloat() / 200f).coerceIn(0f, 1f)
     }
 
     Box(
@@ -120,19 +118,17 @@ fun GuildChannelList(
             }
     ) {
         val allGuildChannels by guildStore.allGuildChannels.collectAsState()
-        val visibleChannels by remember(guild, member, showHidden, allGuildChannels) {
-            derivedStateOf {
-                val g = guild
-                val u = currentUser
-                if (g == null) emptyList()
-                else allGuildChannels.values.filter { channel ->
-                    if (channel.guild_id != g.id) return@filter false
-                    if (showHidden) return@filter true
+        val visibleChannels = remember(guild, member, showHidden, allGuildChannels) {
+            val g = guild
+            val u = currentUser
+            if (g == null) emptyList()
+            else allGuildChannels.values.filter { channel ->
+                if (channel.guild_id != g.id) return@filter false
+                if (showHidden) return@filter true
 
-                    val currentMember = member
-                    if (currentMember == null) return@filter true
-                    PermissionHelper.canViewChannel(currentMember, g, channel, u?.id)
-                }
+                val currentMember = member
+                if (currentMember == null) return@filter true
+                PermissionHelper.canViewChannel(currentMember, g, channel, u?.id)
             }
         }
 
@@ -268,6 +264,7 @@ fun GuildChannelList(
                     val showChannelsAndRoles = g?.features?.contains("COMMUNITY") == true
                     if (showChannelsAndRoles) {
                         DropdownMenuItem(
+                            modifier = Modifier.handCursor(),
                             text = { Text("Channels & Roles") },
                             onClick = { 
                                 navigationStore.isChannelsAndRolesVisible = true
@@ -281,6 +278,7 @@ fun GuildChannelList(
                     }
 
                     DropdownMenuItem(
+                        modifier = Modifier.handCursor(),
                         text = { Text("Mark As Read") },
                         onClick = { 
                             g?.let { guildStore.markGuildAsRead(it.id) }
@@ -289,6 +287,7 @@ fun GuildChannelList(
                         leadingIcon = { Icon(Icons.Filled.Check, null, modifier = Modifier.size(18.dp)) }
                     )
                     DropdownMenuItem(
+                        modifier = Modifier.handCursor(),
                         text = { Text("Edit Profile") },
                         onClick = { 
                             navigationStore.navigateToSettings("PROFILES")
@@ -304,6 +303,7 @@ fun GuildChannelList(
 
                     if (canManageGuild) {
                         DropdownMenuItem(
+                            modifier = Modifier.handCursor(),
                             text = { Text("Server Settings") },
                             onClick = { 
                                 navigationStore.isServerSettingsVisible = true
@@ -315,6 +315,7 @@ fun GuildChannelList(
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                     val errorColor = MaterialTheme.colorScheme.error
                     DropdownMenuItem(
+                        modifier = Modifier.handCursor(),
                         text = { Text("Leave Server", color = errorColor) },
                         onClick = { 
                             showLeaveDialog = true
@@ -325,6 +326,7 @@ fun GuildChannelList(
                     if (settingsStore.userSettings?.developer_mode == true) {
                         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                         DropdownMenuItem(
+                            modifier = Modifier.handCursor(),
                             text = { Text("Copy ID") },
                             onClick = { 
                                 g?.let { setClipboardText(it.id) }

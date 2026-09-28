@@ -9,7 +9,6 @@ import me.lampu.lampcord.shared.utils.getCurrentTimeMillis
 import kotlin.time.Duration.Companion.milliseconds
 
 class TypingStore(private val scope: CoroutineScope) {
-    // channelId -> userId -> timestamp
     private val _typingUsers = MutableStateFlow<Map<String, Map<String, Long>>>(emptyMap())
     val typingUsers: StateFlow<Map<String, Map<String, Long>>> = _typingUsers.asStateFlow()
     

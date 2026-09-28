@@ -44,6 +44,8 @@ import me.lampu.lampcord.shared.utils.Permission
 import me.lampu.lampcord.shared.utils.PermissionHelper
 import me.lampu.lampcord.shared.utils.getPlatformName
 import org.koin.compose.koinInject
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
+import me.lampu.lampcord.shared.ui.kit.handCursor
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -192,6 +194,7 @@ fun MemberHeader(
                 ) {
                     autocompleteStore.searchAutocompleteItems.forEach { item ->
                         DropdownMenuItem(
+                            modifier = Modifier.handCursor(),
                             text = {
                                 Text(
                                     item.title,
@@ -316,6 +319,7 @@ fun MemberHeader(
                             onDismissRequest = { showMenu = false }
                         ) {
                             DropdownMenuItem(
+                                modifier = Modifier.handCursor(),
                                 text = { Text("Close DM") },
                                 onClick = {
                                     showMenu = false
@@ -324,6 +328,7 @@ fun MemberHeader(
                                 leadingIcon = { Icon(Icons.Filled.Close, null, tint = Color.Red) }
                             )
                             DropdownMenuItem(
+                                modifier = Modifier.handCursor(),
                                 text = { Text("Pinned Messages") },
                                 onClick = {
                                     showMenu = false
@@ -333,6 +338,7 @@ fun MemberHeader(
                             )
                             if (settingsStore.userSettings?.developer_mode == true) {
                                 DropdownMenuItem(
+                                    modifier = Modifier.handCursor(),
                                     text = { Text("Copy ID") },
                                     onClick = {
                                         showMenu = false
@@ -357,7 +363,7 @@ fun MemberHeader(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier
                         .padding(horizontal = 16.dp)
-                        .clickable { expanded = !expanded }
+                        .clickableCursor { expanded = !expanded }
                 )
             }
         }
@@ -447,6 +453,7 @@ fun MemberHeader(
                         },
                         menuContent = { menuState ->
                             DropdownMenuItem(
+                                modifier = Modifier.handCursor(),
                                 text = { Text(action.label) },
                                 onClick = {
                                     action.onClick()

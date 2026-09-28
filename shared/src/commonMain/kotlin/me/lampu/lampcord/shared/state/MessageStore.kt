@@ -31,6 +31,7 @@ import me.lampu.lampcord.shared.model.MessageReaction
 import me.lampu.lampcord.shared.model.PendingFile
 import me.lampu.lampcord.shared.model.Poll
 import me.lampu.lampcord.shared.model.ReactionCountDetails
+import me.lampu.lampcord.shared.model.TextReplaceRule
 import me.lampu.lampcord.shared.model.User
 import me.lampu.lampcord.shared.utils.Logging
 import me.lampu.lampcord.shared.settings.Settings
@@ -58,8 +59,6 @@ class MessageStore(
         const val TYPING_EMISSION_INTERVAL_MS = 10_000L
     }
 
-    // Exact replica of Discord's internal message storage philosophy:
-    // LRU channel access + sorted lists (TreeMap equivalent) for messages
     private val channelAccessOrder = mutableListOf<String>()
     private val lastTypingEmissionMillis = mutableMapOf<String, Long>()
     private val messageCache = mutableMapOf<String, List<Message>>()
@@ -70,8 +69,10 @@ class MessageStore(
         if (activeId == null) emptyList() else all[activeId] ?: emptyList()
     }.stateIn(scope, SharingStarted.Eagerly, emptyList())
 
-    private val _isLoadingHistory = MutableStateFlow(false)
-    val isLoadingHistory: StateFlow<Boolean> = _isLoadingHistory.asStateFlow()
+    private val _loadingHistoryChannels = MutableStateFlow<Set<String>>(emptySet())
+    val isLoadingHistory: StateFlow<Boolean> = combine(_loadingHistoryChannels, selectionStore.activeChannelIdFlow) { loading, activeId ->
+        activeId != null && activeId in loading
+    }.stateIn(scope, SharingStarted.Eagerly, false)
 
     private val _hasMoreHistory = MutableStateFlow<Map<String, Boolean>>(emptyMap())
     val hasMoreHistory: StateFlow<Boolean> = combine(_hasMoreHistory, selectionStore.activeChannelIdFlow) { map, activeId ->
@@ -90,18 +91,48 @@ class MessageStore(
 
     private val queues = mutableMapOf<String, MessageQueue>()
     private val queuesMutex = Mutex()
-    private var historyLoadingJob: Job? = null
+    private var historyLoadingJobs = mutableMapOf<String, Job>()
 
-    // Nonce tracking to replace local messages with server ones (Discord logic)
     private val messageNonceIds = mutableMapOf<String, String>()
+
+    private class CompiledReplaceRules(
+        val source: List<TextReplaceRule>,
+        val regexes: List<Regex?>
+    )
+
+    private var compiledRuleCache: CompiledReplaceRules? = null
+
+    private fun compiledRuleRegexes(rules: List<TextReplaceRule>): List<Regex?> {
+        compiledRuleCache?.let { if (it.source === rules) return it.regexes }
+        val compiled = CompiledReplaceRules(
+            rules,
+            rules.map { rule ->
+                if (!rule.isRegex) {
+                    null
+                } else {
+                    runCatching {
+                        Regex(
+                            rule.pattern,
+                            if (rule.ignoreCase) setOf(RegexOption.IGNORE_CASE) else emptySet()
+                        )
+                    }.getOrNull()
+                }
+            }
+        )
+        compiledRuleCache = compiled
+        return compiled.regexes
+    }
 
     private fun transformOutgoingContent(content: String): String {
         var processed = content
-        settingsStore.textReplaceRules.filter { it.enabled && it.matchUnsent }.forEach { rule ->
+        val rules = settingsStore.textReplaceRules
+        val regexes = compiledRuleRegexes(rules)
+        rules.forEachIndexed { index, rule ->
+            if (!rule.enabled || !rule.matchUnsent) return@forEachIndexed
             processed = try {
                 if (rule.isRegex) {
-                    val options = if (rule.ignoreCase) setOf(RegexOption.IGNORE_CASE) else emptySet()
-                    processed.replace(Regex(rule.pattern, options), rule.replacement)
+                    val regex = regexes[index] ?: return@forEachIndexed
+                    processed.replace(regex, rule.replacement)
                 } else {
                     processed.replace(rule.pattern, rule.replacement, ignoreCase = rule.ignoreCase)
                 }
@@ -115,11 +146,14 @@ class MessageStore(
         
         var content = preprocessed.content
         var changed = false
-        settingsStore.textReplaceRules.filter { it.enabled && it.matchSent }.forEach { rule ->
+        val rules = settingsStore.textReplaceRules
+        val regexes = compiledRuleRegexes(rules)
+        rules.forEachIndexed { index, rule ->
+            if (!rule.enabled || !rule.matchSent) return@forEachIndexed
             try {
                 val newContent = if (rule.isRegex) {
-                    val options = if (rule.ignoreCase) setOf(RegexOption.IGNORE_CASE) else emptySet()
-                    content.replace(Regex(rule.pattern, options), rule.replacement)
+                    val regex = regexes[index] ?: return@forEachIndexed
+                    content.replace(regex, rule.replacement)
                 } else {
                     content.replace(rule.pattern, rule.replacement, ignoreCase = rule.ignoreCase)
                 }
@@ -178,8 +212,9 @@ class MessageStore(
         _allMessages.value = emptyMap()
         messageNonceIds.clear()
         _hasMoreHistory.value = emptyMap()
-        _isLoadingHistory.value = false
-        historyLoadingJob?.cancel()
+        _loadingHistoryChannels.value = emptySet()
+        historyLoadingJobs.values.forEach { it.cancel() }
+        historyLoadingJobs.clear()
     }
 
     fun loadLoggedMessages(channelId: String) {
@@ -224,9 +259,6 @@ class MessageStore(
 
         if (changed) {
             val sorted = channelMessages.sortedByDescending { it.id.toLongOrNull() ?: 0L }
-            // Keep the complete loaded history. Trimming this list while paging older
-            // messages removes the viewport's anchor and makes reverse-layout scrolling
-            // jump back when the cache limit is crossed.
             messageCache[channelId] = sorted
             recordAccess(channelId)
             updateAllMessagesFlow()
@@ -290,18 +322,29 @@ class MessageStore(
 
     fun handleMessageDelete(id: String) {
         Logging.d("MessageStore", "Handling MESSAGE_DELETE: $id")
+        val keepInLog = me.lampu.lampcord.shared.settings.Settings.shared.messageLoggerEnabled
         var changed = false
         messageCache.forEach { (chanId, channelMessages) ->
-            val newList = if (me.lampu.lampcord.shared.settings.Settings.shared.messageLoggerEnabled) {
-                channelMessages.map {
-                    if (it.id == id) { changed = true; it.copy(isDeleted = true) } else it
+            var channelChanged = false
+            val newList = if (keepInLog) {
+                channelMessages.map { msg ->
+                    if (msg.id == id) {
+                        channelChanged = true
+                        msg.copy(isDeleted = true)
+                    } else msg
                 }
             } else {
-                val filtered = channelMessages.filter { msg -> msg.id != id }
-                if (filtered.size != channelMessages.size) changed = true
-                filtered
+                channelMessages.filter { msg ->
+                    if (msg.id == id) {
+                        channelChanged = true
+                        false
+                    } else true
+                }
             }
-            if (changed) messageCache[chanId] = newList
+            if (channelChanged) {
+                messageCache[chanId] = newList
+                changed = true
+            }
         }
         if (changed) updateAllMessagesFlow()
     }
@@ -435,19 +478,18 @@ class MessageStore(
     }
 
     fun loadMoreMessages(channelId: String, guildId: String?, threadId: String?) {
-        if (_isLoadingHistory.value) return
+        if (channelId in _loadingHistoryChannels.value) return
         Logging.i("MessageStore", "Loading more messages for $channelId")
         val currentChannelMessages = messageCache[channelId] ?: emptyList()
         val hasMore = _hasMoreHistory.value[channelId] ?: true
         if (!hasMore) return
-        
+            
         val before = currentChannelMessages.lastOrNull()?.id
-        _isLoadingHistory.value = true
-        historyLoadingJob = scope.launch {
+        _loadingHistoryChannels.update { it + channelId }
+        historyLoadingJobs[channelId] = scope.launch {
             try {
                 val more = messageApi.getChannelMessagesPage(threadId ?: channelId, before = before)
                 if (more == null) {
-                    // Keep history enabled so the next scroll event can retry.
                     return@launch
                 }
                 if (more.isEmpty()) {
@@ -463,7 +505,8 @@ class MessageStore(
             } catch (e: Exception) {
                 println("Error loading history: ${e.message}")
             } finally {
-                _isLoadingHistory.value = false
+                _loadingHistoryChannels.update { it - channelId }
+                historyLoadingJobs.remove(channelId)
             }
         }
     }
@@ -663,8 +706,6 @@ class MessageStore(
     }
 
     fun sendTyping(channelId: String) {
-        // Silent typing only suppresses our outbound signal. Incoming typing
-        // events are handled independently by TypingStore and remain visible.
         if (Settings.shared.silentTyping) return
         val now = getCurrentTimeMillis()
         val last = lastTypingEmissionMillis[channelId] ?: 0L
@@ -692,7 +733,6 @@ class MessageStore(
         val oldMessage = current[idx]
         val preprocessed = transformOutgoingContent(content)
         
-        // Optimistic update
         current[idx] = oldMessage.copy(content = preprocessed, oldContent = oldMessage.content)
         messageCache[channelId] = current
         updateAllMessagesFlow()
@@ -700,7 +740,6 @@ class MessageStore(
         scope.launch {
             try {
                 if (!messageApi.editMessage(channelId, id, preprocessed)) {
-                    // Rollback
                     val rollback = messageCache[channelId]?.toMutableList() ?: return@launch
                     val rIdx = rollback.indexOfFirst { it.id == id }
                     if (rIdx != -1) {
@@ -711,7 +750,6 @@ class MessageStore(
                     errorStore.pushError("Failed to edit message.")
                 }
             } catch (e: Exception) {
-                // Rollback
                 val rollback = messageCache[channelId]?.toMutableList() ?: return@launch
                 val rIdx = rollback.indexOfFirst { it.id == id }
                 if (rIdx != -1) {
@@ -727,14 +765,12 @@ class MessageStore(
         val channelId = message.channel_id
         val id = message.id
         
-        // Optimistic delete
         val cached = messageCache[channelId]
         handleMessageDelete(id)
         
         scope.launch {
             try {
                 if (!messageApi.deleteMessage(channelId, id)) {
-                    // Rollback
                     cached?.find { it.id == id }?.let { restored ->
                         val current = messageCache[channelId]?.toMutableList() ?: mutableListOf()
                         if (!current.any { it.id == id }) {
@@ -746,7 +782,6 @@ class MessageStore(
                     errorStore.pushError("Failed to delete message")
                 }
             } catch (e: Exception) {
-                // Rollback
                 cached?.find { it.id == id }?.let { restored ->
                     val current = messageCache[channelId]?.toMutableList() ?: mutableListOf()
                     if (!current.any { it.id == id }) {
@@ -763,7 +798,6 @@ class MessageStore(
         val channelId = message.channel_id
         val id = message.id
         
-        // Optimistic pin
         updateMessagePinState(channelId, id, true)
         
         scope.launch {
@@ -782,7 +816,6 @@ class MessageStore(
         val channelId = message.channel_id
         val id = message.id
         
-        // Optimistic unpin
         updateMessagePinState(channelId, id, false)
         
         scope.launch {
@@ -820,7 +853,6 @@ class MessageStore(
         
         val isAdding = existing == null || !existing.me
 
-        // Optimistic update
         if (isAdding) {
             handleReactionAdd(MessageReactionAdd(
                 user_id = currentUserId,
@@ -846,7 +878,6 @@ class MessageStore(
                 }
                 
                 if (!success) {
-                    // Rollback if failed
                     if (isAdding) {
                         handleReactionRemove(MessageReactionRemove(
                             user_id = currentUserId,
@@ -865,7 +896,6 @@ class MessageStore(
                     errorStore.pushError("Failed to update reaction")
                 }
             } catch (e: Exception) {
-                // Rollback on exception
                 if (isAdding) {
                     handleReactionRemove(MessageReactionRemove(
                         user_id = currentUserId,

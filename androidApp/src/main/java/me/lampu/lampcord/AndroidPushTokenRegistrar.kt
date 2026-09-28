@@ -9,7 +9,6 @@ import me.lampu.lampcord.shared.api.UserApi
 import me.lampu.lampcord.shared.notifications.PushTokenRegistrar
 import me.lampu.lampcord.shared.utils.Logging
 
-// Discord's device endpoint still expects the legacy FCM registration token.
 @Suppress("DEPRECATION")
 class AndroidPushTokenRegistrar(
     private val userApi: UserApi

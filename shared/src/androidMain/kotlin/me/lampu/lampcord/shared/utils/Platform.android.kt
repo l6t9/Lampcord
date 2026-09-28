@@ -132,8 +132,7 @@ actual suspend fun getLocalFiles(): List<LocalMedia> = withContext(Dispatchers.I
             MediaStore.Files.FileColumns.DATA
         )
 
-        // Discord 126.21 doesn\u0027t filter out media types in its main query, 
-        // it just queries MediaStore.Files.getContentUri("external")
+        // Discord 126.21 doesn\u0027t filter out media types in its main query, it just queries MediaStore.Files.getContentUri("external")
         context.contentResolver.query(
             MediaStore.Files.getContentUri("external"),
             projection,
@@ -322,8 +321,6 @@ actual fun base64Encode(bytes: ByteArray): String {
 actual suspend fun downloadToDownloads(url: String, filename: String): Boolean = withContext(Dispatchers.IO) {
     val ctx = AndroidContext.context
 
-    // DownloadManager's public-directory destination is unreliable under
-    // scoped storage and can report a false failure on modern Android.
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
         return@withContext downloadToMediaStoreDownloads(ctx, url, filename)
     }
@@ -351,7 +348,6 @@ actual suspend fun downloadToDownloads(url: String, filename: String): Boolean =
         return@withContext false
     }
 
-    // Guess MIME type from extension to help DownloadManager
     val extension = sanitizedTitle.substringAfterLast('.', "").lowercase()
     if (extension.isNotEmpty()) {
         val mimeType = android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
@@ -409,7 +405,6 @@ actual suspend fun downloadToDownloads(url: String, filename: String): Boolean =
             withTimeoutOrNull(600000L) {
                 deferred.await()
             } ?: run {
-                // Timeout
                 withContext(Dispatchers.Main) { try { ctx.unregisterReceiver(receiver) } catch (_: Exception) {} }
                 false
             }
@@ -464,7 +459,6 @@ private suspend fun downloadToMediaStoreDownloads(context: Context, url: String,
 }
 
 actual suspend fun ensureUniqueDownloadFilename(desiredName: String): String = withContext(Dispatchers.IO) {
-    // Match Discord's sanitization: only replace / and \ with _
     desiredName.replace(Regex("[/\\\\]"), "_")
 }
 

@@ -29,7 +29,6 @@ class TokenStore(private val json: Json) {
                 accounts.addAll(loaded)
             }
         } catch (_: Exception) {
-            // Silence error
         }
     }
 
@@ -39,7 +38,6 @@ class TokenStore(private val json: Json) {
             val jsonStr = json.encodeToString(list)
             Settings.shared.savedAccountsJson = jsonStr
         } catch (_: Exception) {
-            // Silence error
         }
     }
 

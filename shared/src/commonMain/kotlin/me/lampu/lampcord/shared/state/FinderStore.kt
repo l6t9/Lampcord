@@ -90,7 +90,6 @@ class FinderStore(
 
         val list = mutableListOf<FinderResult>()
 
-        // Search Guilds
         guilds.forEach { guild ->
             val name = guild.name?.lowercase() ?: ""
             if (name.contains(query)) {
@@ -98,7 +97,6 @@ class FinderStore(
             }
         }
 
-        // Search Channels
         allGuildChannels.values.forEach { channel ->
             val name = channel.name?.lowercase() ?: ""
             if (name.contains(query)) {
@@ -107,7 +105,6 @@ class FinderStore(
             }
         }
 
-        // Search DMs
         privateChannels.forEach { channel ->
             val name = channel.name?.lowercase() ?: ""
             val recipients = channel.recipients?.mapNotNull { it.username?.lowercase() } ?: emptyList()

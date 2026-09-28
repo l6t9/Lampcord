@@ -24,7 +24,6 @@ data class LoginResponse(
     val required_actions: List<JsonElement>? = null,
     val code: Int? = null, // Error code (60003 for MFA required)
     val message: String? = null,
-    // Legacy fields sometimes still present in some versions/endpoints
     val totp: Boolean? = null,
     val sms: Boolean? = null,
     val backup: Boolean? = null

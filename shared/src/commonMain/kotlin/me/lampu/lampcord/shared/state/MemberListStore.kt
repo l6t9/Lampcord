@@ -11,8 +11,7 @@ class MemberListStore(
     private val userStore: UserStore,
     private val presenceStore: PresenceStore
 ) {
-    // Member lists are cached per (guildId, listId) and kept alive across guild
-    // switches, matching discord-jadx's StoreChannelMembers. Only logout clears them.
+    // Member lists are cached per (guildId, listId) and kept alive across guild switches, matching discord-jadx's StoreChannelMembers. Only logout clears them.
     private val guildCaches = mutableMapOf<String, MutableMap<String, MemberListCacheEntry>>()
 
     val memberListItems = mutableStateListOf<MemberListListItem?>()
@@ -70,9 +69,7 @@ class MemberListStore(
         }
     }
 
-    // Re-send the subscription for the current channel after a reconnect. A fresh
-    // gateway session starts with no server-side subscriptions, so the previously
-    // cached list would otherwise go stale.
+    // Re-send the subscription for the current channel after a reconnect. A fresh gateway session starts with no server-side subscriptions, so the previously cached list would otherwise go stale.
     fun resubscribe() {
         val guild = selectionStore.selectedGuild ?: return
         val thread = selectionStore.selectedThread
@@ -87,10 +84,8 @@ class MemberListStore(
     }
 
     fun setExpectedId(guildId: String, id: String, initialSize: Int) {
-        // Already displaying this guild's list.
         if (currentGuildId == guildId && currentListId == id) return
         
-        // Persist the currently displayed list into its per-guild cache entry.
         val previousGuildId = currentGuildId
         val previousListId = currentListId
         if (previousGuildId != null && previousListId != null) {
@@ -129,18 +124,13 @@ class MemberListStore(
     fun handleMemberListUpdate(update: MemberListUpdate) {
         val diagnosticItems = update.ops.sumOf { (it.items?.size ?: 0) + (if (it.item != null) 1 else 0) }
 
-        // An update only touches the live list when it belongs to the guild/list
-        // currently on screen. Everything else goes to that list's cache entry so
-        // background guilds keep their own data (list ids like "everyone" repeat
-        // across every guild).
         val isCurrent = update.guild_id == currentGuildId && update.id == currentListId
 
         val entry = cacheFor(update.guild_id).getOrPut(update.id) {
             MemberListCacheEntry(mutableListOf(), mutableMapOf(), update.online_count, update.member_count)
         }
 
-        // Members and presences are collected first and pushed to their stores in one
-        // batch each, so a 100 member SYNC costs one map copy instead of one per member.
+        // Members and presences are collected first and pushed to their stores in one batch each, so a 100 member SYNC costs one map copy instead of one per member.
         val members = ArrayList<Pair<String, Member>>(diagnosticItems)
         val presences = ArrayList<PresenceUpdate>(diagnosticItems)
         fun collect(item: MemberListListItem) {
@@ -215,14 +205,12 @@ class MemberListStore(
             update.groups?.let { groups ->
                 val totalSize = groups.sumOf { (it.count ?: it.member_count ?: 0) + 1 }
 
-                // 126.21 Parity: Re-size the list to match the new group structure
                 if (targetItems.size < totalSize) {
                     repeat(totalSize - targetItems.size) { targetItems.add(null) }
                 } else if (targetItems.size > totalSize) {
                     while (targetItems.size > totalSize) targetItems.removeAt(targetItems.size - 1)
                 }
 
-                // Clear old group headers
                 for (i in targetItems.indices) if (targetItems[i]?.group != null) targetItems[i] = null
 
                 targetGroups.clear()

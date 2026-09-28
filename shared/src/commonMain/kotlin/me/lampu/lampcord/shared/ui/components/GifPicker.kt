@@ -33,6 +33,7 @@ import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.utils.getPlatformName
 import org.koin.compose.koinInject
 import kotlin.time.Duration.Companion.milliseconds
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
 @Composable
 fun GifPicker(
@@ -71,8 +72,6 @@ fun GifPicker(
             categories = emptyList()
         } else if (query.isBlank()) {
             val response = mediaApi.getTrendingGifCategories()
-            // Keep the last good category list if the CDN/API briefly returns
-            // an empty response while coming back from a category.
             response?.categories
                 ?.takeIf { it.isNotEmpty() }
                 ?.let { categories = it }
@@ -103,8 +102,7 @@ fun GifPicker(
             ) {
                 items(
                     items = gifResults,
-                    // Keep the painter attached to the GIF rather than to a
-                    // recycled grid slot or the current scroll index.
+                    // Keep the painter attached to the GIF rather than to a recycled grid slot or the current scroll index.
                     key = { gif ->
                         "${gif.url}|${gif.src}|${gif.gifSrc}|${gif.preview}"
                     }
@@ -202,9 +200,7 @@ private fun GifCategoryTile(
                 style = MaterialTheme.typography.labelLarge
             )
         }
-        // Keep the tile actionable when the animated preview is backed by a
-        // native media view that consumes pointer input.
-        Box(Modifier.matchParentSize().clickable(onClick = onClick))
+        Box(Modifier.matchParentSize().clickableCursor(onClick = onClick))
     }
 }
 
@@ -218,9 +214,6 @@ private fun GifThumbnail(
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
     val isDesktop = getPlatformName() == "windows"
-    // A decoder per visible GIF makes the desktop picker stutter, especially
-    // when a Favorites list contains many video-format entries. Keep the
-    // desktop grid lightweight until a tile is hovered.
     val animatePreview = !reduceMotion && (!isDesktop || isHovered)
     val candidates = remember(gif, reduceMotion, animatePreview) {
         if (reduceMotion || (isDesktop && !animatePreview)) {
@@ -229,9 +222,7 @@ private fun GifThumbnail(
             gifAnimatedCandidates(gif)
         }
     }
-    // Switching Reduced Motion changes the available preview URLs. Reset the
-    // fallback index too, otherwise a previous failed animated URL can leave
-    // the new, static candidate list permanently out of bounds.
+    // Switching Reduced Motion changes the available preview URLs. Reset the fallback index too, otherwise a previous failed animated URL can leave the new, static candidate list permanently out of bounds.
     var candidateIndex by remember(gif, reduceMotion) { mutableIntStateOf(0) }
     val imageUrl = candidates.getOrNull(candidateIndex)
 
@@ -274,9 +265,7 @@ private fun GifThumbnail(
                 )
             }
         }
-        // Keep selection reliable even when a native/desktop media renderer
-        // consumes pointer input itself.
-        Box(Modifier.matchParentSize().clickable { onGifSelected(gif) })
+        Box(Modifier.matchParentSize().clickableCursor { onGifSelected(gif) })
     }
 }
 
@@ -351,14 +340,9 @@ private fun staticImageCandidates(vararg urls: String?): List<String> {
             val isAnimatedMedia = isAnimatedMediaUrl(staticUrl)
             if (staticUrl != url && !isAnimatedMedia) add(staticUrl)
 
-            // Several provider CDNs expose the same asset as .webp when the
-            // requested media format is ignored by the gateway.
             val mediaSuffix = animatedMediaSuffix(staticUrl)
             if (mediaSuffix != null) {
                 val suffixEnd = mediaSuffix.first + mediaSuffix.second.length
-                // Tenor uses a size/format code in the path as well as the
-                // file extension. `...AAAAd/*` is animated, while the
-                // matching still preview is usually `...AAAAD/*.png`.
                 tenorStaticVariant(staticUrl)?.let(::add)
                 add(staticUrl.substring(0, mediaSuffix.first) + ".png" + staticUrl.substring(suffixEnd))
                 add(staticUrl.substring(0, mediaSuffix.first) + ".webp" + staticUrl.substring(suffixEnd))
@@ -371,9 +355,6 @@ private fun staticImageCandidates(vararg urls: String?): List<String> {
             }
         }
     }
-    // Klipy's first source is its known-good preview. Try it before derived
-    // CDN variants: those variants are not supported by every provider and
-    // caused reduced-motion searches to render as empty tiles.
     return (staticPrimary + variants).distinct()
 }
 
@@ -392,8 +373,6 @@ private fun animatedMediaSuffix(url: String): Pair<Int, String>? {
 }
 
 private fun gifAnimatedCandidates(gif: Gif): List<String> {
-    // Desktop requests MP4 from Discord's GIF endpoint so FFmpeg can play
-    // the preview reliably. Mobile keeps the GIF representation.
     val animatedSources = if (getPlatformName() == "windows") {
         listOfNotNull(gif.src, gif.gifSrc)
     } else {

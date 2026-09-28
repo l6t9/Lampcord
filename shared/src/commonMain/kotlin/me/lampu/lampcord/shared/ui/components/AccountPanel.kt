@@ -69,6 +69,8 @@ import me.lampu.lampcord.shared.state.VoiceStore
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.getPlatformName
 import org.koin.compose.koinInject
+import me.lampu.lampcord.shared.ui.kit.handCursor
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
 @Composable
 fun AccountPanel(
@@ -112,6 +114,7 @@ fun AccountPanel(
         modifier = Modifier
             .fillMaxWidth()
             .height(68.dp)
+            .handCursor()
             .onGloballyPositioned { panelPosition = it.positionInRoot() },
         color = MaterialTheme.colorScheme.surfaceContainer,
         tonalElevation = 4.dp
@@ -150,7 +153,7 @@ fun AccountPanel(
             Row(
                 modifier = Modifier
                     .fillMaxSize()
-                    .clickable { showStatusMenu = true }
+                    .clickableCursor { showStatusMenu = true }
                     .padding(horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -261,6 +264,7 @@ fun AccountPanel(
                         },
                         menuContent = {
                             DropdownMenuItem(
+                                modifier = Modifier.handCursor(),
                                 text = { Text(if (isMuted) "Unmute" else "Mute") },
                                 onClick = { voiceStore.toggleVoiceMute() },
                                 leadingIcon = { Icon(if (isMuted) Icons.Filled.MicOff else Icons.Rounded.Mic, null, modifier = Modifier.size(18.dp)) }
@@ -286,6 +290,7 @@ fun AccountPanel(
                         },
                         menuContent = {
                             DropdownMenuItem(
+                                modifier = Modifier.handCursor(),
                                 text = { Text(if (isDeafened) "Undeafen" else "Deafen") },
                                 onClick = { voiceStore.toggleVoiceDeaf() },
                                 leadingIcon = { Icon(if (isDeafened) Icons.Filled.HeadsetOff else Icons.Rounded.Headphones, null, modifier = Modifier.size(18.dp)) }
@@ -307,6 +312,7 @@ fun AccountPanel(
                         },
                         menuContent = {
                             DropdownMenuItem(
+                                modifier = Modifier.handCursor(),
                                 text = { Text("Settings") },
                                 onClick = { navigationStore.isSettingsVisible = true },
                                 leadingIcon = { Icon(Icons.Rounded.Settings, null) }
@@ -322,6 +328,7 @@ fun AccountPanel(
                 modifier = Modifier.width(220.dp)
             ) {
                 DropdownMenuItem(
+                    modifier = Modifier.handCursor(),
                     text = { Text("View Profile") },
                     onClick = {
                         showStatusMenu = false
@@ -331,6 +338,7 @@ fun AccountPanel(
                 )
                 
                 DropdownMenuItem(
+                    modifier = Modifier.handCursor(),
                     text = { Text("Edit Custom Status") },
                     onClick = {
                         showStatusMenu = false
@@ -340,6 +348,7 @@ fun AccountPanel(
                 )
 
                 DropdownMenuItem(
+                    modifier = Modifier.handCursor(),
                     text = { Text("Switch Account") },
                     onClick = {
                         showStatusMenu = false
@@ -349,6 +358,7 @@ fun AccountPanel(
                 )
 
                 DropdownMenuItem(
+                    modifier = Modifier.handCursor(),
                     text = { Text("Settings") },
                     onClick = {
                         showStatusMenu = false
@@ -360,6 +370,7 @@ fun AccountPanel(
                 HorizontalDivider()
                 
                 DropdownMenuItem(
+                    modifier = Modifier.handCursor(),
                     text = { Row(verticalAlignment = Alignment.CenterVertically) {
                         StatusIndicator(status = "online", size = 12.dp, borderWidth = 0.dp)
                         Spacer(Modifier.width(8.dp))
@@ -371,6 +382,7 @@ fun AccountPanel(
                     }
                 )
                 DropdownMenuItem(
+                    modifier = Modifier.handCursor(),
                     text = { Row(verticalAlignment = Alignment.CenterVertically) {
                         StatusIndicator(status = "idle", size = 12.dp, borderWidth = 0.dp)
                         Spacer(Modifier.width(8.dp))
@@ -382,6 +394,7 @@ fun AccountPanel(
                     }
                 )
                 DropdownMenuItem(
+                    modifier = Modifier.handCursor(),
                     text = { Row(verticalAlignment = Alignment.CenterVertically) {
                         StatusIndicator(status = "dnd", size = 12.dp, borderWidth = 0.dp)
                         Spacer(Modifier.width(8.dp))
@@ -393,6 +406,7 @@ fun AccountPanel(
                     }
                 )
                 DropdownMenuItem(
+                    modifier = Modifier.handCursor(),
                     text = { Row(verticalAlignment = Alignment.CenterVertically) {
                         StatusIndicator(status = "invisible", size = 12.dp, borderWidth = 0.dp)
                         Spacer(Modifier.width(8.dp))

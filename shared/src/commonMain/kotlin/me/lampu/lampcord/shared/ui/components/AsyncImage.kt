@@ -30,6 +30,17 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImagePainter.State as CoilState
+import coil3.compose.LocalPlatformContext as CoilLocalContext
+import coil3.compose.AsyncImagePainter as CoilPainter
+import coil3.compose.AsyncImage as CoilAsyncImage
+import coil3.decode.ImageSource
+import coil3.request.CachePolicy as CoilCachePolicy
+import coil3.request.ImageRequest as CoilImageRequest
+import coil3.request.crossfade as coilCrossfade
+import coil3.size.Precision as CoilPrecision
+import coil3.size.Scale as CoilScale
+import coil3.size.Size as CoilSize
 import com.github.panpf.sketch.AsyncImage as SketchAsyncImage
 import com.github.panpf.sketch.LocalPlatformContext
 import com.github.panpf.sketch.PainterState
@@ -44,6 +55,38 @@ import me.lampu.lampcord.shared.model.TWEMOJI_CDN_BASE_URL
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.utils.ResourceLoader
 import me.lampu.lampcord.shared.utils.getPlatformName
+import okio.Buffer
+import okio.FileSystem
+
+private val ANIMATED_TRUE_PARAM = Regex("""[?&]animated=true""", RegexOption.IGNORE_CASE)
+private val ANIMATED_TRUE_PARAM_VALUE = Regex("""([?&]animated=)true""", RegexOption.IGNORE_CASE)
+private val FORMAT_PARAM = Regex("""[?&]format=""", RegexOption.IGNORE_CASE)
+private val FORMAT_PARAM_VALUE = Regex("""([?&]format=)[^&]*""", RegexOption.IGNORE_CASE)
+
+sealed interface ImageLoadState {
+    data object Loading : ImageLoadState
+    data object Success : ImageLoadState
+    data class Error(val message: String? = null) : ImageLoadState
+}
+
+private const val MAX_ANIMATED_DECODE = 512
+
+/** Coil has no `data:` URI fetcher, so bundled bytes go over as an [ImageSource]. */
+private fun Any?.toCoilData(): Any? = when (this) {
+    is ByteArray -> ImageSource(Buffer().write(this), FileSystem.SYSTEM)
+    is String -> {
+        if (startsWith("$TWEMOJI_CDN_BASE_URL/")) {
+            substringAfterLast('/')
+                .let { ResourceLoader.readBytes("twemoji/72x72/$it") }
+                ?.let { ImageSource(Buffer().write(it), FileSystem.SYSTEM) }
+                ?: this
+        } else {
+            this
+        }
+    }
+
+    else -> this?.toString()
+}
 
 @OptIn(ExperimentalEncodingApi::class)
 @Composable
@@ -51,7 +94,7 @@ fun AsyncImage(
     model: Any?,
     contentDescription: String?,
     modifier: Modifier = Modifier,
-    onState: ((PainterState) -> Unit)? = null,
+    onState: ((ImageLoadState) -> Unit)? = null,
     alignment: Alignment = Alignment.Center,
     contentScale: ContentScale = ContentScale.Fit,
     alpha: Float = DefaultAlpha,
@@ -64,46 +107,75 @@ fun AsyncImage(
     allowAnimation: Boolean = true
 ) {
     val context = LocalPlatformContext.current
+    val coilContext = CoilLocalContext.current
     val isDesktop = remember { getPlatformName() != "android" && getPlatformName() != "ios" }
     val lowMemoryMode = isDesktop && Settings.shared.desktopLowMemoryMode
     val reducedMotion = Settings.shared.reduceMotion
     val staticModel = remember(model, reducedMotion, allowAnimation) {
         if (reducedMotion || !allowAnimation) model.toStaticDiscordGif() else model
     }
-    // Some animated-avatar hashes do not expose a PNG representation. Never
-    // leave an avatar blank in that case; retry its original CDN URL.
+    // Some animated-avatar hashes do not expose a PNG representation. Never leave an avatar blank in that case; retry its original CDN URL.
     var useOriginalModel by remember(model, reducedMotion) { mutableStateOf(false) }
     val effectiveModel = if (useOriginalModel) model else staticModel
 
-    val request = remember(effectiveModel, reducedMotion, lowMemoryMode, allowAnimation) {
+    var coilLoading by remember(effectiveModel) { mutableStateOf(true) }
+
+    val coilRequest = remember(coilContext, effectiveModel, lowMemoryMode, size) {
+        if (allowAnimation) {
+            null
+        } else {
+            effectiveModel.toCoilData()?.let { data ->
+                CoilImageRequest.Builder(coilContext)
+                    .data(data)
+                    // Size must be in the key, or the smallest decode of a URL wins for every larger use.
+                    .memoryCacheKey(
+                        buildString {
+                            append(effectiveModel)
+                            append('@')
+                            append(size ?: 0)
+                        }
+                    )
+                    .memoryCachePolicy(if (lowMemoryMode) CoilCachePolicy.DISABLED else CoilCachePolicy.ENABLED)
+                    .networkCachePolicy(if (lowMemoryMode) CoilCachePolicy.DISABLED else CoilCachePolicy.ENABLED)
+                    .coilCrossfade(!reducedMotion && !lowMemoryMode)
+                    .precision(CoilPrecision.INEXACT)
+                    .scale(CoilScale.FIT)
+                    .apply {
+                        if (size != null) size(CoilSize(size, size))
+                    }
+                    .build()
+            }
+        }
+    }
+
+    val request = remember(effectiveModel, reducedMotion, lowMemoryMode, allowAnimation, size) {
         effectiveModel.toRequestUri()?.let { uri ->
             ImageRequest.Builder(context, uri)
-                // Keep lazy-list cells from reusing a request for a different URL, and
-                // keep the animated and static variants of the same URL in separate
-                // cache entries. Otherwise whichever renders first (the static first
-                // frame, or the animated image) is served to the other and decoration
-                // hover/profile animation never starts.
-                .memoryCacheKey(effectiveModel?.toString() + if (allowAnimation) "#animated" else "#static")
+                // An explicit key replaces Sketch's size-derived default, so the size must be in it.
+                .memoryCacheKey(
+                    buildString {
+                        append(effectiveModel)
+                        append('@')
+                        append(size ?: 0)
+                        append(if (allowAnimation) "#animated" else "#static")
+                    }
+                )
                 .memoryCachePolicy(if (lowMemoryMode) CachePolicy.DISABLED else CachePolicy.ENABLED)
                 .resultCachePolicy(CachePolicy.DISABLED)
                 .crossfade(!reducedMotion && !lowMemoryMode)
-                // Bound decode size to the drawn size when the caller knows it —
-                // those CDN URLs are already requested at display resolution, so
-                // this avoids decoding a larger source (or aliasing via Sketch's
-                // on-screen auto-size resolver) and keeps the result crisp. Images
-                // without an explicit size keep full-resolution decoding. Animated
-                // images, however, buffer every composited frame in memory, so cap
-                // their decode size — nameplates/decorations only ever play inside
-                // small chips anyway.
-                .size(if (allowAnimation) Size(512, 512) else size?.let { Size(it, it) } ?: Size.Empty)
+                .size(
+                    when {
+                        size == null -> if (allowAnimation) Size(MAX_ANIMATED_DECODE, MAX_ANIMATED_DECODE) else Size.Empty
+                        allowAnimation -> Size(minOf(size, MAX_ANIMATED_DECODE), MAX_ANIMATED_DECODE)
+                        else -> Size(size, size)
+                    }
+                )
                 .disallowAnimatedImage(!allowAnimation)
                 .build()
         }
     }
 
     val sketchState = rememberAsyncImageState()
-    // Keep the callbacks on the shared state so AsyncImageTarget can invoke
-    // them when the painter state changes.
     sketchState.onPainterState = { painterState ->
         val retryOriginal = painterState is PainterState.Error &&
             !reducedMotion &&
@@ -111,7 +183,13 @@ fun AsyncImage(
         if (retryOriginal) {
             useOriginalModel = true
         } else {
-            onState?.invoke(painterState)
+            onState?.invoke(
+                when (painterState) {
+                    is PainterState.Success -> ImageLoadState.Success
+                    is PainterState.Error -> ImageLoadState.Error(null)
+                    else -> ImageLoadState.Loading
+                }
+            )
         }
     }
 
@@ -121,12 +199,43 @@ fun AsyncImage(
         modifier = modifier.then(if (shape != null) Modifier.clip(shape) else Modifier),
         contentAlignment = Alignment.Center
     ) {
-        if (request != null) {
-            SketchAsyncImage(
-                request = request,
+        if (allowAnimation) {
+            // Animated decorations stay on Sketch: Coil 3 cannot animate off Android.
+            if (request != null) {
+                SketchAsyncImage(
+                    request = request,
+                    contentDescription = contentDescription,
+                    modifier = Modifier.fillMaxSize(),
+                    state = sketchState,
+                    alignment = alignment,
+                    contentScale = contentScale,
+                    alpha = alpha,
+                    colorFilter = colorFilter,
+                    filterQuality = filterQuality
+                )
+            }
+        } else if (coilRequest != null) {
+            CoilAsyncImage(
+                model = coilRequest,
                 contentDescription = contentDescription,
                 modifier = Modifier.fillMaxSize(),
-                state = sketchState,
+                onState = { state ->
+                    coilLoading = state is CoilState.Loading || state is CoilState.Empty
+                    when (state) {
+                        is CoilState.Success -> onState?.invoke(ImageLoadState.Success)
+                        is CoilState.Error -> {
+                            val retryOriginal = !reducedMotion && !useOriginalModel && staticModel != model
+                            if (retryOriginal) {
+                                useOriginalModel = true
+                            } else {
+                                onState?.invoke(ImageLoadState.Error(state.result.throwable.message))
+                            }
+                        }
+
+                        else -> Unit
+                    }
+                    state
+                },
                 alignment = alignment,
                 contentScale = contentScale,
                 alpha = alpha,
@@ -135,7 +244,9 @@ fun AsyncImage(
             )
         }
 
-        if (showPlaceholder && isLoading && request != null) {
+        if (showPlaceholder && isLoading && request != null && allowAnimation) {
+            ImageLoadingPlaceholder(Modifier.fillMaxSize())
+        } else if (showPlaceholder && !allowAnimation && coilRequest != null && coilLoading) {
             ImageLoadingPlaceholder(Modifier.fillMaxSize())
         }
     }
@@ -159,20 +270,15 @@ private fun Any?.toRequestUri(): String? = when (this) {
     else -> this?.toString()
 }
 
-/** Discord's media proxy can return the first frame of GIF media as PNG. */
 private fun Any?.toStaticDiscordGif(): Any? {
     val url = this as? String ?: return this
     val isDiscordMedia = url.contains("cdn.discordapp.com", ignoreCase = true) ||
         url.contains("media.discordapp.net", ignoreCase = true)
     if (!isDiscordMedia) return this
 
-    // Custom animated emojis use a WebP URL with animated=true rather than
-    // a .gif extension. Ask Discord for the static frame when motion is off.
-    if (url.contains(Regex("""[?&]animated=true""", RegexOption.IGNORE_CASE))) {
-        return url.replace(
-            Regex("""([?&]animated=)true""", RegexOption.IGNORE_CASE),
-            "${'$'}1false"
-        )
+    // Custom animated emojis use a WebP URL with animated=true rather than a .gif extension. Ask Discord for the static frame when motion is off.
+    if (url.contains(ANIMATED_TRUE_PARAM)) {
+        return url.replace(ANIMATED_TRUE_PARAM_VALUE, "${'$'}1false")
     }
 
     val gifSuffix = url.indexOf(".gif", ignoreCase = true)
@@ -181,15 +287,13 @@ private fun Any?.toStaticDiscordGif(): Any? {
     val suffixIndex = if (gifSuffix >= 0) gifSuffix else webpSuffix
     if (suffixIndex < 0) return this
 
-    // Asking the CDN for the PNG path is more reliable than format=png on
-    // Android, especially for animated avatars and custom status emojis.
     val suffixEnd = suffixIndex + (if (gifSuffix >= 0) 4 else 5)
     if (suffixEnd == url.length || url[suffixEnd] == '?') {
         return url.substring(0, suffixIndex) + ".png" + url.substring(suffixEnd)
     }
 
-    return if (url.contains(Regex("""[?&]format=""", RegexOption.IGNORE_CASE))) {
-        url.replace(Regex("""([?&]format=)[^&]*""", RegexOption.IGNORE_CASE), "${'$'}1png")
+    return if (url.contains(FORMAT_PARAM)) {
+        url.replace(FORMAT_PARAM_VALUE, "${'$'}1png")
     } else {
         "$url${if (url.contains("?")) "&" else "?"}format=png"
     }
@@ -226,8 +330,7 @@ fun ImageLoadingPlaceholder(
         colorScheme.surfaceVariant
     }
 
-    // A static placeholder avoids starting one animation clock per image while
-    // a Windows message list is loading.
+    // A static placeholder avoids starting one animation clock per image while a Windows message list is loading.
     if (Settings.shared.reduceMotion || remember { getPlatformName() == "windows" }) {
         Box(modifier = modifier.background(base))
         return

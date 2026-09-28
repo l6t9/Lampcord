@@ -54,7 +54,6 @@ class UserEventHandler(
     private fun handleUserNoteUpdate(data: JsonElement) {
         try {
             val update = json.decodeFromJsonElement<UserNoteUpdate>(data)
-            // handle note update if we ever store notes
         } catch (e: Exception) { }
     }
 

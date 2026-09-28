@@ -59,6 +59,7 @@ import me.lampu.lampcord.shared.utils.getClipboardFiles
 import me.lampu.lampcord.shared.utils.getPlatformName
 import org.koin.compose.koinInject
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
 class DiscordInputVisualTransformation(val primaryColor: Color) : VisualTransformation {
     override fun filter(text: AnnotatedString): TransformedText {
@@ -69,7 +70,6 @@ class DiscordInputVisualTransformation(val primaryColor: Color) : VisualTransfor
         while (i < rawText.length) {
             val char = rawText[i]
             if (char == '@' || char == '#' || char == '/' || char == ':') {
-                 // Check if it's the start of a word or start of line
                  if (i == 0 || rawText[i-1] == ' ' || rawText[i-1] == '\n') {
                      var end = i + 1
                      while (end < rawText.length && rawText[end] != ' ' && rawText[end] != '\n') {
@@ -112,8 +112,6 @@ fun ChatInputBar(
     
     val haptic = LocalHapticFeedback.current
 
-    // Tracks autocompleted mentions/channels/roles as ranges in the raw input
-    // text that map to the server values to send (e.g. "#general" -> "<#id>").
     var mentionRanges by remember(channel.id) { mutableStateOf<Map<IntRange, String>>(emptyMap()) }
     
     var isFocused by remember { mutableStateOf(false) }
@@ -128,21 +126,19 @@ fun ChatInputBar(
         userStore.getMember(guild.id, user.id)
     }
 
-    val canSend by remember(channel, currentUser, member, navigationStore.selectedGuild) {
-        derivedStateOf {
-            val guild = navigationStore.selectedGuild
-            val user = currentUser
-            if (channel.thread_metadata?.locked == true && (user == null || member == null)) false
-            else if (user == null) true
-            else if (guild == null) true // DMs
-            else if (member == null) channel.thread_metadata?.locked != true // Keep normal channels usable while the member loads, but never expose a locked thread input.
-            else me.lampu.lampcord.shared.utils.PermissionHelper.canSendMessages(
-                member,
-                guild,
-                channel,
-                user.id
-            )
-        }
+    val canSend = remember(channel, currentUser, member, navigationStore.selectedGuild) {
+        val guild = navigationStore.selectedGuild
+        val user = currentUser
+        if (channel.thread_metadata?.locked == true && (user == null || member == null)) false
+        else if (user == null) true
+        else if (guild == null) true // DMs
+        else if (member == null) channel.thread_metadata?.locked != true // Keep normal channels usable while the member loads, but never expose a locked thread input.
+        else me.lampu.lampcord.shared.utils.PermissionHelper.canSendMessages(
+            member,
+            guild,
+            channel,
+            user.id
+        )
     }
 
     LaunchedEffect(canSend) {
@@ -158,13 +154,11 @@ fun ChatInputBar(
             val textBefore = text.take(cursor)
             val lastWordStart = textBefore.lastIndexOfAny(charArrayOf(' ', '\n')) + 1
 
-            // If the item is an emoji token (starts with ':'), prefer the last ':' as the start
             val colonStart = if (item.inputText?.startsWith(":") == true) {
                 val idx = textBefore.lastIndexOf(':')
                 if (idx >= 0) idx else lastWordStart
             } else lastWordStart
 
-            // If it's a command, it's usually at the start
             val actualStart = if (item.isCommand) 0 else colonStart
 
             val inputText = item.inputText ?: item.replacement
@@ -172,8 +166,6 @@ fun ChatInputBar(
             val newCursor = actualStart + inputText.length
             textFieldValue = TextFieldValue(newText, TextRange(newCursor))
 
-            // Shift existing mention ranges across the replaced span, then record
-            // the new range when the friendly text differs from the server value.
             val removedLen = cursor - actualStart
             val delta = inputText.length - removedLen
             var shifted = shiftMentionRanges(mentionRanges, actualStart, cursor, delta)
@@ -207,7 +199,6 @@ fun ChatInputBar(
         mentionRanges = emptyMap()
     }
 
-    // Update draft whenever text changes
     LaunchedEffect(textFieldValue.text) {
         if (textFieldValue.text.isEmpty()) {
             messageStore.draftMessages.remove(channel.id)
@@ -216,13 +207,11 @@ fun ChatInputBar(
         }
     }
 
-    // Sync messageText only when channel changes
     LaunchedEffect(channel.id) {
         val draft = messageStore.draftMessages[channel.id] ?: ""
         textFieldValue = TextFieldValue(draft, TextRange(draft.length))
     }
 
-    // Sync messageText when editing starts
     LaunchedEffect(messageStore.editingMessage) {
         messageStore.editingMessage?.let {
             textFieldValue = TextFieldValue(it.content, TextRange(it.content.length))
@@ -251,8 +240,6 @@ fun ChatInputBar(
     fun insertEmoji(emoji: me.lampu.lampcord.shared.model.Emoji) {
         if (!canSend) return
         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-        // Compute the canonical server-side emoji token while keeping the
-        // friendly token in the editor for autocomplete and mention ranges.
         val hasNitro = (currentUser?.premium_type ?: 0) > 0
         val serverReplacement = if (emoji.id != null) {
             val forceF = settings.freeNitroEmojis && settings.realmojis && !hasNitro
@@ -292,7 +279,6 @@ fun ChatInputBar(
         
         Column(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.fillMaxWidth()) {
-                // Autocomplete Picker
                 AnimatedVisibility(
                     visible = autocompleteStore.autocompleteType != null,
                     enter = if (reduceMotion) EnterTransition.None else slideInVertically(initialOffsetY = { it }) + fadeIn(),
@@ -338,15 +324,13 @@ fun ChatInputBar(
                             val activeMsg = messageStore.editingMessage ?: messageStore.replyingTo
                             val guildId = activeMsg?.guild_id ?: navigationStore.selectedGuild?.id
                             
-                            val roleColor by remember(activeMsg, guildId) {
-                                derivedStateOf {
-                                    val guild = guildStore.guilds.value.find { it.id == guildId } ?: return@derivedStateOf Color.Unspecified
-                                    val authorId = activeMsg?.author?.id ?: return@derivedStateOf Color.Unspecified
-                                    val member = userStore.getMember(guild.id, authorId) ?: return@derivedStateOf Color.Unspecified
-                                    val memberRoles = member.roles.mapNotNull { roleId -> guild.roles.find { it.id == roleId } }
-                                    val colorRole = memberRoles.filter { it.color != 0 }.maxByOrNull { it.position }
-                                    if (colorRole != null) Color(colorRole.color or 0xFF000000.toInt()) else Color.Unspecified
-                                }
+                            val roleColor = remember(activeMsg, guildId) {
+                                val guild = guildStore.guilds.value.find { it.id == guildId } ?: return@remember Color.Unspecified
+                                val authorId = activeMsg?.author?.id ?: return@remember Color.Unspecified
+                                val member = userStore.getMember(guild.id, authorId) ?: return@remember Color.Unspecified
+                                val memberRoles = member.roles.mapNotNull { roleId -> guild.roles.find { it.id == roleId } }
+                                val colorRole = memberRoles.filter { it.color != 0 }.maxByOrNull { it.position }
+                                if (colorRole != null) Color(colorRole.color or 0xFF000000.toInt()) else Color.Unspecified
                             }
 
                             Row(
@@ -563,7 +547,7 @@ fun ChatInputBar(
                                         size = buttonSize,
                                         status = null,
                                         modifier = Modifier
-                                            .clickable {
+                                            .clickableCursor {
                                                 profileStore.showProfile(currentUser!!.id, navigationStore.selectedGuild?.id)
                                             }
                                     )
@@ -610,7 +594,6 @@ fun ChatInputBar(
                                                 textFieldValue = it
                                                 mentionRanges = shiftMentionRanges(mentionRanges, oldText, it.text)
                                                 
-                                                // Simplified autocomplete trigger check
                                                 if (it.selection.collapsed) {
                                                     val cursor = it.selection.start
                                                     val textBefore = it.text.take(cursor)
@@ -812,7 +795,6 @@ fun ChatInputBar(
                                 }
                             }
                             
-                            // Right Buttons (Send Button)
                             val showSend = textFieldValue.text.isNotBlank() || messageStore.pendingFiles.isNotEmpty() || commandStore.activeCommand != null
                             
                             AnimatedVisibility(
@@ -871,7 +853,6 @@ fun ChatInputBar(
                             }
                         }
 
-                        // Mobile Emoji Picker - Moved below input row
                         AnimatedVisibility(
                             visible = navigationStore.isEmojiPickerVisible && canSend && !isDesktopTarget,
                             enter = if (reduceMotion) EnterTransition.None else expandVertically() + fadeIn(),
@@ -894,11 +875,6 @@ fun ChatInputBar(
     }
 }
 
-/**
- * Shifts [ranges] across an edit that replaced the span [editStart, editOldEnd)
- * with new text whose length differs by [delta]. Ranges entirely after the edit
- * are shifted; ranges overlapping it are dropped.
- */
 private fun shiftMentionRanges(
     ranges: Map<IntRange, String>,
     editStart: Int,
@@ -914,10 +890,6 @@ private fun shiftMentionRanges(
     }.toMap()
 }
 
-/**
- * Rebuilds the mention ranges after any text-field edit by comparing the old and
- * new texts (common prefix/suffix gives the edited span).
- */
 private fun shiftMentionRanges(ranges: Map<IntRange, String>, oldText: String, newText: String): Map<IntRange, String> {
     val editStart = oldText.commonPrefixWith(newText).length
     val commonSuffixLen = oldText.commonSuffixWith(newText).length
@@ -926,12 +898,6 @@ private fun shiftMentionRanges(ranges: Map<IntRange, String>, oldText: String, n
     return shiftMentionRanges(ranges, editStart, editOldEnd, delta)
 }
 
-/**
- * Discord resolves autocompleted mentions only at send time: the input keeps the
- * friendly text ("#general", "@username") and the outgoing content carries the
- * server values ("<#id>", "<@id>"). Typed (or draft-restored) tokens that match a
- * known channel/member/role are resolved the same way, like Discord does.
- */
 private fun resolveServerContent(
     content: String,
     ranges: Map<IntRange, String>,
@@ -950,7 +916,6 @@ private fun resolveServerContent(
         }
     }
 
-    // Don't match emoji tokens that are already inside angle-bracket server tokens
     val pattern = Regex("""(?<![<\p{L}\p{N}_])(?:([#@])([^\s]+)|(:)([a-zA-Z0-9_-]+)(:))""")
     val subs = pattern.findAll(result).mapNotNull { m ->
         val trigger = m.groupValues[1].ifEmpty { m.groupValues[3] }

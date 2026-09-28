@@ -18,7 +18,6 @@ import me.lampu.lampcord.shared.utils.SnackbarManager
 fun GlobalSnackbarHost(modifier: Modifier = Modifier) {
     val hostState = remember { SnackbarHostState() }
 
-    // Collector: show snackbars emitted by SnackbarManager
     LaunchedEffect(Unit) {
         SnackbarManager.flow.collect { req ->
             val result = hostState.showSnackbar(req.message, req.actionLabel)
@@ -29,7 +28,6 @@ fun GlobalSnackbarHost(modifier: Modifier = Modifier) {
     }
 
     SnackbarHost(hostState = hostState, modifier = modifier) { data ->
-        // Use the Material3 Expressive snackbar styling (opt-in)
         Snackbar(snackbarData = data)
     }
 }

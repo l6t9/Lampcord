@@ -42,7 +42,6 @@ import org.koin.compose.koinInject
 fun ServerOverview(guild: Guild, guildStore: GuildStore = koinInject()) {
     val scope = rememberCoroutineScope()
     
-    // Draft state for unsaved changes
     var draftName by remember(guild.id, guild.name) { mutableStateOf(guild.name ?: "") }
     var draftAfkChannelId by remember(guild.id, guild.afk_channel_id) { mutableStateOf(guild.afk_channel_id) }
     var draftAfkTimeout by remember(guild.id, guild.afk_timeout) { mutableStateOf(guild.afk_timeout ?: 300) }

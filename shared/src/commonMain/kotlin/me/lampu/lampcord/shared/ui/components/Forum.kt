@@ -70,7 +70,6 @@ fun ForumPostList(
         containerColor = Color.Transparent,
         topBar = {
             Column(modifier = Modifier.background(MaterialTheme.colorScheme.surface)) {
-                // Toolbar: Sort & View, Tags
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
                     horizontalArrangement = Arrangement.SpaceBetween
@@ -106,7 +105,6 @@ fun ForumPostList(
                     }
                 }
 
-                // Horizontal Tag List
                 if (!forumChannel.available_tags.isNullOrEmpty()) {
                     LazyRow(
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
@@ -382,7 +380,6 @@ fun ForumPostItem(
             )
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                // Pin icon if pinned
                 if (thread.flags?.let { it and (1 shl 1) != 0 } == true) {
                     Icon(
                         Icons.Filled.PushPin,
@@ -393,7 +390,6 @@ fun ForumPostItem(
                     Spacer(Modifier.height(8.dp))
                 }
 
-                // Author and Date
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     val avatarUrl =
                         author?.avatar?.let { "https://cdn.discordapp.com/avatars/${author.id}/$it.png?size=64" }
@@ -420,7 +416,6 @@ fun ForumPostItem(
 
                 Spacer(Modifier.height(8.dp))
 
-                // Title
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (isLocked) {
                         Icon(
@@ -443,7 +438,6 @@ fun ForumPostItem(
 
                 Spacer(Modifier.height(4.dp))
 
-                // Content Snippet
                 val snippet = thread.message?.content ?: "..."
                 Text(
                     text = snippet,
@@ -453,7 +447,6 @@ fun ForumPostItem(
                     overflow = TextOverflow.Ellipsis
                 )
 
-                // Tags
                 if (!thread.applied_tags.isNullOrEmpty() && !forumChannel.available_tags.isNullOrEmpty()) {
                     Spacer(Modifier.height(12.dp))
                     androidx.compose.foundation.layout.FlowRow(
@@ -485,7 +478,6 @@ fun ForumPostItem(
 
                 Spacer(Modifier.height(16.dp))
 
-                // Bottom stats
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,

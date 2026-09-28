@@ -21,7 +21,6 @@ import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,6 +48,7 @@ import me.lampu.lampcord.shared.ui.components.UserTagView
 import me.lampu.lampcord.shared.utils.DateTimeUtils
 import me.lampu.lampcord.shared.api.CdnUrls
 import org.koin.compose.koinInject
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -217,7 +217,7 @@ fun ReplyBar(
                     }
                 }
             }
-            .clickable(
+            .clickableCursor(
                 interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                 indication = null // Removed the highlight indication
             ) {
@@ -282,15 +282,13 @@ fun ReplyBar(
 
         Spacer(modifier = Modifier.width(4.dp))
 
-        val roleColor by remember(referencedMessage, navigationStore.selectedGuild) {
-            derivedStateOf {
-                val guild = navigationStore.selectedGuild ?: return@derivedStateOf Color.White
-                val authorId = referencedMessage.author?.id ?: return@derivedStateOf Color.White
-                val member = referencedMessage.member ?: userStore.getMember(guild.id, authorId) ?: return@derivedStateOf Color.White
-                val memberRoles = member.roles.mapNotNull { roleId -> guild.roles.find { it.id == roleId } }
-                val colorRole = memberRoles.filter { it.color != 0 }.maxByOrNull { it.position }
-                if (colorRole != null) Color(colorRole.color or 0xFF000000.toInt()) else Color.White
-            }
+        val roleColor = remember(referencedMessage, navigationStore.selectedGuild) {
+            val guild = navigationStore.selectedGuild ?: return@remember Color.White
+            val authorId = referencedMessage.author?.id ?: return@remember Color.White
+            val member = referencedMessage.member ?: userStore.getMember(guild.id, authorId) ?: return@remember Color.White
+            val memberRoles = member.roles.mapNotNull { roleId -> guild.roles.find { it.id == roleId } }
+            val colorRole = memberRoles.filter { it.color != 0 }.maxByOrNull { it.position }
+            if (colorRole != null) Color(colorRole.color or 0xFF000000.toInt()) else Color.White
         }
 
         Text(

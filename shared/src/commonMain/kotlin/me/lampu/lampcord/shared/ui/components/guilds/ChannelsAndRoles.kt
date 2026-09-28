@@ -103,7 +103,6 @@ fun OnboardingOptionItem(
     navigationStore: NavigationStore,
     userStore: UserStore = koinInject()
 ) {
-    // Check if any role in the option is already possessed by the user
     val guild = navigationStore.selectedGuild
     val currentUser by userStore.currentUser.collectAsState()
     val currentMember = remember(guild?.id, currentUser) {
@@ -116,7 +115,6 @@ fun OnboardingOptionItem(
     Surface(
         onClick = { 
             isSelected = !isSelected
-            // In a real app, this would trigger a role update
         },
         shape = RoundedCornerShape(12.dp),
         color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow,
@@ -184,7 +182,6 @@ fun BrowseChannelsTab(navigationStore: NavigationStore, guildStore: GuildStore) 
 
         items(categories) { category ->
             val categoryChannels = allChannels.filter { it.parent_id == category.id }.sortedWith(compareBy<me.lampu.lampcord.shared.model.Channel> { 
-                // Put voice and stage channels at the bottom (priority 1), others at the top (priority 0)
                 if (it.type == 2 || it.type == 13) 1 else 0 
             }.thenBy { it.position ?: 0 })
             if (categoryChannels.isNotEmpty()) {
@@ -210,7 +207,6 @@ fun BrowseChannelsTab(navigationStore: NavigationStore, guildStore: GuildStore) 
 @Composable
 fun BrowseChannelItem(channel: me.lampu.lampcord.shared.model.Channel) {
     val scope = rememberCoroutineScope()
-    // In a real implementation, this would check if the channel is currently visible in the sidebar
     var isSelected by remember { mutableStateOf(true) }
 
     Surface(

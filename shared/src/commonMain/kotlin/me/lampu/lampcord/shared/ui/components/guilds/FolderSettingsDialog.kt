@@ -37,6 +37,7 @@ import me.lampu.lampcord.shared.model.UserSettings
 import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.ui.icons.Icons
 import org.koin.compose.koinInject
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
 private val folderColors = listOf(
     0xFF5865F2.toInt(), 0xFFEB459E.toInt(), 0xFFF9A825.toInt(), 0xFF3EBA8D.toInt(), 0xFFE91E63.toInt(),
@@ -100,7 +101,7 @@ fun FolderSettingsDialog(
                             .size(28.dp)
                             .clip(CircleShape)
                             .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                            .clickable { selectedColor = null }
+                            .clickableCursor { selectedColor = null }
                     ) {
                         if (selectedColor == null) {
                             Icon(
@@ -117,7 +118,7 @@ fun FolderSettingsDialog(
                                 .size(28.dp)
                                 .clip(CircleShape)
                                 .background(Color(color))
-                                .clickable { selectedColor = color }
+                                .clickableCursor { selectedColor = color }
                         ) {
                             if (selectedColor == color) {
                                 Icon(

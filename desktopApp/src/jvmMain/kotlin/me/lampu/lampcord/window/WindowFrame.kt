@@ -65,11 +65,9 @@ fun FrameWindowScope.WindowFrame(
         }
 
         getPlatformName() == "macos" -> {
-            // Mac goes here.
             content(WindowInsets(0), WindowInsets(0), { }, { toggleFullscreen() })
         }
 
-        // Linux
         else -> {
             Box {
                 fun onMaximized() {

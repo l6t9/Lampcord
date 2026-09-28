@@ -66,8 +66,6 @@ actual fun rememberPlatformColorScheme(
                 val window = activity.window
                 val isAppearanceLight = !isDark
                 
-                // On Android, we set the status bar color based on the current panel state
-                // to ensure it matches the header color of the panel currently on top.
                 val statusBarColor = when {
                     isOverlapping && navigationStore.isProfilePanelVisible -> scheme.surface // Match MemberHeader (Surface)
                     navigationStore.isSettingsVisible -> scheme.surfaceContainer // Match Settings collapsing header & cards (surfaceContainer)

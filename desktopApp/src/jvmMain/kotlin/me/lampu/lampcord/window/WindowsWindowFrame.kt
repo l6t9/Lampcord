@@ -44,6 +44,7 @@ import me.lampu.lampcord.window.jna.structure.WinUserConst.HTMAXBUTTON
 import me.lampu.lampcord.window.jna.structure.WinUserConst.HTMINBUTTON
 import java.awt.Window
 import kotlin.time.Duration.Companion.milliseconds
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
 val MinimizeIcon: ImageVector =
     ImageVector
@@ -341,7 +342,6 @@ fun FrameWindowScope.WindowsWindowFrame(
     LaunchedEffect(window) {
         window.findSkiaLayer()?.transparency = true
     }
-    // Won't need mica, since Material
 
     /*WindowStyle(
         isDarkTheme = FluentTheme.colors.darkMode,
@@ -583,7 +583,6 @@ fun Window.CaptionButtonRow(
     onCloseButtonRectUpdate: (Rect) -> Unit = {},
     isFullscreen: Boolean
 ) {
-    // Draw the caption button
     Row(
         modifier =
             modifier
@@ -668,7 +667,7 @@ fun CaptionButton(
         modifier =
             modifier
                 .size(46.dp, 32.dp)
-                .clickable(
+                .clickableCursor(
                     onClick = onClick,
                     interactionSource = interaction,
                     indication = null,

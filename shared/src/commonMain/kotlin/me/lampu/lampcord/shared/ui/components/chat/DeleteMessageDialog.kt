@@ -22,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.ui.kit.handCursor
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -79,6 +80,7 @@ fun DeleteMessageDialog(
                     },
                     menuContent = { menuState ->
                         DropdownMenuItem(
+                            modifier = Modifier.handCursor(),
                             text = { Text("Cancel") },
                             onClick = { 
                                 onDismiss()
@@ -106,6 +108,7 @@ fun DeleteMessageDialog(
                     },
                     menuContent = { menuState ->
                         DropdownMenuItem(
+                            modifier = Modifier.handCursor(),
                             text = { Text("Delete") },
                             onClick = { 
                                 onConfirm()

@@ -234,7 +234,6 @@ actual class VoiceGatewayManager actual constructor(private val client: HttpClie
                     throw e
                 } catch (e: Exception) {
                     if (!mediaStarted || e is VoiceFailure || ++attempts > 2) throw e
-                    // Preserve UDP counters and MLS state on a buffered WebSocket resume.
                     update(VoicePhase.CONNECTING)
                     delay(attempts * 1000L)
                 } finally {
@@ -242,7 +241,6 @@ actual class VoiceGatewayManager actual constructor(private val client: HttpClie
                 }
             }
             } finally {
-                // Unblock native microphone/playback/socket reads before coroutineScope joins children.
                 stopIO()
             }
         }
@@ -367,7 +365,6 @@ actual class VoiceGatewayManager actual constructor(private val client: HttpClie
                     packet?.let { socket?.send(DatagramPacket(it, it.size)) }
                     if (pcm.any { kotlin.math.abs(it.toInt()) > 600 }) speaking[userId] = System.nanoTime()
                 } else if (transmitting && gatewayReady) {
-                    // Discord explicitly permits its fixed Opus silence marker outside DAVE.
                     if (silence-- > 0) {
                         val packet = synchronized(lock) { packets?.encrypt(OPUS_SILENCE) }
                         packet?.let { socket?.send(DatagramPacket(it, it.size)) }

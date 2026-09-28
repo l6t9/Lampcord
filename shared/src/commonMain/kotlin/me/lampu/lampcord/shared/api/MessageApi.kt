@@ -46,9 +46,6 @@ data class AttachmentRequest(
     val description: String? = null
 )
 
-/**
- * Message lifecycle, reactions and message search endpoints.
- */
 class MessageApi(private val rest: RestClient) {
 
     suspend fun sendMessage(
@@ -199,10 +196,6 @@ class MessageApi(private val rest: RestClient) {
         return getChannelMessagesPage(channelId, limit, before) ?: emptyList()
     }
 
-    /**
-     * Returns null when the request failed, allowing history pagination to
-     * distinguish a retryable failure from a successful end-of-history page.
-     */
     suspend fun getChannelMessagesPage(channelId: String, limit: Int = 50, before: String? = null): List<Message>? {
         return try {
             val response = rest.httpClient.get("${rest.apiBase}/channels/$channelId/messages") {

@@ -51,7 +51,6 @@ fun HsvColorPicker(
                 .height(240.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Saturation/Value Square
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -81,7 +80,6 @@ fun HsvColorPicker(
                         )
                     )
 
-                    // Selector indicator
                     val selectorX = saturation * size.width
                     val selectorY = (1f - value) * size.height
                     drawCircle(
@@ -99,7 +97,6 @@ fun HsvColorPicker(
                 }
             }
 
-            // Hue Slider
             Box(
                 modifier = Modifier
                     .width(24.dp)
@@ -125,7 +122,6 @@ fun HsvColorPicker(
                         )
                     )
 
-                    // Hue indicator
                     val selectorY = (1f - (hue / 360f)) * size.height
                     drawRect(
                         color = Color.White,
@@ -142,13 +138,11 @@ fun HsvColorPicker(
             }
         }
 
-        // Bottom section
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Preview Circle
             Box(
                 modifier = Modifier
                     .size(48.dp)
@@ -157,13 +151,11 @@ fun HsvColorPicker(
                     .border(2.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), CircleShape)
             )
 
-            // Hex Input
             var textValue by remember(currentColor) {
                 mutableStateOf("#" + (currentColor.value shr 32).toString(16).substring(2).uppercase())
             }
             
-            // Wait, Color.value in Compose is ULong.
-            // Let's just manually format.
+            // Wait, Color.value in Compose is ULong. Let's just manually format.
             val hexString = remember(currentColor) {
                 val r = (currentColor.red * 255).toInt().toString(16).padStart(2, '0')
                 val g = (currentColor.green * 255).toInt().toString(16).padStart(2, '0')
@@ -209,7 +201,6 @@ fun HsvColorPicker(
             }
         }
 
-        // Actions
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,

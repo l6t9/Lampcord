@@ -1,0 +1,61 @@
+# Baseline profile for Lampcord.
+#
+# A Compose client without an ART profile pays full class-loading and
+# interpretation cost on every cold start, and the profile also gives R8 the
+# real startup graph to optimise against.
+#
+# This hand-written profile covers the start-to-first-frame path: Application
+# init, Koin graph construction, the gateway/HTTP stack, and the first
+# composition. Regenerate with a Macrobenchmark run to get a full profile:
+#
+#   ./gradlew :androidApp:generateBaselineProfile
+#
+# Rules use the human-readable HRF format.
+
+HSPLme/lampu/lampcord/LampcordApp;->onCreate()V
+HSPLme/lampu/lampcord/MainActivity;->onCreate(Landroid/os/Bundle;)V
+Lme/lampu/lampcord/MainActivity;
+
+# Koin dependency graph: modules and every store constructed at startup.
+Lme/lampu/lampcord/shared/di/KoinKt;
+Lme/lampu/lampcord/shared/di/**;
+Lme/lampu/lampcord/shared/state/SessionManager;
+Lme/lampu/lampcord/shared/state/SettingsStore;
+Lme/lampu/lampcord/shared/state/ThemeStore;
+Lme/lampu/lampcord/shared/state/GuildStore;
+Lme/lampu/lampcord/shared/state/UserStore;
+Lme/lampu/lampcord/shared/state/EntityStore;
+
+# Networking and gateway.
+Lme/lampu/lampcord/shared/api/RestClientKt;
+Lme/lampu/lampcord/shared/api/RestClient;
+Lme/lampu/lampcord/shared/gateway/GatewayManager;
+Lme/lampu/lampcord/shared/api/AuthApi;
+Lme/lampu/lampcord/shared/api/UserApi;
+Lme/lampu/lampcord/shared/api/ChannelApi;
+Lme/lampu/lampcord/shared/api/MessageApi;
+Lio/ktor/**;
+
+# Serialization of the bootstrap payloads.
+Lkotlinx/serialization/**;
+Lme/lampu/lampcord/shared/model/**;
+
+# Database.
+Lme/lampu/lampcord/shared/database/**;
+Landroidx/room/**;
+Landroidx/sqlite/**;
+
+# Compose runtime, UI and the first screen.
+Landroidx/compose/runtime/**;
+Landroidx/compose/ui/**;
+Landroidx/compose/foundation/**;
+Lme/lampu/lampcord/shared/ui/AppKt;
+Lme/lampu/lampcord/shared/ui/LoginScreenKt;
+
+# Image pipeline.
+Lcom/github/panpf/sketch/**;
+Lme/lampu/lampcord/shared/image/**;
+
+# Multiplatform settings, read on nearly every launch.
+Lcom/russhwolf/settings/**;
+Lme/lampu/lampcord/shared/settings/**;

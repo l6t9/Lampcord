@@ -31,10 +31,7 @@ class AudioPlayer(
         headers: Map<String, String> = emptyMap(),
     ): Boolean = prepareFile(path, headers, startPaused = false).also { prepared -> if (prepared) play() }
 
-    /**
-     * Initializes the decoder and renderer without starting worker threads when paused.
-     * This is used for restoring a paused session without producing any audio first.
-     */
+    // Initializes the decoder and renderer without starting worker threads when paused. This is used for restoring a paused session without producing any audio first.
     fun prepareFile(
         path: String,
         headers: Map<String, String> = emptyMap(),
@@ -70,7 +67,6 @@ class AudioPlayer(
         isPaused = false
         frameQueue.clear()
 
-        // 1. Decoder Thread (Producer): decodes audio into buffer
         decodeThread =
             Thread {
                 try {
@@ -96,7 +92,6 @@ class AudioPlayer(
                         }
                     }
                 } catch (_: InterruptedException) {
-                    // Thread interrupted on stop/close
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }
@@ -106,7 +101,6 @@ class AudioPlayer(
                 start()
             }
 
-        // 2. Renderer Thread (Consumer): pulls from buffer and plays audio
         renderThread =
             Thread {
                 var reachedEnd = false
@@ -140,7 +134,6 @@ class AudioPlayer(
                         }
                     }
                 } catch (_: InterruptedException) {
-                    // Thread interrupted on stop/close
                 } catch (e: Exception) {
                     e.printStackTrace()
                 } finally {

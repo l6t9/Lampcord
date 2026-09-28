@@ -27,7 +27,6 @@ class SearchStore(
     val searchHistory = mutableStateListOf<String>()
 
     init {
-        // Load history from settings
         try {
             val historyJson = Settings.shared.searchHistoryJson
             if (historyJson.isNotEmpty()) {
@@ -41,7 +40,6 @@ class SearchStore(
         val query = searchQuery
         if (query.isBlank()) return
         
-        // Save to history
         if (!searchHistory.contains(query)) {
             searchHistory.add(0, query)
             if (searchHistory.size > 20) searchHistory.removeAt(searchHistory.lastIndex)
@@ -52,7 +50,6 @@ class SearchStore(
         searchResults.clear()
         
         scope.launch {
-            // Parse filters
             val filters = mutableMapOf<String, String>()
             val contentWords = mutableListOf<String>()
             
@@ -65,7 +62,6 @@ class SearchStore(
                     if (value.isNotEmpty()) {
                         val finalValue = when(key) {
                             "from", "mentions" -> {
-                                // Try to resolve username to ID if it's not already an ID
                                 if (value.toLongOrNull() == null) {
                                     val username = if (value.startsWith("@")) value.substring(1) else value
                                     

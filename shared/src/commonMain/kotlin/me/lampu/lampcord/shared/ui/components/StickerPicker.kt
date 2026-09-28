@@ -34,6 +34,7 @@ import me.lampu.lampcord.shared.utils.setClipboardText
 import me.lampu.lampcord.shared.utils.showToast
 import me.lampu.lampcord.shared.model.EmbedImage
 import org.koin.compose.koinInject
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
 @Composable
 fun StickerPicker(
@@ -58,7 +59,6 @@ fun StickerPicker(
     val stickerGroups = remember(guilds, officialPacks, selectedGuild, emojiStore.frequentStickers) {
         val groups = mutableListOf<StickerPack>()
 
-        // 1. Frequently Used
         if (emojiStore.frequentStickers.isNotEmpty()) {
             val allStickers = guilds.flatMap { it.stickers } + officialPacks.flatMap { it.stickers }
             val frequent = emojiStore.frequentStickers.mapNotNull { id ->
@@ -74,7 +74,6 @@ fun StickerPicker(
             }
         }
 
-        // 2. Current Server
         selectedGuild?.let { guild ->
             if (guild.stickers.isNotEmpty()) {
                 groups.add(StickerPack(
@@ -86,7 +85,6 @@ fun StickerPicker(
             }
         }
 
-        // 3. Other Guilds
         guilds.filter { it.id != selectedGuild?.id && it.stickers.isNotEmpty() }.forEach { guild ->
             groups.add(StickerPack(
                 id = guild.id,
@@ -96,7 +94,6 @@ fun StickerPicker(
             ))
         }
 
-        // 4. Official Packs
         groups.addAll(officialPacks)
 
         groups
@@ -202,7 +199,6 @@ fun StickerPicker(
                                     })
                                 )
 
-                                // Save and Clone
                                 val extra = listOf(
                                     ContextMenuItem("Save Image", Icons.Filled.Download, onClick = {
                                         uriHandler.openUri(stickerUrl)
@@ -219,7 +215,7 @@ fun StickerPicker(
                                         contentDescription = sticker.name,
                                         modifier = Modifier
                                             .size(80.dp)
-                                            .clickable {
+                                            .clickableCursor {
                                                 emojiStore.onStickerUsed(sticker.id)
                                                 onStickerSelected(sticker)
                                             }
@@ -289,7 +285,7 @@ private fun StickerServerBar(
                             .size(36.dp)
                             .clip(CircleShape)
                             .background(if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant)
-                            .clickable { onSelect(index) },
+                            .clickableCursor { onSelect(index) },
                         contentAlignment = Alignment.Center
                     ) {
                         if (group.id == "frequent") {

@@ -10,10 +10,7 @@ import com.github.panpf.sketch.source.DataSource
 
 actual fun apngDecoderFactory(): Decoder.Factory = ApngDecoder.Factory()
 
-/**
- * Decode APNG animated images using Android's [android.graphics.ImageDecoder],
- * which animates APNG natively. Mirrors ImageDecoderAnimatedWebpDecoder/ImageDecoderGifDecoder.
- */
+// Decode APNG animated images using Android's [android.graphics.ImageDecoder], which animates APNG natively. Mirrors ImageDecoderAnimatedWebpDecoder/ImageDecoderGifDecoder.
 @androidx.annotation.RequiresApi(Build.VERSION_CODES.P)
 class ApngDecoder(
     requestContext: RequestContext,

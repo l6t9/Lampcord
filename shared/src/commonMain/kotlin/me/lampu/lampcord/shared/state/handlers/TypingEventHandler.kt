@@ -25,7 +25,6 @@ class TypingEventHandler(
         try {
             val typing = json.decodeFromJsonElement<TypingStart>(data)
             
-            // Cache member/user if provided
             typing.guild_id?.let { guildId ->
                 typing.member?.let { member ->
                     val userId = typing.user_id

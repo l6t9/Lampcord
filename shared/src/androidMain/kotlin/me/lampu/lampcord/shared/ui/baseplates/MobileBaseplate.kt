@@ -60,6 +60,7 @@ import me.lampu.lampcord.shared.ui.navigation.toEntries
 import me.lampu.lampcord.shared.ui.navigation.entry
 import me.lampu.lampcord.shared.ui.icons.Icons
 import org.koin.compose.koinInject
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -129,7 +130,6 @@ actual fun MobileBaseplate(
     val quickSpatialSpec = MaterialTheme.motionScheme.defaultSpatialSpec<IntOffset>()
     val quickEffectsSpec = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
 
-    // Sync navigationStore visibility states with navigator
     LaunchedEffect(navigationStore.isSettingsVisible) {
         if (navigationStore.isSettingsVisible) navigator.navigate(Screen.Settings)
         else if (navigationState.topLevelRoute == Screen.Settings) navigator.goBack()
@@ -487,7 +487,6 @@ actual fun MobileBaseplate(
                 androidx.compose.ui.graphics.lerp(chatBackground, lightPanelColor, absProgress)
             } else if (progress < 0) { // Sliding to Member List (End)
                 if (isOverlapping) {
-                    // Match MemberHeader background (Surface) in overlapping mode
                     androidx.compose.ui.graphics.lerp(chatBackground, memberHeaderColor, absProgress)
                 } else {
                     androidx.compose.ui.graphics.lerp(chatBackground, lightPanelColor, absProgress)
@@ -571,7 +570,7 @@ actual fun MobileBaseplate(
                             modifier = Modifier
                                 .zIndex(1f)
                                 .fillMaxSize()
-                                .clickable(
+                                .clickableCursor(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = null,
                                     onClick = { panelState.close() },
@@ -906,7 +905,7 @@ private fun MainBaseplateContent(
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     modifier = if (isDmHeader) {
-                                        Modifier.clickable(
+                                        Modifier.clickableCursor(
                                             interactionSource = remember { MutableInteractionSource() },
                                             indication = null
                                         ) { panelState.openEnd() }
@@ -997,7 +996,7 @@ private fun MainBaseplateContent(
                                             modifier = Modifier
                                                 .padding(start = 4.dp)
                                                 .size(40.dp)
-                                                .clickable(
+                                                .clickableCursor(
                                                     interactionSource = remember { MutableInteractionSource() },
                                                     indication = null
                                                 ) { panelState.openStart() },

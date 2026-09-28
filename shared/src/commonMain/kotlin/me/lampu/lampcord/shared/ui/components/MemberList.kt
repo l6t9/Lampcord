@@ -56,7 +56,6 @@ fun MemberList(
     val activeChannel = navigationStore.selectedThread ?: navigationStore.selectedChannel
     val isDm = activeChannel?.type == 1 || activeChannel?.type == 3
 
-    // Skip rendering images decodes while scrolling faster than they can be loaded.
     var loadImages by remember { mutableStateOf(true) }
     LaunchedEffect(scrollState) {
         var lastIndex = scrollState.firstVisibleItemIndex
@@ -155,8 +154,6 @@ fun MemberList(
         return
     }
 
-    // Original Guild Member List Logic
-    // Scroll to top when channel changes
     LaunchedEffect(activeChannel?.id) {
         scrollState.scrollToItem(0)
     }
@@ -210,6 +207,7 @@ fun MemberList(
                     state = scrollState,
                     modifier = Modifier
                         .fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
                     contentPadding = PaddingValues(bottom = 52.dp)
                 ) {
                     stickyHeader {
@@ -237,11 +235,13 @@ fun MemberList(
                             count = liveCount,
                             key = { index ->
                                 val item = rows.getOrNull(index)
-                                val baseId = item?.member?.userId() ?: item?.group?.id ?: "null"
-                                // 126.21 Parity: Discord member lists are index-based.
-                                // We include the index in the key to prevent crashes if the state is temporarily inconsistent
-                                // (e.g. during a channel switch or rapid gateway updates).
-                                "$index-$baseId"
+                                val baseId = item?.member?.userId() ?: item?.group?.id
+                                if (baseId != null) {
+                                    baseId
+                                } else {
+                                    // A row can be transiently empty while the store repopulates, so only those fall back to the index.
+                                    "pending-$index"
+                                }
                             },
                             contentType = { index ->
                                 val item = rows.getOrNull(index)

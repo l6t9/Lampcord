@@ -48,15 +48,7 @@ class MessageLogger(
 
         scope.launch {
             try {
-                val existing = messageDao.getMessageById(message.id)
-                if (existing != null && existing.content != message.content) {
-                    val entity = existing.copy(
-                        content = message.content,
-                        oldContent = existing.content,
-                        jsonPayload = json.encodeToString(message)
-                    )
-                    messageDao.update(entity)
-                }
+                messageDao.applyEdit(message.id, message.content, json.encodeToString(message))
             } catch (e: Exception) {
                 println("Error logging update: ${e.message}")
             }
@@ -74,7 +66,6 @@ class MessageLogger(
         }
     }
 
-    /** Removes every message stored locally by Message Logger. */
     fun clearLoggedMessages(onComplete: () -> Unit = {}) {
         scope.launch {
             try {

@@ -11,6 +11,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.withTimeoutOrNull
+import me.lampu.lampcord.shared.ui.kit.handCursor
 
 @Composable
 actual fun ContextMenu(
@@ -79,6 +80,7 @@ actual fun ContextMenu(
         ) {
             items.forEach { item ->
                 DropdownMenuItem(
+                    modifier = Modifier.handCursor(),
                     text = { 
                         Text(
                             text = item.label,

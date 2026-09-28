@@ -1,9 +1,7 @@
 package me.lampu.lampcord.shared.model
 
-// Discord's VIEW_CHANNEL permission bit (a.k.a. read_messages).
 private const val VIEW_CHANNEL = 1L shl 10
 
-// Port of murmurhash32.
 fun murmurhash32(key: String, seed: Int = 0): Long {
     val keyBytes = key.encodeToByteArray()
     val length = keyBytes.size
@@ -59,7 +57,6 @@ private fun hasPermission(bits: String?, flag: Long): Boolean {
 }
 
 fun Channel.memberListId(guild: Guild): String {
-    // Check if the channel already has a member_list_id (e.g. threads)
     member_list_id?.let { return it }
 
     // 126.21 Fallback: Most channels use "everyone"

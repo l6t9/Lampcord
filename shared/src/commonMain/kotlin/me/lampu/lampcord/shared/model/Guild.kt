@@ -28,7 +28,6 @@ data class Guild(
     val large: Boolean? = null,
     val presences: List<PresenceUpdate>? = null,
     
-    // Server Settings (126.21 alignment)
     val afk_channel_id: String? = null,
     val afk_timeout: Int? = null,
     val system_channel_id: String? = null,
@@ -208,7 +207,6 @@ data class Member(
     fun getRoleColorRole(guild: Guild?): Role? {
         if (guild == null) return null
         val memberRoles = roles.mapNotNull { roleId -> guild.roles.find { it.id == roleId } }.toMutableList()
-        // Include @everyone role
         guild.roles.find { it.id == guild.id }?.let { memberRoles.add(it) }
 
         return memberRoles.filter { it.color != 0 || it.colors?.secondary_color != null }

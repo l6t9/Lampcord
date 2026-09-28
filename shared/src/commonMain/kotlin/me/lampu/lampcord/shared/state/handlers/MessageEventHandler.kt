@@ -66,7 +66,6 @@ class MessageEventHandler(
         }
         messageLogger.logMessage(message)
         
-        // Cache author and member in UserStore (StoreUsers / StoreMembers)
         message.author?.let { userStore.handleUserUpdate(it) }
         message.author?.let {
             typingStore.handleUserSentMessage(message.channel_id, it.id)
@@ -80,7 +79,6 @@ class MessageEventHandler(
         
         finderStore.addRecent(message.channel_id)
 
-        // Update channel last message id for sorting and ensure it's in GuildStore if it's a DM
         val currentChannel = entityStore.channels.value[message.channel_id]
         val currentUser = userStore.currentUser.value
         val author = message.author
@@ -125,7 +123,6 @@ class MessageEventHandler(
             }
         }
 
-        // Clear draft if message is from us
         if (message.author?.id == userStore.currentUser.value?.id) {
             messageStore.draftMessages.remove(message.channel_id)
         }

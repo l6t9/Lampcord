@@ -70,6 +70,7 @@ import me.lampu.lampcord.shared.ui.components.profiles.UserProfileDialog
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.getPlatformName
 import org.koin.compose.koinInject
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -102,7 +103,6 @@ fun DesktopBaseplate(
             }
             Sidebar(modifier = Modifier.width(sidebarWidth))
 
-            // Main Content Area (Chat)
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -176,7 +176,6 @@ fun DesktopBaseplate(
                 }
             }
 
-            // Member List / Thread Panel (End Panel)
             val showPersistentSidePanel = activeChannel != null && 
                                 activeChannel.type != 15 && 
                                 (activeChannel.guild_id != null || activeChannel.type == 1 || activeChannel.type == 3) &&
@@ -218,7 +217,6 @@ fun DesktopBaseplate(
             }
         }
 
-        // Modal Side Sheet for Medium Breakpoint
         val showModalSidePanel = activeChannel != null && 
                             activeChannel.type != 15 && 
                             (activeChannel.guild_id != null || activeChannel.type == 1 || activeChannel.type == 3) &&
@@ -234,7 +232,7 @@ fun DesktopBaseplate(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color.Black.copy(alpha = 0.4f))
-                    .clickable(
+                    .clickableCursor(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null
                     ) { navigationStore.isMemberListModalVisible = false }
@@ -245,7 +243,7 @@ fun DesktopBaseplate(
                         .width(320.dp)
                         .align(Alignment.CenterEnd)
                         .padding(8.dp)
-                        .clickable(enabled = false) {}
+                        .clickableCursor(enabled = false) {}
                         .animateEnterExit(
                             enter = slideInHorizontally { it },
                             exit = slideOutHorizontally { it }
@@ -259,7 +257,6 @@ fun DesktopBaseplate(
             }
         }
 
-        // Settings / Overlays
         if (navigationStore.isSettingsVisible) {
             SettingsScreen(onDismiss = { navigationStore.isSettingsVisible = false })
         }
@@ -276,7 +273,6 @@ fun DesktopBaseplate(
             QuickSwitcher(onDismiss = { navigationStore.isQuickSwitcherVisible = false })
         }
 
-        // Attachment Viewer Overlay
         if (navigationStore.isAttachmentViewerVisible) {
             AttachmentViewer(
                 items = navigationStore.attachmentViewerItems,
@@ -286,7 +282,6 @@ fun DesktopBaseplate(
             )
         }
 
-        // User Profile Dialog
         if (profileStore.isProfileLoading || profileStore.selectedProfile != null) {
             UserProfileDialog(
                 profile = profileStore.selectedProfile,
@@ -297,7 +292,6 @@ fun DesktopBaseplate(
             )
         }
 
-        // Search Screen
         if (navigationStore.isSearchVisible) {
             SearchScreen(onDismiss = { navigationStore.isSearchVisible = false })
         }

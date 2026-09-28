@@ -38,7 +38,6 @@ fun MemberGroupItem(
         }
     }
     
-    // Find up-to-date count from memberListStore.memberListGroups if the item's count is stale
     val displayCount = remember(group, memberListStore.memberListGroups.size) {
         val currentGroup = memberListStore.memberListGroups[group.id]
         if (currentGroup != null) {

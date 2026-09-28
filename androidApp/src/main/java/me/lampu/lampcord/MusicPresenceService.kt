@@ -40,7 +40,6 @@ class MusicPresenceService : NotificationListenerService(), KoinComponent {
     }
 
     private fun updateControllers(controllers: List<MediaController>?) {
-        // Clean up old callbacks
         controllerCallbacks.forEach { (controller, callback) ->
             controller.unregisterCallback(callback)
         }
@@ -70,9 +69,6 @@ class MusicPresenceService : NotificationListenerService(), KoinComponent {
         }
 
         if (activeController == null) {
-            // Potentially clear activity, but Discord usually keeps it for a bit or handles it via other sessions
-            // For now, let's just not send an update if nothing is playing, or send empty activities
-            // gatewayManager.updatePresence(null, emptyList())
             return
         }
 

@@ -30,7 +30,6 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -69,10 +68,8 @@ fun ForwardDialog(
     }
 
     val resultsState by finderStore.results.collectAsState()
-    val results by remember(finderStore.searchQuery, resultsState) {
-        derivedStateOf {
-            resultsState.filter { it !is FinderResult.Guild }
-        }
+    val results = remember(finderStore.searchQuery, resultsState) {
+        resultsState.filter { it !is FinderResult.Guild }
     }
 
     Dialog(
@@ -116,7 +113,6 @@ fun ForwardDialog(
                         .weight(1f)
                         .padding(horizontal = 16.dp)
                 ) {
-                    // Message Preview
                     Text(
                         "Message Preview",
                         style = MaterialTheme.typography.labelSmall,
@@ -190,7 +186,6 @@ fun ForwardDialog(
 
                     Spacer(Modifier.height(16.dp))
 
-                    // Optional Message
                     Text(
                         "Optional Message",
                         style = MaterialTheme.typography.labelSmall,
@@ -214,7 +209,6 @@ fun ForwardDialog(
 
                     Spacer(Modifier.height(16.dp))
 
-                    // Forward To
                     Text(
                         "FORWARD TO",
                         style = MaterialTheme.typography.labelSmall,

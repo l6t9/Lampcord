@@ -82,7 +82,6 @@ internal class ComposeWindowProcedure(
             bottomBorderHeight = -1,
         )
 
-    //     The default window procedure to call its methods when the default method behaviour is desired/sufficient
     private var defaultWindowProcedure = User32Extend.instance?.setWindowLong(windowHandle, WinUser.GWL_WNDPROC, this) ?: LONG_PTR(-1)
 
     private var dpi = UINT(0)
@@ -111,10 +110,8 @@ internal class ComposeWindowProcedure(
                     updateWindowInfo()
                     val horizontalPadding = frameX
                     val verticalPadding = frameY
-                    // Hit test for resizer border
                     hitResult =
                         when {
-                            // skip resizer border hit test if window is maximized
                             isMaximized -> hitTest(x, y)
 
                             x <= horizontalPadding && y > verticalPadding && y < height - verticalPadding -> HTLEFT
@@ -141,7 +138,6 @@ internal class ComposeWindowProcedure(
 
                             y >= height - verticalPadding -> HTBOTTOMRIGHT
 
-                            // else hit test by user
                             else -> hitTest(x, y)
                         }
                     hitResult
@@ -171,8 +167,6 @@ internal class ComposeWindowProcedure(
                 ?: LRESULT(0)
         }
         return when (uMsg) {
-            // Returns 0 to make the window not draw the non-client area (title bar and border)
-            // thus effectively making all the window our client area
             WM_NCCALCSIZE -> {
                 if (wParam.toInt() == 0) {
                     User32Extend.instance?.CallWindowProc(defaultWindowProcedure, hWnd, uMsg, wParam, lParam) ?: LRESULT(0)
@@ -185,7 +179,6 @@ internal class ComposeWindowProcedure(
                     edgeY = user32.GetSystemMetricsForDpi(WinUser.SM_CYEDGE, dpi)
                     padding = user32.GetSystemMetricsForDpi(WinUser.SM_CXPADDEDBORDER, dpi)
                     isMaximized = user32.isWindowInMaximized(hWnd)
-                    // Edge inset padding for non-client area
                     onWindowInsetUpdate(
                         WindowInsets(
                             left =
@@ -219,7 +212,6 @@ internal class ComposeWindowProcedure(
             }
 
             WM_NCHITTEST -> {
-                // Hit test result return
                 return LRESULT(hitResult.toLong())
             }
 
@@ -244,7 +236,6 @@ internal class ComposeWindowProcedure(
                     user32.SetWindowLong(hWnd, WinUser.GWL_STYLE, oldStyle)
                     isMaximized = user32.isWindowInMaximized(hWnd)
                     if (menu != null) {
-                        // 更新菜单项状态
                         val menuItemInfo =
                             MENUITEMINFO().apply {
                                 cbSize = this.size()
@@ -259,18 +250,14 @@ internal class ComposeWindowProcedure(
                         updateMenuItemInfo(menu, menuItemInfo, WinUser.SC_MAXIMIZE, !isMaximized)
                         updateMenuItemInfo(menu, menuItemInfo, SC_CLOSE, true)
 
-                        // 设置默认菜单项
                         user32.SetMenuDefaultItem(menu, WINT_MAX, false)
 
-                        // 获取鼠标位置
                         val lParamValue = lParam.toInt()
                         val x = lParamValue.lowWord
                         val y = lParamValue.highWord
 
-                        // 显示菜单并获取用户选择
                         val ret = user32.TrackPopupMenu(menu, TPM_RETURNCMD, x, y, 0, hWnd, null)
                         if (ret != 0) {
-                            // 发送系统命令
                             user32.PostMessage(
                                 hWnd,
                                 WinUser.WM_SYSCOMMAND,
@@ -285,7 +272,6 @@ internal class ComposeWindowProcedure(
 
             WM_SETTINGCHANGE -> {
                 val changedKey = Pointer(lParam.toLong()).getWideString(0)
-                // theme changed for color and darkTheme
                 if (changedKey == "ImmersiveColorSet") {
                     windowTheme = currentSystemTheme
                     windowFrameColor = currentAccentColor()
@@ -308,7 +294,6 @@ internal class ComposeWindowProcedure(
         }
     }
 
-    // Force update window info that resolve the hit test result is incorrect when user moving window to another monitor.
     private fun updateWindowInfo() {
         User32Extend.instance?.apply {
             dpi = GetDpiForWindow(windowHandle)
@@ -357,20 +342,13 @@ internal class ComposeWindowProcedure(
             "ColorPrevalence",
         ) != 0
 
-    /**
-     * For this to take effect, also set `resizable` argument of Compose Window to `true`.
-     */
+    // For this to take effect, also set `resizable` argument of Compose Window to `true`.
     private fun enableResizability() {
-        // Enable window resizing and remove standard caption bar
         User32Extend.instance?.updateWindowStyle(windowHandle) { oldStyle ->
             (oldStyle or WS_CAPTION) and WS_SYSMENU.inv()
         }
     }
 
-    /**
-     * To disable window border and shadow, pass (0, 0, 0, 0) as window margins
-     * (or, simply, don't call this function).
-     */
     private fun enableBorderAndShadow() {
         val dwmApi =
             "dwmapi"

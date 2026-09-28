@@ -29,13 +29,7 @@ import me.lampu.lampcord.shared.utils.Logging as SharedLogging
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
-/**
- * Shared HTTP foundation for every Discord API client.
- *
- * Owns the token, Discord identity/session markers (used in X-Super-Properties),
- * and the request-header builders. Domain clients ([AuthApi], [ChannelApi], ...)
- * take this as their single dependency.
- */
+// Shared HTTP foundation for every Discord API client. Owns the token, Discord identity/session markers (used in X-Super-Properties), and the request-header builders.
 class RestClient(
     val httpClient: HttpClient,
     val json: Json

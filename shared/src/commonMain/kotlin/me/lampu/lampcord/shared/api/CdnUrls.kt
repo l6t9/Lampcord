@@ -2,9 +2,6 @@ package me.lampu.lampcord.shared.api
 
 import me.lampu.lampcord.shared.settings.Settings
 
-/**
- * CDN URL builders for guild icons and user avatars.
- */
 object CdnUrls {
 
     fun getGuildIconUrl(guildId: String, iconHash: String?, size: Int = 1024): String? {
@@ -33,9 +30,7 @@ object CdnUrls {
 
     fun getAvatarDecorationUrl(asset: String?, size: Int = 480): String? {
         if (asset == null) return null
-        // Always use the APNG passthrough variant. passthrough=false returns separate
-        // promo artwork that does not match the animation's colors. Static rendering is
-        // handled by loading this same APNG without animation (first frame).
+        // Always use the APNG passthrough variant. passthrough=false returns separate promo artwork that does not match the animation's colors.
         return "https://cdn.discordapp.com/avatar-decoration-presets/$asset.png?size=$size&passthrough=true"
     }
 }

@@ -1,6 +1,5 @@
 package me.lampu.lampcord.shared.voice
 
-/** Calls and destruction are serialized by the owning voice connection. */
 internal object NativeVoice {
     init {
         if (System.getProperty("java.vm.name").orEmpty().contains("Dalvik", ignoreCase = true)) {
@@ -34,7 +33,6 @@ internal object NativeVoice {
 }
 
 internal interface VoiceAudio : AutoCloseable {
-    /** Exactly 20ms of 48kHz stereo PCM. Reads/writes block to pace the media loops. */
     fun read(pcm: ShortArray)
     fun write(pcm: ShortArray)
     fun setSpeaker(enabled: Boolean)

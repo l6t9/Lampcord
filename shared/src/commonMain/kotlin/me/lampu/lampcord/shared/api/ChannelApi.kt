@@ -24,9 +24,6 @@ import me.lampu.lampcord.shared.model.Onboarding
 import me.lampu.lampcord.shared.model.ThreadListResponse
 import me.lampu.lampcord.shared.utils.Logging
 
-/**
- * Channels, threads, read-state and onboarding endpoints.
- */
 class ChannelApi(private val rest: RestClient) {
 
     suspend fun ringCall(channelId: String): Boolean = callAction(channelId, "ring", all = true)
@@ -326,7 +323,6 @@ class ChannelApi(private val rest: RestClient) {
         }
     }
 
-    /** Acknowledges the exact latest message for each channel. */
     suspend fun ackBulk(readStates: Map<String, String>): Boolean {
         if (readStates.isEmpty()) return true
         return try {

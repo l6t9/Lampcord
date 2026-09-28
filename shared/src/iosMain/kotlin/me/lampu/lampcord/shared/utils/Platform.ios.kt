@@ -61,7 +61,6 @@ actual fun showToast(text: String) {
 }
 
 actual fun restartApp() {
-    // No easy way to restart on iOS
     platform.posix.exit(0)
 }
 

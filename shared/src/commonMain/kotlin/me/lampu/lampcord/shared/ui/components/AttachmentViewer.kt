@@ -51,11 +51,8 @@ import me.lampu.lampcord.shared.utils.getPlatformName
 import me.lampu.lampcord.shared.utils.setClipboardText
 import me.lampu.lampcord.shared.utils.showToast
 import kotlinx.coroutines.launch
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
-/**
- * Fullscreen attachment viewer: zoomable images, inline video playback,
- * keyboard/button navigation, a thumbnail carousel and copy/close controls.
- */
 @Composable
 fun AttachmentViewer(
     items: List<DiscordMedia>,
@@ -80,9 +77,6 @@ fun AttachmentViewer(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
-            // MainActivity draws edge-to-edge. Keep fullscreen media and its
-            // controls above the Android navigation bar while the background
-            // still covers the entire window.
             .navigationBarsPadding()
             .focusRequester(focusRequester)
             .focusable()
@@ -108,7 +102,6 @@ fun AttachmentViewer(
                 }
             }
     ) {
-        // Main content
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             when {
                 item.isVideo() -> {
@@ -116,7 +109,6 @@ fun AttachmentViewer(
                     VideoPlayer(
                         url = item.url ?: item.proxy_url ?: "",
                         loop = isGifv && !reduceMotion,
-                        // GIFV media is an image-like loop, not seekable video.
                         showControls = !isGifv || reduceMotion,
                         showSeekBar = !isGifv,
                         autoPlay = !isGifv || !reduceMotion,
@@ -124,13 +116,6 @@ fun AttachmentViewer(
                         subtitle = (item as? Attachment)?.content_type,
                         onFullscreenClick = if (isGifv) null else onDismiss,
                         modifier = Modifier
-                            // Do not size fullscreen playback from attachment
-                            // metadata. Discord occasionally omits it (or gives
-                            // us a poster's dimensions), which falls back to
-                            // 16:9 and makes portrait/TikTok videos appear
-                            // zoomed into a landscape frame. VideoPlayer uses
-                            // ContentScale.Fit, so a viewport-sized player keeps
-                            // the decoded video's natural aspect ratio intact.
                             .fillMaxSize()
                             .pointerInput(Unit) {
                                 detectTapGestures(onTap = { showControls = !showControls })
@@ -154,7 +139,6 @@ fun AttachmentViewer(
             }
         }
 
-        // Top Header
         AnimatedVisibility(
             visible = showControls,
             enter = if (reduceMotion) EnterTransition.None else fadeIn(),
@@ -210,7 +194,6 @@ fun AttachmentViewer(
             }
         }
 
-        // Side navigation
         if (items.size > 1) {
             AnimatedVisibility(
                 visible = showControls,
@@ -237,7 +220,6 @@ fun AttachmentViewer(
             }
         }
 
-        // Bottom thumbnail carousel
         if (items.size > 1) {
             AnimatedVisibility(
                 visible = showControls,
@@ -268,7 +250,6 @@ private fun ViewerRoundButton(
     }
 }
 
-/** Zoomable (pinch / mouse wheel / double-tap) pan-able image. */
 @Composable
 private fun ZoomableImageView(
     url: String,
@@ -371,7 +352,7 @@ private fun AttachmentCarousel(
                 .fillMaxSize()
                 .maskClip(RoundedCornerShape(4.dp))
                 .background(Color.White.copy(alpha = 0.1f))
-                .clickable { onSelect(index) }
+                .clickableCursor { onSelect(index) }
         ) {
             if (thumbUrl != null) {
                 AsyncImage(
@@ -394,7 +375,6 @@ private fun AttachmentCarousel(
     }
 }
 
-/** Raw proxy URL for images, format=png for video posters. */
 private fun DiscordMedia.thumbnailUrl(isPoster: Boolean): String? {
     val url = proxy_url ?: url ?: return null
     if (!isPoster || !isVideo()) return url

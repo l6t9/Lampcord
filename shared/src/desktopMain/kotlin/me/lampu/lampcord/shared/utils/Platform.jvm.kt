@@ -155,12 +155,10 @@ actual fun openDownloadsFolderAndSelect(filename: String) {
         val f = java.io.File(downloads, filename)
         val desktop = java.awt.Desktop.getDesktop()
         if (f.exists()) {
-            // try to open parent folder
             desktop.open(f.parentFile)
         } else {
             desktop.open(downloads)
         }
     } catch (e: Exception) {
-        // ignore
     }
 }

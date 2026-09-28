@@ -45,6 +45,7 @@ import me.lampu.lampcord.shared.ui.components.settings.SettingsSubScreen
 import me.lampu.lampcord.shared.ui.icons.Icons
 import org.koin.compose.koinInject
 import me.lampu.lampcord.shared.model.Role as DiscordRole
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
 @Composable
 fun ServerRoles(guild: Guild, onRoleClick: (DiscordRole) -> Unit) {
@@ -137,7 +138,7 @@ fun RoleEditor(role: DiscordRole, guild: Guild, guildApi: GuildApi = koinInject(
                             .size(48.dp)
                             .clip(RoundedCornerShape(8.dp))
                             .background(if (draftColor != 0) Color(draftColor.toLong() or 0xFF000000L) else Color.Gray)
-                            .clickable { showColorPicker = true }
+                            .clickableCursor { showColorPicker = true }
                     )
                 }
 

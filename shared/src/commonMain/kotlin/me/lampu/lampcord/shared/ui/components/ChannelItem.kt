@@ -34,6 +34,7 @@ import me.lampu.lampcord.shared.utils.getPlatformName
 import me.lampu.lampcord.shared.utils.setClipboardText
 import me.lampu.lampcord.shared.voice.rememberVoiceJoin
 import org.koin.compose.koinInject
+import me.lampu.lampcord.shared.ui.kit.combinedClickableCursor
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -58,18 +59,12 @@ fun ChannelItem(
         typingUsers[channel.id]?.isNotEmpty() == true
     }
 
-    val isUnread by remember(channel, readStates[channel.id]) {
-        derivedStateOf { readStateStore.isUnread(channel) }
-    }
-    val mentionCount by remember(channel, readStates[channel.id]) {
-        derivedStateOf { readStateStore.getMentionCount(channel.id) }
-    }
+    val isUnread = remember(channel, readStates[channel.id]) { readStateStore.isUnread(channel) }
+    val mentionCount = remember(channel, readStates[channel.id]) { readStateStore.getMentionCount(channel.id) }
     
     val userGuildSettings by userGuildSettingsStore.userGuildSettings.collectAsState()
     val guildSettings = userGuildSettings[channel.guild_id]
-    val isMuted by remember(channel, guildSettings) {
-        derivedStateOf { userGuildSettingsStore.isChannelMuted(channel.guild_id, channel.id) }
-    }
+    val isMuted = remember(channel, guildSettings) { userGuildSettingsStore.isChannelMuted(channel.guild_id, channel.id) }
 
     val guild = navigationStore.selectedGuild
     val currentUser by userStore.currentUser.collectAsState()
@@ -122,7 +117,6 @@ fun ChannelItem(
                 }
             }
 
-            // Primary group
             items.add(ContextMenuItem("Mark as Read", Icons.Filled.Check, onClick = {
                 scope.launch {
                     readStateStore.ackMessage(channel.id, channel.lastMessageId() ?: "0")
@@ -160,7 +154,6 @@ fun ChannelItem(
                 }, group = "Primary"))
             }
         }
-        // Utilities
         items.add(ContextMenuItem("Copy Link", Icons.Filled.Link, onClick = {
             val guildId = channel.guild_id ?: "@me"
             setClipboardText("https://discord.com/channels/$guildId/${channel.id}")
@@ -230,7 +223,7 @@ fun ChannelItem(
                         .height(itemHeight)
                         .padding(horizontal = 8.dp)
                         .clip(MaterialTheme.shapes.small)
-                        .combinedClickable(
+                        .combinedClickableCursor(
                             interactionSource = interactionSource,
                             indication = indication,
                             enabled = canView,
@@ -303,9 +296,13 @@ fun ChannelItem(
                         }
                         
                         Spacer(modifier = Modifier.width(12.dp))
-                        
+
+                        val displayName = remember(channel.name) {
+                            me.lampu.lampcord.shared.utils.CleanUtils.cleanChannelName(channel.name ?: "unnamed")
+                        }
+
                         Text(
-                            text = me.lampu.lampcord.shared.utils.CleanUtils.cleanChannelName(channel.name ?: "unnamed"),
+                            text = displayName,
                             style = MaterialTheme.typography.bodyLarge.copy(
                                 fontWeight = if (isUnread && !isMuted) FontWeight.Bold else FontWeight.Medium
                             ),
@@ -342,7 +339,6 @@ fun ChannelItem(
                             }
                         }
 
-                        // Voice Chat Text Icon
                         if ((channel.type == 2 || channel.type == 13) && isSelected) {
                             IconButton(
                                 onClick = { voiceStore.isVoiceChatTextVisible = !voiceStore.isVoiceChatTextVisible },
@@ -360,7 +356,6 @@ fun ChannelItem(
                 }
             }
 
-            // Voice Participants
             if (channel.type == 2 || channel.type == 13) {
                 val participants = voiceStore.voiceStates[channel.guild_id ?: "@me"]?.values?.filter { it.channel_id == channel.id } ?: emptyList()
                 if (participants.isNotEmpty()) {

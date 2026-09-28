@@ -5,7 +5,6 @@ import com.sun.jna.platform.win32.BaseTSD.ULONG_PTR
 import com.sun.jna.platform.win32.WinDef.HBITMAP
 import com.sun.jna.platform.win32.WinDef.HMENU
 
-// Contains information about a menu item.
 @Suppress("SpellCheckingInspection", "unused")
 class MENUITEMINFO : Structure() {
     @JvmField

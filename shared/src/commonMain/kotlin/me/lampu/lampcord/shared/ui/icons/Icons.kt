@@ -4,7 +4,6 @@ package me.lampu.lampcord.shared.ui.icons
 
 import androidx.compose.ui.graphics.vector.ImageVector
 
-/** Material Symbols used throughout the Android, shared, and desktop UI. */
 object Icons {
     val Filled: IconsRoundedFilled = IconsRoundedFilled
     val Default: IconsRounded = IconsRounded
@@ -31,7 +30,6 @@ object Icons {
         }
 
         object Filled {
-            /** Material keyboard glyph used by the silent-typing control. */
             val Keyboard: ImageVector by lazy {
                 materialSymbol(
                     "Rounded_filled.Keyboard",

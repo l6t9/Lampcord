@@ -47,6 +47,8 @@ import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.chat.ReactionPickerSheet
 import me.lampu.lampcord.shared.ui.icons.Icons
 import org.koin.compose.koinInject
+import me.lampu.lampcord.shared.ui.components.ImageLoadState
+import me.lampu.lampcord.shared.ui.kit.combinedClickableCursor
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
@@ -79,7 +81,7 @@ fun ReactionsView(
                 ) {
                     Row(
                         modifier = Modifier
-                            .combinedClickable(
+                            .combinedClickableCursor(
                                 onClick = {
                                     messageStore.toggleReaction(message, reaction.emoji)
                                 },
@@ -99,7 +101,7 @@ fun ReactionsView(
                                 contentDescription = reaction.emoji.name, 
                                 modifier = Modifier.size(16.dp), 
                                 showPlaceholder = false, 
-                                onState = { state -> if (state is com.github.panpf.sketch.PainterState.Error) loadFailed = true }
+                                onState = { state -> if (state is ImageLoadState.Error) loadFailed = true }
                             )
                         } else {
                             Text(reaction.emoji.name ?: "", fontSize = 14.sp)
@@ -128,7 +130,6 @@ fun ReactionsView(
                 }
             }
 
-            // Add Reaction Button
             Surface(
                 onClick = { showAddReactionPicker = true },
                 modifier = Modifier

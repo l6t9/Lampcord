@@ -12,8 +12,6 @@ data class Gif(
     val height: Int,
     val preview: String? = null,
     @SerialName("gif_src") val gifSrc: String? = null,
-    // Favorite GIF protobuf entries identify whether the stored source is a
-    // video even when the URL has no recognizable file extension.
     @Transient val isVideo: Boolean = false
 )
 
@@ -26,7 +24,5 @@ data class GifCategory(
 @Serializable
 data class TrendingGifCategoriesResponse(
     val categories: List<GifCategory>,
-    // Discord includes representative GIF results alongside the category
-    // names. They provide reliable still previews when Reduced Motion is on.
     val gifs: List<Gif> = emptyList()
 )

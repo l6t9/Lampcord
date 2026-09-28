@@ -38,6 +38,7 @@ import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.PermissionHelper
 import me.lampu.lampcord.shared.utils.setClipboardText
 import org.koin.compose.koinInject
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
 @Composable
 fun GuildCategoryItem(
@@ -76,7 +77,6 @@ fun GuildCategoryItem(
             if (currentMember == null) return@filter true
             PermissionHelper.canViewChannel(currentMember, g, channel, currentUserId)
         }.sortedWith(compareBy<Channel> { 
-            // Put voice and stage channels at the bottom (priority 1), others at the top (priority 0)
             if (it.type == 2 || it.type == 13) 1 else 0 
         }.thenBy { it.position ?: 0 })
     }
@@ -98,7 +98,7 @@ fun GuildCategoryItem(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable(
+                    .clickableCursor(
                         interactionSource = interactionSource,
                         indication = null,
                         onClick = { collapsed = !collapsed }

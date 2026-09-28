@@ -26,6 +26,7 @@ import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.icons.Icons
 import org.koin.compose.koinInject
 import kotlinx.coroutines.launch
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,7 +55,6 @@ fun UserStatusBottomSheet(
                 .animateContentSize()
         ) {
             if (!showAccountSwitcher) {
-                // Header with current user
                 currentUser?.let { user ->
                     val currentStatus = presenceStore.getUserStatus(user.id, user.id, settingsStore.userSettings?.status)
                     
@@ -117,7 +117,6 @@ fun UserStatusBottomSheet(
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
-                // Status Options
                 StatusMenuItem(
                     icon = { StatusIndicator(status = "online", size = 20.dp, borderWidth = 0.dp) },
                     label = "Online",
@@ -153,7 +152,6 @@ fun UserStatusBottomSheet(
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
-                // Custom Status
                 StatusMenuItem(
                     icon = { Icon(Icons.Rounded.EmojiEmotions, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                     label = "Set Custom Status",
@@ -163,7 +161,6 @@ fun UserStatusBottomSheet(
                     }
                 )
 
-                // Switch Account Item (like Desktop)
                 StatusMenuItem(
                     icon = { Icon(Icons.Rounded.Groups, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                     label = "Switch Account",
@@ -182,7 +179,6 @@ fun UserStatusBottomSheet(
                     } else null
                 )
             } else {
-                // Account Switcher UI (Desktop-style content)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -309,7 +305,7 @@ private fun StatusMenuItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .clickableCursor(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

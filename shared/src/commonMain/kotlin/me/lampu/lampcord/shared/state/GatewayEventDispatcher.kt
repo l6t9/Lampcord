@@ -28,13 +28,7 @@ class GatewayEventDispatcher(
     fun dispatch(payload: GatewayPayload) {
         val type = payload.t ?: return
         handlerMap[type]?.forEach { handler ->
-            // A single handler must never be able to crash the whole dispatch
-            // pipeline. Besides guarding the rest of the handlers for this
-            // event, an uncaught throw here would bubble all the way up to the
-            // SessionManager collector and permanently kill the gateway event
-            // stream (a replayless SharedFlow silently drops everything after
-            // the collector dies), which is exactly the "messages stop syncing
-            // until I restart" symptom.
+            // A single handler must never be able to crash the whole dispatch pipeline.
             try {
                 handler.handlePayload(payload)
             } catch (e: kotlin.coroutines.cancellation.CancellationException) {

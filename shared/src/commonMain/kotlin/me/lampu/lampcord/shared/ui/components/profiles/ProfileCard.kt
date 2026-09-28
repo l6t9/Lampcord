@@ -90,7 +90,6 @@ fun ProfileCardSkeleton(
                     .then(if (fillAvailableHeight) Modifier.weight(1f) else Modifier.wrapContentHeight())
                     .verticalScroll(rememberScrollState())
             ) {
-                // Banner Placeholder
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -99,7 +98,6 @@ fun ProfileCardSkeleton(
                 )
 
                 Column(modifier = Modifier.padding(start = if (isExpanded) 16.dp else 10.dp, end = 16.dp)) {
-                    // Header Placeholder
                     Row(
                         verticalAlignment = Alignment.Top,
                         modifier = Modifier.fillMaxWidth().padding(end = 16.dp).zIndex(1f)
@@ -142,7 +140,6 @@ fun ProfileCardSkeleton(
                         }
 
                         Spacer(Modifier.height(24.dp))
-                        // Sections Placeholder
                         repeat(2) {
                             ShimmerBox(
                                 modifier = Modifier.fillMaxWidth().height(60.dp),

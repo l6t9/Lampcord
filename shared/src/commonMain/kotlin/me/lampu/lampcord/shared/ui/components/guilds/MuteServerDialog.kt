@@ -13,6 +13,7 @@ import me.lampu.lampcord.shared.ui.icons.Icons
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
+import me.lampu.lampcord.shared.ui.kit.handCursor
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -117,6 +118,7 @@ fun MuteServerDialog(
                     },
                     menuContent = { menuState ->
                         DropdownMenuItem(
+                            modifier = Modifier.handCursor(),
                             text = { Text("Cancel") },
                             onClick = { 
                                 onDismiss()
@@ -140,6 +142,7 @@ fun MuteServerDialog(
                     },
                     menuContent = { menuState ->
                         DropdownMenuItem(
+                            modifier = Modifier.handCursor(),
                             text = { Text("Mute") },
                             onClick = { 
                                 onConfirm(selectedOption)

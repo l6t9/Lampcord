@@ -83,6 +83,7 @@ import me.lampu.lampcord.shared.utils.getLocalMediaBytes
 import me.lampu.lampcord.shared.utils.getPlatformName
 import org.koin.compose.koinInject
 import kotlin.time.Duration.Companion.milliseconds
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -204,12 +205,10 @@ private fun MediaPickerContent(
     var permissionRequested by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    // Poll State
     var pollQuestion by remember { mutableStateOf("") }
     val pollAnswers = remember { mutableStateListOf("", "") }
     var pollAllowMultiselect by remember { mutableStateOf(false) }
 
-    // Thread State
     var threadName by remember { mutableStateOf("") }
 
     LaunchedEffect(selectedTab, permissionRequested) {
@@ -223,7 +222,6 @@ private fun MediaPickerContent(
                 fileList = getLocalFiles()
             }
         } catch (e: Exception) {
-            // Log or handle error
         } finally {
             isLoading = false
         }
@@ -299,7 +297,7 @@ private fun MediaPickerContent(
                                 Box(
                                     modifier = Modifier
                                         .aspectRatio(1f)
-                                        .clickable {
+                                        .clickableCursor {
                                             scope.launch {
                                                 if (isSelected) {
                                                     messageStore.pendingFiles.removeAll { it.name == media.name }
@@ -460,8 +458,6 @@ private fun MediaPickerContent(
                         Spacer(Modifier.height(16.dp))
                         Button(
                             onClick = { 
-                                // Handle thread creation
-                                // For now just placeholders as requested
                                 onDismiss()
                             },
                             enabled = threadName.isNotBlank()
@@ -547,7 +543,6 @@ private fun MediaPickerContent(
             }
 
             if (!isMobile && onSystemPickerClick != null) {
-                // Material 3 Expressive Floating Toolbar (Desktop)
                 MediaPickerTabs(
                     selectedTab = selectedTab,
                     onTabSelected = onTabSelected,
@@ -722,7 +717,7 @@ private fun PickerTabItem(
             .size(width = 48.dp, height = 40.dp)
             .clip(CircleShape)
             .background(backgroundColor)
-            .clickable(onClick = onClick),
+            .clickableCursor(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Icon(

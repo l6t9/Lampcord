@@ -54,6 +54,7 @@ import kotlinx.serialization.json.contentOrNull
 import org.koin.compose.koinInject
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.utils.getPlatformName
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
 private val FolderIconSize = 48.dp
 private val PreviewIconSize = 20.dp
@@ -165,12 +166,8 @@ fun GuildFolderItem(
     val readStates by readStateStore.readStates.collectAsState()
     val userGuildSettings by userGuildSettingsStore.userGuildSettings.collectAsState()
 
-    val isUnread by remember(folder, readStates, userGuildSettings) {
-        derivedStateOf { guildStore.isFolderUnread(folder) }
-    }
-    val mentionCount by remember(folder, readStates, userGuildSettings) {
-        derivedStateOf { guildStore.getFolderMentionCount(folder) }
-    }
+    val isUnread = remember(folder, readStates, userGuildSettings) { guildStore.isFolderUnread(folder) }
+    val mentionCount = remember(folder, readStates, userGuildSettings) { guildStore.getFolderMentionCount(folder) }
 
     val contextMenuItems = remember(folder, guildIds) {
         listOf(
@@ -206,7 +203,6 @@ fun GuildFolderItem(
                 }
             }
     ) {
-        // Folder Icon Row
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -288,7 +284,7 @@ fun GuildFolderItem(
                                         }
                                     }
                                 }
-                                .clickable(
+                                .clickableCursor(
                                     interactionSource = interactionSource,
                                     indication = null,
                                     onClick = { expanded = !expanded }
@@ -349,7 +345,6 @@ fun GuildFolderItem(
             enter = if (reduceMotion) EnterTransition.None else expandVertically(animationSpec = spring(stiffness = 300f)) + fadeIn(),
             exit = if (reduceMotion) ExitTransition.None else shrinkVertically(animationSpec = spring(stiffness = 300f)) + fadeOut()
         ) {
-            // Expanded area
             Column(
                 modifier = Modifier
                     .fillMaxWidth(),

@@ -16,7 +16,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -83,16 +82,10 @@ fun GuildIcon(
     val readStates by readStateStore.readStates.collectAsState()
     val currentUser by userStore.currentUser.collectAsState()
 
-    val isMuted by remember(guild.id, userGuildSettings[guild.id]) {
-        derivedStateOf { userGuildSettingsStore.isGuildMuted(guild.id) }
-    }
+    val isMuted = remember(guild.id, userGuildSettings[guild.id]) { userGuildSettingsStore.isGuildMuted(guild.id) }
     
-    val isUnread by remember(guild.id, readStates, userGuildSettings[guild.id]) {
-        derivedStateOf { guildStore.isGuildUnread(guild.id) }
-    }
-    val mentionCount by remember(guild.id, readStates) {
-        derivedStateOf { guildStore.getGuildMentionCount(guild.id) }
-    }
+    val isUnread = remember(guild.id, readStates, userGuildSettings[guild.id]) { guildStore.isGuildUnread(guild.id) }
+    val mentionCount = remember(guild.id, readStates) { guildStore.getGuildMentionCount(guild.id) }
 
     var showMuteDialog by remember { mutableStateOf(false) }
     var showLeaveDialog by remember { mutableStateOf(false) }

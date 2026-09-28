@@ -54,7 +54,6 @@ class VoiceStore(
     init {
         scope.launch {
             snapshotFlow { incomingChannelId }.collectLatest { channel ->
-                // Notification permission may be revoked mid-call; respect Discord's DND status too.
                 runCatching { notifyIncomingCall(channel.takeUnless { settingsStore.userSettings?.status == "dnd" }) }
                 if (channel != null) { delay(30_000); incomingChannelId = null }
             }
@@ -151,7 +150,6 @@ class VoiceStore(
     }
 
     private fun updateMute() {
-        // Apply locally before waiting for Discord's state echo, including server mute/deafen.
         voiceGatewayManager.setMuted(selfMuted || currentVoiceState?.mute == true || currentVoiceState?.suppress == true,
             selfDeafened || currentVoiceState?.deaf == true)
         currentVoiceState = currentVoiceState?.copy(self_mute = selfMuted, self_deaf = selfDeafened)
@@ -216,7 +214,6 @@ class VoiceStore(
     }
 
     fun handleReady(data: JsonObject) {
-        // A fresh main-gateway session invalidates any locally owned voice session.
         stopLocal()
         voiceStates.clear(); calls.clear(); incomingChannelId = null
         seedGuilds(data)

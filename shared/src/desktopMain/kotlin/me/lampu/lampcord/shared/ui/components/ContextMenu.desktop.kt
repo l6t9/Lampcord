@@ -12,6 +12,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.withTimeoutOrNull
+import me.lampu.lampcord.shared.ui.kit.handCursor
 
 @Composable
 actual fun ContextMenu(
@@ -39,8 +40,6 @@ actual fun ContextMenu(
                 if (!enabled) return@pointerInput
                 awaitPointerEventScope {
                     while (true) {
-                        // Let nested content (notably Markdown links) inspect
-                        // secondary clicks before the message menu claims them.
                         val event = awaitPointerEvent(PointerEventPass.Main)
                         val down = event.changes.find { it.changedToDown() } ?: continue
 
@@ -94,6 +93,7 @@ actual fun ContextMenu(
 
                 groupItems.forEach { item ->
                     DropdownMenuItem(
+                        modifier = Modifier.handCursor(),
                         text = {
                             Text(
                                 text = item.label,

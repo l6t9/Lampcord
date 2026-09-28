@@ -50,11 +50,18 @@ tasks.withType<org.gradle.api.tasks.JavaExec>().configureEach {
     if (platform == "linux") {
         environment("MALLOC_MMAP_THRESHOLD_", "131072")
         environment("LC_NUMERIC", "C")
-        environment("GDK_BACKEND", "wayland")
         environment("_JAVA_AWT_WM_NONREPARENTING", "1")
         environment("SKIKO_RENDER_API", "OPENGL")
-        environment("SKIKO_WAYLAND", "1")
-        
+        // GDK_BACKEND=wayland breaks AWT and WebKitGTK on X11-only machines, so only force it on a Wayland session.
+        if (System.getenv("XDG_SESSION_TYPE") == "wayland") {
+            if (System.getenv("GDK_BACKEND") == null) {
+                environment("GDK_BACKEND", "wayland")
+            }
+            if (System.getenv("SKIKO_WAYLAND") == null) {
+                environment("SKIKO_WAYLAND", "1")
+            }
+        }
+
         // WebView fix for black screen / GBM buffer errors on Linux (WebKitGTK)
         environment("WEBKIT_DISABLE_DMABUF_RENDERER", "1")
         environment("WEBKIT_DISABLE_COMPOSITING_MODE", "1")
@@ -67,13 +74,19 @@ compose.desktop {
        localProperties.getProperty("compose.desktop.javaHome")?.let {
            javaHome = it
        }
-       jvmArgs += listOf(
-           "-Dsun.java2d.uiScale.enabled=true",
-           "--enable-native-access=ALL-UNNAMED",
-           "-XX:NativeMemoryTracking=summary",
-           "-Xmx512m",
-           "-Dskiko.gpu.resourceCacheLimit=64m"
-       )
+        jvmArgs += listOf(
+            "-Dsun.java2d.uiScale.enabled=true",
+            "--enable-native-access=ALL-UNNAMED",
+            // Sketch's memory cache is sized off the heap; 512m was not enough headroom.
+            "-Xmx1g",
+            "-Dskiko.gpu.resourceCacheLimit=64m"
+        )
+        // NativeMemoryTracking adds a per-allocation cost. Opt in with -Dlampcord.nmt=true.
+        providers.gradleProperty("lampcord.nmt").orNull?.let {
+            if (it == "true") {
+                jvmArgs += "-XX:NativeMemoryTracking=summary"
+            }
+        }
        nativeDistributions {
            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb, TargetFormat.AppImage)
            packageName = "Lampcord"
@@ -134,11 +147,11 @@ tasks.register("patchLinuxLauncher") {
 # OpenGL rendering
 export SKIKO_RENDER_API="${'$'}{SKIKO_RENDER_API:-OPENGL}"
 
-# Wayland support in Skiko
-export SKIKO_WAYLAND="${'$'}{SKIKO_WAYLAND:-1}"
-
-# Use Wayland backend for GTK/GDK components
-export GDK_BACKEND="${'$'}{GDK_BACKEND:-wayland}"
+# Only force the Wayland backends when the session is actually Wayland.
+if [ "${'$'}XDG_SESSION_TYPE" = "wayland" ]; then
+    export SKIKO_WAYLAND="${'$'}{SKIKO_WAYLAND:-1}"
+    export GDK_BACKEND="${'$'}{GDK_BACKEND:-wayland}"
+fi
 
 # Prevent AWT from reparenting (needed for some tiling WMs)
 export _JAVA_AWT_WM_NONREPARENTING="${'$'}{_JAVA_AWT_WM_NONREPARENTING:-1}"

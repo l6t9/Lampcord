@@ -16,6 +16,7 @@ import org.koin.compose.koinInject
 import me.lampu.lampcord.shared.utils.fetchUrlBytes
 import me.lampu.lampcord.shared.utils.base64Encode
 import me.lampu.lampcord.shared.utils.showToast
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
 @Composable
 fun CloneToServerModal(
@@ -39,7 +40,7 @@ fun CloneToServerModal(
                     ListItem(
                         headlineContent = { Text(guild.name ?: "Unknown") },
                         supportingContent = { Text(guild.id) },
-                        modifier = Modifier.clickable {
+                        modifier = Modifier.clickableCursor {
                             coroutineScope.launch {
                                 val bytes = fetchUrlBytes(imageUrl)
                                 if (bytes == null) {

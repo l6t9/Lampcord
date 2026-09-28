@@ -82,11 +82,10 @@ class GatewayManager(
     private var connectionJob: Job? = null
     private val _events = MutableSharedFlow<GatewayPayload>(
         extraBufferCapacity = 4096,
-        onBufferOverflow = BufferOverflow.SUSPEND
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
     val events: SharedFlow<GatewayPayload> = _events.asSharedFlow()
 
-    // Rate-limited queue except for HEARTBEAT, IDENTIFY, and RESUME bypass).
     private val queue = ArrayDeque<GatewayPayload>()
     private val lazyQueue = LinkedHashMap<String, GatewayPayload>()
     private val queueLock = Mutex()
@@ -126,7 +125,6 @@ class GatewayManager(
                 threadMemberLists.add(channelId)
             } else {
                 channels[channelId] = ranges
-                // We use channelId for LRU tracking and map key
                 channelOrder.remove(channelId)
                 channelOrder.add(channelId)
                 if (channelOrder.size > 5) {
@@ -194,7 +192,6 @@ class GatewayManager(
                         } catch (e: CancellationException) {
                             throw e
                         } catch (e: ClosedReceiveChannelException) {
-                            // A closed incoming channel is the normal end of a socket.
                             Logging.w("Gateway", "WebSocket terminated unexpectedly", e)
                             val reason = withTimeoutOrNull(2.seconds) { closeReason.await() }
                             when (reason?.code?.toInt()) {
@@ -226,12 +223,10 @@ class GatewayManager(
                 stopHeartbeat()
                 stopTimeSpentUpdates()
                 stopHelloTimeout()
-                // A new session starts with no server side subscriptions.
                 withContext(NonCancellable) { queueLock.withLock { lazyQueue.clear() } }
 
                 if (isActive) {
                     reconnectAttempt++
-                    // 1 shl 22 * 1000 overflows Int and would produce a zero delay.
                     val delay = (1.seconds * (1 shl (reconnectAttempt - 1).coerceAtMost(5))).coerceAtMost(maxReconnectDelay)
                     Logging.i("Gateway", "Reconnecting in $delay (attempt $reconnectAttempt)...")
                     delay(delay)
@@ -263,7 +258,6 @@ class GatewayManager(
         scope.launch { queueLock.withLock { lazyQueue.clear() } }
     }
 
-    // Decode the heavy dispatch events outside the UI thread.
     private fun decodePayload(text: String): GatewayPayload {
         val payload = json.decodeFromString<GatewayPayload>(text)
 
@@ -535,7 +529,6 @@ class GatewayManager(
         sendNow(payload)
     }
 
-    // Public sends are queued behind authentication and the rate limit.
     suspend fun sendPayload(payload: GatewayPayload) {
         enqueue(payload)
     }

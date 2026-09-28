@@ -87,7 +87,6 @@ fun MainScreen(
         }
         if (navigationStore.isConnected) VoiceCallDialogs()
 
-        // Global Overlays
         if (navigationStore.isConnected) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
                 InAppNotificationHost()
@@ -121,14 +120,12 @@ fun MainScreen(
             }
         }
         
-        // Quick Switcher (Ctrl+K / Cmd+K)
         if (navigationStore.isQuickSwitcherVisible) {
             QuickSwitcher(
                 onDismiss = { navigationStore.isQuickSwitcherVisible = false }
             )
         }
         
-        // Forwarding Dialog
         navigationStore.forwardingMessage?.let { message ->
             ForwardDialog(
                 message = message,

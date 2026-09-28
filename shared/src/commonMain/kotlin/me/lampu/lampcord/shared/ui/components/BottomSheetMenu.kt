@@ -18,6 +18,7 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.utils.getPlatformName
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -86,7 +87,7 @@ fun AdaptiveModalBottomSheet(
                 Box(
                     modifier = Modifier
                         .matchParentSize()
-                        .clickable(
+                        .clickableCursor(
                             indication = null,
                             interactionSource = remember { MutableInteractionSource() },
                             onClick = onDismissRequest

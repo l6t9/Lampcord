@@ -20,7 +20,6 @@ import androidx.compose.ui.util.packFloats
 @OptIn(InternalComposeUiApi::class)
 @Composable
 fun rememberLayoutHitTestOwner(): LayoutHitTestOwner {
-    // Remove LocalComposeScene later.
     val scene = LocalComposeScene.current ?: error("no compose scene")
     return remember(scene) {
         when (scene::class.qualifiedName) {
@@ -46,9 +45,7 @@ interface LayoutHitTestOwner {
     ): Boolean = false
 }
 
-/*
-* reflect implementation for compose 1.8
- */
+// reflect implementation for compose 1.8
 internal abstract class ReflectLayoutHitTestOwner : LayoutHitTestOwner {
     @OptIn(InternalComposeUiApi::class)
     protected val classLoader = ComposeScene::class.java.classLoader!!
@@ -65,7 +62,6 @@ internal abstract class ReflectLayoutHitTestOwner : LayoutHitTestOwner {
             val lastNode = result.lastOrNull()
             return lastNode is PointerInputModifierNode
         } catch (_: Exception) {
-            // If anything goes wrong, return false to be safe
             return false
         }
     }

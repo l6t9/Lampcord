@@ -118,9 +118,6 @@ fun UsernameView(
 
     val useStyleColors = !ignoreColors && !styleColors.isNullOrEmpty()
     
-    // Animated gradients are expensive when every visible message starts its own
-    // frame-driven transition. Keep gradients static on Windows and only create
-    // the transition when a role gradient actually needs it.
     val animateGradient = !Settings.shared.reduceMotion && getPlatformName() != "windows" && roleGradient != null && roleGradient.size > 1
     val animValue = if (animateGradient) {
         val infiniteTransition = rememberInfiniteTransition(label = "usernameGradient")
@@ -155,10 +152,8 @@ fun UsernameView(
                 tileMode = TileMode.Repeated
             )
         } else if (useStyleColors && styleColors.size > 1) {
-            // Static gradient for display name styles
             Brush.linearGradient(colors = styleColors)
         } else if (useStyleColors && styleColors.size == 1 && effectId == DisplayNameCatalog.Effect.GRADIENT) {
-            // Discord sometimes sends GRADIENT effect with only 1 color, which should be SOLID
             null
         } else null
     }

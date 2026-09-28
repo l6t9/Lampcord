@@ -53,7 +53,6 @@ class ClientProfileStore(
     fun fetchCustomProfiles() {
         scope.launch {
             try {
-                // Fetch UserBG
                 val userBgRaw = httpClient.get("https://usrbg.is-hardly.online/users").bodyAsText()
                 val userBgResponse = try {
                     json.decodeFromString<UserBgResponse>(userBgRaw)
@@ -62,7 +61,6 @@ class ClientProfileStore(
                     null
                 }
 
-                // Fetch UserPFP
                 val userPfpRaw = httpClient.get("https://raw.githubusercontent.com/UserPFP/UserPFP/main/source/data.json").bodyAsText()
                 val userPfpResponse = try {
                     json.decodeFromString<UserPfpResponse>(userPfpRaw)
@@ -93,7 +91,6 @@ class ClientProfileStore(
                     _customProfiles.value = ClientProfileMapping(combined)
                 }
             } catch (e: Exception) {
-                // me.lampu.lampcord.shared.utils.Logging.e("ClientProfile", "Error fetching databases: ${e.message}")
             }
         }
     }

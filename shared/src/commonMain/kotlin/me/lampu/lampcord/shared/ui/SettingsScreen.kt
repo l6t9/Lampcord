@@ -257,9 +257,6 @@ fun SettingsScreen(
                 onNavigateToNavigation()
             } else {
                 selectedCategory = SettingsSection.APPEARANCE
-                // In Desktop, we don't have a separate navigation state for subpages yet,
-                // but the Appearance page handles it. However, if we want to deep-link:
-                // navigationStore.settingsCategory = "NAVIGATION"
             }
         }
 
@@ -494,7 +491,6 @@ fun SettingsScreen(
                 }
             }
         } else {
-            // Desktop Layout
             val railState = rememberWideNavigationRailState(initialValue = WideNavigationRailValue.Expanded)
             androidx.compose.ui.window.Dialog(
                 onDismissRequest = onDismiss,
@@ -556,7 +552,6 @@ fun SettingsDesktopOverlay(
         shape = MaterialTheme.shapes.large
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Titlebar
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -633,7 +628,6 @@ fun SettingsDesktopOverlay(
             }
 
             Row(modifier = Modifier.fillMaxSize()) {
-                // Wide Navigation Rail
                 WideNavigationRail(
                     state = railState,
                     colors = WideNavigationRailDefaults.colors(
@@ -711,7 +705,6 @@ fun SettingsDesktopOverlay(
                         )
                     }
 
-                    // Logout
                     WideNavigationRailItem(
                         selected = false,
                         railExpanded = railState.currentValue == WideNavigationRailValue.Expanded,
@@ -733,7 +726,6 @@ fun SettingsDesktopOverlay(
                     )
                 }
 
-                // Main Content Area
                 Surface(
                     modifier = Modifier
                         .weight(1f)
@@ -836,7 +828,6 @@ fun rememberSettingsSearchEntries(): List<SettingsSearchEntry> {
         add(SettingsSearchEntry("root-themer", "Themer", "Manage and edit themes", "Themer", "App Settings", "theming colors custom aliucord", getIcon(Icons.Rounded.Palette, Icons.Filled.Palette), "orange", SettingsSearchDestination.Theming))
         add(SettingsSearchEntry("root-logout", "Log Out", "Sign out of your account", "Logout", "Account", "sign out exit", getIcon(Icons.AutoMirrored.Rounded.Logout, Icons.AutoMirrored.Filled.Logout), "neutral", SettingsSearchDestination.Logout))
         
-        // Deep search entries
         add(SettingsSearchEntry("appearance-theme", "Theme Mode", "Auto, Light, Dark, or AMOLED", "Appearance", "Theme", "dark light amoled", getIcon(Icons.Rounded.Palette, Icons.Filled.Palette), "orange", SettingsSearchDestination.Appearance))
         add(SettingsSearchEntry("appearance-pure-black", "Pure Black", "Use pure black backgrounds in dark mode", "Appearance", "Theme", "amoled", getIcon(Icons.Rounded.Palette, Icons.Filled.Palette), "orange", SettingsSearchDestination.Appearance))
         add(SettingsSearchEntry("appearance-compact", "Compact Messages", "Denser layout for chat", "Appearance", "Display", "compact message denser", getIcon(Icons.Rounded.Palette, Icons.Filled.Palette), "orange", SettingsSearchDestination.Appearance))

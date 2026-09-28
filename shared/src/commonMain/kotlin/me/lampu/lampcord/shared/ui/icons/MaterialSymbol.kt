@@ -23,7 +23,6 @@ internal fun materialSymbol(
             viewportHeight = 960f,
             autoMirror = autoMirror,
         ).apply {
-            // Group for translation to match Material Symbols viewbox
             addGroup(translationY = 960f)
             addPath(
                 pathData = PathParser().parsePathString(pathData).toNodes(),

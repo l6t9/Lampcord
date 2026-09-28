@@ -29,7 +29,6 @@ class EmojiStore {
         val currentUsage = usageMap[emojiKey]?.toMutableList() ?: mutableListOf()
         currentUsage.add(now)
         
-        // Keep only the last maxSamples
         usageMap[emojiKey] = currentUsage.takeLast(maxSamples)
         
         saveUsage()
@@ -106,13 +105,11 @@ class EmojiStore {
             val json = Json.encodeToString(usageMap)
             Settings.shared.emojiUsageJson = json
         } catch (e: Exception) {
-            // Ignore
         }
         try {
             val json = Json.encodeToString(stickerUsageMap)
             Settings.shared.stickerUsageJson = json
         } catch (e: Exception) {
-            // Ignore
         }
     }
 }

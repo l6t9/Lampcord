@@ -17,7 +17,6 @@ class PresenceStore(private val userApi: UserApi) {
     val presences: StateFlow<Map<String, PresenceUpdate>> = flattenedPresences.asStateFlow()
     val allPresences: StateFlow<Map<String, PresenceUpdate>> = flattenedPresences.asStateFlow()
 
-    // Priority: online > idle > dnd > offline
     private fun flattenOne(presences: Collection<PresenceUpdate>): PresenceUpdate =
         presences.find { it.status == "online" }
             ?: presences.find { it.status == "idle" }
@@ -29,7 +28,6 @@ class PresenceStore(private val userApi: UserApi) {
         flattenedPresences.value = _presences.value.mapValues { (_, guildMap) -> flattenOne(guildMap.values) }
     }
 
-    // Only refresh the users that had their status changed.
     private fun updateFlattened(changed: Set<String>) {
         if (changed.isEmpty()) return
         val source = _presences.value
@@ -85,7 +83,6 @@ class PresenceStore(private val userApi: UserApi) {
         applyPresences(listOf(update))
     }
 
-    // Batch version of handlePresenceUpdate.
     fun applyPresences(updates: List<PresenceUpdate>) {
         if (updates.isEmpty()) return
         val changed = HashSet<String>(updates.size * 2)

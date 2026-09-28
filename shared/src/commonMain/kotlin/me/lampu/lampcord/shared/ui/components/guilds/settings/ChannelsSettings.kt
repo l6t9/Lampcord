@@ -45,6 +45,7 @@ import me.lampu.lampcord.shared.ui.components.settings.Material3SettingsGroup
 import me.lampu.lampcord.shared.ui.components.settings.SettingsLayout
 import me.lampu.lampcord.shared.ui.icons.Icons
 import org.koin.compose.koinInject
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
 @Composable
 fun ServerChannels(
@@ -76,7 +77,7 @@ fun ServerChannels(
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = FontWeight.Black,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp).clickable { editingChannel = category }
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp).clickableCursor { editingChannel = category }
                         )
                         allChannels.filter { it.parent_id == category.id }.sortedBy { it.position }.forEach { channel ->
                             ChannelRow(channel, onClick = { editingChannel = channel })

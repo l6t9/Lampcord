@@ -63,6 +63,7 @@ import org.koin.compose.koinInject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
 private const val MIN_SCROLLBACK = 15
 
@@ -110,7 +111,6 @@ fun ChatArea(
             .collect { visibleItems ->
                 if (visibleItems.isNotEmpty()) {
                     val lastVisibleItem = visibleItems.last()
-                    // Auto-ack if at the bottom
                     if (scrollState.firstVisibleItemIndex == 0 && messages.isNotEmpty()) {
                         val latestId = messages.first().id
                         if ((latestId.toLongOrNull() ?: 0L) > (ackedMessageId.toLongOrNull() ?: 0L)) {
@@ -198,7 +198,6 @@ fun ChatArea(
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
             )
-            // Overlay to ensure readability
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -225,7 +224,8 @@ fun ChatArea(
         ) {
             itemsIndexed(
                 items = filteredMessages,
-                key = { _, message -> message.id }
+                key = { _, message -> message.id },
+                contentType = { _, message -> message.type ?: 0 }
             ) { index, message ->
                 val priorMessage = filteredMessages.getOrNull(index + 1)
                 val nextMessage = filteredMessages.getOrNull(index - 1)
@@ -354,7 +354,7 @@ fun ChatArea(
                     .zIndex(2f)
                     .padding(top = 12.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .clickable {
+                    .clickableCursor {
                         coroutineScope.launch {
                             if (reduceMotion) scrollState.scrollToItem(0) else scrollState.animateScrollToItem(0)
                         }

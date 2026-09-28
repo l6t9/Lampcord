@@ -5,10 +5,6 @@ import kotlin.random.Random
 object Snowflake {
     private const val DISCORD_EPOCH = 1420070400000L
 
-    /**
-     * Generates a Discord-formatted snowflake based on the current time.
-     * Used primarily for message nonces to match Discord's "intended" format.
-     */
     fun nextId(): String {
         val timestamp = getCurrentTimeMillis()
         val sequence = Random.nextLong(0, 4096)

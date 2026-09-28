@@ -194,8 +194,6 @@ class AutocompleteStore(
                 })
             }
             AutocompleteType.EMOJI -> {
-                // Standard (unicode) emojis come from EmojiIndex, which is loaded
-                // lazily. Make sure it is initialized before we filter below.
                 EmojiIndex.initialize()
 
                 val currentUser = userStore.currentUser.value

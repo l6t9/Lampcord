@@ -15,23 +15,12 @@ import me.lampu.lampcord.shared.model.TrendingGifCategoriesResponse
 import me.lampu.lampcord.shared.utils.Logging
 import me.lampu.lampcord.shared.utils.getPlatformName
 
-/**
- * Sticker packs and GIF endpoints.
- */
 class MediaApi(private val rest: RestClient) {
 
-    // The picker is recreated whenever its popup closes. Keep the last good
-    // category response on the API instance so a transient refresh failure
-    // cannot make the category grid disappear on the next open.
     private var trendingGifCategoriesCache: TrendingGifCategoriesResponse? = null
 
     private fun requestedGifFormat(): String {
-        // Reduced Motion controls playback locally. `png` is not a valid
-        // Discord GIF media format and is treated as an MP4 fallback by the
-        // endpoint, which leaves category previews blank in image loaders.
-        // Desktop uses MP4 because the native FFmpeg player handles it more
-        // consistently than animated GIFs; mobile uses the documented GIF
-        // representation and selects still previews when needed.
+        // Reduced Motion controls playback locally. `png` is not a valid Discord GIF media format and is treated as an MP4 fallback by the endpoint, which leaves category previews blank in image loaders.
         return when (getPlatformName()) {
             "windows", "macos", "linux" -> "mp4"
             else -> "gif"
@@ -71,9 +60,6 @@ class MediaApi(private val rest: RestClient) {
             }
             if (!response.status.isSuccess()) return trendingGifCategoriesCache
 
-            // Decode each array entry independently. Discord has returned
-            // incomplete placeholder GIF objects in the past; one malformed
-            // placeholder should not hide the category list itself.
             val body = response.body<JsonObject>()
             val categories = body["categories"]?.jsonArray.orEmpty().mapNotNull { element ->
                 runCatching { rest.json.decodeFromJsonElement<GifCategory>(element) }.getOrNull()
@@ -96,9 +82,7 @@ class MediaApi(private val rest: RestClient) {
     }
 
     suspend fun getTrendingGifCategory(category: String, locale: String = "en-US", limit: Int = 50): List<Gif> {
-        // Category names are search terms. The trending-gifs route does not
-        // document a category query parameter and can return an empty list;
-        // use the stable search route instead.
+        // Category names are search terms. The trending-gifs route does not document a category query parameter and can return an empty list; use the stable search route instead.
         return searchGifs(category, locale, limit)
     }
 

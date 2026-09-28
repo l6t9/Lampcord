@@ -11,8 +11,7 @@ import java.awt.event.ComponentEvent
 
 @Composable
 fun WindowScope.WaylandDensityProvider(content: @Composable () -> Unit) {
-    // Only override density on Wayland. On X11/Windows/macOS the compositor
-    // and skiko.uiScale already handle HiDPI; forcing Density(1f) would shrink the UI.
+    // Only override density on Wayland. On X11/Windows/macOS the compositor and skiko.uiScale already handle HiDPI; forcing Density(1f) would shrink the UI.
     if (!WaylandScale.isWayland() || me.lampu.lampcord.shared.settings.Settings.shared.disableWaylandScaling) {
         content()
         return
@@ -25,7 +24,6 @@ fun WindowScope.WaylandDensityProvider(content: @Composable () -> Unit) {
         val listener =
             object : ComponentAdapter() {
                 override fun componentMoved(e: ComponentEvent) {
-                    // Instantly check scale when moved
                     val newScale = WaylandScale.getWindowScale(window.x, window.y)
                     if (newScale != scale) {
                         scale = newScale
@@ -46,7 +44,6 @@ fun WindowScope.WaylandDensityProvider(content: @Composable () -> Unit) {
         }
     }
 
-    // Compositors sometimes swallow move events during active drag, so poll the in-memory monitor cache.
     LaunchedEffect(Unit) {
         while (true) {
             delay(200)

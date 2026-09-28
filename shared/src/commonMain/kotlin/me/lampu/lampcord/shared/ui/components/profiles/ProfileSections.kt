@@ -99,7 +99,6 @@ fun ProfileSections(
     }
 
     Column(modifier = Modifier.padding(bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        // Bio Priority: Guild Member Bio -> User Profile Bio -> Base User Bio
         val bio = (guildMeta?.bio?.takeIf { it.isNotBlank() } 
             ?: userMeta?.bio?.takeIf { it.isNotBlank() } 
             ?: user.bio?.takeIf { it.isNotBlank() })?.let { Profile3y3.strip(it) }
@@ -111,19 +110,16 @@ fun ProfileSections(
             }
         }
 
-        // Dates
         if (isExpanded || showMemberSince) {
             Column {
                 ProfileSectionHeader("Member Since", color = profileTextColor)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Discord Join Date
                     Surface(modifier = Modifier.size(16.dp), color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f), shape = CircleShape) {
                         Icon(Icons.Brand.Discord, null, modifier = Modifier.padding(2.dp), tint = MaterialTheme.colorScheme.primary)
                     }
                     Spacer(Modifier.width(8.dp))
                     Text(formatDate(user.id), style = MaterialTheme.typography.bodyMedium, color = profileTextColor)
 
-                    // Guild Join Date
                     profile.guild_member?.joined_at?.let { joinedAt ->
                         Text(" • ", style = MaterialTheme.typography.bodyMedium, color = profileSecondaryTextColor)
                         val guildIcon = guild?.let { g ->
@@ -159,9 +155,7 @@ fun ProfileSections(
             }
         }
 
-        // Music / Last.fm Placeholder (if not already handled by Spotify activity)
         if (isExpanded) {
-            // Check if user has a connected account that looks like Last.fm or similar
             val musicAccount = profile.connected_accounts.find { it.type == "lastfm" || it.type == "spotify" }
             if (musicAccount != null && activities.none { it.type == 2 }) {
                 Column {
@@ -188,7 +182,6 @@ fun ProfileSections(
         }
 
         if (isExpanded) {
-            // Roles
             val roles = profile.guild_member?.roles
             if (!roles.isNullOrEmpty() && guild != null) {
                 Column {
@@ -206,7 +199,6 @@ fun ProfileSections(
                 }
             }
 
-            // Manage User (add/remove roles)
             if (guild != null && profile.guild_member != null && profile.user.id != currentUser?.id) {
                 val me = currentUser
                 val myMember = remember(guild.id, me) {
@@ -243,14 +235,12 @@ fun ProfileSections(
             val mutualFriendsCount = profile.mutual_friends_count ?: profile.mutual_friends?.size ?: 0
             val hasMutuals = !isOwnProfile && (mutualFriendsCount > 0 || !profile.mutual_guilds.isNullOrEmpty())
 
-            // Connections & Mutuals (Combined as in modern Discord)
             if (profile.connected_accounts.isNotEmpty() || hasMutuals) {
                 Column {
                     ProfileSectionHeader("Connections", profileTextColor)
                     Material3SettingsGroup(
                         horizontalPadding = 0.dp,
                         items = buildList {
-                            // Mutual Friends
                             if (!isOwnProfile && mutualFriendsCount > 0) {
                                 add(
                                     Material3SettingsItem(
@@ -264,7 +254,6 @@ fun ProfileSections(
                                 )
                             }
 
-                            // Mutual Servers
                             if (!isOwnProfile) profile.mutual_guilds?.takeIf { it.isNotEmpty() }?.let { guilds ->
                                 add(
                                     Material3SettingsItem(
@@ -278,7 +267,6 @@ fun ProfileSections(
                                 )
                             }
 
-                            // Actual Connections
                             addAll(profile.connected_accounts.map { account ->
                                 Material3SettingsItem(
                                     icon = getConnectionIcon(account.type, account.name),

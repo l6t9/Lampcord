@@ -19,7 +19,12 @@ import me.lampu.lampcord.shared.model.AvatarDecorationData
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.api.CdnUrls
 import me.lampu.lampcord.shared.utils.getPlatformName
-import com.github.panpf.sketch.PainterState
+import me.lampu.lampcord.shared.ui.components.ImageLoadState
+
+/** Decorations overhang the avatar, so the decode hint must be the scaled size. */
+private const val DECORATION_SCALE = 1.2f
+
+private val DECORATION_CDN_SIZES = intArrayOf(96, 128, 160, 240, 320, 480)
 
 @Composable
 fun AvatarWithDecoration(
@@ -64,7 +69,7 @@ fun AvatarWithDecoration(
                     size = sizePx,
                     allowAnimation = animated && (isHovered || forceAnimate),
                     onState = { state ->
-                        if (state is PainterState.Error && avatarCandidateIndex < avatarCandidates.lastIndex) {
+                        if (state is ImageLoadState.Error && avatarCandidateIndex < avatarCandidates.lastIndex) {
                             avatarCandidateIndex++
                         }
                     }
@@ -72,22 +77,23 @@ fun AvatarWithDecoration(
             }
         }
 
-        // Decorations are animated APNGs. The same APNG is shown statically (first
-        // frame) when not hovered, and animates while hovered/visible. This keeps the
-        // colors identical in both states.
+        // Decorations are animated APNGs. The same APNG is shown statically (first frame) when not hovered, and animates while hovered/visible. This keeps the colors identical in both states.
         if (decorationData != null) {
             val shouldAnimate = animated && (isHovered || forceAnimate)
-            val effectiveUrl = CdnUrls.getAvatarDecorationUrl(decorationData.asset)
+            val decorationPx = (sizePx * DECORATION_SCALE).toInt()
+            val cdnSize = DECORATION_CDN_SIZES.firstOrNull { it >= decorationPx }
+                ?: DECORATION_CDN_SIZES.last()
+            val effectiveUrl = CdnUrls.getAvatarDecorationUrl(decorationData.asset, cdnSize)
 
             AsyncImage(
                 model = effectiveUrl,
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxSize()
-                    .scale(1.2f),
+                    .scale(DECORATION_SCALE),
                 filterQuality = androidx.compose.ui.graphics.FilterQuality.High,
                 showPlaceholder = false,
-                size = sizePx,
+                size = decorationPx,
                 allowAnimation = shouldAnimate
             )
         }

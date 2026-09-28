@@ -12,6 +12,7 @@ import me.lampu.lampcord.shared.state.BadgeStore
 import me.lampu.lampcord.shared.utils.ResourceLoader
 import me.lampu.lampcord.shared.utils.showToast
 import org.koin.compose.koinInject
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,7 +56,7 @@ fun CustomBadgesView(
                             contentDescription = badge.name,
                             modifier = Modifier
                                 .size(badgeSize)
-                                .clickable { showToast(badge.name) }
+                                .clickableCursor { showToast(badge.name) }
                         )
                     }
                 )

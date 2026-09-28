@@ -61,7 +61,6 @@ fun LampcordTheme(
             baseColorScheme
         }
         
-        // Apply theme overrides
         if (themeStore.activeThemes.isNotEmpty()) {
             scheme = scheme.copy(
                 primary = themeStore.resolveColor("primary", scheme) ?: scheme.primary,
@@ -100,7 +99,6 @@ fun LampcordTheme(
             )
         }
 
-        // Apply transparency if enabled and background is present
         val transparencyMode = Settings.shared.transparencyMode
         if (transparencyMode != me.lampu.lampcord.shared.settings.TransparencyMode.NONE && themeStore.themeBackgroundUrl != null) {
             val transparentScheme = scheme.copy(
@@ -119,8 +117,7 @@ fun LampcordTheme(
         }
     }
 
-    // Reduced motion also applies to theme changes. Keeping the scheme direct
-    // avoids a cross-fade when the user changes appearance settings.
+    // Reduced motion also applies to theme changes. Keeping the scheme direct avoids a cross-fade when the user changes appearance settings.
     val animatedColorScheme = if (Settings.shared.reduceMotion) {
         colorScheme
     } else {

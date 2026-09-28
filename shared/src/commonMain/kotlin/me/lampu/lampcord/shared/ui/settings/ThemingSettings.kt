@@ -31,6 +31,8 @@ import me.lampu.lampcord.shared.utils.setClipboardText
 import org.koin.compose.koinInject
 import kotlinx.serialization.json.*
 import kotlinx.serialization.encodeToString
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
+import me.lampu.lampcord.shared.ui.kit.handCursor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -246,6 +248,7 @@ fun ThemeSettingsItem(
                             },
                             menuContent = { menuState ->
                                 DropdownMenuItem(
+                                    modifier = Modifier.handCursor(),
                                     text = { Text("Edit") },
                                     leadingIcon = { Icon(Icons.Rounded.Edit, null) },
                                     onClick = { onEdit(); menuState.dismiss() }
@@ -274,6 +277,7 @@ fun ThemeSettingsItem(
                             },
                             menuContent = { menuState ->
                                 DropdownMenuItem(
+                                    modifier = Modifier.handCursor(),
                                     text = { Text("Delete") },
                                     leadingIcon = { Icon(Icons.Rounded.Delete, null) },
                                     onClick = { onDelete(); menuState.dismiss() }
@@ -428,14 +432,13 @@ fun ColorMapEditor(title: String, colors: Map<String, JsonElement>, onUpdate: (M
                             Text(colorValue, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         
-                        // Color preview
                         Box(
                             modifier = Modifier
                                 .size(32.dp)
                                 .clip(CircleShape)
                                 .background(parseColorSafe(colorValue))
                                 .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), CircleShape)
-                                .clickable { editingKey = key }
+                                .clickableCursor { editingKey = key }
                         )
                         
                         IconButton(onClick = {

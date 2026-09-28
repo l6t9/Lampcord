@@ -48,6 +48,8 @@ import me.lampu.lampcord.shared.state.MemberListStore
 import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.ui.icons.Icons
 import org.koin.compose.koinInject
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
+import me.lampu.lampcord.shared.ui.kit.handCursor
 
 private const val OPTION_SUB_COMMAND = 1
 private const val OPTION_SUB_COMMAND_GROUP = 2
@@ -101,7 +103,6 @@ fun CommandParameterUI(
                 .verticalScroll(rememberScrollState())
                 .padding(12.dp)
         ) {
-            // Header: bot icon + command name + description
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -169,7 +170,6 @@ fun CommandParameterUI(
 
             Spacer(Modifier.height(8.dp))
 
-            // Sub-command / sub-command group selector
             val visibleSubs = when {
                 selectedGroup != null -> selectedGroup.options.orEmpty()
                 groups.isNotEmpty() -> emptyList()
@@ -390,6 +390,7 @@ private fun ChoiceOptionField(
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             choices.forEach { choice ->
                 DropdownMenuItem(
+                    modifier = Modifier.handCursor(),
                     text = { Text(choice.name) },
                     onClick = {
                         commandStore.commandOptions[option.name] = choice.value
@@ -445,7 +446,6 @@ private fun MentionOptionField(
         buildCandidateList(option, memberListStore, guildStore, navigationStore)
     }
 
-    // Restore the display name from the stored id.
     if (storedId != null && text.isEmpty() && selected == storedId) {
         text = candidates.firstOrNull { it.second == storedId }?.first ?: ""
     }
@@ -522,7 +522,7 @@ private fun MentionOptionField(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable {
+                                .clickableCursor {
                                     text = name
                                     selected = id
                                     showSuggestions = false

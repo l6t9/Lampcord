@@ -34,6 +34,7 @@ import io.github.kdroidfilter.webview.web.WebView
 import io.github.kdroidfilter.webview.web.rememberWebViewNavigator
 import io.github.kdroidfilter.webview.web.rememberWebViewState
 import org.koin.compose.koinInject
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
 private val spotifyUrlRe = Regex("https://open\\.spotify\\.com/(\\w+)/(\\w+)")
 private val youtubeUrlRe =
@@ -77,7 +78,6 @@ fun PlayableEmbedView(
     val navigator = rememberWebViewNavigator()
     val webViewState = rememberWebViewState(url)
     
-    // Set user agent and allow JS to ensure YouTube loads correctly
     LaunchedEffect(webViewState) {
         val platform = getPlatformName()
         val isMobile = platform == "android" || platform == "ios"
@@ -128,7 +128,6 @@ fun EmbedView(
                     val timestamp = res.groupValues[3].takeIf { it.isNotBlank() }
                     "https://www.youtube-nocookie.com/embed/$videoId${if (timestamp != null) "?start=$timestamp" else ""}"
                 } ?: youtubeClipRe.find(embedUrl)?.let { res ->
-                    // Clips are harder to embed directly via URL, but we can try the same no-nocookie logic
                     val clipId = res.groupValues[1]
                     "https://www.youtube-nocookie.com/clip/$clipId"
                 }
@@ -141,15 +140,11 @@ fun EmbedView(
                 }
             }
             else -> {
-                // Generic video support if provider is unknown but has video
                 if (embed.video != null) embedUrl else null
             }
         }
     }
 
-    // Some providers (including Tenor) only return the GIF as the embed URL,
-    // or return a still preview in embed.image. Always prefer the actual GIF
-    // URL when one is available.
     val gifUrl = listOfNotNull(
         embed.image?.url,
         embed.image?.proxy_url,
@@ -196,7 +191,7 @@ fun EmbedView(
                             val titleText = buildAnnotatedString { withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)) { append(title) } }
                             if (embed.url != null) {
                                 val uriHandler = LocalUriHandler.current
-                                Text(text = titleText, style = MaterialTheme.typography.titleMedium, modifier = Modifier.clickable { uriHandler.openUri(embed.url) })
+                                Text(text = titleText, style = MaterialTheme.typography.titleMedium, modifier = Modifier.clickableCursor { uriHandler.openUri(embed.url) })
                             } else {
                                 Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                             }

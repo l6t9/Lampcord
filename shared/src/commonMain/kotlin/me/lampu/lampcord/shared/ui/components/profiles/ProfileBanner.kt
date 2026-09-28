@@ -29,7 +29,9 @@ import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.setClipboardText
 import me.lampu.lampcord.shared.utils.showToast
 import org.koin.compose.koinInject
-import com.github.panpf.sketch.PainterState
+import me.lampu.lampcord.shared.ui.components.ImageLoadState
+import me.lampu.lampcord.shared.ui.kit.combinedClickableCursor
+import me.lampu.lampcord.shared.ui.kit.handCursor
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
@@ -86,7 +88,7 @@ fun ProfileBanner(
             modifier = Modifier
                 .fillMaxSize()
                 .hoverable(interactionSource)
-                .combinedClickable(
+                .combinedClickableCursor(
                     onClick = {
                         if (onEdit != null) {
                             onEdit()
@@ -110,7 +112,7 @@ fun ProfileBanner(
                     modifier = Modifier.fillMaxSize(),
                     filterQuality = FilterQuality.Medium,
                     onState = { state ->
-                        if (state is PainterState.Success) {
+                        if (state is ImageLoadState.Success) {
                             isImageLoaded = true
                         }
                     }
@@ -142,7 +144,6 @@ fun ProfileBanner(
             }
         }
 
-        // More Options Overlay
         var menuExpanded by remember { mutableStateOf(false) }
         var showNicknameDialog by remember { mutableStateOf(false) }
 
@@ -207,6 +208,7 @@ fun ProfileBanner(
                 if (user.id != currentUser?.id) {
                     if (isFriend) {
                         DropdownMenuItem(
+                            modifier = Modifier.handCursor(),
                             text = { Text("Remove Friend") },
                             onClick = {
                                 relationshipStore.removeFriend(user.id)
@@ -215,6 +217,7 @@ fun ProfileBanner(
                             leadingIcon = { Icon(Icons.Filled.PersonRemove, null) }
                         )
                         DropdownMenuItem(
+                            modifier = Modifier.handCursor(),
                             text = { Text("Edit Friend Nickname") },
                             onClick = {
                                 showNicknameDialog = true
@@ -224,6 +227,7 @@ fun ProfileBanner(
                         )
                     } else if (!isBlocked) {
                         DropdownMenuItem(
+                            modifier = Modifier.handCursor(),
                             text = { Text("Add Friend") },
                             onClick = {
                                 relationshipStore.addFriend(user.id)
@@ -236,6 +240,7 @@ fun ProfileBanner(
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
                     DropdownMenuItem(
+                        modifier = Modifier.handCursor(),
                         text = { Text("Block", color = MaterialTheme.colorScheme.error) },
                         onClick = {
                             relationshipStore.blockUser(user.id)
@@ -246,6 +251,7 @@ fun ProfileBanner(
                 }
 
                 DropdownMenuItem(
+                    modifier = Modifier.handCursor(),
                     text = { Text("Copy User ID") },
                     onClick = {
                         me.lampu.lampcord.shared.utils.setClipboardText(user.id)

@@ -27,6 +27,7 @@ jobs:
     outputs:
       should-release: ${{ steps.release.outputs.should-release }}
       version: ${{ steps.release.outputs.version }}
+      build-version: ${{ steps.release.outputs.build-version }}
       base-sha: ${{ steps.release.outputs.base-sha }}
     steps:
       - name: Check out repository history
@@ -50,32 +51,32 @@ jobs:
             exit 1
           fi
 
-          read_version() {
+          read_prop() {
+            local wanted="$1"
             while IFS='=' read -r key value; do
-              if [[ "$key" == "appVersion" ]]; then
+              if [[ "$key" == "$wanted" ]]; then
                 printf '%s' "$value"
                 return
               fi
             done
           }
 
+          # Strict semver both sides; an appVersion alpha must never be publishable.
           is_forward_version() {
             local previous="$1"
             local current="$2"
-            local previous_major previous_minor previous_patch previous_alpha
-            local current_major current_minor current_patch current_alpha
+            local previous_major previous_minor previous_patch
+            local current_major current_minor current_patch
 
-            [[ "$previous" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)(-a([0-9]+(\.[0-9]+)*))?$ ]] || return 1
+            [[ "$previous" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]] || return 1
             previous_major="${BASH_REMATCH[1]}"
             previous_minor="${BASH_REMATCH[2]}"
             previous_patch="${BASH_REMATCH[3]}"
-            previous_alpha="${BASH_REMATCH[5]}"
 
-            [[ "$current" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)(-a([0-9]+(\.[0-9]+)*))?$ ]] || return 1
+            [[ "$current" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]] || return 1
             current_major="${BASH_REMATCH[1]}"
             current_minor="${BASH_REMATCH[2]}"
             current_patch="${BASH_REMATCH[3]}"
-            current_alpha="${BASH_REMATCH[5]}"
 
             if ((10#$current_major != 10#$previous_major)); then
               ((10#$current_major > 10#$previous_major))
@@ -85,14 +86,7 @@ jobs:
               ((10#$current_minor > 10#$previous_minor))
               return
             fi
-            if ((10#$current_patch != 10#$previous_patch)); then
-              ((10#$current_patch > 10#$previous_patch))
-              return
-            fi
-            [[ -n "$previous_alpha" ]] || return 1
-            [[ -z "$current_alpha" ]] && return 0
-            [[ "$previous_alpha" != "$current_alpha" ]] &&
-              [[ "$(printf '%s\n%s\n' "$previous_alpha" "$current_alpha" | sort -V | tail -n 1)" == "$current_alpha" ]]
+            ((10#$current_patch > 10#$previous_patch))
           }
 
           find_previous_release_base() {
@@ -101,30 +95,32 @@ jobs:
             local commit candidate_version previous_version
 
             while IFS= read -r commit; do
-              candidate_version="$(git show "${commit}:gradle.properties" | read_version)"
-              previous_version="$(git show "${commit}^:gradle.properties" 2>/dev/null | read_version || true)"
+              candidate_version="$(git show "${commit}:gradle.properties" | read_prop releaseVersion)"
+              previous_version="$(git show "${commit}^:gradle.properties" 2>/dev/null | read_prop releaseVersion || true)"
               if is_forward_version "$previous_version" "$candidate_version" &&
                 is_forward_version "$candidate_version" "$current_version"; then
                 printf '%s' "$commit"
                 return
               fi
-            done < <(git log -G '^appVersion=' --format='%H' "$search_head" -- gradle.properties)
+            done < <(git log -G '^releaseVersion=' --format='%H' "$search_head" -- gradle.properties)
           }
 
-          version="$(read_version < gradle.properties)"
-          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-a[0-9]+)?$ ]]; then
+          version="$(read_prop releaseVersion < gradle.properties)"
+          build_version="$(read_prop appVersion < gradle.properties)"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             {
               echo "should-release=false"
               echo "version=$version"
+              echo "build-version=$build_version"
               echo "base-sha="
             } >> "$GITHUB_OUTPUT"
-            echo "Skipping release for non-matching appVersion \`$version\`." >> "$GITHUB_STEP_SUMMARY"
+            echo "Skipping release: releaseVersion \`$version\` is not a plain X.Y.Z version." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
 
           if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
             [[ "$REQUESTED_VERSION" == "$version" ]] || {
-              echo "Requested version $REQUESTED_VERSION does not match appVersion $version" >&2
+              echo "Requested version $REQUESTED_VERSION does not match releaseVersion $version" >&2
               exit 1
             }
             should_release=true
@@ -132,19 +128,19 @@ jobs:
             if [[ -z "$BEFORE_SHA" || "$BEFORE_SHA" =~ ^0+$ ]]; then
               should_release=true
             else
-              previous_version="$(git show "$BEFORE_SHA:gradle.properties" 2>/dev/null | read_version || true)"
+              previous_version="$(git show "$BEFORE_SHA:gradle.properties" 2>/dev/null | read_prop releaseVersion || true)"
               if [[ -z "$previous_version" ]]; then
                 should_release=true
               elif is_forward_version "$previous_version" "$version"; then
                 should_release=true
               else
                 should_release=false
-                echo "Skipping release for non-forward appVersion change from $previous_version to $version." >> "$GITHUB_STEP_SUMMARY"
+                echo "Skipping release: releaseVersion $previous_version -> $version is not a forward version." >> "$GITHUB_STEP_SUMMARY"
               fi
             fi
           fi
 
-          version_commit="$(git log -G '^appVersion=' --format='%H' -1 "$GITHUB_SHA" -- gradle.properties)"
+          version_commit="$(git log -G '^releaseVersion=' --format='%H' -1 "$GITHUB_SHA" -- gradle.properties)"
           base_sha="$(find_previous_release_base "$version" "${version_commit}^")"
           if [[ -z "$base_sha" ]]; then
             base_sha="$(git rev-list --max-parents=0 "$GITHUB_SHA")"
@@ -153,13 +149,15 @@ jobs:
           {
             echo "should-release=$should_release"
             echo "version=$version"
+            echo "build-version=$build_version"
             echo "base-sha=$base_sha"
           } >> "$GITHUB_OUTPUT"
 
           {
             echo "### Release"
-            echo "- Version: \`$version\`"
-            echo "- Commit range: \`${base_sha:0:8}..${GITHUB_SHA:0:8}\`"
+            echo "- Release version: \`$version\`"
+            echo "- Build version (appVersion): \`$build_version\`"
+            echo "- Commit range: \`${base_sha:0:8}..$GITHUB_SHA:0:8\`"
             echo "- Publish: \`$should_release\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -279,6 +277,7 @@ jobs:
         shell: bash
         env:
           APP_VERSION: ${{ needs.prepare.outputs.version }}
+          BUILD_VERSION: ${{ needs.prepare.outputs.build-version }}
           PIXELDRAIN_API_KEY: ${{ secrets.PIXELDRAIN_API_KEY }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_UPDATE_WEBHOOK_URL }}
         run: |
@@ -286,10 +285,11 @@ jobs:
           test -n "$PIXELDRAIN_API_KEY" || { echo "PIXELDRAIN_API_KEY is not configured" >&2; exit 1; }
           test -n "$DISCORD_WEBHOOK_URL" || { echo "DISCORD_WEBHOOK_URL is not configured" >&2; exit 1; }
 
+          # Artifacts are named after appVersion; the release tag uses releaseVersion.
           expected=(
-            "release-assets/lampcord-android-${APP_VERSION}.apk"
-            "release-assets/lampcord-desktop-linux-x64-${APP_VERSION}.AppImage"
-            "release-assets/lampcord-desktop-windows-x64-${APP_VERSION}.zip"
+            "release-assets/lampcord-android-${BUILD_VERSION}.apk"
+            "release-assets/lampcord-desktop-linux-x64-${BUILD_VERSION}.AppImage"
+            "release-assets/lampcord-desktop-windows-x64-${BUILD_VERSION}.zip"
           )
           for file in "${expected[@]}"; do
             test -f "$file" || { echo "Missing release artifact: $file" >&2; exit 1; }
@@ -307,18 +307,20 @@ jobs:
         shell: bash
         env:
           APP_VERSION: ${{ needs.prepare.outputs.version }}
+          BUILD_VERSION: ${{ needs.prepare.outputs.build-version }}
           BASE_SHA: ${{ needs.prepare.outputs.base-sha }}
         run: |
           set -euo pipefail
           built_at="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
           jq -n \
             --arg version "$APP_VERSION" \
+            --arg buildVersion "$BUILD_VERSION" \
             --arg commit "$GITHUB_SHA" \
             --arg base_commit "$BASE_SHA" \
             --arg actor "$GITHUB_ACTOR" \
             --arg built_at "$built_at" \
             --arg run_url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
-            '{version: $version, commit: $commit, baseCommit: $base_commit, actor: $actor, builtAt: $built_at, runUrl: $run_url}' \
+            '{version: $version, buildVersion: $buildVersion, commit: $commit, baseCommit: $base_commit, actor: $actor, builtAt: $built_at, runUrl: $run_url}' \
             > "release-assets/lampcord-${APP_VERSION}-build-info.json"
           (
             cd release-assets
@@ -331,7 +333,7 @@ jobs:
         env:
           PIXELDRAIN_API_KEY: ${{ secrets.PIXELDRAIN_API_KEY }}
         with:
-          file-path: release-assets/lampcord-android-${{ needs.prepare.outputs.version }}.apk
+          file-path: release-assets/lampcord-android-${{ needs.prepare.outputs.build-version }}.apk
 
       - name: Upload Linux AppImage to Pixeldrain
         id: pixeldrain-linux
@@ -339,7 +341,7 @@ jobs:
         env:
           PIXELDRAIN_API_KEY: ${{ secrets.PIXELDRAIN_API_KEY }}
         with:
-          file-path: release-assets/lampcord-desktop-linux-x64-${{ needs.prepare.outputs.version }}.AppImage
+          file-path: release-assets/lampcord-desktop-linux-x64-${{ needs.prepare.outputs.build-version }}.AppImage
 
       - name: Upload Windows ZIP to Pixeldrain
         id: pixeldrain-windows
@@ -347,7 +349,7 @@ jobs:
         env:
           PIXELDRAIN_API_KEY: ${{ secrets.PIXELDRAIN_API_KEY }}
         with:
-          file-path: release-assets/lampcord-desktop-windows-x64-${{ needs.prepare.outputs.version }}.zip
+          file-path: release-assets/lampcord-desktop-windows-x64-${{ needs.prepare.outputs.build-version }}.zip
 
       - name: Upload checksums to Pixeldrain
         id: pixeldrain-checksums

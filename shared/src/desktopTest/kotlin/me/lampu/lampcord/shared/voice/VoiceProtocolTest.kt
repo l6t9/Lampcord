@@ -23,7 +23,6 @@ class VoiceProtocolTest {
             assertNull(receiver.decrypt(first)) // Authenticated replay is not.
             for (size in 0..first.size) receiver.decrypt(first.copyOf(size))
 
-            // RTP extensions: CSRC list + clear extension preamble; extension content is encrypted.
             val header = ByteBuffer.allocate(20).put(0xb1.toByte()).put(120).putShort(7).putInt(960)
                 .putInt(43).putInt(123).putShort(0xbede.toShort()).putShort(1).array()
             val payload = byteArrayOf(0x10, 0x7f, 0, 0) + opus + byteArrayOf(0, 2)

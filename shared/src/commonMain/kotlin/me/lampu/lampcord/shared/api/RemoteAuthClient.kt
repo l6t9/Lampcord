@@ -87,8 +87,7 @@ class RemoteAuthClient(
                     header("Origin", "https://discord.com")
                     header("Accept-Language", "en-US,en;q=0.9")
                     header("Cache-Control", "no-cache")
-                    // We don't have easy access to getPlatformName here without making it more complex,
-                    // so we'll use a standard Discord Desktop-like UA which is safe for Remote Auth.
+                    // We don't have easy access to getPlatformName here without making it more complex, so we'll use a standard Discord Desktop-like UA which is safe for Remote Auth.
                     header("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) discord/0.0.398 Chrome/138.0.7204.251 Electron/37.6.0 Safari/537.36")
                 }
             ) {

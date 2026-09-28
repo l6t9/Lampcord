@@ -6,10 +6,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import me.lampu.lampcord.shared.ui.icons.Icons
 
-/**
- * Material 3 Expressive Switch with custom thumb content.
- * Shows a checkmark when enabled and a close icon when disabled.
- */
 @Composable
 fun ExpressiveSwitch(
     checked: Boolean,

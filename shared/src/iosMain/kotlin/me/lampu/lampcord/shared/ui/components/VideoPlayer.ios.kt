@@ -38,7 +38,6 @@ actual fun VideoPlayer(
             },
             modifier = modifier,
             update = { _ ->
-                // Native controls will handle playback
             }
         )
     }

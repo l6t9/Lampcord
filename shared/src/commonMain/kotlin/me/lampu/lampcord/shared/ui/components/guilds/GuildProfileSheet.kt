@@ -38,7 +38,6 @@ fun GuildProfileSkeleton() {
             .fillMaxWidth()
             .padding(bottom = 32.dp)
     ) {
-        // Banner Placeholder
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -47,7 +46,6 @@ fun GuildProfileSkeleton() {
         )
 
         Box(modifier = Modifier.fillMaxWidth()) {
-            // Icon Placeholder
             Surface(
                 modifier = Modifier
                     .padding(start = 16.dp)
@@ -99,16 +97,11 @@ fun GuildProfileSheet(
 
     LaunchedEffect(guildId) {
         isLoading = true
-        // Guild tags don't provide an invite code, but Discord has a /guilds/{id}/profile or similar
-        // However, Aliucord uses GuildProfileStore which likely fetches specific data.
-        // For standard Discord, we usually resolve an invite or use the guild widget.
-        // Since we don't have a direct "Guild Profile" API modeled yet, let's try to get basic guild info.
         val guild = guildStore.guilds.value.find { it.id == guildId }
         if (guild != null) {
             inviteData = Invite(code = "", guild = guild, approximate_member_count = guild.member_count)
             isLoading = false
         } else {
-            // Try to fetch via API if possible
             val fetched = guildApi.getGuildPreview(guildId)
             if (fetched != null) {
                 inviteData = Invite(
@@ -118,7 +111,6 @@ fun GuildProfileSheet(
                     approximate_presence_count = fetched.approximate_presence_count
                 )
             } else {
-                // Try widget as last resort
                 val widget = guildApi.getGuildWidget(guildId)
                 if (widget != null) {
                     val name = widget["name"]?.jsonPrimitive?.contentOrNull
@@ -156,7 +148,6 @@ fun GuildProfileSheet(
                     .verticalScroll(rememberScrollState())
                     .padding(bottom = 32.dp)
             ) {
-                // Banner
                 Box(modifier = Modifier.fillMaxWidth()) {
                     val bannerUrl = guild.banner?.let { "https://cdn.discordapp.com/banners/${guild.id}/$it.png?size=600" }
                     if (bannerUrl != null) {
@@ -172,7 +163,6 @@ fun GuildProfileSheet(
                         )
                     }
 
-                    // Icon
                     Surface(
                         modifier = Modifier.padding(start = 16.dp).align(Alignment.BottomStart).offset(y = 40.dp).size(80.dp),
                         shape = RoundedCornerShape(24.dp),

@@ -16,7 +16,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -56,6 +55,7 @@ import me.lampu.lampcord.shared.ui.components.UsernameView
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.setClipboardText
 import org.koin.compose.koinInject
+import me.lampu.lampcord.shared.ui.kit.handCursor
 
 @Composable
 fun MemberItem(
@@ -104,13 +104,8 @@ fun MemberItem(
     val roleColor = roleData?.first ?: Color.Unspecified
     val roleGradient = roleData?.second
 
-    // Row only recomposes when there is entry changes.
-    val relationshipType by remember(userId, env) {
-        derivedStateOf { env.relationshipTypes.value[userId] }
-    }
-    val presence by remember(member.presence, userId, env) {
-        derivedStateOf { member.presence ?: env.presences.value[userId] }
-    }
+    val relationshipType = remember(userId, env) { env.relationshipTypes.value[userId] }
+    val presence = remember(member.presence, userId, env) { member.presence ?: env.presences.value[userId] }
 
     val errorColor = MaterialTheme.colorScheme.error
     val contextMenuItems = remember(displayUser, env.developerMode, relationshipType, env.currentUserId, errorColor) {
@@ -149,7 +144,6 @@ fun MemberItem(
         items
     }
 
-    // Position changes every scroll frame and is only read when the row is clicked.
     val coordinates = remember { arrayOfNulls<LayoutCoordinates>(1) }
     var isHovered by remember { mutableStateOf(false) }
 
@@ -185,7 +179,10 @@ fun MemberItem(
         shape = RoundedCornerShape(8.dp)
     ) {
         Surface(
-            modifier = Modifier.fillMaxWidth().height(44.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(44.dp)
+                .handCursor(),
             onClick = {
                 val position = coordinates[0]?.positionInRoot() ?: Offset.Zero
                 profileStore.showProfile(userId, guildId, position = position)

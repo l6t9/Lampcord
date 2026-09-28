@@ -67,7 +67,6 @@ object Logging {
 
             buffer.append(entry)
 
-            // Stack queue and dump it in a single go.
             while (true) {
                 val next = incoming.tryReceive().getOrNull() ?: break
                 buffer.append(next)
@@ -137,8 +136,7 @@ object Logging {
 
     val ktorLogger = object : io.ktor.client.plugins.logging.Logger {
         override fun log(message: String) {
-            // Filter out potentially sensitive data if needed, or just log it
-            // Ktor logs can be very verbose, so we log them as Debug by default
+            // Filter out potentially sensitive data if needed, or just log it Ktor logs can be very verbose, so we log them as Debug by default
             d("Ktor", message)
         }
     }

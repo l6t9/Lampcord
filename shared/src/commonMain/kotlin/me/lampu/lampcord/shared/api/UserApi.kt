@@ -25,9 +25,6 @@ import me.lampu.lampcord.shared.model.UserSettings
 import me.lampu.lampcord.shared.model.decodeFavoriteGifs
 import me.lampu.lampcord.shared.utils.Logging
 
-/**
- * Profiles, relationships, status, user settings, connections and devices.
- */
 class UserApi(private val rest: RestClient) {
 
     suspend fun getUserSettingsProto(type: Int = 2): String? {

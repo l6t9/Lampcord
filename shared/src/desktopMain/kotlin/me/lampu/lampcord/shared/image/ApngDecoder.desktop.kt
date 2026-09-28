@@ -14,13 +14,7 @@ private const val MIME_TYPE_APNG = "image/apng"
 
 actual fun apngDecoderFactory(): Decoder.Factory = ApngDecoder.Factory()
 
-/**
- * Decode APNG animated images on the JVM desktop target.
- *
- * The APNG frame data is decoded with the pure-JVM `com.tianscar.imageio:imageio-apng` ImageIO
- * plugin; the fcTL metadata is parsed directly from the chunks so that frames can be composited
- * with APNG dispose/blend semantics into full canvases.
- */
+// Decode APNG animated images on the JVM desktop target.
 class ApngDecoder(
     private val requestContext: RequestContext,
     private val dataSource: DataSource,

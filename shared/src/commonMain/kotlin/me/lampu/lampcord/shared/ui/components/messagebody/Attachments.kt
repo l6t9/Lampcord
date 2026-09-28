@@ -26,6 +26,7 @@ import me.lampu.lampcord.shared.utils.getPlatformName
 import me.lampu.lampcord.shared.utils.showToast
 import me.lampu.lampcord.shared.settings.Settings
 import kotlinx.coroutines.launch
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
 @Composable
 fun AttachmentImage(
@@ -37,23 +38,18 @@ fun AttachmentImage(
     onClick: (() -> Unit)? = null
 ) {
     val isVideo = media.isVideo()
-    // A Tenor .gif is still an image. Only video media should use the GIFV
-    // playback path; otherwise the image can be treated as already playing
-    // and lose its click target.
+    // A Tenor .gif is still an image. Only video media should use the GIFV playback path; otherwise the image can be treated as already playing and lose its click target.
     val isGifv = isVideo && media.isGifv()
     val reduceMotion = Settings.shared.reduceMotion
     var isInlinePlaying by remember(isGifv, reduceMotion) { mutableStateOf(isGifv && !reduceMotion) }
     
-    // The Windows FFmpeg backend is more reliable with Discord's original
-    // attachment URL. Keep the proxy-first path for other platforms.
+    // The Windows FFmpeg backend is more reliable with Discord's original attachment URL. Keep the proxy-first path for other platforms.
     val url = if (isVideo && getPlatformName() == "windows") {
         media.url ?: media.proxy_url ?: ""
     } else {
         media.proxy_url ?: media.url ?: ""
     }
     
-    // Use the proxy URL as-is for images,
-    // only append format=png for video posters. No width/height resizing.
     val displayUrl = remember(url, isVideo) {
         var result = url
         if (isVideo && result.isNotEmpty() && !result.contains("format=")) {
@@ -65,7 +61,7 @@ fun AttachmentImage(
 
     val interactionSource = remember { MutableInteractionSource() }
     val clickModifier = if (!isInlinePlaying && onClick != null) {
-        Modifier.clickable(interactionSource = interactionSource, indication = null) { 
+        Modifier.clickableCursor(interactionSource = interactionSource, indication = null) { 
             if (isVideo) {
                 isInlinePlaying = true
             } else {
@@ -77,8 +73,7 @@ fun AttachmentImage(
     }
     val inlineFullscreenClick = if (isGifv) null else onClick?.let { openFullscreen ->
         {
-            // The fullscreen viewer creates its own decoder. Remove this
-            // inline instance first so both audio streams never play at once.
+            // The fullscreen viewer creates its own decoder. Remove this inline instance first so both audio streams never play at once.
             isInlinePlaying = false
             openFullscreen()
         }
@@ -93,8 +88,7 @@ fun AttachmentImage(
         VideoPlayer(
             url = url,
             loop = isGifv && !reduceMotion,
-            // GIFV media loops like an image and must not expose video
-            // playback controls such as a seek bar.
+            // GIFV media loops like an image and must not expose video playback controls such as a seek bar.
             showControls = !isGifv || reduceMotion,
             showSeekBar = !isGifv,
             title = title ?: (media as? Attachment)?.filename,
@@ -137,10 +131,7 @@ fun AttachmentImage(
         val maxWidth = 500.dp
         val maxHeight = 300.dp
 
-        // Cap the box at
-        // min(500, imageWidth) x min(300, imageHeight) and let the
-        // aspect ratio decide the final size, so tall images (e.g. phone
-        // screenshots) are shown in full and never cropped.
+        // Cap the box at min(500, imageWidth) x min(300, imageHeight) and let the aspect ratio decide the final size, so tall images (e.g. phone screenshots) are shown in full and never cropped.
         val finalWidth = (media.width?.dp ?: maxWidth).coerceAtMost(maxWidth)
         val finalHeight = (media.height?.dp ?: maxHeight).coerceAtMost(maxHeight)
 

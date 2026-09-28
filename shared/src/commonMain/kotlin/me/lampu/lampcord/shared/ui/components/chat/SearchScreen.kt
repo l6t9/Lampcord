@@ -30,6 +30,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.TextRange
 import me.lampu.lampcord.shared.ui.components.PlatformBackHandler
 import org.koin.compose.koinInject
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -216,7 +217,7 @@ private fun SearchScreenContent(
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                    .clickable {
+                                    .clickableCursor {
                                             val prefix = "${option.key}:"
                                             val newText = if (textFieldValue.text.isEmpty()) prefix else "${textFieldValue.text} $prefix"
                                             textFieldValue = TextFieldValue(newText, TextRange(newText.length))
@@ -276,7 +277,7 @@ private fun SearchScreenContent(
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .clickable {
+                                            .clickableCursor {
                                                 searchStore.searchQuery = query
                                                 searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel)
                                             }
@@ -337,7 +338,7 @@ private fun SearchScreenContent(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .padding(vertical = 4.dp)
-                                        .clickable(onClick = onClick)
+                                        .clickableCursor(onClick = onClick)
                                 ) {
                                     Row(
                                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
@@ -375,7 +376,6 @@ private fun SearchScreenContent(
                     }
                 }
 
-                // Autocomplete Overlay
                 if (autocompleteStore.searchAutocompleteType != null) {
                     AutocompletePicker(
                         type = autocompleteStore.searchAutocompleteType!!,

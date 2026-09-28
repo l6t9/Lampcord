@@ -21,6 +21,7 @@ import me.lampu.lampcord.shared.ui.theme.DiscordGreen
 import me.lampu.lampcord.shared.ui.theme.DiscordRed
 import me.lampu.lampcord.shared.ui.theme.Fuchsia
 import org.koin.compose.koinInject
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
 @Composable
 fun SystemMessage(
@@ -89,7 +90,7 @@ fun SystemMessage(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier
                             .onGloballyPositioned { profilePosition = it.positionInRoot() }
-                            .clickable { message.author?.let { profileStore.showProfile(it.id, position = profilePosition) } }
+                            .clickableCursor { message.author?.let { profileStore.showProfile(it.id, position = profilePosition) } }
                     )
 
                     Text(

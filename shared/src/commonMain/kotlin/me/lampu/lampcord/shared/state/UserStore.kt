@@ -63,7 +63,6 @@ class UserStore {
         cacheMembers(guildId, listOf(userId to member), listOf(raw))
     }
 
-    // Batch version of cacheMember.
     fun cacheMembers(guildId: String, members: List<Pair<String, Member>>, raws: List<JsonObject?>? = null) {
         if (members.isEmpty()) return
         _members.update { current ->

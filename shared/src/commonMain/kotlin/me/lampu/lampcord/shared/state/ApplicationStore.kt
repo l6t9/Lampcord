@@ -31,7 +31,6 @@ class ApplicationStore(
                     applications[app.id] = app
                 }
             } catch (e: Exception) {
-                // Ignore
             } finally {
                 mutex.withLock {
                     loadingIds.remove(applicationId)

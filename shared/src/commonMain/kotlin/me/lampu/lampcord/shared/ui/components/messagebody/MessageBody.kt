@@ -25,7 +25,6 @@ fun MessageBody(
     message: Message
 ) {
     Column(modifier = Modifier.padding(top = 0.dp)) {
-        // Content is rendered by MessageItem to handle edits and highlights properly
         MessageAttachments(
             attachments = message.attachments,
             embeds = message.embeds,
@@ -73,15 +72,13 @@ fun MessageAttachments(
 
     poll?.let { PollView(it) }
 
-    val inviteRegex = Regex("""(?:discord\.gg/|discord\.com/invite/|discordapp\.com/invite/|discord\.me/|discord\.li/|discord\.io/)([a-zA-Z0-9\-]+)""")
     val processedInvites = mutableSetOf<String>()
 
     embeds.forEach { embed ->
         EmbedView(embed)
         
-        // Extract and show native invite preview if it's an invite link
         embed.url?.let { url ->
-            inviteRegex.find(url)?.groupValues?.get(1)?.let { code ->
+            DISCORD_INVITE_PATTERN.find(url)?.groupValues?.get(1)?.let { code ->
                 if (processedInvites.add(code)) {
                     InviteEmbedView(code)
                 }
@@ -89,9 +86,8 @@ fun MessageAttachments(
         }
     }
 
-    // Also look for invites in content for messages that don't have embeds yet
     content?.let {
-        inviteRegex.findAll(it).forEach { match ->
+        DISCORD_INVITE_PATTERN.findAll(it).forEach { match ->
             val code = match.groupValues[1]
             if (processedInvites.add(code)) {
                 InviteEmbedView(code)
@@ -99,8 +95,7 @@ fun MessageAttachments(
         }
     }
 
-    // Discord does not always create an embed for direct GIF/Video links. Render
-    // those URLs as media as a fallback.
+    // Discord does not always create an embed for direct GIF/Video links. Render those URLs as media as a fallback.
     val embeddedMediaUrls = embeds.flatMap { embed ->
         listOfNotNull(
             embed.image?.url,
@@ -146,6 +141,9 @@ private val mediaUrlPattern = Regex(
     """https?://[^\s<>()\[\]]+\.(gif|mp4|webm|mov)(?:\?[^\s<>()\[\]]*)?(?:#[^\s<>()\[\]]*)?""",
     RegexOption.IGNORE_CASE
 )
+
+private val DISCORD_INVITE_PATTERN =
+    Regex("""(?:discord\.gg/|discord\.com/invite/|discordapp\.com/invite/|discord\.me/|discord\.li/|discord\.io/)([a-zA-Z0-9\-]+)""")
 
 private fun extractMediaUrls(content: String?): List<String> = content
     ?.let { mediaUrlPattern.findAll(it).map { match -> match.value.trimEnd('.', ',', '!', '?', ';', ':') }.distinct().toList() }

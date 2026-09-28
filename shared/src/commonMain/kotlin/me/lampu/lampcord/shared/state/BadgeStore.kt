@@ -40,10 +40,8 @@ class BadgeStore(
     fun fetchBadges() {
         scope.launch {
             try {
-                // Placeholder for Lampcord's remote badges
                 val lampcordResponse: BadgeMapping = httpClient.get("https://raw.githubusercontent.com/lampcord/badges/main/badges.json").body()
                 
-                // Merge remote badges with local ones
                 _lampcordBadges.value = BadgeMapping(
                     badges = _lampcordBadges.value.badges + lampcordResponse.badges,
                     users = _lampcordBadges.value.users + lampcordResponse.users

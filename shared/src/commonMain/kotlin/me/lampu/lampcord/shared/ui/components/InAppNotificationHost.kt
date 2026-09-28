@@ -34,6 +34,7 @@ import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.state.ChannelNavigator
 import me.lampu.lampcord.shared.state.NotificationStore
 import org.koin.compose.koinInject
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
 @Composable
 fun InAppNotificationHost(
@@ -71,7 +72,7 @@ fun InAppNotificationHost(
                         .shadow(16.dp, RoundedCornerShape(16.dp))
                         .clip(RoundedCornerShape(16.dp))
                         .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                        .clickable {
+                        .clickableCursor {
                             notificationStore.dismiss(toast.id)
                             channelNavigator.navigateToChannel(data.message.channel_id, data.message.guild_id)
                         }

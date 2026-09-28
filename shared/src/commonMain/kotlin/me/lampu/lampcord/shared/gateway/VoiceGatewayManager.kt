@@ -4,7 +4,6 @@ import io.ktor.client.HttpClient
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.serialization.json.Json
 
-// CONNECTED means transport established; SECURE means an MLS epoch is ready for media.
 enum class VoicePhase { DISCONNECTED, CONNECTING, CONNECTED, SECURE, FAILED }
 
 data class VoiceConnectionStatus(

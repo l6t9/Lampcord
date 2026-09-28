@@ -60,7 +60,6 @@ class AudioRenderer(
                 line.write(processedData, 0, processedData.size)
             }
         } catch (_: Exception) {
-            // Line closed or interrupted
         }
     }
 
@@ -96,9 +95,6 @@ class AudioRenderer(
         positionAnchorLineFrame = line.getLongFramePosition()
     }
 
-    /**
-     * Milliseconds of audio actually played through the line since [mediaMs] was anchored.
-     */
     fun getPlayedPositionMs(): Long {
         val sampleRate = audioFormat.sampleRate
         return if (line.isOpen && sampleRate > 0f) {

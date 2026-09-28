@@ -4,7 +4,6 @@ package me.lampu.lampcord.shared.ui.icons
 
 import androidx.compose.ui.graphics.vector.ImageVector
 
-// Compatibility aliases for player controls that predate Icons.
 val LyricsIcon: ImageVector by lazy {
     materialSymbol(
         name = "Lyrics",

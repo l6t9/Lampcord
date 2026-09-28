@@ -31,6 +31,8 @@ import org.koin.compose.koinInject
 import me.lampu.lampcord.shared.ui.components.CropImageDialog
 import me.lampu.lampcord.shared.model.UserProfile
 import me.lampu.lampcord.shared.model.UserProfileMetadata
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
+import me.lampu.lampcord.shared.ui.kit.handCursor
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -169,7 +171,7 @@ fun ProfileSettingsContent(
                                 modifier = Modifier
                                     .size(80.dp)
                                     .clip(CircleShape)
-                                    .clickable {
+                                    .clickableCursor {
                                         scope.launch {
                                             if (userApi.updateAvatarId(avatar.id)) {
                                                 showToast("Avatar updated!")
@@ -302,7 +304,7 @@ fun ProfileSettingsContent(
                     item {
                         ListItem(
                             headlineContent = { Text("Global Profile") },
-                            modifier = Modifier.clickable { 
+                            modifier = Modifier.clickableCursor { 
                                 selectedGuildId = null
                                 showGuildPicker = false
                             },
@@ -312,7 +314,7 @@ fun ProfileSettingsContent(
                     items(guilds) { guild ->
                         ListItem(
                             headlineContent = { Text(guild.name ?: "Unknown") },
-                            modifier = Modifier.clickable {
+                            modifier = Modifier.clickableCursor {
                                 selectedGuildId = guild.id
                                 showGuildPicker = false
                             },
@@ -499,6 +501,7 @@ fun ProfileSettingsContent(
                                     },
                                     menuContent = { menuState ->
                                         DropdownMenuItem(
+                                            modifier = Modifier.handCursor(),
                                             text = { Text("No Avatar") },
                                             onClick = {
                                                 scope.launch {
@@ -534,6 +537,7 @@ fun ProfileSettingsContent(
                                     },
                                     menuContent = { menuState ->
                                         DropdownMenuItem(
+                                            modifier = Modifier.handCursor(),
                                             text = { Text("No Banner") },
                                             onClick = {
                                                 bannerUri = ""
@@ -613,7 +617,7 @@ fun ProfileSettingsContent(
                                     description = {
                                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 8.dp)) {
                                             Text("Used when no banner image is set:", style = MaterialTheme.typography.bodyMedium)
-                                            Box(modifier = Modifier.size(32.dp).background(bannerColor?.let { Color(it or 0xFF000000.toInt()) } ?: Color.Gray, CircleShape).clickable { 
+                                            Box(modifier = Modifier.size(32.dp).background(bannerColor?.let { Color(it or 0xFF000000.toInt()) } ?: Color.Gray, CircleShape).clickableCursor { 
                                                 colorPickerTarget = 0; showColorPicker = true 
                                             })
                                         }
@@ -632,13 +636,13 @@ fun ProfileSettingsContent(
                                             Text(if (hasNitro) "Set nitro profile colors." else if (settingsStore.profile3y3) "Shared via 3y3." else "Nitro required.", style = MaterialTheme.typography.bodySmall)
                                             Row(modifier = Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                                    Box(modifier = Modifier.size(40.dp).background(themePrimaryColor?.let { Color(it or 0xFF000000.toInt()) } ?: Color.Gray, CircleShape).clickable { 
+                                                    Box(modifier = Modifier.size(40.dp).background(themePrimaryColor?.let { Color(it or 0xFF000000.toInt()) } ?: Color.Gray, CircleShape).clickableCursor { 
                                                         colorPickerTarget = 1; showColorPicker = true 
                                                     })
                                                     Text("Primary", style = MaterialTheme.typography.labelSmall)
                                                 }
                                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                                    Box(modifier = Modifier.size(40.dp).background(themeSecondaryColor?.let { Color(it or 0xFF000000.toInt()) } ?: Color.Gray, CircleShape).clickable { 
+                                                    Box(modifier = Modifier.size(40.dp).background(themeSecondaryColor?.let { Color(it or 0xFF000000.toInt()) } ?: Color.Gray, CircleShape).clickableCursor { 
                                                         colorPickerTarget = 2; showColorPicker = true 
                                                     })
                                                     Text("Secondary", style = MaterialTheme.typography.labelSmall)

@@ -57,6 +57,7 @@ import me.lampu.lampcord.shared.utils.getPlatformName
 import me.lampu.lampcord.shared.utils.setClipboardText
 import me.lampu.lampcord.shared.utils.showToast
 import org.koin.compose.koinInject
+import me.lampu.lampcord.shared.ui.kit.handCursor
 
 @Composable
 fun DiscordMarkdownText(
@@ -172,7 +173,7 @@ fun DiscordMarkdownText(
                             filterQuality = FilterQuality.Medium,
                             showPlaceholder = false,
                             onState = { state ->
-                                if (state is com.github.panpf.sketch.PainterState.Error) {
+                                if (state is ImageLoadState.Error) {
                                     loadFailed = true
                                 }
                             }
@@ -206,8 +207,6 @@ fun DiscordMarkdownText(
                                     down = downEvent.changes.firstOrNull { it.changedToDown() }
                                 } while (down == null)
 
-                                // Leave mouse secondary-clicks to the pointer
-                                // handler below, which shows the desktop link menu.
                                 if (downEvent.buttons.isSecondaryPressed) return@awaitEachGesture
 
                                 val pressed = down
@@ -223,12 +222,9 @@ fun DiscordMarkdownText(
                                         ?.item
                                 }
 
-                                // Leave ordinary text untouched so the
-                                // enclosing message context menu can handle it.
                                 if (url == null && mentionsAtOffset == null) return@awaitEachGesture
 
-                                // Link presses are owned by this text gesture
-                                // and must not open the parent message menu.
+                                // Link presses are owned by this text gesture and must not open the parent message menu.
                                 var isSlopExceeded = false
                                 val completedTap = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
                                     while (true) {
@@ -249,7 +245,6 @@ fun DiscordMarkdownText(
 
                                 when {
                                         isSlopExceeded -> {
-                                            // Ignore tap if pointer moved beyond touch slop.
                                         }
                                         completedTap == null -> {
                                             if (url != null) {
@@ -354,6 +349,7 @@ fun DiscordMarkdownText(
                     androidx.compose.foundation.layout.Column {
                         contextMenuUrl?.let { url ->
                             DropdownMenuItem(
+                                modifier = Modifier.handCursor(),
                                 text = { Text("Open Link") },
                                 onClick = {
                                     uriHandler.openUri(url)
@@ -361,6 +357,7 @@ fun DiscordMarkdownText(
                                 }
                             )
                             DropdownMenuItem(
+                                modifier = Modifier.handCursor(),
                                 text = { Text("Copy Link") },
                                 onClick = {
                                     setClipboardText(url)
@@ -387,54 +384,7 @@ private fun AnnotatedString.Builder.appendDiscordMarkdown(
     profileStore: ProfileStore,
     onSpoilerClick: (Int) -> Unit
 ) {
-    val patterns = listOf(
-        // Code blocks
-        Regex("""```(\w*)\n?([\s\S]*?)\n?```""") to "CODE_BLOCK",
-        // Block quotes (Multi-line)
-        Regex("""^>>> ([\s\S]*)$""", RegexOption.MULTILINE) to "BLOCKQUOTE_MULTI",
-        // Block quotes (Single-line)
-        Regex("""^> (.*)$""", RegexOption.MULTILINE) to "BLOCKQUOTE",
-        // Headers
-        Regex("""^### (.*)$""", RegexOption.MULTILINE) to "H3",
-        Regex("""^## (.*)$""", RegexOption.MULTILINE) to "H2",
-        Regex("""^# (.*)$""", RegexOption.MULTILINE) to "H1",
-        // Bullets
-        Regex("""^[*\-]\s+(.*)$""", RegexOption.MULTILINE) to "BULLET",
-        // Subtext
-        Regex("""^-# (.*)$""", RegexOption.MULTILINE) to "SUBTEXT",
-        // Spoilers
-        Regex("""\|\|([\s\S]+?)\|\|""") to "SPOILER",
-        // Suppressed links
-        Regex("""<(https?://[^>]+)>""") to "URL_SUPPRESSED",
-        // Masked links. Discord also permits the destination to be wrapped
-        // in angle brackets: [label](<https://example.com>).
-        maskedLinkPattern to "MASKED_LINK",
-        // Auto links
-        Regex("""(https?://[^\s)>]+)""") to "URL",
-        // Bold
-        Regex("""\*\*([^*]+)\*\*""") to "BOLD",
-        // Underline
-        Regex("""__([^_]+)__""") to "UNDERLINE",
-        // Italic
-        Regex("""\*([^*]+)\*""") to "ITALIC",
-        Regex("""_([^_]+)_""") to "ITALIC",
-        // Strikethrough
-        Regex("""~~([^~]+)~~""") to "STRIKE",
-        // Inline code
-        Regex("""`([^`]+)`""") to "CODE",
-        // Custom Emojis
-        me.lampu.lampcord.shared.utils.FreeNitroEmojis.emojiRegex to "EMOJI",
-        // Timestamps
-        Regex("""<t:(-?\d+)(?::([tTdDfFR]))?>""") to "TIMESTAMP",
-        // Mentions
-        Regex("""<@!?(\d+)>""") to "MENTION",
-        Regex("""<#(\d+)>""") to "CHANNEL",
-        Regex("""<@&(\d+)>""") to "ROLE",
-        // Slash Commands
-        Regex("""</([\w\- ]+):(\d+)>""") to "SLASH_COMMAND",
-        Regex("""@(everyone)""") to "EVERYONE",
-        Regex("""@(here)""") to "HERE"
-    )
+    val patterns = DISCORD_MARKDOWN_PATTERNS
 
     val allMatches = mutableListOf<Triple<IntRange, MatchResult?, String>>()
     patterns.forEach { (regex, tag) ->
@@ -443,7 +393,6 @@ private fun AnnotatedString.Builder.appendDiscordMarkdown(
         }
     }
     
-    // Add Unicode Emojis using EmojiIndex manual scan
     var scanIdx = 0
     while (scanIdx < content.length) {
         val found = EmojiIndex.findEmojiInString(content, scanIdx)
@@ -650,10 +599,36 @@ private fun AnnotatedString.Builder.appendDiscordMarkdown(
     }
 }
 
-// Older cached messages can contain an escaped opening bracket. Treat that
-// legacy representation as a masked link too, so historical messages render
-// the same way as newly received ones.
 private val maskedLinkPattern = Regex("""(?:\\)?\[([^\]\r\n]+)]\(<?(https?://[^\s<>]+)>?\)""")
+
+private val DISCORD_MARKDOWN_PATTERNS: List<Pair<Regex, String>> = listOf(
+    Regex("""```(\w*)\n?([\s\S]*?)\n?```""") to "CODE_BLOCK",
+    Regex("""^>>> ([\s\S]*)$""", RegexOption.MULTILINE) to "BLOCKQUOTE_MULTI",
+    Regex("""^> (.*)$""", RegexOption.MULTILINE) to "BLOCKQUOTE",
+    Regex("""^### (.*)$""", RegexOption.MULTILINE) to "H3",
+    Regex("""^## (.*)$""", RegexOption.MULTILINE) to "H2",
+    Regex("""^# (.*)$""", RegexOption.MULTILINE) to "H1",
+    Regex("""^[*\-]\s+(.*)$""", RegexOption.MULTILINE) to "BULLET",
+    Regex("""^-# (.*)$""", RegexOption.MULTILINE) to "SUBTEXT",
+    Regex("""\|\|([\s\S]+?)\|\|""") to "SPOILER",
+    Regex("""<(https?://[^>]+)>""") to "URL_SUPPRESSED",
+    maskedLinkPattern to "MASKED_LINK",
+    Regex("""(https?://[^\s)>]+)""") to "URL",
+    Regex("""\*\*([^*]+)\*\*""") to "BOLD",
+    Regex("""__([^_]+)__""") to "UNDERLINE",
+    Regex("""\*([^*]+)\*""") to "ITALIC",
+    Regex("""_([^_]+)_""") to "ITALIC",
+    Regex("""~~([^~]+)~~""") to "STRIKE",
+    Regex("""`([^`]+)`""") to "CODE",
+    me.lampu.lampcord.shared.utils.FreeNitroEmojis.emojiRegex to "EMOJI",
+    Regex("""<t:(-?\d+)(?::([tTdDfFR]))?>""") to "TIMESTAMP",
+    Regex("""<@!?(\d+)>""") to "MENTION",
+    Regex("""<#(\d+)>""") to "CHANNEL",
+    Regex("""<@&(\d+)>""") to "ROLE",
+    Regex("""</([\w\- ]+):(\d+)>""") to "SLASH_COMMAND",
+    Regex("""@(everyone)""") to "EVERYONE",
+    Regex("""@(here)""") to "HERE"
+)
 
 private val languageAliases = mapOf(
     "cs" to "csharp",

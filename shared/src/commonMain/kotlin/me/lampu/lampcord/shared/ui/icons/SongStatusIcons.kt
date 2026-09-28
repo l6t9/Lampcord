@@ -6,7 +6,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 
-// Generated from Material Symbols and rendered with fixed status colors.
 object SongStatusIcons {
     val Explicit: ImageVector by lazy {
         materialSymbol(

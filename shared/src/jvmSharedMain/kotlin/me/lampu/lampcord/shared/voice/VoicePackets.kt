@@ -77,7 +77,6 @@ internal class ReplayWindow {
     }
 }
 
-/** ponytail: fixed 60ms jitter with 20ms loss concealment; use adaptive playout if real networks need it. */
 internal class VoicePlayout {
     private val frames = mutableMapOf<Int, ByteArray>()
     private var next: Int? = null

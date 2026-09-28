@@ -90,6 +90,7 @@ import me.lampu.lampcord.shared.ui.components.rememberDiscordPanelsState
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.components.GlobalSnackbarHost
 import org.koin.compose.koinInject
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -206,7 +207,7 @@ actual fun MobileBaseplate(
                                                         .size(36.dp)
                                                         .clip(RoundedCornerShape(10.dp))
                                                         .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                                                        .clickable { panelState.openStart() },
+                                                        .clickableCursor { panelState.openStart() },
                                                     contentAlignment = Alignment.Center
                                                 ) {
                                                     Icon(
@@ -335,7 +336,7 @@ actual fun MobileBaseplate(
                             modifier = Modifier
                                 .zIndex(1f)
                                 .fillMaxSize()
-                                .clickable(
+                                .clickableCursor(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = null,
                                     onClick = { panelState.close() },
@@ -403,7 +404,6 @@ actual fun MobileBaseplate(
             )
         }
 
-        // User Profile Sheet
         if (profileStore.isProfileLoading || profileStore.selectedProfile != null) {
             val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -438,22 +438,18 @@ actual fun MobileBaseplate(
             }
         }
 
-        // Settings Screen
         if (navigationStore.isSettingsVisible) {
             SettingsScreen(onDismiss = { navigationStore.isSettingsVisible = false })
         }
 
-        // Server Settings
         if (navigationStore.isServerSettingsVisible) {
             ServerSettings(onDismiss = { navigationStore.isServerSettingsVisible = false })
         }
 
-        // Channel Settings
         if (navigationStore.channelSettingsChannel != null) {
             ChannelSettingsScreen(onDismiss = { navigationStore.closeChannelSettings() })
         }
 
-        // Server Menu Bottom Sheet
         if (navigationStore.isServerMenuVisible) {
             navigationStore.selectedGuild?.let { guild ->
                 val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
@@ -465,12 +461,10 @@ actual fun MobileBaseplate(
             }
         }
 
-        // Pinned Messages
         if (navigationStore.isPinsVisible) {
             PinnedMessagesScreen(onDismiss = { navigationStore.isPinsVisible = false })
         }
 
-        // Search Screen
         if (navigationStore.isSearchVisible) {
             SearchScreen(onDismiss = { navigationStore.isSearchVisible = false })
         }

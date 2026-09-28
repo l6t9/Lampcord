@@ -37,7 +37,6 @@ fun CropImageDialog(
             color = Color.Black
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
-                // Background Image with Pan & Zoom
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -63,19 +62,16 @@ fun CropImageDialog(
                     )
                 }
 
-                // Overlay with Crop Area
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val strokeWidth = 2.dp.toPx()
                     val radius = size.minDimension / 3
                     val center = Offset(size.width / 2, size.height / 2)
                     
-                    // Dim background
                     drawRect(Color.Black.copy(alpha = 0.5f))
                     
                     // Clear crop area (This is simplified, real clear requires blend modes)
                 }
                 
-                // Visual Circle for reference
                 Box(
                     modifier = Modifier
                         .size(250.dp)
@@ -87,7 +83,6 @@ fun CropImageDialog(
                     Spacer(modifier = Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.2f)))
                 }
 
-                // Controls
                 Row(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
@@ -98,8 +93,6 @@ fun CropImageDialog(
                         Text("Cancel", color = Color.White)
                     }
                     Button(onClick = { 
-                        // In a real implementation, we would crop the image here
-                        // For now, we return the original bytes
                         onConfirm(imageBytes) 
                     }) {
                         Text("Apply")

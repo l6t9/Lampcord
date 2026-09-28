@@ -57,7 +57,6 @@ fun ForwardedMessage(
             }
             .padding(start = 16.dp)
     ) {
-        // Header
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -78,7 +77,6 @@ fun ForwardedMessage(
             )
         }
         
-        // Content
         DiscordMarkdownText(
             content = msg.content,
             style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp)
@@ -88,7 +86,6 @@ fun ForwardedMessage(
             MessageAttachments(msg.attachments, msg.embeds, msg.sticker_items, components = msg.components)
         }
 
-        // Footer / Source Link
         val reference = message.message_reference
         if (reference != null) {
             val guildId = reference.guild_id

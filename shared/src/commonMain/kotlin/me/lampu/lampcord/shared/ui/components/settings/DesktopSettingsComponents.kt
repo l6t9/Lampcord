@@ -20,6 +20,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.ui.kit.handCursor
 
 @Composable
 fun SettingsLayout(
@@ -193,6 +194,7 @@ fun <T> SettingsButtonGroup(
                         },
                         menuContent = { menuState ->
                             DropdownMenuItem(
+                                modifier = Modifier.handCursor(),
                                 text = { Text(labelProvider(option)) },
                                 leadingIcon = iconProvider?.invoke(option, isSelected)
                                     ?.let { { Icon(it, null) } },
@@ -231,6 +233,7 @@ fun <T> SettingsButtonGroup(
                     ) {
                         options.forEachIndexed { index, option ->
                             DropdownMenuItem(
+                                modifier = Modifier.handCursor(),
                                 text = { Text(labelProvider(option)) },
                                 onClick = {
                                     onOptionSelected(option)
@@ -326,6 +329,7 @@ internal fun <T> SettingsButtonGroupCustomIcon(
                     },
                     menuContent = { menuState ->
                         DropdownMenuItem(
+                            modifier = Modifier.handCursor(),
                             text = { Text(labelProvider(option)) },
                             leadingIcon = iconProvider?.let { { it(option, isSelected) } },
                             onClick = {
@@ -407,6 +411,7 @@ fun <T> SettingsLargeButtonGroup(
                     },
                     menuContent = { menuState ->
                         DropdownMenuItem(
+                            modifier = Modifier.handCursor(),
                             text = { Text(labelProvider(option)) },
                             leadingIcon = { Icon(iconProvider(option, isSelected), null) },
                             onClick = {

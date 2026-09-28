@@ -33,9 +33,6 @@ import me.lampu.lampcord.shared.model.Role
 import me.lampu.lampcord.shared.model.UserGuildSettings
 import me.lampu.lampcord.shared.utils.Logging
 
-/**
- * Guilds, roles, bans, emojis, invites, members, commands and guild settings.
- */
 class GuildApi(private val rest: RestClient) {
 
     suspend fun getGuild(guildId: String): Guild? {

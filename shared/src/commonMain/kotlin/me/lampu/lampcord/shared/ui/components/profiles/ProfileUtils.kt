@@ -20,6 +20,7 @@ import me.lampu.lampcord.shared.utils.showToast
 import kotlin.math.abs
 import kotlin.math.pow
 import kotlin.math.roundToInt
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
 data class ProfileTheme(
     val backgroundBrush: Brush,
@@ -57,7 +58,7 @@ fun UserBadges(userId: String, badges: List<ProfileBadge>) {
                         contentDescription = badge.description,
                         modifier = Modifier
                             .size(22.dp)
-                            .clickable { showToast(badge.description) }
+                            .clickableCursor { showToast(badge.description) }
                     )
                 }
             )
@@ -70,7 +71,6 @@ fun getConnectionIcon(type: String, name: String? = null): ImageVector {
     val normalizedType = type.lowercase()
     if (normalizedType == "website" || normalizedType == "domain") return Icons.Rounded.Language
     
-    // Check name if type is unknown or generic
     if (name != null && name.contains(".") && !name.contains(" ")) return Icons.Rounded.Language
 
     return when (normalizedType) {
@@ -201,7 +201,6 @@ object Profile3y3 {
         for (char in data) {
             val code = char.code
             if (code in 0..127) {
-                // Map ASCII to Tags range U+E0000 - U+E007F
                 sb.appendCodePoint(0xE0000 + code)
             }
         }
@@ -219,7 +218,6 @@ object Profile3y3 {
             if (codePoint in 0xE0000..0xE007F) {
                 sb.append((codePoint - 0xE0000).toChar())
             } else if (codePoint == 0xDB40 || codePoint == 0xDC00) {
-                 // Skip high/low surrogates if handled by appendCodePoint
             } else {
                 break
             }

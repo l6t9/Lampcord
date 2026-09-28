@@ -56,6 +56,7 @@ import org.koin.compose.koinInject
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import kotlinx.serialization.json.Json
 import me.lampu.lampcord.shared.settings.Settings
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
 @Composable
 fun EmojiPicker(
@@ -359,7 +360,6 @@ fun EmojiPicker(
                                     onEmojiSelected = onEmojiSelected,
                                     favorites = favoriteKeys,
                                     onToggleFavorite = { key ->
-                                        // persist favorites
                                         val current = try {
                                             Json.decodeFromString<List<String>>(Settings.shared.favoriteEmojisJson).toMutableList()
                                         } catch (e: Exception) { mutableListOf() }
@@ -487,14 +487,12 @@ fun EmojiGrid(
                             }))
                         }
 
-                        // Emoji code (custom) or unicode text
                         menuItems.add(ContextMenuItem("Copy Emoji Code", Icons.Filled.ContentCopy, onClick = {
                             val code = if (emoji.id != null) "<${if (emoji.animated == true) "a" else ""}:${emoji.name}:${emoji.id}>" else ":${emoji.name}:"
                             setClipboardText(code)
                             showToast("Copied to clipboard")
                         }))
 
-                        // Save / Clone actions
                         if (url != null) {
                             val u = url
                             menuItems.add(ContextMenuItem("Save Image", Icons.Filled.Download, onClick = {
@@ -505,7 +503,6 @@ fun EmojiGrid(
                             }))
                         }
 
-                        // Favorite toggle moved to context menu
                         menuItems.add(
                             ContextMenuItem(
                                 if (isFav) "Remove from Favorites" else "Add to Favorites",
@@ -523,7 +520,7 @@ fun EmojiGrid(
                                         modifier = Modifier
                                             .fillMaxSize()
                                             .clip(RoundedCornerShape(4.dp))
-                                            .clickable {
+                                            .clickableCursor {
                                                 val emojiStr = if (emoji.id != null) "${emoji.name}:${emoji.id}" else ":${emoji.name}:"
                                                 emojiStore.onEmojiUsed(emojiStr)
                                                 onEmojiSelected(emoji)
@@ -536,7 +533,7 @@ fun EmojiGrid(
                                         modifier = Modifier
                                             .fillMaxSize()
                                             .clip(RoundedCornerShape(4.dp))
-                                            .clickable {
+                                            .clickableCursor {
                                                 val emojiName = emoji.name
                                                 val emojiStr = if (emoji.id != null) "${emojiName}:${emoji.id}" else ":${emojiName}:"
                                                 emojiStore.onEmojiUsed(emojiStr)
@@ -552,7 +549,6 @@ fun EmojiGrid(
                                     }
                                 }
 
-                                // Favorite action is now available in the context menu
                             }
                         }
                     }
@@ -591,7 +587,7 @@ private fun EmojiServerBar(
                             .size(36.dp)
                             .clip(CircleShape)
                             .background(if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant)
-                            .clickable { onSelect(index) },
+                            .clickableCursor { onSelect(index) },
                         contentAlignment = Alignment.Center
                     ) {
                         if (group.iconUrl != null) {

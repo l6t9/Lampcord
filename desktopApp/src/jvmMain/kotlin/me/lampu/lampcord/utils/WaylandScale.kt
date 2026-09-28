@@ -176,9 +176,6 @@ object WaylandScale {
         val scale: Float,
     )
 
-    /**
-     * Instantly returns the scale for the given coordinates from the background cache.
-     */
     fun getWindowScale(
         windowX: Int,
         windowY: Int,

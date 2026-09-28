@@ -14,10 +14,6 @@ import me.lampu.lampcord.shared.model.Activity
 import me.lampu.lampcord.shared.utils.Logging
 import kotlin.time.Duration.Companion.seconds
 
-/**
- * A simple implementation of a Discord-compatible RPC server for Desktop.
- * It listens on ports 6463-6472 and handles SET_ACTIVITY requests.
- */
 class DesktopRPCServer(private val gatewayManager: GatewayManager) {
     private var server: EmbeddedServer<*, *>? = null
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -27,7 +23,6 @@ class DesktopRPCServer(private val gatewayManager: GatewayManager) {
         if (server != null) return
 
         scope.launch {
-            // Discord RPC tries ports 6463 to 6472
             for (port in 6463..6472) {
                 try {
                     Logging.i("RPC", "Attempting to start RPC server on port $port")
@@ -58,7 +53,6 @@ class DesktopRPCServer(private val gatewayManager: GatewayManager) {
     private suspend fun DefaultWebSocketServerSession.handleConnection() {
         Logging.d("RPC", "New RPC connection")
         try {
-            // Initial Handshake
             send(buildJsonObject {
                 put("cmd", "DISPATCH")
                 put("data", buildJsonObject {
@@ -94,7 +88,6 @@ class DesktopRPCServer(private val gatewayManager: GatewayManager) {
                                 }
                             }
                             
-                            // Send Response
                             send(buildJsonObject {
                                 put("cmd", "SET_ACTIVITY")
                                 put("data", activityJson ?: JsonNull)
@@ -103,7 +96,6 @@ class DesktopRPCServer(private val gatewayManager: GatewayManager) {
                             }.toString())
                         }
                         "SUBSCRIBE" -> {
-                             // Ignore for now
                         }
                     }
                 }

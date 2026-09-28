@@ -167,7 +167,6 @@ fun ServerSettings(
                     onBack = { selectedRole = null }
                 )
             } else if (selectedCategory == null) {
-                // Mobile List View
                 Scaffold(
                     topBar = {
                         TopAppBar(
@@ -240,7 +239,6 @@ fun ServerSettings(
                 }
             }
         } else {
-            // Desktop Layout
             androidx.compose.ui.window.Dialog(
                 onDismissRequest = onDismiss,
                 properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
@@ -288,7 +286,6 @@ fun ServerSettingsDesktopOverlay(
         shape = MaterialTheme.shapes.large
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Header
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -310,7 +307,6 @@ fun ServerSettingsDesktopOverlay(
             }
 
             Row(modifier = Modifier.fillMaxSize()) {
-                // Wide Navigation Rail
                 val railState = rememberWideNavigationRailState(initialValue = WideNavigationRailValue.Expanded)
                 WideNavigationRail(
                     state = railState,
@@ -381,7 +377,6 @@ fun ServerSettingsDesktopOverlay(
                     }
                 }
 
-                // Main Content Area
                 Surface(
                     modifier = Modifier
                         .weight(1f)

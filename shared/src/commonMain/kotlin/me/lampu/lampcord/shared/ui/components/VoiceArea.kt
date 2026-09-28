@@ -48,7 +48,6 @@ fun VoiceArea(
             .fillMaxSize()
             .background(Color.Black)
     ) {
-        // Stage Area
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             if (participants.isEmpty()) {
                 VoiceEmptyState(channel, isJoined, voiceStore)
@@ -198,7 +197,6 @@ private fun VoiceParticipantTile(
             )
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            // Avatar Centered
             Box(
                 modifier = Modifier
                     .align(Alignment.Center)
@@ -211,7 +209,6 @@ private fun VoiceParticipantTile(
                 )
             }
 
-            // Name Badge Bottom Left
             Surface(
                 color = Color.Black.copy(alpha = 0.5f),
                 shape = RoundedCornerShape(4.dp),
@@ -230,7 +227,6 @@ private fun VoiceParticipantTile(
                 )
             }
 
-            // Mute/Deafen Icons
             Row(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)

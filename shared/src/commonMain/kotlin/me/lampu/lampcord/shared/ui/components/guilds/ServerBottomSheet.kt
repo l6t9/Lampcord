@@ -70,6 +70,7 @@ import me.lampu.lampcord.shared.utils.PermissionHelper
 import me.lampu.lampcord.shared.utils.getPlatformName
 import me.lampu.lampcord.shared.utils.setClipboardText
 import org.koin.compose.koinInject
+import me.lampu.lampcord.shared.ui.kit.handCursor
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -117,7 +118,6 @@ fun ServerBottomSheet(
                 .verticalScroll(rememberScrollState())
                 .padding(bottom = 32.dp)
         ) {
-            // Header: Banner, Icon, Name
             Box(modifier = Modifier.fillMaxWidth()) {
                 val bannerUrl = guild.banner?.let { "https://cdn.discordapp.com/banners/${guild.id}/$it.png?size=600" }
                 if (bannerUrl != null) {
@@ -216,7 +216,6 @@ fun ServerBottomSheet(
 
                     Spacer(Modifier.height(24.dp))
 
-                    // Top Horizontal Actions (Boost, Notifications, Settings)
                     val member = remember(guild.id, currentUser) {
                         currentUser?.id?.let { userStore.getMember(guild.id, it) }
                     }
@@ -295,6 +294,7 @@ fun ServerBottomSheet(
                                 },
                                 menuContent = { menuState ->
                                     DropdownMenuItem(
+                                        modifier = Modifier.handCursor(),
                                         text = { Text(label) },
                                         onClick = {
                                             onClick()
@@ -310,7 +310,6 @@ fun ServerBottomSheet(
 
                 Spacer(Modifier.height(24.dp))
 
-                // Mark As Read Card
                 Material3SettingsGroup(
                     items = listOf(
                         Material3SettingsItem(
@@ -325,7 +324,6 @@ fun ServerBottomSheet(
 
                 Spacer(Modifier.height(24.dp))
 
-                // Options List in a single card
                 val showChannelsAndRoles = guild.features?.contains("COMMUNITY") == true
                 var allowDMs by remember { mutableStateOf(userGuildSettings[guild.id]?.message_notifications != 2) }
                 var hideMuted by remember { mutableStateOf(userGuildSettings[guild.id]?.hide_muted_channels == true) }

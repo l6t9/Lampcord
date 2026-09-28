@@ -39,12 +39,10 @@ class Settings(private val settings: KmpSettings) {
     var macDefaultFrameApplied by preferenceBoolean("mac_default_frame_applied", false)
     var disableWaylandScaling by preferenceBoolean("disable_wayland_scaling", false)
 
-    // Theme Settings
     var transparencyMode by preferenceEnum("transparency_mode", TransparencyMode.NONE)
     var enableCustomFonts by preferenceBoolean("enable_custom_fonts", true)
     var enableCustomSounds by preferenceBoolean("enable_custom_sounds", true)
 
-    // Chatbox Customization
     var chatboxBackgroundOpacity by preferenceFloat("chatbox_background_opacity", 1.0f)
     var chatboxBorderRadius by preferenceInt("chatbox_border_radius", 16)
     var chatboxHeight by preferenceInt("chatbox_height", 40)
@@ -54,24 +52,20 @@ class Settings(private val settings: KmpSettings) {
     var chatboxFontSize by preferenceFloat("chatbox_font_size", 1.0f)
     var chatboxShowAvatar by preferenceBoolean("chatbox_show_avatar", false)
 
-    // Free Nitro Emojis
     var freeNitroEmojis by preferenceBoolean("free_nitro_emojis", true)
     var realmojis by preferenceBoolean("realmojis", true)
     var compoundRealmojis by preferenceBoolean("compound_realmojis", true)
     var useWebpEmojis by preferenceBoolean("use_webp_emojis", true)
 
-    // Clean Channels
     var cleanChannelsRemoveEmojis by preferenceBoolean("clean_channels_remove_emojis", true)
     var cleanChannelsHideSymbols by preferenceBoolean("clean_channels_hide_symbols", true)
     var cleanChannelsNormalizeLetters by preferenceBoolean("clean_channels_normalize_letters", true)
     var cleanChannelsCapitalizeCategories by preferenceBoolean("clean_channels_capitalize_categories", true)
 
-    // Message Logger
     var messageLoggerEnabled by preferenceBoolean("message_logger_enabled", false)
     var messageLoggerIgnoreBots by preferenceBoolean("message_logger_ignore_bots", false)
     var messageLoggerIgnoreSelf by preferenceBoolean("message_logger_ignore_self", false)
 
-    // Notifications
     var notificationsEnabled by preferenceBoolean("notifications_enabled", true)
     var showMessagePreview by preferenceBoolean("show_message_preview", true)
     var showInAppNotifications by preferenceBoolean("show_in_app_notifications", true)
@@ -79,7 +73,6 @@ class Settings(private val settings: KmpSettings) {
     var autoStartOnBoot by preferenceBoolean("auto_start_on_boot", true)
     var silentBackgroundService by preferenceBoolean("silent_background_service", true)
 
-    // Other Enhancements
     var bypassUploadLimit by preferenceBoolean("bypass_upload_limit", true)
     var showContextMenuMessage by preferenceBoolean("show_context_menu_message", false)
     var messageSpacingMode by preferenceEnum("message_spacing_mode", MessageSpacingMode.DEFAULT)
@@ -111,7 +104,6 @@ class Settings(private val settings: KmpSettings) {
     var secretTabEnabled by preferenceBoolean("secret_tab_enabled", false)
     var textReplaceJson by preference("text_replace_v1", "[]")
 
-    // Voice Settings
     var noiseCancellation by preferenceBoolean("noise_cancellation", true)
 
     fun getLastChannel(guildId: String): String? {

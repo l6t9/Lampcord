@@ -41,10 +41,6 @@ class GuildStore(
             val orderIndex = order.withIndex().associate { it.value to it.index }
             newGuilds.map { it.id }.sortedWith(compareBy({ orderIndex[it] ?: -1 }, { it }))
         } else {
-            // Mirror Discord's StoreGuildsSorted ordering:
-            // 1) unmuted before muted
-            // 2) by joinedAt for current user (earlier first)
-            // 3) by guild name (ascending)
             newGuilds.sortedWith(Comparator { a, b ->
                 val mutedA = userGuildSettingsStore.isGuildMuted(a.id)
                 val mutedB = userGuildSettingsStore.isGuildMuted(b.id)
@@ -75,7 +71,6 @@ class GuildStore(
                 val orderIndex = order.withIndex().associate { it.value to it.index }
                 newList.sortedWith(compareBy({ orderIndex[it] ?: -1 }, { it }))
             } else {
-                // Recompute full ordering using current guild list
                 val allGuilds = newList.mapNotNull { id -> entityStore.guilds.value[id] }
                 allGuilds.sortedWith(Comparator { a, b ->
                     val mutedA = userGuildSettingsStore.isGuildMuted(a.id)
@@ -146,7 +141,6 @@ class GuildStore(
         markGuildsAsRead(listOf(guildId), "guild")
     }
 
-    /** Marks every server in a folder with one read-state acknowledgement request. */
     fun markFolderAsRead(folder: GuildFolder) {
         val guildIds = folder.guild_ids.mapNotNull { it.jsonPrimitive.contentOrNull }.distinct()
         markGuildsAsRead(guildIds, "folder")

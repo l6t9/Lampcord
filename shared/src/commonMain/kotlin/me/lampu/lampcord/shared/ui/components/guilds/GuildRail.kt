@@ -94,13 +94,11 @@ fun GuildRail(
     val readStates by readStateStore.readStates.collectAsState()
     val userSettings = settingsStore.userSettings
 
-    val dmMentionChannels by remember(privateChannels, readStates, navigationStore.selectedChannel) {
-        derivedStateOf {
-            privateChannels.filter { 
-                readStateStore.getMentionCount(it.id) > 0 && 
-                        it.id != navigationStore.selectedChannel?.id &&
-                        !userGuildSettingsStore.isChannelMuted(null, it.id)
-            }
+    val dmMentionChannels = remember(privateChannels, readStates, navigationStore.selectedChannel) {
+        privateChannels.filter { 
+            readStateStore.getMentionCount(it.id) > 0 && 
+                    it.id != navigationStore.selectedChannel?.id &&
+                    !userGuildSettingsStore.isChannelMuted(null, it.id)
         }
     }
 
@@ -113,8 +111,6 @@ fun GuildRail(
 
     val railEntries = remember(guilds, folders) {
         val guildsById = guilds.distinctBy { it.id }.associateBy { it.id }
-        // Discord's guild_folders array is already the complete sidebar
-        // sequence, including anonymous single-guild entries.
         val entries = if (folders.isNotEmpty()) {
             folders.mapIndexedNotNull { index, folder ->
                 val guildIds = folder.guildIds()
@@ -132,8 +128,6 @@ fun GuildRail(
                 .toMutableList()
         }
 
-        // Match Discord's ensureValidPositions behavior: a newly arrived guild
-        // missing from the snapshot is temporarily inserted at the top.
         val representedGuildIds = folders.flatMap { it.guildIds() }.toSet()
         val missingGuilds = guilds.filter { guild ->
             guild.id !in representedGuildIds && entries.none { it.guild?.id == guild.id }
@@ -181,10 +175,8 @@ fun GuildRail(
         item {
             val isHomeSelected = navigationStore.selectedGuild == null
             
-            val totalDmMentions by remember(privateChannels, readStates) {
-                derivedStateOf {
-                    privateChannels.sumOf { readStateStore.getMentionCount(it.id) }
-                }
+            val totalDmMentions = remember(privateChannels, readStates) {
+                privateChannels.sumOf { readStateStore.getMentionCount(it.id) }
             }
 
             ExpressiveTooltip(
@@ -372,13 +364,9 @@ private fun DMIcon(
         else null
     } else recipient?.let { CdnUrls.getUserAvatarUrl(it.id, it.avatar, iconSizePx) }
 
-    val mentionCount by remember(channel.id, readStates) {
-        derivedStateOf { readStateStore.getMentionCount(channel.id) }
-    }
+    val mentionCount = remember(channel.id, readStates) { readStateStore.getMentionCount(channel.id) }
     
-    val isUnread by remember(channel, readStates) {
-        derivedStateOf { readStateStore.isUnread(channel) }
-    }
+    val isUnread = remember(channel, readStates) { readStateStore.isUnread(channel) }
 
     ExpressiveTooltip(
         anchorPosition = TooltipAnchorPosition.End,

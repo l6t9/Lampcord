@@ -339,9 +339,7 @@ class ThemeStore(
             else -> listOf(colorName)
         }
 
-        // Search through themes (reverse order to give priority to later ones)
         for (theme in themes.asReversed()) {
-            // Specific colors first
             for (key in keys) {
                 theme.colors[key]?.let { element ->
                     val colorValue = if (element is JsonPrimitive) element.content else element.toString()
@@ -349,7 +347,6 @@ class ThemeStore(
                 }
             }
 
-            // Simple colors second
             for (key in keys) {
                 theme.simple_colors[key]?.let { element ->
                     val colorValue = if (element is JsonPrimitive) element.content else element.toString()

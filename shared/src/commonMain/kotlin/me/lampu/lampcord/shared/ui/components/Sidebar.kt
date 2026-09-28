@@ -59,7 +59,6 @@ fun Sidebar(
                 GuildRail()
             }
 
-            // Channels / DMs List
             Surface(
                 modifier = Modifier
                     .weight(1f)

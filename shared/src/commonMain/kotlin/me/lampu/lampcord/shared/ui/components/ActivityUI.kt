@@ -28,12 +28,12 @@ import org.koin.compose.koinInject
 import kotlin.time.Duration.Companion.milliseconds
 
 import me.lampu.lampcord.shared.model.toTwemojiUrl
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
 private fun getAssetUrl(applicationId: String?, assetId: String?): String? {
     if (assetId == null) return null
     if (assetId.startsWith("http")) return assetId
     
-    // Handle platform-prefixed assets (e.g., spotify:..., mp:...)
     if (assetId.contains(":")) {
         val parts = assetId.split(":", limit = 2)
         val platform = parts[0].lowercase()
@@ -47,14 +47,11 @@ private fun getAssetUrl(applicationId: String?, assetId: String?): String? {
         }
     }
     
-    // Handle external assets that might not have the mp: prefix
     if (assetId.startsWith("external/")) {
         return "https://media.discordapp.net/$assetId"
     }
 
     if (applicationId != null) {
-        // Try to handle potentially animated assets or specific formats
-        // Discord's CDN often prefers .jpg for app assets in its source code.
         return "https://cdn.discordapp.com/app-assets/$applicationId/$assetId.jpg?size=512"
     }
     
@@ -130,7 +127,7 @@ fun CustomStatus(activity: Activity, modifier: Modifier = Modifier, compact: Boo
     Row(
         modifier = modifier
             .hoverable(interactionSource)
-            .clickable(interactionSource = interactionSource, indication = null) { isToggled = !isToggled },
+            .clickableCursor(interactionSource = interactionSource, indication = null) { isToggled = !isToggled },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
@@ -183,7 +180,7 @@ fun MusicActivity(activity: Activity, modifier: Modifier = Modifier, compact: Bo
         Row(
             modifier = modifier
                 .hoverable(interactionSource)
-                .clickable(interactionSource = interactionSource, indication = null) { isToggled = !isToggled },
+                .clickableCursor(interactionSource = interactionSource, indication = null) { isToggled = !isToggled },
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
@@ -257,7 +254,7 @@ fun MusicActivity(activity: Activity, modifier: Modifier = Modifier, compact: Bo
                 Column(
                     modifier = Modifier
                         .hoverable(interactionSource)
-                        .clickable(interactionSource = interactionSource, indication = null) { isToggled = !isToggled }
+                        .clickableCursor(interactionSource = interactionSource, indication = null) { isToggled = !isToggled }
                 ) {
                     Text(
                         text = activity.details ?: "Unknown Track",
@@ -379,7 +376,7 @@ fun DefaultActivity(activity: Activity, modifier: Modifier = Modifier, compact: 
         Row(
             modifier = modifier
                 .hoverable(interactionSource)
-                .clickable(interactionSource = interactionSource, indication = null) { isToggled = !isToggled },
+                .clickableCursor(interactionSource = interactionSource, indication = null) { isToggled = !isToggled },
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
@@ -479,7 +476,7 @@ fun DefaultActivity(activity: Activity, modifier: Modifier = Modifier, compact: 
                 Column(
                     modifier = Modifier
                         .hoverable(interactionSource)
-                        .clickable(interactionSource = interactionSource, indication = null) { isToggled = !isToggled }
+                        .clickableCursor(interactionSource = interactionSource, indication = null) { isToggled = !isToggled }
                 ) {
                     Text(
                         text = activity.name,

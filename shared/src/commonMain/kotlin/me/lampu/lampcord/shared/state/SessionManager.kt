@@ -37,10 +37,7 @@ class SessionManager(
 
     init {
         scope.launch {
-            // Never let a single malformed event kill the collector. The gateway
-            // event flow has no replay buffer, so once this coroutine dies any
-            // events arriving afterwards are silently dropped and the app stops
-            // syncing until a restart.
+            // Never let a single malformed event kill the collector.
             gatewayManager.events.collect { payload ->
                 try {
                     if (payload.op == -1 && payload.t == "AUTH_FAILED") {

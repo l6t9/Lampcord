@@ -22,7 +22,6 @@ actual fun createSettings(): Settings {
     
     val fileSettings = FileSettings(settingsFile)
     
-    // Migrate from legacy java.util.prefs if they exist and haven't been migrated
     if (!fileSettings.getBoolean("migrated_from_prefs", false)) {
         val prefs = Preferences.userRoot().node("me.lampu.lampcord")
         val keys = prefs.keys()

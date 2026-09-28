@@ -29,7 +29,6 @@ class PresenceEventHandler(
             val presence = json.decodeFromJsonElement<PresenceUpdate>(data)
             presenceStore.handlePresenceUpdate(presence)
             
-            // Sync user info if available in presence update
             presence.user?.let { userStore.handleUserUpdate(it) }
         } catch (e: Exception) { }
     }

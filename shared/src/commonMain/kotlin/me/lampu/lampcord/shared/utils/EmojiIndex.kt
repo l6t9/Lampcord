@@ -67,8 +67,6 @@ object EmojiIndex {
     fun getTwemojiUrl(char: String): String = char.toTwemojiUrl()
 
     fun findEmojiInString(content: String, startIndex: Int): Pair<String, Int>? {
-        // Search for the longest matching emoji string starting at startIndex
-        // Most emojis are 1-2 chars, but ZWJ sequences can be longer
         for (len in 10 downTo 1) {
             if (startIndex + len <= content.length) {
                 val sub = content.substring(startIndex, startIndex + len)

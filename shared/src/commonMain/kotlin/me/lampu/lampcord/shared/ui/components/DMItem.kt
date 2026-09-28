@@ -26,6 +26,7 @@ import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.setClipboardText
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
+import me.lampu.lampcord.shared.ui.kit.handCursor
 
 @Composable
 fun DMItem(
@@ -62,20 +63,15 @@ fun DMItem(
     var isHovered by remember { mutableStateOf(false) }
 
     val userGuildSettings by userGuildSettingsStore.userGuildSettings.collectAsState()
-    val isMuted by remember(channel, userGuildSettings) {
-        derivedStateOf { userGuildSettingsStore.isChannelMuted(null, channel.id) }
-    }
+    val isMuted = remember(channel, userGuildSettings) { userGuildSettingsStore.isChannelMuted(null, channel.id) }
 
     val scope = rememberCoroutineScope()
 
-    val mentionCount by remember(channel.id, readStates) {
-        derivedStateOf { readStateStore.getMentionCount(channel.id) }
-    }
+    val mentionCount = remember(channel.id, readStates) { readStateStore.getMentionCount(channel.id) }
 
     val errorColor = MaterialTheme.colorScheme.error
     val contextMenuItems = remember(channel, userSettings, isMuted, recipient, errorColor) {
         val items = mutableListOf<ContextMenuItem>()
-        // Primary
         items.add(ContextMenuItem(if (isMuted) "Unmute" else "Mute", if (isMuted) Icons.Filled.Notifications else Icons.AutoMirrored.Filled.VolumeOff, onClick = {
             guildStore.toggleMuteChannel("@me", channel.id)
         }, group = "Primary"))
@@ -115,6 +111,7 @@ fun DMItem(
                 .fillMaxWidth()
                 .height(itemHeight)
                 .padding(horizontal = 8.dp)
+                .handCursor()
 
                 .alpha(if (isMuted && !isSelected) 0.5f else 1f)
                 .pointerInput(Unit) {
@@ -138,7 +135,6 @@ fun DMItem(
             shape = MaterialTheme.shapes.small
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
-                // Nameplate background (only on hover/selected)
                 if (nameplate != null && (isHovered || isSelected)) {
                     val decoUrl = "https://cdn.discordapp.com/assets/collectibles/${nameplate.asset}img.png?passthrough=true"
                     AsyncImage(

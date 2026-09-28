@@ -33,7 +33,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -98,6 +97,9 @@ import org.koin.compose.koinInject
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
+import me.lampu.lampcord.shared.ui.kit.pointerClickable
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
+import me.lampu.lampcord.shared.ui.kit.handCursor
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -141,17 +143,13 @@ fun MessageItem(
 
     val authorId = message.author?.id
 
-    val author by remember(message.author, currentUser) {
-        derivedStateOf {
-            if (authorId == currentUser?.id) currentUser ?: message.author else message.author
-        }
+    val author = remember(message.author, currentUser) {
+        if (authorId == currentUser?.id) currentUser ?: message.author else message.author
     }
 
-    val member by remember(message.member, authorId, members, guildId) {
-        derivedStateOf {
-            val cached = if (guildId != null && authorId != null) members[guildId]?.get(authorId) else null
-            message.member ?: cached
-        }
+    val member = remember(message.member, authorId, members, guildId) {
+        val cached = if (guildId != null && authorId != null) members[guildId]?.get(authorId) else null
+        message.member ?: cached
     }
 
     LaunchedEffect(authorId, guildId) {
@@ -201,8 +199,6 @@ fun MessageItem(
 
         val items = mutableListOf<ContextMenuItem>()
         
-        // Group 1: Primary Actions (Discord Group 1). The reaction strip below
-        // already provides the single Add Reaction action.
         if (isMe) {
             items.add(ContextMenuItem("Edit Message", Icons.Filled.Edit, onClick = { messageStore.editingMessage = message }, group = "Primary"))
         }
@@ -220,7 +216,6 @@ fun MessageItem(
             items.add(ContextMenuItem("Create Thread", Icons.Filled.Tag, onClick = { showCreateThreadDialog = true }, group = "Primary"))
         }
 
-        // Group 2: Secondary Actions (Discord Group 2)
         items.add(ContextMenuItem("Mark Unread", Icons.Filled.VisibilityOff, onClick = {
             val targetId = priorMessage?.id ?: message.id
             scope.launch {
@@ -235,7 +230,6 @@ fun MessageItem(
             }, group = "Secondary"))
         }
 
-        // Group 3: Content / Sharing (Discord Group 3)
         items.add(ContextMenuItem("Copy Text", Icons.Filled.ContentCopy, onClick = { setClipboardText(message.content) }, group = "Content"))
         items.add(ContextMenuItem("Copy Link", Icons.Filled.Link, onClick = {
             val guildId = message.guild_id ?: navigationStore.selectedGuild?.id ?: "@me"
@@ -256,12 +250,10 @@ fun MessageItem(
             }, group = "Content"))
         }
 
-        // Group 4: Destructive (Discord Group 4)
         if (isMe || canManageMessages) {
             items.add(ContextMenuItem("Delete Message", Icons.Filled.Delete, color = Color.Red, onClick = { showDeleteDialog = true }, group = "Destructive"))
         }
 
-        // Group 5: Developer
         if (userSettings?.developer_mode == true) {
             items.add(ContextMenuItem("Copy Message ID", Icons.Filled.Dns, onClick = { setClipboardText(message.id) }, group = "Developer"))
             items.add(ContextMenuItem("Copy Author ID", Icons.Filled.Dns, onClick = { setClipboardText(message.author?.id ?: "") }, group = "Developer"))
@@ -270,9 +262,7 @@ fun MessageItem(
         items
     }
 
-    val isMentioned by remember(message, currentUser, currentMember) {
-        derivedStateOf { if (message.isPending) false else messageStore.isMessageMentioningMe(message, currentUser, currentMember) }
-    }
+    val isMentioned = remember(message, currentUser, currentMember) { if (message.isPending) false else messageStore.isMessageMentioningMe(message, currentUser, currentMember) }
 
     val reduceMotion = Settings.shared.reduceMotion
     val messageAlpha by animateFloatAsState(
@@ -387,7 +377,6 @@ fun MessageItem(
     ) {
         val guildId = message.guild_id ?: navigationStore.selectedGuild?.id
 
-        // Background and Content Layer
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -513,29 +502,27 @@ fun MessageItem(
                 openRequest = messageLongPressRequest
             ) {
                 val guilds by guildStore.guilds.collectAsState()
-                val roleData by remember(message, guilds, navigationStore.selectedGuild, members, cAuthor, cMember) {
-                    derivedStateOf {
-                        val guild = (if (message.guild_id != null) guilds.find { it.id == message.guild_id } else null)
-                            ?: navigationStore.selectedGuild
-                            ?: return@derivedStateOf null
+                val roleData = remember(message, guilds, navigationStore.selectedGuild, members, cAuthor, cMember) {
+                    val guild = (if (message.guild_id != null) guilds.find { it.id == message.guild_id } else null)
+                        ?: navigationStore.selectedGuild
+                        ?: return@remember null
 
-                        val authorId = cAuthor?.id ?: return@derivedStateOf null
-                        val m = cMember ?: userStore.getMember(guild.id, authorId) ?: return@derivedStateOf null
-                        val colorRole = m.getRoleColorRole(guild)
+                    val authorId = cAuthor?.id ?: return@remember null
+                    val m = cMember ?: userStore.getMember(guild.id, authorId) ?: return@remember null
+                    val colorRole = m.getRoleColorRole(guild)
 
-                        if (colorRole != null) {
-                            val primaryInt = colorRole.colors?.primary_color ?: colorRole.color
-                            val gradient = if (colorRole.colors?.secondary_color != null) {
-                                listOfNotNull(
-                                    Color(primaryInt or 0xFF000000.toInt()),
-                                    Color(colorRole.colors.secondary_color or 0xFF000000.toInt()),
-                                    colorRole.colors.tertiary_color?.let { Color(it or 0xFF000000.toInt()) }
-                                )
-                            } else null
-                            val color = if (primaryInt != 0) Color(primaryInt or 0xFF000000.toInt()) else Color.Unspecified
-                            color to gradient
+                    if (colorRole != null) {
+                        val primaryInt = colorRole.colors?.primary_color ?: colorRole.color
+                        val gradient = if (colorRole.colors?.secondary_color != null) {
+                            listOfNotNull(
+                                Color(primaryInt or 0xFF000000.toInt()),
+                                Color(colorRole.colors.secondary_color or 0xFF000000.toInt()),
+                                colorRole.colors.tertiary_color?.let { Color(it or 0xFF000000.toInt()) }
+                            )
                         } else null
-                    }
+                        val color = if (primaryInt != 0) Color(primaryInt or 0xFF000000.toInt()) else Color.Unspecified
+                        color to gradient
+                    } else null
                 }
 
                 val roleColor = roleData?.first ?: Color.Unspecified
@@ -565,7 +552,7 @@ fun MessageItem(
                                 overflow = TextOverflow.Clip,
                                 modifier = Modifier
                                     .onGloballyPositioned { namePosition = it.positionInRoot() }
-                                    .clickable(enabled = !isPreview) { profileStore.showProfile(cAuthor.id, guildId, namePosition) },
+                                    .clickableCursor(enabled = !isPreview) { profileStore.showProfile(cAuthor.id, guildId, namePosition) },
                                 ignoreEffects = !isHovered,
                                 ignoreColors = if (isDm) !isHovered else false
                             )
@@ -649,13 +636,13 @@ fun MessageItem(
                                 text = "Retry",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.clickable { messageStore.retryMessage(message) }
+                                modifier = Modifier.clickableCursor { messageStore.retryMessage(message) }
                             )
                             Text(
                                 text = "Delete",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.clickable { messageStore.deletePendingMessage(message) }
+                                modifier = Modifier.clickableCursor { messageStore.deletePendingMessage(message) }
                             )
                         }
                     }
@@ -699,7 +686,7 @@ fun MessageItem(
                                         guildId = guildId,
                                         memberAvatar = cMember?.avatar,
                                         decorationData = cMember?.avatar_decoration_data,
-                                        modifier = Modifier.clickable(enabled = !isPreview) { profileStore.showProfile(cAuthor.id, guildId, avatarPosition) },
+                                        modifier = Modifier.pointerClickable(enabled = !isPreview) { profileStore.showProfile(cAuthor.id, guildId, avatarPosition) },
                                         isHovered = isHovered
                                     )
                                 }
@@ -731,7 +718,7 @@ fun MessageItem(
                                                 overflow = TextOverflow.Clip,
                                                 modifier = Modifier
                                                     .onGloballyPositioned { namePosition = it.positionInRoot() }
-                                                    .clickable { profileStore.showProfile(cAuthor.id, guildId, namePosition) },
+                                                    .clickableCursor { profileStore.showProfile(cAuthor.id, guildId, namePosition) },
                                                 ignoreEffects = !isHovered,
                                                 ignoreColors = if (isDm) !isHovered else false
                                             )
@@ -784,8 +771,8 @@ fun MessageItem(
                                     ) {
                                         Icon(Icons.Rounded.Error, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(14.dp))
                                         Text(text = message.sendError, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
-                                        Text(text = "Retry", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.clickable { messageStore.retryMessage(message) })
-                                        Text(text = "Delete", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error, modifier = Modifier.clickable { messageStore.deletePendingMessage(message) })
+                                        Text(text = "Retry", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.clickableCursor { messageStore.retryMessage(message) })
+                                        Text(text = "Delete", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error, modifier = Modifier.clickableCursor { messageStore.deletePendingMessage(message) })
                                     }
                                 }
 
@@ -818,7 +805,7 @@ fun MessageItem(
                                         guildId = guildId,
                                         memberAvatar = cMember?.avatar,
                                         decorationData = cMember?.avatar_decoration_data,
-                                        modifier = Modifier.clickable { profileStore.showProfile(cAuthor.id, guildId, avatarPosition) },
+                                        modifier = Modifier.pointerClickable { profileStore.showProfile(cAuthor.id, guildId, avatarPosition) },
                                         isHovered = isHovered
                                     )
                                 }
@@ -863,7 +850,7 @@ fun MessageItem(
                                         guildId = guildId,
                                         memberAvatar = cMember?.avatar,
                                         decorationData = cMember?.avatar_decoration_data,
-                                        modifier = Modifier.clickable { profileStore.showProfile(cAuthor.id, guildId, avatarPosition) },
+                                        modifier = Modifier.pointerClickable { profileStore.showProfile(cAuthor.id, guildId, avatarPosition) },
                                         isHovered = isHovered
                                     )
                                 }
@@ -882,7 +869,6 @@ fun MessageItem(
             }
         }
 
-        // Overlay Layer (Action Buttons)
         val isMe = message.author?.id == currentUser?.id
         val actions = remember(message, isMe) {
             val list = mutableListOf(
@@ -929,14 +915,15 @@ fun MessageItem(
                     }
                     .layout { measurable, constraints ->
                         val placeable = measurable.measure(constraints)
-                        // Occupy 0 height in layout pass so it doesn't affect message spacing
                         layout(placeable.width, 0) {
                             placeable.placeRelative(0, 0)
                         }
                     }
             ) {
                 ButtonGroup(
-                    modifier = Modifier.height(32.dp),
+                    modifier = Modifier
+                        .height(32.dp)
+                        .handCursor(),
                     overflowIndicator = { menuState -> ButtonGroupDefaults.OverflowIndicator(menuState) },
                     horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
                 ) {
@@ -970,6 +957,7 @@ fun MessageItem(
                                             groups.forEachIndexed { groupIndex, items ->
                                                 items.forEach { item ->
                                                     DropdownMenuItem(
+                                                        modifier = Modifier.handCursor(),
                                                         text = { Text(item.label) },
                                                         onClick = {
                                                             item.onClick()
@@ -988,6 +976,7 @@ fun MessageItem(
                             },
                             menuContent = {
                                 DropdownMenuItem(
+                                    modifier = Modifier.handCursor(),
                                     text = { Text(label) },
                                     onClick = { onClick() },
                                     leadingIcon = { Icon(icon, null) }

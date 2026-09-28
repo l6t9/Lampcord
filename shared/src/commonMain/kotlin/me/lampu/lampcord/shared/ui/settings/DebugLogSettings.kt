@@ -22,6 +22,7 @@ import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.Logging
 import me.lampu.lampcord.shared.utils.DateTimeUtils
 import me.lampu.lampcord.shared.settings.Settings
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,7 +72,6 @@ fun DebugLogScreen(onBack: () -> Unit) {
         }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            // Filters
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -106,7 +106,6 @@ fun DebugLogScreen(onBack: () -> Unit) {
                 )
             }
 
-            // Categories (Levels)
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -138,7 +137,6 @@ fun DebugLogScreen(onBack: () -> Unit) {
                 }
             }
 
-            // Tags
             val tags = remember(logs) { logs.map { it.tag }.distinct().sorted() }
             if (tags.isNotEmpty()) {
                 LazyRow(
@@ -198,7 +196,7 @@ fun LogEntryItem(entry: Logging.LogEntry) {
             .padding(vertical = 2.dp)
             .clip(RoundedCornerShape(4.dp))
             .background(color.copy(alpha = 0.05f))
-            .clickable { expanded = !expanded }
+            .clickableCursor { expanded = !expanded }
             .padding(8.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {

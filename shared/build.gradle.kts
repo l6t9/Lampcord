@@ -107,7 +107,7 @@ kotlin {
             implementation(libs.multiplatform.settings)
             implementation(libs.multiplatform.settings.no.arg)
             
-            api("androidx.navigation3:navigation3-runtime:1.2.0-alpha07")
+            api(libs.androidx.navigation3.runtime)
 
             implementation(libs.room.runtime)
             implementation(libs.sqlite.bundled)
@@ -119,6 +119,8 @@ kotlin {
             implementation(libs.sketch.http)
             implementation(libs.sketch.animated.gif)
             implementation(libs.sketch.animated.webp)
+            implementation(libs.coil.compose)
+            implementation(libs.coil.network.ktor3)
             implementation("io.github.kdroidfilter:composewebview:1.0.0-beta-02")
         }
 

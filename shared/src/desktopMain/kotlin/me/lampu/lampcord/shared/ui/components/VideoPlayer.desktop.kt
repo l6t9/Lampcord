@@ -64,6 +64,7 @@ import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
 @Composable
 actual fun VideoPlayer(
@@ -160,7 +161,6 @@ actual fun VideoPlayer(
 
     var isDraggingSlider by remember { mutableStateOf(false) }
 
-    // Progress polling
     LaunchedEffect(isPlaying, isDraggingSlider) {
         if (!isPlaying || isDraggingSlider) return@LaunchedEffect
         while (true) {
@@ -174,7 +174,6 @@ actual fun VideoPlayer(
             .hoverable(interactionSource),
         contentAlignment = Alignment.Center
     ) {
-        // Video Surface (Isolated for performance)
         DesktopVideoSurface(videoFrame, togglePlayback)
 
         if (isResolving) {
@@ -195,7 +194,6 @@ actual fun VideoPlayer(
             }
         }
 
-        // Discord style Top Right Download Button (Compact mode)
         if (compact && showControls) {
             val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
             Row(
@@ -227,7 +225,6 @@ actual fun VideoPlayer(
             }
         }
 
-        // Metrolist style Hoverable Play Controls
         if (showControls) {
             HoverablePlayControls(
                 isPlaying = isPlaying,
@@ -235,7 +232,6 @@ actual fun VideoPlayer(
                 onTogglePlay = togglePlayback
             )
 
-            // Metrolist style Bottom Video Controls
             AnimatedVisibility(
                 visible = isHovered || !isPlaying || isVolumeMenuOpen,
                 enter = if (Settings.shared.reduceMotion) EnterTransition.None else fadeIn(),
@@ -285,7 +281,7 @@ private fun DesktopVideoSurface(
             contentScale = ContentScale.Fit,
             modifier = Modifier
                 .fillMaxSize()
-                .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
+                .clickableCursor(indication = null, interactionSource = remember { MutableInteractionSource() }) {
                     onClick()
                 }
         )
@@ -361,7 +357,6 @@ private fun BottomVideoControls(
                 .padding(horizontal = if (compact) 12.dp else 24.dp, vertical = if (compact) 8.dp else 20.dp)
         ) {
             if (compact) {
-                // Single line Discord-like layout
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -413,7 +408,6 @@ private fun BottomVideoControls(
                     )
                 }
             } else {
-                // Slider Row
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -440,13 +434,11 @@ private fun BottomVideoControls(
 
                 Spacer(Modifier.height(8.dp))
 
-                // Info and Buttons Row
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    // Left: Info
                     Row(
                         modifier = Modifier.weight(1f),
                         verticalAlignment = Alignment.CenterVertically
@@ -481,7 +473,6 @@ private fun BottomVideoControls(
                         }
                     }
 
-                    // Right: Actions
                     VideoConnectedButtonGroup(
                         url = url,
                         volume = volume,
@@ -605,9 +596,6 @@ private fun VideoActionButton(
     }
 }
 
-/**
- * Exact port of Metrolist feature branch VideoPlayer implementation.
- */
 private class DesktopVideoPlayer(
     private val repeat: Boolean,
     private val onFrame: (ImageBitmap) -> Unit,
@@ -665,7 +653,6 @@ private class DesktopVideoPlayer(
     @Volatile
     private var videoTimestampOffsetMs: Long? = null
 
-    /** True when the loaded stream contains its own audio track. */
     val hasOwnAudio: Boolean
         get() = audioRenderer != null
 
@@ -681,14 +668,9 @@ private class DesktopVideoPlayer(
         loadJobId = currentLoadJobId
         var lastFailure: Throwable? = null
 
-        // A proxy URL can be unavailable to FFmpeg even though the original
-        // Discord CDN URL works. Try the equivalent host before giving up.
         val sourceUrls = videoSourceCandidates(url)
         for (sourceUrl in sourceUrls) {
-            // Some mobile videos contain an audio stream that Java Sound cannot
-            // open on the current Windows device. First try normal playback,
-            // then retry video-only so an audio-device issue cannot hide the
-            // video completely.
+            // Some mobile videos contain an audio stream that Java Sound cannot open on the current Windows device.
             for (videoOnly in listOf(false, true)) {
                 if (loadJobId != currentLoadJobId) return false
                 var g: FFmpegFrameGrabber? = null
@@ -713,10 +695,7 @@ private class DesktopVideoPlayer(
                                 ?.joinToString(separator = "\r\n", postfix = "\r\n") { "${it.key}: ${it.value}" }
                                 ?.let { options["headers"] = it }
 
-                            // MP4 files recorded by phones often put moov and
-                            // stream metadata late in the file. Give FFmpeg a
-                            // large enough probe window without forcing a full
-                            // download before the first frame.
+                            // MP4 files recorded by phones often put moov and stream metadata late in the file. Give FFmpeg a large enough probe window without forcing a full download before the first frame.
                             options["probesize"] = "50000000"
                             options["analyzeduration"] = "30000000"
                         }
@@ -739,9 +718,7 @@ private class DesktopVideoPlayer(
                                     AudioFormat(sampleRate.toFloat(), 16, channels, true, false)
                                 ).also { it.setVolume(volume) }
                             }.getOrElse { error ->
-                                // Audio output is optional. Keep decoding video
-                                // when Windows rejects an unusual channel layout
-                                // or the selected output device is unavailable.
+                                // Audio output is optional. Keep decoding video when Windows rejects an unusual channel layout or the selected output device is unavailable.
                                 println("[VideoPlayer] Audio output unavailable: ${error.message}")
                                 null
                             }
@@ -939,8 +916,6 @@ private class DesktopVideoPlayer(
         val containerDurationMs = g.getLengthInTime().div(1000)
         if (containerDurationMs > 0L) return containerDurationMs
 
-        // Some mobile encoders omit the container duration but keep it on the
-        // video stream. Use that value before exposing 0:00 / 0:00 in UI.
         val streamDurationMs = g.getVideoDurationInTime().div(1000)
         if (streamDurationMs > 0L) return streamDurationMs
 
@@ -954,10 +929,7 @@ private class DesktopVideoPlayer(
     }
     
     fun getCurrentPosition(): Long {
-        // The audio device is not a reliable clock on Windows: a muted or
-        // unavailable line can report a position of zero forever. Position is
-        // updated when a video frame is actually rendered, so the UI remains
-        // correct for both videos with and without audio.
+        // The audio device is not a reliable clock on Windows: a muted or unavailable line can report a position of zero forever.
         return lastVideoPositionMs
     }
 
@@ -969,7 +941,6 @@ private class DesktopVideoPlayer(
         try {
             decodeThread?.join(300)
         } catch (e: InterruptedException) {
-            // Ignored
         }
         decodeThread = null
         runCatching { audioRenderer?.close() }
@@ -1016,14 +987,9 @@ private class DesktopVideoPlayer(
     }
 
     private fun renderVideo(frame: Frame, forceRender: Boolean = false, isInitialFrame: Boolean = false): Boolean {
-        // Keep video on its own monotonic clock. Java Sound's frame position
-        // can remain at zero on Windows, which previously made every frame
-        // after the first wait five seconds or get dropped.
+        // Keep video on its own monotonic clock. Java Sound's frame position can remain at zero on Windows, which previously made every frame after the first wait five seconds or get dropped.
         val frameMs = normalizedVideoTimestamp(frame)
         if (isInitialFrame && videoClockStartNanos != 0L) {
-            // Some phone encoders start their PTS timeline away from zero.
-            // Anchor the playback clock to the first decoded frame so the
-            // second frame is not delayed by that arbitrary stream offset.
             videoClockStartMs = frameMs
             videoClockStartNanos = System.nanoTime()
         }
@@ -1054,8 +1020,6 @@ private class DesktopVideoPlayer(
         }
         val hasValidTimestamp = rawMs in 0L..MAX_REASONABLE_TIMESTAMP_MS
         if (lastVideoTimestampMs < 0L && hasValidTimestamp) {
-            // Normalize streams whose first PTS is an arbitrary non-zero
-            // value. The UI and duration are relative to the video start.
             videoTimestampOffsetMs = rawMs - videoClockStartMs
         }
         val adjustedMs = if (hasValidTimestamp) {
@@ -1118,9 +1082,7 @@ private class DesktopVideoPlayer(
         val image =
             SkiaImage.makeRaster(
                 ImageInfo(width, height, ColorType.N32, ColorAlphaType.PREMUL, ColorSpace.sRGB),
-                // FFmpeg reuses its frame buffer on the next decode. Give
-                // Skia an immutable snapshot so a recycled portrait frame
-                // cannot turn the currently displayed image black.
+                // FFmpeg reuses its frame buffer on the next decode. Give Skia an immutable snapshot so a recycled portrait frame cannot turn the currently displayed image black.
                 pixels.copyOf(),
                 width * 4,
             )

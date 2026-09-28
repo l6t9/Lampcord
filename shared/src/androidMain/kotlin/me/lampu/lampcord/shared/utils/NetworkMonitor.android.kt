@@ -26,7 +26,6 @@ actual object NetworkMonitor {
 
     actual val isOnline: StateFlow<Boolean> get() = state
 
-    // activeNetwork is null when there is no default network
     private fun hasInternet(manager: ConnectivityManager): Boolean {
         val caps = manager.getNetworkCapabilities(manager.activeNetwork) ?: return false
         return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)

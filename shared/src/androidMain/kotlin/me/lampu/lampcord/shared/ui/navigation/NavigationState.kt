@@ -16,9 +16,6 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.runtime.serialization.NavKeySerializer
 import androidx.savedstate.compose.serialization.serializers.MutableStateSerializer
 
-/**
- * Extension to add an entry to the EntryProviderScope using a reified type.
- */
 @Composable
 inline fun <reified K : NavKey> androidx.navigation3.runtime.EntryProviderScope<NavKey>.entry(
     noinline contentKey: (K) -> Any = { it.toString() },
@@ -28,9 +25,6 @@ inline fun <reified K : NavKey> androidx.navigation3.runtime.EntryProviderScope<
     addEntryProvider(K::class, contentKey as (NavKey) -> Any, metadata, content as @Composable (NavKey) -> Unit)
 }
 
-/**
- * Create a navigation state that persists config changes and process death.
- */
 @Composable
 fun rememberNavigationState(
     startRoute: NavKey,
@@ -56,13 +50,6 @@ fun rememberNavigationState(
     }
 }
 
-/**
- * State holder for navigation state.
- *
- * @param startRoute - the start route. The user will exit the app through this route.
- * @param topLevelRoute - the current top level route
- * @param backStacks - the back stacks for each top level route
- */
 class NavigationState(
     startRoute: NavKey,
     topLevelRoute: MutableState<NavKey>,
@@ -79,9 +66,6 @@ class NavigationState(
             }
 }
 
-/**
- * Convert NavigationState into NavEntries.
- */
 @Composable
 fun NavigationState.toEntries(entryProvider: (NavKey) -> NavEntry<NavKey>): List<NavEntry<NavKey>> {
     val decoratedEntries =

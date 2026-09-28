@@ -24,6 +24,7 @@ import me.lampu.lampcord.shared.settings.PanelAnimation
 import me.lampu.lampcord.shared.settings.PanelType
 import me.lampu.lampcord.shared.settings.Settings
 import kotlin.math.abs
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
 enum class DiscordPanelValue {
     Start, Center, End
@@ -157,7 +158,6 @@ fun DiscordPanels(
                     } else Modifier
                 )
         ) {
-            // Start Panel (Left - Server & Channels Drawer)
             Box(
                 modifier = Modifier
                     .fillMaxHeight()
@@ -188,7 +188,6 @@ fun DiscordPanels(
                 startPanel()
             }
 
-            // Center Panel (Main Chat View)
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -236,7 +235,6 @@ fun DiscordPanels(
             ) {
                 centerPanel()
                 
-                // Dimming scrim on center panel when side panels are active
                 if (absProgress > 0.01f) {
                     val scrimAlpha = if (progress < 0) {
                         absProgress * 0.45f
@@ -250,7 +248,7 @@ fun DiscordPanels(
                         modifier = Modifier
                             .fillMaxSize()
                             .background(Color.Black.copy(alpha = scrimAlpha))
-                            .clickable(
+                            .clickableCursor(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null
                             ) {
@@ -260,7 +258,6 @@ fun DiscordPanels(
                 }
             }
 
-            // End Panel (Right - Member List / Detail Panel)
             val endSheetVisible = progress < -0.001f || state.currentValue == DiscordPanelValue.End
             if (endSheetVisible) {
                 val isOverlapping = panelType == PanelType.OVERLAPPING

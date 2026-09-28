@@ -12,7 +12,6 @@ import me.lampu.lampcord.shared.gateway.VoicePhase
 import me.lampu.lampcord.shared.state.VoiceStore
 import org.koin.android.ext.android.getKoin
 
-/** Keeps an explicitly started microphone call alive when the app is backgrounded. */
 class VoiceCallService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val store get() = getKoin().get<VoiceStore>()

@@ -73,7 +73,6 @@ fun ThreadPanel(
             .fillMaxHeight()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        // Header
         Surface(
             modifier = Modifier.fillMaxWidth().height(56.dp),
             color = MaterialTheme.colorScheme.surface,

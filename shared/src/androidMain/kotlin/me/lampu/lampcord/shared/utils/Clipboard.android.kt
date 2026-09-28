@@ -23,7 +23,6 @@ actual fun getClipboardFiles(): List<Pair<String, ByteArray>> {
                 files.add(fileName to inputStream.readBytes())
             }
         } catch (e: Exception) {
-            // Skip files that can't be read
         }
     }
     

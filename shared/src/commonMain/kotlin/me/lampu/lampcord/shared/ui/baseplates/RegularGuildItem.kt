@@ -22,6 +22,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.settings.Settings
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
 @Composable
 fun RegularGuildItem(
@@ -85,7 +86,7 @@ fun RegularGuildItem(
             .fillMaxWidth()
             .height(48.dp)
             .hoverable(interactionSource)
-            .clickable(
+            .clickableCursor(
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = onClick

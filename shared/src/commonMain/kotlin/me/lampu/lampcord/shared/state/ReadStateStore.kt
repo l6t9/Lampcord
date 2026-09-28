@@ -12,7 +12,6 @@ class ReadStateStore(private val channelApi: ChannelApi) {
     private val _readStates = MutableStateFlow<Map<String, ReadState>>(emptyMap())
     val readStates: StateFlow<Map<String, ReadState>> = _readStates.asStateFlow()
     
-    // Tracks message IDs that contain mentions to handle local deletions
     private val mentionedMessageIds = mutableMapOf<String, MutableSet<String>>()
 
     fun handleReady(ready: ReadyPayload) {
@@ -32,7 +31,6 @@ class ReadStateStore(private val channelApi: ChannelApi) {
         _readStates.update { current ->
             val existing = current[ack.channel_id]
             
-            // Clear locally tracked mentions that were acked
             val ids = mentionedMessageIds[ack.channel_id]
             ids?.let { set ->
                 val toRemove = set.filter { (it.toLongOrNull() ?: 0L) <= (ack.message_id.toLongOrNull() ?: 0L) }
@@ -62,7 +60,6 @@ class ReadStateStore(private val channelApi: ChannelApi) {
         if (hasMention) {
             val state = _readStates.value[message.channel_id]
             val ackedId = state?.lastMessageId() ?: "0"
-            // Ignore mentions that are older than or equal to the current acked message
             if ((message.id.toLongOrNull() ?: 0L) <= (ackedId.toLongOrNull() ?: 0L)) return
 
             val ids = mentionedMessageIds.getOrPut(message.channel_id) { mutableSetOf() }
@@ -116,7 +113,6 @@ class ReadStateStore(private val channelApi: ChannelApi) {
         channelApi.ackMessage(channelId, messageId)
     }
 
-    /** Marks a set of channels read both locally and on Discord. */
     suspend fun ackBulk(readStates: Map<String, String>): Boolean {
         val validStates = readStates.filterValues { it.toLongOrNull()?.let { id -> id > 0L } == true }
         if (validStates.isEmpty()) return true

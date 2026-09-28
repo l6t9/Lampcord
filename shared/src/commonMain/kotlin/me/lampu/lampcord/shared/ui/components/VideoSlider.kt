@@ -112,7 +112,6 @@ private fun DrawScope.drawTrack(
     val trackHeightPx = trackHeight.toPx()
     val cornerRadius = CornerRadius(4.dp.toPx()) // Proportional rounding
 
-    // Inactive track (background)
     drawRoundRect(
         color = inactiveTrackColor,
         topLeft = Offset(0f, center.y - (trackHeightPx / 2f)),

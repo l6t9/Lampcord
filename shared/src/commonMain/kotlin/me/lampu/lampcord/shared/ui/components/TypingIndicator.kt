@@ -84,8 +84,7 @@ fun TypingIndicator(
 
 @Composable
 fun TypingDots(modifier: Modifier = Modifier) {
-    // Keep the typing indicator visible without a continuously animated clock
-    // on Windows.
+    // Keep the typing indicator visible without a continuously animated clock on Windows.
     if (getPlatformName() == "windows" || Settings.shared.reduceMotion) {
         Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
             repeat(3) {
