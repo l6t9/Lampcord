@@ -289,6 +289,7 @@ jobs:
         env:
           APP_VERSION: ${{ needs.prepare.outputs.version }}
           BUILD_VERSION: ${{ needs.prepare.outputs.build-version }}
+          STAGING_RELEASE_TAG: ${{ needs.stage.outputs.tag || 'tester-package-staging' }}
           PIXELDRAIN_API_KEY: ${{ secrets.PIXELDRAIN_API_KEY }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_UPDATE_WEBHOOK_URL }}
         run: |
@@ -296,14 +297,25 @@ jobs:
           test -n "$PIXELDRAIN_API_KEY" || { echo "PIXELDRAIN_API_KEY is not configured" >&2; exit 1; }
           test -n "$DISCORD_WEBHOOK_URL" || { echo "DISCORD_WEBHOOK_URL is not configured" >&2; exit 1; }
 
-          # Artifacts are named after appVersion; the release tag uses releaseVersion.
+          # The package jobs name their output after the release version, so the tag and
+          # the file names agree. build-version is recorded in build-info.json only.
           expected=(
-            "release-assets/lampcord-android-${BUILD_VERSION}.apk"
-            "release-assets/lampcord-desktop-linux-x64-${BUILD_VERSION}.AppImage"
-            "release-assets/lampcord-desktop-windows-x64-${BUILD_VERSION}.zip"
+            "release-assets/lampcord-android-${APP_VERSION}.apk"
+            "release-assets/lampcord-desktop-linux-x64-${APP_VERSION}.AppImage"
+            "release-assets/lampcord-desktop-windows-x64-${APP_VERSION}.zip"
           )
           for file in "${expected[@]}"; do
-            test -f "$file" || { echo "Missing release artifact: $file" >&2; exit 1; }
+            if [[ ! -f "$file" ]]; then
+              {
+                echo "Missing release artifact: $file"
+                echo "Expected release version: $APP_VERSION (from releaseVersion)"
+                echo "Build version recorded as: $BUILD_VERSION (appVersion)"
+                echo "Staging tag: $STAGING_RELEASE_TAG"
+                echo "Files actually downloaded:"
+                ls -1 release-assets >&2 || echo "  (none)" >&2
+              } >&2
+              exit 1
+            fi
           done
 
       - name: Generate full changelog
@@ -344,7 +356,7 @@ jobs:
         env:
           PIXELDRAIN_API_KEY: ${{ secrets.PIXELDRAIN_API_KEY }}
         with:
-          file-path: release-assets/lampcord-android-${{ needs.prepare.outputs.build-version }}.apk
+          file-path: release-assets/lampcord-android-${{ needs.prepare.outputs.version }}.apk
 
       - name: Upload Linux AppImage to Pixeldrain
         id: pixeldrain-linux
@@ -352,7 +364,7 @@ jobs:
         env:
           PIXELDRAIN_API_KEY: ${{ secrets.PIXELDRAIN_API_KEY }}
         with:
-          file-path: release-assets/lampcord-desktop-linux-x64-${{ needs.prepare.outputs.build-version }}.AppImage
+          file-path: release-assets/lampcord-desktop-linux-x64-${{ needs.prepare.outputs.version }}.AppImage
 
       - name: Upload Windows ZIP to Pixeldrain
         id: pixeldrain-windows
@@ -360,7 +372,7 @@ jobs:
         env:
           PIXELDRAIN_API_KEY: ${{ secrets.PIXELDRAIN_API_KEY }}
         with:
-          file-path: release-assets/lampcord-desktop-windows-x64-${{ needs.prepare.outputs.build-version }}.zip
+          file-path: release-assets/lampcord-desktop-windows-x64-${{ needs.prepare.outputs.version }}.zip
 
       - name: Upload checksums to Pixeldrain
         id: pixeldrain-checksums
