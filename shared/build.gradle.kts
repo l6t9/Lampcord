@@ -117,7 +117,7 @@ kotlin {
 
             implementation(libs.coil.compose)
             implementation(libs.coil.network.ktor3)
-            implementation("io.github.kdroidfilter:composewebview:1.0.0-beta-02")
+            implementation(libs.composeWebview)
         }
 
         getByName("desktopTest") {
@@ -144,6 +144,7 @@ kotlin {
                 implementation(compose.desktop.currentOs)
                 implementation(libs.tianscar.imageio.apng)
                 implementation(libs.vlcj)
+                implementation("dev.nucleusframework:nucleus.system-color:${libs.versions.nucleus.get()}")
                 
                 implementation("io.ktor:ktor-server-core:${libs.versions.ktor.get()}")
                 implementation("io.ktor:ktor-server-netty:${libs.versions.ktor.get()}")

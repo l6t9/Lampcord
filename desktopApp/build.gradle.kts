@@ -1,12 +1,14 @@
-import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import dev.nucleusframework.desktop.application.dsl.CompressionLevel
+import dev.nucleusframework.desktop.application.dsl.TargetFormat
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.Properties
 
 plugins {
-   alias(libs.plugins.kotlin.multiplatform)
-   alias(libs.plugins.compose.multiplatform)
-   alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.kotlin.multiplatform)
+    alias(libs.plugins.compose.multiplatform)
+    alias(libs.plugins.compose.compiler)
+    id("dev.nucleusframework") version "2.6.0-dev-202609281230"
 }
 
 val platform =
@@ -32,13 +34,28 @@ kotlin {
    sourceSets {
        getByName("jvmMain") {
            dependencies {
-               implementation(project(":shared"))
-               implementation(compose.desktop.currentOs)
-               implementation(libs.ktor.client.cio)
-               implementation(libs.kotlinx.coroutines.swing)
-               implementation(libs.jna)
-               implementation(libs.jna.platform)
-               implementation(libs.koin.compose)
+                implementation(project(":shared"))
+                implementation(compose.desktop.currentOs)
+                implementation(compose.material3)
+                implementation(libs.ktor.client.cio)
+                implementation(libs.kotlinx.coroutines.swing)
+                implementation(libs.jna)
+                implementation(libs.jna.platform)
+                implementation(libs.koin.compose)
+
+                implementation("dev.nucleusframework:nucleus.nucleus-application:${libs.versions.nucleus.get()}")
+                implementation("dev.nucleusframework:nucleus.decorated-window-tao:${libs.versions.nucleus.get()}")
+                implementation("dev.nucleusframework:nucleus.decorated-window-material3:${libs.versions.nucleus.get()}")
+                implementation("dev.nucleusframework:nucleus.notification-common:${libs.versions.nucleus.get()}")
+                implementation("dev.nucleusframework:nucleus.notification-linux:${libs.versions.nucleus.get()}")
+                implementation("dev.nucleusframework:nucleus.notification-macos:${libs.versions.nucleus.get()}")
+                implementation("dev.nucleusframework:nucleus.notification-windows:${libs.versions.nucleus.get()}")
+                implementation("dev.nucleusframework:composenativetray:2.1.6")
+                implementation("dev.nucleusframework:nucleus.updater-runtime:${libs.versions.nucleus.get()}")
+                implementation("dev.nucleusframework:nucleus.system-color:${libs.versions.nucleus.get()}")
+                implementation("dev.nucleusframework:nucleus.native-http-ktor:${libs.versions.nucleus.get()}")
+                implementation("dev.nucleusframework:nucleus.energy-manager:${libs.versions.nucleus.get()}")
+                implementation("dev.nucleusframework:nucleus.darkmode-detector:${libs.versions.nucleus.get()}")
            }
        }
    }
@@ -68,43 +85,60 @@ tasks.withType<org.gradle.api.tasks.JavaExec>().configureEach {
     }
 }
 
-compose.desktop {
-   application {
-       mainClass = "me.lampu.lampcord.MainKt"
-       localProperties.getProperty("compose.desktop.javaHome")?.let {
-           javaHome = it
-       }
-        jvmArgs += listOf(
-            "-Dsun.java2d.uiScale.enabled=true",
-            "--enable-native-access=ALL-UNNAMED",
-            // Sketch's memory cache is sized off the heap; 512m was not enough headroom.
-            "-Xmx1g",
-            "-Dskiko.gpu.resourceCacheLimit=64m"
-        )
-        // NativeMemoryTracking adds a per-allocation cost. Opt in with -Dlampcord.nmt=true.
-        providers.gradleProperty("lampcord.nmt").orNull?.let {
-            if (it == "true") {
-                jvmArgs += "-XX:NativeMemoryTracking=summary"
+nucleus.application {
+    mainClass = "me.lampu.lampcord.MainKt"
+    localProperties.getProperty("compose.desktop.javaHome")?.let {
+        javaHome = it
+    }
+    jvmArgs += listOf(
+        "-Dsun.java2d.uiScale.enabled=true",
+        "--enable-native-access=ALL-UNNAMED",
+        "-Xmx1g",
+        "-Dskiko.gpu.resourceCacheLimit=64m"
+    )
+    providers.gradleProperty("lampcord.nmt").orNull?.let {
+        if (it == "true") {
+            jvmArgs += "-XX:NativeMemoryTracking=summary"
+        }
+    }
+    nativeDistributions {
+        targetFormats(TargetFormat.Dmg, TargetFormat.Zip, TargetFormat.Nsis, TargetFormat.Deb, TargetFormat.AppImage)
+        packageName = "Lampcord"
+        packageVersion = "1.0.0"
+        description = "Lampcord Discord Client"
+        copyright = "Lampu"
+        vendor = "Lampcord"
+        homepage = "https://lampcord.lampu.lol"
+        compressionLevel = CompressionLevel.Maximum
+
+        windows {
+            nsis {
+                oneClick = false
+                perMachine = false
+                allowElevation = true
+                allowToChangeInstallationDirectory = true
+                createDesktopShortcut = true
+                createStartMenuShortcut = true
+                runAfterFinish = true
             }
         }
-       nativeDistributions {
-           targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb, TargetFormat.AppImage)
-           packageName = "Lampcord"
-           packageVersion = "1.0.0"
-           description = "Lampcord Discord Client"
-           copyright = "Lampu"
-           vendor = "Lampcord"
-           
-           linux {
-               jvmArgs += listOf("-Djava.locale.providers=COMPAT,SPI", "-Dwebkit.disable.dmabuf.renderer=1")
-           }
-           macOS {
-               infoPlist {
-                   extraKeysRawXml = "<key>NSMicrophoneUsageDescription</key><string>Lampcord uses your microphone for voice calls you join.</string>"
-               }
-           }
-       }
-   }
+
+        linux {
+            jvmArgs += listOf("-Djava.locale.providers=COMPAT,SPI", "-Dwebkit.disable.dmabuf.renderer=1")
+        }
+        macOS {
+            infoPlist {
+                extraKeysRawXml = "<key>NSMicrophoneUsageDescription</key><string>Lampcord uses your microphone for voice calls you join.</string>"
+            }
+        }
+    }
+
+    graalvm {
+        isEnabled.set(true)
+        javaLanguageVersion.set(25)
+        imageName.set("lampcord")
+        buildArgs.add("-O2")
+    }
 }
 
 tasks.register("patchLinuxLauncher") {

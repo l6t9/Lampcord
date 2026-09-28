@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,6 +28,110 @@ import me.lampu.lampcord.shared.utils.Logging
 import org.koin.compose.koinInject
 import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
+@Composable
+fun MutualFriendRow(
+    friend: User,
+    onClick: () -> Unit,
+    presenceStore: PresenceStore = koinInject(),
+    userStore: UserStore = koinInject(),
+    settingsStore: SettingsStore = koinInject()
+) {
+    val currentUser by userStore.currentUser.collectAsState()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickableCursor { onClick() }
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(modifier = Modifier.size(40.dp)) {
+            AsyncImage(
+                model = CdnUrls.getUserAvatarUrl(friend.id, friend.avatar, 128),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize().clip(CircleShape)
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .size(14.dp)
+                    .background(LocalContentColor.current.copy(alpha = 0.25f), CircleShape)
+                    .padding(2.dp)
+            ) {
+                StatusIndicator(
+                    status = presenceStore.getUserStatus(friend.id, currentUser?.id, settingsStore.userSettings?.status),
+                    size = 10.dp,
+                    borderWidth = 0.dp
+                )
+            }
+        }
+        Spacer(Modifier.width(12.dp))
+        Column {
+            Text(
+                text = friend.global_name ?: friend.username ?: "Unknown",
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = friend.username ?: "",
+                style = MaterialTheme.typography.bodySmall,
+                color = LocalContentColor.current.copy(alpha = 0.7f)
+            )
+        }
+    }
+}
+
+@Composable
+fun MutualServerRow(
+    mutual: MutualGuild,
+    onClick: () -> Unit,
+    guildStore: GuildStore = koinInject()
+) {
+    val allGuilds by guildStore.guilds.collectAsState()
+    val guild = allGuilds.find { it.id == mutual.id }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickableCursor { onClick() }
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (guild?.icon != null) {
+            AsyncImage(
+                model = CdnUrls.getGuildIconUrl(guild.id, guild.icon, 128),
+                contentDescription = null,
+                modifier = Modifier.size(40.dp).clip(CircleShape)
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = guild?.name?.take(1) ?: "?",
+                    style = MaterialTheme.typography.titleMedium
+                )
+            }
+        }
+        Spacer(Modifier.width(12.dp))
+        Column {
+            Text(
+                text = guild?.name ?: "Unknown Server",
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold
+            )
+            if (mutual.nick != null) {
+                Text(
+                    text = "Nickname: ${mutual.nick}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = LocalContentColor.current.copy(alpha = 0.7f)
+                )
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MutualFriendsBottomSheet(
@@ -35,14 +140,10 @@ fun MutualFriendsBottomSheet(
     onDismiss: () -> Unit,
     initialFriends: List<User>? = null,
     userApi: UserApi = koinInject(),
-    presenceStore: PresenceStore = koinInject(),
-    userStore: UserStore = koinInject(),
-    profileStore: ProfileStore = koinInject(),
-    settingsStore: SettingsStore = koinInject()
+    profileStore: ProfileStore = koinInject()
 ) {
     var mutualFriends by remember { mutableStateOf<List<User>?>(initialFriends) }
     var isLoading by remember { mutableStateOf(initialFriends == null) }
-    val currentUser by userStore.currentUser.collectAsState()
 
     LaunchedEffect(userId) {
         if (initialFriends != null) return@LaunchedEffect
@@ -75,50 +176,13 @@ fun MutualFriendsBottomSheet(
                 } else {
                     LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
                         items(friends) { friend ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickableCursor { 
-                                        onDismiss()
-                                        profileStore.showProfile(friend.id)
-                                    }
-                                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(modifier = Modifier.size(40.dp)) {
-                                    AsyncImage(
-                                        model = CdnUrls.getUserAvatarUrl(friend.id, friend.avatar, 128),
-                                        contentDescription = null,
-                                        modifier = Modifier.fillMaxSize().clip(CircleShape)
-                                    )
-                                    Box(
-                                        modifier = Modifier
-                                            .align(Alignment.BottomEnd)
-                                            .size(14.dp)
-                                            .background(MaterialTheme.colorScheme.surface, CircleShape)
-                                            .padding(2.dp)
-                                    ) {
-                                        StatusIndicator(
-                                            status = presenceStore.getUserStatus(friend.id, currentUser?.id, settingsStore.userSettings?.status),
-                                            size = 10.dp,
-                                            borderWidth = 0.dp
-                                        )
-                                    }
+                            MutualFriendRow(
+                                friend = friend,
+                                onClick = {
+                                    onDismiss()
+                                    profileStore.showProfile(friend.id)
                                 }
-                                Spacer(Modifier.width(12.dp))
-                                Column {
-                                    Text(
-                                        text = friend.global_name ?: friend.username ?: "Unknown",
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Text(
-                                        text = friend.username ?: "",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
+                            )
                         }
                     }
                 }
@@ -156,53 +220,15 @@ fun MutualServersBottomSheet(
                 LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
                     items(mutualGuilds) { mutual ->
                         val guild = allGuilds.find { it.id == mutual.id }
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickableCursor { 
-                                    onDismiss()
-                                    if (guild != null) {
-                                        navigationStore.selectedGuild = guild
-                                    }
-                                }
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            if (guild?.icon != null) {
-                                AsyncImage(
-                                    model = CdnUrls.getGuildIconUrl(guild.id, guild.icon, 128),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(40.dp).clip(CircleShape)
-                                )
-                            } else {
-                                Box(
-                                    modifier = Modifier
-                                        .size(40.dp)
-                                        .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = guild?.name?.take(1) ?: "?",
-                                        style = MaterialTheme.typography.titleMedium
-                                    )
+                        MutualServerRow(
+                            mutual = mutual,
+                            onClick = {
+                                onDismiss()
+                                if (guild != null) {
+                                    navigationStore.selectedGuild = guild
                                 }
                             }
-                            Spacer(Modifier.width(12.dp))
-                            Column {
-                                Text(
-                                    text = guild?.name ?: "Unknown Server",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                if (mutual.nick != null) {
-                                    Text(
-                                        text = "Nickname: ${mutual.nick}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
+                        )
                     }
                 }
             }

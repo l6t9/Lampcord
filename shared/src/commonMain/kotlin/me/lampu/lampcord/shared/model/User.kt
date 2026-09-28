@@ -138,7 +138,8 @@ data class UserProfileMetadata(
     val pronouns: String? = null,
     val display_name_styles: DisplayNameStyles? = null,
     val profile_effect: ProfileEffect? = null,
-    val profile_frame: ProfileEffect? = null
+    val profile_frame: ProfileEffect? = null,
+    val collectibles: List<CollectibleRef>? = null
 ) {
     @Serializable
     data class Partial(

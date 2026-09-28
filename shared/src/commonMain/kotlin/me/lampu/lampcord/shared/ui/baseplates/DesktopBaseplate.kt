@@ -65,6 +65,7 @@ import me.lampu.lampcord.shared.ui.components.chat.SearchScreen
 import me.lampu.lampcord.shared.ui.components.guilds.ChannelsAndRoles
 import me.lampu.lampcord.shared.ui.components.chat.ChannelSettingsScreen
 import me.lampu.lampcord.shared.ui.components.guilds.ServerSettings
+import me.lampu.lampcord.shared.ui.components.profiles.FullProfileOverlay
 import me.lampu.lampcord.shared.ui.components.profiles.ProfileCard
 import me.lampu.lampcord.shared.ui.components.profiles.UserProfileDialog
 import me.lampu.lampcord.shared.ui.icons.Icons
@@ -291,6 +292,8 @@ fun DesktopBaseplate(
                 }
             )
         }
+
+        FullProfileOverlay(profileStore)
 
         if (navigationStore.isSearchVisible) {
             SearchScreen(onDismiss = { navigationStore.isSearchVisible = false })

@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.ui.components.settings.*
 import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.utils.getPlatformName
 import org.koin.compose.koinInject
 import kotlinx.serialization.json.*
 import kotlinx.serialization.encodeToString
@@ -39,6 +40,9 @@ fun NavigationSettings(
 private fun NavigationSettingsContent(
     settingsStore: SettingsStore
 ) {
+    val isMobile = remember { getPlatformName() == "android" || getPlatformName() == "ios" }
+    if (!isMobile) return
+
     val json = Json { ignoreUnknownKeys = true }
     
     var items by remember(settingsStore.navTabsOrderJson) {

@@ -20,17 +20,27 @@ import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.theme.DiscordGreen
 import me.lampu.lampcord.shared.ui.theme.DiscordRed
 import me.lampu.lampcord.shared.ui.theme.Fuchsia
-import org.koin.compose.koinInject
 import me.lampu.lampcord.shared.ui.kit.clickableCursor
+import org.koin.compose.koinInject
 
 @Composable
 fun SystemMessage(
     message: Message,
-    profileStore: ProfileStore = koinInject()
+    profileStore: ProfileStore = koinInject(),
+    messageStore: MessageStore = koinInject()
 ) {
+    val targetMessageId = message.message_reference?.message_id
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .then(
+                if (targetMessageId != null) {
+                    Modifier.clickableCursor {
+                        messageStore.scrollToMessageId = targetMessageId
+                    }
+                } else Modifier
+            )
             .padding(vertical = 4.dp, horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -45,6 +55,7 @@ fun SystemMessage(
             8, 9, 10, 11 -> Triple(Icons.Filled.RocketLaunch, Fuchsia, "${message.author?.global_name ?: message.author?.username ?: "Unknown"} just boosted the server!")
             12 -> Triple(Icons.Filled.Campaign, MaterialTheme.colorScheme.primary, "${message.author?.global_name ?: message.author?.username ?: "Unknown"} added a followed channel to this channel.")
             18 -> Triple(Icons.Filled.Tag, MaterialTheme.colorScheme.primary, "${message.author?.global_name ?: message.author?.username ?: "Unknown"} started a thread.")
+            46 -> Triple(Icons.Filled.BarChart, MaterialTheme.colorScheme.primary, formatPollResultMessage(message))
             else -> Triple(Icons.Filled.Info, MaterialTheme.colorScheme.onSurfaceVariant, "System message (Type ${message.type})")
         }
 
@@ -142,5 +153,30 @@ fun SystemMessage(
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
             )
         }
+    }
+}
+
+private fun formatPollResultMessage(message: Message): String {
+    val authorName = message.author?.global_name ?: message.author?.username ?: "User"
+    val embed = message.embeds?.firstOrNull()
+
+    val questionText = embed?.fields?.find { it.name == "poll_question_text" }?.value
+        ?: embed?.title
+        ?: message.poll?.question?.text
+        ?: message.content.takeIf { it.isNotBlank() }
+        ?: "poll"
+
+    val victorText = embed?.fields?.find { it.name == "victor_answer_text" }?.value
+    val victorVotes = embed?.fields?.find { it.name == "victor_answer_votes" }?.value?.toIntOrNull() ?: 0
+    val totalVotes = embed?.fields?.find { it.name == "total_votes" }?.value?.toIntOrNull()
+        ?: message.poll?.results?.answer_counts?.sumOf { it.count }
+        ?: 0
+
+    val percent = if (totalVotes > 0) (victorVotes * 100 / totalVotes) else 0
+
+    return when {
+        totalVotes == 0 -> "$authorName's poll \"$questionText\" has closed! There were no votes."
+        victorText.isNullOrBlank() -> "$authorName's poll \"$questionText\" has closed! The result was a draw ($percent%)."
+        else -> "$authorName's poll \"$questionText\" has closed! The winner was $victorText ($percent%)."
     }
 }

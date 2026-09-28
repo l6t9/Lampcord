@@ -153,12 +153,8 @@ actual fun openDownloadsFolderAndSelect(filename: String) {
         val downloads = java.io.File(System.getProperty("user.home"), "Downloads")
         if (!downloads.exists()) downloads.mkdirs()
         val f = java.io.File(downloads, filename)
-        val desktop = java.awt.Desktop.getDesktop()
-        if (f.exists()) {
-            desktop.open(f.parentFile)
-        } else {
-            desktop.open(downloads)
-        }
+        val target = if (f.exists()) f.parentFile else downloads
+        ProcessBuilder("xdg-open", target.absolutePath).start()
     } catch (e: Exception) {
     }
 }

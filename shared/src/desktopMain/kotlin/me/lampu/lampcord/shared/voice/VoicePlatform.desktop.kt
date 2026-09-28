@@ -9,5 +9,4 @@ actual fun rememberVoiceJoin(voiceStore: VoiceStore): (Channel, Boolean) -> Unit
 actual fun startVoiceSession() = Unit
 actual fun stopVoiceSession() = Unit
 actual fun notifyIncomingCall(channelId: String?) {
-    if (channelId != null) java.awt.Toolkit.getDefaultToolkit().beep()
 }

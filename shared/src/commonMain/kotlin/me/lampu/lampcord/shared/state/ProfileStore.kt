@@ -4,6 +4,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.geometry.Offset
 import kotlinx.coroutines.*
 import me.lampu.lampcord.shared.api.UserApi
+import me.lampu.lampcord.shared.model.ProfileCollectibles
+import me.lampu.lampcord.shared.model.ProfileEffectProduct
+import me.lampu.lampcord.shared.model.ProfileFrameProduct
 import me.lampu.lampcord.shared.model.UserProfile
 
 class ProfileStore(
@@ -16,16 +19,35 @@ class ProfileStore(
     var isProfileExpanded by mutableStateOf(false)
     var isProfileLoading by mutableStateOf(false)
     var profilePosition by mutableStateOf<Offset?>(null)
+    var isFullProfileVisible by mutableStateOf(false)
+
+    fun openFullProfile() {
+        if (selectedProfile != null) isFullProfileVisible = true
+    }
+
+    fun closeFullProfile() {
+        isFullProfileVisible = false
+    }
 
     private val collectibleCache = mutableStateMapOf<String, kotlinx.serialization.json.JsonObject>()
+    private val effectCache = mutableStateMapOf<String, ProfileEffectProduct>()
+    private val frameCache = mutableStateMapOf<String, ProfileFrameProduct>()
 
-    fun getCollectible(skuId: String): kotlinx.serialization.json.JsonObject? {
-        val cached = collectibleCache[skuId]
-        if (cached != null) return cached
-
+    fun getEffect(skuId: String): ProfileEffectProduct? {
+        effectCache[skuId]?.let { return it }
         scope.launch {
-            userApi.getCollectibleProduct(skuId)?.let {
-                collectibleCache[skuId] = it
+            userApi.getCollectibleProduct(skuId)?.let { body ->
+                ProfileCollectibles.parseEffect(skuId, body)?.let { effectCache[skuId] = it }
+            }
+        }
+        return null
+    }
+
+    fun getFrame(skuId: String): ProfileFrameProduct? {
+        frameCache[skuId]?.let { return it }
+        scope.launch {
+            userApi.getCollectibleProduct(skuId)?.let { body ->
+                ProfileCollectibles.parseFrame(skuId, body)?.let { frameCache[skuId] = it }
             }
         }
         return null

@@ -118,7 +118,7 @@ fun HsvColorPicker(
                     )
                     drawRect(
                         brush = Brush.verticalGradient(
-                            colors = hueColors.reversed()
+                            colors = hueColors
                         )
                     )
 
@@ -154,8 +154,7 @@ fun HsvColorPicker(
             var textValue by remember(currentColor) {
                 mutableStateOf("#" + (currentColor.value shr 32).toString(16).substring(2).uppercase())
             }
-            
-            // Wait, Color.value in Compose is ULong. Let's just manually format.
+
             val hexString = remember(currentColor) {
                 val r = (currentColor.red * 255).toInt().toString(16).padStart(2, '0')
                 val g = (currentColor.green * 255).toInt().toString(16).padStart(2, '0')

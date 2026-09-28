@@ -11,6 +11,7 @@ import me.lampu.lampcord.shared.ui.components.settings.*
 import me.lampu.lampcord.shared.model.UserSettings
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.components.ExpressiveSwitch
+import me.lampu.lampcord.shared.utils.getPlatformName
 import org.koin.compose.koinInject
 
 @Composable
@@ -29,6 +30,7 @@ fun AdvancedSettings(
 @Composable
 fun AdvancedSettingsContent(settingsStore: SettingsStore = koinInject()) {
     Column(modifier = Modifier.fillMaxWidth()) {
+        val isDesktop = remember { getPlatformName() != "android" && getPlatformName() != "ios" }
         val devMode = settingsStore.userSettings?.developer_mode ?: false
         Material3SettingsGroup(
             title = "Developer Settings",
@@ -48,17 +50,31 @@ fun AdvancedSettingsContent(settingsStore: SettingsStore = koinInject()) {
                     onCheckedChange = {
                         settingsStore.showHiddenChannels = it
                     }
-                ),
-                switchSettingsItem(
-                    title = "Disable Wayland Scaling Fix",
-                    description = "Prevents the app from trying to automatically scale on Wayland. Requires restart.",
-                    checked = settingsStore.disableWaylandScaling,
-                    onCheckedChange = {
-                        settingsStore.disableWaylandScaling = it
-                    }
                 )
             )
         )
+
+        if (isDesktop) {
+            Material3SettingsGroup(
+                title = "Window",
+                items = listOf(
+                    switchSettingsItem(
+                        title = "Use System Window Frame",
+                        description = "Let the window manager draw the title bar. When off, the window is borderless with no title bar. Requires restart.",
+                        checked = settingsStore.enableSystemWindowFrame,
+                        onCheckedChange = { settingsStore.enableSystemWindowFrame = it }
+                    ),
+                    switchSettingsItem(
+                        title = "Disable Wayland Scaling Fix",
+                        description = "Prevents the app from trying to automatically scale on Wayland. Requires restart.",
+                        checked = settingsStore.disableWaylandScaling,
+                        onCheckedChange = {
+                            settingsStore.disableWaylandScaling = it
+                        }
+                    )
+                )
+            )
+        }
 
         Material3SettingsGroup(
             title = "Data Management",

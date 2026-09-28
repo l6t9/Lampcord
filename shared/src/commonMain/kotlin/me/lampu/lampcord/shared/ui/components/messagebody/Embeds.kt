@@ -30,9 +30,9 @@ import me.lampu.lampcord.shared.ui.components.VideoPlayer
 import me.lampu.lampcord.shared.settings.Settings
 import androidx.compose.runtime.LaunchedEffect
 import me.lampu.lampcord.shared.utils.getPlatformName
-import io.github.kdroidfilter.webview.web.WebView
-import io.github.kdroidfilter.webview.web.rememberWebViewNavigator
-import io.github.kdroidfilter.webview.web.rememberWebViewState
+import dev.nucleusframework.webview.web.WebView
+import dev.nucleusframework.webview.web.rememberWebViewNavigator
+import dev.nucleusframework.webview.web.rememberWebViewState
 import org.koin.compose.koinInject
 import me.lampu.lampcord.shared.ui.kit.clickableCursor
 

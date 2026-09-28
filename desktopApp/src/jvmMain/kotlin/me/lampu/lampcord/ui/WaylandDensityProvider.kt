@@ -3,51 +3,24 @@ package me.lampu.lampcord.ui
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
-import androidx.compose.ui.window.WindowScope
+import dev.nucleusframework.application.LocalNucleusWindow
 import me.lampu.lampcord.utils.WaylandScale
 import kotlinx.coroutines.delay
-import java.awt.event.ComponentAdapter
-import java.awt.event.ComponentEvent
 
 @Composable
-fun WindowScope.WaylandDensityProvider(content: @Composable () -> Unit) {
-    // Only override density on Wayland. On X11/Windows/macOS the compositor and skiko.uiScale already handle HiDPI; forcing Density(1f) would shrink the UI.
+fun WaylandDensityProvider(content: @Composable () -> Unit) {
     if (!WaylandScale.isWayland() || me.lampu.lampcord.shared.settings.Settings.shared.disableWaylandScaling) {
         content()
         return
     }
 
-    val window = window // access the AWT window from WindowScope
-    var scale by remember { mutableFloatStateOf(WaylandScale.getWindowScale(window.x, window.y)) }
-
-    DisposableEffect(window) {
-        val listener =
-            object : ComponentAdapter() {
-                override fun componentMoved(e: ComponentEvent) {
-                    val newScale = WaylandScale.getWindowScale(window.x, window.y)
-                    if (newScale != scale) {
-                        scale = newScale
-                    }
-                }
-                
-                override fun componentResized(e: ComponentEvent) {
-                    val newScale = WaylandScale.getWindowScale(window.x, window.y)
-                    if (newScale != scale) {
-                        scale = newScale
-                    }
-                }
-            }
-
-        window.addComponentListener(listener)
-        onDispose {
-            window.removeComponentListener(listener)
-        }
-    }
+    val window = LocalNucleusWindow.current
+    var scale by remember { mutableFloatStateOf(WaylandScale.getWindowScale(0, 0)) }
 
     LaunchedEffect(Unit) {
         while (true) {
             delay(200)
-            val newScale = WaylandScale.getWindowScale(window.x, window.y)
+            val newScale = WaylandScale.getWindowScale(0, 0)
             if (newScale != scale) {
                 scale = newScale
             }

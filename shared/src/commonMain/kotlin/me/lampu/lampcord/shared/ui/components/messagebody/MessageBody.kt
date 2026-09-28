@@ -32,7 +32,8 @@ fun MessageBody(
             stickerItems = message.sticker_items,
             stickers = message.stickers,
             poll = message.poll,
-            components = message.components
+            components = message.components,
+            message = message
         )
     }
 }
@@ -46,6 +47,7 @@ fun MessageAttachments(
     poll: Poll? = null,
     components: List<MessageComponent>? = null,
     content: String? = null,
+    message: Message? = null,
     navigationStore: NavigationStore = koinInject()
 ) {
     val images = attachments.filter { it.isImage() }
@@ -70,7 +72,7 @@ fun MessageAttachments(
         StickersView(stickers.map { StickerItem(it.id, it.name, it.format_type) })
     }
 
-    poll?.let { PollView(it) }
+    poll?.let { PollView(poll = it, message = message) }
 
     val processedInvites = mutableSetOf<String>()
 

@@ -47,7 +47,8 @@ fun UserAvatar(
     AvatarWithDecoration(
         avatarUrl = avatarUrl,
         fallbackAvatarUrl = fallbackUrl,
-        decorationData = decorationData ?: user?.avatar_decoration_data,
+        decorationData = decorationData ?: user?.avatar_decoration_data
+            ?: user?.collectibles?.avatar_decoration,
         size = size,
         modifier = modifier,
         isHovered = isHovered,

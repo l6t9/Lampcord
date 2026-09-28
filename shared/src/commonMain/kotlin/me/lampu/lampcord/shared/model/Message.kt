@@ -80,7 +80,8 @@ data class Message(
             edited_timestamp = data["edited_timestamp"]?.jsonPrimitive?.contentOrNull ?: edited_timestamp,
             embeds = data["embeds"]?.jsonArray?.map { json.decodeFromJsonElement<Embed>(it) } ?: embeds,
             attachments = data["attachments"]?.jsonArray?.map { json.decodeFromJsonElement<Attachment>(it) } ?: attachments,
-            components = data["components"]?.jsonArray?.map { json.decodeFromJsonElement<MessageComponent>(it) } ?: components
+            components = data["components"]?.jsonArray?.map { json.decodeFromJsonElement<MessageComponent>(it) } ?: components,
+            poll = data["poll"]?.let { json.decodeFromJsonElement<Poll>(it) } ?: poll
         )
     }
 }

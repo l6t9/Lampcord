@@ -3,7 +3,9 @@ package me.lampu.lampcord
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -15,11 +17,20 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowPosition
-import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import dev.nucleusframework.application.nucleusApplication
+import dev.nucleusframework.composenativetray.tray.api.Tray
+import dev.nucleusframework.energymanager.EnergyManager
+import dev.nucleusframework.notification.common.NotificationManager
+import dev.nucleusframework.systemcolor.systemAccentColor
+import dev.nucleusframework.updater.NucleusUpdater
+import dev.nucleusframework.updater.UpdateResult
+import dev.nucleusframework.updater.provider.GitHubProvider
+import dev.nucleusframework.window.material.MaterialDecoratedWindow
+import dev.nucleusframework.window.material.MaterialTitleBar
+import dev.nucleusframework.window.material.rememberMaterialTitleBarStyle
 import me.lampu.lampcord.shared.di.appModule
 import me.lampu.lampcord.shared.rpc.DesktopRPCServer
 import me.lampu.lampcord.shared.state.SettingsStore
@@ -28,18 +39,17 @@ import me.lampu.lampcord.shared.settings.ThemeMode
 import me.lampu.lampcord.shared.ui.App
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.Logging
+import kotlinx.coroutines.launch
 import me.lampu.lampcord.shared.utils.getPlatformName
 import me.lampu.lampcord.shared.utils.reloadTrigger
 import me.lampu.lampcord.ui.WaylandDensityProvider
 import me.lampu.lampcord.utils.WaylandScale
-import me.lampu.lampcord.window.WindowFrame
 import org.koin.compose.koinInject
 import org.koin.core.context.GlobalContext.get
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
 
 fun main() {
-    // Read before building the HTTP client.
     Logging.debugEnabled = Settings.shared.verboseLogging
 
     WaylandScale.detectAndApply()
@@ -53,25 +63,23 @@ fun main() {
 
     initApp()
 
+    NotificationManager.initialize()
+
     val rpcServer = DesktopRPCServer(get().get())
     rpcServer.start()
 
     val isLinux = getPlatformName() == "linux"
     val isMac = getPlatformName() == "macos"
 
-    if (WaylandScale.isWayland() && !Settings.shared.waylandDefaultFrameApplied) {
-        Settings.shared.enableSystemWindowFrame = true
-        Settings.shared.waylandDefaultFrameApplied = true
-    }
     if (isMac && !Settings.shared.macDefaultFrameApplied) {
         Settings.shared.enableSystemWindowFrame = true
         Settings.shared.macDefaultFrameApplied = true
     }
     val useSystemWindowFrame = Settings.shared.enableSystemWindowFrame
 
-    application {
+    nucleusApplication {
         val reloadKey by reloadTrigger.collectAsState()
-        
+
         LaunchedEffect(reloadKey) {
             if (reloadKey > 0) {
                 initApp()
@@ -79,21 +87,26 @@ fun main() {
         }
 
         val settingsStore: SettingsStore = koinInject()
-        
+
         val seedColorString = settingsStore.accentColor
-        val targetSeedColor = remember(seedColorString) {
+        val systemAccent = systemAccentColor()
+        val targetSeedColor = remember(seedColorString, systemAccent) {
             try {
-                Color(seedColorString.removePrefix("#").toLong(16) or 0xFF000000)
+                if (seedColorString.isNotBlank() && seedColorString != "#6750A4") {
+                    Color(seedColorString.removePrefix("#").toLong(16) or 0xFF000000)
+                } else {
+                    systemAccent ?: Color(0xFF6750A4)
+                }
             } catch (_: Exception) {
-                Color(0xFF6750A4)
+                systemAccent ?: Color(0xFF6750A4)
             }
         }
-        
+
         val seedColor by animateColorAsState(
             targetValue = targetSeedColor,
             animationSpec = if (Settings.shared.reduceMotion) snap() else androidx.compose.animation.core.spring()
         )
-        
+
         val discordPainter = rememberVectorPainter(Icons.Brand.Discord)
         val dynamicIcon = remember(seedColor) {
             object : Painter() {
@@ -126,47 +139,67 @@ fun main() {
                 position = WindowPosition.PlatformDefault,
                 size = DpSize(savedWidth.dp, savedHeight.dp),
             )
-        val lastNormalPlacement = remember { mutableStateOf(windowPlacement) }
 
-        fun onClose() {
-            exitApplication()
+        val isDark = when (settingsStore.themeMode) {
+            ThemeMode.LIGHT -> false
+            ThemeMode.DARK -> true
+            ThemeMode.AUTO -> isSystemInDarkTheme()
         }
 
-        Window(
-            onCloseRequest = { onClose() },
-            title = "Lampcord",
-            icon = dynamicIcon,
-            undecorated = isLinux && !useSystemWindowFrame,
-            transparent = false,
+        MaterialTheme(
+            colorScheme = if (isDark) MaterialTheme.colorScheme.copy(
+                background = Color(0xFF121212),
+                surface = Color(0xFF121212)
+            ) else MaterialTheme.colorScheme
         ) {
-            DisposableEffect(useSystemWindowFrame) {
-                if (isMac && useSystemWindowFrame) {
-                    try {
-                        val rootPane = window.rootPane
-                        rootPane.putClientProperty("apple.awt.fullWindowContent", true)
-                        rootPane.putClientProperty("apple.awt.transparentTitleBar", true)
-                        rootPane.putClientProperty("apple.awt.windowTitleVisible", false)
-                        rootPane.putClientProperty("apple.awt.draggableWindowBackground", false)
-                    } catch (_: Exception) {
-                    }
-                }
-                onDispose { }
+            val scope = rememberCoroutineScope()
+
+            Tray(
+                icon = dynamicIcon,
+                tooltip = "Lampcord",
+                primaryAction = { scope.launch { windowState.isMinimized = false } }
+            ) {
+                Item("Open") { scope.launch { windowState.isMinimized = false } }
+                Divider()
+                Item("Quit") { exitApplication() }
             }
 
-            WindowFrame(
-                onCloseRequest = { onClose() },
-                lastNormalPlacement = lastNormalPlacement.value,
-                darkTheme = when (settingsStore.themeMode) {
-                    ThemeMode.LIGHT -> false
-                    ThemeMode.DARK -> true
-                    ThemeMode.AUTO -> isSystemInDarkTheme()
-                },
+            val updater = remember {
+                NucleusUpdater {
+                    provider = GitHubProvider("l6t9", "Lampcord")
+                    differentialDownload = true
+                }
+            }
+
+            LaunchedEffect(updater) {
+                when (val result = updater.checkForUpdates()) {
+                    is UpdateResult.Available ->
+                        Logging.i("Lampcord", "Update available: ${result.info.version}")
+                    is UpdateResult.Error ->
+                        Logging.i("Lampcord", "Update check failed: ${result.exception.message}")
+                    is UpdateResult.NotAvailable ->
+                        Logging.i("Lampcord", "Lampcord is up to date (${updater.currentVersion})")
+                }
+            }
+
+            MaterialDecoratedWindow(
+                onCloseRequest = { exitApplication() },
+                title = "Lampcord",
+                icon = dynamicIcon,
                 state = windowState,
-            ) { _, contentInset, onMaximized, toggleFullscreen ->
-                key(reloadKey) {
-                    WaylandDensityProvider {
-                        App()
-                    }
+                undecorated = isLinux && !useSystemWindowFrame,
+            ) {
+                DisposableEffect(Unit) {
+                    EnergyManager.keepScreenAwake()
+                    onDispose { EnergyManager.releaseScreenAwake() }
+                }
+                if (!isLinux) {
+                    MaterialTitleBar(
+                        style = rememberMaterialTitleBarStyle(MaterialTheme.colorScheme)
+                    )
+                }
+                WaylandDensityProvider {
+                    App()
                 }
             }
         }

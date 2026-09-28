@@ -83,8 +83,6 @@ object WaylandScale {
     }
 
     fun ensureDisplay(): Boolean {
-        System.setProperty("java.awt.headless", "false")
-
         val currentDisplay = System.getenv("DISPLAY")
         if (!currentDisplay.isNullOrBlank()) {
             System.setProperty("DISPLAY", currentDisplay)

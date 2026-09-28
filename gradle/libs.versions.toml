@@ -31,8 +31,10 @@ vlcj = "4.12.1"
 qrcode = "4.5.0"
 slf4j = "2.1.0-alpha1"
 navigation3 = "1.2.0"
-compose-webview = "1.0.0-beta-02"
+compose-webview = "1.0.3"
 coil = "3.6.3"
+
+nucleus = "2.6.0-dev-202609281230"
 
 [libraries]
 firebase-messaging = { module = "com.google.firebase:firebase-messaging", version.ref = "firebaseMessaging" }
@@ -91,7 +93,7 @@ room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "sqlite" }
 ffmpeg-platform = { module = "org.bytedeco:ffmpeg-platform", version.ref = "ffmpegPlatform" }
-composeWebview = { module = "io.github.kdroidfilter:composewebview", version.ref = "compose-webview" }
+composeWebview = { module = "dev.nucleusframework:composewebview", version.ref = "compose-webview" }
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
 coil-network-ktor3 = { module = "io.coil-kt.coil3:coil-network-ktor3", version.ref = "coil" }
 coil-gif = { module = "io.coil-kt.coil3:coil-gif", version.ref = "coil" }

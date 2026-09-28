@@ -69,12 +69,7 @@ fun AppearanceSettingsContent(
 ) {
     val platform = remember { me.lampu.lampcord.shared.utils.getPlatformName() }
     val isDesktop = platform != "android" && platform != "ios"
-    var currentSubTab by remember { mutableStateOf("main") }
-
-    if (currentSubTab == "navigation") {
-        NavigationSettings(onBack = { currentSubTab = "main" }, settingsStore = settingsStore)
-        return
-    }
+    val isMobile = !isDesktop
 
     fun updateTheme(theme: String) {
         settingsStore.updateUserSettings(UserSettings.Partial(theme = theme))
@@ -269,8 +264,8 @@ fun AppearanceSettingsContent(
 
         Material3SettingsGroup(
             title = "Display",
-            items = listOf(
-                Material3SettingsItem(
+            items = buildList {
+                add(Material3SettingsItem(
                     title = { Text("UI Density") },
                     description = { 
                         Column(modifier = Modifier.padding(top = 4.dp)) {
@@ -291,20 +286,15 @@ fun AppearanceSettingsContent(
                             )
                         }
                     }
-                ),
-                Material3SettingsItem(
+                ))
+                if (!isMobile) return@buildList
+                add(Material3SettingsItem(
                     icon = Icons.Filled.BottomAppBar,
                     title = { Text("Navigation Tabs") },
                     description = { Text("Reorder and toggle visibility of navigation tabs") },
-                    onClick = {
-                        if (me.lampu.lampcord.shared.utils.getPlatformName() != "android" && me.lampu.lampcord.shared.utils.getPlatformName() != "ios") {
-                            currentSubTab = "navigation"
-                        } else {
-                            onNavigateToNavigation()
-                        }
-                    }
-                )
-            )
+                    onClick = { onNavigateToNavigation() }
+                ))
+            }
         )
 
         Material3SettingsGroup(

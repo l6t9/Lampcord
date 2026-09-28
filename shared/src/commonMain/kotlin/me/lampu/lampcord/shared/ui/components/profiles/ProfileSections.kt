@@ -62,6 +62,7 @@ fun ProfileSections(
     theme: ProfileTheme,
     isExpanded: Boolean,
     showMemberSince: Boolean = false,
+    showMutualsInConnections: Boolean = true,
     guildStore: GuildStore = koinInject(),
     presenceStore: PresenceStore = koinInject(),
     userStore: UserStore = koinInject()
@@ -241,7 +242,7 @@ fun ProfileSections(
                     Material3SettingsGroup(
                         horizontalPadding = 0.dp,
                         items = buildList {
-                            if (!isOwnProfile && mutualFriendsCount > 0) {
+                            if (showMutualsInConnections && !isOwnProfile && mutualFriendsCount > 0) {
                                 add(
                                     Material3SettingsItem(
                                         icon = Icons.Rounded.Person,
@@ -254,7 +255,7 @@ fun ProfileSections(
                                 )
                             }
 
-                            if (!isOwnProfile) profile.mutual_guilds?.takeIf { it.isNotEmpty() }?.let { guilds ->
+                            if (showMutualsInConnections && !isOwnProfile) profile.mutual_guilds?.takeIf { it.isNotEmpty() }?.let { guilds ->
                                 add(
                                     Material3SettingsItem(
                                         icon = Icons.Rounded.Group,

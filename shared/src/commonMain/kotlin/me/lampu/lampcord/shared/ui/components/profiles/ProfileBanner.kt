@@ -10,6 +10,7 @@ import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -17,6 +18,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.layout.ContentScale
@@ -33,12 +36,26 @@ import me.lampu.lampcord.shared.ui.components.ImageLoadState
 import me.lampu.lampcord.shared.ui.kit.combinedClickableCursor
 import me.lampu.lampcord.shared.ui.kit.handCursor
 
+internal fun profileBannerHeight(
+    width: Dp,
+    isExpanded: Boolean,
+    heightOverride: Dp?,
+    heightRatio: Float,
+): Dp = when {
+    heightRatio > 0f -> (width * heightRatio).coerceIn(80.dp, 420.dp)
+    else -> heightOverride ?: if (isExpanded) 160.dp else 105.dp
+}
+
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun ProfileBanner(
     profile: UserProfile,
     theme: ProfileTheme,
     isExpanded: Boolean,
+    bannerHeightOverride: Dp? = null,
+    topShape: Shape? = null,
+    bannerHeightRatio: Float = 0f,
+    contentScale: ContentScale = ContentScale.Crop,
     onDismiss: (() -> Unit)? = null,
     onEdit: (() -> Unit)? = null,
     customProfileOverride: me.lampu.lampcord.shared.model.CustomProfile? = null,
@@ -69,10 +86,16 @@ fun ProfileBanner(
     val isBlocked = relationship?.type == 2
 
     val platform = remember { me.lampu.lampcord.shared.utils.getPlatformName() }
-    val bannerHeight = remember(isExpanded) {
-        if (isExpanded) 160.dp else 105.dp
+    BoxWithConstraints {
+    val bannerHeight = remember(maxWidth, bannerHeightRatio, bannerHeightOverride, isExpanded) {
+        profileBannerHeight(maxWidth, isExpanded, bannerHeightOverride, bannerHeightRatio)
     }
-    Box(modifier = Modifier.fillMaxWidth().height(bannerHeight)) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(bannerHeight)
+            .then(if (topShape != null) Modifier.clip(topShape) else Modifier)
+    ) {
         val bannerUrl = if (customProfile?.banner != null) {
             customProfile.banner
         } else if (guildMeta?.banner != null && guildId != null) {
@@ -108,7 +131,7 @@ fun ProfileBanner(
                 AsyncImage(
                     model = bannerUrl,
                     contentDescription = "Profile Banner",
-                    contentScale = ContentScale.Crop,
+                    contentScale = contentScale,
                     modifier = Modifier.fillMaxSize(),
                     filterQuality = FilterQuality.Medium,
                     onState = { state ->
@@ -261,5 +284,6 @@ fun ProfileBanner(
                 )
             }
         }
+    }
     }
 }

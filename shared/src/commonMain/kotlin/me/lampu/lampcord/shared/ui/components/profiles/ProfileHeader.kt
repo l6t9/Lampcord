@@ -46,6 +46,7 @@ fun ProfileHeader(
     profile: UserProfile,
     theme: ProfileTheme,
     isExpanded: Boolean,
+    avatarScale: Float = 1f,
     onExpand: (() -> Unit)? = null,
     onDismiss: (() -> Unit)? = null,
     onEditAvatar: (() -> Unit)? = null,
@@ -54,8 +55,10 @@ fun ProfileHeader(
     presenceStore: PresenceStore = koinInject(),
     settingsStore: SettingsStore = koinInject(),
     relationshipStore: RelationshipStore = koinInject(),
-    navigationStore: NavigationStore = koinInject()
+    navigationStore: NavigationStore = koinInject(),
+    profileStore: ProfileStore = koinInject()
 ) {
+    val isDesktop = remember { getPlatformName() != "android" && getPlatformName() != "ios" }
     val user = profile.user
     val guildMeta = profile.guild_member_profile
     val userMeta = profile.user_profile
@@ -101,10 +104,10 @@ fun ProfileHeader(
     ) {
         Box(
             modifier = Modifier
-                .offset(y = (-45).dp)
-                .size(94.dp)
+                .offset(y = (-45.dp * avatarScale))
+                .size(94.dp * avatarScale)
                 .background(theme.cutoutColor, CircleShape)
-                .padding(6.dp)
+                .padding(6.dp * avatarScale)
         ) {
             val status = remember(presence, user.id, currentUser?.id, settingsStore.userSettings?.status) {
                 if (user.id == currentUser?.id) {
@@ -127,6 +130,8 @@ fun ProfileHeader(
                         onClick = {
                             if (onEditAvatar != null) {
                                 onEditAvatar()
+                            } else if (isDesktop) {
+                                profileStore.openFullProfile()
                             } else {
                                 navigationStore.openAttachmentViewer(listOf(EmbedImage(url = avatarUrl, proxy_url = avatarUrl)))
                             }
@@ -139,8 +144,10 @@ fun ProfileHeader(
             ) {
                 AvatarWithDecoration(
                     avatarUrl = avatarUrl,
-                    decorationData = profile.guild_member?.avatar_decoration_data ?: user.avatar_decoration_data,
-                    size = 82.dp,
+                    decorationData = profile.guild_member?.avatar_decoration_data
+                        ?: user.avatar_decoration_data
+                        ?: user.collectibles?.avatar_decoration,
+                    size = 82.dp * avatarScale,
                     status = status,
                     forceAnimate = true
                 )

@@ -16,6 +16,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,6 +43,7 @@ import coil3.size.Precision as CoilPrecision
 import coil3.size.Scale as CoilScale
 import coil3.size.Size as CoilSize
 import kotlin.io.encoding.ExperimentalEncodingApi
+import me.lampu.lampcord.shared.imaging.ALLOW_ANIMATION_KEY
 import me.lampu.lampcord.shared.model.TWEMOJI_CDN_BASE_URL
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.utils.ResourceLoader
@@ -93,7 +95,8 @@ fun AsyncImage(
     showPlaceholder: Boolean = true,
     placeholderHash: String? = null,
     size: Int? = null,
-    allowAnimation: Boolean = true
+    allowAnimation: Boolean = false,
+    onSize: ((width: Int, height: Int) -> Unit)? = null
 ) {
     val coilContext = CoilLocalContext.current
     val isDesktop = remember { getPlatformName() != "android" && getPlatformName() != "ios" }
@@ -106,19 +109,33 @@ fun AsyncImage(
     val effectiveModel = if (useOriginalModel) model else staticModel
     var loading by remember(effectiveModel) { mutableStateOf(true) }
 
-    val coilRequest = remember(coilContext, effectiveModel, lowMemoryMode, size, allowAnimation) {
+    val isAnimatedSource = allowAnimation && !reducedMotion && effectiveModel.isAnimated()
+
+    val coilRequest = remember(coilContext, effectiveModel, lowMemoryMode, size, allowAnimation, isAnimatedSource) {
         effectiveModel.toCoilData()?.let { data ->
             CoilImageRequest.Builder(coilContext)
                 .data(data)
-                .memoryCacheKey(if (effectiveModel is ByteArray) null else "${effectiveModel}@${size ?: 0}")
+                .memoryCacheKey(
+                    if (effectiveModel is ByteArray) null
+                    else "${effectiveModel}@${size ?: 0}#${isAnimatedSource}"
+                )
                 .memoryCachePolicy(if (lowMemoryMode) CoilCachePolicy.DISABLED else CoilCachePolicy.ENABLED)
                 .networkCachePolicy(if (lowMemoryMode) CoilCachePolicy.DISABLED else CoilCachePolicy.ENABLED)
+                .apply {
+                    if (effectiveModel !is ByteArray && lowMemoryMode.not()) {
+                        placeholderMemoryCacheKey(
+                            "${effectiveModel}@${size ?: 0}#${!isAnimatedSource}"
+                        )
+                    }
+                }
                 .coilCrossfade(!reducedMotion && !lowMemoryMode)
-                .precision(CoilPrecision.INEXACT)
+                .apply { extras[ALLOW_ANIMATION_KEY] = isAnimatedSource }
+                .precision(CoilPrecision.EXACT)
                 .scale(CoilScale.FIT)
                 .apply {
                     if (size != null && size > 0) {
-                        val targetSize = if (allowAnimation) minOf(size, MAX_ANIMATED_DECODE) else size
+                        val targetSize =
+                            if (isAnimatedSource) minOf(size, MAX_ANIMATED_DECODE) else size
                         size(CoilSize(targetSize, targetSize))
                     }
                 }
@@ -134,11 +151,19 @@ fun AsyncImage(
             CoilAsyncImage(
                 model = coilRequest,
                 contentDescription = contentDescription,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .animateWhilePlaying(enabled = isAnimatedSource),
                 onState = { state ->
                     loading = state is CoilState.Loading || state is CoilState.Empty
                     when (state) {
-                        is CoilState.Success -> onState?.invoke(ImageLoadState.Success)
+                        is CoilState.Success -> {
+                            val image = state.result.image
+                            if (image != null) {
+                                onSize?.invoke(image.width, image.height)
+                            }
+                            onState?.invoke(ImageLoadState.Success)
+                        }
                         is CoilState.Error -> {
                             val retryOriginal = !reducedMotion && !useOriginalModel && staticModel != model
                             if (retryOriginal) {
@@ -163,6 +188,15 @@ fun AsyncImage(
             ImageLoadingPlaceholder(Modifier.fillMaxSize())
         }
     }
+}
+
+private fun Any?.isAnimated(): Boolean {
+    val url = this as? String ?: return false
+    val path = url.substringBefore('?').lowercase()
+    if (path.endsWith(".gif") || path.endsWith(".gifv") ||
+        path.endsWith(".apng") || path.endsWith(".webp")
+    ) return true
+    return path.contains("/avatar-decoration-presets/") || path.contains("/nameplates/")
 }
 
 private fun Any?.toStaticDiscordGif(): Any? {

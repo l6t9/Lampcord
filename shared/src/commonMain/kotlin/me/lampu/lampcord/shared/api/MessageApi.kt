@@ -383,4 +383,43 @@ class MessageApi(private val rest: RestClient) {
             emptyList()
         }
     }
+
+    suspend fun votePollAnswer(channelId: String, messageId: String, answerId: Int): Message? {
+        return try {
+            val response = rest.httpClient.put("${rest.apiBase}/channels/$channelId/polls/$messageId/answers/$answerId") {
+                standardHeaders(rest)
+            }
+            if (response.status.isSuccess()) response.body() else null
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            Logging.e("Poll", "Error voting on poll answer $answerId: ${e.message}")
+            null
+        }
+    }
+
+    suspend fun unvotePollAnswer(channelId: String, messageId: String, answerId: Int): Message? {
+        return try {
+            val response = rest.httpClient.delete("${rest.apiBase}/channels/$channelId/polls/$messageId/answers/$answerId") {
+                standardHeaders(rest)
+            }
+            if (response.status.isSuccess()) response.body() else null
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            Logging.e("Poll", "Error removing vote on poll answer $answerId: ${e.message}")
+            null
+        }
+    }
+
+    suspend fun expirePoll(channelId: String, messageId: String): Message? {
+        return try {
+            val response = rest.httpClient.post("${rest.apiBase}/channels/$channelId/polls/$messageId/expire") {
+                standardHeaders(rest)
+            }
+            if (response.status.isSuccess()) response.body() else null
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            Logging.e("Poll", "Error expiring poll: ${e.message}")
+            null
+        }
+    }
 }

@@ -16,6 +16,7 @@ import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.request.header
 import io.ktor.http.HttpHeaders
+import me.lampu.lampcord.shared.imaging.platformImageDecoders
 import me.lampu.lampcord.shared.settings.ThemeMode
 import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.theme.LampcordTheme
@@ -89,6 +90,8 @@ fun newCoilImageLoader(context: CoilPlatformContext): ImageLoader {
     return ImageLoader.Builder(context)
         .components {
             add(KtorNetworkFetcherFactory(imageHttpClient))
+            // Registered last so they only see what Coil's own decoders passed on.
+            platformImageDecoders().forEach { add(it) }
         }
         .memoryCache {
             CoilMemoryCache.Builder()
