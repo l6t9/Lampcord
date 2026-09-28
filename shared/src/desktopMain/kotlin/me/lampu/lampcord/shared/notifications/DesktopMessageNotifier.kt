@@ -6,6 +6,7 @@ import me.lampu.lampcord.shared.utils.getPlatformName
 import java.awt.SystemTray
 import java.awt.TrayIcon
 import java.awt.image.BufferedImage
+import javax.sound.sampled.AudioSystem
 
 class DesktopMessageNotifier(
     private val notificationStore: NotificationStore
@@ -34,6 +35,10 @@ class DesktopMessageNotifier(
     override fun showMessageNotification(data: IncomingNotificationData) {
         if (!Settings.shared.notificationsEnabled) return
 
+        if (Settings.shared.notificationSound) {
+            playNotificationSound()
+        }
+
         if (Settings.shared.showInAppNotifications) {
             notificationStore.show(data)
         }
@@ -42,6 +47,16 @@ class DesktopMessageNotifier(
         val text = previewText(data)
 
         sendSystemNotification(title, text)
+    }
+
+    private fun playNotificationSound() {
+        try {
+            val stream = javaClass.classLoader.getResourceAsStream("sounds/notification.wav") ?: return
+            val audioStream = AudioSystem.getAudioInputStream(stream)
+            val clip = AudioSystem.getClip()
+            clip.open(audioStream)
+            clip.start()
+        } catch (_: Exception) {}
     }
 
     private fun sendSystemNotification(title: String, text: String) {

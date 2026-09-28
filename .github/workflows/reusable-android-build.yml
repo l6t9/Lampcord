@@ -170,14 +170,18 @@ jobs:
           set -euo pipefail
           files=(androidApp/build/outputs/apk/"$BUILD_VARIANT"/*.apk)
           test -f "${files[0]}" || { echo "Android APK was not produced" >&2; exit 1; }
-          test "${#files[@]}" -eq 1 || { echo "Expected one Android APK, found ${#files[@]}" >&2; exit 1; }
           mkdir -p dist
           if [[ "$BUILD_VARIANT" == "release" ]]; then
+            primary="$(ls androidApp/build/outputs/apk/"$BUILD_VARIANT"/*universal*.apk 2>/dev/null | head -n 1 || ls androidApp/build/outputs/apk/"$BUILD_VARIANT"/*.apk | head -n 1)"
             output="dist/lampcord-android-${APP_VERSION}.apk"
+            cp "$primary" "$output"
+            for f in "${files[@]}"; do
+              cp "$f" "dist/"
+            done
           else
             output="dist/lampcord-android-${APP_VERSION}-debug.apk"
+            cp "${files[0]}" "$output"
           fi
-          cp "${files[0]}" "$output"
           echo "path=$output" >> "$GITHUB_OUTPUT"
 
       - name: Verify APK signature

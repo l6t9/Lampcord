@@ -39,6 +39,11 @@ object NotificationHelper {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val manager = context.getSystemService(NotificationManager::class.java)
             if (manager.getNotificationChannel(CHANNEL_ID_MESSAGES) == null) {
+                val soundUri = android.net.Uri.parse("android.resource://" + context.packageName + "/" + R.raw.notification)
+                val audioAttributes = android.media.AudioAttributes.Builder()
+                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION)
+                    .build()
                 val channel = NotificationChannel(
                     CHANNEL_ID_MESSAGES,
                     context.getString(R.string.notification_channel_messages),
@@ -46,6 +51,7 @@ object NotificationHelper {
                 ).apply {
                     description = context.getString(R.string.notification_channel_messages_description)
                     enableLights(true)
+                    setSound(soundUri, audioAttributes)
                 }
                 manager.createNotificationChannel(channel)
             }
