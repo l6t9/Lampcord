@@ -8,9 +8,17 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: Existing alpha appVersion to retry
+        description: Release version to publish (must match releaseVersion)
         required: true
         type: string
+      publish-existing:
+        description: >-
+          Publish the packages already in the tester-package-staging draft instead of
+          rebuilding them. Use after a failure that happened at or after packaging, such as
+          running out of Actions budget during publish.
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -163,7 +171,7 @@ jobs:
 
   stage:
     name: Create package staging release
-    if: needs.prepare.outputs.should-release == 'true'
+    if: needs.prepare.outputs.should-release == 'true' && inputs.publish-existing != true
     needs: prepare
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -197,7 +205,7 @@ jobs:
 
   android:
     name: Android
-    if: needs.prepare.outputs.should-release == 'true'
+    if: needs.prepare.outputs.should-release == 'true' && inputs.publish-existing != true
     needs:
       - prepare
       - stage
@@ -218,7 +226,7 @@ jobs:
 
   linux:
     name: Linux
-    if: needs.prepare.outputs.should-release == 'true'
+    if: needs.prepare.outputs.should-release == 'true' && inputs.publish-existing != true
     needs:
       - prepare
       - stage
@@ -233,7 +241,7 @@ jobs:
 
   windows:
     name: Windows
-    if: needs.prepare.outputs.should-release == 'true'
+    if: needs.prepare.outputs.should-release == 'true' && inputs.publish-existing != true
     needs:
       - prepare
       - stage
@@ -248,7 +256,7 @@ jobs:
 
   publish:
     name: Publish release
-    if: needs.prepare.outputs.should-release == 'true'
+    if: always() && needs.prepare.outputs.should-release == 'true'
     needs:
       - prepare
       - stage
@@ -270,7 +278,7 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-          STAGING_RELEASE_TAG: ${{ needs.stage.outputs.tag }}
+          STAGING_RELEASE_TAG: ${{ needs.stage.outputs.tag || 'tester-package-staging' }}
         run: |
           set -euo pipefail
           mkdir -p release-assets
@@ -439,7 +447,7 @@ jobs:
 
   cleanup-staging:
     name: Clean up package staging release
-    if: always() && needs.prepare.outputs.should-release == 'true'
+    if: always() && needs.prepare.outputs.should-release == 'true' && inputs.publish-existing != true
     needs:
       - prepare
       - stage
