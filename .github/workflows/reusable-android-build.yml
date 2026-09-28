@@ -152,6 +152,9 @@ jobs:
             task=":androidApp:assembleRelease"
             extra_args=(--no-configuration-cache)
             extra_args+=(-x :androidApp:lintVitalRelease)
+            # x86 and x86_64 only exist so the app installs on desktop emulators. Shipping
+            # them doubles the native build for ABIs no real device uses.
+            extra_args+=(-PvoiceAbis=arm64-v8a,armeabi-v7a)
           else
             task=":androidApp:assembleDebug"
           fi

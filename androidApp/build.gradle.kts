@@ -35,6 +35,9 @@ android {
         versionCode = 1
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // All four by default so the app installs on desktop emulators, whose system
+        // images are x86 or x86_64 even though no real device uses those ABIs. Release
+        // builds narrow this to the two ARM ABIs that every actual user needs.
         ndk { abiFilters += (providers.gradleProperty("voiceAbis").orNull ?: "armeabi-v7a,arm64-v8a,x86,x86_64").split(",") }
         externalNativeBuild {
             cmake {
