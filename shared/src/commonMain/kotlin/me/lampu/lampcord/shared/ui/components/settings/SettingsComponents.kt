@@ -263,7 +263,7 @@ val platform = remember { me.lampu.lampcord.shared.utils.getPlatformName() }
     
     Scaffold(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
         topBar = {
             LargeTopAppBar(
@@ -274,7 +274,7 @@ val platform = remember { me.lampu.lampcord.shared.utils.getPlatformName() }
                     }
                 },
                 colors = TopAppBarDefaults.largeTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                     scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer
                 ),
                 scrollBehavior = scrollBehavior

@@ -68,7 +68,7 @@ actual fun rememberPlatformColorScheme(
                 
                 val statusBarColor = when {
                     isOverlapping && navigationStore.isProfilePanelVisible -> scheme.surface // Match MemberHeader (Surface)
-                    navigationStore.isSettingsVisible -> scheme.surfaceContainer // Match Settings collapsing header & cards (surfaceContainer)
+                    navigationStore.isSettingsVisible -> scheme.surfaceContainerLow // Match Settings background (surfaceContainerLow)
                     else -> scheme.background // Match ChannelHeader (Background)
                 }
                 

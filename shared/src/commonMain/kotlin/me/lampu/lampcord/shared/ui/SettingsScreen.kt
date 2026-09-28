@@ -297,7 +297,7 @@ fun SettingsScreen(
                     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
                     Scaffold(
                         modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
-                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                         topBar = {
                             LargeTopAppBar(
                                 title = { Text("Settings") },
@@ -307,7 +307,7 @@ fun SettingsScreen(
                                     }
                                 },
                                 colors = TopAppBarDefaults.largeTopAppBarColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                                     scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer
                                 ),
                                 actions = {
