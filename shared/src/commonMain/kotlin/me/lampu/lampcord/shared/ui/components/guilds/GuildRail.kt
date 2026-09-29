@@ -84,7 +84,6 @@ fun GuildRail(
     readStateStore: ReadStateStore = koinInject(),
     userStore: UserStore = koinInject(),
     settingsStore: SettingsStore = koinInject(),
-    userGuildSettingsStore: me.lampu.lampcord.shared.state.UserGuildSettingsStore = koinInject(),
     gatewayManager: GatewayManager = koinInject(),
     modifier: Modifier = Modifier
 ) {
@@ -93,14 +92,6 @@ fun GuildRail(
     val privateChannels by guildStore.privateChannels.collectAsState()
     val readStates by readStateStore.readStates.collectAsState()
     val userSettings = settingsStore.userSettings
-
-    val dmMentionChannels = remember(privateChannels, readStates, navigationStore.selectedChannel) {
-        privateChannels.filter { 
-            readStateStore.getMentionCount(it.id) > 0 && 
-                    it.id != navigationStore.selectedChannel?.id &&
-                    !userGuildSettingsStore.isChannelMuted(null, it.id)
-        }
-    }
 
     val haptic = LocalHapticFeedback.current
     val folders = userSettings?.guild_folders ?: emptyList()
@@ -237,10 +228,6 @@ fun GuildRail(
             )
         }
 
-        items(dmMentionChannels, key = { "dm_${it.id}" }) { channel ->
-            DMIcon(channel = channel)
-        }
-
         items(railEntries, key = { it.key }) { entry ->
             val folder = entry.folder
             val guild = entry.guild
@@ -339,95 +326,3 @@ private fun rearrangeGuildFolders(
 }
 
 private fun GuildFolder.railKey(index: Int): String = id?.let { "folder:$it" } ?: "folder:$index:${guildIds().joinToString(",")}"
-
-@Composable
-private fun DMIcon(
-    channel: Channel,
-    navigationStore: NavigationStore = koinInject(),
-    userStore: UserStore = koinInject(),
-    readStateStore: ReadStateStore = koinInject()
-) {
-    val isSelected = navigationStore.selectedChannel?.id == channel.id && navigationStore.selectedGuild == null
-    val allUsers by userStore.users.collectAsState()
-    val readStates by readStateStore.readStates.collectAsState()
-    
-    val recipient = remember(channel, allUsers) {
-        val recipientId = channel.recipients?.firstOrNull()?.id 
-            ?: channel.recipient_ids?.firstOrNull()
-            ?: return@remember null
-        allUsers[recipientId] ?: channel.recipients?.firstOrNull()
-    }
-
-    val iconSizePx = with(LocalDensity.current) { 48.dp.roundToPx() }
-    val iconUrl = if (channel.type == 3) {
-        if (channel.icon != null) "https://cdn.discordapp.com/channel-icons/${channel.id}/${channel.icon}.png?size=$iconSizePx"
-        else null
-    } else recipient?.let { CdnUrls.getUserAvatarUrl(it.id, it.avatar, iconSizePx) }
-
-    val mentionCount = remember(channel.id, readStates) { readStateStore.getMentionCount(channel.id) }
-    
-    val isUnread = remember(channel, readStates) { readStateStore.isUnread(channel) }
-
-    ExpressiveTooltip(
-        anchorPosition = TooltipAnchorPosition.End,
-        content = tooltipText(channel.name ?: recipient?.global_name ?: recipient?.username ?: "Direct Message"),
-        anchor = {
-            Box(contentAlignment = Alignment.Center, modifier = Modifier.graphicsLayer(clip = false)) {
-                RegularGuildItem(
-                    isSelected = isSelected,
-                    isUnread = isUnread,
-                    isMonogram = (iconUrl == null),
-                    onClick = {
-                        navigationStore.selectedGuild = null
-                        navigationStore.selectChannel(channel, explicitlySelected = true) 
-                    },
-                    selectedColor = if (iconUrl == null) MaterialTheme.colorScheme.primary else Color.Transparent,
-                    unselectedColor = if (iconUrl == null) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent,
-                    monogramSelectedColor = MaterialTheme.colorScheme.onPrimary,
-                    monogramUnselectedColor = MaterialTheme.colorScheme.primary
-                ) {
-                    if (iconUrl != null) {
-                        AsyncImage(
-                            model = iconUrl,
-                            contentDescription = null,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } else {
-                        val initials = (channel.name ?: recipient?.global_name ?: recipient?.username ?: "?").take(1)
-                        Text(
-                            text = initials,
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                    }
-                }
-
-                if (mentionCount > 0) {
-                    Box(modifier = Modifier.size(48.dp)) {
-                        Surface(
-                            color = MaterialTheme.colorScheme.error,
-                            shape = CircleShape,
-                            modifier = Modifier
-                                .align(Alignment.BottomEnd)
-                                .offset(x = 3.dp, y = 3.dp)
-                                .height(20.dp)
-                                .widthIn(min = 20.dp),
-                            shadowElevation = 2.dp,
-                            border = if (isSelected) null else androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.surface)
-                        ) {
-                            Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 5.dp)) {
-                                Text(
-                                    text = if (mentionCount > 99) "99+" else mentionCount.toString(),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onError,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    fontSize = 11.sp,
-                                    maxLines = 1
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    )
-}
