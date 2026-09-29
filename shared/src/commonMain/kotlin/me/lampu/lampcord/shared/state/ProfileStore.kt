@@ -27,6 +27,9 @@ class ProfileStore(
 
     fun closeFullProfile() {
         isFullProfileVisible = false
+        isProfileExpanded = false
+        selectedProfile = null
+        isProfileLoading = false
     }
 
     private val collectibleCache = mutableStateMapOf<String, kotlinx.serialization.json.JsonObject>()
