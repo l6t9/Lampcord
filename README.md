@@ -6,14 +6,16 @@ It is designed to deliver a native, fast, and customizable Discord experience wi
 
 ---
 
+<div align="center">
+
 ## Inspiration
 
 - **[Aliucord](https://github.com/Aliucord/Aliucord)**: Lampcord inherits a lot of my work on Aliucord, and my [plugins](https://github.com/l6t9/AliucordPlugins) for it.
 - **[Nucleus](https://github.com/NucleusFramework/Nucleus)**: Used to provide proper support for Wayland.
 
----
+</div>
 
-<div align="center">
+---
 
 ## Features & Roadmap
 
@@ -47,8 +49,6 @@ It is designed to deliver a native, fast, and customizable Discord experience wi
 * **Guild & Channel Management**
   * [ ] Server settings (roles, channels, emoji management)
   * [ ] Stage & forum channel creation and moderation
-
-</div>
 
 ---
 
