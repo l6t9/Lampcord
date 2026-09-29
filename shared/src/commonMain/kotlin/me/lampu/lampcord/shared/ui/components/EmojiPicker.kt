@@ -390,9 +390,9 @@ fun EmojiPicker(
                                 mediaApi = mediaApi,
                                 onGifSelected = { gif ->
                                     messageStore.sendMessageDraft(
-                                        gif.url.takeIf { it.isNotBlank() }
+                                        gif.src.takeIf { it.isNotBlank() }
                                             ?: gif.gifSrc?.takeIf { it.isNotBlank() }
-                                            ?: gif.src
+                                            ?: gif.url
                                     )
                                     navigationStore.isEmojiPickerVisible = false
                                 }

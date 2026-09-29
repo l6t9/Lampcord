@@ -218,6 +218,7 @@ fun ChatInputBar(
     LaunchedEffect(channel.id) {
         val draft = messageStore.draftMessages[channel.id] ?: ""
         textFieldValue = TextFieldValue(draft, TextRange(draft.length))
+        autocompleteStore.clear()
     }
 
     LaunchedEffect(messageStore.editingMessage) {

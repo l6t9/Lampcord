@@ -382,6 +382,8 @@ class AutocompleteStore(
     }
 
     fun clear(isSearch: Boolean = false) {
+        memberSearchJob?.cancel()
+        memberSearchJob = null
         if (isSearch) {
             searchAutocompleteType = null
             searchAutocompleteQuery = ""
