@@ -9,3 +9,5 @@ fun currentUpdateTarget(): UpdateTarget? = when (getPlatformName()) {
     "macos" -> UpdateTarget.MACOS
     else -> null
 }
+
+expect fun runningAppImagePath(): String?

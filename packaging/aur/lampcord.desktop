@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Lampcord
+Comment=Lampcord Discord Client
+Exec=/usr/bin/lampcord %U
+Icon=lampcord
+Terminal=false
+Categories=Network;Chat;
+StartupWMClass=Lampcord

@@ -268,6 +268,7 @@ tasks.register("createAppImageLocal") {
             Comment=Lampcord Discord Client
             Categories=Network;Chat;
             Terminal=false
+            StartupWMClass=Lampcord
             """.trimIndent(),
         )
 
@@ -292,6 +293,9 @@ exec "${'$'}APPDIR/bin/Lampcord" "${'$'}@"
 
         if (sourceIcon != null) {
             sourceIcon.copyTo(appIconFile, overwrite = true)
+            val themedIcon = file("${appDir.absolutePath}/usr/share/icons/hicolor/1024x1024/apps/lampcord.png")
+            themedIcon.parentFile.mkdirs()
+            sourceIcon.copyTo(themedIcon, overwrite = true)
         } else {
             // Create a dummy if still not found to prevent appimagetool failure
             appIconFile.writeBytes(ByteArray(0))
