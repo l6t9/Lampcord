@@ -779,7 +779,7 @@ actual fun MobileBaseplate(
     }
 
     if (profileStore.isProfileLoading || profileStore.selectedProfile != null) {
-        val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
+        val sheetState = rememberSkipPartiallyExpandedSheetState()
 
         AdaptiveModalBottomSheet(
             onDismissRequest = {

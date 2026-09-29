@@ -23,6 +23,17 @@ import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+fun rememberSkipPartiallyExpandedSheetState(
+    initialValue: SheetValue = SheetValue.Hidden,
+    confirmValueChange: (SheetValue) -> Boolean = { true },
+): SheetState = rememberBottomSheetState(
+    initialValue = initialValue,
+    enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+    confirmValueChange = confirmValueChange,
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 fun AdaptiveModalBottomSheet(
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,

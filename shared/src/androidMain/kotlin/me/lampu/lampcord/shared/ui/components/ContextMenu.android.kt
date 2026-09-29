@@ -83,8 +83,11 @@ actual fun ContextMenu(
     }
 
     if (showSheet) {
+        val sheetState = rememberSkipPartiallyExpandedSheetState()
+
         AdaptiveModalBottomSheet(
             onDismissRequest = { showSheet = false },
+            sheetState = sheetState,
             containerColor = MaterialTheme.colorScheme.surface,
             dragHandle = { BottomSheetDefaults.DragHandle() }
         ) {
