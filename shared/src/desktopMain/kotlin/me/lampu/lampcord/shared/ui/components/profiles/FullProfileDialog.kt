@@ -1,6 +1,7 @@
 package me.lampu.lampcord.shared.ui.components.profiles
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -94,7 +95,7 @@ fun FullProfileDialog(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .combinedClickableCursor(
+                .combinedClickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
                     onClick = onDismiss,
