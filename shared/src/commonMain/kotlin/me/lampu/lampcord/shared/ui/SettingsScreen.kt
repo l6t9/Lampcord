@@ -85,6 +85,7 @@ import me.lampu.lampcord.shared.ui.settings.PrivacySettingsContent
 import me.lampu.lampcord.shared.ui.settings.ProfileSettingsContent
 import me.lampu.lampcord.shared.ui.settings.ThemeEditorScreen
 import me.lampu.lampcord.shared.ui.settings.ThemingSettingsContent
+import me.lampu.lampcord.shared.ui.settings.UpdatesContent
 import me.lampu.lampcord.shared.ui.settings.DebugLogScreen
 import org.koin.compose.koinInject
 
@@ -100,6 +101,7 @@ enum class SettingsSection(val title: String, val icon: ImageVector, val selecte
     CHAT("Chat", Icons.Rounded.Forum, Icons.Filled.Forum),
     NOTIFICATIONS("Notifications", Icons.Rounded.Notifications, Icons.Filled.Notifications),
     ADVANCED("Advanced", Icons.Rounded.Tune, Icons.Filled.Tune),
+    UPDATES("Updates", Icons.Rounded.Refresh, Icons.Filled.Refresh),
     ABOUT("About", Icons.Rounded.Info, Icons.Filled.Info),
 }
 
@@ -794,7 +796,11 @@ fun SettingsDesktopOverlay(
                                     SettingsSection.CHAT -> ChatSettingsContent()
                                     SettingsSection.NOTIFICATIONS -> NotificationsSettingsContent()
                                     SettingsSection.ADVANCED -> AdvancedSettingsContent()
-                                    SettingsSection.ABOUT -> AboutContent(version = "1.0.0", onOpenUrl = { uriHandler.openUri(it) })
+                                    SettingsSection.UPDATES -> UpdatesContent()
+                                    SettingsSection.ABOUT -> AboutContent(
+                                        version = me.lampu.lampcord.shared.update.APP_VERSION,
+                                        onOpenUrl = { uriHandler.openUri(it) }
+                                    )
                                 }
                             }
                         }

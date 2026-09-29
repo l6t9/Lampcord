@@ -388,7 +388,7 @@ actual fun MobileBaseplate(
             entry<Screen.AboutSettings> {
                 val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
                 SettingsSubScreen(title = "About", onNavigateBack = { navigator.goBack() }) {
-                    AboutContent(version = "1.0.0", onOpenUrl = { uriHandler.openUri(it) })
+                    AboutContent(version = me.lampu.lampcord.shared.update.APP_VERSION, onOpenUrl = { uriHandler.openUri(it) })
                 }
             }
             entry<Screen.EasterEgg> {
