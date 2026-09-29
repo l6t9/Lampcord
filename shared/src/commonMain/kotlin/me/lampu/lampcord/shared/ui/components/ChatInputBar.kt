@@ -145,6 +145,14 @@ fun ChatInputBar(
         if (!canSend) navigationStore.isEmojiPickerVisible = false
     }
 
+    val focusOnChannelOpen = getPlatformName() != "android" && getPlatformName() != "ios"
+    LaunchedEffect(channel.id, canSend, focusOnChannelOpen) {
+        if (!focusOnChannelOpen || !canSend) return@LaunchedEffect
+        if (navigationStore.isEmojiPickerVisible) return@LaunchedEffect
+        if (messageStore.editingMessage != null || messageStore.replyingTo != null) return@LaunchedEffect
+        focusRequester.requestFocus()
+    }
+
     fun applyAutocomplete(item: AutocompleteItem) {
         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
         val text = textFieldValue.text
