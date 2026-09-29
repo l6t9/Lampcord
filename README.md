@@ -8,8 +8,8 @@ It is designed to deliver a native, fast, and highly customizable Discord experi
 
 ## Inspiration
 
-- **[Aliucord](https://github.com/Aliucord/Aliucord)**: Lampcord inherits a lot of my work on Aliucord, bringing Material 3 Expressive UI, deep customization, and client-side enhancements into a native multiplatform app.
-- **[Nucleus](https://github.com/NucleusFramework/Nucleus)**: Utilizes Nucleus to provide proper support for Wayland.
+- **[Aliucord](https://github.com/Aliucord/Aliucord)**: Lampcord inherits a lot of my work on Aliucord, and my [plugins](https://github.com/l6t9/AliucordPlugins) for it.
+- **[Nucleus](https://github.com/NucleusFramework/Nucleus)**: is used to provide proper support for Wayland.
 
 ---
 
