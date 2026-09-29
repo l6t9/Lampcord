@@ -1,4 +1,5 @@
-import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import dev.nucleusframework.desktop.application.dsl.CompressionLevel
+import dev.nucleusframework.desktop.application.dsl.TargetFormat
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.Properties
@@ -7,6 +8,7 @@ plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.compose.compiler)
+    id("dev.nucleusframework") version "2.6.0-dev-202609281230"
 }
 
 val platform =
@@ -83,49 +85,59 @@ tasks.withType<org.gradle.api.tasks.JavaExec>().configureEach {
     }
 }
 
-compose.desktop {
-    application {
-        mainClass = "me.lampu.lampcord.MainKt"
-        localProperties.getProperty("compose.desktop.javaHome")?.let {
-            javaHome = it
+nucleus.application {
+    mainClass = "me.lampu.lampcord.MainKt"
+    localProperties.getProperty("compose.desktop.javaHome")?.let {
+        javaHome = it
+    }
+    jvmArgs += listOf(
+        "-Dsun.java2d.uiScale.enabled=true",
+        "--enable-native-access=ALL-UNNAMED",
+        "-Xmx1g",
+        "-Dskiko.gpu.resourceCacheLimit=64m"
+    )
+    providers.gradleProperty("lampcord.nmt").orNull?.let {
+        if (it == "true") {
+            jvmArgs += "-XX:NativeMemoryTracking=summary"
         }
-        jvmArgs += listOf(
-            "-Dsun.java2d.uiScale.enabled=true",
-            "--enable-native-access=ALL-UNNAMED",
-            // Sketch's memory cache is sized off the heap; 512m was not enough headroom.
-            "-Xmx1g",
-            "-Dskiko.gpu.resourceCacheLimit=64m"
-        )
-        // NativeMemoryTracking adds a per-allocation cost. Opt in with -Dlampcord.nmt=true.
-        providers.gradleProperty("lampcord.nmt").orNull?.let {
-            if (it == "true") {
-                jvmArgs += "-XX:NativeMemoryTracking=summary"
-            }
-        }
-        nativeDistributions {
-            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb, TargetFormat.AppImage)
-            packageName = "Lampcord"
-            packageVersion = "1.0.0"
-            description = "Lampcord Discord Client"
-            copyright = "Lampu"
-            vendor = "Lampcord"
+    }
+    nativeDistributions {
+        targetFormats(TargetFormat.Dmg, TargetFormat.Zip, TargetFormat.Nsis, TargetFormat.Deb, TargetFormat.AppImage)
+        packageName = "Lampcord"
+        packageVersion = "1.0.0"
+        description = "Lampcord Discord Client"
+        copyright = "Lampu"
+        vendor = "Lampcord"
+        homepage = "https://lampcord.lampu.lol"
+        compressionLevel = CompressionLevel.Maximum
 
-            windows {
-                perUserInstall = true
-                shortcut = true
-                menu = true
-                menuGroup = "Lampcord"
-            }
-
-            linux {
-                jvmArgs += listOf("-Djava.locale.providers=COMPAT,SPI", "-Dwebkit.disable.dmabuf.renderer=1")
-            }
-            macOS {
-                infoPlist {
-                    extraKeysRawXml = "<key>NSMicrophoneUsageDescription</key><string>Lampcord uses your microphone for voice calls you join.</string>"
-                }
+        windows {
+            nsis {
+                oneClick = false
+                perMachine = false
+                allowElevation = true
+                allowToChangeInstallationDirectory = true
+                createDesktopShortcut = true
+                createStartMenuShortcut = true
+                runAfterFinish = true
             }
         }
+
+        linux {
+            jvmArgs += listOf("-Djava.locale.providers=COMPAT,SPI", "-Dwebkit.disable.dmabuf.renderer=1")
+        }
+        macOS {
+            infoPlist {
+                extraKeysRawXml = "<key>NSMicrophoneUsageDescription</key><string>Lampcord uses your microphone for voice calls you join.</string>"
+            }
+        }
+    }
+
+    graalvm {
+        isEnabled.set(true)
+        javaLanguageVersion.set(25)
+        imageName.set("lampcord")
+        buildArgs.add("-O2")
     }
 }
 
