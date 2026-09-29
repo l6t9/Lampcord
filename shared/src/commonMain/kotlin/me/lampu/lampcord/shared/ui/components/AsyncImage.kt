@@ -64,13 +64,16 @@ sealed interface ImageLoadState {
 
 private const val MAX_ANIMATED_DECODE = 512
 
+private val twemojiBytes = mutableMapOf<String, ByteArray?>()
+
 private fun Any?.toCoilData(): Any? = when (this) {
     is ByteArray -> this
     is String -> {
         if (startsWith("$TWEMOJI_CDN_BASE_URL/")) {
-            substringAfterLast('/')
-                .let { ResourceLoader.readBytes("twemoji/72x72/$it") }
-                ?: this
+            val name = substringAfterLast('/')
+            if (twemojiBytes.containsKey(name)) twemojiBytes[name] else {
+                ResourceLoader.readBytes("twemoji/72x72/$name").also { twemojiBytes[name] = it }
+            } ?: this
         } else {
             this
         }

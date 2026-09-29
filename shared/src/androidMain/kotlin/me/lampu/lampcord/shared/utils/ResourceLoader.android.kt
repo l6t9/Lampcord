@@ -8,7 +8,7 @@ actual object ResourceLoader {
     }
 
     actual fun readBytes(path: String): ByteArray? {
-        val stream: InputStream? = try {
+        val stream: InputStream = try {
             AndroidContextProvider.applicationContext.assets.open(path)
         } catch (e: Exception) {
             try {
@@ -18,8 +18,13 @@ actual object ResourceLoader {
             } catch (e2: Exception) {
                 null
             }
+        } ?: return null
+
+        // A missing or truncated resource must not propagate: callers treat null as "no asset".
+        return try {
+            stream.use { it.readBytes() }
+        } catch (_: Exception) {
+            null
         }
-        
-        return stream?.use { it.readBytes() }
     }
 }
