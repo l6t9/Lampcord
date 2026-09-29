@@ -48,6 +48,7 @@ fun UpdatesContent(
     val scope = rememberCoroutineScope()
     var channel by remember { mutableStateOf(UpdateChannel.STABLE) }
     var showChangelog by remember { mutableStateOf(false) }
+    var installNote by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(channel) { updateManager.check(channel) }
 
@@ -113,6 +114,13 @@ fun UpdatesContent(
 
             is UpdateState.ReadyToInstall -> Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("${current.release.version} is ready to install")
+                installNote?.let {
+                    Text(
+                        it,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 Button(
                     onClick = {
                         val result = installUpdate(
@@ -121,9 +129,10 @@ fun UpdatesContent(
                             downloadedFile = current.file,
                             version = current.release.version,
                         )
-                        when (result) {
-                            is InstallResult.Unsupported -> showChangelog = false
-                            else -> Unit
+                        installNote = when (result) {
+                            is InstallResult.Unsupported -> result.reason
+                            is InstallResult.Failed -> result.reason
+                            InstallResult.Started -> null
                         }
                     }
                 ) { Text("Install and restart") }

@@ -33,7 +33,10 @@ private fun installWindows(installer: File): InstallResult = runCatching {
 }.getOrElse { InstallResult.Failed(it.message ?: "The installer could not be started") }
 
 private fun installLinux(source: File, version: String): InstallResult = runCatching {
-    val current = locateRunningAppImage() ?: source
+    val current = locateRunningAppImage() ?: return InstallResult.Unsupported(
+        "This build was not started from an AppImage, so it cannot replace itself. " +
+            "Update through the package or store you installed it from."
+    )
     val destination = current.toPath().toAbsolutePath()
     val staged = destination.resolveSibling("${destination.fileName}.$version.new")
 
