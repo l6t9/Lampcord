@@ -14,6 +14,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -46,7 +47,7 @@ import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.theme.rememberPlatformColorScheme
 import me.lampu.lampcord.shared.utils.Logging
-import me.lampu.lampcord.shared.ui.kit.combinedClickableCursor
+
 import org.koin.compose.koinInject
 import androidx.compose.material3.LocalContentColor
 
@@ -179,13 +180,14 @@ fun UserProfileDialog(
         )
     }
 
-    val isCentered = popupPosition == null || isExpanded
-    val placementOffset = if (isCentered) {
+    val anchor = popupPosition
+    val isCentered = anchor == null || isExpanded
+    val placementOffset = if (anchor == null || isExpanded) {
         IntOffset.Zero
     } else {
         IntOffset(
-            x = (if (popupPosition!!.x < 500) (popupPosition!!.x + 60).toInt() else (popupPosition!!.x - 320).toInt()) - frameInsetPx.x,
-            y = ((popupPosition!!.y.toInt() - 100) - frameInsetPx.y).coerceAtLeast(10)
+            x = (if (anchor.x < 500) (anchor.x + 60).toInt() else (anchor.x - 320).toInt()) - frameInsetPx.x,
+            y = ((anchor.y.toInt() - 100) - frameInsetPx.y).coerceAtLeast(10)
         )
     }
 
@@ -194,7 +196,7 @@ fun UserProfileDialog(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .combinedClickableCursor(
+                    .combinedClickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
                         onClick = onDismiss,
