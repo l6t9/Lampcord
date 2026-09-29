@@ -8,9 +8,9 @@ It is designed to deliver a native, fast, and highly customizable Discord experi
 
 ## Inspiration
 
-- **Aliucord**: Lampcord inherits a lot of my work on [Aliucord](https://github.com/Aliucord/Aliucord), bringing Material 3 Expressive UI, deep customization, and client-side enhancements into a native multiplatform app.
+- **[Aliucord](https://github.com/Aliucord/Aliucord)**: Lampcord inherits a lot of my work on Aliucord, bringing Material 3 Expressive UI, deep customization, and client-side enhancements into a native multiplatform app.
 - **Compose Multiplatform**: Powered by Kotlin Multiplatform and Jetpack Compose, sharing logic and UI across Android and Desktop.
-- **Nucleus**: Utilizes [NucleusFramework](https://github.com/NucleusFramework/Nucleus) to provide proper support for Wayland.
+- **[Nucleus](https://github.com/NucleusFramework/Nucleus)**: Utilizes Nucleus to provide proper support for Wayland.
 
 ---
 
