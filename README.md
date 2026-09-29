@@ -57,7 +57,6 @@ It is designed to deliver a native, fast, and customizable Discord experience wi
 <table>
   <tr>
     <th align="center">Obtainium</th>
-    <th align="center">IzzyOnDroid</th>
   </tr>
   <tr>
     <td align="center">
