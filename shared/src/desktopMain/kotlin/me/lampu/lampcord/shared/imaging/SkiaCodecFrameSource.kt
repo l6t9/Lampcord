@@ -1,19 +1,13 @@
 package me.lampu.lampcord.shared.imaging
 
 import org.jetbrains.skia.Bitmap
-import org.jetbrains.skia.Canvas
 import org.jetbrains.skia.Codec
-import org.jetbrains.skia.Image
 
 internal class SkiaCodecFrameSource(
     private val codec: Codec,
     override val width: Int,
     override val height: Int,
 ) : FrameSource {
-
-    private val scratch = Bitmap().apply {
-        allocPixels(codec.imageInfo)
-    }
 
     private val durations: IntArray = IntArray(codec.frameCount) { index ->
 
@@ -48,10 +42,8 @@ internal class SkiaCodecFrameSource(
     }
 
     override fun renderFrame(target: Bitmap, frameIndex: Int) {
-
-        codec.readPixels(scratch, frameIndex)
-        scratch.notifyPixelsChanged()
-        Canvas(target).drawImage(Image.makeFromBitmap(scratch), 0f, 0f)
+        codec.readPixels(target, frameIndex)
+        target.notifyPixelsChanged()
     }
 
     private companion object {

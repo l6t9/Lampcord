@@ -41,6 +41,7 @@ internal class SkiaAnimatedImage(
 
     private var activeSlot = 0
     private var lastFrame = -1
+    private var cachedImage: org.jetbrains.skia.Image? = null
     private val lock = Any()
 
     override val width: Int get() = frameSource.width
@@ -73,7 +74,8 @@ internal class SkiaAnimatedImage(
 
         val image = frameSource.readyImage(frame) ?: synchronized(lock) {
             if (frame == lastFrame) {
-                org.jetbrains.skia.Image.makeFromBitmap(buffer(activeSlot))
+                cachedImage ?: org.jetbrains.skia.Image.makeFromBitmap(buffer(activeSlot))
+                    .also { cachedImage = it }
             } else {
 
                 val slot = 1 - activeSlot
@@ -82,7 +84,7 @@ internal class SkiaAnimatedImage(
                 target.notifyPixelsChanged()
                 activeSlot = slot
                 lastFrame = frame
-                org.jetbrains.skia.Image.makeFromBitmap(target)
+                org.jetbrains.skia.Image.makeFromBitmap(target).also { cachedImage = it }
             }
         }
 

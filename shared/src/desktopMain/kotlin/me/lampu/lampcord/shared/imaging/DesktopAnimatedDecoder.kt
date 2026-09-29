@@ -13,29 +13,22 @@ import org.jetbrains.skia.Codec
 import org.jetbrains.skia.Data
 
 internal class DesktopAnimatedDecoder(
+    private val source: okio.BufferedSource,
     private val timeSource: kotlin.time.TimeSource = kotlin.time.TimeSource.Monotonic,
     private val animates: Boolean = true,
 ) : Decoder {
 
-    private lateinit var data: ByteArray
-    private lateinit var kind: Kind
-
-    private enum class Kind { APNG, CODEC }
-
     override suspend fun decode(): DecodeResult = withContext(Dispatchers.IO) {
-        when (kind) {
-            Kind.APNG -> {
-                val source = ApngFrameSource.parse(data)
-                    ?: error("Failed to parse APNG")
-                DecodeResult(SkiaAnimatedImage(source, timeSource, animates), isSampled = false)
-            }
-
-            Kind.CODEC -> {
-                val codec = Codec.makeFromData(Data.makeFromBytes(data))
-                    ?: error("Skia could not read the animation")
-                val frameSource = SkiaCodecFrameSource(codec, codec.width, codec.height)
-                DecodeResult(SkiaAnimatedImage(frameSource, timeSource, animates), isSampled = false)
-            }
+        val data = source.readByteArray()
+        if (hasApngChunk(data)) {
+            val frames = ApngFrameSource.parse(data)
+                ?: error("Failed to parse APNG")
+            DecodeResult(SkiaAnimatedImage(frames, timeSource, animates), isSampled = false)
+        } else {
+            val codec = Codec.makeFromData(Data.makeFromBytes(data))
+                ?: error("Skia could not read the animation")
+            val frameSource = SkiaCodecFrameSource(codec, codec.width, codec.height)
+            DecodeResult(SkiaAnimatedImage(frameSource, timeSource, animates), isSampled = false)
         }
     }
 
@@ -50,11 +43,7 @@ internal class DesktopAnimatedDecoder(
             val source = result.source.source() ?: return null
 
             if (!isAnimatable(source)) return null
-            val data = source.readByteArray()
-            return DesktopAnimatedDecoder(timeSource, options.allowsAnimation()).apply {
-                this.data = data
-                kind = if (hasApngChunk(data)) Kind.APNG else Kind.CODEC
-            }
+            return DesktopAnimatedDecoder(source, timeSource, options.allowsAnimation())
         }
     }
 }
