@@ -151,10 +151,10 @@ It is designed to deliver a native, fast, and customizable Discord experience wi
 
 Lampcord is a third-party open-source client and is **not** affiliated with, endorsed by, or sponsored by Discord Inc. Using third-party clients may violate Discord's Terms of Service. Use at your own risk.
 
-</div>
-
 ---
 
 ## License
 
 Lampcord is released under the [GNU General Public License v3.0 (GPL-3.0)](LICENSE).
+
+</div>
