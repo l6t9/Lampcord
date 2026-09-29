@@ -1,8 +1,8 @@
 # Lampcord
 
-**Lampcord** is a lightweight, high-performance, open-source custom Discord client built with Compose Multiplatform for Android and Desktop (Linux & Windows).
+**Lampcord** is a lightweight Discord client built with Compose Multiplatform for Android and Desktop (Linux & Windows).
 
-It is designed to deliver a native, fast, and highly customizable Discord experience without the bloat and heavy memory footprint of Electron or WebViews.
+It is designed to deliver a native, fast, and customizable Discord experience without the bloat and heavy memory footprint of Electron or WebViews.
 
 ---
 
@@ -45,6 +45,59 @@ It is designed to deliver a native, fast, and highly customizable Discord experi
 * **Guild & Channel Management**
   * [ ] Server settings (roles, channels, emoji management)
   * [ ] Stage & forum channel creation and moderation
+
+---
+
+<div align="center">
+
+<h1><a id="download-now"></a>Download Now</h1>
+
+<h2>Stable Release</h2>
+
+<table>
+  <tr>
+    <th align="center">Obtainium</th>
+    <th align="center">IzzyOnDroid</th>
+  </tr>
+  <tr>
+    <td align="center">
+      <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/l6t9/Lampcord/">
+        <img src="https://github.com/ImranR98/Obtainium/blob/main/assets/graphics/badge_obtainium.png" alt="Download from Obtainium" height="50">
+      </a>
+    </td>
+  </tr>
+  <tr>
+    <th align="center" colspan="2">GitHub</th>
+  </tr>
+  <tr>
+    <td align="center" colspan="2">
+      <a href="https://github.com/l6t9/Lampcord/releases/latest/">
+        <img src="https://github.com/machiav3lli/oandbackupx/blob/034b226cea5c1b30eb4f6a6f313e4dadcbb0ece4/badge_github.png" alt="Download from GitHub" height="75">
+      </a>
+    </td>
+  </tr>
+</table>
+
+<h2>Nightly Build</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th align="center">GitHub</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td align="center">
+        <a href="https://nightly.link/MetrolistGroup/Metrolist/workflows/build/main/app-with-Google-Cast.zip">
+          <img src="https://github.com/machiav3lli/oandbackupx/blob/034b226cea5c1b30eb4f6a6f313e4dadcbb0ece4/badge_github.png" alt="Download from GitHub" height="75">
+        </a>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+</div>
 
 ---
 
