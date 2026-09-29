@@ -20,6 +20,7 @@ import me.lampu.lampcord.shared.imaging.platformImageDecoders
 import me.lampu.lampcord.shared.settings.ThemeMode
 import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.theme.LampcordTheme
+import me.lampu.lampcord.shared.utils.ProvideClipboard
 import me.lampu.lampcord.shared.utils.getPlatformName
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.koin.compose.koinInject
@@ -59,6 +60,7 @@ fun App() {
         fontScale = settingsStore.fontScale,
         customFontPath = settingsStore.customFontPath,
     ) {
+        ProvideClipboard()
         MainScreen()
     }
 }

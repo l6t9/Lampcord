@@ -1,5 +1,14 @@
 package me.lampu.lampcord.shared.utils
 
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.text.AnnotatedString
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import java.awt.Toolkit
 import java.awt.datatransfer.DataFlavor
 import java.io.File
@@ -8,7 +17,23 @@ import java.awt.Image
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
 import javax.imageio.ImageIO
-import java.awt.datatransfer.StringSelection
+
+private var clipboard: androidx.compose.ui.platform.Clipboard? = null
+private var clipboardScope: CoroutineScope? = null
+
+@Composable
+actual fun ProvideClipboard() {
+    val current = LocalClipboard.current
+    val scope = rememberCoroutineScope()
+    DisposableEffect(current) {
+        clipboard = current
+        clipboardScope = scope
+        onDispose {
+            clipboard = null
+            clipboardScope = null
+        }
+    }
+}
 
 actual fun getClipboardFiles(): List<Pair<String, ByteArray>> {
     val clipboard = Toolkit.getDefaultToolkit().systemClipboard
@@ -43,7 +68,10 @@ actual fun getClipboardFiles(): List<Pair<String, ByteArray>> {
     }
 }
 
+@OptIn(ExperimentalComposeUiApi::class)
 actual fun setClipboardText(text: String) {
-    val selection = StringSelection(text)
-    Toolkit.getDefaultToolkit().systemClipboard.setContents(selection, selection)
+    val target = clipboard
+    val scope = clipboardScope
+    if (target == null || scope == null) return
+    scope.launch { target.setClipEntry(ClipEntry(AnnotatedString(text))) }
 }

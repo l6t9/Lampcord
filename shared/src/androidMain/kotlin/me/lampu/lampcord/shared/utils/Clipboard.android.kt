@@ -5,6 +5,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
+import androidx.compose.runtime.Composable
 
 actual fun getClipboardFiles(): List<Pair<String, ByteArray>> {
     val context = AndroidContextProvider.applicationContext
@@ -52,3 +53,6 @@ actual fun setClipboardText(text: String) {
     val clip = ClipData.newPlainText("lampcord", text)
     clipboard.setPrimaryClip(clip)
 }
+
+@Composable
+actual fun ProvideClipboard() = Unit
