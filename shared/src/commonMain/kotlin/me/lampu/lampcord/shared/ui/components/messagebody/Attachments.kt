@@ -37,8 +37,8 @@ fun AttachmentImage(
     subtitle: String? = null,
     onClick: (() -> Unit)? = null
 ) {
-    val isVideo = media.isVideo()
-    // A Tenor .gif is still an image. Only video media should use the GIFV playback path; otherwise the image can be treated as already playing and lose its click target.
+    val isAnimatedImage = media.isAnimatedImage()
+    val isVideo = media.isVideo() && !isAnimatedImage
     val isGifv = isVideo && media.isGifv()
     val reduceMotion = Settings.shared.reduceMotion
     var isInlinePlaying by remember(isGifv, reduceMotion) { mutableStateOf(isGifv && !reduceMotion) }

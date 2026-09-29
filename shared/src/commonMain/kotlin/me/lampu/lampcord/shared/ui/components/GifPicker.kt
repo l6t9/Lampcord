@@ -234,7 +234,7 @@ private fun GifThumbnail(
             .hoverable(interactionSource)
     ) {
         if (imageUrl != null) {
-            if (animatePreview && (isDesktop || gif.isVideo || isAnimatedMediaUrl(imageUrl))) {
+            if (animatePreview && (gif.isVideo || isVideoMediaUrl(imageUrl))) {
                 VideoPlayer(
                     url = imageUrl,
                     modifier = Modifier.fillMaxSize(),
@@ -281,7 +281,7 @@ private fun GifPreviewImage(
     var candidateIndex by remember(candidates) { mutableIntStateOf(0) }
     val imageUrl = candidates.getOrNull(candidateIndex)
 
-    if (imageUrl != null && animated && (forceVideo || getPlatformName() == "windows" || isAnimatedMediaUrl(imageUrl))) {
+    if (imageUrl != null && animated && (forceVideo || isVideoMediaUrl(imageUrl))) {
         VideoPlayer(
             url = imageUrl,
             modifier = modifier,
@@ -361,6 +361,17 @@ private fun gifStaticCandidates(gif: Gif): List<String> =
 
 private fun isAnimatedMediaUrl(url: String): Boolean =
     animatedMediaSuffix(url) != null
+
+private fun isVideoMediaUrl(url: String): Boolean =
+    videoMediaSuffix(url) != null
+
+private fun videoMediaSuffix(url: String): Pair<Int, String>? {
+    val path = url.substringBefore('?').substringBefore('#')
+    val suffix = listOf(".webm", ".mp4", ".m4v", ".mov")
+        .firstOrNull { path.endsWith(it, ignoreCase = true) }
+        ?: return null
+    return path.length - suffix.length to suffix
+}
 
 private fun animatedMediaSuffix(url: String): Pair<Int, String>? {
     val path = url.substringBefore('?').substringBefore('#')

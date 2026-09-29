@@ -45,10 +45,23 @@ interface DiscordMedia {
         val audioExtensions = setOf(
             "aac", "flac", "m4a", "mp3", "oga", "ogg", "opus", "wav", "weba"
         )
+        val animatedImageExtensions = setOf("gif", "webp", "apng")
+        val animatedImageContentTypes = setOf("image/gif", "image/webp", "image/apng")
     }
+
     fun isGifv(): Boolean {
         val u = (url ?: proxy_url)?.lowercase() ?: return false
         return u.contains("klipy.com") || u.contains(".gifv") || u.contains("tenor.com")
+    }
+
+    fun isAnimatedImage(): Boolean {
+        if (this is EmbedImage) return true
+        val attachment = this as? Attachment ?: return false
+        val extension = attachment.filename.substringAfterLast('.', "").lowercase()
+        if (extension in animatedImageExtensions) return true
+        if (attachment.content_type?.lowercase() in animatedImageContentTypes) return true
+        val path = url.substringBefore('?').lowercase()
+        return animatedImageExtensions.any { path.endsWith(".$it") }
     }
 }
 
