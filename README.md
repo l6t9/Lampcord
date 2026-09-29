@@ -13,6 +13,8 @@ It is designed to deliver a native, fast, and customizable Discord experience wi
 
 ---
 
+<div align="center">
+
 ## Features & Roadmap
 
 * **Authentication**
@@ -45,6 +47,8 @@ It is designed to deliver a native, fast, and customizable Discord experience wi
 * **Guild & Channel Management**
   * [ ] Server settings (roles, channels, emoji management)
   * [ ] Stage & forum channel creation and moderation
+
+</div>
 
 ---
 
