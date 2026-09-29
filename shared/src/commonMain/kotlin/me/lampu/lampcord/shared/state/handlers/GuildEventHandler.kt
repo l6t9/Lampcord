@@ -18,6 +18,7 @@ class GuildEventHandler(
     override val supportedEvents = setOf(
         "GUILD_CREATE", "GUILD_UPDATE", "GUILD_DELETE",
         "CHANNEL_CREATE", "CHANNEL_UPDATE", "CHANNEL_DELETE",
+        "DM_CREATE",
         "THREAD_CREATE", "THREAD_UPDATE", "THREAD_DELETE", "THREAD_LIST_SYNC"
     )
 
@@ -27,7 +28,7 @@ class GuildEventHandler(
             "GUILD_CREATE" -> handleGuildCreate(data)
             "GUILD_UPDATE" -> handleGuildUpdate(data)
             "GUILD_DELETE" -> handleGuildDelete(data)
-            "CHANNEL_CREATE", "THREAD_CREATE" -> handleChannelUpdate(data)
+            "CHANNEL_CREATE", "THREAD_CREATE", "DM_CREATE" -> handleChannelUpdate(data)
             "CHANNEL_UPDATE", "THREAD_UPDATE" -> handleChannelUpdate(data)
             "CHANNEL_DELETE", "THREAD_DELETE" -> handleChannelDelete(data)
             "THREAD_LIST_SYNC" -> handleThreadListSync(data)
