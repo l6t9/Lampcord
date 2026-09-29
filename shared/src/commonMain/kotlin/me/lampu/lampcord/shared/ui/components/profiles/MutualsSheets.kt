@@ -12,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,6 +33,7 @@ import me.lampu.lampcord.shared.ui.kit.clickableCursor
 fun MutualFriendRow(
     friend: User,
     onClick: () -> Unit,
+    statusBackground: Color = MaterialTheme.colorScheme.surface,
     presenceStore: PresenceStore = koinInject(),
     userStore: UserStore = koinInject(),
     settingsStore: SettingsStore = koinInject()
@@ -54,7 +56,7 @@ fun MutualFriendRow(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .size(14.dp)
-                    .background(LocalContentColor.current.copy(alpha = 0.25f), CircleShape)
+                    .background(statusBackground, CircleShape)
                     .padding(2.dp)
             ) {
                 StatusIndicator(
@@ -84,6 +86,7 @@ fun MutualFriendRow(
 fun MutualServerRow(
     mutual: MutualGuild,
     onClick: () -> Unit,
+    iconBackground: Color = MaterialTheme.colorScheme.surfaceVariant,
     guildStore: GuildStore = koinInject()
 ) {
     val allGuilds by guildStore.guilds.collectAsState()

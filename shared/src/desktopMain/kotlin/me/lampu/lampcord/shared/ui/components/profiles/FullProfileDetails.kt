@@ -7,14 +7,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LocalContentColor
@@ -35,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.api.UserApi
 import me.lampu.lampcord.shared.model.Activity
@@ -44,6 +48,7 @@ import me.lampu.lampcord.shared.state.GuildStore
 import me.lampu.lampcord.shared.state.PresenceStore
 import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.ui.components.UserActivity
+import me.lampu.lampcord.shared.ui.components.VerticalScrollbar
 import org.koin.compose.koinInject
 
 private val TAB_ACTIVITY = 0
@@ -57,6 +62,7 @@ fun FullProfileDetails(
     onOpenProfile: (String) -> Unit,
     onOpenGuild: (String) -> Unit,
     modifier: Modifier = Modifier,
+    topShape: Shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
     presenceStore: PresenceStore = koinInject(),
     userStore: UserStore = koinInject()
 ) {
@@ -73,10 +79,11 @@ fun FullProfileDetails(
     }
     val isOwnProfile = user.id == currentUser?.id
     val textColor = theme.customTextColor ?: MaterialTheme.colorScheme.onSurface
+    val listState = remember(selectedTab) { LazyListState() }
 
     Column(
         modifier = modifier
-            .clip(MaterialTheme.shapes.large)
+            .clip(topShape)
             .background(theme.backgroundBrush)
     ) {
         CompositionLocalProvider(LocalContentColor provides textColor) {
@@ -107,17 +114,34 @@ fun FullProfileDetails(
 
             HorizontalDivider(color = textColor.copy(alpha = 0.15f))
 
-            when (selectedTab) {
-                TAB_ACTIVITY -> ActivityTab(activities = activities, modifier = Modifier.weight(1f))
-                TAB_MUTUAL_FRIENDS -> MutualFriendsTab(
-                    profile = profile,
-                    onOpenProfile = onOpenProfile,
-                    modifier = Modifier.weight(1f)
-                )
-                else -> MutualServersTab(
-                    profile = profile,
-                    onOpenGuild = onOpenGuild,
-                    modifier = Modifier.weight(1f)
+            Box(modifier = Modifier.weight(1f)) {
+                when (selectedTab) {
+                    TAB_ACTIVITY -> ActivityTab(
+                        activities = activities,
+                        listState = listState,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                    TAB_MUTUAL_FRIENDS -> MutualFriendsTab(
+                        profile = profile,
+                        listState = listState,
+                        onOpenProfile = onOpenProfile,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                    else -> MutualServersTab(
+                        profile = profile,
+                        listState = listState,
+                        onOpenGuild = onOpenGuild,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+
+                VerticalScrollbar(
+                    state = listState,
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .fillMaxHeight()
+                        .padding(end = 2.dp),
+                    isVisible = listState.firstVisibleItemIndex > 0 || listState.canScrollForward
                 )
             }
             }
@@ -127,6 +151,7 @@ fun FullProfileDetails(
 @Composable
 private fun ActivityTab(
     activities: List<Activity>,
+    listState: LazyListState,
     modifier: Modifier = Modifier
 ) {
     if (activities.isEmpty()) {
@@ -134,6 +159,7 @@ private fun ActivityTab(
         return
     }
     LazyColumn(
+        state = listState,
         modifier = modifier.fillMaxWidth(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -147,6 +173,7 @@ private fun ActivityTab(
 @Composable
 private fun MutualFriendsTab(
     profile: UserProfile,
+    listState: LazyListState,
     onOpenProfile: (String) -> Unit,
     modifier: Modifier = Modifier,
     userApi: UserApi = koinInject()
@@ -167,9 +194,13 @@ private fun MutualFriendsTab(
             CircularProgressIndicator()
         }
         friends.isNullOrEmpty() -> EmptyTabState("No mutual friends", modifier)
-        else -> LazyColumn(modifier = modifier.fillMaxWidth()) {
+        else -> LazyColumn(state = listState, modifier = modifier.fillMaxWidth()) {
             items(friends!!) { friend ->
-                MutualFriendRow(friend = friend, onClick = { onOpenProfile(friend.id) })
+                MutualFriendRow(
+                    friend = friend,
+                    onClick = { onOpenProfile(friend.id) },
+                    statusBackground = LocalContentColor.current.copy(alpha = 0.25f)
+                )
             }
         }
     }
@@ -178,6 +209,7 @@ private fun MutualFriendsTab(
 @Composable
 private fun MutualServersTab(
     profile: UserProfile,
+    listState: LazyListState,
     onOpenGuild: (String) -> Unit,
     modifier: Modifier = Modifier,
     guildStore: GuildStore = koinInject()
@@ -190,14 +222,15 @@ private fun MutualServersTab(
         return
     }
 
-    LazyColumn(modifier = modifier.fillMaxWidth()) {
+    LazyColumn(state = listState, modifier = modifier.fillMaxWidth()) {
         items(mutualGuilds) { mutual ->
             val guild = guilds.find { it.id == mutual.id }
             if (guild != null) {
                 MutualServerRow(
                     mutual = mutual,
                     guildStore = guildStore,
-                    onClick = { onOpenGuild(guild.id) }
+                    onClick = { onOpenGuild(guild.id) },
+                    iconBackground = LocalContentColor.current.copy(alpha = 0.12f)
                 )
             } else {
                 Row(

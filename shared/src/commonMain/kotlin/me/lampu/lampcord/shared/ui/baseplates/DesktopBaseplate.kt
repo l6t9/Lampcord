@@ -283,7 +283,9 @@ fun DesktopBaseplate(
             )
         }
 
-        if (profileStore.isProfileLoading || profileStore.selectedProfile != null) {
+        if (!profileStore.isFullProfileVisible &&
+            (profileStore.isProfileLoading || profileStore.selectedProfile != null)
+        ) {
             UserProfileDialog(
                 profile = profileStore.selectedProfile,
                 onDismiss = { 

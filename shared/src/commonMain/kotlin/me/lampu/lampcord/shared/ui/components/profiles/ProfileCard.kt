@@ -12,6 +12,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -35,8 +36,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Popup
-import androidx.compose.ui.window.PopupProperties
 import com.materialkolor.PaletteStyle
 import me.lampu.lampcord.shared.model.ProfileCollectibles
 import me.lampu.lampcord.shared.settings.Settings
@@ -47,6 +46,7 @@ import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.theme.rememberPlatformColorScheme
 import me.lampu.lampcord.shared.utils.Logging
+import me.lampu.lampcord.shared.ui.kit.combinedClickableCursor
 import org.koin.compose.koinInject
 import androidx.compose.material3.LocalContentColor
 
@@ -179,17 +179,35 @@ fun UserProfileDialog(
         )
     }
 
-    Popup(
-        alignment = if (popupPosition == null || isExpanded) Alignment.Center else Alignment.TopStart,
-        offset = if (popupPosition == null || isExpanded) IntOffset.Zero else IntOffset(
-            x = (if (popupPosition.x < 500) (popupPosition.x + 60).toInt() else (popupPosition.x - 320).toInt()) - frameInsetPx.x,
-            y = ((popupPosition.y.toInt() - 100) - frameInsetPx.y).coerceAtLeast(10)
-        ),
-        onDismissRequest = onDismiss,
-        properties = PopupProperties(focusable = true, dismissOnClickOutside = true)
-    ) {
+    val isCentered = popupPosition == null || isExpanded
+    val placementOffset = if (isCentered) {
+        IntOffset.Zero
+    } else {
+        IntOffset(
+            x = (if (popupPosition!!.x < 500) (popupPosition!!.x + 60).toInt() else (popupPosition!!.x - 320).toInt()) - frameInsetPx.x,
+            y = ((popupPosition!!.y.toInt() - 100) - frameInsetPx.y).coerceAtLeast(10)
+        )
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        if (profile != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .combinedClickableCursor(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onDismiss,
+                        onLongClick = {}
+                    )
+            )
+        }
+
         AnimatedVisibility(
             visible = profile != null,
+            modifier = Modifier
+                .align(if (isCentered) Alignment.Center else Alignment.TopStart)
+                .offset { placementOffset },
             enter = if (me.lampu.lampcord.shared.settings.Settings.shared.reduceMotion) EnterTransition.None else fadeIn(tween(200, easing = LinearOutSlowInEasing)) + scaleIn(tween(200, easing = FastOutSlowInEasing), initialScale = 0.9f),
             exit = if (me.lampu.lampcord.shared.settings.Settings.shared.reduceMotion) ExitTransition.None else fadeOut(tween(150)) + scaleOut(tween(150), targetScale = 0.9f)
         ) {
@@ -272,7 +290,13 @@ fun ProfileCard(
                 .then(if (isSidebar) Modifier.fillMaxSize() else if (fillAvailableHeight) Modifier.fillMaxWidth().fillMaxHeight() else Modifier.fillMaxWidth().wrapContentHeight())
                 .then(
                     if (showBorder) Modifier.clip(innerShape)
-                    else if (!isSidebar) Modifier.clip(if (isExpanded) expandedShape else sheetShape)
+                    else if (!isSidebar) Modifier.clip(
+                        when {
+                            isExpanded && topShape != null -> topShape
+                            isExpanded -> expandedShape
+                            else -> sheetShape
+                        }
+                    )
                     else Modifier
                 )
                 .background(theme.backgroundBrush)
@@ -307,7 +331,9 @@ fun ProfileCard(
                 }
             }
 
-            Spacer(Modifier.height(16.dp))
+            if (!fillAvailableHeight) {
+                Spacer(Modifier.height(16.dp))
+            }
         }
 
         if (effectProduct != null) {

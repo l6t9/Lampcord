@@ -157,32 +157,6 @@ fun ProfileSections(
         }
 
         if (isExpanded) {
-            val musicAccount = profile.connected_accounts.find { it.type == "lastfm" || it.type == "spotify" }
-            if (musicAccount != null && activities.none { it.type == 2 }) {
-                Column {
-                    ProfileSectionHeader("Music Stats", profileTextColor)
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(8.dp),
-                        color = theme.cardColor.copy(alpha = 0.3f),
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(Icons.Filled.MusicNote, null, modifier = Modifier.size(24.dp), tint = profileTextColor)
-                            Spacer(Modifier.width(12.dp))
-                            Column {
-                                Text("Recently Played", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = profileTextColor)
-                                Text("Connect Last.fm for detailed stats", style = MaterialTheme.typography.bodySmall, color = profileSecondaryTextColor)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        if (isExpanded) {
             val roles = profile.guild_member?.roles
             if (!roles.isNullOrEmpty() && guild != null) {
                 Column {
