@@ -25,7 +25,7 @@ It is designed to deliver a native, fast, and customizable Discord experience wi
 
 ## Features & Roadmap
 
-**Authentication**
+ * **Authentication**
   * [x] Password & token login
   * [x] Remote QR code login
   * [x] Multi-account switcher
