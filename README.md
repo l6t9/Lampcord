@@ -29,7 +29,7 @@ It is designed to deliver a native, fast, and customizable Discord experience wi
   * [x] Password & token login
   * [x] Remote QR code login
   * [x] Multi-account switcher
-  **Messaging & Chat**
+ * **Messaging & Chat**
   * [x] Real-time chat & gateway sync
   * [x] Markdown parsing & code highlighting
   * [x] Custom emojis, reactions & stickers
@@ -37,22 +37,22 @@ It is designed to deliver a native, fast, and customizable Discord experience wi
   * [x] Message pinning & thread views
   * [x] Local message deletion logger
   * [ ] Slash commands & application options
-  **Voice & Media**
+ * **Voice & Media**
   * [x] Native DAVE voice protocol (DAVE v1)
   * [x] Voice channels & in-call controls
   * [x] Image / video viewer & audio player
   * [x] Custom status & activity / rich presence
   * [ ] Video calling & screen share rendering
-  **Notifications**
+ * **Notifications**
   * [x] Android system notifications & conversation bubbles
   * [x] Desktop system notifications & toasts
   * [x] Background FCM push notification sync
-  **Customization & Themes**
+ * **Customization & Themes**
   * [x] Custom Material 3 Expressive (M3E) themes & Matugen color sync
   * [x] Custom font selection (Inter, Maple Mono, System)
   * [x] Custom client profiles, UserBG & UserPFP
   * [x] Client-side free Nitro emojis
-  **Guild & Channel Management**
+ * **Guild & Channel Management**
   * [ ] Server settings (roles, channels, emoji management)
   * [ ] Stage & forum channel creation and moderation
 
