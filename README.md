@@ -14,8 +14,8 @@ It is designed to deliver a native, fast, and customizable Discord experience wi
 
 ## Inspiration
 
-**[Aliucord](https://github.com/Aliucord/Aliucord)**: Lampcord inherits a lot of my work on Aliucord, and my [plugins](https://github.com/l6t9/AliucordPlugins) for it.
-**[Nucleus](https://github.com/NucleusFramework/Nucleus)**: Used to provide proper support for Wayland.
+- **[Aliucord](https://github.com/Aliucord/Aliucord)**: Lampcord inherits a lot of my work on Aliucord, and my [plugins](https://github.com/l6t9/AliucordPlugins) for it.
+- **[Nucleus](https://github.com/NucleusFramework/Nucleus)**: Used to provide proper support for Wayland.
 
 </div>
 
