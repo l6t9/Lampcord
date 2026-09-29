@@ -29,7 +29,7 @@ class AndroidMessageNotifier(
 
     override fun showMessageNotification(data: IncomingNotificationData) {
         if (AppLifecycleTracker.isInForeground) {
-            if (Settings.shared.showInAppNotifications && data.isMention) {
+            if (Settings.shared.showInAppNotifications) {
                 notificationStore.show(data)
             }
             return
