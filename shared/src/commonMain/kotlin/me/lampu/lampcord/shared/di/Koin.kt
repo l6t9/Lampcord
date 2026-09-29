@@ -20,6 +20,7 @@ import me.lampu.lampcord.shared.gateway.GatewayManager
 import me.lampu.lampcord.shared.gateway.VoiceGatewayManager
 import me.lampu.lampcord.shared.notifications.MessageNotifier
 import me.lampu.lampcord.shared.notifications.PushTokenRegistrar
+import me.lampu.lampcord.shared.update.updateModule
 import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.state.handlers.*
 import me.lampu.lampcord.shared.utils.getDatabaseBuilder
@@ -213,6 +214,6 @@ val gatewayModule = module {
 val appModule = module {
     includes(
         coreModule, apiModule, databaseModule, networkModule,
-        storeModule, gatewayModule
+        storeModule, gatewayModule, updateModule()
     )
 }

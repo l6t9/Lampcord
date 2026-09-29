@@ -36,6 +36,26 @@ val packageVoiceDesktop = tasks.register<Sync>("packageVoiceDesktop") {
     into(layout.buildDirectory.dir("generated/voiceResources"))
 }
 
+val generatedUpdateDir = layout.buildDirectory.dir("generated/update")
+
+val generateAppVersion = tasks.register("generateAppVersion") {
+    val version = providers.gradleProperty("appVersion").get()
+    val output = generatedUpdateDir.map { it.file("me/lampu/lampcord/shared/update/AppVersion.kt") }
+    inputs.property("version", version)
+    outputs.file(output)
+    doLast {
+        val file = output.get().asFile
+        file.parentFile.mkdirs()
+        file.writeText(
+            """
+            package me.lampu.lampcord.shared.update
+
+            const val APP_VERSION: String = "$version"
+            """.trimIndent() + "\n"
+        )
+    }
+}
+
 kotlin {
     targets.all {
         compilations.all {
@@ -81,6 +101,7 @@ kotlin {
 
         commonMain {
             resources.srcDir(unpackTwemoji)
+            kotlin.srcDir(files(generatedUpdateDir).builtBy(generateAppVersion))
         }
 
         commonMain.dependencies {
