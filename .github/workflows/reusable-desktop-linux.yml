@@ -23,6 +23,13 @@ on:
         required: false
         default: false
         type: boolean
+      package-native:
+        description: >-
+          Also build deb, rpm and pacman packages for distribution channels. Off for nightly so
+          the updater's AppImage keeps building fast.
+        required: false
+        default: false
+        type: boolean
       version:
         description: >-
           Version to name the package after. Defaults to appVersion, which is the tester
@@ -59,7 +66,7 @@ jobs:
         shell: bash
         run: |
           sudo apt-get update
-          sudo apt-get install -y libfuse2 jq
+          sudo apt-get install -y libfuse2 jq ${{ inputs.package-native && 'rpm' || '' }}
 
           mkdir -p tools
           curl --fail --location --silent --show-error \
@@ -88,6 +95,37 @@ jobs:
           output="dist/lampcord-desktop-linux-x64-${version}.AppImage"
           mv "$source" "$output"
           echo "path=$output" >> "$GITHUB_OUTPUT"
+
+      - name: Build native Linux packages
+        if: inputs.package-native
+        shell: bash
+        env:
+          VERSION_OVERRIDE: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          version=""
+          while IFS='=' read -r key value; do
+            if [[ "$key" == "appVersion" ]]; then version="$value"; break; fi
+          done < gradle.properties
+          [[ -n "$VERSION_OVERRIDE" ]] && version="$VERSION_OVERRIDE"
+          ./gradlew :desktopApp:packageDeb :desktopApp:packageRpm :desktopApp:packagePacman \
+            --no-daemon --no-build-cache --no-configuration-cache
+          mkdir -p dist/native
+          for kind in deb rpm pacman; do
+            src=$(find desktopApp/build/compose/binaries/main/"$kind" -maxdepth 1 -name '*.pkg.tar.zst' -o -maxdepth 1 -name '*.rpm' -o -maxdepth 1 -name '*.deb' | head -1)
+            [[ -n "$src" ]] || { echo "No $kind package was produced" >&2; exit 1; }
+            ext="${src##*.}"
+            mv "$src" "dist/native/lampcord-desktop-linux-x64-${version}.${ext}"
+          done
+          ls -1 dist/native
+
+      - name: Upload native Linux assets
+        if: inputs.package-native && inputs.staging-release-tag != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STAGING_RELEASE_TAG: ${{ inputs.staging-release-tag }}
+        run: gh release upload "$STAGING_RELEASE_TAG" dist/native/* --clobber --repo "$GITHUB_REPOSITORY"
 
       - name: Upload Linux artifact
         if: inputs.upload-artifact

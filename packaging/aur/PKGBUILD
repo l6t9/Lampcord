@@ -1,0 +1,36 @@
+# Maintainer: Lampu <lampu@lampcord.lampu.lol>
+pkgname=lampcord-bin
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="Lampcord Discord Client"
+arch=('x86_64')
+url="https://lampcord.lampu.lol"
+license=('GPL-3.0-or-later')
+depends=('glibc' 'gtk3' 'fuse2')
+optdepends=(
+  'webkit2gtk-4.1: embedded web content'
+  'pipewire: voice calls'
+  'libnotify: desktop notifications'
+)
+provides=('lampcord')
+conflicts=('lampcord')
+options=('!strip')
+source=("lampcord-desktop-linux-x64-${pkgver}.AppImage::https://github.com/l6t9/Lampcord/releases/download/v${pkgver}/lampcord-desktop-linux-x64-${pkgver}.AppImage")
+sha256sums=('SKIP')
+
+package() {
+  install -Dm755 "${srcdir}/lampcord-desktop-linux-x64-${pkgver}.AppImage" \
+    "${pkgdir}/usr/bin/lampcord"
+
+  install -Dm644 /dev/stdin "${pkgdir}/usr/share/applications/lampcord.desktop" <<'EOF'
+[Desktop Entry]
+Type=Application
+Name=Lampcord
+Comment=Lampcord Discord Client
+Exec=/usr/bin/lampcord %u
+Icon=lampcord
+Terminal=false
+Categories=Network;Chat;
+StartupWMClass=me-lampu-lampcord-MainKt
+EOF
+}

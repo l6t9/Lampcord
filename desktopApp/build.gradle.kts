@@ -11,6 +11,8 @@ plugins {
     id("dev.nucleusframework") version "2.6.0-dev-202609281230"
 }
 
+val appVersion = providers.gradleProperty("appVersion").get()
+
 val platform =
     org.gradle.internal.os.OperatingSystem.current().let { os ->
         when {
@@ -102,9 +104,16 @@ nucleus.application {
         }
     }
     nativeDistributions {
-        targetFormats(TargetFormat.Dmg, TargetFormat.Zip, TargetFormat.Nsis, TargetFormat.Deb, TargetFormat.AppImage)
+        targetFormats(
+            TargetFormat.Dmg,
+            TargetFormat.Nsis,
+            TargetFormat.Deb,
+            TargetFormat.Rpm,
+            TargetFormat.Pacman,
+            TargetFormat.AppImage,
+        )
         packageName = "Lampcord"
-        packageVersion = "1.0.0"
+        packageVersion = appVersion.substringBefore('-')
         description = "Lampcord Discord Client"
         copyright = "Lampu"
         vendor = "Lampcord"
@@ -125,6 +134,7 @@ nucleus.application {
 
         linux {
             jvmArgs += listOf("-Djava.locale.providers=COMPAT,SPI", "-Dwebkit.disable.dmabuf.renderer=1")
+            debMaintainer = "Lampu <lampu@lampcord.lampu.lol>"
         }
         macOS {
             infoPlist {

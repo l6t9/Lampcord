@@ -23,6 +23,13 @@ on:
         required: false
         default: false
         type: boolean
+      package-native:
+        description: >-
+          Also build the NSIS installer for distribution. Off for nightly so the updater's
+          portable zip keeps building fast.
+        required: false
+        default: false
+        type: boolean
       version:
         description: >-
           Version to name the package after. Defaults to appVersion, which is the tester
@@ -74,6 +81,33 @@ jobs:
           Compress-Archive -Path "$appDir\*" -DestinationPath "$zipPath" -Force
           "path=$zipPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
         id: package
+
+      - name: Build Windows NSIS installer
+        if: inputs.package-native
+        shell: bash
+        env:
+          VERSION_OVERRIDE: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          version=""
+          while IFS='=' read -r key value; do
+            if [[ "$key" == "appVersion" ]]; then version="$value"; break; fi
+          done < gradle.properties
+          [[ -n "$VERSION_OVERRIDE" ]] && version="$VERSION_OVERRIDE"
+          ./gradlew :desktopApp:packageDistributionForCurrentOS \
+            --no-daemon --no-build-cache --no-configuration-cache
+          installer=$(find desktopApp/build/compose/binaries/main/nsis -maxdepth 1 -name '*.exe' | head -1)
+          [[ -n "$installer" ]] || { echo "No NSIS installer was produced" >&2; exit 1; }
+          mkdir -p dist/native
+          mv "$installer" "dist/native/lampcord-desktop-windows-x64-${version}-setup.exe"
+
+      - name: Upload Windows installer asset
+        if: inputs.package-native && inputs.staging-release-tag != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STAGING_RELEASE_TAG: ${{ inputs.staging-release-tag }}
+        run: gh release upload "$STAGING_RELEASE_TAG" dist/native/* --clobber --repo "$GITHUB_REPOSITORY"
 
       - name: Upload Windows artifact
         if: inputs.upload-artifact
