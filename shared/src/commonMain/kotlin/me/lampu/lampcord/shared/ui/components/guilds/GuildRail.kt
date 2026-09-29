@@ -190,7 +190,7 @@ fun GuildRail(
                             Icon(
                                 imageVector = Icons.Brand.DiscordRounded,
                                 contentDescription = "Home",
-                                modifier = Modifier.size(32.dp)
+                                modifier = Modifier.size(28.dp)
                             )
                         }
 
