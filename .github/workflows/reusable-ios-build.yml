@@ -37,6 +37,15 @@ jobs:
     name: iOS
     runs-on: macos-15
     timeout-minutes: 60
+    env:
+      # Kotlin/Native's linker runs inside the Gradle daemon, so this is the heap that has to
+      # survive the release framework LTO pass. The fixed 4 GB in gradle.properties is not
+      # enough for it. Scaling to the runner leaves room for the Kotlin daemon and the linker's
+      # own native allocations, and capping workers stops a second native compilation from
+      # competing for the same memory. Overrides gradle.properties for this job only.
+      GRADLE_OPTS: >-
+        -Dorg.gradle.jvmargs="-XX:MaxRAMPercentage=60.0 -XX:+UseParallelGC -Dkotlin.daemon.jvm.options=-XX:MaxRAMPercentage=60.0"
+      ORG_GRADLE_PROJECT_org.gradle.workers.max: "2"
     steps:
       - name: Check out repository
         uses: actions/checkout@v4

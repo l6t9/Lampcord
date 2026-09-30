@@ -71,7 +71,7 @@ jobs:
         shell: bash
         run: |
           sudo apt-get update
-          sudo apt-get install -y libfuse2 jq ${{ inputs.package-native && 'rpm' || '' }}
+          sudo apt-get install -y libfuse2 jq libarchive-tools ${{ inputs.package-native && 'rpm' || '' }}
 
           mkdir -p tools
           curl --fail --location --silent --show-error \

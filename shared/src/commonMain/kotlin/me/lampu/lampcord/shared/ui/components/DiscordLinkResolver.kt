@@ -96,13 +96,13 @@ object DiscordLinkResolver {
         pushStringAnnotation("URL", url)
         resolved.guildIconUrl?.let { icon ->
             pushStringAnnotation(DISCORD_LINK_ANNOTATION, icon)
-            appendInlineContent(DiscordLinkResolver.iconKey(icon), "")
+            appendInlineContent(DiscordLinkResolver.iconKey(icon))
             pop()
             append(" ")
         }
         if (resolved.isFile) {
             pushStringAnnotation(DISCORD_LINK_ANNOTATION, DiscordLinkResolver.FILE_ICON)
-            appendInlineContent(DiscordLinkResolver.iconKey(DiscordLinkResolver.FILE_ICON), "")
+            appendInlineContent(DiscordLinkResolver.iconKey(DiscordLinkResolver.FILE_ICON))
             pop()
             append(" ")
         }
@@ -110,7 +110,7 @@ object DiscordLinkResolver {
         if (resolved.isMessage) {
             append(" \u203a ")
             pushStringAnnotation(DISCORD_LINK_ANNOTATION, DiscordLinkResolver.MESSAGE_ICON)
-            appendInlineContent(DiscordLinkResolver.iconKey(DiscordLinkResolver.MESSAGE_ICON), "")
+            appendInlineContent(DiscordLinkResolver.iconKey(DiscordLinkResolver.MESSAGE_ICON))
             pop()
         }
         pop()

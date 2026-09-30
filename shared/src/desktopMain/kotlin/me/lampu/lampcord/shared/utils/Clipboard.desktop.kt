@@ -1,77 +1,108 @@
 package me.lampu.lampcord.shared.utils
 
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.platform.ClipEntry
-import androidx.compose.ui.platform.LocalClipboard
-import androidx.compose.ui.text.AnnotatedString
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
+import java.awt.Image
 import java.awt.Toolkit
 import java.awt.datatransfer.DataFlavor
-import java.io.File
-import java.nio.file.Files
-import java.awt.Image
+import java.awt.datatransfer.StringSelection
+import java.awt.datatransfer.Transferable
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.InputStream
+import java.nio.file.Files
 import javax.imageio.ImageIO
 
-private var clipboard: androidx.compose.ui.platform.Clipboard? = null
-private var clipboardScope: CoroutineScope? = null
+private const val TAG = "Clipboard"
+private const val IMAGE_NAME = "pasted_image.png"
+
+private val IMAGE_FLAVORS = listOf(
+    DataFlavor.imageFlavor,
+    DataFlavor("image/png"),
+    DataFlavor("image/jpeg"),
+)
 
 @Composable
-actual fun ProvideClipboard() {
-    val current = LocalClipboard.current
-    val scope = rememberCoroutineScope()
-    DisposableEffect(current) {
-        clipboard = current
-        clipboardScope = scope
-        onDispose {
-            clipboard = null
-            clipboardScope = null
-        }
+actual fun ProvideClipboard() = Unit
+
+actual fun setClipboardText(text: String) {
+    val clipboard = systemClipboard() ?: return
+    try {
+        clipboard.setContents(StringSelection(text), null)
+    } catch (e: Exception) {
+        Logging.e(TAG, "Could not write to the clipboard", e)
     }
 }
 
 actual fun getClipboardFiles(): List<Pair<String, ByteArray>> {
-    val clipboard = Toolkit.getDefaultToolkit().systemClipboard
-    return try {
-        if (clipboard.isDataFlavorAvailable(DataFlavor.javaFileListFlavor)) {
-            @Suppress("UNCHECKED_CAST")
-            val files = clipboard.getData(DataFlavor.javaFileListFlavor) as List<File>
-            files.map { it.name to Files.readAllBytes(it.toPath()) }
-        } else if (clipboard.isDataFlavorAvailable(DataFlavor.imageFlavor)) {
-            val image = clipboard.getData(DataFlavor.imageFlavor) as Image
-            val bufferedImage = if (image is BufferedImage) {
-                image
-            } else {
-                val bImg = BufferedImage(
-                    image.getWidth(null),
-                    image.getHeight(null),
-                    BufferedImage.TYPE_INT_ARGB
-                )
-                val g = bImg.createGraphics()
-                g.drawImage(image, 0, 0, null)
-                g.dispose()
-                bImg
-            }
-            val baos = ByteArrayOutputStream()
-            ImageIO.write(bufferedImage, "png", baos)
-            listOf("pasted_image.png" to baos.toByteArray())
-        } else {
-            emptyList()
-        }
+    val clipboard = systemClipboard() ?: return emptyList()
+    val transferable = try {
+        clipboard.getContents(null)
     } catch (e: Exception) {
-        emptyList()
+        Logging.e(TAG, "Could not read the clipboard", e)
+        null
+    } ?: return emptyList()
+
+    if (transferable.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
+        return readPastedFiles(transferable)
+    }
+    return readPastedImage(transferable)?.let(::listOf) ?: emptyList()
+}
+
+private fun readPastedFiles(transferable: Transferable): List<Pair<String, ByteArray>> {
+    val files = try {
+        @Suppress("UNCHECKED_CAST")
+        transferable.getTransferData(DataFlavor.javaFileListFlavor) as List<File>
+    } catch (e: Exception) {
+        Logging.e(TAG, "Could not read the pasted file list", e)
+        return emptyList()
+    }
+    return files.mapNotNull { file ->
+        try {
+            file.name to Files.readAllBytes(file.toPath())
+        } catch (e: Exception) {
+            Logging.e(TAG, "Could not read the pasted file ${file.name}", e)
+            null
+        }
     }
 }
 
-@OptIn(ExperimentalComposeUiApi::class)
-actual fun setClipboardText(text: String) {
-    val target = clipboard
-    val scope = clipboardScope
-    if (target == null || scope == null) return
-    scope.launch { target.setClipEntry(ClipEntry(AnnotatedString(text))) }
+private fun readPastedImage(transferable: Transferable): Pair<String, ByteArray>? {
+    for (flavor in IMAGE_FLAVORS) {
+        if (!transferable.isDataFlavorSupported(flavor)) continue
+        try {
+            when (val data = transferable.getTransferData(flavor)) {
+                is Image -> return IMAGE_NAME to encodePng(data.toBufferedImage())
+                is InputStream -> return IMAGE_NAME to data.readBytes()
+                is ByteArray -> return IMAGE_NAME to data
+            }
+        } catch (e: Exception) {
+            Logging.e(TAG, "Could not read a pasted image as ${flavor.mimeType}", e)
+        }
+    }
+    return null
+}
+
+private fun systemClipboard() = try {
+    Toolkit.getDefaultToolkit().systemClipboard
+} catch (e: Exception) {
+    Logging.e(TAG, "The system clipboard is unavailable", e)
+    null
+}
+
+private fun Image.toBufferedImage(): BufferedImage {
+    if (this is BufferedImage) return this
+    val copy = BufferedImage(getWidth(null), getHeight(null), BufferedImage.TYPE_INT_ARGB)
+    val graphics = copy.createGraphics()
+    try {
+        graphics.drawImage(this, 0, 0, null)
+    } finally {
+        graphics.dispose()
+    }
+    return copy
+}
+
+private fun encodePng(image: BufferedImage): ByteArray = ByteArrayOutputStream().use { stream ->
+    ImageIO.write(image, "png", stream)
+    stream.toByteArray()
 }

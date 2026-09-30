@@ -163,6 +163,14 @@ nucleus.application {
         }
     }
 
+    buildTypes {
+        release {
+            proguard {
+                isEnabled.set(false)
+            }
+        }
+    }
+
     graalvm {
         isEnabled.set(true)
         javaLanguageVersion.set(25)
@@ -176,6 +184,7 @@ tasks.register("patchLinuxLauncher") {
     description = "Wraps the native launcher with a shell script that sets Wayland/cursor env vars."
     notCompatibleWithConfigurationCache("File operations are not cached.")
     dependsOn("createDistributable")
+    onlyIf { platform == "linux" }
     
     val packageAppDir = file("${layout.buildDirectory.get()}/compose/binaries/main/app/Lampcord")
 
@@ -253,6 +262,8 @@ tasks.register("createAppImageLocal") {
     description = "Creates an AppImage using local appimagetool (replicated from Metrolist-KMP)."
     notCompatibleWithConfigurationCache("This task launches appimagetool directly.")
     dependsOn("patchLinuxLauncher")
+
+    onlyIf { platform == "linux" }
 
     val appImageTool = rootProject.file("tools/appimagetool.AppImage")
     val packageAppDir = file("${layout.buildDirectory.get()}/compose/binaries/main/app/Lampcord")
