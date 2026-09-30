@@ -81,7 +81,15 @@ kotlin {
     ).forEach {
         it.binaries.framework {
             baseName = "Shared"
-            isStatic = true
+            // Dynamic, not static. A static framework has to merge every dependency klib into a
+            // single binary and run whole-program LTO over the result, and that pass is what
+            // exhausts the heap: it died in DevirtualizationAnalysis, then again in
+            // RemoveRedundantCallsToStaticInitializersPhase, after burning 16 minutes each time.
+            // Nothing links against Shared statically - the Xcode build phase calls
+            // embedAndSignAppleFrameworkForXcode, which embeds and signs the dylib either way -
+            // so this is purely a linker-cost decision.
+            isStatic = false
+            binaryOption("bundleId", "me.lampcord.shared")
         }
     }
 

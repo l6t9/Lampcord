@@ -71,15 +71,20 @@ fun main() {
     val isLinux = getPlatformName() == "linux"
     val isMac = getPlatformName() == "macos"
 
-    if (isMac && !Settings.shared.macDefaultFrameApplied) {
-        Settings.shared.enableSystemWindowFrame = true
+    // Older builds defaulted to the system window frame, and enableSystemWindowFrame already
+    // defaults to true, so this migration only has to record that it ran. Forcing the value
+    // here is what made "Use Custom Titlebar" look broken: for anyone whose applied flags
+    // were not set yet, picking the custom title bar and restarting reset the preference
+    // back to the system frame and discarded the choice.
+    if (isMac) {
         Settings.shared.macDefaultFrameApplied = true
     }
-    if (isLinux && !Settings.shared.linuxDefaultFrameApplied && !Settings.shared.waylandDefaultFrameApplied) {
-        Settings.shared.enableSystemWindowFrame = true
+    if (isLinux) {
         Settings.shared.linuxDefaultFrameApplied = true
         Settings.shared.waylandDefaultFrameApplied = true
     }
+    // The window's native frame is fixed when the window is created, so this is read once and
+    // never recomposed. Changing the setting takes effect on the next launch.
     val useSystemWindowFrame = Settings.shared.enableSystemWindowFrame
 
     nucleusApplication {

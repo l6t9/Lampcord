@@ -39,12 +39,12 @@ jobs:
     timeout-minutes: 60
     env:
       # Kotlin/Native's linker runs inside the Gradle daemon, so this is the heap that has to
-      # survive the release framework LTO pass. The fixed 4 GB in gradle.properties is not
-      # enough for it. Scaling to the runner leaves room for the Kotlin daemon and the linker's
-      # own native allocations, and capping workers stops a second native compilation from
+      # survive the framework link. The fixed 4 GB in gradle.properties is nowhere near
+      # enough. Scaling to the runner leaves room for the Kotlin daemon and the linker's own
+      # native allocations, and capping workers stops a second native compilation from
       # competing for the same memory. Overrides gradle.properties for this job only.
       GRADLE_OPTS: >-
-        -Dorg.gradle.jvmargs="-XX:MaxRAMPercentage=60.0 -XX:+UseParallelGC -Dkotlin.daemon.jvm.options=-XX:MaxRAMPercentage=60.0"
+        -Dorg.gradle.jvmargs="-XX:MaxRAMPercentage=70.0 -XX:+UseParallelGC -Dkotlin.daemon.jvm.options=-XX:MaxRAMPercentage=60.0"
       ORG_GRADLE_PROJECT_org.gradle.workers.max: "2"
     steps:
       - name: Check out repository
@@ -84,8 +84,11 @@ jobs:
       - name: Compile the shared module for iOS
         shell: bash
         run: |
+          # Only the simulator framework is needed here. The device framework is linked by the
+          # Xcode build phase for the configuration being built: Release for --ipa, and the
+          # simulator app uses this same debug simulator framework. Nothing ever builds a Debug
+          # device configuration, so linking one cost minutes per run for no consumer.
           ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64 \
-            :shared:linkDebugFrameworkIosArm64 \
             --no-daemon
 
       - name: Run iOS tests
