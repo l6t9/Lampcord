@@ -84,11 +84,8 @@ jobs:
           dmg=$(find desktopApp/build/compose/binaries/main-release/dmg -maxdepth 1 -name '*.dmg' -type f | head -n 1)
           [[ -n "$dmg" ]] || fail "no DMG was produced"
 
-          # Verify the bundle inside the image rather than an intermediate build directory.
-          # The jpackage app-image the plugin emits has no Contents/Frameworks: the plugin
-          # only moves native libraries there for sandboxed App Store targets, which a plain
-          # DMG is not. electron-builder rewrites the image into the bundle that ships, and
-          # that is the only layout worth asserting against.
+          # Verify the bundle inside the image rather than an intermediate build directory,
+          # so the assertions describe what users actually receive.
           mount_point=$(mktemp -d)
           trap 'hdiutil detach "$mount_point" -quiet >/dev/null 2>&1 || true' EXIT
           hdiutil attach "$dmg" -mountpoint "$mount_point" -nobrowse -readonly -quiet \
@@ -98,11 +95,28 @@ jobs:
           [[ -n "$app" ]] || fail "Lampcord.app is not in the DMG"
 
           echo "bundle: $app"
+          echo "--- Contents ---"
+          find "$app/Contents" -maxdepth 2 | head -n 40
+          echo "--- plist ---"
+          /usr/libexec/PlistBuddy -c 'Print' "$app/Contents/Info.plist" || fail "Info.plist is unreadable"
+          echo "---------------------"
+
+          test -f "$app/Contents/Info.plist" || fail "Info.plist is missing"
           test -x "$app/Contents/MacOS/Lampcord" || fail "launcher is missing or not executable"
-          test -d "$app/Contents/Frameworks" || fail "Contents/Frameworks is missing"
+
+          # This is a jpackage app-image, not an Electron app, so the bundle carries the JVM
+          # under Contents/runtime rather than any Contents/Frameworks directory. The layout is
+          # the one the packaging plugin itself assumes:
+          #   AbstractJPackageTask.kt           Contents/MacOS/<packageName>, Contents/runtime
+          #   AbstractGenerateAotCacheTask.kt   Contents/runtime/Contents/Home/bin
+          test -x "$app/Contents/runtime/Contents/Home/bin/java" \
+            || fail "the bundled JVM is missing from Contents/runtime"
+          test -d "$app/Contents/app" || fail "Contents/app is missing"
+          test -n "$(find "$app/Contents/app" -type f -print -quit)" \
+            || fail "Contents/app holds no files"
+
           lipo "$app/Contents/MacOS/Lampcord" -verify_arch "$NATIVE_ARCH" \
             || fail "launcher is not $NATIVE_ARCH"
-          test -f "$app/Contents/Info.plist" || fail "Info.plist is missing"
 
           hdiutil detach "$mount_point" -quiet
           trap - EXIT

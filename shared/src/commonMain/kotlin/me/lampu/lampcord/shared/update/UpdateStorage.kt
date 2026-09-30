@@ -3,8 +3,9 @@ package me.lampu.lampcord.shared.update
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.readAvailable
 import kotlinx.coroutines.yield
-import okio.ByteString.Companion.toByteString
-import java.security.MessageDigest
+import okio.HashingSink
+import okio.blackholeSink
+import okio.buffer
 
 internal const val CHUNK_SIZE = 64 * 1024
 
@@ -45,7 +46,8 @@ internal suspend fun storeDownload(
     val expectedDigest = normalizeDigest(advertisedDigest) ?: return StoreOutcome.DigestMismatch
 
     val sink = UpdateStorage.open(version, target)
-    val digest = MessageDigest.getInstance("SHA-256")
+    val hasher = HashingSink.sha256(blackholeSink())
+    val digest = hasher.buffer()
     val chunk = ByteArray(CHUNK_SIZE)
     var written = 0L
 
@@ -57,10 +59,13 @@ internal suspend fun storeDownload(
                 yield()
                 continue
             }
-            digest.update(chunk, 0, read)
             written += read
             sink.write(chunk, 0, read)
+            digest.write(chunk, 0, read)
         }
+        // The buffered sink holds the tail of the last chunk, so it has to reach the hasher
+        // before the digest is taken.
+        digest.flush()
 
         when {
             written != expectedSize -> {
@@ -68,7 +73,7 @@ internal suspend fun storeDownload(
                 StoreOutcome.SizeMismatch
             }
 
-            digest.digest().toByteString().hex() != expectedDigest -> {
+            hasher.hash.hex() != expectedDigest -> {
                 sink.abort()
                 StoreOutcome.DigestMismatch
             }
