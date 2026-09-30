@@ -1,6 +1,9 @@
 package me.lampu.lampcord.shared.update
 
+import io.ktor.utils.io.ByteReadChannel
+import kotlinx.coroutines.runBlocking
 import okio.ByteString.Companion.toByteString
+import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -83,16 +86,69 @@ class UpdateAssetTest {
     }
 
     @Test
-    fun `digests are verified and a malformed one is rejected`() {
+    fun `digests are normalised and a malformed one is rejected`() {
         val bytes = "lampcord".encodeToByteArray()
-        val good = "sha256:" + bytes.toByteString().sha256().hex()
+        val hex = bytes.toByteString().sha256().hex()
+        val good = "sha256:$hex"
 
-        assertTrue(downloadMatchesDigest(bytes, good))
-        assertTrue(downloadMatchesDigest(bytes, good.uppercase()))
-        assertFalse(downloadMatchesDigest(bytes, "sha256:" + "0".repeat(64)))
-        assertFalse(downloadMatchesDigest(bytes, null))
-        assertFalse(downloadMatchesDigest(bytes, "not-a-digest"))
-        assertFalse(downloadMatchesDigest(bytes, "md5:" + "a".repeat(32)))
+        assertEquals(hex, normalizeDigest(good))
+        assertEquals(hex, normalizeDigest(good.uppercase()))
+        assertNull(normalizeDigest("sha256:" + "0".repeat(64) + "0"))
+        assertNull(normalizeDigest(null))
+        assertNull(normalizeDigest("not-a-digest"))
+        assertNull(normalizeDigest("md5:" + "a".repeat(32)))
+        assertNull(normalizeDigest("sha256:"))
+    }
+
+    @Test
+    fun `a download is committed only when its size and digest both match`() = runBlocking {
+        val payload = "lampcord release payload".encodeToByteArray()
+        val digest = "sha256:" + payload.toByteString().sha256().hex()
+        val version = "0.0.0-storetest"
+
+        try {
+            val stored = storeDownload(
+                version = version,
+                target = UpdateTarget.LINUX,
+                expectedSize = payload.size.toLong(),
+                advertisedDigest = digest,
+                source = ByteReadChannel(payload),
+            )
+            assertTrue(stored is StoreOutcome.Stored, "was $stored")
+            assertEquals(payload.size.toLong(), File(stored.path).length())
+
+            val wrongSize = storeDownload(
+                version = version,
+                target = UpdateTarget.LINUX,
+                expectedSize = payload.size.toLong() + 1,
+                advertisedDigest = digest,
+                source = ByteReadChannel(payload),
+            )
+            assertEquals(StoreOutcome.SizeMismatch, wrongSize)
+
+            val wrongDigest = storeDownload(
+                version = version,
+                target = UpdateTarget.LINUX,
+                expectedSize = payload.size.toLong(),
+                advertisedDigest = "sha256:" + "0".repeat(64),
+                source = ByteReadChannel(payload),
+            )
+            assertEquals(StoreOutcome.DigestMismatch, wrongDigest)
+
+            val noDigest = storeDownload(
+                version = version,
+                target = UpdateTarget.LINUX,
+                expectedSize = payload.size.toLong(),
+                advertisedDigest = null,
+                source = ByteReadChannel(payload),
+            )
+            assertEquals(StoreOutcome.DigestMismatch, noDigest)
+
+            // A rejected download must not leave anything behind to be mistaken for a build.
+            assertFalse(File(fileNameFor(version, UpdateTarget.LINUX)).exists())
+        } finally {
+            UpdateStorage.open(version, UpdateTarget.LINUX).abort()
+        }
     }
 
     @Test

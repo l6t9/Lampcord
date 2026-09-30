@@ -117,12 +117,16 @@ jobs:
             --no-daemon --no-build-cache --no-configuration-cache
           mkdir -p dist/native
           binaries=desktopApp/build/compose/binaries/main
-          for spec in "deb:*.deb" "rpm:*.rpm" "pacman:*.pkg.tar.zst"; do
+          # electron-builder hands fpm an output path ending in .pacman and fpm writes to it
+          # verbatim, so the produced file is never a .pkg.tar.* name. Its real format is xz
+          # (fpm runs with --pacman-compression xz), which is the extension published below.
+          for spec in "deb:*.deb:deb" "rpm:*.rpm:rpm" "pacman:*.pacman:pkg.tar.xz"; do
             kind="${spec%%:*}"
-            pattern="${spec#*:}"
+            rest="${spec#*:}"
+            pattern="${rest%%:*}"
+            ext="${rest#*:}"
             src=$(find "$binaries/$kind" -maxdepth 1 -name "$pattern" -type f | head -n 1)
             [[ -n "$src" ]] || { echo "No $kind package was produced" >&2; exit 1; }
-            ext="${src##*.}"
             mv "$src" "dist/native/lampcord-desktop-linux-x64-${version}.${ext}"
           done
           ls -1 dist/native

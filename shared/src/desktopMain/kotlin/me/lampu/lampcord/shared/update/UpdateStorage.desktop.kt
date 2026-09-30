@@ -10,13 +10,29 @@ actual object UpdateStorage {
         ).apply { mkdirs() }
     }
 
-    actual fun store(version: String, target: UpdateTarget, bytes: ByteArray): String {
-        val file = File(directory, fileNameFor(version, target))
-        file.writeBytes(bytes)
-        return file.absolutePath
-    }
+    actual fun open(version: String, target: UpdateTarget): UpdateSink =
+        FileUpdateSink(File(directory, fileNameFor(version, target)))
 
     actual fun clear() {
         directory.listFiles()?.forEach { it.delete() }
+    }
+}
+
+private class FileUpdateSink(private val file: File) : UpdateSink {
+    private val stream = file.outputStream().buffered(CHUNK_SIZE)
+
+    override val path: String get() = file.absolutePath
+
+    override fun write(source: ByteArray, offset: Int, length: Int) {
+        stream.write(source, offset, length)
+    }
+
+    override fun commit() {
+        stream.close()
+    }
+
+    override fun abort() {
+        runCatching { stream.close() }
+        file.delete()
     }
 }

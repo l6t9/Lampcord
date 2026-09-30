@@ -1,9 +1,10 @@
 package me.lampu.lampcord.shared.update
 
 import io.ktor.client.HttpClient
-import io.ktor.client.call.body
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.get
 import io.ktor.client.request.header
+import io.ktor.client.statement.bodyAsChannel
 import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -11,6 +12,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
+import me.lampu.lampcord.shared.api.httpClientEngine
 import me.lampu.lampcord.shared.utils.getCurrentTimeMillis
 
 private const val API_BASE = "https://api.github.com/repos/l6t9/Lampcord"
@@ -31,15 +33,28 @@ class UpdateManager(
     private val client: HttpClient,
     private val json: Json,
     private val currentVersion: () -> String,
-    private val target: UpdateTarget,
+    /** Null on platforms with nothing to update from, such as iOS. */
+    private val target: UpdateTarget?,
     private val now: () -> Long = { getCurrentTimeMillis() },
 ) {
     private val mutex = Mutex()
     private val mutableState = MutableStateFlow<UpdateState>(UpdateState.Idle)
 
+    private val downloadClient: HttpClient by lazy {
+        HttpClient(httpClientEngine()) {
+            expectSuccess = true
+            install(HttpTimeout) {
+                connectTimeoutMillis = 30_000
+                socketTimeoutMillis = 120_000
+                requestTimeoutMillis = 30 * 60_000
+            }
+        }
+    }
+
     val state: StateFlow<UpdateState> = mutableState.asStateFlow()
 
     suspend fun check(channel: UpdateChannel, force: Boolean = false): UpdateState = mutex.withLock {
+        val target = target ?: return@withLock UpdateState.UpToDate(now()).also { mutableState.value = it }
         val lastCheck = (mutableState.value as? UpdateState.UpToDate)?.checkedAt
         if (!force && lastCheck != null && now() - lastCheck < CHECK_INTERVAL_MILLIS) {
             return@withLock mutableState.value
@@ -72,6 +87,7 @@ class UpdateManager(
     }
 
     suspend fun download(): UpdateState = mutex.withLock {
+        val target = target ?: return@withLock mutableState.value
         val available = mutableState.value as? UpdateState.Available
             ?: return@withLock mutableState.value
         val release = available.release
@@ -86,19 +102,26 @@ class UpdateManager(
 
         return@withLock try {
             mutableState.value = UpdateState.Downloading(release.version, 0)
-            val bytes: ByteArray = client.get(asset.downloadUrl) {
+            val channel = downloadClient.get(asset.downloadUrl) {
                 header("User-Agent", "Lampcord/${currentVersion()}")
-            }.body()
+            }.bodyAsChannel()
 
-            if (bytes.size.toLong() != asset.size) {
-                return@withLock fail("The download did not match the advertised size", release)
-            }
-            if (!downloadMatchesDigest(bytes, asset.digest)) {
-                return@withLock fail("The download failed its checksum", release)
-            }
+            when (
+                val outcome = storeDownload(
+                    version = release.version,
+                    target = target,
+                    expectedSize = asset.size,
+                    advertisedDigest = asset.digest,
+                    source = channel,
+                )
+            ) {
+                is StoreOutcome.Stored ->
+                    UpdateState.ReadyToInstall(release, outcome.path).also { mutableState.value = it }
 
-            val path = UpdateStorage.store(release.version, target, bytes)
-            UpdateState.ReadyToInstall(release, path).also { mutableState.value = it }
+                StoreOutcome.SizeMismatch -> fail("The download did not match the advertised size", release)
+                StoreOutcome.DigestMismatch -> fail("The download failed its checksum", release)
+                is StoreOutcome.Failed -> fail(outcome.reason, release)
+            }
         } catch (e: Exception) {
             fail(e.message ?: "The download failed", release)
         }

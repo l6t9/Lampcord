@@ -75,11 +75,38 @@ jobs:
           NATIVE_ARCH: ${{ runner.arch == 'ARM64' && 'arm64' || 'x86_64' }}
         run: |
           set -euo pipefail
-          app="desktopApp/build/compose/binaries/main-release/app/Lampcord.app"
-          test -d "$app"
-          test -x "$app/Contents/MacOS/Lampcord"
-          lipo "$app/Contents/MacOS/Lampcord" -verify_arch "$NATIVE_ARCH"
-          test -d "$app/Contents/Frameworks"
+
+          fail() {
+            echo "macOS bundle verification failed: $1" >&2
+            exit 1
+          }
+
+          dmg=$(find desktopApp/build/compose/binaries/main-release/dmg -maxdepth 1 -name '*.dmg' -type f | head -n 1)
+          [[ -n "$dmg" ]] || fail "no DMG was produced"
+
+          # Verify the bundle inside the image rather than an intermediate build directory.
+          # The jpackage app-image the plugin emits has no Contents/Frameworks: the plugin
+          # only moves native libraries there for sandboxed App Store targets, which a plain
+          # DMG is not. electron-builder rewrites the image into the bundle that ships, and
+          # that is the only layout worth asserting against.
+          mount_point=$(mktemp -d)
+          trap 'hdiutil detach "$mount_point" -quiet >/dev/null 2>&1 || true' EXIT
+          hdiutil attach "$dmg" -mountpoint "$mount_point" -nobrowse -readonly -quiet \
+            || fail "could not mount $dmg"
+
+          app=$(find "$mount_point" -maxdepth 2 -name 'Lampcord.app' -type d | head -n 1)
+          [[ -n "$app" ]] || fail "Lampcord.app is not in the DMG"
+
+          echo "bundle: $app"
+          test -x "$app/Contents/MacOS/Lampcord" || fail "launcher is missing or not executable"
+          test -d "$app/Contents/Frameworks" || fail "Contents/Frameworks is missing"
+          lipo "$app/Contents/MacOS/Lampcord" -verify_arch "$NATIVE_ARCH" \
+            || fail "launcher is not $NATIVE_ARCH"
+          test -f "$app/Contents/Info.plist" || fail "Info.plist is missing"
+
+          hdiutil detach "$mount_point" -quiet
+          trap - EXIT
+          echo "verified a $NATIVE_ARCH bundle in $(basename "$dmg")"
 
       - name: Collect macOS DMG
         id: package

@@ -13,10 +13,10 @@ object UpdateModels {
 fun updateModule(): Module = module {
     single(createdAtStart = true) {
         val target = currentUpdateTarget()
-            ?: error("No update target for this platform")
         Logging.i(
             "Updates",
-            "target=$target version=$APP_VERSION " +
+            "target=${target ?: "none, this platform has no in-app updates"} " +
+                "version=$APP_VERSION " +
                 "appImage=${runningAppImagePath() ?: "unavailable, self-install is not possible"}"
         )
         UpdateManager(
