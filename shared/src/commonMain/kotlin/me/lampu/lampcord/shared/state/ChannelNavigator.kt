@@ -12,7 +12,16 @@ class ChannelNavigator(
     private val entityStore: EntityStore,
     private val gatewayManager: GatewayManager,
     private val scope: CoroutineScope
-) {
+) {    fun navigateToGuild(guildId: String) {
+        val guild = entityStore.guilds.value[guildId] ?: return
+        if (navigationStore.selectedGuild?.id == guild.id) return
+        navigationStore.isSettingsVisible = false
+        navigationStore.isQuickSwitcherVisible = false
+        navigationStore.isSearchVisible = false
+        navigationStore.isServerMenuVisible = false
+        navigationStore.selectGuild(guild) { gatewayManager.sendSubscription(it) }
+    }
+
     fun navigateToChannel(channelId: String, guildId: String? = null) {
         scope.launch {
             if (!navigationStore.isConnected) {

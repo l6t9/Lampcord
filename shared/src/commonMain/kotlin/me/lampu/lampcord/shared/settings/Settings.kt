@@ -34,10 +34,11 @@ class Settings(private val settings: KmpSettings) {
     var reduceMotion by preferenceBoolean("reduce_motion", false)
     var desktopLowMemoryMode by preferenceBoolean("desktop_low_memory_mode", false)
     var verboseLogging by preferenceBoolean("verbose_logging", false)
-    var enableSystemWindowFrame by preferenceBoolean("enable_system_window_frame", false)
+    var enableSystemWindowFrame by preferenceBoolean("enable_system_window_frame", true)
+    var linuxDefaultFrameApplied by preferenceBoolean("linux_default_frame_applied", false)
     var waylandDefaultFrameApplied by preferenceBoolean("wayland_default_frame_applied", false)
     var macDefaultFrameApplied by preferenceBoolean("mac_default_frame_applied", false)
-    var disableWaylandScaling by preferenceBoolean("disable_wayland_scaling", false)
+    var enableWaylandScaling by preferenceBoolean("enable_wayland_scaling", false)
 
     var transparencyMode by preferenceEnum("transparency_mode", TransparencyMode.NONE)
     var enableCustomFonts by preferenceBoolean("enable_custom_fonts", true)
@@ -70,8 +71,7 @@ class Settings(private val settings: KmpSettings) {
     var showMessagePreview by preferenceBoolean("show_message_preview", true)
     var showInAppNotifications by preferenceBoolean("show_in_app_notifications", true)
     var notificationSound by preferenceBoolean("notification_sound", true)
-    var autoStartOnBoot by preferenceBoolean("auto_start_on_boot", true)
-    var silentBackgroundService by preferenceBoolean("silent_background_service", true)
+    var incomingCallSound by preferenceBoolean("incoming_call_sound", true)
 
     var bypassUploadLimit by preferenceBoolean("bypass_upload_limit", true)
     var showContextMenuMessage by preferenceBoolean("show_context_menu_message", false)

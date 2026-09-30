@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/build-desktop.yml'
       - '.github/workflows/reusable-desktop-linux.yml'
+      - '.github/workflows/reusable-desktop-macos.yml'
       - '.github/actions/**'
       - 'build.gradle.kts'
       - 'gradle.properties'
@@ -16,11 +17,13 @@ on:
       - 'shared/**'
       - 'desktopApp/**'
       - 'native/**'
+      - 'scripts/build_icons.sh'
   pull_request:
     branches: [ main ]
     paths:
       - '.github/workflows/build-desktop.yml'
       - '.github/workflows/reusable-desktop-linux.yml'
+      - '.github/workflows/reusable-desktop-macos.yml'
       - '.github/actions/**'
       - 'build.gradle.kts'
       - 'gradle.properties'
@@ -31,6 +34,7 @@ on:
       - 'shared/**'
       - 'desktopApp/**'
       - 'native/**'
+      - 'scripts/build_icons.sh'
 
 concurrency:
   group: desktop-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -51,6 +55,17 @@ jobs:
   windows:
     name: Windows
     uses: ./.github/workflows/reusable-desktop-windows.yml
+    permissions:
+      contents: read
+    with:
+      upload-artifact: true
+      cache-read-only: ${{ github.event_name == 'pull_request' }}
+    secrets:
+      GRADLE_ENCRYPTION_KEY: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+
+  macos:
+    name: macOS
+    uses: ./.github/workflows/reusable-desktop-macos.yml
     permissions:
       contents: read
     with:

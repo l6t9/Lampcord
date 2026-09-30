@@ -43,6 +43,30 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="discord" />
+            </intent-filter>
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="discord.com" />
+                <data android:scheme="https" android:host="www.discord.com" />
+                <data android:scheme="https" android:host="discordapp.com" />
+                <data android:scheme="https" android:host="www.discordapp.com" />
+                <data android:scheme="https" android:host="canary.discord.com" />
+                <data android:scheme="https" android:host="ptb.discord.com" />
+            </intent-filter>
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="discord.gg" />
+                <data android:scheme="https" android:host="discord.new" />
+            </intent-filter>
         </activity>
 
         <receiver
@@ -76,8 +100,8 @@
             android:name="com.google.firebase.messaging.default_notification_icon"
             android:resource="@drawable/ic_stat_notify" />
         <meta-data
-            android:name="com.google.firebase.messaging.default_notification_channel_id"
-            android:value="lampcord_messages" />
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/notification_accent" />
 
         <service
             android:name=".MusicPresenceService"

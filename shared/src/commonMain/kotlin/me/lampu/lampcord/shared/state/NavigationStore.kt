@@ -57,6 +57,7 @@ class NavigationStore(
         set(value) { selectionStore.selectedThread = value }
 
     var selectedGuildOnboarding by mutableStateOf<Onboarding?>(null)
+    var pendingInviteCode by mutableStateOf<String?>(null)
     var isFriendsSelected by mutableStateOf(false)
     var isMentionsSelected by mutableStateOf(false)
 

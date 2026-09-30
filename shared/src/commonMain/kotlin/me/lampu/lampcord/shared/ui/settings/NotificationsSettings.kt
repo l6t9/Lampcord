@@ -26,11 +26,11 @@ fun NotificationsSettings(
 fun NotificationsSettingsContent(settingsStore: SettingsStore = koinInject()) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Material3SettingsGroup(
-            title = "Push Notifications",
+            title = "Notifications",
             items = listOf(
                 switchSettingsItem(
                     title = "Enable Notifications",
-                    description = "Receive push notifications on your device.",
+                    description = "Show notifications in your system tray when Lampcord is in the background.",
                     checked = settingsStore.notificationsEnabled,
                     onCheckedChange = { settingsStore.notificationsEnabled = it }
                 ),
@@ -55,8 +55,8 @@ fun NotificationsSettingsContent(settingsStore: SettingsStore = koinInject()) {
                 switchSettingsItem(
                     title = "Incoming Call Sound",
                     description = "Play a sound when you are being called.",
-                    checked = settingsStore.notificationSound,
-                    onCheckedChange = { settingsStore.notificationSound = it }
+                    checked = settingsStore.incomingCallSound,
+                    onCheckedChange = { settingsStore.incomingCallSound = it }
                 )
             )
         )

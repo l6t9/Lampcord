@@ -1,0 +1,53 @@
+name: Verify iOS
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/build-ios.yml'
+      - '.github/workflows/reusable-ios-build.yml'
+      - '.github/actions/**'
+      - 'build.gradle.kts'
+      - 'gradle.properties'
+      - 'gradle/**'
+      - 'gradlew'
+      - 'gradlew.bat'
+      - 'settings.gradle.kts'
+      - 'shared/**'
+      - 'iosApp/**'
+      - 'scripts/build_ios.sh'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/build-ios.yml'
+      - '.github/workflows/reusable-ios-build.yml'
+      - '.github/actions/**'
+      - 'build.gradle.kts'
+      - 'gradle.properties'
+      - 'gradle/**'
+      - 'gradlew'
+      - 'gradlew.bat'
+      - 'settings.gradle.kts'
+      - 'shared/**'
+      - 'iosApp/**'
+      - 'scripts/build_ios.sh'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: iOS
+    uses: ./.github/workflows/reusable-ios-build.yml
+    permissions:
+      contents: read
+    with:
+      upload-artifact: ${{ github.event_name == 'workflow_dispatch' }}
+      cache-read-only: ${{ github.event_name == 'pull_request' }}
+    secrets:
+      GRADLE_ENCRYPTION_KEY: ${{ secrets.GRADLE_ENCRYPTION_KEY }}

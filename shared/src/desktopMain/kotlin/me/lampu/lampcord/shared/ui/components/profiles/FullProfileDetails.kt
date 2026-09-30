@@ -52,8 +52,9 @@ import me.lampu.lampcord.shared.ui.components.VerticalScrollbar
 import org.koin.compose.koinInject
 
 private val TAB_ACTIVITY = 0
-private val TAB_MUTUAL_FRIENDS = 1
-private val TAB_MUTUAL_SERVERS = 2
+private val TAB_BOARD = 1
+private val TAB_MUTUAL_FRIENDS = 2
+private val TAB_MUTUAL_SERVERS = 3
 
 @Composable
 fun FullProfileDetails(
@@ -98,6 +99,11 @@ fun FullProfileDetails(
                     onClick = { selectedTab = TAB_ACTIVITY },
                     text = { Text("Activity", color = textColor) }
                 )
+                Tab(
+                    selected = selectedTab == TAB_BOARD,
+                    onClick = { selectedTab = TAB_BOARD },
+                    text = { Text("Board", color = textColor) }
+                )
                 if (!isOwnProfile) {
                     Tab(
                         selected = selectedTab == TAB_MUTUAL_FRIENDS,
@@ -120,6 +126,10 @@ fun FullProfileDetails(
                         activities = activities,
                         listState = listState,
                         modifier = Modifier.fillMaxSize()
+                    )
+                    TAB_BOARD -> ProfileBoardContent(
+                        profile = profile,
+                        modifier = Modifier.fillMaxSize().padding(16.dp)
                     )
                     TAB_MUTUAL_FRIENDS -> MutualFriendsTab(
                         profile = profile,

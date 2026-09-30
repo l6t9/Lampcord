@@ -158,7 +158,7 @@ fun SystemMessage(
 
 private fun formatPollResultMessage(message: Message): String {
     val authorName = message.author?.global_name ?: message.author?.username ?: "User"
-    val embed = message.embeds?.firstOrNull()
+    val embed = message.embeds.firstOrNull()
 
     val questionText = embed?.fields?.find { it.name == "poll_question_text" }?.value
         ?: embed?.title

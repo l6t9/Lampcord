@@ -122,7 +122,7 @@ It is designed to deliver a native, fast, and customizable Discord experience wi
 - **Android SDK** (API 34+)
 - **CMake & NDK** (for native voice/DAVE components)
 
-### Desktop (Linux / Windows)
+### Desktop (Linux / macOS / Windows)
 
 ```bash
 # Run Desktop App
@@ -131,9 +131,15 @@ It is designed to deliver a native, fast, and customizable Discord experience wi
 # Package Linux AppImage
 ./gradlew :desktopApp:createAppImageLocal
 
+# Package macOS DMG (macOS only)
+./gradlew :desktopApp:packageReleaseDmg
+
 # Package Windows Zip
 ./gradlew :desktopApp:createDistributable
 ```
+
+The macOS DMG is unsigned, like the iOS IPA: there is no `codesign` identity or notarisation
+in the build, so macOS will need `xattr -d com.apple.quarantine` after first download.
 
 ### Android
 

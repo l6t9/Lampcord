@@ -26,7 +26,7 @@ internal class DesktopStillDecoder(
 ) : Decoder {
 
     override suspend fun decode(): DecodeResult = withContext(Dispatchers.IO) {
-        val image = Image.makeFromEncoded(bytes) ?: error("Skia could not read the image")
+        val image = Image.makeFromEncoded(bytes)
         try {
             val srcWidth = image.width
             val srcHeight = image.height
@@ -75,7 +75,7 @@ internal class DesktopStillDecoder(
             options: Options,
             imageLoader: ImageLoader
         ): Decoder? {
-            val source = result.source.source() ?: return null
+            val source = result.source.source()
 
             val head = Buffer()
             source.peek().use { it.read(head, HEADER_BYTES) }

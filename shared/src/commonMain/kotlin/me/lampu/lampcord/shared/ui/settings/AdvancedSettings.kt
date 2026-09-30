@@ -59,17 +59,17 @@ fun AdvancedSettingsContent(settingsStore: SettingsStore = koinInject()) {
                 title = "Window",
                 items = listOf(
                     switchSettingsItem(
-                        title = "Use System Window Frame",
-                        description = "Let the window manager draw the title bar. When off, the window is borderless with no title bar. Requires restart.",
-                        checked = settingsStore.enableSystemWindowFrame,
-                        onCheckedChange = { settingsStore.enableSystemWindowFrame = it }
+                        title = "Use Custom Titlebar",
+                        description = "Use a custom in-app title bar instead of the system window frame. Requires restart.",
+                        checked = settingsStore.useCustomTitlebar,
+                        onCheckedChange = { settingsStore.useCustomTitlebar = it }
                     ),
                     switchSettingsItem(
-                        title = "Disable Wayland Scaling Fix",
-                        description = "Prevents the app from trying to automatically scale on Wayland. Requires restart.",
-                        checked = settingsStore.disableWaylandScaling,
+                        title = "Enable Wayland Scaling Fix",
+                        description = "Enables automatic display scaling detection on Wayland compositors. Requires restart.",
+                        checked = settingsStore.enableWaylandScaling,
                         onCheckedChange = {
-                            settingsStore.disableWaylandScaling = it
+                            settingsStore.enableWaylandScaling = it
                         }
                     )
                 )

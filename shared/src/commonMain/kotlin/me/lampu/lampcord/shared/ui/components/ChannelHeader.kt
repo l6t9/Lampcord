@@ -1,5 +1,6 @@
 package me.lampu.lampcord.shared.ui.components
 
+import me.lampu.lampcord.shared.api.CdnUrls
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -53,15 +54,26 @@ fun ChannelHeader(
                     )
                 } else if (channel != null) {
                     val isDm = channel.type == 1 || channel.type == 3 || channel.guild_id == null
-                    val name = remember(channel, allUsers, isDm) {
+                    val name = remember(channel, allUsers, isDm, currentUser) {
                         if (isDm) {
-                            val recipientId = channel.recipients?.firstOrNull()?.id
-                                ?: channel.recipient_ids?.firstOrNull()
-                            val recipient = recipientId?.let { allUsers[it] }
-                                ?: channel.recipients?.firstOrNull()
-                            if (channel.name?.isNotBlank() == true) {
-                                channel.name
+                            if (channel.type == 3) {
+                                if (!channel.name.isNullOrBlank()) {
+                                    channel.name
+                                } else {
+                                    val recipients = channel.recipients?.mapNotNull { allUsers[it.id] ?: it }
+                                        ?: channel.recipient_ids?.mapNotNull { allUsers[it] }
+                                        ?: emptyList()
+                                    val otherRecipients = if (currentUser != null) recipients.filter { it.id != currentUser?.id } else recipients
+                                    val displayList = if (otherRecipients.isNotEmpty()) otherRecipients else recipients
+                                    displayList.mapNotNull { it.global_name ?: it.username }
+                                        .joinToString(", ")
+                                        .ifEmpty { "Unnamed Group DM" }
+                                }
                             } else {
+                                val recipientId = channel.recipients?.firstOrNull()?.id
+                                    ?: channel.recipient_ids?.firstOrNull()
+                                val recipient = recipientId?.let { allUsers[it] }
+                                    ?: channel.recipients?.firstOrNull()
                                 recipient?.let { it.global_name ?: it.username } ?: "Unknown"
                             }
                         } else {
@@ -111,7 +123,25 @@ fun ChannelHeader(
                     val isDm = channel.type == 1 || channel.type == 3 || channel.guild_id == null
                     val isThread = channel.type == 10 || channel.type == 11 || channel.type == 12
 
-                    if (isDm) {
+                    if (channel.type == 3) {
+                        val groupIconUrl = channel.icon?.let { CdnUrls.getChannelIconUrl(channel.id, it, 96) }
+                        if (groupIconUrl != null) {
+                            Box(modifier = Modifier.size(28.dp)) {
+                                AvatarWithDecoration(
+                                    avatarUrl = groupIconUrl,
+                                    decorationData = null,
+                                    size = 28.dp
+                                )
+                            }
+                        } else {
+                            Icon(
+                                imageVector = Icons.Rounded.Groups,
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    } else if (isDm) {
                         val recipientId = channel.recipients?.firstOrNull()?.id
                             ?: channel.recipient_ids?.firstOrNull()
                         val recipient = recipientId?.let { userStore.getUser(it) }

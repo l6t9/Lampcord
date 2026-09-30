@@ -45,4 +45,8 @@ class NotificationStore(
             current.filter { it.data.message.channel_id != channelId }
         }
     }
+
+    fun dismissAll() {
+        dismissJobs.keys.toList().forEach(::dismiss)
+    }
 }

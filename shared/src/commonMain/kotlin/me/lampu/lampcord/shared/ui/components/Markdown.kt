@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.text.InlineTextContent
-import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -19,10 +18,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.ui.input.pointer.*
+import androidx.compose.material3.Icon
+import me.lampu.lampcord.shared.ui.icons.Icons
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.text.AnnotatedString
@@ -41,6 +43,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalUriHandler
+import me.lampu.lampcord.shared.ui.rememberLinkOpener
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
@@ -117,6 +120,8 @@ fun DiscordMarkdownText(
 
     val allGuildChannels by guildStore.allGuildChannels.collectAsState()
 
+    rememberDiscordLinkPreload(processedContent)
+
     val annotatedString = remember(processedContent, revealedSpoilers, primaryColor, allGuildChannels.size) {
         buildAnnotatedString {
             appendDiscordMarkdown(
@@ -185,10 +190,43 @@ fun DiscordMarkdownText(
                 }
             }
         }
+        annotatedString.getStringAnnotations(DISCORD_LINK_ANNOTATION, 0, annotatedString.length).forEach { annotation ->
+            val value = annotation.item
+            val key = DiscordLinkResolver.iconKey(value)
+            val isImage = value.startsWith("http")
+            val size = if (isImage) 18 else 13
+            map[key] = InlineTextContent(
+                Placeholder(size.sp, size.sp, PlaceholderVerticalAlign.Center)
+            ) {
+                when {
+                    isImage -> AsyncImage(
+                        model = value,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        filterQuality = FilterQuality.Medium,
+                        showPlaceholder = false
+                    )
+
+                    value == DiscordLinkResolver.FILE_ICON -> Icon(
+                        Icons.Filled.Description,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.fillMaxSize()
+                    )
+
+                    else -> Icon(
+                        Icons.Rounded.ChatBubble,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+            }
+        }
         map
     }
 
-    val uriHandler = LocalUriHandler.current
+    val openLink = rememberLinkOpener()
     var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
     var contextMenuUrl by remember { mutableStateOf<String?>(null) }
     var contextMenuOffset by remember { mutableStateOf(IntOffset.Zero) }
@@ -258,7 +296,7 @@ fun DiscordMarkdownText(
                                         }
                                         completedTap == true -> {
                                             val mentionId = mentionsAtOffset
-                                            if (url != null) uriHandler.openUri(url)
+                                            if (url != null) openLink(url)
                                             else if (mentionId != null) {
                                                 profileStore.showProfile(mentionId, navigationStore.selectedGuild?.id)
                                                 pressed.consume()
@@ -275,7 +313,7 @@ fun DiscordMarkdownText(
                                         .firstOrNull()
                                         ?.item
                                     if (url != null) {
-                                        uriHandler.openUri(url)
+                                        openLink(url)
                                     } else {
                                         annotatedString.getStringAnnotations("MENTION", offset, offset)
                                             .firstOrNull()
@@ -330,7 +368,7 @@ fun DiscordMarkdownText(
                     },
                     dismissButton = {
                         TextButton(onClick = {
-                            uriHandler.openUri(url)
+                            openLink(url)
                             contextMenuUrl = null
                         }) { Text("Open Link") }
                     }
@@ -352,7 +390,7 @@ fun DiscordMarkdownText(
                                 modifier = Modifier.handCursor(),
                                 text = { Text("Open Link") },
                                 onClick = {
-                                    uriHandler.openUri(url)
+                                    openLink(url)
                                     contextMenuUrl = null
                                 }
                             )
@@ -482,11 +520,14 @@ private fun AnnotatedString.Builder.appendDiscordMarkdown(
             }
             "URL", "URL_SUPPRESSED" -> {
                 val url = if (tag == "URL_SUPPRESSED") match!!.groupValues[1] else match!!.groupValues[0]
-                withStyle(style = SpanStyle(color = primaryColor, textDecoration = TextDecoration.Underline)) {
-                    pushStringAnnotation("URL", url)
-                    append(url)
-                    pop()
-                }
+                // A Discord destination is shown as a readable chip; anything else stays a
+                // plain underlined URL, and an unresolvable Discord link falls back to it too.
+                val resolved = DiscordLinkResolver.resolve(
+                    url,
+                    guildStore.guilds.value,
+                    guildStore.allGuildChannels.value
+                )
+                appendResolvedLink(url, resolved, primaryColor)
             }
             "BOLD" -> withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) { 
                 appendDiscordMarkdown(match!!.groupValues[1], revealedSpoilers, primaryColor, navigationStore, guildStore, userStore, profileStore, onSpoilerClick) 

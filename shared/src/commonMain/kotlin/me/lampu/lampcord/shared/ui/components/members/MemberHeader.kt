@@ -235,7 +235,9 @@ fun MemberHeader(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 val isDm = channel.type == 1 || channel.type == 3 || channel.guild_id == null
-                val icon = if (isDm) {
+                val icon = if (channel.type == 3) {
+                    Icons.Rounded.Groups
+                } else if (isDm) {
                     Icons.Rounded.AlternateEmail
                 } else {
                     when (channel.type) {
@@ -246,15 +248,26 @@ fun MemberHeader(
                     }
                 }
                 
-                val name = remember(channel, allUsers, isDm) {
+                val name = remember(channel, allUsers, isDm, currentUser) {
                     if (isDm) {
-                        val recipientId = channel.recipients?.firstOrNull()?.id
-                            ?: channel.recipient_ids?.firstOrNull()
-                        val recipient = recipientId?.let { allUsers[it] }
-                            ?: channel.recipients?.firstOrNull()
-                        if (channel.name?.isNotBlank() == true) {
-                            channel.name
+                        if (channel.type == 3) {
+                            if (!channel.name.isNullOrBlank()) {
+                                channel.name
+                            } else {
+                                val recipients = channel.recipients?.mapNotNull { allUsers[it.id] ?: it }
+                                    ?: channel.recipient_ids?.mapNotNull { allUsers[it] }
+                                    ?: emptyList()
+                                val otherRecipients = if (currentUser != null) recipients.filter { it.id != currentUser?.id } else recipients
+                                val displayList = if (otherRecipients.isNotEmpty()) otherRecipients else recipients
+                                displayList.mapNotNull { it.global_name ?: it.username }
+                                    .joinToString(", ")
+                                    .ifEmpty { "Unnamed Group DM" }
+                            }
                         } else {
+                            val recipientId = channel.recipients?.firstOrNull()?.id
+                                ?: channel.recipient_ids?.firstOrNull()
+                            val recipient = recipientId?.let { allUsers[it] }
+                                ?: channel.recipients?.firstOrNull()
                             recipient?.let { it.global_name ?: it.username } ?: "Unknown"
                         }
                     } else {

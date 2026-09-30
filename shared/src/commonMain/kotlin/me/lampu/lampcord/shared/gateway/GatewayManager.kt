@@ -33,6 +33,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.add
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
@@ -530,6 +531,34 @@ class GatewayManager(
     }
 
     suspend fun sendPayload(payload: GatewayPayload) {
+        enqueue(payload)
+    }
+
+    /**
+     * Asks the gateway for members whose username or nickname matches [query].
+     *
+     * Search only covers what the client already holds, so a user who has never been cached —
+     * an offline member, typically — is invisible until they are pulled in here. The reply
+     * arrives as GUILD_MEMBERS_CHUNK.
+     */
+    fun requestGuildMembers(
+        guildId: String,
+        query: String? = null,
+        userIds: List<String>? = null,
+        limit: Int = 100
+    ) {
+        val payload = GatewayPayload(
+            op = 8,
+            d = buildJsonObject {
+                put("guild_id", buildJsonArray { add(JsonPrimitive(guildId)) })
+                query?.let { put("query", it) }
+                userIds?.let { ids ->
+                    put("user_ids", buildJsonArray { ids.forEach { add(JsonPrimitive(it)) } })
+                }
+                put("limit", limit)
+                put("presences", true)
+            }
+        )
         enqueue(payload)
     }
 

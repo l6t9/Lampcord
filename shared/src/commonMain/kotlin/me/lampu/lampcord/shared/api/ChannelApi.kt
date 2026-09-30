@@ -7,13 +7,20 @@ import io.ktor.client.request.parameter
 import io.ktor.client.request.patch
 import io.ktor.client.request.post
 import io.ktor.client.request.put
+import io.ktor.client.request.request
+import io.ktor.client.request.setBody
+import io.ktor.http.HttpMethod
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.add
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -21,10 +28,14 @@ import kotlin.time.Duration.Companion.seconds
 import me.lampu.lampcord.shared.model.Channel
 import me.lampu.lampcord.shared.model.Message
 import me.lampu.lampcord.shared.model.Onboarding
+import me.lampu.lampcord.shared.model.OnboardingPrompt
 import me.lampu.lampcord.shared.model.ThreadListResponse
 import me.lampu.lampcord.shared.utils.Logging
+import me.lampu.lampcord.shared.utils.getCurrentTimeMillis
 
 class ChannelApi(private val rest: RestClient) {
+
+    private val json = Json { ignoreUnknownKeys = true; explicitNulls = false }
 
     suspend fun ringCall(channelId: String): Boolean = callAction(channelId, "ring", all = true)
 
@@ -250,12 +261,59 @@ class ChannelApi(private val rest: RestClient) {
             val response = rest.httpClient.get("${rest.apiBase}/guilds/$guildId/onboarding") {
                 standardHeaders(rest)
             }
-            if (response.status.isSuccess()) response.body() else null
+            if (!response.status.isSuccess()) return null
+            val body = json.decodeFromString<JsonElement>(response.body<String>()).jsonObject
+            val onboarding = body["onboarding"]?.jsonObject ?: body
+            json.decodeFromJsonElement<Onboarding>(
+                buildJsonObject {
+                    onboarding.forEach { (key, value) -> put(key, value) }
+                    put("guild_id", guildId)
+                }
+            )
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             Logging.e("Guild", "Error fetching guild onboarding: ${e.message}")
             null
         }
+    }
+    suspend fun saveOnboardingResponses(
+        guildId: String,
+        optionIds: Set<String>,
+        prompts: List<OnboardingPrompt>,
+        initial: Boolean
+    ): Boolean {
+        val body = buildJsonObject {
+            put("onboarding_responses", buildJsonArray { optionIds.forEach { add(it) } })
+            if (initial) {
+                val now = getCurrentTimeMillis()
+                put("onboarding_prompts_seen", buildJsonObject {
+                    prompts.filter { it.in_onboarding }.forEach { put(it.id, now) }
+                })
+                put("onboarding_responses_seen", buildJsonObject {
+                    optionIds.forEach { put(it, now) }
+                })
+            }
+        }
+        val verbs = if (initial) listOf("POST", "PUT") else listOf("PUT", "POST")
+        var lastError: Exception? = null
+        verbs.forEach { verb ->
+            try {
+                val response = rest.httpClient.request("${rest.apiBase}/guilds/$guildId/onboarding-responses") {
+                    method = HttpMethod.parse(verb)
+                    standardHeaders(rest)
+                    contentType(ContentType.Application.Json)
+                    setBody(body)
+                }
+                if (response.status.isSuccess()) return true
+                if (response.status.value !in 403..409) return false
+                lastError = IllegalStateException("HTTP ${response.status.value} for $verb")
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                lastError = e
+            }
+        }
+        Logging.e("Guild", "Error saving onboarding responses: ${lastError?.message}")
+        return false
     }
 
     suspend fun getPinnedMessages(channelId: String): List<Message> {

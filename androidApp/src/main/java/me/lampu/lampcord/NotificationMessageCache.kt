@@ -15,6 +15,7 @@ data class ChannelNotificationMeta(
     val guildId: String?,
     val conversationTitle: String?,
     val conversationName: String,
+    val isDirectMessage: Boolean,
     val lastMessageId: String
 )
 

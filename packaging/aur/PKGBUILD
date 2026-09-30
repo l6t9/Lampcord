@@ -1,10 +1,10 @@
-# Maintainer: Lampu <lampu@lampcord.lampu.lol>
+# Maintainer: Lampu <lampu@cord.lamp.delivery>
 pkgname=lampcord-bin
 pkgver=1.0.0
 pkgrel=1
-pkgdesc='Discord client with a Compose Multiplatform interface'
+pkgdesc='Lightweight Discord client built with Kotlin Multiplatform'
 arch=('x86_64')
-url='https://lampcord.lampu.lol'
+url='https://cord.lamp.delivery'
 license=('GPL-3.0-or-later')
 depends=('glibc' 'fuse2' 'java-runtime' 'libx11' 'libxext' 'libxrender' 'libxtst' 'libxi' 'libxkbcommon')
 optdepends=(

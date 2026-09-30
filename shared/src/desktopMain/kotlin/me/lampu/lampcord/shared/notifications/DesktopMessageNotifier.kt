@@ -6,6 +6,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.state.NotificationStore
+import me.lampu.lampcord.shared.utils.Logging
 import me.lampu.lampcord.shared.utils.getPlatformName
 import java.io.File
 import java.net.URI
@@ -82,16 +83,6 @@ class DesktopMessageNotifier(
             }
     }
 
-    private fun playNotificationSound() {
-        try {
-            val stream = javaClass.classLoader.getResourceAsStream("sounds/notification.wav") ?: return
-            val audioStream = AudioSystem.getAudioInputStream(stream)
-            val clip = AudioSystem.getClip()
-            clip.open(audioStream)
-            clip.start()
-        } catch (_: Exception) {}
-    }
-
     private fun sendSystemNotification(title: String, text: String, icon: File?) {
         val os = getPlatformName()
         if (os == "linux") {
@@ -115,6 +106,10 @@ class DesktopMessageNotifier(
         notificationStore.dismissChannel(channelId)
     }
 
+    override fun dismissAllNotifications() {
+        notificationStore.dismissAll()
+    }
+
     private companion object {
         const val MAX_CACHED_ICONS = 64
     }
@@ -129,5 +124,18 @@ class DesktopMessageNotifier(
             message.embeds.isNotEmpty() -> message.embeds.first().title ?: "Sent an embed"
             else -> "New message"
         }
+    }
+}
+
+internal fun playNotificationSound() {
+    try {
+        val stream = DesktopMessageNotifier::class.java.classLoader
+            .getResourceAsStream("sounds/notification.wav") ?: return
+        val audioStream = AudioSystem.getAudioInputStream(stream)
+        val clip = AudioSystem.getClip()
+        clip.open(audioStream)
+        clip.start()
+    } catch (e: Exception) {
+        Logging.w("notifications", "Unable to play the notification sound", e)
     }
 }

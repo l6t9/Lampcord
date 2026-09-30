@@ -9,6 +9,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
+import me.lampu.lampcord.shared.ui.rememberLinkOpener
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import me.lampu.lampcord.shared.model.MessageComponent
@@ -55,9 +56,9 @@ fun MessageComponentsRow(
                         4 -> ButtonDefaults.buttonColors(containerColor = DiscordRed, contentColor = Color.White)
                         else -> ButtonDefaults.buttonColors()
                     }
-                    val uriHandler = LocalUriHandler.current
+    val openLink = rememberLinkOpener()
                     Button(
-                        onClick = { if (isLink && component.url != null) uriHandler.openUri(component.url) },
+                        onClick = { if (isLink && component.url != null) openLink(component.url) },
                         colors = buttonColor,
                         shape = RoundedCornerShape(4.dp),
                         modifier = Modifier.height(32.dp),

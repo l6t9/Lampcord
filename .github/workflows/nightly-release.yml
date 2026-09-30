@@ -80,6 +80,8 @@ jobs:
       contents: write
     with:
       staging-release-tag: ${{ needs.stage.outputs.tag }}
+      package-native: true
+      package-aur: true
     secrets:
       GRADLE_ENCRYPTION_KEY: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
@@ -91,12 +93,36 @@ jobs:
       contents: write
     with:
       staging-release-tag: ${{ needs.stage.outputs.tag }}
+      package-native: true
+    secrets:
+      GRADLE_ENCRYPTION_KEY: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+
+  ios:
+    name: iOS
+    needs: stage
+    uses: ./.github/workflows/reusable-ios-build.yml
+    permissions:
+      contents: write
+    with:
+      build-ipa: true
+      staging-release-tag: ${{ needs.stage.outputs.tag }}
+    secrets:
+      GRADLE_ENCRYPTION_KEY: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+
+  macos:
+    name: macOS
+    needs: stage
+    uses: ./.github/workflows/reusable-desktop-macos.yml
+    permissions:
+      contents: write
+    with:
+      staging-release-tag: ${{ needs.stage.outputs.tag }}
     secrets:
       GRADLE_ENCRYPTION_KEY: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
   finalize:
     name: Finalize Release
-    needs: [stage, android, linux, windows]
+    needs: [stage, android, linux, windows, ios, macos]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

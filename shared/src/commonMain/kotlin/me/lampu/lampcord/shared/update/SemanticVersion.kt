@@ -55,8 +55,14 @@ data class SemanticVersion(
             val leftPrefix = leftMatch.groupValues[1]
             val rightPrefix = rightMatch.groupValues[1]
             leftPrefix.compareTo(rightPrefix).takeIf { it != 0 }?.let { return it }
-            return leftMatch.groupValues[2].toBigInteger()
-                .compareTo(rightMatch.groupValues[2].toBigInteger())
+            return compareNumeric(leftMatch.groupValues[2], rightMatch.groupValues[2])
+        }
+
+        private fun compareNumeric(left: String, right: String): Int {
+            val a = left.trimStart('0')
+            val b = right.trimStart('0')
+            a.length.compareTo(b.length).takeIf { it != 0 }?.let { return it }
+            return a.compareTo(b)
         }
 
         fun parse(value: String): SemanticVersion? {

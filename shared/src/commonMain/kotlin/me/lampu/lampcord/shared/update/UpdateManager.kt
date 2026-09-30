@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
+import me.lampu.lampcord.shared.utils.getCurrentTimeMillis
 
 private const val API_BASE = "https://api.github.com/repos/l6t9/Lampcord"
 private const val MAX_ASSET_BYTES = 512L * 1024 * 1024
@@ -31,7 +32,7 @@ class UpdateManager(
     private val json: Json,
     private val currentVersion: () -> String,
     private val target: UpdateTarget,
-    private val now: () -> Long = { System.currentTimeMillis() },
+    private val now: () -> Long = { getCurrentTimeMillis() },
 ) {
     private val mutex = Mutex()
     private val mutableState = MutableStateFlow<UpdateState>(UpdateState.Idle)

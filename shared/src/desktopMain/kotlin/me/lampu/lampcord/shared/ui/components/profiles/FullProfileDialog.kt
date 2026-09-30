@@ -157,6 +157,7 @@ fun FullProfileDialog(
                             isExpanded = true,
                             fillAvailableHeight = true,
                             showBorder = false,
+                            showBoardTab = false,
                             avatarScale = AVATAR_SCALE,
                             topShape = RoundedCornerShape(topStart = CORNER, topEnd = CORNER),
                             bannerContentScale = ContentScale.Crop,

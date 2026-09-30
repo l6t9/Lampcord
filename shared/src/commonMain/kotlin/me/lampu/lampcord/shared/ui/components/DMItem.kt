@@ -44,21 +44,51 @@ fun DMItem(
     val allUsers by userStore.users.collectAsState()
     val readStates by readStateStore.readStates.collectAsState()
     
-    // Improved recipient resolution to avoid "Unnamed DM"
-    val recipient = remember(channel.recipients, channel.recipient_ids, allUsers) {
-        val recipientId = channel.recipients?.firstOrNull()?.id 
-            ?: channel.recipient_ids?.firstOrNull()
-            ?: return@remember null
-            
-        allUsers[recipientId] ?: channel.recipients?.firstOrNull()
-    }
-    
-    val avatarUrl = recipient?.let { CdnUrls.getUserAvatarUrl(it.id, it.avatar, 64) }
-    val name = recipient?.let { it.global_name ?: it.username } ?: "Unnamed DM"
-
+    val isGroupDm = channel.type == 3
     val currentUser by userStore.currentUser.collectAsState()
+
+    val recipients = remember(channel.recipients, channel.recipient_ids, allUsers, currentUser) {
+        val list = mutableListOf<me.lampu.lampcord.shared.model.User>()
+        channel.recipients?.forEach { user ->
+            list.add(allUsers[user.id] ?: user)
+        }
+        if (list.isEmpty() && !channel.recipient_ids.isNullOrEmpty()) {
+            channel.recipient_ids.forEach { id ->
+                allUsers[id]?.let { list.add(it) }
+            }
+        }
+        val otherUsers = if (currentUser != null) list.filter { it.id != currentUser?.id } else list
+        if (otherUsers.isNotEmpty()) otherUsers else list
+    }
+
+    val recipient = recipients.firstOrNull()
+
+    val avatarUrl = remember(channel, isGroupDm, recipient) {
+        if (isGroupDm) {
+            channel.icon?.let { CdnUrls.getChannelIconUrl(channel.id, it, 64) }
+        } else {
+            recipient?.let { CdnUrls.getUserAvatarUrl(it.id, it.avatar, 64) }
+        }
+    }
+
+    val name = remember(channel, isGroupDm, recipients, recipient) {
+        if (isGroupDm) {
+            if (!channel.name.isNullOrBlank()) {
+                channel.name
+            } else {
+                recipients.mapNotNull { it.global_name ?: it.username }
+                    .joinToString(", ")
+                    .ifEmpty { "Unnamed Group DM" }
+            }
+        } else {
+            recipient?.let { it.global_name ?: it.username } ?: "Unnamed DM"
+        }
+    }
+
     val userSettings = settingsStore.userSettings
-    val status = recipient?.let { presenceStore.getUserStatus(it.id, currentUser?.id, userSettings?.status) } ?: "offline"
+    val status = if (!isGroupDm) {
+        recipient?.let { presenceStore.getUserStatus(it.id, currentUser?.id, userSettings?.status) } ?: "offline"
+    } else null
 
     var isHovered by remember { mutableStateOf(false) }
 
@@ -70,7 +100,7 @@ fun DMItem(
     val mentionCount = remember(channel.id, readStates) { readStateStore.getMentionCount(channel.id) }
 
     val errorColor = MaterialTheme.colorScheme.error
-    val contextMenuItems = remember(channel, userSettings, isMuted, recipient, errorColor) {
+    val contextMenuItems = remember(channel, isGroupDm, userSettings, isMuted, recipient, errorColor) {
         val items = mutableListOf<ContextMenuItem>()
         items.add(ContextMenuItem(if (isMuted) "Unmute" else "Mute", if (isMuted) Icons.Filled.Notifications else Icons.AutoMirrored.Filled.VolumeOff, onClick = {
             guildStore.toggleMuteChannel("@me", channel.id)
@@ -83,8 +113,10 @@ fun DMItem(
         items.add(ContextMenuItem("Pinned Messages", Icons.Filled.PushPin, onClick = {
             navigationStore.isPinsVisible = true
         }, group = "Primary"))
-        items.add(ContextMenuItem("Profile", Icons.Filled.AccountCircle, onClick = { recipient?.let { profileStore.showProfile(it.id) } }, group = "Primary"))
-        items.add(ContextMenuItem("Close DM", Icons.Filled.Close, onClick = {
+        if (!isGroupDm && recipient != null) {
+            items.add(ContextMenuItem("Profile", Icons.Filled.AccountCircle, onClick = { profileStore.showProfile(recipient.id) }, group = "Primary"))
+        }
+        items.add(ContextMenuItem(if (isGroupDm) "Leave Group" else "Close DM", Icons.Filled.Close, onClick = {
             navigationStore.closeDm(channel.id)
         }, color = errorColor, group = "Destructive"))
 
@@ -152,18 +184,45 @@ fun DMItem(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(modifier = Modifier.size(32.dp)) {
-                        AvatarWithDecoration(
-                            avatarUrl = avatarUrl,
-                            decorationData = recipient?.avatar_decoration_data ?: recipient?.collectibles?.avatar_decoration,
-                            size = 32.dp,
-                            status = status,
-                            isHovered = isHovered
-                        )
+                        if (isGroupDm) {
+                            if (avatarUrl != null) {
+                                AvatarWithDecoration(
+                                    avatarUrl = avatarUrl,
+                                    decorationData = null,
+                                    size = 32.dp,
+                                    status = null,
+                                    isHovered = isHovered
+                                )
+                            } else {
+                                Surface(
+                                    modifier = Modifier.fillMaxSize(),
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.primaryContainer
+                                ) {
+                                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Groups,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            AvatarWithDecoration(
+                                avatarUrl = avatarUrl,
+                                decorationData = recipient?.avatar_decoration_data ?: recipient?.collectibles?.avatar_decoration,
+                                size = 32.dp,
+                                status = status,
+                                isHovered = isHovered
+                            )
+                        }
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     UsernameView(
                         name = name,
-                        style = recipient?.display_name_styles,
+                        style = if (!isGroupDm) recipient?.display_name_styles else null,
                         baseStyle = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
@@ -172,12 +231,14 @@ fun DMItem(
                         ignoreColors = !isHovered,
                         modifier = Modifier
                     )
-                    recipient?.primary_guild?.let {
-                        Spacer(Modifier.width(4.dp))
-                        ClanTagView(it, modifier = Modifier.weight(1f, fill = false))
-                    }
-                    recipient?.let { 
-                        UserTagView(it, modifier = Modifier.padding(start = 4.dp)) 
+                    if (!isGroupDm) {
+                        recipient?.primary_guild?.let {
+                            Spacer(Modifier.width(4.dp))
+                            ClanTagView(it, modifier = Modifier.weight(1f, fill = false))
+                        }
+                        recipient?.let { 
+                            UserTagView(it, modifier = Modifier.padding(start = 4.dp)) 
+                        }
                     }
 
                     if (mentionCount > 0) {

@@ -1,0 +1,119 @@
+name: Desktop macOS
+
+on:
+  workflow_call:
+    inputs:
+      upload-artifact:
+        description: Upload packaged output as workflow artifacts
+        required: false
+        default: false
+        type: boolean
+      artifact-prefix:
+        description: Prefix for workflow artifact names
+        required: false
+        default: ''
+        type: string
+      staging-release-tag:
+        description: Draft release tag used for cross-job package handoff
+        required: false
+        default: ''
+        type: string
+      cache-read-only:
+        description: Keep the Gradle cache read-only
+        required: false
+        default: false
+        type: boolean
+    secrets:
+      GRADLE_ENCRYPTION_KEY:
+        required: false
+
+jobs:
+  package:
+    name: macOS
+    runs-on: macos-15
+    # Cold runner, cold Gradle cache, then a full jpackage run including the DMG.
+    timeout-minutes: 45
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Prepare CI Gradle
+        uses: ./.github/actions/prepare-ci-gradle
+        with:
+          cache-scope: desktop-macos
+          cache-read-only: ${{ inputs.cache-read-only }}
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+
+      - name: Generate installer icon
+        shell: bash
+        run: |
+          bash -n scripts/build_icons.sh
+          ./scripts/build_icons.sh
+
+      - name: Verify macOS tooling
+        shell: bash
+        run: |
+          xcodebuild -version
+          sw_vers
+
+      - name: Build macOS DMG
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew \
+            :desktopApp:packageReleaseDmg \
+            --no-daemon \
+            --no-build-cache \
+            --no-configuration-cache
+
+      - name: Verify macOS app bundle
+        shell: bash
+        env:
+          NATIVE_ARCH: ${{ runner.arch == 'ARM64' && 'arm64' || 'x86_64' }}
+        run: |
+          set -euo pipefail
+          app="desktopApp/build/compose/binaries/main-release/app/Lampcord.app"
+          test -d "$app"
+          test -x "$app/Contents/MacOS/Lampcord"
+          lipo "$app/Contents/MacOS/Lampcord" -verify_arch "$NATIVE_ARCH"
+          test -d "$app/Contents/Frameworks"
+
+      - name: Collect macOS DMG
+        id: package
+        shell: bash
+        env:
+          ARCH: ${{ runner.arch == 'ARM64' && 'arm64' || 'x64' }}
+        run: |
+          set -euo pipefail
+          version=""
+          while IFS='=' read -r key value; do
+            if [[ "$key" == "appVersion" ]]; then version="$value"; break; fi
+          done < gradle.properties
+          files=(desktopApp/build/compose/binaries/main-release/dmg/*.dmg)
+          test -f "${files[0]}" || { echo "macOS DMG was not produced" >&2; exit 1; }
+          test "${#files[@]}" -eq 1 || { echo "Expected one macOS DMG, found ${#files[@]}" >&2; exit 1; }
+          mkdir -p dist
+          output="dist/lampcord-desktop-macos-${ARCH}-${version}.dmg"
+          cp "${files[0]}" "$output"
+          echo "path=$output" >> "$GITHUB_OUTPUT"
+
+      - name: Upload macOS artifact
+        if: inputs.upload-artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact-prefix }}desktop-macos
+          path: ${{ steps.package.outputs.path }}
+          if-no-files-found: error
+          retention-days: 4
+
+      - name: Upload macOS staging asset
+        if: inputs.staging-release-tag != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STAGING_RELEASE_TAG: ${{ inputs.staging-release-tag }}
+          PACKAGE_PATH: ${{ steps.package.outputs.path }}
+        run: gh release upload "$STAGING_RELEASE_TAG" "$PACKAGE_PATH" --clobber --repo "$GITHUB_REPOSITORY"

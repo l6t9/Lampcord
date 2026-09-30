@@ -98,6 +98,12 @@ nucleus.application {
         "-Xmx1g",
         "-Dskiko.gpu.resourceCacheLimit=64m"
     )
+    if (System.getProperty("os.name").contains("Mac")) {
+        jvmArgs += listOf(
+            "--add-opens=java.desktop/sun.lwawt=ALL-UNNAMED",
+            "--add-opens=java.desktop/sun.lwawt.macosx=ALL-UNNAMED"
+        )
+    }
     providers.gradleProperty("lampcord.nmt").orNull?.let {
         if (it == "true") {
             jvmArgs += "-XX:NativeMemoryTracking=summary"
@@ -117,7 +123,7 @@ nucleus.application {
         description = "Lampcord Discord Client"
         copyright = "Lampu"
         vendor = "Lampcord"
-        homepage = "https://lampcord.lampu.lol"
+        homepage = "https://cord.lamp.delivery"
         compressionLevel = CompressionLevel.Maximum
 
         windows {
@@ -134,11 +140,25 @@ nucleus.application {
 
         linux {
             jvmArgs += listOf("-Djava.locale.providers=COMPAT,SPI", "-Dwebkit.disable.dmabuf.renderer=1")
-            debMaintainer = "Lampu <lampu@lampcord.lampu.lol>"
+            debMaintainer = "Lampu <lampu@cord.lamp.delivery>"
         }
         macOS {
+            bundleID = "me.lampcord.desktop"
+            dockName = "Lampcord"
+            dmgPackageVersion = packageVersion
+            val icns = project.file("src/jvmMain/resources/logo.icns")
+            if (icns.exists()) iconFile.set(icns)
             infoPlist {
-                extraKeysRawXml = "<key>NSMicrophoneUsageDescription</key><string>Lampcord uses your microphone for voice calls you join.</string>"
+                extraKeysRawXml = """
+                    <key>NSMicrophoneUsageDescription</key>
+                    <string>Lampcord uses your microphone for voice calls you join.</string>
+                    <key>NSLocalNetworkUsageDescription</key>
+                    <string>Lampcord uses the local network to establish voice calls.</string>
+                    <key>NSCameraUsageDescription</key>
+                    <string>Lampcord uses your camera for video calls you join.</string>
+                    <key>NSHighResolutionCapable</key>
+                    <true/>
+                """.trimIndent()
             }
         }
     }

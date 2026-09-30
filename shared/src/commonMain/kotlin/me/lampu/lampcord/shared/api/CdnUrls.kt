@@ -47,4 +47,11 @@ object CdnUrls {
         val validSize = normalizeSize(size)
         return "https://cdn.discordapp.com/avatar-decoration-presets/$asset.png?size=$validSize&passthrough=true"
     }
+
+    fun getChannelIconUrl(channelId: String, iconHash: String?, size: Int = 256): String? {
+        if (iconHash == null) return null
+        val validSize = normalizeSize(size)
+        val extension = if (iconHash.startsWith("a_") && !Settings.shared.reduceMotion) "gif" else "png"
+        return "https://cdn.discordapp.com/channel-icons/$channelId/$iconHash.$extension?size=$validSize"
+    }
 }

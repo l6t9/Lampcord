@@ -1,7 +1,6 @@
 package me.lampu.lampcord.shared.api
 
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logging
@@ -139,7 +138,7 @@ fun HttpRequestBuilder.loginHeaders(rest: RestClient, fingerprint: String? = nul
     header("Referer", "https://discord.com/login")
 }
 
-fun createHttpClient() = HttpClient(CIO) {
+fun createHttpClient() = HttpClient(httpClientEngine()) {
     install(HttpCookies)
     install(HttpTimeout) {
         requestTimeoutMillis = 15000

@@ -15,7 +15,6 @@ class LampcordApp : Application() {
         AndroidContextProvider.applicationContext = this
         initSettings(this)
 
-        // Read before building the HTTP client.
         Logging.debugEnabled = Settings.shared.verboseLogging
 
         startKoin {
@@ -23,7 +22,7 @@ class LampcordApp : Application() {
             modules(appModule, androidNotificationModule)
         }
 
-        NotificationHelper.ensureMessageChannel(this)
+        NotificationHelper.ensureMessageChannels(this)
 
         AppLifecycleTracker.register(this)
     }

@@ -67,9 +67,9 @@ actual fun rememberPlatformColorScheme(
                 val isAppearanceLight = !isDark
                 
                 val statusBarColor = when {
-                    isOverlapping && navigationStore.isProfilePanelVisible -> scheme.surface // Match MemberHeader (Surface)
-                    navigationStore.isSettingsVisible -> scheme.surfaceContainer // Match Settings background (surfaceContainerLow)
-                    else -> scheme.background // Match ChannelHeader (Background)
+                    isOverlapping && navigationStore.isProfilePanelVisible -> scheme.surface
+                    navigationStore.isSettingsVisible -> scheme.surface
+                    else -> scheme.background
                 }
                 
                 @Suppress("DEPRECATION")
@@ -86,6 +86,6 @@ actual fun rememberPlatformColorScheme(
 private fun Color.toArgb(): Int {
     return (this.alpha * 255.0f + 0.5f).toInt() shl 24 or
            ((this.red * 255.0f + 0.5f).toInt() shl 16) or
-           ((this.green * 255.0f + 0.5f).toInt() shl 8) or// Match Settings background (surfaceContainerLow)
+           ((this.green * 255.0f + 0.5f).toInt() shl 8) or
            (this.blue * 255.0f + 0.5f).toInt()
 }

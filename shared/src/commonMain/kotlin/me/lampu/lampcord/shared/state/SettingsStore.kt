@@ -306,12 +306,18 @@ class SettingsStore(
             me.lampu.lampcord.shared.settings.Settings.shared.enableSystemWindowFrame = value
         }
 
-    private var _disableWaylandScaling by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.disableWaylandScaling)
-    var disableWaylandScaling: Boolean
-        get() = _disableWaylandScaling
+    var useCustomTitlebar: Boolean
+        get() = !enableSystemWindowFrame
         set(value) {
-            _disableWaylandScaling = value
-            me.lampu.lampcord.shared.settings.Settings.shared.disableWaylandScaling = value
+            enableSystemWindowFrame = !value
+        }
+
+    private var _enableWaylandScaling by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.enableWaylandScaling)
+    var enableWaylandScaling: Boolean
+        get() = _enableWaylandScaling
+        set(value) {
+            _enableWaylandScaling = value
+            me.lampu.lampcord.shared.settings.Settings.shared.enableWaylandScaling = value
         }
 
     private var _chatboxFontSize by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.chatboxFontSize)
@@ -420,6 +426,14 @@ class SettingsStore(
         set(value) {
             _notificationSound = value
             me.lampu.lampcord.shared.settings.Settings.shared.notificationSound = value
+        }
+
+    private var _incomingCallSound by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.incomingCallSound)
+    var incomingCallSound: Boolean
+        get() = _incomingCallSound
+        set(value) {
+            _incomingCallSound = value
+            me.lampu.lampcord.shared.settings.Settings.shared.incomingCallSound = value
         }
 
     private var _noiseCancellation by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.noiseCancellation)

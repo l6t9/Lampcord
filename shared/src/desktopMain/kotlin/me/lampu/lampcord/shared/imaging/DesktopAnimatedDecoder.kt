@@ -26,7 +26,6 @@ internal class DesktopAnimatedDecoder(
             DecodeResult(SkiaAnimatedImage(frames, timeSource, animates), isSampled = false)
         } else {
             val codec = Codec.makeFromData(Data.makeFromBytes(data))
-                ?: error("Skia could not read the animation")
             val frameSource = SkiaCodecFrameSource(codec, codec.width, codec.height)
             DecodeResult(SkiaAnimatedImage(frameSource, timeSource, animates), isSampled = false)
         }
@@ -40,7 +39,7 @@ internal class DesktopAnimatedDecoder(
             options: Options,
             imageLoader: ImageLoader
         ): Decoder? {
-            val source = result.source.source() ?: return null
+            val source = result.source.source()
 
             if (!isAnimatable(source)) return null
             return DesktopAnimatedDecoder(source, timeSource, options.allowsAnimation())

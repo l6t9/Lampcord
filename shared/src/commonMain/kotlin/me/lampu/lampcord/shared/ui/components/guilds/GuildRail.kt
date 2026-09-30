@@ -98,6 +98,7 @@ fun GuildRail(
     val canArrange = getPlatformName() == "android"
     var arrangeMode by remember { mutableStateOf(false) }
     var draggingKey by remember { mutableStateOf<String?>(null) }
+    var showJoinDialog by remember { mutableStateOf(false) }
     var dragOffsetPx by remember { mutableFloatStateOf(0f) }
 
     val railEntries = remember(guilds, folders) {
@@ -152,6 +153,16 @@ fun GuildRail(
     fun cancelDrag() {
         draggingKey = null
         dragOffsetPx = 0f
+    }
+
+    if (showJoinDialog) {
+        JoinServerDialog(
+            onDismiss = { showJoinDialog = false },
+            onJoined = { joined ->
+                guildStore.joinCompleted(joined)
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            }
+        )
     }
 
     LazyColumn(
@@ -276,6 +287,10 @@ fun GuildRail(
                     )
                 }
             }
+        }
+
+        item(key = "add-server") {
+            AddServerRailItem(onClick = { showJoinDialog = true })
         }
     }
 }

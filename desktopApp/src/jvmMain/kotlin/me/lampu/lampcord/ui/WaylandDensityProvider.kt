@@ -9,7 +9,7 @@ import kotlinx.coroutines.delay
 
 @Composable
 fun WaylandDensityProvider(content: @Composable () -> Unit) {
-    if (!WaylandScale.isWayland() || me.lampu.lampcord.shared.settings.Settings.shared.disableWaylandScaling) {
+    if (!WaylandScale.isWayland() || !me.lampu.lampcord.shared.settings.Settings.shared.enableWaylandScaling) {
         content()
         return
     }

@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import me.lampu.lampcord.shared.api.CdnUrls
 import me.lampu.lampcord.shared.model.Message
+import me.lampu.lampcord.shared.state.EntityStore
 import me.lampu.lampcord.shared.state.FinderResult
 import me.lampu.lampcord.shared.state.FinderStore
 import me.lampu.lampcord.shared.state.MessageStore
@@ -59,7 +60,8 @@ fun ForwardDialog(
     onDismiss: () -> Unit,
     finderStore: FinderStore = koinInject(),
     messageStore: MessageStore = koinInject(),
-    userStore: UserStore = koinInject()
+    userStore: UserStore = koinInject(),
+    entityStore: EntityStore = koinInject()
 ) {
     var comment by remember { mutableStateOf("") }
     
@@ -68,7 +70,8 @@ fun ForwardDialog(
     }
 
     val resultsState by finderStore.results.collectAsState()
-    val results = remember(finderStore.searchQuery, resultsState) {
+    val query by finderStore.searchQueryFlow.collectAsState()
+    val results = remember(query, resultsState) {
         resultsState.filter { it !is FinderResult.Guild }
     }
 
@@ -217,7 +220,7 @@ fun ForwardDialog(
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
                     TextField(
-                        value = finderStore.searchQuery,
+                        value = query,
                         onValueChange = { finderStore.searchQuery = it },
                         modifier = Modifier.fillMaxWidth(),
                         placeholder = { Text("Search for a channel or DM") },
@@ -245,12 +248,9 @@ fun ForwardDialog(
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             items(results) { result ->
-                                FinderResultItem(result, onClick = {
-                                    val targetChannel = when (result) {
-                                        is FinderResult.Channel -> result.channel
-                                        is FinderResult.DirectMessage -> result.channel
-                                        else -> null
-                                    }
+                                FinderResultRow(result, onClick = {
+                                    val targetId = result.targetChannelId()
+                                    val targetChannel = targetId?.let { entityStore.channels.value[it] }
                                     targetChannel?.let {
                                         messageStore.forwardMessage(it, message)
                                         if (comment.isNotEmpty()) {
@@ -285,48 +285,3 @@ fun ForwardDialog(
     }
 }
 
-@Composable
-private fun FinderResultItem(result: FinderResult, onClick: () -> Unit) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        onClick = onClick,
-        shape = RoundedCornerShape(16.dp),
-        color = Color.Transparent
-    ) {
-        Row(
-            modifier = Modifier.padding(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            val icon = when (result) {
-                is FinderResult.Channel -> if (result.channel.type == 5) Icons.Filled.Campaign else Icons.Filled.Tag
-                is FinderResult.DirectMessage -> Icons.Filled.Person
-                else -> Icons.Filled.Tag
-            }
-            
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            
-            Spacer(Modifier.width(12.dp))
-            
-            Column {
-                val title = when (result) {
-                    is FinderResult.Channel -> result.channel.name ?: "unnamed-channel"
-                    is FinderResult.DirectMessage -> result.channel.recipients?.firstOrNull()?.let { it.global_name ?: it.username } ?: "Direct Message"
-                    is FinderResult.Guild -> result.guild.name ?: "Unnamed Server"
-                }
-                Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
-                
-                val subtitle = when (result) {
-                    is FinderResult.Channel -> result.guild?.name ?: "Server"
-                    is FinderResult.DirectMessage -> "Direct Message"
-                    is FinderResult.Guild -> "Server"
-                }
-                Text(subtitle, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-    }
-}

@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package me.lampu.lampcord.shared.ui.baseplates
 
 import androidx.compose.animation.AnimatedContent
@@ -132,13 +134,13 @@ actual fun MobileBaseplate(
                 false
             }
     ) {
-        val swipeEnabled = me.lampu.lampcord.shared.settings.Settings.shared.chatGestures == me.lampu.lampcord.shared.settings.ChatGestures.SWIPE_TO_MEMBERS
         DiscordPanels(
             state = panelState,
             modifier = Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.surface),
-            swipeEnabled = swipeEnabled,
+            swipeToStartEnabled = !navigationStore.isBubble,
+            swipeToEndEnabled = !navigationStore.isBubble && me.lampu.lampcord.shared.settings.Settings.shared.chatGestures == me.lampu.lampcord.shared.settings.ChatGestures.SWIPE_TO_MEMBERS,
             startPanel = {
                 Sidebar(modifier = Modifier.systemBarsPadding())
             },
@@ -163,7 +165,21 @@ actual fun MobileBaseplate(
                                         } else if (activeChannel != null) {
                                             Column {
                                                 Text(
-                                                    text = if (activeChannel.type == 1) {
+                                                    text = if (activeChannel.type == 3) {
+                                                        if (!activeChannel.name.isNullOrBlank()) {
+                                                            activeChannel.name
+                                                        } else {
+                                                            val recipients = activeChannel.recipients?.mapNotNull { allUsers[it.id] ?: it }
+                                                                ?: activeChannel.recipient_ids?.mapNotNull { allUsers[it] }
+                                                                ?: emptyList()
+                                                            val currentUser = userStore.currentUser.value
+                                                            val otherRecipients = if (currentUser != null) recipients.filter { it.id != currentUser.id } else recipients
+                                                            val displayList = if (otherRecipients.isNotEmpty()) otherRecipients else recipients
+                                                            displayList.mapNotNull { it.global_name ?: it.username }
+                                                                .joinToString(", ")
+                                                                .ifEmpty { "Unnamed Group DM" }
+                                                        }
+                                                    } else if (activeChannel.type == 1) {
                                                         val recipientId = activeChannel.recipients?.firstOrNull()?.id ?: activeChannel.recipient_ids?.firstOrNull()
                                                         val recipient = recipientId?.let { allUsers[it] } ?: activeChannel.recipients?.firstOrNull()
                                                         recipient?.let { it.global_name ?: it.username } ?: "Chat"
@@ -426,6 +442,7 @@ actual fun MobileBaseplate(
                         showBorder = false,
                         isExpanded = true,
                         fillAvailableHeight = true,
+                        showBoardTab = true,
                         onExpand = null
                     )
                 } else {

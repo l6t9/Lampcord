@@ -64,6 +64,8 @@ fun DiscordPanels(
     state: DiscordPanelsState,
     modifier: Modifier = Modifier,
     swipeEnabled: Boolean = true,
+    swipeToStartEnabled: Boolean = swipeEnabled,
+    swipeToEndEnabled: Boolean = swipeEnabled,
     startPanel: @Composable BoxScope.() -> Unit,
     endPanel: @Composable BoxScope.() -> Unit,
     centerPanel: @Composable BoxScope.() -> Unit
@@ -118,15 +120,31 @@ fun DiscordPanels(
         state.progress = progress
         val absProgress = abs(progress)
 
+        val effectiveSwipeEnabled = swipeEnabled || swipeToStartEnabled || swipeToEndEnabled
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .then(
-                    if (swipeEnabled) {
+                    if (effectiveSwipeEnabled) {
                         Modifier.draggable(
                             orientation = Orientation.Horizontal,
                             state = rememberDraggableState { delta ->
-                                state.offset += delta
+                                val canDrag = when (state.currentValue) {
+                                    DiscordPanelValue.Center -> {
+                                        if (delta > 0f) swipeToStartEnabled
+                                        else if (delta < 0f) swipeToEndEnabled
+                                        else true
+                                    }
+                                    DiscordPanelValue.Start -> delta < 0f || state.offset < 0f || swipeToStartEnabled
+                                    DiscordPanelValue.End -> delta > 0f || state.offset > 0f || swipeToEndEnabled
+                                }
+                                if (canDrag || state.offset != 0f) {
+                                    val newOffset = state.offset + delta
+                                    val minAllowed = if (swipeToEndEnabled || state.currentValue == DiscordPanelValue.End) -endPanelWidthPx else 0f
+                                    val maxAllowed = if (swipeToStartEnabled || state.currentValue == DiscordPanelValue.Start) startPanelWidthPx else 0f
+                                    state.offset = (targetOffset + newOffset).coerceIn(minAllowed, maxAllowed) - targetOffset
+                                }
                             },
                             onDragStopped = { velocity ->
                                 val currentTotalOffset = targetOffset + state.offset
@@ -139,17 +157,17 @@ fun DiscordPanels(
                                         if (isRightSwipe) {
                                             when (state.currentValue) {
                                                 DiscordPanelValue.End -> DiscordPanelValue.Center
-                                                else -> DiscordPanelValue.Start
+                                                else -> if (swipeToStartEnabled) DiscordPanelValue.Start else DiscordPanelValue.Center
                                             }
                                         } else {
                                             when (state.currentValue) {
                                                 DiscordPanelValue.Start -> DiscordPanelValue.Center
-                                                else -> DiscordPanelValue.End
+                                                else -> if (swipeToEndEnabled) DiscordPanelValue.End else DiscordPanelValue.Center
                                             }
                                         }
                                     }
-                                    currentTotalOffset > startPanelWidthPx * 0.45f -> DiscordPanelValue.Start
-                                    currentTotalOffset < -endPanelWidthPx * 0.45f -> DiscordPanelValue.End
+                                    currentTotalOffset > startPanelWidthPx * 0.45f -> if (swipeToStartEnabled) DiscordPanelValue.Start else DiscordPanelValue.Center
+                                    currentTotalOffset < -endPanelWidthPx * 0.45f -> if (swipeToEndEnabled) DiscordPanelValue.End else DiscordPanelValue.Center
                                     else -> DiscordPanelValue.Center
                                 }
                                 state.offset = 0f

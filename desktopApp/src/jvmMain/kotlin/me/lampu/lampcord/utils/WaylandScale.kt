@@ -26,7 +26,7 @@ object WaylandScale {
 
     fun detectAndApply() {
         if (applied) return
-        if (!isWayland() || Settings.shared.disableWaylandScaling) return
+        if (!isWayland() || !Settings.shared.enableWaylandScaling) return
 
         val forceScale =
             System.getProperty("lampcord.forceScale")?.toFloatOrNull()

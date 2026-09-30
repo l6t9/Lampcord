@@ -11,11 +11,11 @@ import coil3.memory.MemoryCache as CoilMemoryCache
 import coil3.network.ktor3.KtorNetworkFetcherFactory
 import coil3.request.crossfade as coilCrossfade
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.request.header
 import io.ktor.http.HttpHeaders
+import me.lampu.lampcord.shared.api.httpClientEngine
 import me.lampu.lampcord.shared.imaging.platformImageDecoders
 import me.lampu.lampcord.shared.settings.ThemeMode
 import me.lampu.lampcord.shared.state.*
@@ -75,7 +75,7 @@ fun newCoilImageLoader(context: CoilPlatformContext): ImageLoader {
         "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) discord/0.0.398 Chrome/138.0.7204.251 Electron/37.6.0 Safari/537.36"
     }
 
-    val imageHttpClient = HttpClient(CIO) {
+    val imageHttpClient = HttpClient(httpClientEngine()) {
         install(HttpTimeout) {
             requestTimeoutMillis = 15000
             connectTimeoutMillis = 10000

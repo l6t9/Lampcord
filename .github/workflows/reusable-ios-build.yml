@@ -1,0 +1,139 @@
+name: Reusable iOS Build
+
+on:
+  workflow_call:
+    inputs:
+      upload-artifact:
+        description: Upload the built app as a workflow artifact
+        required: false
+        default: false
+        type: boolean
+      artifact-prefix:
+        description: Prefix for workflow artifact names
+        required: false
+        default: ''
+        type: string
+      build-ipa:
+        description: Archive an unsigned IPA instead of only compiling for the simulator
+        required: false
+        default: false
+        type: boolean
+      staging-release-tag:
+        description: Draft release tag used for cross-job package handoff
+        required: false
+        default: ''
+        type: string
+      cache-read-only:
+        description: Keep the Gradle cache read-only
+        required: false
+        default: false
+        type: boolean
+    secrets:
+      GRADLE_ENCRYPTION_KEY:
+        required: false
+
+jobs:
+  build:
+    name: iOS
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Validate build script
+        shell: bash
+        run: |
+          bash -n scripts/build_ios.sh
+          chmod +x scripts/build_ios.sh
+
+      - name: Prepare CI Gradle
+        uses: ./.github/actions/prepare-ci-gradle
+        with:
+          cache-scope: ios-build
+          cache-read-only: ${{ inputs.cache-read-only }}
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+
+      - name: Verify Xcode device SDK
+        shell: bash
+        run: |
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-path
+
+      - name: Validate Swift syntax
+        shell: bash
+        run: |
+          echo "Validating Swift source files in iosApp/..."
+          swift --version
+          find iosApp -name "*.swift" -print0 \
+            | xargs -0 xcrun --sdk iphonesimulator swiftc -target arm64-apple-ios17.0-simulator -parse
+          echo "Static Swift validation passed."
+
+      - name: Compile the shared module for iOS
+        shell: bash
+        run: |
+          ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64 \
+            :shared:linkDebugFrameworkIosArm64 \
+            --no-daemon
+
+      - name: Run iOS tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          device=$(xcrun simctl list devices available --json | python3 -c '
+          import json, sys
+          devices = json.load(sys.stdin)["devices"]
+          print(next(device["udid"] for runtime, items in devices.items() if ".iOS-" in runtime for device in items if device["name"].startswith("iPhone")))')
+          xcrun simctl bootstatus "$device" -b
+          ./gradlew :shared:iosSimulatorArm64Test --device "$device"
+
+      - name: Shut down iOS simulator
+        if: always()
+        shell: bash
+        run: |
+          device=$(xcrun simctl list devices booted --json | python3 -c '
+          import json, sys
+          devices = json.load(sys.stdin)["devices"]
+          print(next((device["udid"] for runtime, items in devices.items() if ".iOS-" in runtime for device in items if device["state"] == "Booted"), ""))')
+          if [ -n "$device" ]; then
+            xcrun simctl shutdown "$device"
+          fi
+
+      - name: Build iOS IPA
+        if: inputs.build-ipa
+        shell: bash
+        run: ./scripts/build_ios.sh --ipa
+
+      - name: Build iOS simulator app
+        if: ${{ !inputs.build-ipa }}
+        shell: bash
+        run: ./scripts/build_ios.sh --sim
+
+      - name: Upload iOS IPA artifact
+        if: ${{ inputs.upload-artifact && inputs.build-ipa }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact-prefix }}ios-ipa
+          path: dist/Lampcord.ipa
+          if-no-files-found: error
+          retention-days: 4
+
+      - name: Upload iOS simulator artifact
+        if: ${{ inputs.upload-artifact && !inputs.build-ipa }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact-prefix }}ios-app
+          path: dist/Lampcord.app
+          if-no-files-found: error
+          retention-days: 4
+
+      - name: Upload iOS staging asset
+        if: inputs.staging-release-tag != '' && inputs.build-ipa
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STAGING_RELEASE_TAG: ${{ inputs.staging-release-tag }}
+        run: gh release upload "$STAGING_RELEASE_TAG" dist/Lampcord.ipa --clobber --repo "$GITHUB_REPOSITORY"

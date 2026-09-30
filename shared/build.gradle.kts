@@ -80,19 +80,25 @@ kotlin {
         iosSimulatorArm64()
     ).forEach {
         it.binaries.framework {
-            baseName = "shared"
+            baseName = "Shared"
             isStatic = true
         }
     }
 
     applyDefaultHierarchyTemplate()
+
+    listOf("iosArm64", "iosSimulatorArm64").forEach { target ->
+        configurations.matching { it.name == "${target}Implementation" }.configureEach {
+            exclude(group = "org.jetbrains.skiko", module = "skiko")
+        }
+    }
     
     sourceSets {
         val jvmSharedMain by creating {
             dependsOn(commonMain.get())
             dependencies {
-                // slf4j is JVM-only.
                 implementation(libs.slf4j.simple)
+                implementation(libs.ktor.client.cio)
             }
         }
         getByName("androidMain").dependsOn(jvmSharedMain)
@@ -116,7 +122,6 @@ kotlin {
             implementation(libs.kotlinx.datetime)
             
             implementation(libs.ktor.client.core)
-            implementation(libs.ktor.client.cio)
             implementation(libs.ktor.client.content.negotiation)
             implementation(libs.ktor.serialization.kotlinx.json)
             implementation(libs.ktor.client.websockets)
@@ -147,6 +152,14 @@ kotlin {
             }
         }
         
+        getByName("iosMain") {
+            dependencies {
+                implementation(libs.ktor.client.darwin)
+                implementation(libs.sqlite.bundled)
+                implementation(libs.coil.network.ktor3)
+            }
+        }
+
         getByName("androidMain") {
             dependencies {
                 implementation(libs.androidx.appcompat)

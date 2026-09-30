@@ -1,13 +1,23 @@
 <resources>
     <string name="app_name">Lampcord</string>
     <string name="notification_channel_messages">Messages</string>
-    <string name="notification_channel_messages_description">Direct messages and channel mentions</string>
-    <string name="notification_channel_service">Background connection</string>
-    <string name="notification_channel_service_description">Keeps Lampcord connected while the app is in the background</string>
-    <string name="notification_service_title">Lampcord is running</string>
-    <string name="notification_service_text">Keeping you connected to Discord</string>
+    <string name="notification_channel_direct_messages">Direct Messages</string>
+    <string name="notification_channel_messages_description">Guild channels, group DMs and direct messages</string>
     <string name="notification_action_reply">Reply</string>
     <string name="notification_action_mark_read">Mark as Read</string>
     <string name="notification_group_messages">Messages</string>
+    <string name="notification_preview_message">New message</string>
+    <string name="notification_preview_hidden">New message</string>
+    <string name="notification_preview_attachment">Sent an attachment</string>
+    <string name="notification_preview_sticker">Sent a sticker</string>
+    <string name="notification_preview_embed">Sent an embed</string>
+    <string name="notification_channel_voice_calls">Ongoing voice calls</string>
+    <string name="notification_voice_title">Lampcord voice call</string>
+    <string name="notification_voice_connecting">Connecting to voice</string>
+    <string name="notification_voice_waiting">Waiting for encrypted audio</string>
+    <string name="notification_voice_encrypted">DAVE encrypted audio</string>
+    <string name="notification_voice_mute">Mute</string>
+    <string name="notification_voice_unmute">Unmute</string>
+    <string name="notification_voice_end">End call</string>
     <string name="music_presence_label">Music Presence</string>
 </resources>

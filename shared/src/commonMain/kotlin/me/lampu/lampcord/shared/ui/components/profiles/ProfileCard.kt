@@ -257,6 +257,7 @@ fun ProfileCard(
     topShape: Shape? = null,
     bannerHeightRatio: Float = 0f,
     bannerContentScale: ContentScale = ContentScale.Crop,
+    showBoardTab: Boolean = false,
     userStore: UserStore = koinInject(),
     clientProfileStore: ClientProfileStore = koinInject(),
     settingsStore: me.lampu.lampcord.shared.state.SettingsStore = koinInject(),
@@ -304,6 +305,8 @@ fun ProfileCard(
                 .background(theme.backgroundBrush)
         ) {
             CompositionLocalProvider(LocalContentColor provides theme.contentColor) {
+                var bodyTab by remember(profile) { mutableStateOf(0) }
+
                 Column(
                     modifier = Modifier
                         .then(if (isSidebar || fillAvailableHeight) Modifier.weight(1f) else Modifier.wrapContentHeight())
@@ -322,13 +325,39 @@ fun ProfileCard(
                             onEditAvatar = onEditAvatar,
                             customProfileOverride = customProfile
                         )
-                        ProfileSections(
-                            profile = profile,
-                            theme = theme,
-                            isExpanded = isExpanded,
-                            showMemberSince = showMemberSince,
-                            showMutualsInConnections = showMutualsInConnections
-                        )
+
+                        if (showBoardTab) {
+                            PrimaryTabRow(
+                                selectedTabIndex = bodyTab,
+                                containerColor = Color.Transparent,
+                                contentColor = theme.primaryAccent,
+                                divider = {}
+                            ) {
+                                Tab(
+                                    selected = bodyTab == 0,
+                                    onClick = { bodyTab = 0 },
+                                    text = { Text("Main") }
+                                )
+                                Tab(
+                                    selected = bodyTab == 1,
+                                    onClick = { bodyTab = 1 },
+                                    text = { Text("Board") }
+                                )
+                            }
+                            Spacer(Modifier.height(8.dp))
+                        }
+
+                        if (bodyTab == 0) {
+                            ProfileSections(
+                                profile = profile,
+                                theme = theme,
+                                isExpanded = isExpanded,
+                                showMemberSince = showMemberSince,
+                                showMutualsInConnections = showMutualsInConnections
+                            )
+                        } else {
+                            ProfileBoardContent(profile = profile, modifier = Modifier.padding(top = 12.dp))
+                        }
                     }
                 }
             }

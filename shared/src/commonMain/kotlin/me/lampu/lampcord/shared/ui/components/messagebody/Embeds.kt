@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
+import me.lampu.lampcord.shared.ui.rememberLinkOpener
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -190,8 +191,8 @@ fun EmbedView(
                         embed.title?.let { title ->
                             val titleText = buildAnnotatedString { withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)) { append(title) } }
                             if (embed.url != null) {
-                                val uriHandler = LocalUriHandler.current
-                                Text(text = titleText, style = MaterialTheme.typography.titleMedium, modifier = Modifier.clickableCursor { uriHandler.openUri(embed.url) })
+    val openLink = rememberLinkOpener()
+                                Text(text = titleText, style = MaterialTheme.typography.titleMedium, modifier = Modifier.clickableCursor { openLink(embed.url) })
                             } else {
                                 Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                             }

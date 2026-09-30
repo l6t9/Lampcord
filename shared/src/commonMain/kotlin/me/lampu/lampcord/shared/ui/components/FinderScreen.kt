@@ -12,9 +12,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.gateway.GatewayManager
+import me.lampu.lampcord.shared.state.EntityStore
 import me.lampu.lampcord.shared.state.FinderResult
 import me.lampu.lampcord.shared.state.FinderStore
 import me.lampu.lampcord.shared.state.NavigationStore
+import me.lampu.lampcord.shared.state.ProfileStore
 import me.lampu.lampcord.shared.ui.icons.Icons
 import org.koin.compose.koinInject
 
@@ -23,13 +25,16 @@ import org.koin.compose.koinInject
 fun FinderScreen(
     finderStore: FinderStore = koinInject(),
     navigationStore: NavigationStore = koinInject(),
-    gatewayManager: GatewayManager = koinInject()
+    gatewayManager: GatewayManager = koinInject(),
+    entityStore: EntityStore = koinInject(),
+    profileStore: ProfileStore = koinInject()
 ) {
     val results by finderStore.results.collectAsState()
+    val query by finderStore.searchQueryFlow.collectAsState()
 
     Column(modifier = Modifier.fillMaxSize()) {
         TextField(
-            value = finderStore.searchQuery,
+            value = query,
             onValueChange = { finderStore.searchQuery = it },
             modifier = Modifier.fillMaxWidth(),
             placeholder = { Text("Where would you like to go?") },
@@ -47,16 +52,21 @@ fun FinderScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(results) { result ->
-                FinderResultItem(result, onClick = {
+                FinderResultRow(result, onClick = {
                     when (result) {
                         is FinderResult.Guild -> navigationStore.selectGuild(result.guild) { gatewayManager.sendSubscription(it) }
                         is FinderResult.Channel -> navigationStore.selectChannel(result.channel, explicitlySelected = true)
                         is FinderResult.DirectMessage -> navigationStore.selectChannel(result.channel, explicitlySelected = true)
+                        is FinderResult.UserResult -> result.dmChannelId?.let { channelId ->
+                            entityStore.channels.value[channelId]?.let { channel ->
+                                navigationStore.selectChannel(channel, explicitlySelected = true)
+                            }
+                        } ?: profileStore.showProfile(result.user.id, navigationStore.selectedGuild?.id)
                     }
                 })
             }
 
-            if (results.isEmpty() && finderStore.searchQuery.isNotBlank()) {
+            if (results.isEmpty() && query.isNotBlank()) {
                 item {
                     Box(
                         Modifier
@@ -74,48 +84,3 @@ fun FinderScreen(
     }
 }
 
-@Composable
-private fun FinderResultItem(result: FinderResult, onClick: () -> Unit) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        onClick = onClick,
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-    ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            val icon = when (result) {
-                is FinderResult.Guild -> Icons.Filled.Dns
-                is FinderResult.Channel -> if (result.channel.type == 2 || result.channel.type == 13) Icons.Filled.VolumeUp else if (result.channel.type == 5) Icons.Filled.Campaign else Icons.Filled.Tag
-                is FinderResult.DirectMessage -> Icons.Filled.Person
-            }
-            
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(24.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            
-            Spacer(Modifier.width(16.dp))
-            
-            Column {
-                val title = when (result) {
-                    is FinderResult.Guild -> result.guild.name ?: "Unnamed Guild"
-                    is FinderResult.Channel -> result.channel.name ?: "unnamed-channel"
-                    is FinderResult.DirectMessage -> result.channel.recipients?.firstOrNull()?.let { it.global_name ?: it.username } ?: "Direct Message"
-                }
-                Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
-                
-                val subtitle = when (result) {
-                    is FinderResult.Guild -> "Server"
-                    is FinderResult.Channel -> result.guild?.name ?: "Channel"
-                    is FinderResult.DirectMessage -> "Direct Message"
-                }
-                Text(subtitle, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-    }
-}

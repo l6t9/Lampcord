@@ -21,6 +21,9 @@ class GuildStore(
     private val userStore: UserStore,
     private val scope: CoroutineScope
 ) {
+    private companion object {        const val CHANNEL_OPT_IN_FLAG = 1 shl 10
+    }
+
     private val _guildIds = MutableStateFlow<List<String>>(emptyList())
     val guilds: StateFlow<List<Guild>> = combine(_guildIds, entityStore.guilds) { ids, allGuilds ->
         ids.mapNotNull { allGuilds[it] }
@@ -91,6 +94,11 @@ class GuildStore(
                 }).map { it.id }
             }
         }
+    }
+
+    fun joinCompleted(guild: Guild) {
+        entityStore.updateGuild(guild)
+        _guildIds.update { if (guild.id in it) it else it + guild.id }
     }
 
     fun handleGuildDelete(guildId: String) {
@@ -206,6 +214,33 @@ class GuildStore(
 
         scope.launch {
             guildApi.updateUserGuildSettings(guildId, UserGuildSettings.Partial(muted = true, mute_config = muteConfig))
+        }
+    }
+    fun isChannelOptedIn(guildId: String, channelId: String): Boolean {
+        val effectiveGuildId = if (guildId == "@me") null else guildId
+        val override = userGuildSettingsStore.userGuildSettings.value[effectiveGuildId]
+            ?.channel_overrides?.find { it.channel_id == channelId }
+        return override == null || (override.flags and CHANNEL_OPT_IN_FLAG) != 0
+    }
+
+    fun setChannelOptIn(guildId: String, channelId: String, enabled: Boolean) {
+        val effectiveGuildId = if (guildId == "@me") null else guildId
+        val guildSettings = userGuildSettingsStore.userGuildSettings.value[effectiveGuildId] ?: return
+        val currentOverrides = guildSettings.channel_overrides.toMutableList()
+        val index = currentOverrides.indexOfFirst { it.channel_id == channelId }
+        val existingFlags = if (index != -1) currentOverrides[index].flags else 0
+        val newFlags = if (enabled) existingFlags or CHANNEL_OPT_IN_FLAG else existingFlags and CHANNEL_OPT_IN_FLAG.inv()
+
+        val newOverride = if (index != -1) {
+            currentOverrides[index].copy(flags = newFlags)
+        } else {
+            ChannelOverride(channel_id = channelId, flags = newFlags)
+        }
+
+        if (index != -1) currentOverrides[index] = newOverride else currentOverrides.add(newOverride)
+
+        scope.launch {
+            guildApi.updateUserGuildSettings(guildId, UserGuildSettings.Partial(channel_overrides = currentOverrides))
         }
     }
 

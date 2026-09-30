@@ -75,6 +75,11 @@ fun main() {
         Settings.shared.enableSystemWindowFrame = true
         Settings.shared.macDefaultFrameApplied = true
     }
+    if (isLinux && !Settings.shared.linuxDefaultFrameApplied && !Settings.shared.waylandDefaultFrameApplied) {
+        Settings.shared.enableSystemWindowFrame = true
+        Settings.shared.linuxDefaultFrameApplied = true
+        Settings.shared.waylandDefaultFrameApplied = true
+    }
     val useSystemWindowFrame = Settings.shared.enableSystemWindowFrame
 
     nucleusApplication {
@@ -187,13 +192,13 @@ fun main() {
                 title = "Lampcord",
                 icon = dynamicIcon,
                 state = windowState,
-                undecorated = isLinux && !useSystemWindowFrame,
+                undecorated = !useSystemWindowFrame,
             ) {
                 DisposableEffect(Unit) {
                     EnergyManager.keepScreenAwake()
                     onDispose { EnergyManager.releaseScreenAwake() }
                 }
-                if (!isLinux) {
+                if (!useSystemWindowFrame) {
                     MaterialTitleBar(
                         style = rememberMaterialTitleBarStyle(MaterialTheme.colorScheme)
                     )

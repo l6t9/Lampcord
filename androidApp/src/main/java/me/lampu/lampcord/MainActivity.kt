@@ -13,6 +13,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import me.lampu.lampcord.shared.state.ChannelNavigator
+import me.lampu.lampcord.shared.state.DiscordLinkHandler
 import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.ui.App
 import org.koin.core.context.GlobalContext
@@ -36,12 +37,14 @@ class MainActivity : ComponentActivity() {
             App()
         }
         handleNotificationIntent(intent)
+        handleDeepLink(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         handleNotificationIntent(intent)
+        handleDeepLink(intent)
     }
 
     private fun requestNotificationsPermissionIfNeeded() {
@@ -54,9 +57,10 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleNotificationIntent(intent: Intent?) {
-        val navigationStore = GlobalContext.get().get<NavigationStore>()
-        navigationStore.isBubble = intent?.getBooleanExtra(NotificationHelper.EXTRA_IS_BUBBLE, false) == true
         if (intent == null) return
+        val navigationStore = GlobalContext.get().get<NavigationStore>()
+
+        navigationStore.isBubble = intent.getBooleanExtra(NotificationHelper.EXTRA_IS_BUBBLE, false)
         intent.removeExtra(NotificationHelper.EXTRA_IS_BUBBLE)
 
         val channelId = intent.getStringExtra(NotificationHelper.EXTRA_CHANNEL_ID) ?: return
@@ -66,5 +70,12 @@ class MainActivity : ComponentActivity() {
 
         val navigator = GlobalContext.get().get<ChannelNavigator>()
         navigator.navigateToChannel(channelId, guildId)
+    }
+    private fun handleDeepLink(intent: Intent?) {
+        if (intent?.action != Intent.ACTION_VIEW) return
+        val data = intent.data ?: return
+        if (GlobalContext.get().get<DiscordLinkHandler>().open(data.toString())) {
+            intent.data = null
+        }
     }
 }

@@ -9,8 +9,10 @@ import me.lampu.lampcord.shared.api.ChannelApi
 import me.lampu.lampcord.shared.api.GuildApi
 import me.lampu.lampcord.shared.api.MediaApi
 import me.lampu.lampcord.shared.api.MessageApi
+import me.lampu.lampcord.shared.api.ProfileBoardApi
 import me.lampu.lampcord.shared.api.RemoteAuthClient
 import me.lampu.lampcord.shared.api.RestClient
+import me.lampu.lampcord.shared.api.SessionApi
 import me.lampu.lampcord.shared.api.UserApi
 import me.lampu.lampcord.shared.api.createHttpClient
 import me.lampu.lampcord.shared.database.AppDatabase
@@ -48,6 +50,8 @@ val apiModule = module {
     single { UserApi(get()) }
     single { MediaApi(get()) }
     single { ApplicationApi(get()) }
+    single { ProfileBoardApi(get()) }
+    single { SessionApi(get()) }
 }
 
 val databaseModule = module {
@@ -111,7 +115,7 @@ val storeModule = module {
     single { CommandStore(guildApi = get(), gatewayManager = get(), scope = get()) }
     single { ExperimentStore() }
     single { BadgeStore(httpClient = get(), json = get(), scope = get()) }
-    single { FinderStore(guildStore = get(), scope = get()) }
+    single { FinderStore(guildStore = get(), userStore = get(), navigationStoreProvider = { get() }, gatewayManager = get(), scope = get()) }
     single { MentionsStore(messageApi = get(), scope = get()) }
     single { EmojiStore() }
     single { ApplicationStore(get(), get()) }
@@ -132,13 +136,21 @@ val storeModule = module {
             navigationStore = get(), entityStore = get(), gatewayManager = get(), scope = get()
         )
     }
+    single {
+        DiscordLinkHandler(
+            channelNavigator = get(), navigationStore = get(), entityStore = get(),
+            messageStore = get(), profileStore = get(), channelApi = get(), messageApi = get(),
+            guildApi = get(), scope = get()
+        )
+    }
     single(createdAtStart = true) {
         SessionManager(
             gatewayManager = get(), voiceGatewayManager = get(), authApi = get(), navigationStore = get(),
             tokenStore = get(), userStore = get(), gatewayHandler = get(), entityStore = get(),
             readStateStore = get(), userGuildSettingsStore = get(), presenceStore = get(),
             relationshipStore = get(), guildStore = get(), memberListStore = get(), messageStore = get(),
-            typingStore = get(), commandStore = get(), voiceStore = get(), pushTokenRegistrar = getOrNull<PushTokenRegistrar>()
+            typingStore = get(), commandStore = get(), voiceStore = get(), pushTokenRegistrar = getOrNull<PushTokenRegistrar>(),
+            notifier = getOrNull<MessageNotifier>()
         )
     }
 

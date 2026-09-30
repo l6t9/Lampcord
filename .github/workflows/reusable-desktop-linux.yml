@@ -25,8 +25,14 @@ on:
         type: boolean
       package-native:
         description: >-
-          Also build deb, rpm and pacman packages for distribution channels. Off for nightly so
-          the updater's AppImage keeps building fast.
+          Also build deb, rpm and pacman packages for distribution channels.
+        required: false
+        default: false
+        type: boolean
+      package-aur:
+        description: >-
+          Build an AUR source tarball from packaging/aur with pkgver and the AppImage
+          checksum rewritten for this build.
         required: false
         default: false
         type: boolean
@@ -46,7 +52,6 @@ jobs:
   package:
     name: AppImage
     runs-on: ubuntu-latest
-    # Installs libfuse2 and appimagetool, then packages from a cold Gradle cache.
     timeout-minutes: 30
     steps:
       - name: Check out repository
@@ -111,13 +116,81 @@ jobs:
           ./gradlew :desktopApp:packageDeb :desktopApp:packageRpm :desktopApp:packagePacman \
             --no-daemon --no-build-cache --no-configuration-cache
           mkdir -p dist/native
-          for kind in deb rpm pacman; do
-            src=$(find desktopApp/build/compose/binaries/main/"$kind" -maxdepth 1 -name '*.pkg.tar.zst' -o -maxdepth 1 -name '*.rpm' -o -maxdepth 1 -name '*.deb' | head -1)
+          binaries=desktopApp/build/compose/binaries/main
+          for spec in "deb:*.deb" "rpm:*.rpm" "pacman:*.pkg.tar.zst"; do
+            kind="${spec%%:*}"
+            pattern="${spec#*:}"
+            src=$(find "$binaries/$kind" -maxdepth 1 -name "$pattern" -type f | head -n 1)
             [[ -n "$src" ]] || { echo "No $kind package was produced" >&2; exit 1; }
             ext="${src##*.}"
             mv "$src" "dist/native/lampcord-desktop-linux-x64-${version}.${ext}"
           done
           ls -1 dist/native
+
+      - name: Build AUR source tarball
+        if: inputs.package-aur
+        shell: bash
+        env:
+          VERSION_OVERRIDE: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          version=""
+          while IFS='=' read -r key value; do
+            if [[ "$key" == "appVersion" ]]; then version="$value"; break; fi
+          done < gradle.properties
+          [[ -n "$VERSION_OVERRIDE" ]] && version="$VERSION_OVERRIDE"
+
+          appimage="dist/lampcord-desktop-linux-x64-${version}.AppImage"
+          test -f "$appimage" || { echo "Linux AppImage was not produced" >&2; exit 1; }
+
+          staging="$(mktemp -d)"
+          workdir="$staging/lampcord-bin"
+          mkdir -p "$workdir"
+          cp packaging/aur/PKGBUILD packaging/aur/lampcord.desktop packaging/aur/lampcord.png "$workdir/"
+
+          # AUR packages are named with a release version, not a tester build version, so an
+          # alpha appVersion would produce a PKGBUILD that no user can ever match to a tag.
+          release_version="$version"
+          if [[ "$release_version" =~ ^([0-9]+\.[0-9]+\.[0-9]+)-a[0-9]+$ ]]; then
+            release_version="${BASH_REMATCH[1]}"
+          fi
+
+          appimage_sha="$(sha256sum "$appimage" | cut -d' ' -f1)"
+
+          python3 - \
+            "$workdir/PKGBUILD" "$release_version" "$appimage_sha" \
+            "$(sha256sum packaging/aur/lampcord.desktop | cut -d' ' -f1)" \
+            "$(sha256sum packaging/aur/lampcord.png | cut -d' ' -f1)" <<'PY'
+          import re
+          import sys
+
+          path, pkgver, appimage_sha, desktop_sha, icon_sha = sys.argv[1:6]
+          with open(path, encoding="utf-8") as handle:
+              text = handle.read()
+
+          text = re.sub(r"^pkgver=.*$", f"pkgver={pkgver}", text, count=1, flags=re.M)
+          text = re.sub(
+              r"^sha256sums=\(.*?\)$",
+              f"sha256sums=('{appimage_sha}'\n            '{desktop_sha}'\n            '{icon_sha}')",
+              text,
+              count=1,
+              flags=re.M | re.S,
+          )
+          with open(path, "w", encoding="utf-8") as handle:
+              handle.write(text)
+          PY
+
+          # The AppImage checksum must match the artifact this tarball is published beside,
+          # otherwise makepkg fails for every AUR user.
+          grep -q "'${appimage_sha}'" "$workdir/PKGBUILD" || {
+            echo "PKGBUILD checksum rewrite failed" >&2
+            exit 1
+          }
+
+          mkdir -p dist/aur
+          tar -czf "dist/aur/lampcord-bin-${version}-aur.tar.gz" -C "$staging" "lampcord-bin"
+          tar -tzf "dist/aur/lampcord-bin-${version}-aur.tar.gz" > /dev/null
+          ls -1 dist/aur
 
       - name: Upload native Linux assets
         if: inputs.package-native && inputs.staging-release-tag != ''
@@ -126,6 +199,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           STAGING_RELEASE_TAG: ${{ inputs.staging-release-tag }}
         run: gh release upload "$STAGING_RELEASE_TAG" dist/native/* --clobber --repo "$GITHUB_REPOSITORY"
+
+      - name: Upload AUR source asset
+        if: inputs.package-aur && inputs.staging-release-tag != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STAGING_RELEASE_TAG: ${{ inputs.staging-release-tag }}
+        run: gh release upload "$STAGING_RELEASE_TAG" dist/aur/* --clobber --repo "$GITHUB_REPOSITORY"
 
       - name: Upload Linux artifact
         if: inputs.upload-artifact

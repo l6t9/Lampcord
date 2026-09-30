@@ -162,9 +162,7 @@ fun AsyncImage(
                     when (state) {
                         is CoilState.Success -> {
                             val image = state.result.image
-                            if (image != null) {
-                                onSize?.invoke(image.width, image.height)
-                            }
+                            onSize?.invoke(image.width, image.height)
                             onState?.invoke(ImageLoadState.Success)
                         }
                         is CoilState.Error -> {

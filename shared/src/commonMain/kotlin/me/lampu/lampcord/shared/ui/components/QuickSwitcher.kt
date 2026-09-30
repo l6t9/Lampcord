@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import me.lampu.lampcord.shared.gateway.GatewayManager
 import me.lampu.lampcord.shared.state.FinderResult
+import me.lampu.lampcord.shared.state.EntityStore
 import me.lampu.lampcord.shared.state.FinderStore
 import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.ui.icons.Icons
@@ -48,10 +49,12 @@ fun QuickSwitcher(
     onDismiss: () -> Unit,
     finderStore: FinderStore = koinInject(),
     navigationStore: NavigationStore = koinInject(),
-    gatewayManager: GatewayManager = koinInject()
+    gatewayManager: GatewayManager = koinInject(),
+    entityStore: EntityStore = koinInject()
 ) {
     val results by finderStore.results.collectAsState()
-    
+    val query by finderStore.searchQueryFlow.collectAsState()
+
     LaunchedEffect(Unit) {
         finderStore.searchQuery = ""
     }
@@ -81,7 +84,7 @@ fun QuickSwitcher(
                 ) {
                     Column {
                         TextField(
-                            value = finderStore.searchQuery,
+                            value = query,
                             onValueChange = { finderStore.searchQuery = it },
                             modifier = Modifier.fillMaxWidth(),
                             placeholder = { Text("Where would you like to go?") },
@@ -102,17 +105,22 @@ fun QuickSwitcher(
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             items(results) { result ->
-                                FinderResultItem(result, onClick = {
+                                FinderResultRow(result, onClick = {
                                     when (result) {
                                         is FinderResult.Guild -> navigationStore.selectGuild(result.guild) { gatewayManager.sendSubscription(it) }
                                         is FinderResult.Channel -> navigationStore.selectChannel(result.channel)
                                         is FinderResult.DirectMessage -> navigationStore.selectChannel(result.channel)
+                                        is FinderResult.UserResult -> result.dmChannelId?.let { channelId ->
+                                            entityStore.channels.value[channelId]?.let { channel ->
+                                                navigationStore.selectChannel(channel)
+                                            }
+                                        }
                                     }
                                     onDismiss()
                                 })
                             }
 
-                            if (results.isEmpty() && finderStore.searchQuery.isNotBlank()) {
+                            if (results.isEmpty() && query.isNotBlank()) {
                                 item {
                                     Box(
                                         Modifier
@@ -134,48 +142,3 @@ fun QuickSwitcher(
     }
 }
 
-@Composable
-private fun FinderResultItem(result: FinderResult, onClick: () -> Unit) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        onClick = onClick,
-        shape = RoundedCornerShape(16.dp),
-        color = Color.Transparent
-    ) {
-        Row(
-            modifier = Modifier.padding(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            val icon = when (result) {
-                is FinderResult.Guild -> Icons.Filled.Dns
-                is FinderResult.Channel -> if (result.channel.type == 2 || result.channel.type == 13) Icons.Filled.VolumeUp else if (result.channel.type == 5) Icons.Filled.Campaign else Icons.Filled.Tag
-                is FinderResult.DirectMessage -> Icons.Filled.Person
-            }
-            
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            
-            Spacer(Modifier.width(12.dp))
-            
-            Column {
-                val title = when (result) {
-                    is FinderResult.Guild -> result.guild.name ?: "Unnamed Guild"
-                    is FinderResult.Channel -> result.channel.name ?: "unnamed-channel"
-                    is FinderResult.DirectMessage -> result.channel.recipients?.firstOrNull()?.let { it.global_name ?: it.username } ?: "Direct Message"
-                }
-                Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
-                
-                val subtitle = when (result) {
-                    is FinderResult.Guild -> "Server"
-                    is FinderResult.Channel -> result.guild?.name ?: "Channel"
-                    is FinderResult.DirectMessage -> "Direct Message"
-                }
-                Text(subtitle, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-    }
-}

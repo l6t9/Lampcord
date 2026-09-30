@@ -2,6 +2,8 @@ package me.lampu.lampcord.shared.database
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import androidx.room.ConstructedBy
+import androidx.room.RoomDatabaseConstructor
 import androidx.room.migration.Migration
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
@@ -9,9 +11,15 @@ import androidx.sqlite.execSQL
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 
+@ConstructedBy(AppDatabaseConstructor::class)
 @Database(entities = [MessageEntity::class], version = 2)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun messageDao(): MessageDao
+}
+
+@Suppress("KotlinNoActualForExpect")
+expect object AppDatabaseConstructor : RoomDatabaseConstructor<AppDatabase> {
+    override fun initialize(): AppDatabase
 }
 
 private val MIGRATION_1_2 = object : Migration(1, 2) {

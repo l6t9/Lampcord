@@ -256,6 +256,35 @@ jobs:
     secrets:
       GRADLE_ENCRYPTION_KEY: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
+  ios:
+    name: iOS
+    if: needs.prepare.outputs.should-release == 'true' && inputs.publish-existing != true
+    needs:
+      - prepare
+      - stage
+    uses: ./.github/workflows/reusable-ios-build.yml
+    permissions:
+      contents: write
+    with:
+      build-ipa: true
+      staging-release-tag: ${{ needs.stage.outputs.tag }}
+    secrets:
+      GRADLE_ENCRYPTION_KEY: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+
+  macos:
+    name: macOS
+    if: needs.prepare.outputs.should-release == 'true' && inputs.publish-existing != true
+    needs:
+      - prepare
+      - stage
+    uses: ./.github/workflows/reusable-desktop-macos.yml
+    permissions:
+      contents: write
+    with:
+      staging-release-tag: ${{ needs.stage.outputs.tag }}
+    secrets:
+      GRADLE_ENCRYPTION_KEY: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+
   publish:
     name: Publish release
     if: always() && needs.prepare.outputs.should-release == 'true'
@@ -265,6 +294,8 @@ jobs:
       - android
       - linux
       - windows
+      - ios
+      - macos
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -305,6 +336,7 @@ jobs:
             "release-assets/lampcord-android-${APP_VERSION}.apk"
             "release-assets/lampcord-desktop-linux-x64-${APP_VERSION}.AppImage"
             "release-assets/lampcord-desktop-windows-x64-${APP_VERSION}.zip"
+            "release-assets/Lampcord.ipa"
           )
           for file in "${expected[@]}"; do
             if [[ ! -f "$file" ]]; then
@@ -319,6 +351,38 @@ jobs:
               exit 1
             fi
           done
+
+      - name: Rename the iOS archive
+        shell: bash
+        env:
+          APP_VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          set -euo pipefail
+          test -f release-assets/Lampcord.ipa || {
+            echo "Missing release artifact: release-assets/Lampcord.ipa" >&2
+            exit 1
+          }
+          mv release-assets/Lampcord.ipa "release-assets/lampcord-ios-${APP_VERSION}.ipa"
+
+      - name: Rename the macOS archive
+        shell: bash
+        env:
+          APP_VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          set -euo pipefail
+          # The macOS job names its DMG after the arch it was built for; the release asset is
+          # named after the version like every other platform.
+          shopt -s nullglob
+          dmgs=(release-assets/lampcord-desktop-macos-*-*.dmg)
+          shopt -u nullglob
+          if [[ "${#dmgs[@]}" -ne 1 ]]; then
+            {
+              echo "Expected exactly one macOS DMG, found ${#dmgs[@]}"
+              ls -1 release-assets >&2 || echo "  (none)" >&2
+            } >&2
+            exit 1
+          fi
+          mv "${dmgs[0]}" "release-assets/lampcord-desktop-macos-${APP_VERSION}.dmg"
 
       - name: Generate full changelog
         shell: bash
@@ -376,6 +440,22 @@ jobs:
         with:
           file-path: release-assets/lampcord-desktop-windows-x64-${{ needs.prepare.outputs.version }}.zip
 
+      - name: Upload iOS IPA to Pixeldrain
+        id: pixeldrain-ios
+        uses: ./.github/actions/upload-pixeldrain
+        env:
+          PIXELDRAIN_API_KEY: ${{ secrets.PIXELDRAIN_API_KEY }}
+        with:
+          file-path: release-assets/lampcord-ios-${{ needs.prepare.outputs.version }}.ipa
+
+      - name: Upload macOS DMG to Pixeldrain
+        id: pixeldrain-macos
+        uses: ./.github/actions/upload-pixeldrain
+        env:
+          PIXELDRAIN_API_KEY: ${{ secrets.PIXELDRAIN_API_KEY }}
+        with:
+          file-path: release-assets/lampcord-desktop-macos-${{ needs.prepare.outputs.version }}.dmg
+
       - name: Upload checksums to Pixeldrain
         id: pixeldrain-checksums
         uses: ./.github/actions/upload-pixeldrain
@@ -411,6 +491,8 @@ jobs:
           ANDROID_URL: ${{ steps.pixeldrain-android.outputs.pixeldrain_url }}
           LINUX_URL: ${{ steps.pixeldrain-linux.outputs.pixeldrain_url }}
           WINDOWS_URL: ${{ steps.pixeldrain-windows.outputs.pixeldrain_url }}
+          IOS_URL: ${{ steps.pixeldrain-ios.outputs.pixeldrain_url }}
+          MACOS_URL: ${{ steps.pixeldrain-macos.outputs.pixeldrain_url }}
           CHECKSUMS_URL: ${{ steps.pixeldrain-checksums.outputs.pixeldrain_url }}
         run: |
           set -euo pipefail
@@ -420,8 +502,8 @@ jobs:
           role3="1534719840307253359"
 
           downloads="$(printf '%s\n%s\n%s' \
-            "[Android]($ANDROID_URL)" \
-            "[Windows x64]($WINDOWS_URL) | [Linux x64]($LINUX_URL)" \
+            "[Android]($ANDROID_URL) | [iOS unsigned IPA]($IOS_URL)" \
+            "[Windows x64]($WINDOWS_URL) | [macOS]($MACOS_URL) | [Linux x64]($LINUX_URL)" \
             "[SHA-256 checksums]($CHECKSUMS_URL)")"
           run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
           timestamp="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
@@ -468,6 +550,8 @@ jobs:
       - android
       - linux
       - windows
+      - ios
+      - macos
       - publish
     runs-on: ubuntu-latest
     timeout-minutes: 5

@@ -9,6 +9,7 @@ import me.lampu.lampcord.shared.gateway.VoiceGatewayManager
 import me.lampu.lampcord.shared.model.LoginRequest
 import me.lampu.lampcord.shared.model.LoginResponse
 import me.lampu.lampcord.shared.model.MFALoginRequest
+import me.lampu.lampcord.shared.notifications.MessageNotifier
 import me.lampu.lampcord.shared.notifications.PushTokenRegistrar
 import me.lampu.lampcord.shared.settings.Settings
 
@@ -31,7 +32,8 @@ class SessionManager(
     val typingStore: TypingStore,
     val commandStore: CommandStore,
     val voiceStore: VoiceStore,
-    val pushTokenRegistrar: PushTokenRegistrar? = null
+    val pushTokenRegistrar: PushTokenRegistrar? = null,
+    private val notifier: MessageNotifier? = null
 ) {
     private val scope = CoroutineScope(Dispatchers.Main)
 
@@ -76,6 +78,7 @@ class SessionManager(
     }
 
     fun disconnect() {
+        notifier?.dismissAllNotifications()
         voiceStore.disconnectFromVoice()
         gatewayManager.disconnect()
         navigationStore.isConnected = false
