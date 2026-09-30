@@ -1,7 +1,6 @@
 package me.lampu.lampcord.shared.ui.components.profiles
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -60,12 +59,12 @@ fun ProfileBoardContent(
         else -> if (loaded.isEmpty) {
             BoardMessage("This profile has not set up a board.")
         } else {
-            LazyColumn(
+            Column(
                 modifier = modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
                 loaded.widgets.forEach { widget ->
-                    item(key = widget.type + (widget.applicationId ?: "")) {
+                    key(widget.type + (widget.applicationId ?: "")) {
                         BoardWidgetSection(
                             title = WIDGET_TITLES[widget.type] ?: "Board",
                             widget = widget,

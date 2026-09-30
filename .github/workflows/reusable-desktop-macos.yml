@@ -96,7 +96,10 @@ jobs:
 
           echo "bundle: $app"
           echo "--- Contents ---"
-          find "$app/Contents" -maxdepth 2 | head -n 40
+          # Top level only. Contents/app holds hundreds of jars, and piping a deep find into
+          # head kills it with SIGPIPE, which set -o pipefail would turn into a build failure.
+          find "$app/Contents" -maxdepth 1
+          echo "--- app payload: $(find "$app/Contents/app" -type f | wc -l | tr -d ' ') files ---"
           echo "--- plist ---"
           /usr/libexec/PlistBuddy -c 'Print' "$app/Contents/Info.plist" || fail "Info.plist is unreadable"
           echo "---------------------"
