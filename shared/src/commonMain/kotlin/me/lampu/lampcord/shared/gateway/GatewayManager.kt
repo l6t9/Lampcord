@@ -550,7 +550,7 @@ class GatewayManager(
         val payload = GatewayPayload(
             op = 8,
             d = buildJsonObject {
-                put("guild_id", buildJsonArray { add(JsonPrimitive(guildId)) })
+                put("guild_id", JsonPrimitive(guildId))
                 query?.let { put("query", it) }
                 userIds?.let { ids ->
                     put("user_ids", buildJsonArray { ids.forEach { add(JsonPrimitive(it)) } })

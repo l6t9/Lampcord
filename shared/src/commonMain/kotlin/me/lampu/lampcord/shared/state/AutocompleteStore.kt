@@ -11,6 +11,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
+private const val MentionMemberLimit = 25
+
 class AutocompleteStore(
     private val memberListStore: MemberListStore,
     private val relationshipStore: RelationshipStore,
@@ -69,25 +71,46 @@ class AutocompleteStore(
                 }
 
                 val members = if (guildId != null) {
-                    val local = memberListStore.memberListItems.filterNotNull().mapNotNull { it.member }.filter { member ->
-                        val name = member.nick ?: member.user?.global_name ?: member.user?.username ?: ""
-                        name.contains(query, ignoreCase = true) || member.user?.username?.contains(query, ignoreCase = true) == true
-                    }.take(10).toMutableList()
+                    val cached = userStore.members.value[guildId]?.values.orEmpty()
+                    val panelMembers = memberListStore.memberListItems.filterNotNull().mapNotNull { it.member }
+                    val matches = (cached + panelMembers)
+                        .filter { member ->
+                            val user = member.user
+                            if (user == null) return@filter false
+                            val name = member.nick ?: user.global_name ?: user.username ?: ""
+                            name.contains(query, ignoreCase = true) ||
+                                user.username?.contains(query, ignoreCase = true) == true ||
+                                user.global_name?.contains(query, ignoreCase = true) == true ||
+                                user.id == query
+                        }
+                        .distinctBy { it.user?.id ?: it.userId() }
 
-                    if (local.size < 5 && query.isNotEmpty()) {
+                    val local = matches.sortedBy { it.nick ?: it.user?.global_name ?: it.user?.username ?: "" }
+                        .take(MentionMemberLimit)
+                        .toMutableList()
+
+                    if (local.size < 5) {
                         memberSearchJob = scope.launch {
-                            val remote = guildApi.searchGuildMembers(guildId, query, limit = 10)
-                            if (remote.isNotEmpty()) {
-                                var changed = false
-                                remote.forEach { rm ->
-                                    if (local.none { it.user?.id == rm.user?.id }) {
-                                        local.add(rm)
-                                        changed = true
-                                    }
+                            val remote = if (query.isEmpty()) {
+                                guildApi.getGuildMembers(guildId, limit = 100)
+                            } else {
+                                guildApi.searchGuildMembers(guildId, query, limit = 100)
+                            }
+                            if (remote.isEmpty()) return@launch
+                            val merged = (local + remote)
+                                .filter { it.user != null }
+                                .distinctBy { it.user?.id ?: it.userId() }
+                                .filter { member ->
+                                    val user = member.user ?: return@filter false
+                                    val name = member.nick ?: user.global_name ?: user.username ?: ""
+                                    name.contains(query, ignoreCase = true) ||
+                                        user.username?.contains(query, ignoreCase = true) == true ||
+                                        user.global_name?.contains(query, ignoreCase = true) == true ||
+                                        user.id == query
                                 }
-                                if (changed) {
-                                    updateAutocompleteResults(type, query, selectedGuild, isSearch, local)
-                                }
+                                .take(MentionMemberLimit)
+                            if (merged.size != local.size) {
+                                updateAutocompleteResults(type, query, selectedGuild, isSearch, merged)
                             }
                         }
                     }
@@ -294,8 +317,8 @@ class AutocompleteStore(
         selectedGuild: Guild?,
         isSearch: Boolean
     ) {
-        results.addAll(members.map { member ->
-            val user = member.user!!
+        results.addAll(members.mapNotNull { member ->
+            val user = member.user ?: return@mapNotNull null
             val name = member.nick ?: user.global_name ?: user.username ?: "Unknown User"
 
             val roleData = if (selectedGuild != null) {
