@@ -1118,9 +1118,9 @@ private fun MainBaseplateContent(
                                             }
                                         ) {
                                             Icon(
-                                                imageVector = if (activeChannel.type == 1) Icons.Filled.AccountCircle else Icons.Filled.Group,
+                                                imageVector = Icons.Filled.Group,
                                                 contentDescription = "Toggle Member List",
-                                                tint = if (memberListVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
                                         }
                                     }
