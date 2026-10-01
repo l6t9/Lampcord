@@ -211,6 +211,7 @@ PACHOOK
   --options='!all,use-set,type,uid,gid,mode,time,size,md5,sha256,link' \
   -czf .MTREE usr .PKGINFO .INSTALL)
 
-pac_out="$out/lampcord-desktop-linux-x64-${version}.pkg.tar.xz"
+mkdir -p "$out"
+pac_out="$(cd "$out" && pwd)/lampcord-desktop-linux-x64-${version}.pkg.tar.xz"
 (cd "$pac_root/pkg" && bsdtar -czf "$pac_out" .PKGINFO .INSTALL .MTREE usr)
 echo "built $pac_out"
