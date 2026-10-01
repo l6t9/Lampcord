@@ -258,6 +258,8 @@ fun ChannelItem(
                             else -> MaterialTheme.colorScheme.onSurfaceVariant
                         }
                         
+                        val iconAlpha = if (isSelected || (isUnread && !isMuted) || isHovered) 1f else 0.6f
+
                         Box(modifier = Modifier.size(iconSize)) {
                             Icon(
                                 imageVector = if (!canView) {
@@ -271,7 +273,7 @@ fun ChannelItem(
                                 },
                                 contentDescription = null,
                                 modifier = Modifier.matchParentSize(),
-                                tint = contentColor.copy(alpha = if (isSelected || (isUnread && !isMuted) || isHovered) 1f else 0.6f)
+                                tint = contentColor.copy(alpha = iconAlpha)
                             )
                             
                             if (canView && isPrivate && channel.type != 4) {
@@ -289,7 +291,7 @@ fun ChannelItem(
                                         imageVector = Icons.Filled.Lock,
                                         contentDescription = null,
                                         modifier = Modifier.padding(1.dp).fillMaxSize(),
-                                        tint = contentColor
+                                        tint = contentColor.copy(alpha = iconAlpha)
                                     )
                                 }
                             }
