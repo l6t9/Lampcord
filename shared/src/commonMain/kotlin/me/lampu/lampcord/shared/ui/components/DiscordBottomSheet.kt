@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.material3.SheetValue
@@ -21,7 +22,7 @@ import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
 val DiscordSheetCornerRadius = 24.dp
 
-val DiscordSheetMargin = 12.dp
+val DiscordSheetTopInset = 56.dp
 
 val DiscordSheetScrimColor = Color.Black.copy(alpha = 0.6f)
 
@@ -43,7 +44,10 @@ fun DiscordBottomSheet(
     modifier: Modifier = Modifier,
     sheetState: SheetState = rememberDiscordSheetState(),
     sheetMaxWidth: Dp = 560.dp,
-    shape: Shape = RoundedCornerShape(DiscordSheetCornerRadius),
+    shape: Shape = RoundedCornerShape(
+        topStart = DiscordSheetCornerRadius,
+        topEnd = DiscordSheetCornerRadius
+    ),
     containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
     contentColor: Color = contentColorFor(containerColor),
     dragHandle: @Composable (() -> Unit)? = null,
@@ -51,14 +55,11 @@ fun DiscordBottomSheet(
     contentWindowInsets: @Composable () -> WindowInsets = { WindowInsets(0, 0, 0, 0) },
     content: @Composable ColumnScope.() -> Unit
 ) {
+    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
         modifier = modifier
-            .padding(
-                start = DiscordSheetMargin,
-                end = DiscordSheetMargin,
-                bottom = DiscordSheetMargin
-            )
+            .padding(top = DiscordSheetTopInset)
             .shadow(
                 elevation = 8.dp,
                 shape = shape,
@@ -77,7 +78,11 @@ fun DiscordBottomSheet(
         contentWindowInsets = contentWindowInsets,
         properties = ModalBottomSheetDefaults.properties
     ) {
-        Column(modifier = Modifier.padding(bottom = 4.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = screenHeight - DiscordSheetTopInset)
+        ) {
             if (dragHandle != null) {
                 dragHandle()
             } else if (!Settings.shared.reduceMotion) {
