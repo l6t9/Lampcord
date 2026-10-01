@@ -1,7 +1,6 @@
 package me.lampu.lampcord.shared.ui.components
 
 import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.StartOffset
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.keyframes
@@ -18,7 +17,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.state.TypingStore
@@ -63,20 +64,22 @@ fun TypingIndicator(
     }
 
     Surface(
-        modifier = modifier.fillMaxWidth().height(24.dp),
+        modifier = modifier.fillMaxWidth(),
         color = Color.Transparent
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            TypingDots()
-            Spacer(Modifier.width(8.dp))
+            TypingDots(modifier = Modifier.size(12.dp))
             Text(
                 text = text,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
@@ -98,40 +101,79 @@ fun TypingDots(modifier: Modifier = Modifier) {
         return
     }
 
+    val dotColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f)
+    val cycle = 1200
+    val stagger = cycle / 3
+
     val infiniteTransition = rememberInfiniteTransition(label = "typingDots")
-    val alpha1 by infiniteTransition.animateFloat(
-        initialValue = 0.2f,
+    val scale1 by infiniteTransition.animateFloat(
+        initialValue = 1f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = keyframes { durationMillis = 1200; 0.2f at 0; 1f at 400; 0.2f at 800; 0.2f at 1200 },
+            animation = keyframes {
+                durationMillis = cycle
+                1f at 0
+                1.45f at stagger
+                1f at stagger * 2
+                1f at cycle
+            },
             repeatMode = RepeatMode.Restart
         ),
-        label = "alpha1"
+        label = "scale1"
     )
-    val alpha2 by infiniteTransition.animateFloat(
-        initialValue = 0.2f,
+    val scale2 by infiniteTransition.animateFloat(
+        initialValue = 1f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = keyframes { durationMillis = 1200; 0.2f at 0; 1f at 400; 0.2f at 800; 0.2f at 1200},
-            repeatMode = RepeatMode.Restart,
-            initialStartOffset = StartOffset(200),
+            animation = keyframes {
+                durationMillis = cycle
+                1f at 0
+                1f at stagger
+                1.45f at stagger * 2
+                1f at cycle
+            },
+            repeatMode = RepeatMode.Restart
         ),
-        label = "alpha2"
+        label = "scale2"
     )
-    val alpha3 by infiniteTransition.animateFloat(
-        initialValue = 0.2f,
+    val scale3 by infiniteTransition.animateFloat(
+        initialValue = 1f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = keyframes { durationMillis = 1200; 0.2f at 0; 1f at 400; 0.2f at 800; 0.2f at 1200 },
-            repeatMode = RepeatMode.Restart,
-            initialStartOffset = StartOffset(400)
+            animation = keyframes {
+                durationMillis = cycle
+                1f at 0
+                1f at stagger * 2
+                1.45f at stagger * 3 - stagger / 2
+                1f at cycle
+            },
+            repeatMode = RepeatMode.Restart
         ),
-        label = "alpha3"
+        label = "scale3"
     )
 
-    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-        Box(Modifier.size(4.dp).background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha1), CircleShape))
-        Box(Modifier.size(4.dp).background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha2), CircleShape))
-        Box(Modifier.size(4.dp).background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha3), CircleShape))
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            Modifier
+                .size(4.dp)
+                .graphicsLayer { scaleX = scale1; scaleY = scale1 }
+                .background(dotColor, CircleShape)
+        )
+        Box(
+            Modifier
+                .size(4.dp)
+                .graphicsLayer { scaleX = scale2; scaleY = scale2 }
+                .background(dotColor, CircleShape)
+        )
+        Box(
+            Modifier
+                .size(4.dp)
+                .graphicsLayer { scaleX = scale3; scaleY = scale3 }
+                .background(dotColor, CircleShape)
+        )
     }
 }
