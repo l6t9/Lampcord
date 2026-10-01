@@ -258,6 +258,7 @@ fun ProfileCard(
     bannerHeightRatio: Float = 0f,
     bannerContentScale: ContentScale = ContentScale.Crop,
     showBoardTab: Boolean = false,
+    showFrame: Boolean = true,
     userStore: UserStore = koinInject(),
     clientProfileStore: ClientProfileStore = koinInject(),
     settingsStore: me.lampu.lampcord.shared.state.SettingsStore = koinInject(),
@@ -375,7 +376,7 @@ fun ProfileCard(
             )
         }
 
-        if (frameProduct != null) {
+        if (frameProduct != null && showFrame) {
             ProfileFrameOverlay(
                 product = frameProduct,
                 modifier = Modifier.matchParentSize(),
