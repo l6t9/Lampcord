@@ -35,14 +35,29 @@ on:
       - 'desktopApp/**'
       - 'native/**'
       - 'scripts/build_icons.sh'
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Which desktop platform to build
+        required: false
+        default: all
+        type: choice
+        options:
+          - all
+          - linux
+          - windows
+          - macos
 
 concurrency:
   group: desktop-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  # A manual run is never cancelled by a later push, so a single-platform retry started from
+  # this workflow is not killed halfway through by unrelated commits landing on main.
+  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
 
 jobs:
   linux:
     name: Linux
+    if: github.event_name != 'workflow_dispatch' || inputs.platform == 'all' || inputs.platform == 'linux'
     uses: ./.github/workflows/reusable-desktop-linux.yml
     permissions:
       contents: read
@@ -54,6 +69,7 @@ jobs:
 
   windows:
     name: Windows
+    if: github.event_name != 'workflow_dispatch' || inputs.platform == 'all' || inputs.platform == 'windows'
     uses: ./.github/workflows/reusable-desktop-windows.yml
     permissions:
       contents: read
@@ -65,6 +81,7 @@ jobs:
 
   macos:
     name: macOS
+    if: github.event_name != 'workflow_dispatch' || inputs.platform == 'all' || inputs.platform == 'macos'
     uses: ./.github/workflows/reusable-desktop-macos.yml
     permissions:
       contents: read

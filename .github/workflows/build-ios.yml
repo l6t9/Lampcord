@@ -38,7 +38,9 @@ permissions:
 
 concurrency:
   group: ios-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  # A manual run is never cancelled by a later push, so an iOS retry started from this
+  # workflow is not killed halfway through by unrelated commits landing on main.
+  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
 
 jobs:
   build:

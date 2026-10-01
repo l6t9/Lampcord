@@ -113,22 +113,22 @@ jobs:
             if [[ "$key" == "appVersion" ]]; then version="$value"; break; fi
           done < gradle.properties
           [[ -n "$VERSION_OVERRIDE" ]] && version="$VERSION_OVERRIDE"
-          ./gradlew :desktopApp:packageDeb :desktopApp:packageRpm :desktopApp:packagePacman \
+
+          ./gradlew :desktopApp:packageUberJarForCurrentOS \
             --no-daemon --no-build-cache --no-configuration-cache
+
+          jar=$(find desktopApp/build/compose/jars -maxdepth 1 -name '*.jar' -type f | head -n 1)
+          [[ -n "$jar" ]] || { echo "No uber jar was produced" >&2; exit 1; }
+
           mkdir -p dist/native
-          binaries=desktopApp/build/compose/binaries/main
-          # electron-builder hands fpm an output path ending in .pacman and fpm writes to it
-          # verbatim, so the produced file is never a .pkg.tar.* name. Its real format is xz
-          # (fpm runs with --pacman-compression xz), which is the extension published below.
-          for spec in "deb:*.deb:deb" "rpm:*.rpm:rpm" "pacman:*.pacman:pkg.tar.xz"; do
-            kind="${spec%%:*}"
-            rest="${spec#*:}"
-            pattern="${rest%%:*}"
-            ext="${rest#*:}"
-            src=$(find "$binaries/$kind" -maxdepth 1 -name "$pattern" -type f | head -n 1)
-            [[ -n "$src" ]] || { echo "No $kind package was produced" >&2; exit 1; }
-            mv "$src" "dist/native/lampcord-desktop-linux-x64-${version}.${ext}"
-          done
+          ./scripts/package_linux.sh --version "$version" --jar "$jar" --out dist/native
+
+          # Publish the jar itself. packaging/aur/PKGBUILD fetches it straight from the
+          # release assets rather than building it, so without this the AUR package 404s.
+          # The upload step below globs dist/native/*, so leaving it here is enough. The name
+          # matches the one the release assets use, which is what the PKGBUILD source= URL
+          # expects.
+          cp "$jar" "dist/native/lampcord-desktop-linux-x64-${version}.jar"
           ls -1 dist/native
 
       - name: Build AUR source tarball
@@ -144,13 +144,20 @@ jobs:
           done < gradle.properties
           [[ -n "$VERSION_OVERRIDE" ]] && version="$VERSION_OVERRIDE"
 
-          appimage="dist/lampcord-desktop-linux-x64-${version}.AppImage"
-          test -f "$appimage" || { echo "Linux AppImage was not produced" >&2; exit 1; }
+          # The AUR package consumes the uber jar, the same artifact deb and rpm are built
+          # from, rather than renaming an AppImage. That drops fuse2 from the dependency
+          # list and makes all four Linux packages one layout.
+          jar="dist/native/lampcord-desktop-linux-x64-${version}.jar"
+          if [[ ! -f "$jar" ]]; then
+            jar=$(find desktopApp/build/compose/jars -maxdepth 1 -name '*.jar' -type f | head -n 1)
+          fi
+          test -f "$jar" || { echo "No uber jar was produced" >&2; exit 1; }
 
           staging="$(mktemp -d)"
           workdir="$staging/lampcord-bin"
           mkdir -p "$workdir"
-          cp packaging/aur/PKGBUILD packaging/aur/lampcord.desktop packaging/aur/lampcord.png "$workdir/"
+          cp packaging/aur/PKGBUILD packaging/aur/lampcord-launcher packaging/aur/lampcord.desktop \
+            packaging/aur/lampcord.png "$workdir/"
 
           # AUR packages are named with a release version, not a tester build version, so an
           # alpha appVersion would produce a PKGBUILD that no user can ever match to a tag.
@@ -159,23 +166,28 @@ jobs:
             release_version="${BASH_REMATCH[1]}"
           fi
 
-          appimage_sha="$(sha256sum "$appimage" | cut -d' ' -f1)"
+          # Source order must match the PKGBUILD's source=() array.
+          jar_sha="$(sha256sum "$jar" | cut -d' ' -f1)"
+          launcher_sha="$(sha256sum packaging/aur/lampcord-launcher | cut -d' ' -f1)"
+          desktop_sha="$(sha256sum packaging/aur/lampcord.desktop | cut -d' ' -f1)"
+          icon_sha="$(sha256sum packaging/aur/lampcord.png | cut -d' ' -f1)"
 
           python3 - \
-            "$workdir/PKGBUILD" "$release_version" "$appimage_sha" \
-            "$(sha256sum packaging/aur/lampcord.desktop | cut -d' ' -f1)" \
-            "$(sha256sum packaging/aur/lampcord.png | cut -d' ' -f1)" <<'PY'
+            "$workdir/PKGBUILD" "$release_version" "$jar_sha" "$launcher_sha" \
+            "$desktop_sha" "$icon_sha" <<'PY'
           import re
           import sys
 
-          path, pkgver, appimage_sha, desktop_sha, icon_sha = sys.argv[1:6]
+          path, pkgver, jar_sha, launcher_sha, desktop_sha, icon_sha = sys.argv[1:7]
           with open(path, encoding="utf-8") as handle:
               text = handle.read()
 
           text = re.sub(r"^pkgver=.*$", f"pkgver={pkgver}", text, count=1, flags=re.M)
           text = re.sub(
               r"^sha256sums=\(.*?\)$",
-              f"sha256sums=('{appimage_sha}'\n            '{desktop_sha}'\n            '{icon_sha}')",
+              "sha256sums=('{}'\n            '{}'\n            '{}'\n            '{}')".format(
+                  jar_sha, launcher_sha, desktop_sha, icon_sha
+              ),
               text,
               count=1,
               flags=re.M | re.S,
@@ -184,12 +196,22 @@ jobs:
               handle.write(text)
           PY
 
-          # The AppImage checksum must match the artifact this tarball is published beside,
-          # otherwise makepkg fails for every AUR user.
-          grep -q "'${appimage_sha}'" "$workdir/PKGBUILD" || {
-            echo "PKGBUILD checksum rewrite failed" >&2
+          # Every checksum must have been substituted, and the jar's has to match the artifact
+          # this tarball is published beside, otherwise makepkg fails for every AUR user.
+          if grep -q 'REPLACED_BY_CI' "$workdir/PKGBUILD"; then
+            echo "PKGBUILD still contains placeholder checksums" >&2
+            exit 1
+          fi
+          grep -q "'${jar_sha}'" "$workdir/PKGBUILD" || {
+            echo "PKGBUILD jar checksum rewrite failed" >&2
             exit 1
           }
+          for sha in "$launcher_sha" "$desktop_sha" "$icon_sha"; do
+            grep -q "'${sha}'" "$workdir/PKGBUILD" || {
+              echo "PKGBUILD is missing checksum ${sha}" >&2
+              exit 1
+            }
+          done
 
           mkdir -p dist/aur
           tar -czf "dist/aur/lampcord-bin-${version}-aur.tar.gz" -C "$staging" "lampcord-bin"

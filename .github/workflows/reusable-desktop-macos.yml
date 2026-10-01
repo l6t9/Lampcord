@@ -98,7 +98,10 @@ jobs:
           echo "--- Contents ---"
           # Top level only. Contents/app holds hundreds of jars, and piping a deep find into
           # head kills it with SIGPIPE, which set -o pipefail would turn into a build failure.
+          # sed reads the whole stream, so truncating with it is safe.
           find "$app/Contents" -maxdepth 1
+          echo "--- Contents/runtime ---"
+          find "$app/Contents/runtime" -maxdepth 4 2>/dev/null | sed -n '1,40p'
           echo "--- app payload: $(find "$app/Contents/app" -type f | wc -l | tr -d ' ') files ---"
           echo "--- plist ---"
           /usr/libexec/PlistBuddy -c 'Print' "$app/Contents/Info.plist" || fail "Info.plist is unreadable"
@@ -107,16 +110,23 @@ jobs:
           test -f "$app/Contents/Info.plist" || fail "Info.plist is missing"
           test -x "$app/Contents/MacOS/Lampcord" || fail "launcher is missing or not executable"
 
-          # This is a jpackage app-image, not an Electron app, so the bundle carries the JVM
-          # under Contents/runtime rather than any Contents/Frameworks directory. The layout is
-          # the one the packaging plugin itself assumes:
-          #   AbstractJPackageTask.kt           Contents/MacOS/<packageName>, Contents/runtime
-          #   AbstractGenerateAotCacheTask.kt   Contents/runtime/Contents/Home/bin
-          test -x "$app/Contents/runtime/Contents/Home/bin/java" \
-            || fail "the bundled JVM is missing from Contents/runtime"
+          test -d "$app/Contents/runtime" || fail "Contents/runtime is missing"
+          runtime_java=$(find "$app/Contents/runtime" -name java -print -quit)
+          test -n "$runtime_java" || fail "no java anywhere under Contents/runtime"
+          test -x "$runtime_java" || fail "$runtime_java is not executable"
+
           test -d "$app/Contents/app" || fail "Contents/app is missing"
           test -n "$(find "$app/Contents/app" -type f -print -quit)" \
             || fail "Contents/app holds no files"
+
+          plist_value() { /usr/libexec/PlistBuddy -c "Print $1" "$app/Contents/Info.plist"; }
+          test "$(plist_value CFBundleExecutable)" = "Lampcord" \
+            || fail "CFBundleExecutable is $(plist_value CFBundleExecutable)"
+          test "$(plist_value CFBundleIdentifier)" = "me.lampcord.desktop" \
+            || fail "CFBundleIdentifier is $(plist_value CFBundleIdentifier)"
+          expected_version=$(sed -n 's/^appVersion=//p' gradle.properties | cut -d- -f1)
+          test "$(plist_value CFBundleShortVersionString)" = "$expected_version" \
+            || fail "CFBundleShortVersionString is $(plist_value CFBundleShortVersionString), expected $expected_version"
 
           lipo "$app/Contents/MacOS/Lampcord" -verify_arch "$NATIVE_ARCH" \
             || fail "launcher is not $NATIVE_ARCH"
@@ -124,6 +134,7 @@ jobs:
           hdiutil detach "$mount_point" -quiet
           trap - EXIT
           echo "verified a $NATIVE_ARCH bundle in $(basename "$dmg")"
+          echo "runtime java: $runtime_java"
 
       - name: Collect macOS DMG
         id: package

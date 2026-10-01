@@ -543,7 +543,8 @@ jobs:
 
   cleanup-staging:
     name: Clean up package staging release
-    if: always() && needs.prepare.outputs.should-release == 'true' && inputs.publish-existing != true
+    # Only on a fully successful publish. Cleaning up under `always()` deleted the staged
+    if: ${{ !cancelled() && needs.publish.result == 'success' && needs.prepare.outputs.should-release == 'true' && inputs.publish-existing != true }}
     needs:
       - prepare
       - stage
