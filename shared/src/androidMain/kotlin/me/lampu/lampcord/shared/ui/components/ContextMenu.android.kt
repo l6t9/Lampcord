@@ -83,13 +83,10 @@ actual fun ContextMenu(
     }
 
     if (showSheet) {
-        val sheetState = rememberSkipPartiallyExpandedSheetState()
-
-        AdaptiveModalBottomSheet(
+        DiscordBottomSheet(
             onDismissRequest = { showSheet = false },
-            sheetState = sheetState,
             containerColor = MaterialTheme.colorScheme.surface,
-            dragHandle = { BottomSheetDefaults.DragHandle() }
+            dragHandle = null
         ) {
             Column(
                 modifier = Modifier

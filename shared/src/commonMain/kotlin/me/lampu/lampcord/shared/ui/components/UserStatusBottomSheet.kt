@@ -47,7 +47,7 @@ fun UserStatusBottomSheet(
     
     var showAccountSwitcher by remember { mutableStateOf(false) }
 
-    AdaptiveModalBottomSheet(onDismissRequest = onDismiss) {
+    DiscordBottomSheet(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()

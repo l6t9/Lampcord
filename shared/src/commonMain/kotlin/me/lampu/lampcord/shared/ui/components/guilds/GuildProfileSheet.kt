@@ -23,7 +23,7 @@ import me.lampu.lampcord.shared.model.Guild
 import me.lampu.lampcord.shared.state.GuildStore
 import me.lampu.lampcord.shared.state.MemberListStore
 import me.lampu.lampcord.shared.state.NavigationStore
-import me.lampu.lampcord.shared.ui.components.AdaptiveModalBottomSheet
+import me.lampu.lampcord.shared.ui.components.DiscordBottomSheet
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
 import me.lampu.lampcord.shared.ui.components.ShimmerBox
@@ -31,6 +31,7 @@ import me.lampu.lampcord.shared.ui.icons.Icons
 import kotlinx.serialization.json.*
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
+import me.lampu.lampcord.shared.ui.components.rememberDiscordSheetState
 
 @Composable
 fun GuildProfileSkeleton() {
@@ -130,10 +131,9 @@ fun GuildProfileSheet(
         }
     }
 
-    AdaptiveModalBottomSheet(
+    DiscordBottomSheet(
         onDismissRequest = onDismiss,
-        sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden),
-        peekHeight = 350.dp
+        sheetState = rememberDiscordSheetState()
     ) {
         if (isLoading) {
             GuildProfileSkeleton()

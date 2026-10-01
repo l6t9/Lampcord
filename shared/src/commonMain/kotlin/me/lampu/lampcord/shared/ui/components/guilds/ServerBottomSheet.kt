@@ -59,7 +59,7 @@ import me.lampu.lampcord.shared.state.ProfileStore
 import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.state.UserGuildSettingsStore
 import me.lampu.lampcord.shared.state.UserStore
-import me.lampu.lampcord.shared.ui.components.AdaptiveModalBottomSheet
+import me.lampu.lampcord.shared.ui.components.DiscordBottomSheet
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.settings.Material3SettingsGroup
 import me.lampu.lampcord.shared.ui.components.settings.Material3SettingsItem
@@ -72,13 +72,14 @@ import me.lampu.lampcord.shared.utils.getPlatformName
 import me.lampu.lampcord.shared.utils.setClipboardText
 import org.koin.compose.koinInject
 import me.lampu.lampcord.shared.ui.kit.handCursor
+import me.lampu.lampcord.shared.ui.components.rememberDiscordSheetState
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ServerBottomSheet(
     guild: Guild,
     onDismiss: () -> Unit,
-    sheetState: SheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden),
+    sheetState: SheetState = rememberDiscordSheetState(),
     userGuildSettingsStore: UserGuildSettingsStore = koinInject(),
     memberListStore: MemberListStore = koinInject(),
     navigationStore: NavigationStore = koinInject(),
@@ -108,10 +109,9 @@ fun ServerBottomSheet(
         )
     }
 
-    AdaptiveModalBottomSheet(
+    DiscordBottomSheet(
         onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        peekHeight = 350.dp
+        sheetState = sheetState
     ) {
         Column(
             modifier = Modifier

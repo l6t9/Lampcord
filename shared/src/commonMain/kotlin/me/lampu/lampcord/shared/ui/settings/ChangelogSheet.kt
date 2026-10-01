@@ -13,8 +13,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import me.lampu.lampcord.shared.ui.components.AdaptiveModalBottomSheet
-import me.lampu.lampcord.shared.ui.components.rememberSkipPartiallyExpandedSheetState
+import me.lampu.lampcord.shared.ui.components.DiscordBottomSheet
+import me.lampu.lampcord.shared.ui.components.rememberDiscordSheetState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -23,9 +23,9 @@ fun ChangelogSheet(
     notes: String,
     onDismiss: () -> Unit,
 ) {
-    AdaptiveModalBottomSheet(
+    DiscordBottomSheet(
         onDismissRequest = onDismiss,
-        sheetState = rememberSkipPartiallyExpandedSheetState(),
+        sheetState = rememberDiscordSheetState(),
     ) {
         Column(
             modifier = Modifier

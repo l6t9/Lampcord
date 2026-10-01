@@ -27,6 +27,7 @@ import me.lampu.lampcord.shared.model.User
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.model.getDisplayUrl
 import me.lampu.lampcord.shared.ui.components.AsyncImage
+import me.lampu.lampcord.shared.ui.components.rememberDiscordSheetState
 import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
 import me.lampu.lampcord.shared.utils.getPlatformName
 import org.koin.compose.koinInject
@@ -47,12 +48,11 @@ fun ReactionUsersDialog(
     val pagerState = rememberPagerState(initialPage = reactions.indexOf(initialEmoji).coerceAtLeast(0)) { reactions.size }
     
     if (isMobile) {
-        me.lampu.lampcord.shared.ui.components.AdaptiveModalBottomSheet(
+        me.lampu.lampcord.shared.ui.components.DiscordBottomSheet(
             onDismissRequest = onDismiss,
-            sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden),
+            sheetState = rememberDiscordSheetState(),
             containerColor = MaterialTheme.colorScheme.surface,
-            dragHandle = { BottomSheetDefaults.DragHandle() },
-            peekHeight = 350.dp
+            dragHandle = { BottomSheetDefaults.DragHandle() }
         ) {
             ReactionUsersContent(
                 channelId = channelId,

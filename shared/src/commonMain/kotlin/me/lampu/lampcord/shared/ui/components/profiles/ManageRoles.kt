@@ -24,11 +24,12 @@ import me.lampu.lampcord.shared.model.Role
 import me.lampu.lampcord.shared.model.UserProfile
 import me.lampu.lampcord.shared.state.ProfileStore
 import me.lampu.lampcord.shared.state.UserStore
-import me.lampu.lampcord.shared.ui.components.AdaptiveModalBottomSheet
+import me.lampu.lampcord.shared.ui.components.DiscordBottomSheet
 import me.lampu.lampcord.shared.ui.components.settings.Material3SettingsGroup
 import me.lampu.lampcord.shared.ui.components.settings.Material3SettingsItem
 import me.lampu.lampcord.shared.utils.getPlatformName
 import org.koin.compose.koinInject
+import me.lampu.lampcord.shared.ui.components.rememberDiscordSheetState
 
 @Composable
 fun ManageRolesSheet(
@@ -42,8 +43,8 @@ fun ManageRolesSheet(
     val isMobile = getPlatformName() == "android" || getPlatformName() == "ios"
 
     if (isMobile) {
-        val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
-        AdaptiveModalBottomSheet(
+        val sheetState = rememberDiscordSheetState()
+        DiscordBottomSheet(
             onDismissRequest = onDismiss,
             sheetState = sheetState
         ) {

@@ -72,7 +72,7 @@ import me.lampu.lampcord.shared.model.PollMedia
 import me.lampu.lampcord.shared.state.MessageStore
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.ui.components.AsyncImage
-import me.lampu.lampcord.shared.ui.components.AdaptiveModalBottomSheet
+import me.lampu.lampcord.shared.ui.components.DiscordBottomSheet
 import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
 import me.lampu.lampcord.shared.ui.components.VideoThumbnail
 import me.lampu.lampcord.shared.ui.icons.Icons
@@ -85,6 +85,7 @@ import me.lampu.lampcord.shared.utils.getPlatformName
 import org.koin.compose.koinInject
 import kotlin.time.Duration.Companion.milliseconds
 import me.lampu.lampcord.shared.ui.kit.clickableCursor
+import me.lampu.lampcord.shared.ui.components.rememberDiscordSheetState
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -122,9 +123,9 @@ fun MediaPicker(
     )
 
     if (isMobile) {
-        AdaptiveModalBottomSheet(
+        DiscordBottomSheet(
             onDismissRequest = { animatedDismiss() },
-            sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
+            sheetState = rememberDiscordSheetState()
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 MediaPickerContent(

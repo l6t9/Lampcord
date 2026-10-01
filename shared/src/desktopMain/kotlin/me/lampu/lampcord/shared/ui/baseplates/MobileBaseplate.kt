@@ -70,7 +70,7 @@ import me.lampu.lampcord.shared.model.User
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.ui.SettingsScreen
 import me.lampu.lampcord.shared.ui.components.AttachmentViewer
-import me.lampu.lampcord.shared.ui.components.AdaptiveModalBottomSheet
+import me.lampu.lampcord.shared.ui.components.DiscordBottomSheet
 import me.lampu.lampcord.shared.ui.components.ChatArea
 import me.lampu.lampcord.shared.ui.components.ChatInputBar
 import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
@@ -427,7 +427,7 @@ actual fun MobileBaseplate(
                 sheetState.expand()
             }
 
-            AdaptiveModalBottomSheet(
+            DiscordBottomSheet(
                 onDismissRequest = {
                     profileStore.selectedProfile = null
                     profileStore.isProfileExpanded = false

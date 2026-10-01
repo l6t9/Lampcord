@@ -38,7 +38,7 @@ import me.lampu.lampcord.shared.api.ChannelApi
 import me.lampu.lampcord.shared.model.Channel
 import me.lampu.lampcord.shared.state.GuildStore
 import me.lampu.lampcord.shared.state.UserGuildSettingsStore
-import me.lampu.lampcord.shared.ui.components.AdaptiveModalBottomSheet
+import me.lampu.lampcord.shared.ui.components.DiscordBottomSheet
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.setClipboardText
 import org.koin.compose.koinInject
@@ -79,7 +79,7 @@ fun ChannelNotificationsSheet(
         Duration.INFINITE to "Until I turn it back on"
     )
 
-    AdaptiveModalBottomSheet(onDismissRequest = onDismiss, peekHeight = 300.dp) {
+    DiscordBottomSheet(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()

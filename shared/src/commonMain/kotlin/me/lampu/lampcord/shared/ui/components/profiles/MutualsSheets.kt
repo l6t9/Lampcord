@@ -21,7 +21,7 @@ import me.lampu.lampcord.shared.api.UserApi
 import me.lampu.lampcord.shared.model.MutualGuild
 import me.lampu.lampcord.shared.model.User
 import me.lampu.lampcord.shared.state.*
-import me.lampu.lampcord.shared.ui.components.AdaptiveModalBottomSheet
+import me.lampu.lampcord.shared.ui.components.DiscordBottomSheet
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.StatusIndicator
 import me.lampu.lampcord.shared.ui.icons.Icons
@@ -157,7 +157,7 @@ fun MutualFriendsBottomSheet(
         isLoading = false
     }
 
-    AdaptiveModalBottomSheet(onDismissRequest = onDismiss, peekHeight = 300.dp) {
+    DiscordBottomSheet(onDismissRequest = onDismiss) {
         Column(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
             Text(
                 text = "Mutual Friends",
@@ -206,7 +206,7 @@ fun MutualServersBottomSheet(
 ) {
     val allGuilds by guildStore.guilds.collectAsState()
 
-    AdaptiveModalBottomSheet(onDismissRequest = onDismiss, peekHeight = 300.dp) {
+    DiscordBottomSheet(onDismissRequest = onDismiss) {
         Column(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
             Text(
                 text = "Mutual Servers",

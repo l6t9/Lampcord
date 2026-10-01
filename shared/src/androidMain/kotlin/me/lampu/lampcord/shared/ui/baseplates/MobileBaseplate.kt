@@ -781,16 +781,15 @@ actual fun MobileBaseplate(
     }
 
     if (profileStore.isProfileLoading || profileStore.selectedProfile != null) {
-        val sheetState = rememberSkipPartiallyExpandedSheetState()
+        val sheetState = rememberDiscordSheetState()
 
-        AdaptiveModalBottomSheet(
+        DiscordBottomSheet(
             onDismissRequest = {
                 profileStore.selectedProfile = null
                 profileStore.isProfileExpanded = false
                 profileStore.isProfileLoading = false
             },
             sheetState = sheetState,
-            peekHeight = 350.dp,
         ) {
             if (profileStore.selectedProfile != null) {
                 ProfileCard(
@@ -857,7 +856,7 @@ actual fun MobileBaseplate(
 
     if (navigationStore.isServerMenuVisible) {
         navigationStore.selectedGuild?.let { guild ->
-            val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
+            val sheetState = rememberDiscordSheetState()
             ServerBottomSheet(
                 guild = guild,
                 onDismiss = { navigationStore.isServerMenuVisible = false },
@@ -905,7 +904,9 @@ private fun MainBaseplateContent(
                         TopAppBar(
                             windowInsets = TopAppBarDefaults.windowInsets,
                             title = {
-                                val canOpenMemberList = activeChannel != null && !navigationStore.isChannelsAndRolesVisible
+                                val canOpenMemberList = settingsStore.mobileShowMemberListButton &&
+                                        activeChannel != null &&
+                                        !navigationStore.isChannelsAndRolesVisible
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     modifier = if (canOpenMemberList) {
@@ -1006,7 +1007,7 @@ private fun MainBaseplateContent(
                                 }
                             },
                             navigationIcon = {
-                                if (!navigationStore.isBubble) {
+                                if (!navigationStore.isBubble && settingsStore.mobileShowChannelListButton) {
                                     val isThread = navigationStore.selectedThread != null
                                     val isRoles = navigationStore.isChannelsAndRolesVisible
                                     if (isThread) {

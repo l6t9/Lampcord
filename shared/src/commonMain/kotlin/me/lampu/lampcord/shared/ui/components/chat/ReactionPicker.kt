@@ -8,8 +8,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.Emoji
-import me.lampu.lampcord.shared.ui.components.AdaptiveModalBottomSheet
+import me.lampu.lampcord.shared.ui.components.DiscordBottomSheet
 import me.lampu.lampcord.shared.ui.components.EmojiPicker
+import me.lampu.lampcord.shared.ui.components.rememberDiscordSheetState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -17,13 +18,12 @@ fun ReactionPickerSheet(
     onDismiss: () -> Unit,
     onEmojiSelected: (Emoji) -> Unit
 ) {
-    val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
+    val sheetState = rememberDiscordSheetState()
     
-    AdaptiveModalBottomSheet(
+    DiscordBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        modifier = Modifier.fillMaxWidth(),
-        peekHeight = 350.dp
+        modifier = Modifier.fillMaxWidth()
     ) {
         EmojiPicker(
             onEmojiSelected = { emoji ->
