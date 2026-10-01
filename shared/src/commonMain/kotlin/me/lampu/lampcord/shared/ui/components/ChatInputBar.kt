@@ -343,7 +343,8 @@ fun ChatInputBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .imePadding()
+                .imePadding(),
+            verticalArrangement = Arrangement.Bottom
         ) {
             Column(modifier = Modifier.fillMaxWidth()) {
                 AnimatedVisibility(
