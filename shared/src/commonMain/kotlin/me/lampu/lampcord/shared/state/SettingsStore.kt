@@ -257,6 +257,22 @@ class SettingsStore(
             me.lampu.lampcord.shared.settings.Settings.shared.chatboxHideEmojiButton = value
         }
 
+    private var _mobileShowChannelListButton by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.mobileShowChannelListButton)
+    var mobileShowChannelListButton: Boolean
+        get() = _mobileShowChannelListButton
+        set(value) {
+            _mobileShowChannelListButton = value
+            me.lampu.lampcord.shared.settings.Settings.shared.mobileShowChannelListButton = value
+        }
+
+    private var _mobileShowMemberListButton by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.mobileShowMemberListButton)
+    var mobileShowMemberListButton: Boolean
+        get() = _mobileShowMemberListButton
+        set(value) {
+            _mobileShowMemberListButton = value
+            me.lampu.lampcord.shared.settings.Settings.shared.mobileShowMemberListButton = value
+        }
+
     private var _chatboxHideVoiceButton by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.chatboxHideVoiceButton)
     var chatboxHideVoiceButton: Boolean
         get() = _chatboxHideVoiceButton

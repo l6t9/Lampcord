@@ -256,6 +256,26 @@ fun ChatSettingsContent(
             }
         )
 
+        if (!isDesktop) {
+            Material3SettingsGroup(
+                title = "Mobile Layout",
+                items = listOf(
+                    switchSettingsItem(
+                        title = "Show Channel List Button",
+                        description = "Display the button that opens the channel list in the chat header.",
+                        checked = settingsStore.mobileShowChannelListButton,
+                        onCheckedChange = { settingsStore.mobileShowChannelListButton = it }
+                    ),
+                    switchSettingsItem(
+                        title = "Show Member List Button",
+                        description = "Display the button that opens the member list in the chat header.",
+                        checked = settingsStore.mobileShowMemberListButton,
+                        onCheckedChange = { settingsStore.mobileShowMemberListButton = it }
+                    )
+                )
+            )
+        }
+
         Material3SettingsGroup(
             title = "Media",
             items = listOf(

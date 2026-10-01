@@ -50,6 +50,8 @@ class Settings(private val settings: KmpSettings) {
     var chatboxHideUploadButton by preferenceBoolean("chatbox_hide_upload_button", false)
     var chatboxHideEmojiButton by preferenceBoolean("chatbox_hide_emoji_button", false)
     var chatboxHideVoiceButton by preferenceBoolean("chatbox_hide_voice_button", true)
+    var mobileShowChannelListButton by preferenceBoolean("mobile_show_channel_list_button", true)
+    var mobileShowMemberListButton by preferenceBoolean("mobile_show_member_list_button", true)
     var chatboxFontSize by preferenceFloat("chatbox_font_size", 1.0f)
     var chatboxShowAvatar by preferenceBoolean("chatbox_show_avatar", false)
 

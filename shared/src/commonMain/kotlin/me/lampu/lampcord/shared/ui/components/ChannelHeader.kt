@@ -266,8 +266,8 @@ fun ChannelHeader(
         },
         expandedHeight = 56.dp,
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = Color.Transparent,
-            scrolledContainerColor = Color.Transparent
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
         )
     )
 }
