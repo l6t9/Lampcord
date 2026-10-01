@@ -53,6 +53,7 @@ import androidx.compose.foundation.shape.CircleShape
 import me.lampu.lampcord.shared.utils.PermissionHelper
 import me.lampu.lampcord.shared.ui.components.profiles.ProfileCard
 import me.lampu.lampcord.shared.ui.components.profiles.ProfileCardSkeleton
+import me.lampu.lampcord.shared.ui.components.profiles.rememberFrameInsets
 import me.lampu.lampcord.shared.settings.PanelType
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.ui.navigation.Navigator
@@ -792,20 +793,31 @@ actual fun MobileBaseplate(
             sheetState = sheetState,
         ) {
             if (profileStore.selectedProfile != null) {
-                ProfileCard(
-                    profile = profileStore.selectedProfile!!,
-                    modifier = Modifier.fillMaxWidth(),
-                    showBorder = false,
-                    isExpanded = true,
-                    fillAvailableHeight = true,
-                    showBoardTab = true,
-                    onExpand = null,
-                    onDismiss = {
-                        profileStore.selectedProfile = null
-                        profileStore.isProfileExpanded = false
-                        profileStore.isProfileLoading = false
-                    }
-                )
+                val profile = profileStore.selectedProfile!!
+                BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                    val frameInsets = rememberFrameInsets(profile, profileStore, maxWidth)
+                    ProfileCard(
+                        profile = profile,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(
+                                start = frameInsets.horizontal,
+                                end = frameInsets.horizontal,
+                                top = frameInsets.top,
+                                bottom = frameInsets.bottom
+                            ),
+                        showBorder = false,
+                        isExpanded = true,
+                        fillAvailableHeight = true,
+                        showBoardTab = true,
+                        onExpand = null,
+                        onDismiss = {
+                            profileStore.selectedProfile = null
+                            profileStore.isProfileExpanded = false
+                            profileStore.isProfileLoading = false
+                        }
+                    )
+                }
             } else {
                 ProfileCardSkeleton(
                     modifier = Modifier.fillMaxWidth(),
