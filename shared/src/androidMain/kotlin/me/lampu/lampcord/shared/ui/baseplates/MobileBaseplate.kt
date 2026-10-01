@@ -28,13 +28,8 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.layout.boundsInRoot
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import kotlin.math.roundToInt
 import androidx.compose.ui.zIndex
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
@@ -58,9 +53,7 @@ import androidx.compose.foundation.shape.CircleShape
 import me.lampu.lampcord.shared.utils.PermissionHelper
 import me.lampu.lampcord.shared.ui.components.profiles.ProfileCard
 import me.lampu.lampcord.shared.ui.components.profiles.ProfileCardSkeleton
-import me.lampu.lampcord.shared.ui.components.profiles.ProfileFrameOverlay
-import me.lampu.lampcord.shared.ui.components.profiles.profileBannerHeight
-import me.lampu.lampcord.shared.model.ProfileCollectibles
+import me.lampu.lampcord.shared.ui.components.profiles.rememberFrameInsets
 import me.lampu.lampcord.shared.settings.PanelType
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.ui.navigation.Navigator
@@ -140,9 +133,7 @@ actual fun MobileBaseplate(
     val quickSpatialSpec = MaterialTheme.motionScheme.defaultSpatialSpec<IntOffset>()
     val quickEffectsSpec = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
 
-    var profileCardBounds by remember { mutableStateOf<Rect?>(null) }
-
-    LaunchedEffect(navigationStore.isSettingsVisible) {
+        LaunchedEffect(navigationStore.isSettingsVisible) {
         if (navigationStore.isSettingsVisible) navigator.navigate(Screen.Settings)
         else if (navigationState.topLevelRoute == Screen.Settings) navigator.goBack()
     }
@@ -803,26 +794,28 @@ actual fun MobileBaseplate(
         ) {
             if (profileStore.selectedProfile != null) {
                 val profile = profileStore.selectedProfile!!
-                BoxWithConstraints(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .onGloballyPositioned { profileCardBounds = it.boundsInRoot() }
-                ) {
-                    ProfileCard(
-                        profile = profile,
-                        modifier = Modifier.fillMaxSize(),
-                        showBorder = false,
-                        isExpanded = true,
-                        fillAvailableHeight = true,
-                        showBoardTab = true,
-                        showFrame = false,
-                        onExpand = null,
-                        onDismiss = {
-                            profileStore.selectedProfile = null
-                            profileStore.isProfileExpanded = false
-                            profileStore.isProfileLoading = false
+                BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                    val frameInsets = rememberFrameInsets(profile, profileStore, maxWidth, gap = 0.dp)
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        Spacer(modifier = Modifier.height(frameInsets.top))
+                        Box(modifier = Modifier.weight(1f)) {
+                            ProfileCard(
+                                profile = profile,
+                                modifier = Modifier.fillMaxSize(),
+                                showBorder = false,
+                                isExpanded = true,
+                                fillAvailableHeight = true,
+                                showBoardTab = true,
+                                onExpand = null,
+                                onDismiss = {
+                                    profileStore.selectedProfile = null
+                                    profileStore.isProfileExpanded = false
+                                    profileStore.isProfileLoading = false
+                                }
+                            )
                         }
-                    )
+                        Spacer(modifier = Modifier.height(frameInsets.bottom))
+                    }
                 }
             } else {
                 ProfileCardSkeleton(
@@ -832,28 +825,6 @@ actual fun MobileBaseplate(
             }
         }
 
-        val cardBounds = profileCardBounds
-        val sheetProfile = profileStore.selectedProfile
-        if (sheetProfile != null && cardBounds != null) {
-            val frameSku = remember(sheetProfile) {
-                ProfileCollectibles.frameSku(sheetProfile.user_profile, sheetProfile.guild_member_profile)
-            }
-            val frameProduct = frameSku?.let { profileStore.getFrame(it) }
-            if (frameProduct != null) {
-                val density = LocalDensity.current
-                val widthDp = with(density) { cardBounds.width.toDp() }
-                val heightDp = with(density) { cardBounds.height.toDp() }
-                ProfileFrameOverlay(
-                    product = frameProduct,
-                    modifier = Modifier
-                        .offset {
-                            IntOffset(cardBounds.left.roundToInt(), cardBounds.top.roundToInt())
-                        }
-                        .requiredSize(widthDp, heightDp),
-                    railTop = profileBannerHeight(widthDp, true, null, 0f)
-                )
-            }
-        }
     }
 
     if (showUserStatusSheet) {
