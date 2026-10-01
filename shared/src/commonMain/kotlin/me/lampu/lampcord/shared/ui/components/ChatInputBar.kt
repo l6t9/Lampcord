@@ -57,6 +57,7 @@ import me.lampu.lampcord.shared.ui.components.PlatformBackHandler
 import me.lampu.lampcord.shared.utils.EmojiIndex
 import me.lampu.lampcord.shared.utils.FilePicker
 import me.lampu.lampcord.shared.utils.getClipboardFiles
+import me.lampu.lampcord.shared.utils.showToast
 import me.lampu.lampcord.shared.utils.getPlatformName
 import org.koin.compose.koinInject
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -152,6 +153,28 @@ fun ChatInputBar(
         if (navigationStore.isEmojiPickerVisible) return@LaunchedEffect
         if (messageStore.editingMessage != null || messageStore.replyingTo != null) return@LaunchedEffect
         focusRequester.requestFocus()
+    }
+
+    val replyTarget = messageStore.replyingTo
+    val isSelfOrWebhookReply = replyTarget != null &&
+        (replyTarget.author?.id == currentUser?.id || replyTarget.webhook_id != null)
+    val showReplyMentionToggle = replyTarget != null && navigationStore.selectedGuild != null && !isSelfOrWebhookReply
+    val replyShouldMention = replyTarget != null &&
+        navigationStore.shouldMentionReply &&
+        !isSelfOrWebhookReply
+
+    // Discord only emits a reply ping when allowed_mentions is omitted entirely, or when
+    // replied_user is explicitly true. Sending replied_user=true is not enough on its own, so
+    // a ping-on reply omits the key and a ping-off reply suppresses it.
+    val allowedMentions = if (replyTarget == null) {
+        null
+    } else if (replyShouldMention) {
+        null
+    } else {
+        me.lampu.lampcord.shared.model.AllowedMentions(
+            parse = listOf("users", "roles", "everyone"),
+            replied_user = false
+        )
     }
 
     fun applyAutocomplete(item: AutocompleteItem) {
@@ -403,7 +426,7 @@ fun ChatInputBar(
                                     overflow = TextOverflow.Ellipsis
                                 )
 
-                                if (!isEditing && navigationStore.selectedGuild != null) {
+                                if (showReplyMentionToggle) {
                                     val mentionOn = navigationStore.shouldMentionReply
                                     TextButton(
                                         onClick = { 
@@ -602,215 +625,227 @@ fun ChatInputBar(
                                 shape = RoundedCornerShape(settings.chatboxBorderRadius.dp),
                                 color = MaterialTheme.colorScheme.surfaceContainerHigh
                             ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    BasicTextField(
-                                        value = textFieldValue,
-                                        enabled = canSend,
-                                        readOnly = !canSend,
-                                        onValueChange = { 
-                                            if (canSend) {
-                                                val oldText = textFieldValue.text
-                                                textFieldValue = it
-                                                mentionRanges = shiftMentionRanges(mentionRanges, oldText, it.text)
-                                                
-                                                if (it.selection.collapsed) {
-                                                    val cursor = it.selection.start
-                                                    val textBefore = it.text.take(cursor)
-                                                    val lastWord = textBefore.substringAfterLast(' ', textBefore)
-                                                    
-                                                    val (type, query) = when {
-                                                        it.text.startsWith('/') && !it.text.contains(' ') -> 
-                                                            AutocompleteType.COMMAND to it.text.substring(1)
-                                                        lastWord.startsWith('@') -> 
-                                                            AutocompleteType.MENTION to lastWord.substring(1)
-                                                        lastWord.startsWith('#') -> 
-                                                            AutocompleteType.CHANNEL to lastWord.substring(1)
-                                                        lastWord.startsWith(':') -> 
-                                                            AutocompleteType.EMOJI to lastWord.substring(1)
-                                                        else -> null to ""
-                                                    }
-                                                    autocompleteStore.updateAutocomplete(type, query, navigationStore.selectedGuild, channel)
+                                ContextMenu(
+                                    items = listOf(
+                                        ContextMenuItem(
+                                            label = "Paste image",
+                                            onClick = {
+                                                val pasted = getClipboardFiles()
+                                                if (pasted.isNotEmpty()) {
+                                                    messageStore.pendingFiles.addAll(pasted.map { PendingFile(it.first, it.second) })
                                                 } else {
-                                                    autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild, channel)
+                                                    showToast("No image found in clipboard")
                                                 }
-
-                                                if (it.text.isNotEmpty() && !it.text.startsWith('/')) messageStore.sendTyping(channel.id)
                                             }
-                                        },
-                                        visualTransformation = DiscordInputVisualTransformation(primaryColor),
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .padding(start = 12.dp, top = 8.dp, bottom = 8.dp)
-                                            .focusRequester(focusRequester)
-                                            .onFocusChanged { isFocused = it.isFocused }
-                                            .onPreviewKeyEvent { event ->
-                                                if (!canSend) return@onPreviewKeyEvent false
-                                                if (event.type == KeyEventType.KeyDown) {
-                                                    if (autocompleteStore.autocompleteType != null) {
-                                                        val itemCount = autocompleteStore.autocompleteItems.size
-                                                        when (event.key) {
-                                                            Key.DirectionUp -> {
-                                                                if (itemCount > 0) {
-                                                                    autocompleteStore.autocompleteSelectedIndex = (autocompleteStore.autocompleteSelectedIndex - 1 + itemCount) % itemCount
-                                                                    return@onPreviewKeyEvent true
-                                                                }
-                                                            }
-                                                            Key.DirectionDown -> {
-                                                                if (itemCount > 0) {
-                                                                    autocompleteStore.autocompleteSelectedIndex = (autocompleteStore.autocompleteSelectedIndex + 1) % itemCount
-                                                                    return@onPreviewKeyEvent true
-                                                                }
-                                                            }
-                                                            Key.Tab, Key.Enter -> {
-                                                                if (itemCount > 0 && autocompleteStore.autocompleteSelectedIndex in 0 until itemCount) {
-                                                                    val item = autocompleteStore.autocompleteItems[autocompleteStore.autocompleteSelectedIndex]
-                                                                    if (item.isCommand && item.commandObj != null) {
-                                                                        commandStore.activeCommand = item.commandObj
-                                                                        commandStore.resetSubCommand()
-                                                                        textFieldValue = TextFieldValue("")
-                                                                        clearMentions()
-                                                                        autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild, channel)
-                                                                    } else {
-                                                                        applyAutocomplete(item)
-                                                                    }
-                                                                    return@onPreviewKeyEvent true
-                                                                }
-                                                            }
+                                        )
+                                    ),
+                                    enabled = isMobileView && canSend,
+                                    respectChildGestures = true
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        BasicTextField(
+                                            value = textFieldValue,
+                                            enabled = canSend,
+                                            readOnly = !canSend,
+                                            onValueChange = { 
+                                                if (canSend) {
+                                                    val oldText = textFieldValue.text
+                                                    textFieldValue = it
+                                                    mentionRanges = shiftMentionRanges(mentionRanges, oldText, it.text)
+                                                
+                                                    if (it.selection.collapsed) {
+                                                        val cursor = it.selection.start
+                                                        val textBefore = it.text.take(cursor)
+                                                        val lastWord = textBefore.substringAfterLast(' ', textBefore)
+                                                    
+                                                        val (type, query) = when {
+                                                            it.text.startsWith('/') && !it.text.contains(' ') -> 
+                                                                AutocompleteType.COMMAND to it.text.substring(1)
+                                                            lastWord.startsWith('@') -> 
+                                                                AutocompleteType.MENTION to lastWord.substring(1)
+                                                            lastWord.startsWith('#') -> 
+                                                                AutocompleteType.CHANNEL to lastWord.substring(1)
+                                                            lastWord.startsWith(':') -> 
+                                                                AutocompleteType.EMOJI to lastWord.substring(1)
+                                                            else -> null to ""
                                                         }
+                                                        autocompleteStore.updateAutocomplete(type, query, navigationStore.selectedGuild, channel)
+                                                    } else {
+                                                        autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild, channel)
                                                     }
 
-                                                    if (event.key == Key.Escape) {
+                                                    if (it.text.isNotEmpty() && !it.text.startsWith('/')) messageStore.sendTyping(channel.id)
+                                                }
+                                            },
+                                            visualTransformation = DiscordInputVisualTransformation(primaryColor),
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .padding(start = 12.dp, top = 8.dp, bottom = 8.dp)
+                                                .focusRequester(focusRequester)
+                                                .onFocusChanged { isFocused = it.isFocused }
+                                                .onPreviewKeyEvent { event ->
+                                                    if (!canSend) return@onPreviewKeyEvent false
+                                                    if (event.type == KeyEventType.KeyDown) {
                                                         if (autocompleteStore.autocompleteType != null) {
-                                                            autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild, channel)
-                                                            return@onPreviewKeyEvent true
+                                                            val itemCount = autocompleteStore.autocompleteItems.size
+                                                            when (event.key) {
+                                                                Key.DirectionUp -> {
+                                                                    if (itemCount > 0) {
+                                                                        autocompleteStore.autocompleteSelectedIndex = (autocompleteStore.autocompleteSelectedIndex - 1 + itemCount) % itemCount
+                                                                        return@onPreviewKeyEvent true
+                                                                    }
+                                                                }
+                                                                Key.DirectionDown -> {
+                                                                    if (itemCount > 0) {
+                                                                        autocompleteStore.autocompleteSelectedIndex = (autocompleteStore.autocompleteSelectedIndex + 1) % itemCount
+                                                                        return@onPreviewKeyEvent true
+                                                                    }
+                                                                }
+                                                                Key.Tab, Key.Enter -> {
+                                                                    if (itemCount > 0 && autocompleteStore.autocompleteSelectedIndex in 0 until itemCount) {
+                                                                        val item = autocompleteStore.autocompleteItems[autocompleteStore.autocompleteSelectedIndex]
+                                                                        if (item.isCommand && item.commandObj != null) {
+                                                                            commandStore.activeCommand = item.commandObj
+                                                                            commandStore.resetSubCommand()
+                                                                            textFieldValue = TextFieldValue("")
+                                                                            clearMentions()
+                                                                            autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild, channel)
+                                                                        } else {
+                                                                            applyAutocomplete(item)
+                                                                        }
+                                                                        return@onPreviewKeyEvent true
+                                                                    }
+                                                                }
+                                                            }
                                                         }
-                                                        if (messageStore.editingMessage != null) {
-                                                            messageStore.editingMessage = null
-                                                            textFieldValue = TextFieldValue("")
-                                                            return@onPreviewKeyEvent true
-                                                        }
-                                                        if (messageStore.replyingTo != null) {
-                                                            messageStore.replyingTo = null
-                                                            return@onPreviewKeyEvent true
-                                                        }
-                                                    }
-                                                    if (event.isCtrlPressed && event.key == Key.V) {
-                                                            val files = getClipboardFiles()
-                                                            if (files.isNotEmpty()) {
-                                                                messageStore.pendingFiles.addAll(files.map { PendingFile(it.first, it.second) })
+
+                                                        if (event.key == Key.Escape) {
+                                                            if (autocompleteStore.autocompleteType != null) {
+                                                                autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild, channel)
                                                                 return@onPreviewKeyEvent true
                                                             }
-                                                    }
-                                                    if (event.key == Key.Enter && !event.isShiftPressed && !isMobileView) {
-                                                        val currentText = textFieldValue.text
-                                                        if (currentText.startsWith('/') && !currentText.contains(' ')) {
-                                                            val cmdName = currentText.substring(1).trim()
-                                                            val command = commandStore.availableCommands.find { it.name == cmdName }
-                                                            if (command != null) {
-                                                                commandStore.activeCommand = command
-                                                                commandStore.resetSubCommand()
+                                                            if (messageStore.editingMessage != null) {
+                                                                messageStore.editingMessage = null
+                                                                textFieldValue = TextFieldValue("")
+                                                                return@onPreviewKeyEvent true
+                                                            }
+                                                            if (messageStore.replyingTo != null) {
+                                                                messageStore.replyingTo = null
+                                                                return@onPreviewKeyEvent true
+                                                            }
+                                                        }
+                                                        if (event.isCtrlPressed && event.key == Key.V) {
+                                                                val files = getClipboardFiles()
+                                                                if (files.isNotEmpty()) {
+                                                                    messageStore.pendingFiles.addAll(files.map { PendingFile(it.first, it.second) })
+                                                                    return@onPreviewKeyEvent true
+                                                                }
+                                                        }
+                                                        if (event.key == Key.Enter && !event.isShiftPressed && !isMobileView) {
+                                                            val currentText = textFieldValue.text
+                                                            if (currentText.startsWith('/') && !currentText.contains(' ')) {
+                                                                val cmdName = currentText.substring(1).trim()
+                                                                val command = commandStore.availableCommands.find { it.name == cmdName }
+                                                                if (command != null) {
+                                                                    commandStore.activeCommand = command
+                                                                    commandStore.resetSubCommand()
+                                                                    textFieldValue = TextFieldValue("")
+                                                                    clearMentions()
+                                                                    return@onPreviewKeyEvent true
+                                                                }
+                                                            }
+                                                            if (currentText.isNotBlank() || messageStore.pendingFiles.isNotEmpty()) {
+                                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                                if (messageStore.editingMessage != null) {
+                                                                    messageStore.editMessage(messageStore.editingMessage!!, resolveContent(currentText))
+                                                                    messageStore.editingMessage = null
+                                                                } else {
+                                                                    messageStore.sendMessageDraft(resolveContent(currentText), allowedMentions = allowedMentions)
+                                                                }
                                                                 textFieldValue = TextFieldValue("")
                                                                 clearMentions()
+                                                                messageStore.resetTypingEmission(channel.id)
                                                                 return@onPreviewKeyEvent true
                                                             }
                                                         }
-                                                        if (currentText.isNotBlank() || messageStore.pendingFiles.isNotEmpty()) {
-                                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                            if (messageStore.editingMessage != null) {
-                                                                messageStore.editMessage(messageStore.editingMessage!!, resolveContent(currentText))
-                                                                messageStore.editingMessage = null
-                                                            } else {
-                                                                val allowedMentions = if (messageStore.replyingTo != null) {
-                                                                    me.lampu.lampcord.shared.model.AllowedMentions(
-                                                                        parse = listOf("users", "roles", "everyone"),
-                                                                        replied_user = navigationStore.shouldMentionReply
-                                                                    )
-                                                                } else null
-                                                                messageStore.sendMessageDraft(resolveContent(currentText), allowedMentions = allowedMentions)
-                                                            }
-                                                            textFieldValue = TextFieldValue("")
-                                                            clearMentions()
-                                                            messageStore.resetTypingEmission(channel.id)
-                                                            return@onPreviewKeyEvent true
-                                                        }
                                                     }
+                                                    false
+                                                },
+                                            textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                                color = MaterialTheme.colorScheme.onSurface,
+                                                fontSize = MaterialTheme.typography.bodyLarge.fontSize * chatboxFontSize
+                                            ),
+                                            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                                            decorationBox = { innerTextField: @Composable () -> Unit ->
+                                                Box(modifier = Modifier.fillMaxWidth()) {
+                                                    if (textFieldValue.text.isEmpty()) {
+                                                        Text(
+                                                            text = placeholderText,
+                                                            style = MaterialTheme.typography.bodyLarge.copy(
+                                                                fontSize = MaterialTheme.typography.bodyLarge.fontSize * chatboxFontSize
+                                                            ),
+                                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                                            maxLines = 1,
+                                                            overflow = TextOverflow.Ellipsis
+                                                        )
+                                                    }
+                                                    innerTextField()
                                                 }
-                                                false
-                                            },
-                                        textStyle = MaterialTheme.typography.bodyLarge.copy(
-                                            color = MaterialTheme.colorScheme.onSurface,
-                                            fontSize = MaterialTheme.typography.bodyLarge.fontSize * chatboxFontSize
-                                        ),
-                                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                                        decorationBox = { innerTextField: @Composable () -> Unit ->
-                                            Box(modifier = Modifier.fillMaxWidth()) {
-                                                if (textFieldValue.text.isEmpty()) {
-                                                    Text(
-                                                        text = placeholderText,
-                                                        style = MaterialTheme.typography.bodyLarge.copy(
-                                                            fontSize = MaterialTheme.typography.bodyLarge.fontSize * chatboxFontSize
-                                                        ),
-                                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                                                        maxLines = 1,
-                                                        overflow = TextOverflow.Ellipsis
-                                                    )
-                                                }
-                                                innerTextField()
+                                            }
+                                        )
+
+                                        val silentTypingEnabled = settingsStore.silentTyping
+                                        if (settingsStore.silentTypingButtonEnabled && canSend) {
+                                            IconButton(
+                                                onClick = {
+                                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                    settingsStore.silentTyping = !settingsStore.silentTyping
+                                                },
+                                                modifier = Modifier.size(36.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = if (silentTypingEnabled) Icons.Filled.KeyboardOff else Icons.Filled.Keyboard,
+                                                    contentDescription = if (silentTypingEnabled) "Silent typing enabled" else "Silent typing disabled",
+                                                    modifier = Modifier.size(24.dp),
+                                                    tint = if (silentTypingEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
                                             }
                                         }
-                                    )
 
-                                    val silentTypingEnabled = settingsStore.silentTyping
-                                    if (settingsStore.silentTypingButtonEnabled && canSend) {
-                                        IconButton(
-                                            onClick = {
-                                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                                settingsStore.silentTyping = !settingsStore.silentTyping
-                                            },
-                                            modifier = Modifier.size(36.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = if (silentTypingEnabled) Icons.Filled.KeyboardOff else Icons.Filled.Keyboard,
-                                                contentDescription = if (silentTypingEnabled) "Silent typing enabled" else "Silent typing disabled",
-                                                modifier = Modifier.size(24.dp),
-                                                tint = if (silentTypingEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
+                                        if (!settings.chatboxHideEmojiButton && canSend) {
+                                            IconButton(
+                                                onClick = { 
+                                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                    navigationStore.isEmojiPickerVisible = !navigationStore.isEmojiPickerVisible
+                                                    if (isMobileView) {
+                                                        keyboardController?.hide()
+                                                    }
+                                                },
+                                                modifier = Modifier.size(36.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Filled.SentimentSatisfied,
+                                                    contentDescription = "Emojis",
+                                                    modifier = Modifier.size(24.dp),
+                                                    tint = if (navigationStore.isEmojiPickerVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
                                         }
-                                    }
 
-                                    if (!settings.chatboxHideEmojiButton && canSend) {
-                                        IconButton(
-                                            onClick = { 
-                                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                                navigationStore.isEmojiPickerVisible = !navigationStore.isEmojiPickerVisible
-                                                if (isMobileView) {
-                                                    keyboardController?.hide()
+                                        if (navigationStore.isEmojiPickerVisible && canSend && !isMobileView) {
+                                            androidx.compose.ui.window.Popup(
+                                                alignment = Alignment.BottomEnd,
+                                                offset = IntOffset(0, -48),
+                                                onDismissRequest = { navigationStore.isEmojiPickerVisible = false },
+                                                properties = androidx.compose.ui.window.PopupProperties(focusable = true)
+                                            ) {
+                                                EmojiPicker { emoji ->
+                                                    insertEmoji(emoji)
+                                                    navigationStore.isEmojiPickerVisible = false
                                                 }
-                                            },
-                                            modifier = Modifier.size(36.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Filled.SentimentSatisfied,
-                                                contentDescription = "Emojis",
-                                                modifier = Modifier.size(24.dp),
-                                                tint = if (navigationStore.isEmojiPickerVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        }
-                                    }
-
-                                    if (navigationStore.isEmojiPickerVisible && canSend && !isMobileView) {
-                                        androidx.compose.ui.window.Popup(
-                                            alignment = Alignment.BottomEnd,
-                                            offset = IntOffset(0, -48),
-                                            onDismissRequest = { navigationStore.isEmojiPickerVisible = false },
-                                            properties = androidx.compose.ui.window.PopupProperties(focusable = true)
-                                        ) {
-                                            EmojiPicker { emoji ->
-                                                insertEmoji(emoji)
-                                                navigationStore.isEmojiPickerVisible = false
                                             }
                                         }
                                     }
@@ -845,12 +880,6 @@ fun ChatInputBar(
                                                     messageStore.editMessage(messageStore.editingMessage!!, resolveContent(textFieldValue.text))
                                                     messageStore.editingMessage = null
                                                 } else {
-                                                    val allowedMentions = if (messageStore.replyingTo != null) {
-                                                        me.lampu.lampcord.shared.model.AllowedMentions(
-                                                            parse = listOf("users", "roles", "everyone"),
-                                                            replied_user = navigationStore.shouldMentionReply
-                                                        )
-                                                    } else null
                                                     messageStore.sendMessageDraft(resolveContent(textFieldValue.text), allowedMentions = allowedMentions)
                                                 }
                                             }
@@ -885,6 +914,10 @@ fun ChatInputBar(
                             }
                             EmojiPicker(
                                 modifier = Modifier.fillMaxWidth(),
+                                onKeyboardClick = {
+                                    navigationStore.isEmojiPickerVisible = false
+                                    focusRequester.requestFocus()
+                                },
                                 onEmojiSelected = { emoji ->
                                     insertEmoji(emoji)
                                 }
