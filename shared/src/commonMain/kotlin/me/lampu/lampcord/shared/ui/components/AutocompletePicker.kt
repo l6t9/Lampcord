@@ -181,15 +181,6 @@ fun AutocompletePicker(
                                     )
                                 }
                             }
-
-                            if (isSelected && !Settings.shared.reduceMotion) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Rounded.Send,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp).padding(start = 4.dp),
-                                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                                )
-                            }
                         }
                     }
                 }

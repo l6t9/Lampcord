@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -348,19 +349,25 @@ fun ChatInputBar(
                 AnimatedVisibility(
                     visible = autocompleteStore.autocompleteType != null,
                     enter = if (reduceMotion) EnterTransition.None else slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                    exit = if (reduceMotion) ExitTransition.None else slideOutVertically(targetOffsetY = { it }) + fadeOut(),
-                    modifier = if (isMobileDevice) {
-                        Modifier.weight(1f, fill = false)
-                    } else {
-                        Modifier
-                    }
+                    exit = if (reduceMotion) ExitTransition.None else slideOutVertically(targetOffsetY = { it }) + fadeOut()
                 ) {
                     autocompleteStore.autocompleteType?.let { type ->
                         AutocompletePicker(
                             type = type,
                             query = autocompleteStore.autocompleteQuery,
                             selectedIndex = autocompleteStore.autocompleteSelectedIndex,
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp)
+                                .layout { measurable, constraints ->
+                                    val maxHeight = (constraints.maxHeight * 0.4f).toInt()
+                                    val placeable = measurable.measure(
+                                        constraints.copy(minHeight = 0, maxHeight = maxHeight)
+                                    )
+                                    layout(placeable.width, placeable.height) {
+                                        placeable.place(0, 0)
+                                    }
+                                },
                             onItemSelected = { item ->
                                 if (item.isCommand && item.commandObj != null) {
                                     commandStore.activeCommand = item.commandObj
@@ -687,11 +694,11 @@ fun ChatInputBar(
                                                         val (type, query) = when {
                                                             it.text.startsWith('/') && !it.text.contains(' ') -> 
                                                                 AutocompleteType.COMMAND to it.text.substring(1)
-                                                            lastWord.startsWith('@') -> 
+                                                            lastWord.length > 1 && lastWord.startsWith('@') ->
                                                                 AutocompleteType.MENTION to lastWord.substring(1)
-                                                            lastWord.startsWith('#') -> 
+                                                            lastWord.length > 1 && lastWord.startsWith('#') ->
                                                                 AutocompleteType.CHANNEL to lastWord.substring(1)
-                                                            lastWord.startsWith(':') -> 
+                                                            lastWord.length > 1 && lastWord.startsWith(':') ->
                                                                 AutocompleteType.EMOJI to lastWord.substring(1)
                                                             else -> null to ""
                                                         }

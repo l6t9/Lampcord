@@ -11,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
@@ -19,6 +20,8 @@ import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
 val DiscordSheetCornerRadius = 24.dp
+
+val DiscordSheetMargin = 12.dp
 
 val DiscordSheetScrimColor = Color.Black.copy(alpha = 0.6f)
 
@@ -40,11 +43,8 @@ fun DiscordBottomSheet(
     modifier: Modifier = Modifier,
     sheetState: SheetState = rememberDiscordSheetState(),
     sheetMaxWidth: Dp = 560.dp,
-    shape: Shape = RoundedCornerShape(
-        topStart = DiscordSheetCornerRadius,
-        topEnd = DiscordSheetCornerRadius
-    ),
-    containerColor: Color = MaterialTheme.colorScheme.surface,
+    shape: Shape = RoundedCornerShape(DiscordSheetCornerRadius),
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
     contentColor: Color = contentColorFor(containerColor),
     dragHandle: @Composable (() -> Unit)? = null,
     scrimColor: Color = DiscordSheetScrimColor,
@@ -53,7 +53,19 @@ fun DiscordBottomSheet(
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
-        modifier = modifier,
+        modifier = modifier
+            .padding(
+                start = DiscordSheetMargin,
+                end = DiscordSheetMargin,
+                bottom = DiscordSheetMargin
+            )
+            .shadow(
+                elevation = 8.dp,
+                shape = shape,
+                clip = false,
+                ambientColor = Color.Black,
+                spotColor = Color.Black
+            ),
         sheetState = sheetState,
         sheetMaxWidth = sheetMaxWidth,
         shape = shape,
@@ -65,17 +77,23 @@ fun DiscordBottomSheet(
         contentWindowInsets = contentWindowInsets,
         properties = ModalBottomSheetDefaults.properties
     ) {
-        Column {
+        Column(modifier = Modifier.padding(bottom = 4.dp)) {
             if (dragHandle != null) {
                 dragHandle()
             } else if (!Settings.shared.reduceMotion) {
                 Box(
                     modifier = Modifier
-                        .padding(top = 10.dp, bottom = 6.dp)
-                        .size(width = 36.dp, height = 4.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
-                )
+                        .fillMaxWidth()
+                        .padding(top = 10.dp, bottom = 6.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(width = 36.dp, height = 4.dp)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
+                    )
+                }
             }
             content()
         }

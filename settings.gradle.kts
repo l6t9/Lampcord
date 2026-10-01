@@ -32,6 +32,6 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "lampcord"
-include(":androidApp")
+// include(":androidApp")
 include(":shared")
 include(":desktopApp")

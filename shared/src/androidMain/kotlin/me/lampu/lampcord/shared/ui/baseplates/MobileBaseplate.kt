@@ -1087,6 +1087,9 @@ private fun MainBaseplateContent(
                                 }
                             },
                             actions = {
+                                val canOpenMemberListAction = settingsStore.mobileShowMemberListButton &&
+                                        activeChannel != null &&
+                                        !navigationStore.isChannelsAndRolesVisible
                                 if (settingsStore.showCallButton && activeChannel != null && (activeChannel.type == 1 || activeChannel.type == 3)) VoiceCallButton(activeChannel)
                                 if (!navigationStore.isBubble && activeChannel != null && (activeChannel.guild_id != null || activeChannel.type == 1 || activeChannel.type == 3)) {
                                     if (settingsStore.showChatSearch) {
@@ -1104,6 +1107,20 @@ private fun MainBaseplateContent(
                                                 imageVector = Icons.Filled.PushPin,
                                                 contentDescription = "Pins",
                                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                    if (canOpenMemberListAction && activeChannel.type != 15) {
+                                        val memberListVisible = panelState.currentValue == DiscordPanelValue.End
+                                        IconButton(
+                                            onClick = {
+                                                if (memberListVisible) panelState.close() else panelState.openEnd()
+                                            }
+                                        ) {
+                                            Icon(
+                                                imageVector = if (activeChannel.type == 1) Icons.Filled.AccountCircle else Icons.Filled.Group,
+                                                contentDescription = "Toggle Member List",
+                                                tint = if (memberListVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                                             )
                                         }
                                     }
