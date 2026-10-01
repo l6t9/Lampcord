@@ -29,6 +29,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.IntOffset
@@ -839,14 +840,17 @@ actual fun MobileBaseplate(
             }
             val frameProduct = frameSku?.let { profileStore.getFrame(it) }
             if (frameProduct != null) {
+                val density = LocalDensity.current
+                val widthDp = with(density) { cardBounds.width.toDp() }
+                val heightDp = with(density) { cardBounds.height.toDp() }
                 ProfileFrameOverlay(
                     product = frameProduct,
                     modifier = Modifier
                         .offset {
                             IntOffset(cardBounds.left.roundToInt(), cardBounds.top.roundToInt())
                         }
-                        .requiredSize(cardBounds.width, cardBounds.height),
-                    railTop = profileBannerHeight(cardBounds.width, true, null, 0f)
+                        .requiredSize(widthDp, heightDp),
+                    railTop = profileBannerHeight(widthDp, true, null, 0f)
                 )
             }
         }
