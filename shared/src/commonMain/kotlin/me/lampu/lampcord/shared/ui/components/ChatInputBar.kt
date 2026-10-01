@@ -72,10 +72,26 @@ class DiscordInputVisualTransformation(val primaryColor: Color) : VisualTransfor
         while (i < rawText.length) {
             val char = rawText[i]
             if (char == '@' || char == '#' || char == '/' || char == ':') {
-                 if (i == 0 || rawText[i-1] == ' ' || rawText[i-1] == '\n') {
+                 if (i == 0 || rawText[i-1].isWhitespace()) {
+                     val isEmoji = char == ':'
                      var end = i + 1
-                     while (end < rawText.length && rawText[end] != ' ' && rawText[end] != '\n') {
-                         end++
+                     if (isEmoji) {
+                         var cursor = i + 1
+                         while (cursor < rawText.length && !rawText[cursor].isWhitespace()) {
+                             if (rawText[cursor] == ':') {
+                                 cursor++
+                                 end = cursor
+                                 break
+                             }
+                             cursor++
+                         }
+                         if (end == i + 1) {
+                             end = cursor.coerceAtMost(rawText.length)
+                         }
+                     } else {
+                         while (end < rawText.length && !rawText[end].isWhitespace()) {
+                             end++
+                         }
                      }
                      build.withStyle(SpanStyle(color = primaryColor, fontWeight = FontWeight.Bold)) {
                          append(rawText.substring(i, end))
@@ -322,12 +338,22 @@ fun ChatInputBar(
         val isMobileView = isMobileDevice || maxWidth < 600.dp
         val isDesktopTarget = platform == "desktop" || platform == "macos" || platform == "windows" || platform == "linux"
         
-        Column(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .imePadding()
+        ) {
             Column(modifier = Modifier.fillMaxWidth()) {
                 AnimatedVisibility(
                     visible = autocompleteStore.autocompleteType != null,
                     enter = if (reduceMotion) EnterTransition.None else slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                    exit = if (reduceMotion) ExitTransition.None else slideOutVertically(targetOffsetY = { it }) + fadeOut()
+                    exit = if (reduceMotion) ExitTransition.None else slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+                    modifier = if (isMobileDevice) {
+                        Modifier.weight(1f, fill = false)
+                    } else {
+                        Modifier
+                    }
                 ) {
                     autocompleteStore.autocompleteType?.let { type ->
                         AutocompletePicker(
@@ -352,10 +378,7 @@ fun ChatInputBar(
 
                 Surface(
                     color = Color.Transparent,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .navigationBarsPadding()
-                        .imePadding()
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Column {
                         TypingIndicator()
@@ -816,19 +839,28 @@ fun ChatInputBar(
                                         }
 
                                         if (!settings.chatboxHideEmojiButton && canSend) {
+                                            val showKeyboardIcon = isMobileView &&
+                                                navigationStore.isEmojiPickerVisible &&
+                                                !settingsStore.silentTyping
                                             IconButton(
-                                                onClick = { 
+                                                onClick = {
                                                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                                    navigationStore.isEmojiPickerVisible = !navigationStore.isEmojiPickerVisible
-                                                    if (isMobileView) {
-                                                        keyboardController?.hide()
+                                                    if (navigationStore.isEmojiPickerVisible && showKeyboardIcon) {
+                                                        navigationStore.isEmojiPickerVisible = false
+                                                        focusRequester.requestFocus()
+                                                        keyboardController?.show()
+                                                    } else {
+                                                        navigationStore.isEmojiPickerVisible = true
+                                                        if (isMobileView) {
+                                                            keyboardController?.hide()
+                                                        }
                                                     }
                                                 },
                                                 modifier = Modifier.size(36.dp)
                                             ) {
                                                 Icon(
-                                                    imageVector = Icons.Filled.SentimentSatisfied,
-                                                    contentDescription = "Emojis",
+                                                    imageVector = if (showKeyboardIcon) Icons.Filled.Keyboard else Icons.Filled.SentimentSatisfied,
+                                                    contentDescription = if (showKeyboardIcon) "Switch to keyboard" else "Emojis",
                                                     modifier = Modifier.size(24.dp),
                                                     tint = if (navigationStore.isEmojiPickerVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                                                 )

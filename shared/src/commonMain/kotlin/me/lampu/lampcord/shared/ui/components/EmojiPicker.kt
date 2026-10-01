@@ -187,7 +187,7 @@ fun EmojiPicker(
     var showCloneModal by remember { mutableStateOf(false) }
     val isMobile = getPlatformName() == "android" || getPlatformName() == "ios"
     val searchFocusRequester = remember { FocusRequester() }
-    val showKeyboardButton = isMobile && !settingsStore.silentTyping && onKeyboardClick != null
+    val showKeyboardButton = false
 
     val imeHeight = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
     val keyboardHeight = remember(imeHeight) { 
