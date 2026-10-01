@@ -59,7 +59,8 @@ fun ChannelItem(
         typingUsers[channel.id]?.isNotEmpty() == true
     }
 
-    val isUnread = remember(channel, readStates[channel.id]) { readStateStore.isUnread(channel) }
+    val recentIds by readStateStore.recentIds.collectAsState()
+    val isUnread = remember(channel, readStates[channel.id], recentIds[channel.id]) { readStateStore.isUnread(channel) }
     val mentionCount = remember(channel, readStates[channel.id]) { readStateStore.getMentionCount(channel.id) }
     
     val userGuildSettings by userGuildSettingsStore.userGuildSettings.collectAsState()

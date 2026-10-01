@@ -53,7 +53,6 @@ import androidx.compose.foundation.shape.CircleShape
 import me.lampu.lampcord.shared.utils.PermissionHelper
 import me.lampu.lampcord.shared.ui.components.profiles.ProfileCard
 import me.lampu.lampcord.shared.ui.components.profiles.ProfileCardSkeleton
-import me.lampu.lampcord.shared.ui.components.profiles.rememberFrameInsets
 import me.lampu.lampcord.shared.settings.PanelType
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.ui.navigation.Navigator
@@ -254,7 +253,8 @@ actual fun MobileBaseplate(
         currentRoute == Screen.NotificationsSettings ||
         currentRoute == Screen.NavigationSettings ||
         currentRoute == Screen.AdvancedSettings ||
-        currentRoute == Screen.AboutSettings
+        currentRoute == Screen.AboutSettings ||
+        currentRoute == Screen.UpdatesSettings
     val isTabRoute = currentRoute in setOf(
         Screen.Chat, Screen.Friends, Screen.Mentions, Screen.GlobalSearch
     )
@@ -346,6 +346,7 @@ actual fun MobileBaseplate(
                         onNavigateToNotifications = { navigator.navigate(Screen.NotificationsSettings) },
                         onNavigateToAdvanced = { navigator.navigate(Screen.AdvancedSettings) },
                         onNavigateToAbout = { navigator.navigate(Screen.AboutSettings) },
+                        onNavigateToUpdates = { navigator.navigate(Screen.UpdatesSettings) },
                         onNavigateToTheming = { navigator.navigate(Screen.Theming) },
                         onNavigateToNavigation = { navigator.navigate(Screen.NavigationSettings) },
                         onDismiss = { navigationStore.isSettingsVisible = false }
@@ -386,6 +387,11 @@ actual fun MobileBaseplate(
             }
             entry<Screen.AdvancedSettings> {
                 AdvancedSettings(onBack = { navigator.goBack() })
+            }
+            entry<Screen.UpdatesSettings> {
+                SettingsSubScreen(title = "Updates", onNavigateBack = { navigator.goBack() }) {
+                    me.lampu.lampcord.shared.ui.settings.UpdatesContent()
+                }
             }
             entry<Screen.AboutSettings> {
                 val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
@@ -794,29 +800,20 @@ actual fun MobileBaseplate(
         ) {
             if (profileStore.selectedProfile != null) {
                 val profile = profileStore.selectedProfile!!
-                BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                    val frameInsets = rememberFrameInsets(profile, profileStore, maxWidth, gap = 0.dp)
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        Spacer(modifier = Modifier.height(frameInsets.top))
-                        Box(modifier = Modifier.weight(1f)) {
-                            ProfileCard(
-                                profile = profile,
-                                modifier = Modifier.fillMaxSize(),
-                                showBorder = false,
-                                isExpanded = true,
-                                fillAvailableHeight = true,
-                                showBoardTab = true,
-                                onExpand = null,
-                                onDismiss = {
-                                    profileStore.selectedProfile = null
-                                    profileStore.isProfileExpanded = false
-                                    profileStore.isProfileLoading = false
-                                }
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(frameInsets.bottom))
+                ProfileCard(
+                    profile = profile,
+                    modifier = Modifier.fillMaxSize(),
+                    showBorder = false,
+                    isExpanded = true,
+                    fillAvailableHeight = true,
+                    showBoardTab = true,
+                    onExpand = null,
+                    onDismiss = {
+                        profileStore.selectedProfile = null
+                        profileStore.isProfileExpanded = false
+                        profileStore.isProfileLoading = false
                     }
-                }
+                )
             } else {
                 ProfileCardSkeleton(
                     modifier = Modifier.fillMaxWidth(),

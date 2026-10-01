@@ -31,6 +31,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import me.lampu.lampcord.shared.state.SettingsStore
+import me.lampu.lampcord.shared.ui.components.settings.Material3SettingsGroup
+import me.lampu.lampcord.shared.ui.components.settings.switchSettingsItem
 import me.lampu.lampcord.shared.update.APP_VERSION
 import me.lampu.lampcord.shared.update.InstallResult
 import me.lampu.lampcord.shared.update.UpdateChannel
@@ -42,6 +45,7 @@ import org.koin.compose.koinInject
 @Composable
 fun UpdatesContent(
     updateManager: UpdateManager = koinInject(),
+    settingsStore: SettingsStore = koinInject(),
     modifier: Modifier = Modifier,
 ) {
     val state by updateManager.state.collectAsState()
@@ -50,7 +54,9 @@ fun UpdatesContent(
     var showChangelog by remember { mutableStateOf(false) }
     var installNote by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(channel) { updateManager.check(channel) }
+    LaunchedEffect(channel) {
+        if (settingsStore.checkForUpdates) updateManager.check(channel)
+    }
 
     Column(
         modifier = modifier
@@ -65,6 +71,36 @@ fun UpdatesContent(
         )
 
         Text("Version $APP_VERSION", style = MaterialTheme.typography.bodyMedium)
+
+        Material3SettingsGroup(
+            items = listOf(
+                switchSettingsItem(
+                    title = "Check for Updates",
+                    description = "Look for a newer build when Lampcord opens.",
+                    checked = settingsStore.checkForUpdates,
+                    onCheckedChange = {
+                        settingsStore.checkForUpdates = it
+                        if (!it) updateManager.reset()
+                    }
+                ),
+                switchSettingsItem(
+                    title = "Update Notifications",
+                    description = "Tell me when an update is ready to install.",
+                    checked = settingsStore.updateNotifications,
+                    onCheckedChange = { settingsStore.updateNotifications = it }
+                )
+            )
+        )
+
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(
+                onClick = { scope.launch { updateManager.check(channel, force = true) } },
+            ) { Text("Check for updates") }
+            OutlinedButton(
+                onClick = { showChangelog = true },
+                enabled = (state as? UpdateState.Available) != null,
+            ) { Text("View changelog") }
+        }
 
         SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
             UpdateChannel.entries.forEachIndexed { index, entry ->

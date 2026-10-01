@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.update.InstallResult
 import me.lampu.lampcord.shared.update.NIGHTLY_BUILD
 import me.lampu.lampcord.shared.update.UpdateChannel
@@ -44,6 +45,7 @@ import org.koin.compose.koinInject
 @Composable
 fun UpdatePrompt(
     updateManager: UpdateManager = koinInject(),
+    settingsStore: SettingsStore = koinInject(),
 ) {
     if (currentUpdateTarget() != UpdateTarget.ANDROID) return
 
@@ -53,6 +55,7 @@ fun UpdatePrompt(
     var installNote by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
+        if (!settingsStore.checkForUpdates) return@LaunchedEffect
         val channel = if (NIGHTLY_BUILD > 0) UpdateChannel.NIGHTLY else UpdateChannel.STABLE
         updateManager.check(channel)
     }
@@ -60,7 +63,7 @@ fun UpdatePrompt(
     val available = state as? UpdateState.Available
     val ready = state as? UpdateState.ReadyToInstall
 
-    if (available != null && !dismissed) {
+    if (available != null && !dismissed && settingsStore.updateNotifications) {
         UpdateSheet(
             title = "Update available",
             version = available.version,

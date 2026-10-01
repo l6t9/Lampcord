@@ -125,6 +125,26 @@ class ClientProfileStore(
             db
         }
     }
+
+    fun getLocalProfile(userId: String): CustomProfile? = _localOverrides.value[userId]
+
+    fun getRemoteProfile(userId: String): CustomProfile? = _customProfiles.value.users[userId]
+
+    fun setLocalBanner(userId: String, banner: String?) {
+        val existing = _localOverrides.value[userId]
+        val updated = (existing ?: CustomProfile(user_id = userId)).copy(
+            banner = banner?.takeIf { it.isNotEmpty() }
+        )
+        setLocalOverride(userId, updated)
+    }
+
+    fun setLocalAvatar(userId: String, avatar: String?) {
+        val existing = _localOverrides.value[userId]
+        val updated = (existing ?: CustomProfile(user_id = userId)).copy(
+            avatar = avatar?.takeIf { it.isNotEmpty() }
+        )
+        setLocalOverride(userId, updated)
+    }
 }
 
 data class GuildMediaUrls(val icon: String?, val banner: String?)

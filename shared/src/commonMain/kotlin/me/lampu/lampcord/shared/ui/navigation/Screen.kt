@@ -81,6 +81,9 @@ sealed class Screen : NavKey {
     data object AdvancedSettings : Screen()
 
     @Serializable
+    data object UpdatesSettings : Screen()
+
+    @Serializable
     data object AboutSettings : Screen()
 
     @Serializable

@@ -80,8 +80,21 @@ fun ProfileSettingsContent(
     
     val customProfiles by clientProfileStore.customProfiles.collectAsState()
     val localOverrides by clientProfileStore.localOverrides.collectAsState()
-    val customProfile = remember(userVal.id, customProfiles, localOverrides) {
-        clientProfileStore.getCustomProfile(userVal.id)
+    val customProfile = remember(userVal.id, customProfiles, localOverrides, settingsStore.userBg, settingsStore.userPfp) {
+        val local = localOverrides[userVal.id]
+        val remote = if (settingsStore.userBg && settingsStore.userPfp) {
+            customProfiles.users[userVal.id]
+        } else null
+        when {
+            local == null -> remote
+            remote == null -> local
+            else -> local.copy(
+                banner = local.banner?.takeIf { it.isNotEmpty() } ?: remote.banner,
+                avatar = local.avatar?.takeIf { it.isNotEmpty() } ?: remote.avatar,
+                theme_colors = local.theme_colors ?: remote.theme_colors,
+                accent_color = local.accent_color ?: remote.accent_color
+            )
+        }
     }
     
     var displayName by remember(userVal.id, selectedGuildId) { 
@@ -97,6 +110,9 @@ fun ProfileSettingsContent(
         mutableStateOf<Int?>(null) 
     }
     var bannerUri by remember(userVal.id, selectedGuildId) {
+        mutableStateOf<String?>(null)
+    }
+    var localAvatarUri by remember(userVal.id, selectedGuildId) {
         mutableStateOf<String?>(null)
     }
     var themePrimaryColor by remember(userVal.id, selectedGuildId) {
@@ -131,6 +147,7 @@ fun ProfileSettingsContent(
                 val dataUri = "data:$mimeType;base64,$base64"
                 
                 scope.launch {
+                    clientProfileStore.setLocalAvatar(userVal.id, dataUri)
                     if (selectedGuildId == null) {
                         val updated = userApi.patchUser(me.lampu.lampcord.shared.model.User.Partial(avatar = dataUri))
                         if (updated != null) userStore.handleUserUpdate(updated)
@@ -195,9 +212,12 @@ fun ProfileSettingsContent(
 
     val hasNitro = (userVal.premium_type ?: 0) > 0
 
-    val previewCustomProfile = remember(customProfile, bannerUri, themePrimaryColor, themeSecondaryColor, bannerColor) {
-        (customProfile ?: me.lampu.lampcord.shared.model.CustomProfile(user_id = userVal.id)).copy(
-            banner = bannerUri,
+    val previewCustomProfile = remember(customProfile, bannerUri, themePrimaryColor, themeSecondaryColor, bannerColor, localAvatarUri, settingsStore.userBg, settingsStore.userPfp) {
+        me.lampu.lampcord.shared.model.CustomProfile(
+            user_id = userVal.id,
+            banner = bannerUri?.takeIf { it.isNotEmpty() },
+            avatar = localAvatarUri?.takeIf { it.isNotEmpty() }
+                ?: (if (settingsStore.userPfp) customProfile?.avatar else null),
             theme_colors = listOfNotNull(themePrimaryColor, themeSecondaryColor).ifEmpty { null },
             accent_color = bannerColor
         )
@@ -246,9 +266,10 @@ fun ProfileSettingsContent(
             displayName = currentMember?.nick ?: ""
             bannerColor = customProfile?.accent_color
         }
-        bannerUri = customProfile?.banner
+        bannerUri = localOverrides[userVal.id]?.banner?.takeIf { it.isNotEmpty() } ?: customProfile?.banner
         themePrimaryColor = customProfile?.theme_colors?.getOrNull(0)
         themeSecondaryColor = customProfile?.theme_colors?.getOrNull(1)
+        localAvatarUri = localOverrides[userVal.id]?.avatar?.takeIf { it.isNotEmpty() }
 
         isLoadingProfile = true
         val profile = if (selectedGuildId != null) {
@@ -279,7 +300,7 @@ fun ProfileSettingsContent(
                 pronouns = it.pronouns ?: ""
                 val encodedTheme = get3y3Theme(it.bio)
                 bannerColor = customProfile?.accent_color ?: it.accent_color
-                bannerUri = customProfile?.banner
+                bannerUri = localOverrides[userVal.id]?.banner?.takeIf { it.isNotEmpty() } ?: customProfile?.banner
                 themePrimaryColor = it.theme_colors?.getOrNull(0) ?: customProfile?.theme_colors?.getOrNull(0) ?: encodedTheme?.getOrNull(0)
                 themeSecondaryColor = it.theme_colors?.getOrNull(1) ?: customProfile?.theme_colors?.getOrNull(1) ?: encodedTheme?.getOrNull(1)
             }
@@ -289,7 +310,7 @@ fun ProfileSettingsContent(
             pronouns = userVal.pronouns ?: ""
             val encodedTheme = get3y3Theme(userVal.bio)
             bannerColor = customProfile?.accent_color ?: userVal.accent_color
-            bannerUri = customProfile?.banner
+            bannerUri = localOverrides[userVal.id]?.banner?.takeIf { it.isNotEmpty() } ?: customProfile?.banner
             themePrimaryColor = profile?.user_profile?.theme_colors?.getOrNull(0) ?: customProfile?.theme_colors?.getOrNull(0) ?: encodedTheme?.getOrNull(0)
             themeSecondaryColor = profile?.user_profile?.theme_colors?.getOrNull(1) ?: customProfile?.theme_colors?.getOrNull(1) ?: encodedTheme?.getOrNull(1)
         }
@@ -373,6 +394,7 @@ fun ProfileSettingsContent(
             val file = files.firstOrNull() ?: return@FilePicker
             pendingCropImage = file.second
             showAvatarPicker = false
+            file.first
         }
     )
 
@@ -559,6 +581,17 @@ fun ProfileSettingsContent(
                                             val encoded = me.lampu.lampcord.shared.ui.components.profiles.Profile3y3.encode(kotlinx.serialization.json.Json.encodeToString(custom))
                                             finalBio += encoded
                                         }
+
+                                        clientProfileStore.setLocalOverride(
+                                            userVal.id,
+                                            me.lampu.lampcord.shared.model.CustomProfile(
+                                                user_id = userVal.id,
+                                                banner = bannerUri?.takeIf { it.isNotEmpty() },
+                                                avatar = localAvatarUri?.takeIf { it.isNotEmpty() },
+                                                theme_colors = themeColors.ifEmpty { null },
+                                                accent_color = bannerColor
+                                            )
+                                        )
 
                                         if (selectedGuildId == null) {
                                             val updated = userApi.patchUser(me.lampu.lampcord.shared.model.User.Partial(global_name = displayName))

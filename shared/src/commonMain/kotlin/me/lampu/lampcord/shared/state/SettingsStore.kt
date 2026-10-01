@@ -225,6 +225,22 @@ class SettingsStore(
             me.lampu.lampcord.shared.settings.Settings.shared.userPfp = value
         }
 
+    private var _checkForUpdates by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.checkForUpdates)
+    var checkForUpdates: Boolean
+        get() = _checkForUpdates
+        set(value) {
+            _checkForUpdates = value
+            me.lampu.lampcord.shared.settings.Settings.shared.checkForUpdates = value
+        }
+
+    private var _updateNotifications by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.updateNotifications)
+    var updateNotifications: Boolean
+        get() = _updateNotifications
+        set(value) {
+            _updateNotifications = value
+            me.lampu.lampcord.shared.settings.Settings.shared.updateNotifications = value
+        }
+
     private var _chatboxBackgroundOpacity by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.chatboxBackgroundOpacity)
     var chatboxBackgroundOpacity: Float
         get() = _chatboxBackgroundOpacity

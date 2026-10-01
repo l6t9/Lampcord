@@ -120,6 +120,7 @@ fun SettingsScreen(
     onNavigateToNotifications: () -> Unit = {},
     onNavigateToAdvanced: () -> Unit = {},
     onNavigateToAbout: () -> Unit = {},
+    onNavigateToUpdates: () -> Unit = {},
     onNavigateToTheming: () -> Unit = {},
     onNavigateToNavigation: () -> Unit = {},
     onDismiss: () -> Unit,
@@ -234,6 +235,7 @@ fun SettingsScreen(
                         "CHAT" -> onNavigateToChat()
                         "NOTIFICATIONS" -> onNavigateToNotifications()
                         "ADVANCED" -> onNavigateToAdvanced()
+                        "UPDATES" -> onNavigateToUpdates()
                         "ABOUT" -> onNavigateToAbout()
                     }
                     navigationStore.settingsCategory = null
@@ -455,6 +457,12 @@ fun SettingsScreen(
                                 item {
                                     Material3SettingsGroup(
                                         items = listOf(
+                                            Material3SettingsItem(
+                                                if (useRounded) Icons.Rounded.Refresh else Icons.Filled.Refresh,
+                                                title = { Text("Updates") },
+                                                description = { Text("Check for updates and read the changelog") },
+                                                onClick = onNavigateToUpdates
+                                            ),
                                             Material3SettingsItem(
                                                 if (useRounded) Icons.Rounded.Info else Icons.Filled.Info,
                                                 title = { Text("About") },
