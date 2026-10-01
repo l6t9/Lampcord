@@ -81,7 +81,14 @@ jobs:
               esac
 
               case "$f" in
-                shared/commonMain/**|shared/src/commonMain/**|shared/**|build.gradle.kts|build.gradle|gradle.properties|settings.gradle.kts|settings.gradle|gradle/**|.github/workflows/reusable-*.yml|.github/workflows/nightly-release.yml|.github/actions/**)
+                shared/commonMain/**|shared/src/commonMain/**)
+                  android_changed=true
+                  linux_changed=true
+                  windows_changed=true
+                  macos_changed=true
+                  ios_changed=true
+                  ;;
+                build.gradle.kts|build.gradle|gradle.properties|settings.gradle.kts|settings.gradle|gradle/**|.github/workflows/reusable-*.yml|.github/workflows/nightly-release.yml|.github/actions/**)
                   android_changed=true
                   linux_changed=true
                   windows_changed=true
