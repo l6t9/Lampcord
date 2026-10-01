@@ -36,7 +36,9 @@ jobs:
   build:
     name: iOS
     runs-on: macos-15
-    timeout-minutes: 60
+    # The archive step alone has been observed at 46 minutes, so the old 60 minute ceiling
+    # cancelled the job mid-link. Kept well clear of GitHub's 6 hour hard limit.
+    timeout-minutes: 120
     env:
       # Kotlin/Native's linker runs inside the Gradle daemon, so this is the heap that has to
       # survive the framework link. The fixed 4 GB in gradle.properties is nowhere near
@@ -44,7 +46,7 @@ jobs:
       # native allocations, and capping workers stops a second native compilation from
       # competing for the same memory. Overrides gradle.properties for this job only.
       GRADLE_OPTS: >-
-        -Dorg.gradle.jvmargs="-XX:MaxRAMPercentage=70.0 -XX:+UseParallelGC -Dkotlin.daemon.jvm.options=-XX:MaxRAMPercentage=60.0"
+        -Dorg.gradle.jvmargs="-XX:MaxRAMPercentage=25.0 -XX:+UseParallelGC -Dkotlin.daemon.jvm.options=-XX:MaxRAMPercentage=55.0 -XX:+UseParallelGC"
       ORG_GRADLE_PROJECT_org.gradle.workers.max: "2"
     steps:
       - name: Check out repository
@@ -52,6 +54,18 @@ jobs:
         with:
           submodules: recursive
           persist-credentials: false
+
+      - name: Restore Kotlin/Native toolchain
+        # Kotlin/Native keeps its compiler distribution, LLVM and sysroot in ~/.konan, which
+        # is outside GRADLE_USER_HOME and so was not covered by the Gradle cache. Every run
+        # was re-downloading and re-extracting roughly a gigabyte of LLVM before it could
+        # compile anything. Keyed on the Kotlin version so a bump invalidates it.
+        uses: actions/cache@v4
+        with:
+          path: ~/.konan
+          key: konan-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
+          restore-keys: |
+            konan-${{ runner.os }}-
 
       - name: Validate build script
         shell: bash
@@ -82,14 +96,23 @@ jobs:
           echo "Static Swift validation passed."
 
       - name: Compile the shared module for iOS
+        # Skipped whenever a device IPA is being built. The Xcode build phase links the
+        # Release device framework, so in that mode nothing consumes the debug simulator
+        # framework and linking it here is ~10 minutes of work with no consumer.
+        # Metrolist-KMP has no equivalent step at all.
+        if: ${{ !inputs.build-ipa }}
         shell: bash
         run: |
           # Only the simulator framework is needed here. The device framework is linked by the
           # Xcode build phase for the configuration being built: Release for --ipa, and the
           # simulator app uses this same debug simulator framework. Nothing ever builds a Debug
           # device configuration, so linking one cost minutes per run for no consumer.
-          ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64 \
-            --no-daemon
+          # No --no-daemon: the Kotlin docs list org.gradle.daemon=false as a stale
+          # workaround that disables a performance feature. Keeping the daemon lets this step,
+          # the test step and the framework link inside the Xcode build phase share one JVM
+          # instead of forking a fresh single-use daemon per invocation.
+          # org.gradle.workers.max above is what actually bounds memory.
+          ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64
 
       - name: Run iOS tests
         shell: bash

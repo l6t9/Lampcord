@@ -67,7 +67,7 @@ case "$mode" in
   ipa)
     archive_dir="$BUILD_DIR/Build/Products/Release-iphoneos/Lampcord.xcarchive"
     xcodebuild archive "${COMMON_SETTINGS[@]}" "${UNSIGNED_SETTINGS[@]}" \
-      -archivePath "$archive_dir" | sed 's/^/| /'
+      -archivePath "$archive_dir"
 
     app="$archive_dir/Products/Applications/Lampcord.app"
     [[ -d "$app" ]] || { echo "xcodebuild did not produce an .app" >&2; exit 1; }
@@ -93,7 +93,7 @@ case "$mode" in
   sim)
     destination="dist/Lampcord.app"
     xcodebuild build "${COMMON_SETTINGS[@]}" "${UNSIGNED_SETTINGS[@]}" \
-      -destination 'generic/platform=iOS Simulator' | sed 's/^/| /'
+      -destination 'generic/platform=iOS Simulator'
 
     built="$DERIVED_DATA_DIR/Build/Products/Debug-iphonesimulator/Lampcord.app"
     [[ -d "$built" ]] || { echo "xcodebuild did not produce a simulator build" >&2; exit 1; }
@@ -110,7 +110,7 @@ case "$mode" in
 
   device)
     xcodebuild build "${COMMON_SETTINGS[@]}" "${UNSIGNED_SETTINGS[@]}" \
-      -destination 'generic/platform=iOS' | sed 's/^/| /'
+      -destination 'generic/platform=iOS'
     echo "Device build complete in $DERIVED_DATA_DIR"
     ;;
 esac
