@@ -1,7 +1,7 @@
 package me.lampu.lampcord.shared.state
 
 import platform.Foundation.NSNotificationCenter
-import platform.Foundation.NSObjectProtocol
+import platform.darwin.NSObjectProtocol
 import platform.UIKit.UIApplicationDidBecomeActiveNotification
 import platform.UIKit.UIApplicationWillResignActiveNotification
 
@@ -16,7 +16,7 @@ internal actual fun registerVisibilityListener(onVisible: () -> Unit, onHidden: 
     registered = true
 
     val center = NSNotificationCenter.defaultCenter
-    observers = listOf(
+    observers = listOfNotNull(
         center.addObserverForName(UIApplicationDidBecomeActiveNotification, null, null) {
             onVisible()
         },
