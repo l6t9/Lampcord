@@ -275,7 +275,7 @@ fun ProfileHeader(
         )
         
         if (user.id == currentUser?.id && onEditAvatar == null) {
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(4.dp))
             Button(
                 onClick = {
                     navigationStore.navigateToSettings("PROFILES")

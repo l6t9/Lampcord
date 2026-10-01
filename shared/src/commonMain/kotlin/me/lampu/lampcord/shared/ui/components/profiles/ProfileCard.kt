@@ -330,7 +330,7 @@ fun ProfileCard(
                             PrimaryTabRow(
                                 selectedTabIndex = bodyTab,
                                 containerColor = Color.Transparent,
-                                contentColor = theme.primaryAccent,
+                                contentColor = theme.contentColor,
                                 divider = {}
                             ) {
                                 Tab(
@@ -344,7 +344,6 @@ fun ProfileCard(
                                     text = { Text("Board") }
                                 )
                             }
-                            Spacer(Modifier.height(8.dp))
                         }
 
                         if (bodyTab == 0) {
