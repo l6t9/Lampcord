@@ -4,9 +4,28 @@
       "id": "lampcord_contributor",
       "name": "lampcord contributor",
       "icon": "badges/blobcatcozystars.png"
+    },
+    "lamp": {
+      "id": "lamp",
+      "name": "lamp",
+      "icon": "badges/lamp.png"
     }
   },
   "users": {
-    "650805815623680030": ["lampcord_contributor"]
+    "650805815623680030": ["lampcord_contributor", "lamp"],
+    "1242567443742986373": ["lampcord_contributor"],
+    "1202406828248408134": ["lampcord_contributor"],
+    "1063520096028479611": ["lampcord_contributor"],
+    "477497542205243392": ["lampcord_contributor"],
+    "1376280335490351215": ["lampcord_contributor"],
+    "573113458242093056": ["lampcord_contributor"],
+    "381494697073573899": ["lampcord_contributor"],
+    "928917711722008626": ["lampcord_contributor"],
+    "531303411665207326": ["lampcord_contributor"],
+    "795944682831609876": ["lampcord_contributor"],
+    "1450881055790862440": ["lampcord_contributor"]
+  },
+  "roles": {
+    "1534254177004294254": ["lampcord_contributor"]
   }
 }

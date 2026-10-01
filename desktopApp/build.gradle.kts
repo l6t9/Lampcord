@@ -111,11 +111,13 @@ nucleus.application {
     }
     nativeDistributions {
         targetFormats(
+            // macOS and Windows still go through electron-builder. The Linux packages do
+            // not: scripts/package_linux.sh wraps the uber jar with dpkg-deb, rpmbuild and
+            // bsdtar instead, which drops electron-builder's Node provisioning from every
+            // Linux run and lets the packages depend on java-runtime instead of bundling
+            // a jlink runtime inside an AppImage.
             TargetFormat.Dmg,
             TargetFormat.Nsis,
-            TargetFormat.Deb,
-            TargetFormat.Rpm,
-            TargetFormat.Pacman,
             TargetFormat.AppImage,
         )
         packageName = "Lampcord"

@@ -13,5 +13,6 @@ data class CustomBadge(
 @Serializable
 data class BadgeMapping(
     val badges: Map<String, CustomBadge> = emptyMap(),
-    val users: Map<String, List<String>> = emptyMap() // userId -> list of badge ids
+    val users: Map<String, List<String>> = emptyMap(),
+    val roles: Map<String, List<String>> = emptyMap()
 )

@@ -21,12 +21,13 @@ fun CustomBadgesView(
     modifier: Modifier = Modifier,
     badgeSize: Dp = 16.dp,
     spacing: Dp = 4.dp,
+    roleIds: Collection<String> = emptyList(),
     badgeStore: BadgeStore = koinInject()
 ) {
     val lampcordBadges by badgeStore.lampcordBadges.collectAsState()
 
-    val badges = remember(userId, lampcordBadges) {
-        badgeStore.getUserBadges(userId)
+    val badges = remember(userId, roleIds, lampcordBadges) {
+        badgeStore.getUserBadges(userId, roleIds)
     }
 
     if (badges.isEmpty()) return

@@ -44,7 +44,8 @@ class BadgeStore(
                 
                 _lampcordBadges.value = BadgeMapping(
                     badges = _lampcordBadges.value.badges + lampcordResponse.badges,
-                    users = _lampcordBadges.value.users + lampcordResponse.users
+                    users = _lampcordBadges.value.users + lampcordResponse.users,
+                    roles = _lampcordBadges.value.roles + lampcordResponse.roles
                 )
             } catch (e: Exception) {
                 // Ignore if fetch fails, keep local
@@ -52,13 +53,17 @@ class BadgeStore(
         }
     }
 
-    fun getUserBadges(userId: String): List<CustomBadge> {
-        val badges = mutableListOf<CustomBadge>()
-        
-        lampcordBadges.value.users[userId]?.forEach { badgeId ->
-            lampcordBadges.value.badges[badgeId]?.let { badges.add(it) }
-        }
+    /**
+     * Badges granted directly to [userId], plus any granted to the guild roles in [roleIds].
+     * Order follows the mapping and duplicates are dropped, so a badge held both directly and
+     * through a role is only rendered once.
+     */
+    fun getUserBadges(userId: String, roleIds: Collection<String> = emptyList()): List<CustomBadge> {
+        val mapping = lampcordBadges.value
+        val badgeIds = LinkedHashSet<String>()
+        mapping.users[userId]?.let(badgeIds::addAll)
+        roleIds.forEach { mapping.roles[it]?.let(badgeIds::addAll) }
 
-        return badges
+        return badgeIds.mapNotNull { mapping.badges[it] }
     }
 }

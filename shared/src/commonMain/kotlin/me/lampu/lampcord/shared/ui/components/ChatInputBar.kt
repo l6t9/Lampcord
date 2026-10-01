@@ -48,6 +48,7 @@ import me.lampu.lampcord.shared.model.InteractionOption
 import me.lampu.lampcord.shared.model.Member
 import me.lampu.lampcord.shared.model.PendingFile
 import me.lampu.lampcord.shared.model.Role
+import me.lampu.lampcord.shared.model.isUnicodeEmoji
 import me.lampu.lampcord.shared.api.CdnUrls
 import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.components.chat.MediaPicker
@@ -264,8 +265,20 @@ fun ChatInputBar(
                 inputText = ":${emoji.name}:"
             ))
         } else {
-            val name = emoji.name ?: "emoji"
-            val inputText = ":$name:"
+            // Standard emoji reach this branch with `name` set to the Unicode character, not a
+            // shortcode: EmojiIndex builds the picker grid with `name = entry.surrogates`.
+            // So ":$name:" put ":😀:" in the box, and because getCharForName cannot resolve a
+            // character back to a name, no mention range was registered and that literal text
+            // went to the server. Resolve the character to its shortcode for the box, and keep
+            // mapping the range back to the character so the payload still goes out as a plain
+            // emoji the way it did before.
+            val char = emoji.name ?: return
+            val shortcode = if (isUnicodeEmoji(char)) {
+                EmojiIndex.getNamesForChar(char)?.firstOrNull()
+            } else {
+                char.removeSurrounding(":").takeIf { it.isNotBlank() }
+            }
+            val inputText = if (shortcode != null) ":$shortcode:" else char
             val insertStart = textFieldValue.selection.start
             val newText = textFieldValue.text.replaceRange(
                 insertStart,
@@ -273,7 +286,7 @@ fun ChatInputBar(
                 inputText
             )
             textFieldValue = TextFieldValue(newText, TextRange(insertStart + inputText.length))
-            val unicode = EmojiIndex.getCharForName(name)
+            val unicode = EmojiIndex.getCharForName(shortcode ?: char)
             if (unicode != null && unicode != inputText) {
                 mentionRanges = mentionRanges + (insertStart until insertStart + inputText.length to unicode)
             }

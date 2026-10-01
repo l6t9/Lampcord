@@ -265,7 +265,11 @@ fun ProfileHeader(
             }
         }
         Spacer(Modifier.height(8.dp))
-        UserBadges(userId = user.id, badges = profile.badges + profile.guild_badges)
+        UserBadges(
+            userId = user.id,
+            badges = profile.badges + profile.guild_badges,
+            roleIds = profile.guild_member?.roles.orEmpty()
+        )
         
         if (user.id == currentUser?.id && onEditAvatar == null) {
             Spacer(Modifier.height(8.dp))

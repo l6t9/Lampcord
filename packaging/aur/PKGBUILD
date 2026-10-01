@@ -1,32 +1,44 @@
 # Maintainer: Lampu <lampu@cord.lamp.delivery>
 pkgname=lampcord-bin
-pkgver=1.0.0
+pkgver=1.0.1
 pkgrel=1
 pkgdesc='Lightweight Discord client built with Kotlin Multiplatform'
 arch=('x86_64')
 url='https://cord.lamp.delivery'
 license=('GPL-3.0-or-later')
-depends=('glibc' 'fuse2' 'java-runtime' 'libx11' 'libxext' 'libxrender' 'libxtst' 'libxi' 'libxkbcommon')
+# No fuse2: the jar is unpacked by the Nucleus runtime into ~/.cache/nucleus, so there is
+# no self-mounting AppImage involved.
+depends=('glibc' 'java-runtime' 'libx11' 'libxext' 'libxrender' 'libxtst' 'libxi' 'libxkbcommon' 'gtk3' 'libnotify' 'nss' 'libXScrnSaver' 'at-spi2-core' 'libuuid' 'libsecret' 'xdg-utils')
 optdepends=(
   'webkit2gtk-4.1: embedded web content'
   'pipewire: voice calls'
-  'libnotify: desktop notifications'
+  'libappindicator-gtk3: tray icon'
 )
 provides=('lampcord')
 conflicts=('lampcord')
 options=('!strip' '!debug')
 source=(
-  "lampcord-desktop-linux-x64-${pkgver}.AppImage::https://github.com/l6t9/Lampcord/releases/download/v${pkgver}/lampcord-desktop-linux-x64-${pkgver}.AppImage"
+  "lampcord-desktop-linux-x64-${pkgver}.jar::https://github.com/l6t9/Lampcord/releases/download/v${pkgver}/lampcord-desktop-linux-x64-${pkgver}.jar"
+  'lampcord-launcher'
   'lampcord.desktop'
   'lampcord.png'
 )
-sha256sums=('c6429e25d6995aa68721335b2520a82098ac51f8aa960659a3b1dc8143be07ad'
-            'aad7c190d678bfe5c5b9c91d7b6075f0b63ecdfebe08d3bfe542f867db04da31'
-            'b05f31ca9c0e6e1f091b6e848773703334a78ba19834b6dc6f1cebefbea6eb75')
+# The four checksums below are substituted by the Build AUR source tarball step in
+# .github/workflows/reusable-desktop-linux.yml, which sha256sums the published jar, this
+# launcher, the desktop file and the icon, then rewrites this block in the order the
+# source=() array lists them. A non-hex sentinel is deliberate: makepkg rejects it outright
+# rather than reporting a checksum mismatch, so running this file directly fails loudly
+# instead of appearing to work.
+sha256sums=('REPLACED_BY_CI'
+            'REPLACED_BY_CI'
+            'REPLACED_BY_CI'
+            'REPLACED_BY_CI')
 
 package() {
-  install -Dm755 "${srcdir}/lampcord-desktop-linux-x64-${pkgver}.AppImage" \
-    "${pkgdir}/usr/bin/lampcord"
+  install -Dm644 "${srcdir}/lampcord-desktop-linux-x64-${pkgver}.jar" \
+    "${pkgdir}/usr/lib/lampcord/lampcord.jar"
+
+  install -Dm755 "${srcdir}/lampcord-launcher" "${pkgdir}/usr/bin/lampcord"
 
   install -Dm644 "${srcdir}/lampcord.desktop" \
     "${pkgdir}/usr/share/applications/lampcord.desktop"

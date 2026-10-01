@@ -40,7 +40,7 @@ data class ProfileTheme(
 )
 
 @Composable
-fun UserBadges(userId: String, badges: List<ProfileBadge>) {
+fun UserBadges(userId: String, badges: List<ProfileBadge>, roleIds: Collection<String> = emptyList()) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -63,7 +63,12 @@ fun UserBadges(userId: String, badges: List<ProfileBadge>) {
                 }
             )
         }
-        me.lampu.lampcord.shared.ui.components.CustomBadgesView(userId, badgeSize = 22.dp, spacing = 4.dp)
+        me.lampu.lampcord.shared.ui.components.CustomBadgesView(
+            userId = userId,
+            badgeSize = 22.dp,
+            spacing = 4.dp,
+            roleIds = roleIds
+        )
     }
 }
 

@@ -1,0 +1,11 @@
+#!/bin/sh
+
+LIBDIR=/usr/lib/lampcord
+exec java \
+  -Dsun.java2d.uiScale.enabled=true \
+  -Djava.locale.providers=COMPAT,SPI \
+  -Dwebkit.disable.dmabuf.renderer=1 \
+  -Dskiko.gpu.resourceCacheLimit=64m \
+  -Xmx1g \
+  --enable-native-access=ALL-UNNAMED \
+  -jar "$LIBDIR/lampcord.jar" "$@"
