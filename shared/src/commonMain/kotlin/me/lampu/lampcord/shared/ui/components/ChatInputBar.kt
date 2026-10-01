@@ -408,7 +408,7 @@ fun ChatInputBar(
 
                             Row(
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                                verticalAlignment = Alignment.Top
                             ) {
                                 Box(
                                     modifier = Modifier.size(buttonSize),
@@ -450,7 +450,7 @@ fun ChatInputBar(
                                     text = text,
                                     style = MaterialTheme.typography.labelMedium,
                                     modifier = Modifier.weight(1f),
-                                    maxLines = 1,
+                                    maxLines = 2,
                                     overflow = TextOverflow.Ellipsis
                                 )
 
