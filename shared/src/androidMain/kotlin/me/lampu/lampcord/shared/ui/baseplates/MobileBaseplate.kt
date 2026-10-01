@@ -795,17 +795,9 @@ actual fun MobileBaseplate(
             if (profileStore.selectedProfile != null) {
                 val profile = profileStore.selectedProfile!!
                 BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                    val frameInsets = rememberFrameInsets(profile, profileStore, maxWidth)
                     ProfileCard(
                         profile = profile,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(
-                                start = frameInsets.horizontal,
-                                end = frameInsets.horizontal,
-                                top = frameInsets.top,
-                                bottom = frameInsets.bottom
-                            ),
+                        modifier = Modifier.fillMaxSize(),
                         showBorder = false,
                         isExpanded = true,
                         fillAvailableHeight = true,
