@@ -32,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import me.lampu.lampcord.shared.state.rememberGuildMediaUrls
 import me.lampu.lampcord.shared.state.GuildStore
 import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.state.ProfileStore
@@ -73,8 +74,13 @@ fun GuildIcon(
     var contextMenuRequest by remember { mutableStateOf(0) }
     val isAnimated = guild.icon?.startsWith("a_") == true
     val iconSizePx = with(LocalDensity.current) { 48.dp.roundToPx() }
-    val iconUrl = remember(guild.id, guild.icon, isSelected, isAnimated) {
-        me.lampu.lampcord.shared.api.CdnUrls.getGuildIconUrl(guild.id, guild.icon, iconSizePx)
+    val guildMedia = rememberGuildMediaUrls(
+        guildId = guild.id,
+        guildIconUrl = null,
+        guildBannerUrl = null
+    )
+    val iconUrl = remember(guild.id, guild.icon, isSelected, isAnimated, guildMedia.icon) {
+        guildMedia.icon ?: me.lampu.lampcord.shared.api.CdnUrls.getGuildIconUrl(guild.id, guild.icon, iconSizePx)
     }
 
     val userGuildSettings by userGuildSettingsStore.userGuildSettings.collectAsState()

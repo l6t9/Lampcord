@@ -72,13 +72,16 @@ fun ProfileHeader(
 
     val clientProfileStore: ClientProfileStore = koinInject()
     val customProfiles by clientProfileStore.customProfiles.collectAsState()
-    val dbProfile = remember(user.id, settingsStore.userPfp, customProfiles) { 
-        clientProfileStore.getCustomProfile(user.id)?.let {
-            if (!settingsStore.userPfp) it.copy(avatar = null) else it
-        }
+    val localOverrides by clientProfileStore.localOverrides.collectAsState()
+    val localAvatar = localOverrides[user.id]?.avatar?.takeIf { it.isNotEmpty() }
+    val dbProfile = remember(user.id, settingsStore.userPfp, customProfiles, localOverrides) {
+        clientProfileStore.getCustomProfile(user.id)
     }
+    val resolvedAvatar = localAvatar ?: if (settingsStore.userPfp) dbProfile?.avatar else null
 
-    val customProfile = customProfileOverride ?: remember(dbProfile) { dbProfile }
+    val customProfile = customProfileOverride ?: remember(dbProfile, resolvedAvatar) {
+        dbProfile?.copy(avatar = resolvedAvatar)
+    }
 
     val avatarUrl = customProfile?.avatar ?: profile.guild_member?.avatar?.let {
         "https://cdn.discordapp.com/guilds/${profile.guild_id}/users/${user.id}/avatars/$it.png?size=512"

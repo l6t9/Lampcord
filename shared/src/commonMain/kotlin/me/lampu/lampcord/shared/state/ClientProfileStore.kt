@@ -13,6 +13,11 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import me.lampu.lampcord.shared.model.ClientProfileMapping
 import me.lampu.lampcord.shared.model.CustomProfile
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import org.koin.compose.koinInject
 
 class ClientProfileStore(
     private val httpClient: HttpClient,
@@ -119,6 +124,32 @@ class ClientProfileStore(
         } else {
             db
         }
+    }
+}
+
+data class GuildMediaUrls(val icon: String?, val banner: String?)
+
+@Composable
+fun rememberGuildMediaUrls(
+    guildId: String?,
+    guildIconUrl: String?,
+    guildBannerUrl: String?,
+    clientProfileStore: ClientProfileStore = koinInject(),
+    settingsStore: SettingsStore = koinInject()
+): GuildMediaUrls {
+    val localOverrides by clientProfileStore.localOverrides.collectAsState()
+    val customProfiles by clientProfileStore.customProfiles.collectAsState()
+    return remember(guildId, guildIconUrl, guildBannerUrl, localOverrides, customProfiles, settingsStore.userBg, settingsStore.userPfp) {
+        val local = guildId?.let { localOverrides[it] }
+        val remote = guildId?.let { customProfiles.users[it] }
+        GuildMediaUrls(
+            icon = local?.avatar?.takeIf { it.isNotEmpty() }
+                ?: (if (settingsStore.userPfp) remote?.avatar?.takeIf { it.isNotEmpty() } else null)
+                ?: guildIconUrl,
+            banner = local?.banner?.takeIf { it.isNotEmpty() }
+                ?: (if (settingsStore.userBg) remote?.banner?.takeIf { it.isNotEmpty() } else null)
+                ?: guildBannerUrl
+        )
     }
 }
 

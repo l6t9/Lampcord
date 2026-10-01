@@ -38,6 +38,7 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import me.lampu.lampcord.shared.state.rememberGuildMediaUrls
 import me.lampu.lampcord.shared.state.GuildStore
 import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.state.ProfileStore
@@ -75,9 +76,14 @@ fun GuildChannelList(
     }
     val showHidden = settingsStore.showHiddenChannels
 
-    val bannerUrl = guild?.banner?.let { 
-        "https://cdn.discordapp.com/banners/${guild.id}/$it.png?size=600" 
-    }
+    val guildMedia = rememberGuildMediaUrls(
+        guildId = guild?.id,
+        guildIconUrl = null,
+        guildBannerUrl = guild?.banner?.let {
+            "https://cdn.discordapp.com/banners/${guild.id}/$it.png?size=600"
+        }
+    )
+    val bannerUrl = guildMedia.banner
     val scrollState = rememberLazyListState()
     var isHovered by remember { mutableStateOf(false) }
     var menuExpanded by remember { mutableStateOf(false) }

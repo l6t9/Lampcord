@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.api.GuildApi
 import me.lampu.lampcord.shared.model.Invite
 import me.lampu.lampcord.shared.model.Guild
+import me.lampu.lampcord.shared.state.rememberGuildMediaUrls
 import me.lampu.lampcord.shared.state.GuildStore
 import me.lampu.lampcord.shared.state.MemberListStore
 import me.lampu.lampcord.shared.state.NavigationStore
@@ -150,7 +151,12 @@ fun GuildProfileSheet(
                     .padding(bottom = 32.dp)
             ) {
                 Box(modifier = Modifier.fillMaxWidth()) {
-                    val bannerUrl = guild.banner?.let { "https://cdn.discordapp.com/banners/${guild.id}/$it.png?size=600" }
+                    val guildMedia = rememberGuildMediaUrls(
+                        guildId = guild.id,
+                        guildIconUrl = guild.icon?.let { "https://cdn.discordapp.com/icons/${guild.id}/$it.png?size=160" },
+                        guildBannerUrl = guild.banner?.let { "https://cdn.discordapp.com/banners/${guild.id}/$it.png?size=600" }
+                    )
+                    val bannerUrl = guildMedia.banner
                     if (bannerUrl != null) {
                         AsyncImage(
                             model = bannerUrl,
@@ -170,7 +176,7 @@ fun GuildProfileSheet(
                         color = MaterialTheme.colorScheme.surfaceContainerLow,
                         border = androidx.compose.foundation.BorderStroke(4.dp, MaterialTheme.colorScheme.surfaceContainerLow)
                     ) {
-                        val iconUrl = guild.icon?.let { "https://cdn.discordapp.com/icons/${guild.id}/$it.png?size=160" }
+                        val iconUrl = guildMedia.icon
                         if (iconUrl != null) {
                             AsyncImage(model = iconUrl, contentDescription = null, modifier = Modifier.fillMaxSize())
                         } else {

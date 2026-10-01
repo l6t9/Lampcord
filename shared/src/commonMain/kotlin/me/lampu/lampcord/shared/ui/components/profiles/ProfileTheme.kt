@@ -60,17 +60,14 @@ internal fun rememberProfileTheme(
         }
     
         val customProfiles by clientProfileStore.customProfiles.collectAsState()
-        val dbProfile = remember(user.id, settingsStore.userBg, settingsStore.userPfp, customProfiles) { 
-            clientProfileStore.getCustomProfile(user.id)?.let {
-                var updated = it
-                if (!settingsStore.userBg) updated = updated.copy(banner = null)
-                if (!settingsStore.userPfp) updated = updated.copy(avatar = null)
-                updated
-            }
+        val localOverrides by clientProfileStore.localOverrides.collectAsState()
+        val localBanner = localOverrides[user.id]?.banner?.takeIf { it.isNotEmpty() }
+        val localAvatar = localOverrides[user.id]?.avatar?.takeIf { it.isNotEmpty() }
+        val dbProfile = remember(user.id, settingsStore.userBg, settingsStore.userPfp, customProfiles, localOverrides) {
+            clientProfileStore.getCustomProfile(user.id)
         }
-
-        val customProfile = customProfileOverride ?: remember(decoded3y3, dbProfile) {
-            if (decoded3y3 != null) {
+        val customProfile = customProfileOverride ?: remember(decoded3y3, dbProfile, localBanner, localAvatar) {
+            val merged = if (decoded3y3 != null) {
                 decoded3y3.copy(
                     banner = decoded3y3.banner ?: dbProfile?.banner,
                     avatar = decoded3y3.avatar ?: dbProfile?.avatar,
@@ -80,6 +77,10 @@ internal fun rememberProfileTheme(
             } else {
                 dbProfile
             }
+            merged?.copy(
+                banner = localBanner ?: if (settingsStore.userBg) merged.banner else null,
+                avatar = localAvatar ?: if (settingsStore.userPfp) merged.avatar else null
+            )
         }
 
         val themeColors = remember(profile, customProfile) {

@@ -72,12 +72,13 @@ fun ProfileBanner(
     val currentUser by userStore.currentUser.collectAsState()
     val relationships by relationshipStore.relationships.collectAsState()
     val customProfiles by clientProfileStore.customProfiles.collectAsState()
-    val dbProfile = remember(user.id, settingsStore.userBg, customProfiles) { 
-        clientProfileStore.getCustomProfile(user.id)?.let {
-            if (!settingsStore.userBg) it.copy(banner = null) else it
-        }
+    val localOverrides by clientProfileStore.localOverrides.collectAsState()
+    val localBanner = localOverrides[user.id]?.banner?.takeIf { it.isNotEmpty() }
+    val dbProfile = remember(user.id, settingsStore.userBg, customProfiles, localOverrides) {
+        clientProfileStore.getCustomProfile(user.id)
     }
-    val customProfile = customProfileOverride ?: dbProfile
+    val resolvedBanner = localBanner ?: if (settingsStore.userBg) dbProfile?.banner else null
+    val customProfile = customProfileOverride ?: dbProfile?.copy(banner = resolvedBanner)
 
     val relationship = remember(relationships, user.id) {
         relationships.find { (it.id ?: it.user?.id ?: it.user_id) == user.id }
