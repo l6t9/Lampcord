@@ -630,8 +630,8 @@ fun MessageItem(
                                     content = message.content,
                                     style = if (useBubbles) MaterialTheme.typography.bodyMedium
                                     else MaterialTheme.typography.bodyLarge.copy(
-                                        fontSize = 15.sp,
-                                        lineHeight = 20.sp
+                                        fontSize = 15.sp * settingsStore.chatboxFontSize,
+                                        lineHeight = 20.sp * settingsStore.chatboxFontSize
                                     ),
                                     color = if (message.isDeleted) MaterialTheme.colorScheme.error else if (useBubbles) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onBackground
                                 )
