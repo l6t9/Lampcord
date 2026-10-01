@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.material3.SheetValue
@@ -55,7 +54,6 @@ fun DiscordBottomSheet(
     contentWindowInsets: @Composable () -> WindowInsets = { WindowInsets(0, 0, 0, 0) },
     content: @Composable ColumnScope.() -> Unit
 ) {
-    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
         modifier = modifier
@@ -81,7 +79,7 @@ fun DiscordBottomSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = screenHeight - DiscordSheetTopInset)
+                .fillMaxHeight(0.9f)
         ) {
             if (dragHandle != null) {
                 dragHandle()
