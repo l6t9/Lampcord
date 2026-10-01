@@ -59,6 +59,7 @@ import me.lampu.lampcord.shared.ui.kit.clickableCursor
 private val FolderIconSize = 48.dp
 private val PreviewIconSize = 20.dp
 private val PreviewIconOffset = 10.dp
+private val FolderCornerRadius = 16.dp
 
 @Composable
 fun FolderPreviewGrid(
@@ -110,7 +111,7 @@ fun PreviewIcon(guild: Guild) {
 
     Surface(
         modifier = Modifier.fillMaxSize(),
-        shape = RoundedCornerShape(6.dp),
+        shape = CircleShape,
         color = MaterialTheme.colorScheme.surfaceVariant,
         shadowElevation = 0.dp,
         tonalElevation = 0.dp
@@ -198,7 +199,7 @@ fun GuildFolderItem(
                         color = surfaceColor,
                         topLeft = Offset(x, 0f),
                         size = Size(wellWidth, size.height * expansionProgress),
-                        cornerRadius = CornerRadius(wellWidth / 2) // Semicircle rounding at top and bottom
+                        cornerRadius = CornerRadius(FolderCornerRadius.toPx())
                     )
                 }
             }
@@ -294,7 +295,7 @@ fun GuildFolderItem(
                             Box(
                                 modifier = Modifier
                                     .matchParentSize()
-                                    .clip(CircleShape)
+                                    .clip(RoundedCornerShape(FolderCornerRadius))
                                     .background(folderBgColor)
                             )
                             if (expanded) {

@@ -69,6 +69,7 @@ fun EmojiPicker(
     mediaApi: MediaApi = koinInject(),
     settingsStore: SettingsStore = koinInject(),
     modifier: Modifier = Modifier,
+    onKeyboardClick: (() -> Unit)? = null,
     onEmojiSelected: (Emoji) -> Unit
 ) {
     var selectedTab by remember { mutableStateOf(0) }
@@ -186,6 +187,7 @@ fun EmojiPicker(
     var showCloneModal by remember { mutableStateOf(false) }
     val isMobile = getPlatformName() == "android" || getPlatformName() == "ios"
     val searchFocusRequester = remember { FocusRequester() }
+    val showKeyboardButton = isMobile && !settingsStore.silentTyping && onKeyboardClick != null
 
     val imeHeight = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
     val keyboardHeight = remember(imeHeight) { 
@@ -315,10 +317,24 @@ fun EmojiPicker(
                             ) 
                         },
                         leadingIcon = { Icon(Icons.Filled.Search, null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)) },
-                        trailingIcon = if (searchQuery.isNotEmpty()) {
+                        trailingIcon = if (searchQuery.isNotEmpty() || showKeyboardButton) {
                             {
-                                IconButton(onClick = { searchQuery = "" }) {
-                                    Icon(Icons.Filled.Close, null, modifier = Modifier.size(18.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    if (searchQuery.isNotEmpty()) {
+                                        IconButton(onClick = { searchQuery = "" }) {
+                                            Icon(Icons.Filled.Close, null, modifier = Modifier.size(18.dp))
+                                        }
+                                    }
+                                    if (showKeyboardButton) {
+                                        IconButton(onClick = { onKeyboardClick?.invoke() }) {
+                                            Icon(
+                                                Icons.Filled.Keyboard,
+                                                "Switch to keyboard",
+                                                modifier = Modifier.size(20.dp),
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         } else null,
