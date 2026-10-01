@@ -18,6 +18,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import me.lampu.lampcord.shared.settings.PanelAnimation
@@ -25,6 +27,7 @@ import me.lampu.lampcord.shared.settings.PanelType
 import me.lampu.lampcord.shared.settings.Settings
 import kotlin.math.abs
 import me.lampu.lampcord.shared.ui.kit.clickableCursor
+import me.lampu.lampcord.shared.utils.getPlatformName
 
 enum class DiscordPanelValue {
     Start, Center, End
@@ -70,6 +73,18 @@ fun DiscordPanels(
     endPanel: @Composable BoxScope.() -> Unit,
     centerPanel: @Composable BoxScope.() -> Unit
 ) {
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    // Android keeps the IME alive while the focused chat input stays composed, so swiping to
+    // the channel list would drag the keyboard along with it.
+    LaunchedEffect(state.currentValue) {
+        if (getPlatformName() == "android" && state.currentValue != DiscordPanelValue.Center) {
+            keyboardController?.hide()
+            focusManager.clearFocus()
+        }
+    }
+
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val density = LocalDensity.current
         val screenWidth = maxWidth
@@ -228,8 +243,16 @@ fun DiscordPanels(
                         
                         shape = RoundedCornerShape(topStart = cornerRadius, topEnd = cornerRadius)
                         clip = !reduceMotion && absProgress > 0.01f
-                        transformOrigin = TransformOrigin(0.5f, 0f)
-                        
+                        // Narrow the panel away from the edge it is travelling towards so the
+                        // leading edge stays put, and keep the height rigid so the panel reads
+                        // as one straight edge sliding offscreen rather than squashing.
+                        transformOrigin = when {
+                            reduceMotion -> TransformOrigin(0.5f, 0f)
+                            progress > 0f -> TransformOrigin(1f, 0f)
+                            progress < 0f -> TransformOrigin(0f, 0f)
+                            else -> TransformOrigin(0.5f, 0f)
+                        }
+
                         if (reduceMotion) {
                             scaleX = 1f
                             scaleY = 1f
@@ -243,7 +266,7 @@ fun DiscordPanels(
 
                             val scale = 1f - (absProgress * shrinkFactor)
                             scaleX = scale
-                            scaleY = scale
+                            scaleY = 1f
 
                             shadowElevation = if (absProgress > 0.01f) {
                                 if (isExpressive) 12.dp.toPx() else 6.dp.toPx()
