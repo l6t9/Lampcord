@@ -13,6 +13,7 @@ class ReadStateStore(private val channelApi: ChannelApi) {
     val readStates: StateFlow<Map<String, ReadState>> = _readStates.asStateFlow()
     
     private val mentionedMessageIds = mutableMapOf<String, MutableSet<String>>()
+    private val mostRecentIds = mutableMapOf<String, String>()
 
     fun handleReady(ready: ReadyPayload) {
         val states = mutableMapOf<String, ReadState>()
@@ -20,37 +21,53 @@ class ReadStateStore(private val channelApi: ChannelApi) {
             states[state.id] = state
         }
         _readStates.value = states
+        ready.read_state?.entries?.forEach { state ->
+            state.lastMessageId()?.let { updateMostRecentId(state.id, it) }
+        }
     }
 
     fun clear() {
         _readStates.value = emptyMap()
         mentionedMessageIds.clear()
+        mostRecentIds.clear()
+    }
+
+    private fun updateMostRecentId(channelId: String, messageId: String) {
+        val id = messageId.toLongOrNull() ?: return
+        if (id > (mostRecentIds[channelId]?.toLongOrNull() ?: 0L)) {
+            mostRecentIds[channelId] = messageId
+        }
+    }
+
+    private fun ReadState?.withAck(messageId: String, mentionCount: Int): ReadState {
+        val previous = this ?: ReadState(id = "", last_message_id = null, mention_count = 0)
+        val previousId = previous.lastMessageId()?.toLongOrNull() ?: 0L
+        val id = messageId.toLongOrNull() ?: 0L
+        return when {
+            id > previousId -> previous.copy(last_message_id = JsonPrimitive(messageId), mention_count = mentionCount)
+            id == previousId -> previous.copy(mention_count = mentionCount)
+            else -> previous
+        }
     }
 
     fun handleMessageAck(ack: MessageAcknowledge) {
         _readStates.update { current ->
             val existing = current[ack.channel_id]
-            
+
             val ids = mentionedMessageIds[ack.channel_id]
             ids?.let { set ->
                 val toRemove = set.filter { (it.toLongOrNull() ?: 0L) <= (ack.message_id.toLongOrNull() ?: 0L) }
                 set.removeAll(toRemove.toSet())
             }
 
-            val updated = existing?.copy(
-                last_message_id = JsonPrimitive(ack.message_id),
-                mention_count = ack.mention_count ?: 0
-            )
-                ?: ReadState(
-                    id = ack.channel_id,
-                    last_message_id = JsonPrimitive(ack.message_id),
-                    mention_count = ack.mention_count ?: 0
-                )
+            val updated = existing.withAck(ack.message_id, ack.mention_count ?: 0).copy(id = ack.channel_id)
             current + (ack.channel_id to updated)
         }
     }
 
     fun handleMessageCreate(message: Message, currentUserId: String?, myRoles: List<String> = emptyList()) {
+        updateMostRecentId(message.channel_id, message.id)
+
         val hasMention = message.author?.id != currentUserId && (
             message.mention_everyone ||
             message.mentions.any { it.id == currentUserId } ||
@@ -87,11 +104,13 @@ class ReadStateStore(private val channelApi: ChannelApi) {
     }
 
     fun isUnread(channel: Channel): Boolean {
-        val lastMsgId = channel.lastMessageId() ?: return false
-        val state = _readStates.value[channel.id] ?: return false
-        val ackedId = state.lastMessageId() ?: "0"
-        if (ackedId == "0") return lastMsgId != "0"
-        return (lastMsgId.toLongOrNull() ?: 0L) > (ackedId.toLongOrNull() ?: 0L)
+        val channelMsgId = channel.lastMessageId()?.toLongOrNull() ?: 0L
+        val recentMsgId = mostRecentIds[channel.id]?.toLongOrNull() ?: 0L
+        val lastMsgId = maxOf(channelMsgId, recentMsgId)
+        if (lastMsgId <= 0L) return false
+        val state = _readStates.value[channel.id] ?: return true
+        val ackedId = state.lastMessageId()?.toLongOrNull() ?: 0L
+        return lastMsgId > ackedId
     }
 
     fun getMentionCount(channelId: String): Int {
@@ -128,12 +147,21 @@ class ReadStateStore(private val channelApi: ChannelApi) {
         if (validStates.isEmpty()) return
         _readStates.update { current ->
             current + validStates.mapValues { (channelId, messageId) ->
-                val previous = current[channelId]
-                (previous ?: ReadState(id = channelId)).copy(
-                    last_message_id = JsonPrimitive(messageId),
-                    mention_count = 0
-                )
+                (current[channelId] ?: ReadState(id = channelId)).withAck(messageId, 0)
+                    .copy(id = channelId)
             }
         }
+    }
+
+    /**
+     * The newest message we know about in a channel, combining the channel's
+     * own last_message_id with the ids of messages seen over the gateway.
+     */
+    fun mostRecentMessageId(channel: Channel): String? {
+        val channelMsgId = channel.lastMessageId()?.toLongOrNull() ?: 0L
+        val recentMsgId = mostRecentIds[channel.id]?.toLongOrNull() ?: 0L
+        return maxOf(channelMsgId, recentMsgId)
+            .takeIf { it > 0L }
+            ?.toString()
     }
 }

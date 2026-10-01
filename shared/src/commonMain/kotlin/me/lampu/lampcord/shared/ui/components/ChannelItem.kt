@@ -119,7 +119,7 @@ fun ChannelItem(
 
             items.add(ContextMenuItem("Mark as Read", Icons.Filled.Check, onClick = {
                 scope.launch {
-                    readStateStore.ackMessage(channel.id, channel.lastMessageId() ?: "0")
+                    readStateStore.mostRecentMessageId(channel)?.let { readStateStore.ackMessage(channel.id, it) }
                 }
             }, group = "Primary"))
             
@@ -319,7 +319,11 @@ fun ChannelItem(
                         )
 
                         if (isSomeoneTyping && !isSelected) {
-                            TypingDots(modifier = Modifier.padding(end = 4.dp).size(16.dp))
+                            TypingDots(
+                                modifier = Modifier
+                                    .padding(start = 4.dp)
+                                    .size(12.dp)
+                            )
                         }
                         
                         if (mentionCount > 0) {
@@ -406,7 +410,7 @@ fun VoiceJoinSheet(
 ) {
     val join = rememberVoiceJoin(voiceStore)
     
-    AdaptiveModalBottomSheet(
+    DiscordBottomSheet(
         onDismissRequest = onDismiss
     ) {
         Column(

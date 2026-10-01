@@ -11,7 +11,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -45,8 +46,10 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
@@ -64,7 +67,7 @@ import me.lampu.lampcord.shared.api.GuildApi
 import me.lampu.lampcord.shared.api.MessageApi
 import me.lampu.lampcord.shared.model.Emoji
 import me.lampu.lampcord.shared.model.Message
-import me.lampu.lampcord.shared.model.toTwemojiUrl
+import me.lampu.lampcord.shared.model.getDisplayUrl
 import me.lampu.lampcord.shared.state.ChannelNavigator
 import me.lampu.lampcord.shared.state.EmojiStore
 import me.lampu.lampcord.shared.state.GuildStore
@@ -322,21 +325,49 @@ fun MessageItem(
             .offset { IntOffset(offsetX.roundToInt(), 0) }
             .pointerInput(message.id, gestureMode) {
                 if (!isPreview && gestureMode == me.lampu.lampcord.shared.settings.ChatGestures.SWIPE_TO_REPLY) {
-                    detectHorizontalDragGestures(
-                        onDragEnd = {
-                            if (offsetX < -80f) {
-                                messageStore.replyingTo = message
+                    // Observe on the Final pass so the parent panel's draggable gets first claim at the
+                    // Main pass. Without this the row consumes the drag and swipe-to-channel-list dies
+                    // whenever swipe-to-reply is enabled.
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Final)
+                        if (down.isConsumed) return@awaitEachGesture
+
+                        var pointer = down.id
+                        var travelled = 0f
+                        var locked = false
+
+                        while (true) {
+                            val event = awaitPointerEvent(PointerEventPass.Final)
+                            val change = event.changes.firstOrNull { it.id == pointer } ?: break
+                            if (!change.pressed || change.isConsumed) {
+                                if (locked && offsetX < -80f) {
+                                    messageStore.replyingTo = message
+                                }
+                                offsetX = 0f
+                                break
                             }
-                            offsetX = 0f
-                        },
-                        onHorizontalDrag = { change, dragAmount ->
-                            val newOffset = (offsetX + dragAmount).coerceIn(-150f, 0f)
-                            if (newOffset != offsetX) {
-                                offsetX = newOffset
+
+                            val delta = change.positionChange().x
+                            travelled += kotlin.math.abs(delta)
+
+                            if (!locked && travelled > viewConfiguration.touchSlop) {
+                                // If another handler already claimed this gesture, stand down.
+                                if (change.isConsumed || event.changes.any { it.isConsumed }) {
+                                    return@awaitEachGesture
+                                }
+                                if (kotlin.math.abs(delta) > kotlin.math.abs(change.positionChange().y)) {
+                                    locked = true
+                                } else {
+                                    break
+                                }
+                            }
+
+                            if (locked) {
+                                offsetX = (offsetX + delta).coerceIn(-150f, 0f)
                                 change.consume()
                             }
                         }
-                    )
+                    }
                 }
             }
             .pointerInput(message.id, tapTapMode) {
@@ -468,15 +499,7 @@ fun MessageItem(
                                         .size(48.dp)
                                         .background(MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape)
                                 ) {
-                                    val url = remember(emojiKey) {
-                                        if (emojiKey.contains(":")) {
-                                            val id = emojiKey.split(":")[1]
-                                            "https://cdn.discordapp.com/emojis/$id.png?size=48"
-                                        } else {
-                                            val unicode = EmojiIndex.getCharForName(emojiKey) ?: emojiKey
-                                            unicode.toTwemojiUrl()
-                                        }
-                                    }
+                                    val url = remember(emojiKey) { emojiFromKey(emojiKey).getDisplayUrl() }
                                     AsyncImage(
                                         model = url,
                                         contentDescription = emojiKey,

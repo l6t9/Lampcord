@@ -107,7 +107,7 @@ fun DMItem(
         }, group = "Primary"))
         items.add(ContextMenuItem("Mark as Read", Icons.Filled.Check, onClick = {
             scope.launch {
-                readStateStore.ackMessage(channel.id, channel.lastMessageId() ?: "0")
+                readStateStore.mostRecentMessageId(channel)?.let { readStateStore.ackMessage(channel.id, it) }
             }
         }, group = "Primary"))
         items.add(ContextMenuItem("Pinned Messages", Icons.Filled.PushPin, onClick = {

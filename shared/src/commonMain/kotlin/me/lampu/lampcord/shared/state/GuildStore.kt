@@ -165,8 +165,7 @@ class GuildStore(
                             (readStateStore.isUnread(it) || readStateStore.getMentionCount(it.id) > 0)
                     }
                     .mapNotNull { channel ->
-                        channel.lastMessageId()
-                            ?.takeIf { it.toLongOrNull()?.let { id -> id > 0L } == true }
+                        readStateStore.mostRecentMessageId(channel)
                             ?.let { channel.id to it }
                     }
                     .toMap()
