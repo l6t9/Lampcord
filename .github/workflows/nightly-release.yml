@@ -25,8 +25,80 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
 
-      - name: Read version
+      - name: Detect changed files
+        id: changes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          before="${{ github.event.before }}"
+          sha="${{ github.sha }}"
+          changed_files=()
+
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            android_changed=true
+            linux_changed=true
+            windows_changed=true
+            macos_changed=true
+            ios_changed=true
+          else
+            if [[ -n "$before" && "$before" != "0000000000000000000000000000000000000000" ]]; then
+              changed_files=$(git diff --name-only "$before" "$sha" || true)
+            else
+              changed_files=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff --name-only HEAD 2>/dev/null || true)
+            fi
+
+            android_changed=false
+            linux_changed=false
+            windows_changed=false
+            macos_changed=false
+            ios_changed=false
+
+            while IFS= read -r f; do
+              [[ -z "$f" ]] && continue
+
+              case "$f" in
+                androidApp/**|shared/androidMain/**|shared/src/androidMain/**|native/**)
+                  android_changed=true
+                  ;;
+              esac
+
+              case "$f" in
+                desktopApp/**|shared/desktopMain/**|shared/jvmMain/**|shared/src/desktopMain/**|shared/src/jvmMain/**|scripts/**|packaging/**)
+                  linux_changed=true
+                  windows_changed=true
+                  macos_changed=true
+                  ;;
+              esac
+
+              case "$f" in
+                iosApp/**|shared/iosMain/**|shared/src/iosMain/**)
+                  ios_changed=true
+                  ;;
+              esac
+
+              case "$f" in
+                shared/commonMain/**|shared/src/commonMain/**|shared/**|build.gradle.kts|build.gradle|gradle.properties|settings.gradle.kts|settings.gradle|gradle/**|.github/workflows/reusable-*.yml|.github/workflows/nightly-release.yml|.github/actions/**)
+                  android_changed=true
+                  linux_changed=true
+                  windows_changed=true
+                  macos_changed=true
+                  ios_changed=true
+                  ;;
+              esac
+            done <<< "$changed_files"
+          fi
+
+          echo "android_changed=$android_changed" >> "$GITHUB_OUTPUT"
+          echo "linux_changed=$linux_changed" >> "$GITHUB_OUTPUT"
+          echo "windows_changed=$windows_changed" >> "$GITHUB_OUTPUT"
+          echo "macos_changed=$macos_changed" >> "$GITHUB_OUTPUT"
+          echo "ios_changed=$ios_changed" >> "$GITHUB_OUTPUT"
+
+      - name: Ensure nightly release exists
         id: release
         shell: bash
         env:
@@ -36,21 +108,25 @@ jobs:
           while IFS='=' read -r key value; do
             if [[ "$key" == "appVersion" ]]; then version="$value"; break; fi
           done < gradle.properties
-          
+
           tag="nightly"
+          notes="Automated nightly build generated from commit \`$GITHUB_SHA\` on $(date -u +'%Y-%m-%d %H:%M UTC')."
+
           if gh release view "$tag" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
-            gh release delete "$tag" --yes --repo "$GITHUB_REPOSITORY" || true
+            gh release edit "$tag" \
+              --target "$GITHUB_SHA" \
+              --prerelease \
+              --title "Lampcord Nightly ($version)" \
+              --notes "$notes" \
+              --repo "$GITHUB_REPOSITORY" || true
+          else
+            gh release create "$tag" \
+              --prerelease \
+              --target "$GITHUB_SHA" \
+              --title "Lampcord Nightly ($version)" \
+              --notes "$notes" \
+              --repo "$GITHUB_REPOSITORY"
           fi
-          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${tag}" > /dev/null 2>&1; then
-            gh api --method DELETE "repos/${GITHUB_REPOSITORY}/git/refs/tags/${tag}" || true
-          fi
-          
-          gh release create "$tag" \
-            --prerelease \
-            --target "$GITHUB_SHA" \
-            --title "Lampcord Nightly ($version)" \
-            --notes "Automated nightly build generated from commit \`$GITHUB_SHA\` on $(date -u +'%Y-%m-%d %H:%M UTC')." \
-            --repo "$GITHUB_REPOSITORY"
 
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "version=$version" >> "$GITHUB_OUTPUT"
@@ -58,6 +134,7 @@ jobs:
   android:
     name: Android
     needs: stage
+    if: needs.stage.outputs.android_changed == 'true' || github.event_name == 'workflow_dispatch'
     uses: ./.github/workflows/reusable-android-build.yml
     permissions:
       contents: write
@@ -75,6 +152,7 @@ jobs:
   linux:
     name: Linux
     needs: stage
+    if: needs.stage.outputs.linux_changed == 'true' || github.event_name == 'workflow_dispatch'
     uses: ./.github/workflows/reusable-desktop-linux.yml
     permissions:
       contents: write
@@ -88,23 +166,23 @@ jobs:
   windows:
     name: Windows
     needs: stage
+    if: needs.stage.outputs.windows_changed == 'true' || github.event_name == 'workflow_dispatch'
     uses: ./.github/workflows/reusable-desktop-windows.yml
     permissions:
       contents: write
     with:
       staging-release-tag: ${{ needs.stage.outputs.tag }}
-      package-native: true
     secrets:
       GRADLE_ENCRYPTION_KEY: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
   ios:
     name: iOS
     needs: stage
+    if: needs.stage.outputs.ios_changed == 'true' || github.event_name == 'workflow_dispatch'
     uses: ./.github/workflows/reusable-ios-build.yml
     permissions:
       contents: write
     with:
-      build-ipa: true
       staging-release-tag: ${{ needs.stage.outputs.tag }}
     secrets:
       GRADLE_ENCRYPTION_KEY: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
@@ -112,6 +190,7 @@ jobs:
   macos:
     name: macOS
     needs: stage
+    if: needs.stage.outputs.macos_changed == 'true' || github.event_name == 'workflow_dispatch'
     uses: ./.github/workflows/reusable-desktop-macos.yml
     permissions:
       contents: write
