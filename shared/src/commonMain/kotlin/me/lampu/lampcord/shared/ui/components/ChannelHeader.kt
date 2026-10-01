@@ -116,7 +116,7 @@ fun ChannelHeader(
                     Icon(
                         imageVector = Icons.Filled.Flag,
                         contentDescription = null,
-                        modifier = Modifier.size(24.dp),
+                        modifier = Modifier.size(28.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 } else if (channel != null) {
@@ -137,7 +137,7 @@ fun ChannelHeader(
                             Icon(
                                 imageVector = Icons.Rounded.Groups,
                                 contentDescription = null,
-                                modifier = Modifier.size(24.dp),
+                                modifier = Modifier.size(28.dp),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -163,7 +163,7 @@ fun ChannelHeader(
                             Icon(
                                 imageVector = Icons.Rounded.AlternateEmail,
                                 contentDescription = null,
-                                modifier = Modifier.size(24.dp),
+                                modifier = Modifier.size(28.dp),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -178,14 +178,14 @@ fun ChannelHeader(
                             Icon(
                                 imageVector = Icons.Rounded.Topic,
                                 contentDescription = null,
-                                modifier = Modifier.size(24.dp),
+                                modifier = Modifier.size(28.dp),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         } else {
                             Icon(
                                 imageVector = icon,
                                 contentDescription = null,
-                                modifier = Modifier.size(24.dp),
+                                modifier = Modifier.size(28.dp),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
