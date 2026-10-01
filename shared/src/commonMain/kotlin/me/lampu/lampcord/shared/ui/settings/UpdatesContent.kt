@@ -95,7 +95,7 @@ fun UpdatesContent(
 
             is UpdateState.Available -> Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    "Version ${current.release.version} is available",
+                    "Version ${current.version} is available",
                     style = MaterialTheme.typography.titleMedium,
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -113,7 +113,7 @@ fun UpdatesContent(
             }
 
             is UpdateState.ReadyToInstall -> Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("${current.release.version} is ready to install")
+                Text("${current.version} is ready to install")
                 installNote?.let {
                     Text(
                         it,
@@ -127,7 +127,7 @@ fun UpdatesContent(
                             target = me.lampu.lampcord.shared.update.currentUpdateTarget()
                                 ?: return@Button,
                             downloadedFile = current.file,
-                            version = current.release.version,
+                            version = current.version,
                         )
                         installNote = when (result) {
                             is InstallResult.Unsupported -> result.reason
@@ -152,10 +152,10 @@ fun UpdatesContent(
     }
 
     if (showChangelog) {
-        val release = (state as? UpdateState.Available)?.release
+        val available = state as? UpdateState.Available
         ChangelogSheet(
-            version = release?.version.orEmpty(),
-            notes = release?.body.orEmpty(),
+            version = available?.release?.version.orEmpty(),
+            notes = available?.changelog.orEmpty(),
             onDismiss = { showChangelog = false },
         )
     }

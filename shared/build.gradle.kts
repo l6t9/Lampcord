@@ -39,9 +39,12 @@ val packageVoiceDesktop = tasks.register<Sync>("packageVoiceDesktop") {
 val generatedUpdateDir = layout.buildDirectory.dir("generated/update")
 
 val generateAppVersion = tasks.register("generateAppVersion") {
-    val version = providers.gradleProperty("appVersion").get()
+    val appVersion = providers.gradleProperty("appVersion").get()
+    val nightlyBuild = providers.gradleProperty("nightlyBuild").orNull?.toIntOrNull() ?: 0
+    val version = if (nightlyBuild > 0) "$appVersion-nightly.$nightlyBuild" else appVersion
     val output = generatedUpdateDir.map { it.file("me/lampu/lampcord/shared/update/AppVersion.kt") }
     inputs.property("version", version)
+    inputs.property("nightlyBuild", nightlyBuild.toString())
     outputs.file(output)
     doLast {
         val file = output.get().asFile
@@ -51,6 +54,8 @@ val generateAppVersion = tasks.register("generateAppVersion") {
             package me.lampu.lampcord.shared.update
 
             const val APP_VERSION: String = "$version"
+
+            const val NIGHTLY_BUILD: Int = $nightlyBuild
             """.trimIndent() + "\n"
         )
     }

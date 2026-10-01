@@ -43,6 +43,30 @@ fun GitHubRelease.assetVersion(asset: GitHubAsset, target: UpdateTarget): String
 
 private val VERSION_IN_NAME = Regex("""(\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?)""")
 
+private const val CHANGELOG_HEADING = "### what's new"
+
+private fun String.markdownSection(heading: String): String? {
+    val lines = lineSequence().toList()
+    val start = lines.indexOfFirst { it.trim().equals(heading, ignoreCase = true) }
+    if (start < 0) return null
+    val rest = lines.drop(start + 1)
+    val end = rest.indexOfFirst { it.startsWith("##") }
+    return (if (end >= 0) rest.take(end) else rest)
+        .joinToString("\n")
+        .trim()
+}
+
+fun GitHubRelease.releaseNotes(): String {
+    val body = body.orEmpty()
+    val section = body.markdownSection(CHANGELOG_HEADING)
+    if (section != null) return section.ifBlank { "No user-facing changes since the last nightly." }
+    return body
+        .lineSequence()
+        .filterNot { it.trimStart().startsWith("Automated ") }
+        .joinToString("\n")
+        .trim()
+}
+
 enum class UpdateTarget(val assetInfix: String?, val extension: String, val installerExtension: String? = null) {
     ANDROID("android", "apk"),
     LINUX("desktop-linux-x64", "AppImage"),

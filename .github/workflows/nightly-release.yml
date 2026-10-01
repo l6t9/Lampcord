@@ -116,31 +116,42 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
           version=""
           while IFS='=' read -r key value; do
             if [[ "$key" == "appVersion" ]]; then version="$value"; break; fi
           done < gradle.properties
+          version="${version}-nightly.${{ github.run_number }}"
 
-          tag="nightly"
-          notes="Automated nightly build generated from commit \`$GITHUB_SHA\` on $(date -u +'%Y-%m-%d %H:%M UTC')."
-
-          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
-            gh release edit "$tag" \
-              --target "$GITHUB_SHA" \
-              --prerelease \
-              --title "Lampcord Nightly ($version)" \
-              --notes "$notes" \
-              --repo "$GITHUB_REPOSITORY" || true
-          else
-            gh release create "$tag" \
-              --prerelease \
-              --target "$GITHUB_SHA" \
-              --title "Lampcord Nightly ($version)" \
-              --notes "$notes" \
-              --repo "$GITHUB_REPOSITORY"
+          previous=""
+          if body="$(gh release view nightly --repo "$GITHUB_REPOSITORY" --json body --jq .body 2>/dev/null)"; then
+            previous="$(printf '%s' "$body" | grep -oE 'commit `[0-9a-f]{7,40}`' | head -n 1 | grep -oE '[0-9a-f]{7,40}' || true)"
           fi
 
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          notes=""
+          if [[ -n "$previous" && "$previous" != "$GITHUB_SHA" ]]; then
+            notes="$(gh api "repos/$GITHUB_REPOSITORY/compare/${previous}...${GITHUB_SHA}" \
+              --jq '[.commits[] | (.commit.message | split("\n")[0])] | .[:20] | join("\n")' 2>/dev/null || true)"
+          fi
+
+          {
+            printf 'Automated nightly build generated from commit `%s` on %s.\n\n' "$GITHUB_SHA" "$(date -u +'%Y-%m-%d %H:%M UTC')"
+            printf "### What's new\n\n"
+            if [[ -n "$notes" ]]; then
+              printf '%s\n' "$notes"
+            else
+              printf 'No user-facing changes since the last nightly.\n'
+            fi
+          } > notes.md
+
+          title="Lampcord Nightly ($version)"
+          if gh release view nightly --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release edit nightly --target "$GITHUB_SHA" --prerelease --title "$title" --notes-file notes.md --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create nightly --prerelease --target "$GITHUB_SHA" --title "$title" --notes-file notes.md --repo "$GITHUB_REPOSITORY"
+          fi
+
+          echo "tag=nightly" >> "$GITHUB_OUTPUT"
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
   android:
@@ -153,6 +164,8 @@ jobs:
     with:
       variant: release
       staging-release-tag: ${{ needs.stage.outputs.tag }}
+      version: ${{ needs.stage.outputs.version }}
+      nightly-build: ${{ github.run_number }}
       require-signing: false
     secrets:
       GRADLE_ENCRYPTION_KEY: ${{ secrets.GRADLE_ENCRYPTION_KEY }}

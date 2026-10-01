@@ -23,9 +23,18 @@ sealed interface UpdateState {
     data object Idle : UpdateState
     data object Checking : UpdateState
     data class UpToDate(val checkedAt: Long) : UpdateState
-    data class Available(val release: GitHubRelease, val asset: GitHubAsset) : UpdateState
+    data class Available(
+        val release: GitHubRelease,
+        val asset: GitHubAsset,
+        val version: String,
+        val changelog: String,
+    ) : UpdateState
     data class Downloading(val version: String, val progress: Int) : UpdateState
-    data class ReadyToInstall(val release: GitHubRelease, val file: String) : UpdateState
+    data class ReadyToInstall(
+        val release: GitHubRelease,
+        val version: String,
+        val file: String,
+    ) : UpdateState
     data class Failed(val reason: String, val release: GitHubRelease? = null) : UpdateState
 }
 
@@ -83,7 +92,9 @@ class UpdateManager(
             return@withLock UpdateState.UpToDate(now()).also { mutableState.value = it }
         }
 
-        UpdateState.Available(release, asset).also { mutableState.value = it }
+        UpdateState.Available(release, asset, offered, release.releaseNotes()).also {
+            mutableState.value = it
+        }
     }
 
     suspend fun download(): UpdateState = mutex.withLock {
@@ -116,7 +127,9 @@ class UpdateManager(
                 )
             ) {
                 is StoreOutcome.Stored ->
-                    UpdateState.ReadyToInstall(release, outcome.path).also { mutableState.value = it }
+                    UpdateState.ReadyToInstall(release, available.version, outcome.path).also {
+                        mutableState.value = it
+                    }
 
                 StoreOutcome.SizeMismatch -> fail("The download did not match the advertised size", release)
                 StoreOutcome.DigestMismatch -> fail("The download failed its checksum", release)

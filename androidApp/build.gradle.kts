@@ -29,10 +29,9 @@ android {
         targetSdk = 37
         
         val appVersion = project.property("appVersion") as String
-        versionName = appVersion
-        // Extract version code from appVersion if possible, or just keep it as 1 for now
-        // Metrolist might have a more complex way.
-        versionCode = 1
+        val nightlyBuild = (project.findProperty("nightlyBuild") as String?)?.toIntOrNull() ?: 0
+        versionName = if (nightlyBuild > 0) "$appVersion-nightly.$nightlyBuild" else appVersion
+        versionCode = if (nightlyBuild > 0) 1_000_000 + nightlyBuild else 1
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // All four by default so the app installs on desktop emulators, whose system

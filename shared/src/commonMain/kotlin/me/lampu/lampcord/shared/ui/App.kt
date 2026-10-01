@@ -62,6 +62,7 @@ fun App() {
     ) {
         ProvideClipboard()
         MainScreen()
+        UpdatePrompt()
     }
 }
 
