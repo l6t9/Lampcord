@@ -31,7 +31,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 20
 
       - name: Detect changed files
         id: changes
@@ -50,10 +50,11 @@ jobs:
             macos_changed=true
             ios_changed=true
           else
-            if [[ -n "$before" && "$before" != "0000000000000000000000000000000000000000" ]]; then
-              changed_files=$(git diff --name-only "$before" "$sha" || true)
-            else
-              changed_files=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff --name-only HEAD 2>/dev/null || true)
+            if [[ -n "$before" && "$before" != "00000000000000000000000000000000000000000" ]]; then
+              changed_files=$(git diff --name-only "$before" "$sha" 2>/dev/null || true)
+            fi
+            if [[ -z "$changed_files" ]]; then
+              changed_files=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || true)
             fi
 
             android_changed=false
@@ -102,6 +103,14 @@ jobs:
                   ;;
               esac
             done <<< "$changed_files"
+
+            if [[ -z "$changed_files" ]]; then
+              android_changed=true
+              linux_changed=true
+              windows_changed=true
+              macos_changed=true
+              ios_changed=true
+            fi
           fi
 
           echo "android_changed=$android_changed" >> "$GITHUB_OUTPUT"
