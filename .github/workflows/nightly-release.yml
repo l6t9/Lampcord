@@ -22,6 +22,11 @@ jobs:
     outputs:
       tag: ${{ steps.release.outputs.tag }}
       version: ${{ steps.release.outputs.version }}
+      android_changed: ${{ steps.changes.outputs.android_changed }}
+      linux_changed: ${{ steps.changes.outputs.linux_changed }}
+      windows_changed: ${{ steps.changes.outputs.windows_changed }}
+      macos_changed: ${{ steps.changes.outputs.macos_changed }}
+      ios_changed: ${{ steps.changes.outputs.ios_changed }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
