@@ -129,8 +129,7 @@ class MessageEventHandler(
 
         messageStore.handleMessageCreate(message)
         
-        if (navigationStore.selectedChannel?.id == message.channel_id || 
-            navigationStore.selectedThread?.id == message.channel_id) {
+        if (navigationStore.shouldAutoAcknowledge(message.channel_id)) {
             scope.launch {
                 readStateStore.ackMessage(message.channel_id, message.id)
             }

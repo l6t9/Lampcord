@@ -5,7 +5,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import me.lampu.lampcord.shared.api.ChannelApi
 import me.lampu.lampcord.shared.api.GuildApi
@@ -38,6 +41,40 @@ class NavigationStore(
 ) {
     private val _focusChatRequest = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val focusChatRequest = _focusChatRequest.asSharedFlow()
+
+    private val _chatInteraction = MutableStateFlow<ChatInteraction?>(null)
+
+    /**
+     * What the chat view is currently showing, reported by ChatArea. Distinct from
+     * selectedChannel, which persists while the app is backgrounded and must never be used on its
+     * own to decide whether a message was read.
+     */
+    val chatInteraction: StateFlow<ChatInteraction?> = _chatInteraction.asStateFlow()
+
+    fun setChatInteraction(channelId: String, atBottom: Boolean) {
+        val current = _chatInteraction.value
+        if (current?.channelId == channelId && current.atBottom == atBottom) return
+        _chatInteraction.value = ChatInteraction(channelId, atBottom)
+    }
+
+    fun clearChatInteraction(channelId: String) {
+        if (_chatInteraction.value?.channelId == channelId) {
+            _chatInteraction.value = null
+        }
+    }
+
+    /**
+     * Whether an incoming message may be acknowledged without the user explicitly reading it.
+     *
+     * Discord requires a resolved selected channel, loaded messages, a live InteractionState for
+     * that channel, and isAtBottomIgnoringTouch, all in StoreMessageAck's pending-ack pipeline.
+     */
+    fun shouldAutoAcknowledge(channelId: String): Boolean {
+        val interaction = _chatInteraction.value ?: return false
+        return AppVisibilityStore.isVisibleNow &&
+            interaction.channelId == channelId &&
+            interaction.atBottom
+    }
 
     private fun triggerFocusChat() {
         _focusChatRequest.tryEmit(Unit)

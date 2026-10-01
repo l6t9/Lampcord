@@ -40,6 +40,7 @@ val coreModule = module {
     single { createHttpClient() }
     single { RestClient(get(), get()) }
     single { CoroutineScope(Dispatchers.Main) }
+    single(createdAtStart = true) { AppVisibilityStore.start(); AppVisibilityStore }
 }
 
 val apiModule = module {

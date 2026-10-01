@@ -12,6 +12,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import me.lampu.lampcord.shared.state.AppVisibilityStore
 import me.lampu.lampcord.shared.state.ChannelNavigator
 import me.lampu.lampcord.shared.state.DiscordLinkHandler
 import me.lampu.lampcord.shared.state.NavigationStore
@@ -45,6 +46,16 @@ class MainActivity : ComponentActivity() {
         setIntent(intent)
         handleNotificationIntent(intent)
         handleDeepLink(intent)
+    }
+
+    override fun onStart() {
+        super.onStart()
+        AppVisibilityStore.setVisible(true)
+    }
+
+    override fun onStop() {
+        AppVisibilityStore.setVisible(false)
+        super.onStop()
     }
 
     private fun requestNotificationsPermissionIfNeeded() {

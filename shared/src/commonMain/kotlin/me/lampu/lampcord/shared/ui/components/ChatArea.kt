@@ -28,6 +28,7 @@ import androidx.compose.runtime.derivedStateOf
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.collectAsState
@@ -106,12 +107,30 @@ fun ChatArea(
         messages.findLast { (it.id.toLongOrNull() ?: 0L) > ackedLong && !it.isPending }?.id
     }
 
+    // Report this view as attached so the gateway can auto-acknowledge while it is genuinely
+    // on screen and scrolled to the bottom. Discord derives the same thing from the chat list's
+    // LinearLayoutManager, which stops reporting once the activity is not resumed.
+    DisposableEffect(channelId) {
+        if (channelId != null) {
+            navigationStore.setChatInteraction(channelId, true)
+        }
+        onDispose {
+            if (channelId != null) {
+                navigationStore.clearChatInteraction(channelId)
+            }
+        }
+    }
+
     LaunchedEffect(scrollState) {
         snapshotFlow { scrollState.layoutInfo.visibleItemsInfo }
             .collect { visibleItems ->
                 if (visibleItems.isNotEmpty()) {
                     val lastVisibleItem = visibleItems.last()
-                    if (scrollState.firstVisibleItemIndex == 0 && messages.isNotEmpty()) {
+                    val atBottom = scrollState.firstVisibleItemIndex == 0
+                    if (channelId != null) {
+                        navigationStore.setChatInteraction(channelId, atBottom)
+                    }
+                    if (atBottom && messages.isNotEmpty()) {
                         val latestId = messages.first().id
                         if ((latestId.toLongOrNull() ?: 0L) > (ackedMessageId.toLongOrNull() ?: 0L)) {
                             readStateStore.ackMessage(channelId ?: "", latestId)
