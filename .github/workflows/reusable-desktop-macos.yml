@@ -111,9 +111,8 @@ jobs:
           test -x "$app/Contents/MacOS/Lampcord" || fail "launcher is missing or not executable"
 
           test -d "$app/Contents/runtime" || fail "Contents/runtime is missing"
-          runtime_java=$(find "$app/Contents/runtime" -name java -print -quit)
-          test -n "$runtime_java" || fail "no java anywhere under Contents/runtime"
-          test -x "$runtime_java" || fail "$runtime_java is not executable"
+          runtime_lib=$(find "$app/Contents/runtime" -name 'libjli.dylib' -print -quit)
+          test -n "$runtime_lib" || fail "no JVM runtime (libjli.dylib) under Contents/runtime"
 
           test -d "$app/Contents/app" || fail "Contents/app is missing"
           test -n "$(find "$app/Contents/app" -type f -print -quit)" \
@@ -134,7 +133,7 @@ jobs:
           hdiutil detach "$mount_point" -quiet
           trap - EXIT
           echo "verified a $NATIVE_ARCH bundle in $(basename "$dmg")"
-          echo "runtime java: $runtime_java"
+          echo "runtime lib: $runtime_lib"
 
       - name: Collect macOS DMG
         id: package
