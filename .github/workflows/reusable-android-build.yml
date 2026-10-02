@@ -213,6 +213,27 @@ jobs:
           if-no-files-found: error
           retention-days: 4
 
+      - name: Remove previous nightly APKs
+        if: inputs.staging-release-tag != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STAGING_RELEASE_TAG: ${{ inputs.staging-release-tag }}
+          PACKAGE_PATH: ${{ steps.apk.outputs.path }}
+        run: |
+          set -euo pipefail
+          current="$(basename "$PACKAGE_PATH")"
+          old_assets=$(gh release view "$STAGING_RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name' 2>/dev/null \
+            | grep -E '^lampcord-android-.*-nightly\.[0-9]+\.apk$' \
+            | grep -v -F "$current" || true)
+          if [[ -n "$old_assets" ]]; then
+            while IFS= read -r old; do
+              [[ -z "$old" ]] && continue
+              echo "Removing $old"
+              gh release delete-asset "$STAGING_RELEASE_TAG" "$old" --repo "$GITHUB_REPOSITORY" --yes
+            done <<< "$old_assets"
+          fi
+
       - name: Upload Android staging asset
         if: inputs.staging-release-tag != ''
         shell: bash
