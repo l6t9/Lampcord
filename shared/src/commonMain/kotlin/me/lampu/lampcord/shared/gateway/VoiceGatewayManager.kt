@@ -20,4 +20,5 @@ expect class VoiceGatewayManager(client: HttpClient, json: Json) {
     fun setMuted(muted: Boolean, deafened: Boolean)
     fun setSpeaker(enabled: Boolean)
     fun disconnect()
+    fun close()
 }

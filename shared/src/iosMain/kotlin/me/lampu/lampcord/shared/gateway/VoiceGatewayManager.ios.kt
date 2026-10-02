@@ -14,4 +14,5 @@ actual class VoiceGatewayManager actual constructor(client: HttpClient, json: Js
     actual fun setMuted(muted: Boolean, deafened: Boolean) = Unit
     actual fun setSpeaker(enabled: Boolean) = Unit
     actual fun disconnect() { state.value = VoiceConnectionStatus() }
+    actual fun close() { disconnect() }
 }

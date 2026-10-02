@@ -144,9 +144,9 @@ private fun watchThemeFiles(
     dirs: List<File>,
     watchedNames: Set<String>,
     onChanged: suspend () -> Unit
-) {
+): Thread? {
     val existing = dirs.filter { it.isDirectory }
-    if (existing.isEmpty()) return
+    if (existing.isEmpty()) return null
 
     val watchService = FileSystems.getDefault().newWatchService()
     existing.forEach { dir ->
@@ -161,7 +161,7 @@ private fun watchThemeFiles(
         }
     }
 
-    Thread({
+    return Thread({
         try {
             while (!Thread.currentThread().isInterrupted) {
                 // The timeout only bounds the blocking wait so the thread can notice interruption.
@@ -184,7 +184,7 @@ private fun watchThemeFiles(
             } catch (_: Exception) {
             }
         }
-    }, "lampcord-theme-watch").apply { isDaemon = true }.start()
+    }, "lampcord-theme-watch").apply { isDaemon = true }.also { it.start() }
 }
 
 @Composable
@@ -213,7 +213,7 @@ private fun rememberThemeSources(enabled: Boolean): ThemeSources {
 
         reload()
 
-        watchThemeFiles(
+        val watcher = watchThemeFiles(
             dirs = listOf(
                 caelestiaStateDir,
                 File(caelestiaStateDir, "wallpaper")
@@ -224,6 +224,15 @@ private fun rememberThemeSources(enabled: Boolean): ThemeSources {
             )
         ) {
             reload()
+        }
+
+        try {
+            while (true) {
+                kotlinx.coroutines.delay(30_000)
+            }
+        } finally {
+            watcher?.interrupt()
+            watcher?.join(1_000)
         }
     }
 

@@ -13,6 +13,8 @@ import java.net.URI
 import java.nio.file.Files
 import java.util.concurrent.ConcurrentHashMap
 import javax.sound.sampled.AudioSystem
+import javax.sound.sampled.LineEvent
+import javax.sound.sampled.LineListener
 
 class DesktopMessageNotifier(
     private val notificationStore: NotificationStore
@@ -74,12 +76,13 @@ class DesktopMessageNotifier(
 
     private fun pruneIcons(dir: File) {
         val files = dir.listFiles()?.filter { it.isFile } ?: return
+        iconCache.entries.removeIf { (_, file) -> !file.isFile }
         if (files.size <= MAX_CACHED_ICONS) return
         files.sortedBy { it.lastModified() }
             .take(files.size - MAX_CACHED_ICONS)
-            .forEach {
-                iconCache.remove(it.name, it)
-                it.delete()
+            .forEach { deleted ->
+                iconCache.entries.removeIf { (_, file) -> file == deleted }
+                deleted.delete()
             }
     }
 
@@ -135,6 +138,12 @@ internal fun playNotificationSound() {
         val clip = AudioSystem.getClip()
         clip.open(audioStream)
         clip.start()
+        clip.addLineListener(LineListener {
+            if (it.type == LineEvent.Type.STOP) {
+                runCatching { clip.close() }
+                runCatching { audioStream.close() }
+            }
+        })
     } catch (e: Exception) {
         Logging.w("notifications", "Unable to play the notification sound", e)
     }

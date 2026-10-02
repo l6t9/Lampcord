@@ -36,6 +36,10 @@ class RestClient(
     var token: String? = null
         private set
 
+    fun closeClient() {
+        httpClient.close()
+    }
+
     val unauthorizedEvents = MutableSharedFlow<Unit>()
 
     init {

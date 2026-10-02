@@ -33,6 +33,7 @@ import dev.nucleusframework.window.material.MaterialTitleBar
 import dev.nucleusframework.window.material.rememberMaterialTitleBarStyle
 import me.lampu.lampcord.shared.di.appModule
 import me.lampu.lampcord.shared.rpc.DesktopRPCServer
+import me.lampu.lampcord.shared.state.SessionManager
 import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.settings.ThemeMode
@@ -46,6 +47,7 @@ import me.lampu.lampcord.ui.WaylandDensityProvider
 import me.lampu.lampcord.utils.WaylandScale
 import org.koin.compose.koinInject
 import org.koin.core.context.GlobalContext.get
+import org.koin.core.context.GlobalContext.getOrNull
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
 
@@ -55,6 +57,7 @@ fun main() {
     WaylandScale.detectAndApply()
 
     fun initApp() {
+        runCatching { GlobalContext.getOrNull<SessionManager>()?.shutdown() }
         stopKoin()
         startKoin {
             modules(appModule, me.lampu.lampcord.shared.di.desktopNotificationModule)

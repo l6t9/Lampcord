@@ -1,37 +1,46 @@
 package me.lampu.lampcord.shared.state
 
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.MutableStateFlow
 import me.lampu.lampcord.shared.model.Channel
 import me.lampu.lampcord.shared.model.Guild
 
 class SelectionStore {
-    private val scope = CoroutineScope(Dispatchers.Main)
+    private val guildState = mutableStateOf<Guild?>(null)
+    private val channelState = mutableStateOf<Channel?>(null)
+    private val threadState = mutableStateOf<Channel?>(null)
 
-    var selectedGuild by mutableStateOf<Guild?>(null)
-    var selectedChannel by mutableStateOf<Channel?>(null)
-    var selectedThread by mutableStateOf<Channel?>(null)
+    val selectedGuildFlow = MutableStateFlow<Guild?>(null)
+    val selectedChannelFlow = MutableStateFlow<Channel?>(null)
+    val selectedThreadFlow = MutableStateFlow<Channel?>(null)
+    val activeChannelIdFlow = MutableStateFlow<String?>(null)
 
-    val selectedGuildFlow: StateFlow<Guild?> = snapshotFlow { selectedGuild }
-        .stateIn(scope, SharingStarted.Eagerly, null)
+    var selectedGuild: Guild?
+        get() = guildState.value
+        set(value) {
+            guildState.value = value
+            selectedGuildFlow.value = value
+        }
 
-    val selectedChannelFlow: StateFlow<Channel?> = snapshotFlow { selectedChannel }
-        .stateIn(scope, SharingStarted.Eagerly, null)
+    var selectedChannel: Channel?
+        get() = channelState.value
+        set(value) {
+            channelState.value = value
+            selectedChannelFlow.value = value
+            syncActiveChannelId()
+        }
 
-    val selectedThreadFlow: StateFlow<Channel?> = snapshotFlow { selectedThread }
-        .stateIn(scope, SharingStarted.Eagerly, null)
+    var selectedThread: Channel?
+        get() = threadState.value
+        set(value) {
+            threadState.value = value
+            selectedThreadFlow.value = value
+            syncActiveChannelId()
+        }
 
-    val activeChannelIdFlow = combine(selectedChannelFlow, selectedThreadFlow) { chan, thread ->
-        thread?.id ?: chan?.id
-    }.stateIn(scope, SharingStarted.Eagerly, null)
+    private fun syncActiveChannelId() {
+        activeChannelIdFlow.value = threadState.value?.id ?: channelState.value?.id
+    }
 
     fun clear() {
         selectedGuild = null

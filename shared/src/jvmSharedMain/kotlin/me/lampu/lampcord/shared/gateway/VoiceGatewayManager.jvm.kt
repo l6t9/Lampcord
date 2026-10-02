@@ -75,6 +75,11 @@ actual class VoiceGatewayManager actual constructor(private val client: HttpClie
         mutableStatus.value = VoiceConnectionStatus()
     }
 
+    actual fun close() {
+        disconnect()
+        scope.cancel()
+    }
+
     private class VoiceFailure(message: String) : Exception(message)
 
     private inner class Connection(

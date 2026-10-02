@@ -16,6 +16,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ClosedReceiveChannelException
 import kotlinx.coroutines.delay
@@ -256,7 +257,17 @@ class GatewayManager(
         stopTimeSpentUpdates()
         stopHelloTimeout()
         guildSubscriptions.clear()
-        scope.launch { queueLock.withLock { lazyQueue.clear() } }
+        scope.launch {
+            queueLock.withLock {
+                lazyQueue.clear()
+                queue.clear()
+            }
+        }
+    }
+
+    fun close() {
+        destroy()
+        scope.cancel()
     }
 
     private fun decodePayload(text: String): GatewayPayload {
@@ -379,7 +390,7 @@ class GatewayManager(
         Logging.d("Gateway", "Starting heartbeat every ${interval}ms")
         heartbeatJob?.cancel()
         heartbeatAckReceived = true
-        heartbeatJob = CoroutineScope(Dispatchers.Default).launch {
+        heartbeatJob = scope.launch {
             while (isActive) {
                 delay(interval.milliseconds)
                 if (!heartbeatAckReceived) {
@@ -418,7 +429,7 @@ class GatewayManager(
 
     private fun startTimeSpentUpdates() {
         timeSpentJob?.cancel()
-        timeSpentJob = CoroutineScope(Dispatchers.Default).launch {
+        timeSpentJob = scope.launch {
             while (isActive) {
                 sendUpdateTimeSpent()
                 delay(30.minutes)

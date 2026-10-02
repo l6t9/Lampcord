@@ -247,6 +247,10 @@ class ThemeStore(
         }
     }
 
+    fun close() {
+        httpClient.close()
+    }
+
     fun deleteTheme(theme: LampcordTheme) {
         if (theme.manifest.name in enabledThemeNames) {
             val newEnabled = enabledThemeNames.toMutableSet()

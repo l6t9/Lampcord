@@ -150,7 +150,9 @@ val storeModule = module {
             tokenStore = get(), userStore = get(), gatewayHandler = get(), entityStore = get(),
             readStateStore = get(), userGuildSettingsStore = get(), presenceStore = get(),
             relationshipStore = get(), guildStore = get(), memberListStore = get(), messageStore = get(),
-            typingStore = get(), commandStore = get(), voiceStore = get(), pushTokenRegistrar = getOrNull<PushTokenRegistrar>(),
+            typingStore = get(), commandStore = get(), voiceStore = get(),
+            updateManager = get(), themeStore = get(),
+            pushTokenRegistrar = getOrNull<PushTokenRegistrar>(),
             notifier = getOrNull<MessageNotifier>()
         )
     }

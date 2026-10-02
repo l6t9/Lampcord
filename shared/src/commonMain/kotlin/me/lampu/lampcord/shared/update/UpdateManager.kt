@@ -49,7 +49,7 @@ class UpdateManager(
     private val mutex = Mutex()
     private val mutableState = MutableStateFlow<UpdateState>(UpdateState.Idle)
 
-    private val downloadClient: HttpClient by lazy {
+    private val downloadClientDelegate = lazy {
         HttpClient(httpClientEngine()) {
             expectSuccess = true
             install(HttpTimeout) {
@@ -59,6 +59,8 @@ class UpdateManager(
             }
         }
     }
+
+    private val downloadClient: HttpClient by downloadClientDelegate
 
     val state: StateFlow<UpdateState> = mutableState.asStateFlow()
 
@@ -142,6 +144,12 @@ class UpdateManager(
 
     fun reset() {
         mutableState.value = UpdateState.Idle
+    }
+
+    fun close() {
+        if (downloadClientDelegate.isInitialized()) {
+            downloadClient.close()
+        }
     }
 
     private suspend fun fetchRelease(channel: UpdateChannel): GitHubRelease? {

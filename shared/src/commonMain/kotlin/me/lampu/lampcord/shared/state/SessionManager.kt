@@ -2,6 +2,7 @@ package me.lampu.lampcord.shared.state
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import me.lampu.lampcord.shared.api.AuthApi
 import me.lampu.lampcord.shared.gateway.GatewayManager
@@ -12,6 +13,7 @@ import me.lampu.lampcord.shared.model.MFALoginRequest
 import me.lampu.lampcord.shared.notifications.MessageNotifier
 import me.lampu.lampcord.shared.notifications.PushTokenRegistrar
 import me.lampu.lampcord.shared.settings.Settings
+import me.lampu.lampcord.shared.update.UpdateManager
 
 class SessionManager(
     val gatewayManager: GatewayManager,
@@ -32,6 +34,8 @@ class SessionManager(
     val typingStore: TypingStore,
     val commandStore: CommandStore,
     val voiceStore: VoiceStore,
+    val updateManager: UpdateManager,
+    val themeStore: ThemeStore,
     val pushTokenRegistrar: PushTokenRegistrar? = null,
     private val notifier: MessageNotifier? = null
 ) {
@@ -86,6 +90,16 @@ class SessionManager(
         authApi.setToken(null)
         Settings.shared.discordToken = ""
         clearAllStores()
+    }
+
+    fun shutdown() {
+        disconnect()
+        gatewayManager.close()
+        voiceGatewayManager.close()
+        updateManager.close()
+        themeStore.close()
+        authApi.rest.closeClient()
+        scope.cancel()
     }
 
     fun switchAccount(token: String) {
