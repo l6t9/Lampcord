@@ -217,6 +217,7 @@ jobs:
     permissions:
       contents: write
     with:
+      build-ipa: true
       staging-release-tag: ${{ needs.stage.outputs.tag }}
     secrets:
       GRADLE_ENCRYPTION_KEY: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
