@@ -339,13 +339,7 @@ fun ChatInputBar(
         val isMobileView = isMobileDevice || maxWidth < 600.dp
         val isDesktopTarget = platform == "desktop" || platform == "macos" || platform == "windows" || platform == "linux"
         
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .imePadding(),
-            verticalArrangement = Arrangement.Bottom
-        ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.fillMaxWidth()) {
                 AnimatedVisibility(
                     visible = autocompleteStore.autocompleteType != null,
@@ -386,7 +380,10 @@ fun ChatInputBar(
 
                 Surface(
                     color = Color.Transparent,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .imePadding()
                 ) {
                     Column {
                         TypingIndicator()
