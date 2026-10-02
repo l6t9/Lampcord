@@ -33,6 +33,7 @@ import me.lampu.lampcord.shared.ui.components.settings.Material3SettingsGroup
 import me.lampu.lampcord.shared.ui.components.settings.switchSettingsItem
 import me.lampu.lampcord.shared.update.APP_VERSION
 import me.lampu.lampcord.shared.update.InstallResult
+import me.lampu.lampcord.shared.update.NIGHTLY_BUILD
 import me.lampu.lampcord.shared.update.UpdateChannel
 import me.lampu.lampcord.shared.update.UpdateManager
 import me.lampu.lampcord.shared.update.UpdateState
@@ -47,7 +48,9 @@ fun UpdatesContent(
 ) {
     val state by updateManager.state.collectAsState()
     val scope = rememberCoroutineScope()
-    var channel by remember { mutableStateOf(UpdateChannel.STABLE) }
+    var channel by remember {
+        mutableStateOf(if (NIGHTLY_BUILD > 0) UpdateChannel.NIGHTLY else UpdateChannel.STABLE)
+    }
     var showChangelog by remember { mutableStateOf(false) }
     var installNote by remember { mutableStateOf<String?>(null) }
 
