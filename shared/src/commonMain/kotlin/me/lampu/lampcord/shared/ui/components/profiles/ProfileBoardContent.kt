@@ -35,19 +35,29 @@ private val WIDGET_TITLES = mapOf(
 fun ProfileBoardContent(
     profile: UserProfile,
     modifier: Modifier = Modifier,
-    boardApi: ProfileBoardApi = koinInject()
+    boardApi: ProfileBoardApi = koinInject(),
+    loadedBoard: ProfileBoard? = null,
+    onBoardLoaded: (ProfileBoard?) -> Unit = {}
 ) {
     val userId = profile.user.id
     var board by remember(userId) { mutableStateOf<ProfileBoard?>(null) }
     var failed by remember(userId) { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
+    val effectiveBoard = loadedBoard ?: board
+
     LaunchedEffect(userId) {
-        val loaded = boardApi.load(userId)
-        if (loaded == null) failed = true else board = loaded
+        if (loadedBoard == null) {
+            val loaded = boardApi.load(userId)
+            if (loaded == null) failed = true else board = loaded
+        }
     }
 
-    when (val loaded = board) {
+    LaunchedEffect(effectiveBoard) {
+        onBoardLoaded(effectiveBoard)
+    }
+
+    when (val loaded = effectiveBoard) {
         null -> if (failed) {
             BoardMessage("Could not load this profile's board.")
         } else {

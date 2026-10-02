@@ -169,9 +169,9 @@ class AutocompleteStore(
             }
             AutocompleteType.CHANNEL -> {
                 val channels = guildStore.allGuildChannels.value.values.filter { channel ->
-                    channel.guild_id == selectedGuild?.id && 
-                    channel.type in listOf(0, 2, 4, 5, 13, 15, 16) && 
-                    channel.name?.contains(query, ignoreCase = true) == true 
+                    channel.guild_id == selectedGuild?.id &&
+                    channel.type in listOf(0, 2, 4, 5, 13, 15, 16) &&
+                    (query.isEmpty() || channel.name?.contains(query, ignoreCase = true) == true)
                 }.sortedWith(compareBy(
                     { !(it.name?.equals(query, ignoreCase = true) == true) },
                     { !(it.name?.startsWith(query, ignoreCase = true) == true) },

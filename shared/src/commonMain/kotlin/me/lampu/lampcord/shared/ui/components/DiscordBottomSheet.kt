@@ -81,9 +81,7 @@ fun DiscordBottomSheet(
                 .fillMaxWidth()
                 .fillMaxHeight(0.9f)
         ) {
-            if (dragHandle != null) {
-                dragHandle()
-            } else if (!Settings.shared.reduceMotion) {
+            if (dragHandle == null && !Settings.shared.reduceMotion) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()

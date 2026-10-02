@@ -687,20 +687,20 @@ fun ChatInputBar(
                                                     textFieldValue = it
                                                     mentionRanges = shiftMentionRanges(mentionRanges, oldText, it.text)
                                                 
-                                                    if (it.selection.collapsed) {
+if (it.selection.collapsed) {
                                                         val cursor = it.selection.start
                                                         val textBefore = it.text.take(cursor)
-                                                        val lastWord = textBefore.substringAfterLast(' ', textBefore)
-                                                    
+                                                        val lastWord = textBefore.substring(textBefore.lastIndexOfAny(charArrayOf(' ', '\n')) + 1)
+
                                                         val (type, query) = when {
-                                                            it.text.startsWith('/') && !it.text.contains(' ') -> 
+                                                            it.text.startsWith('/') && !it.text.contains(' ') ->
                                                                 AutocompleteType.COMMAND to it.text.substring(1)
-                                                            lastWord.length > 1 && lastWord.startsWith('@') ->
-                                                                AutocompleteType.MENTION to lastWord.substring(1)
-                                                            lastWord.length > 1 && lastWord.startsWith('#') ->
-                                                                AutocompleteType.CHANNEL to lastWord.substring(1)
-                                                            lastWord.length > 1 && lastWord.startsWith(':') ->
+                                                            lastWord.length > 2 && lastWord.startsWith(':') ->
                                                                 AutocompleteType.EMOJI to lastWord.substring(1)
+                                                            lastWord.startsWith('@') ->
+                                                                AutocompleteType.MENTION to lastWord.substring(1)
+                                                            lastWord.startsWith('#') ->
+                                                                AutocompleteType.CHANNEL to lastWord.substring(1)
                                                             else -> null to ""
                                                         }
                                                         autocompleteStore.updateAutocomplete(type, query, navigationStore.selectedGuild, channel)

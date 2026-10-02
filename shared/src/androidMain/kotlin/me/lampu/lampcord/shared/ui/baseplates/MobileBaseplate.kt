@@ -1136,8 +1136,12 @@ private fun MainBaseplateContent(
                                 }
                             },
                             colors = TopAppBarDefaults.topAppBarColors(
-                                containerColor = MaterialTheme.colorScheme.background,
-                                scrolledContainerColor = MaterialTheme.colorScheme.background
+                                containerColor = if (me.lampu.lampcord.shared.settings.Settings.shared.panelType == me.lampu.lampcord.shared.settings.PanelType.CENTER)
+                                    MaterialTheme.colorScheme.surfaceContainer
+                                else MaterialTheme.colorScheme.background,
+                                scrolledContainerColor = if (me.lampu.lampcord.shared.settings.Settings.shared.panelType == me.lampu.lampcord.shared.settings.PanelType.CENTER)
+                                    MaterialTheme.colorScheme.surfaceContainer
+                                else MaterialTheme.colorScheme.background
                             )
                         )
                     }

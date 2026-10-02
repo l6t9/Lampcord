@@ -66,17 +66,13 @@ actual fun rememberPlatformColorScheme(
                 val window = activity.window
                 val isAppearanceLight = !isDark
                 
-                val chatCentered = !navigationStore.isProfilePanelVisible &&
-                    !navigationStore.isSettingsVisible &&
+                val chatCentered = !navigationStore.isSettingsVisible &&
                     !navigationStore.isChannelsAndRolesVisible
 
                 val statusBarColor = when {
-                    isOverlapping && navigationStore.isProfilePanelVisible -> scheme.surface
                     navigationStore.isSettingsVisible -> scheme.surface
                     navigationStore.isChannelsAndRolesVisible -> scheme.surfaceContainerHigh
-                    // The chat header is a shade lighter than the chat background, so the status bar
-                    // has to follow it instead of the bare background or the seam shows through.
-                    chatCentered -> scheme.surfaceContainerLow
+                    chatCentered && !isOverlapping -> scheme.surfaceContainer
                     else -> scheme.background
                 }
                 

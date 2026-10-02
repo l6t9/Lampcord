@@ -48,6 +48,8 @@ import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.theme.rememberPlatformColorScheme
 import me.lampu.lampcord.shared.utils.Logging
 
+import me.lampu.lampcord.shared.api.ProfileBoard
+import me.lampu.lampcord.shared.api.ProfileBoardApi
 import org.koin.compose.koinInject
 import androidx.compose.material3.LocalContentColor
 
@@ -306,6 +308,17 @@ fun ProfileCard(
         ) {
             CompositionLocalProvider(LocalContentColor provides theme.contentColor) {
                 var bodyTab by remember(profile) { mutableStateOf(0) }
+                var boardData by remember(profile.user.id) { mutableStateOf<ProfileBoard?>(null) }
+                var boardResolved by remember(profile.user.id) { mutableStateOf(false) }
+                val profileBoardApi: ProfileBoardApi = koinInject()
+
+                LaunchedEffect(profile.user.id, showBoardTab) {
+                    if (!showBoardTab) return@LaunchedEffect
+                    boardData = profileBoardApi.load(profile.user.id)
+                    boardResolved = true
+                }
+
+                val boardHasContent = boardResolved && boardData?.isEmpty == false
 
                 Column(
                     modifier = Modifier
@@ -326,7 +339,7 @@ fun ProfileCard(
                             customProfileOverride = customProfile
                         )
 
-                        if (showBoardTab) {
+                        if (showBoardTab && boardHasContent) {
                             PrimaryTabRow(
                                 selectedTabIndex = bodyTab,
                                 containerColor = Color.Transparent,
@@ -346,7 +359,7 @@ fun ProfileCard(
                             }
                         }
 
-                        if (bodyTab == 0) {
+                        if (bodyTab == 0 || !boardHasContent) {
                             ProfileSections(
                                 profile = profile,
                                 theme = theme,
@@ -355,7 +368,15 @@ fun ProfileCard(
                                 showMutualsInConnections = showMutualsInConnections
                             )
                         } else {
-                            ProfileBoardContent(profile = profile, modifier = Modifier.padding(top = 12.dp))
+                            ProfileBoardContent(
+                                profile = profile,
+                                modifier = Modifier.padding(top = 12.dp),
+                                loadedBoard = boardData,
+                                onBoardLoaded = { loaded ->
+                                    boardData = loaded
+                                    if (loaded != null) boardResolved = true
+                                }
+                            )
                         }
                     }
                 }

@@ -18,6 +18,8 @@ import androidx.compose.ui.unit.sp
 import me.lampu.lampcord.shared.model.Channel
 import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.state.PresenceStore
+import me.lampu.lampcord.shared.settings.PanelType
+import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.state.VoiceStore
@@ -266,8 +268,12 @@ fun ChannelHeader(
         },
         expandedHeight = 56.dp,
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-            scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer
+            containerColor = if (Settings.shared.panelType == PanelType.CENTER)
+                MaterialTheme.colorScheme.surfaceContainer
+            else MaterialTheme.colorScheme.background,
+            scrolledContainerColor = if (Settings.shared.panelType == PanelType.CENTER)
+                MaterialTheme.colorScheme.surfaceContainer
+            else MaterialTheme.colorScheme.background
         )
     )
 }

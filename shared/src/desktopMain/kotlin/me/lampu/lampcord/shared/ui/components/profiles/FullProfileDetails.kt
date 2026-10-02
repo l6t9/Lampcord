@@ -40,6 +40,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
+import me.lampu.lampcord.shared.api.ProfileBoard
+import me.lampu.lampcord.shared.api.ProfileBoardApi
 import me.lampu.lampcord.shared.api.UserApi
 import me.lampu.lampcord.shared.model.Activity
 import me.lampu.lampcord.shared.model.User
@@ -65,10 +67,22 @@ fun FullProfileDetails(
     modifier: Modifier = Modifier,
     topShape: Shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
     presenceStore: PresenceStore = koinInject(),
-    userStore: UserStore = koinInject()
+    userStore: UserStore = koinInject(),
+    boardApi: ProfileBoardApi = koinInject()
 ) {
     var selectedTab by remember(profile.user.id) { mutableIntStateOf(TAB_ACTIVITY) }
+    var boardData by remember(profile.user.id) { mutableStateOf<ProfileBoard?>(null) }
+    var boardResolved by remember(profile.user.id) { mutableStateOf(false) }
+    val boardHasContent = boardResolved && boardData?.isEmpty == false
     val user = profile.user
+
+    LaunchedEffect(profile.user.id) {
+        boardData = boardApi.load(profile.user.id)
+        boardResolved = true
+        if (boardData?.isEmpty != false && selectedTab == TAB_BOARD) {
+            selectedTab = TAB_ACTIVITY
+        }
+    }
 
     val friendsCount = profile.mutual_friends_count ?: profile.mutual_friends?.size ?: 0
     val serversCount = profile.mutual_guilds?.size ?: 0
@@ -99,11 +113,13 @@ fun FullProfileDetails(
                     onClick = { selectedTab = TAB_ACTIVITY },
                     text = { Text("Activity", color = textColor) }
                 )
-                Tab(
-                    selected = selectedTab == TAB_BOARD,
-                    onClick = { selectedTab = TAB_BOARD },
-                    text = { Text("Board", color = textColor) }
-                )
+                if (boardHasContent) {
+                    Tab(
+                        selected = selectedTab == TAB_BOARD,
+                        onClick = { selectedTab = TAB_BOARD },
+                        text = { Text("Board", color = textColor) }
+                    )
+                }
                 if (!isOwnProfile) {
                     Tab(
                         selected = selectedTab == TAB_MUTUAL_FRIENDS,
@@ -129,7 +145,8 @@ fun FullProfileDetails(
                     )
                     TAB_BOARD -> ProfileBoardContent(
                         profile = profile,
-                        modifier = Modifier.fillMaxSize().padding(16.dp)
+                        modifier = Modifier.fillMaxSize().padding(16.dp),
+                        loadedBoard = boardData
                     )
                     TAB_MUTUAL_FRIENDS -> MutualFriendsTab(
                         profile = profile,
