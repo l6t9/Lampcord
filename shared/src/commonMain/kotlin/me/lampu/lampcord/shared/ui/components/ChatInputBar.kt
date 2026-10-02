@@ -671,7 +671,10 @@ fun ChatInputBar(
                                     respectChildGestures = true
                                 ) {
                                     Row(
-                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .heightIn(min = buttonSize)
+                                            .padding(horizontal = 4.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         BasicTextField(
