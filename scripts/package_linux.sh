@@ -37,7 +37,7 @@ deb_requires=(
 )
 deb_recommends=(libappindicator3-1 webkit2gtk-4.1)
 rpm_requires=(java-runtime gtk3 libnotify nss libXScrnSaver libXtst xdg-utils at-spi2-core libuuid libsecret)
-pac_depends=(java-runtime gtk3 libnotify nss libXScrnSaver libXtst xdg-utils at-spi2-core libuuid libsecret)
+pac_depends=(java-runtime gtk3 libnotify nss libxss libxtst xdg-utils at-spi2-core util-linux-libs libsecret)
 pac_optdepends=("libappindicator-gtk3" "webkit2gtk-4.1: embedded web content")
 
 work="$(mktemp -d)"
@@ -188,7 +188,7 @@ cp -a "$stage" "$pac_root/pkg"
   echo "builddate = $(date +%s)"
   echo "packager = $maintainer_name <$maintainer_email>"
   echo "size = $(du -sb "$pac_root/pkg" | cut -f1)"
-  echo "arch = x64"
+  echo "arch = x86_64"
   echo "license = $license"
   for dep in "${pac_depends[@]}"; do echo "depend = $dep"; done
   for opt in "${pac_optdepends[@]}"; do echo "optdepend = $opt"; done
@@ -212,6 +212,6 @@ PACHOOK
   -czf .MTREE usr .PKGINFO .INSTALL)
 
 mkdir -p "$out"
-pac_out="$(cd "$out" && pwd)/lampcord-desktop-linux-x64-${version}.pkg.tar.xz"
-(cd "$pac_root/pkg" && bsdtar -czf "$pac_out" .PKGINFO .INSTALL .MTREE usr)
+pac_out="$(cd "$out" && pwd)/lampcord-desktop-linux-x86_64-${version}.pkg.tar.xz"
+(cd "$pac_root/pkg" && bsdtar -cJf "$pac_out" .PKGINFO .INSTALL .MTREE usr)
 echo "built $pac_out"

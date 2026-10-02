@@ -8,7 +8,7 @@ url='https://cord.lamp.delivery'
 license=('GPL-3.0-or-later')
 # No fuse2: the jar is unpacked by the Nucleus runtime into ~/.cache/nucleus, so there is
 # no self-mounting AppImage involved.
-depends=('glibc' 'java-runtime' 'libx11' 'libxext' 'libxrender' 'libxtst' 'libxi' 'libxkbcommon' 'gtk3' 'libnotify' 'nss' 'libXScrnSaver' 'at-spi2-core' 'libuuid' 'libsecret' 'xdg-utils')
+depends=('glibc' 'java-runtime' 'libx11' 'libxext' 'libxrender' 'libxtst' 'libxi' 'libxkbcommon' 'gtk3' 'libnotify' 'nss' 'libxss' 'at-spi2-core' 'util-linux-libs' 'libsecret' 'xdg-utils')
 optdepends=(
   'webkit2gtk-4.1: embedded web content'
   'pipewire: voice calls'

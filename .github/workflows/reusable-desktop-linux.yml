@@ -166,6 +166,12 @@ jobs:
             release_version="${BASH_REMATCH[1]}"
           fi
 
+          asset_tag="v${version}"
+          if [[ -z "$VERSION_OVERRIDE" ]]; then
+            asset_tag="nightly"
+          fi
+          sed -i "s|releases/download/v\${pkgver}|releases/download/${asset_tag}|" "$workdir/PKGBUILD"
+
           # Source order must match the PKGBUILD's source=() array.
           jar_sha="$(sha256sum "$jar" | cut -d' ' -f1)"
           launcher_sha="$(sha256sum packaging/aur/lampcord-launcher | cut -d' ' -f1)"
