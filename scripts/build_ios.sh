@@ -36,12 +36,12 @@ if ! command -v xcodebuild > /dev/null 2>&1; then
 fi
 
 version="$(sed -n 's/^appVersion=//p' gradle.properties)"
-if [[ ! "$version" =~ ^([0-9]+\.[0-9]+\.[0-9]+)(-a([0-9]+))?$ ]]; then
+if [[ ! "$version" =~ ^([0-9]+\.[0-9]+\.[0-9]+)(-a([0-9]+))?(-nightly\.([0-9]+))?$ ]]; then
   echo "appVersion is not a version I can put in a bundle: $version" >&2
   exit 1
 fi
 MARKETING_VERSION="${BASH_REMATCH[1]}"
-CURRENT_PROJECT_VERSION="${BASH_REMATCH[3]:-1}"
+CURRENT_PROJECT_VERSION="${BASH_REMATCH[3]:-${BASH_REMATCH[5]:-1}}"
 
 COMMON_SETTINGS=(
   -project "$PROJECT"

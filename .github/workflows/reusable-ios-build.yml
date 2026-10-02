@@ -115,6 +115,11 @@ jobs:
           ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64
 
       - name: Run iOS tests
+        # Skipped for IPA builds. The archive already spends ~46 minutes linking the device
+        # framework, and these tests boot a simulator and compile the simulator test binary
+        # first, which is what pushed the combined job past its ceiling. The simulator
+        # framework they exercise is not the one the IPA ships, so they do not gate it.
+        if: ${{ !inputs.build-ipa }}
         shell: bash
         run: |
           set -euo pipefail
