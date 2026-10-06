@@ -26,6 +26,7 @@ enum class FontOption {
 enum class TapTapAction {
     REPLY_OR_EDIT,
     EMOJI_PICKER,
+    DELETE_MESSAGE,
     DISABLED
 }
 

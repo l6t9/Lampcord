@@ -178,12 +178,16 @@ fun MessageItem(
     val cAuthor = author
     val cMember = member
 
+    val isMe = message.author?.id == currentUser?.id
     val guild = navigationStore.selectedGuild
     val channel = navigationStore.selectedChannel
     val canAddReaction = remember(guild, currentMember, channel, currentUser?.id) {
         if (guild == null || currentMember == null) true
         else PermissionHelper.hasPermission(currentMember, guild, channel, Permission.ADD_REACTIONS, currentUser?.id)
     }
+    val canManageMessages = if (guild == null || currentMember == null) false
+        else PermissionHelper.hasPermission(currentMember, guild, channel, Permission.MANAGE_MESSAGES, currentUser?.id)
+
 
     val contextMenuItems = remember(message, currentUser, userSettings, priorMessage, currentMember, canAddReaction, cAuthor) {
         if (message.isPending) {
@@ -191,11 +195,6 @@ fun MessageItem(
                 ContextMenuItem("Delete", Icons.Default.Delete, onClick = { messageStore.deletePendingMessage(message) }, group = "Destructive")
             )
         }
-        
-        val isMe = message.author?.id == currentUser?.id
-        
-        val canManageMessages = if (guild == null || currentMember == null) false
-            else PermissionHelper.hasPermission(currentMember, guild, channel, Permission.MANAGE_MESSAGES, currentUser?.id)
 
         val canManageThreads = if (guild == null || currentMember == null) false
             else PermissionHelper.hasPermission(currentMember, guild, channel, Permission.MANAGE_THREADS, currentUser?.id)
@@ -377,9 +376,10 @@ fun MessageItem(
                             { _ -> messageLongPressRequest++ }
                         } else null,
                         onDoubleTap = {
+                            val isMe = message.author?.id == currentUser?.id
+
                             when (tapTapMode) {
                                 TapTapAction.REPLY_OR_EDIT -> {
-                                    val isMe = message.author?.id == currentUser?.id
                                     if (isMe) {
                                         messageStore.editingMessage = message
                                     } else {
@@ -387,6 +387,7 @@ fun MessageItem(
                                     }
                                 }
                                 TapTapAction.EMOJI_PICKER -> if (canAddReaction) { showReactionPicker = true }
+                                TapTapAction.DELETE_MESSAGE -> if (isMe || canManageMessages) { messageStore.deleteMessage(message) }
 
                             }
                         }

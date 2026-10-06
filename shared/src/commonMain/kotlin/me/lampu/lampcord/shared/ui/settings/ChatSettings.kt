@@ -215,6 +215,7 @@ fun ChatSettingsContent(
                                     when (gesture) {
                                         TapTapAction.REPLY_OR_EDIT -> if (isSelected) Icons.Filled.Reply else Icons.Rounded.Reply
                                         TapTapAction.EMOJI_PICKER -> if (isSelected) Icons.Filled.AddReaction else Icons.Rounded.AddReaction
+                                        TapTapAction.DELETE_MESSAGE -> if (isSelected) Icons.Filled.Delete else Icons.Rounded.Delete
                                         TapTapAction.DISABLED -> if (isSelected) Icons.Filled.Close else Icons.Rounded.Close
                                     }
                                 },
@@ -222,6 +223,7 @@ fun ChatSettingsContent(
                                     when (it) {
                                         TapTapAction.REPLY_OR_EDIT -> "Reply/Edit"
                                         TapTapAction.EMOJI_PICKER -> "React"
+                                        TapTapAction.DELETE_MESSAGE -> "Delete"
                                         TapTapAction.DISABLED -> "Disabled"
                                     }
                                 }
