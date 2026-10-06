@@ -1052,14 +1052,14 @@ private fun MainBaseplateContent(
                                         Box(
                                             modifier = Modifier
                                                 .padding(start = 4.dp)
-                                                .size(40.dp)
+                                                .size(44.dp)
                                                 .clickableCursor(
                                                     interactionSource = remember { MutableInteractionSource() },
                                                     indication = null
                                                 ) { panelState.openStart() },
                                             contentAlignment = Alignment.Center
                                         ) {
-                                            Box(modifier = Modifier.size(22.dp)) {
+                                            Box(modifier = Modifier.size(28.dp)) {
                                                 Icon(
                                                     imageVector = channelIcon,
                                                     contentDescription = "Channels",

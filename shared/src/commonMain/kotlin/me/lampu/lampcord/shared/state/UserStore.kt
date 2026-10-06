@@ -104,6 +104,13 @@ class UserStore {
         return _members.value[guildId]?.get(userId)
     }
 
+    fun removeGuild(guildId: String) {
+        if (!_members.value.containsKey(guildId)) return
+        _members.update { current ->
+            if (!current.containsKey(guildId)) current else current - guildId
+        }
+    }
+
     fun clear() {
         _users.value = emptyMap()
         _members.value = emptyMap()

@@ -220,8 +220,8 @@ actual fun MobileBaseplate(
                                                 Box(
                                                     modifier = Modifier
                                                         .padding(start = 8.dp)
-                                                        .size(36.dp)
-                                                        .clip(RoundedCornerShape(10.dp))
+                                                        .size(44.dp)
+                                                        .clip(RoundedCornerShape(12.dp))
                                                         .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                                                         .clickableCursor { panelState.openStart() },
                                                     contentAlignment = Alignment.Center
@@ -229,7 +229,7 @@ actual fun MobileBaseplate(
                                                     Icon(
                                                         imageVector = channelIcon,
                                                         contentDescription = "Channels",
-                                                        modifier = Modifier.size(20.dp),
+                                                        modifier = Modifier.size(28.dp),
                                                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                                                     )
                                                 }

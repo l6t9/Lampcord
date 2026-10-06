@@ -13,6 +13,11 @@ class MemberListStore(
 ) {
     // Member lists are cached per (guildId, listId) and kept alive across guild switches, matching discord-jadx's StoreChannelMembers. Only logout clears them.
     private val guildCaches = mutableMapOf<String, MutableMap<String, MemberListCacheEntry>>()
+    private val guildCacheOrder = mutableListOf<String>()
+
+    private companion object {
+        const val MAX_CACHED_GUILDS = 10
+    }
 
     val memberListItems = mutableStateListOf<MemberListListItem?>()
     val memberListGroups = mutableStateMapOf<String, MemberListGroup>()
@@ -38,13 +43,21 @@ class MemberListStore(
         var memberCount: Int? = null
     )
 
-    private fun cacheFor(guildId: String): MutableMap<String, MemberListCacheEntry> =
-        guildCaches.getOrPut(guildId) { mutableMapOf() }
+    private fun cacheFor(guildId: String): MutableMap<String, MemberListCacheEntry> {
+        guildCacheOrder.remove(guildId)
+        guildCacheOrder.add(guildId)
+        while (guildCacheOrder.size > MAX_CACHED_GUILDS) {
+            val oldest = guildCacheOrder.removeAt(0)
+            if (oldest != guildId) guildCaches.remove(oldest)
+        }
+        return guildCaches.getOrPut(guildId) { mutableMapOf() }
+    }
 
     fun clear() {
         memberListItems.clear()
         memberListGroups.clear()
         guildCaches.clear()
+        guildCacheOrder.clear()
         guildOnlineCounts.clear()
         guildMemberCounts.clear()
         currentGuildId = null

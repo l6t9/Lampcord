@@ -56,6 +56,7 @@ class MessageStore(
 ) {
     private companion object {
         const val CACHE_MAX_CHANNELS = 50
+        const val CACHE_MAX_MESSAGES_PER_CHANNEL = 300
         const val TYPING_EMISSION_INTERVAL_MS = 10_000L
     }
 
@@ -241,6 +242,17 @@ class MessageStore(
             val oldest = channelAccessOrder.removeAt(0)
             messageCache.remove(oldest)
         }
+        trimChannelMessages(channelId)
+    }
+
+    private fun trimChannelMessages(channelId: String) {
+        val current = messageCache[channelId] ?: return
+        if (current.size <= CACHE_MAX_MESSAGES_PER_CHANNEL) return
+        val pending = current.filter { it.isPending }
+        val keep = CACHE_MAX_MESSAGES_PER_CHANNEL - pending.size
+        if (keep <= 0) return
+        val kept = current.filterNot { it.isPending }.take(keep) + pending
+        messageCache[channelId] = kept.sortedByDescending { it.id.toLongOrNull() ?: 0L }
     }
 
     fun addMessages(channelId: String, newMessages: List<Message>) {

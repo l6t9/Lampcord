@@ -101,6 +101,8 @@ class GuildEventHandler(
         if (!unavailable) {
             guildStore.handleGuildDelete(id)
             entityStore.removeGuild(id)
+            userStore.removeGuild(id)
+            presenceStore.removeGuild(id)
         }
     }
 

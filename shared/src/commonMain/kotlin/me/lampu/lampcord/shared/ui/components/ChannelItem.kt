@@ -198,9 +198,9 @@ fun ChannelItem(
             verticalArrangement = Arrangement.Center
         ) {
             val (itemHeight, iconSize) = when (settingsStore.messageSpacingMode) {
-                me.lampu.lampcord.shared.settings.MessageSpacingMode.COMPACT -> 28.dp to 28.dp
-                me.lampu.lampcord.shared.settings.MessageSpacingMode.DEFAULT -> 36.dp to 28.dp
-                me.lampu.lampcord.shared.settings.MessageSpacingMode.SPACIOUS -> 44.dp to 28.dp
+                me.lampu.lampcord.shared.settings.MessageSpacingMode.COMPACT -> 28.dp to 24.dp
+                me.lampu.lampcord.shared.settings.MessageSpacingMode.DEFAULT -> 36.dp to 24.dp
+                me.lampu.lampcord.shared.settings.MessageSpacingMode.SPACIOUS -> 44.dp to 24.dp
             }
 
             Box(

@@ -69,6 +69,7 @@ import kotlin.time.Duration.Companion.seconds
 
 private const val SEND_WINDOW_MS = 60_000L
 private const val SEND_LIMIT = 110
+private const val MAX_QUEUE_SIZE = 500
 
 class GatewayManager(
     private val client: HttpClient,
@@ -282,7 +283,13 @@ class GatewayManager(
 
     private fun enqueue(payload: GatewayPayload) {
         scope.launch {
-            queueLock.withLock { queue.addLast(payload) }
+            queueLock.withLock {
+                queue.addLast(payload)
+                while (queue.size > MAX_QUEUE_SIZE) {
+                    val presenceIdx = queue.indexOfFirst { it.op == 3 }
+                    queue.removeAt(if (presenceIdx >= 0) presenceIdx else 0)
+                }
+            }
             queueChannel.trySend(Unit)
         }
     }

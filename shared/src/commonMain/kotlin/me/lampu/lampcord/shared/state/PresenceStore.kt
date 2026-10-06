@@ -124,6 +124,22 @@ class PresenceStore(private val userApi: UserApi) {
         updateFlattened(setOf(userId))
     }
 
+    fun removeGuild(guildId: String) {
+        val changed = HashSet<String>()
+        _presences.update { current ->
+            val next = current.toMutableMap()
+            for ((userId, guildMap) in current) {
+                if (!guildMap.containsKey(guildId)) continue
+                val trimmed = guildMap.toMutableMap()
+                trimmed.remove(guildId)
+                if (trimmed.isEmpty()) next.remove(userId) else next[userId] = trimmed
+                changed.add(userId)
+            }
+            next
+        }
+        if (changed.isNotEmpty()) updateFlattened(changed)
+    }
+
     fun clear() {
         _presences.value = emptyMap()
         flattenedPresences.value = emptyMap()
