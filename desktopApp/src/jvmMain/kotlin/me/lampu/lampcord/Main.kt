@@ -57,7 +57,7 @@ fun main() {
     WaylandScale.detectAndApply()
 
     fun initApp() {
-        runCatching { GlobalContext.getOrNull<SessionManager>()?.shutdown() }
+        runCatching { getOrNull()?.getOrNull<SessionManager>()?.shutdown() } // shut down app if it's open already
         stopKoin()
         startKoin {
             modules(appModule, me.lampu.lampcord.shared.di.desktopNotificationModule)
