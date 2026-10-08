@@ -9,11 +9,16 @@
       "id": "lamp",
       "name": "lamp",
       "icon": "badges/lamp.png"
+    },
+    "friend": {
+      "id": "friend",
+      "name": "friend",
+      "icon": "badges/friend.png"
     }
   },
   "users": {
     "650805815623680030": ["lampcord_contributor", "lamp"],
-    "1242567443742986373": ["lampcord_contributor"],
+    "1242567443742986373": ["lampcord_contributor", "friend"],
     "1202406828248408134": ["lampcord_contributor"],
     "1063520096028479611": ["lampcord_contributor"],
     "477497542205243392": ["lampcord_contributor"],
@@ -23,7 +28,8 @@
     "928917711722008626": ["lampcord_contributor"],
     "531303411665207326": ["lampcord_contributor"],
     "795944682831609876": ["lampcord_contributor"],
-    "1450881055790862440": ["lampcord_contributor"]
+    "1450881055790862440": ["lampcord_contributor"],
+    "993847856538603610": ["friend"]
   },
   "roles": {
     "1534254177004294254": ["lampcord_contributor"]

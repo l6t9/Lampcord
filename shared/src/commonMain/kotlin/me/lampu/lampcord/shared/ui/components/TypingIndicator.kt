@@ -36,8 +36,6 @@ fun TypingIndicator(
 ) {
     val typingUsers by typingStore.typingUsers.collectAsState()
     val channelId = navigationStore.selectedThread?.id ?: navigationStore.selectedChannel?.id ?: return
-    val guild = navigationStore.selectedGuild
-    if (guild != null && (guild.verification_level ?: 0) > 0) return
     val typingMap = typingUsers[channelId] ?: return
     val userIds = typingMap.keys.toList()
     if (userIds.isEmpty()) return
@@ -71,7 +69,7 @@ fun TypingIndicator(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            TypingDots(modifier = Modifier.size(12.dp))
+            TypingDots(modifier = Modifier.height(12.dp))
             Text(
                 text = text,
                 style = MaterialTheme.typography.labelSmall,

@@ -325,7 +325,7 @@ fun ChannelItem(
                             TypingDots(
                                 modifier = Modifier
                                     .padding(start = 4.dp)
-                                    .size(12.dp)
+                                    .height(12.dp)
                             )
                         }
                         
