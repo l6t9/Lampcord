@@ -47,6 +47,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.positionChangeIgnoreConsumed
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
@@ -343,11 +344,11 @@ fun MessageItem(
                                 break
                             }
 
-                            val delta = change.positionChange().x
+                            val delta = change.positionChangeIgnoreConsumed().x
                             travelled += kotlin.math.abs(delta)
 
                             if (!locked && travelled > viewConfiguration.touchSlop) {
-                                if (kotlin.math.abs(delta) <= kotlin.math.abs(change.positionChange().y)) {
+                                if (kotlin.math.abs(delta) <= kotlin.math.abs(change.positionChangeIgnoreConsumed().y)) {
                                     break
                                 }
                                 if (delta >= 0f) {
