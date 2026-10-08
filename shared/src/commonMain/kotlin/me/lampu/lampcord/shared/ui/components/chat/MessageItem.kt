@@ -324,11 +324,8 @@ fun MessageItem(
             .offset { IntOffset(offsetX.roundToInt(), 0) }
             .pointerInput(message.id, gestureMode) {
                 if (!isPreview && gestureMode) {
-                    // Observe on the Final pass so the parent panel's draggable gets first claim at the
-                    // Main pass. Without this the row consumes the drag and swipe-to-channel-list dies
-                    // whenever swipe-to-reply is enabled.
                     awaitEachGesture {
-                        val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Final)
+                        val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Main)
                         if (down.isConsumed) return@awaitEachGesture
 
                         var pointer = down.id
@@ -336,9 +333,9 @@ fun MessageItem(
                         var locked = false
 
                         while (true) {
-                            val event = awaitPointerEvent(PointerEventPass.Final)
+                            val event = awaitPointerEvent(PointerEventPass.Main)
                             val change = event.changes.firstOrNull { it.id == pointer } ?: break
-                            if (!change.pressed || change.isConsumed) {
+                            if (!change.pressed) {
                                 if (locked && offsetX < -80f) {
                                     messageStore.replyingTo = message
                                 }
@@ -350,15 +347,13 @@ fun MessageItem(
                             travelled += kotlin.math.abs(delta)
 
                             if (!locked && travelled > viewConfiguration.touchSlop) {
-                                // If another handler already claimed this gesture, stand down.
-                                if (change.isConsumed || event.changes.any { it.isConsumed }) {
-                                    return@awaitEachGesture
-                                }
-                                if (kotlin.math.abs(delta) > kotlin.math.abs(change.positionChange().y)) {
-                                    locked = true
-                                } else {
+                                if (kotlin.math.abs(delta) <= kotlin.math.abs(change.positionChange().y)) {
                                     break
                                 }
+                                if (delta >= 0f) {
+                                    break
+                                }
+                                locked = true
                             }
 
                             if (locked) {

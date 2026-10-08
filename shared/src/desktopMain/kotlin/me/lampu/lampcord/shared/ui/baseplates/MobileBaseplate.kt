@@ -140,7 +140,7 @@ actual fun MobileBaseplate(
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.surface),
             swipeToStartEnabled = !navigationStore.isBubble,
-            swipeToEndEnabled = !navigationStore.isBubble && !Settings.shared.swipeToReplyEnabled,
+            swipeToEndEnabled = !navigationStore.isBubble,
             startPanel = {
                 Sidebar(modifier = Modifier.systemBarsPadding())
             },
