@@ -49,6 +49,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import me.lampu.lampcord.shared.state.MessageStore
@@ -107,6 +108,10 @@ fun ChatArea(
         messages.findLast { (it.id.toLongOrNull() ?: 0L) > ackedLong && !it.isPending }?.id
     }
 
+    val isScrolledFromBottom by remember(scrollState) {
+        derivedStateOf { scrollState.firstVisibleItemIndex > 0 }
+    }
+
     // Report this view as attached so the gateway can auto-acknowledge while it is genuinely
     // on screen and scrolled to the bottom. Discord derives the same thing from the chat list's
     // LinearLayoutManager, which stops reporting once the activity is not resumed.
@@ -122,11 +127,18 @@ fun ChatArea(
     }
 
     LaunchedEffect(scrollState) {
-        snapshotFlow { scrollState.layoutInfo.visibleItemsInfo }
-            .collect { visibleItems ->
-                if (visibleItems.isNotEmpty()) {
-                    val lastVisibleItem = visibleItems.last()
-                    val atBottom = scrollState.firstVisibleItemIndex == 0
+        snapshotFlow {
+            val visibleItems = scrollState.layoutInfo.visibleItemsInfo
+            val atBottom = scrollState.firstVisibleItemIndex == 0
+            val lastVisibleItemIndex = visibleItems.lastOrNull()?.index
+
+            atBottom to lastVisibleItemIndex
+        }
+            .distinctUntilChanged()
+            .collect { (atBottom, lastVisibleItemIndex) ->
+                if (lastVisibleItemIndex != null) {
+
+
                     if (channelId != null) {
                         navigationStore.setChatInteraction(channelId, atBottom)
                     }
@@ -136,7 +148,7 @@ fun ChatArea(
                             readStateStore.ackMessage(channelId ?: "", latestId)
                         }
                     }
-                    if (lastVisibleItem.index >= messages.size - 5) {
+                    if (lastVisibleItemIndex >= messages.size - 5) {
                         messageStore.loadMoreMessages(
                             navigationStore.selectedChannel?.id ?: "",
                             navigationStore.selectedGuild?.id,
@@ -366,7 +378,7 @@ fun ChatArea(
             isVisible = isHovered,
             reverseLayout = true
         )
-        if (unreadMessagesCount > 0 && scrollState.firstVisibleItemIndex > 0) {
+        if (unreadMessagesCount > 0 && isScrolledFromBottom) {
             Surface(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
