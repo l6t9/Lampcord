@@ -140,7 +140,7 @@ actual fun MobileBaseplate(
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.surface),
             swipeToStartEnabled = !navigationStore.isBubble,
-            swipeToEndEnabled = !navigationStore.isBubble && me.lampu.lampcord.shared.settings.Settings.shared.chatGestures == me.lampu.lampcord.shared.settings.ChatGestures.SWIPE_TO_MEMBERS,
+            swipeToEndEnabled = !navigationStore.isBubble,
             startPanel = {
                 Sidebar(modifier = Modifier.systemBarsPadding())
             },

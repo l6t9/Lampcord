@@ -307,7 +307,7 @@ fun MessageItem(
     val isHighlighted = messageStore.highlightedMessageId == message.id
     
     val tapTapMode = remember { me.lampu.lampcord.shared.settings.Settings.shared.tapTap }
-    val gestureMode = remember { me.lampu.lampcord.shared.settings.Settings.shared.chatGestures }
+    val gestureMode = remember { me.lampu.lampcord.shared.settings.Settings.shared.swipeToReplyEnabled }
     var offsetX by remember { mutableFloatStateOf(0f) }
 
     LaunchedEffect(isHighlighted) {
@@ -323,7 +323,7 @@ fun MessageItem(
             .zIndex(if (isHovered || showReactionPicker) 10f else 1f)
             .offset { IntOffset(offsetX.roundToInt(), 0) }
             .pointerInput(message.id, gestureMode) {
-                if (!isPreview && gestureMode == me.lampu.lampcord.shared.settings.ChatGestures.SWIPE_TO_REPLY) {
+                if (!isPreview && gestureMode) {
                     // Observe on the Final pass so the parent panel's draggable gets first claim at the
                     // Main pass. Without this the row consumes the drag and swipe-to-channel-list dies
                     // whenever swipe-to-reply is enabled.

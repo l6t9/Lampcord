@@ -231,29 +231,11 @@ fun ChatSettingsContent(
                         }
                     }
                 ))
-                add(Material3SettingsItem(
-                    title = { Text("Swipe Gesture") },
-                    description = {
-                        Column(modifier = Modifier.padding(top = 8.dp)) {
-                            SettingsButtonGroup(
-                                options = ChatGestures.entries.toList(),
-                                selectedOption = Settings.shared.chatGestures,
-                                onOptionSelected = { Settings.shared.chatGestures = it },
-                                iconProvider = { gesture: ChatGestures, isSelected ->
-                                    when (gesture) {
-                                        ChatGestures.SWIPE_TO_MEMBERS -> if (isSelected) Icons.Filled.Group else Icons.Rounded.Group
-                                        ChatGestures.SWIPE_TO_REPLY -> if (isSelected) Icons.Filled.Reply else Icons.Rounded.Reply
-                                    }
-                                },
-                                labelProvider = {
-                                    when (it) {
-                                        ChatGestures.SWIPE_TO_MEMBERS -> "View members"
-                                        ChatGestures.SWIPE_TO_REPLY -> "Reply"
-                                    }
-                                }
-                            )
-                        }
-                    }
+                add(switchSettingsItem(
+                    title = "Swipe to Reply",
+                    description = "Swipe a message right to reply to it.",
+                    checked = Settings.shared.swipeToReplyEnabled,
+                    onCheckedChange = { Settings.shared.swipeToReplyEnabled = it }
                 ))
             }
         )

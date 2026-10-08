@@ -521,7 +521,7 @@ actual fun MobileBaseplate(
                 .fillMaxSize()
                 .statusBarsPadding(),
             swipeToStartEnabled = isChat && !navigationStore.isBubble,
-            swipeToEndEnabled = isChat && !navigationStore.isBubble && me.lampu.lampcord.shared.settings.Settings.shared.chatGestures == me.lampu.lampcord.shared.settings.ChatGestures.SWIPE_TO_MEMBERS,
+            swipeToEndEnabled = isChat && !navigationStore.isBubble,
             startPanel = { 
                 if (isChat) {
                     val currentBottomPadding = (navBarHeight * navBarVisibleAmount).coerceAtLeast(0.dp)

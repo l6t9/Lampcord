@@ -28,6 +28,7 @@ class Settings(private val settings: KmpSettings) {
     var tapTapEmoji by preference("taptap_emoji", "")
 
     var chatGestures by preferenceEnum("chat_gestures", ChatGestures.SWIPE_TO_MEMBERS)
+    var swipeToReplyEnabled by preferenceBoolean("swipe_to_reply_enabled", false)
     var animateStickers by preferenceEnum("animate_stickers", StickerAnimation.ALWAYS)
     var panelAnimation by preferenceEnum("panel_animation", PanelAnimation.MINIMAL)
     var panelType by preferenceEnum("panel_type", PanelType.CENTER)
@@ -110,6 +111,12 @@ class Settings(private val settings: KmpSettings) {
     var textReplaceJson by preference("text_replace_v1", "[]")
 
     var noiseCancellation by preferenceBoolean("noise_cancellation", true)
+
+    init {
+        if (!settings.hasKey("swipe_to_reply_enabled")) {
+            swipeToReplyEnabled = chatGestures == ChatGestures.SWIPE_TO_REPLY
+        }
+    }
 
     fun getLastChannel(guildId: String): String? {
         val id = settings.getString("last_channel_$guildId", "")
