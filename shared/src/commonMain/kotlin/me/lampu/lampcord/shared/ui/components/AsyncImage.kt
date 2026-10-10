@@ -166,7 +166,9 @@ fun AsyncImage(
                             onState?.invoke(ImageLoadState.Success)
                         }
                         is CoilState.Error -> {
-                            val retryOriginal = !reducedMotion && !useOriginalModel && staticModel != model
+                            // Retry the original under Reduce Motion too: not every GIF host has a .png rendition, and
+                            // isAnimatedSource stays false then, so the original decodes as a still first frame.
+                            val retryOriginal = !useOriginalModel && staticModel != model
                             if (retryOriginal) {
                                 useOriginalModel = true
                             } else {

@@ -26,6 +26,7 @@ import coil3.request.ImageRequest as CoilImageRequest
 import coil3.request.crossfade as coilCrossfade
 import kotlinx.coroutines.delay
 import me.lampu.lampcord.shared.api.MediaApi
+import me.lampu.lampcord.shared.imaging.ALLOW_ANIMATION_KEY
 import me.lampu.lampcord.shared.api.UserApi
 import me.lampu.lampcord.shared.model.Gif
 import me.lampu.lampcord.shared.model.GifCategory
@@ -130,6 +131,7 @@ fun GifPicker(
                             },
                             animated = !reduceMotion,
                             forceVideo = favoritePreview.isVideo,
+                            videoFallback = firstVideoUrl(favoritePreview.src, favoritePreview.gifSrc, favoritePreview.preview),
                             onClick = {
                                 isCategoryMode = false
                                 showFavorites = true
@@ -145,13 +147,14 @@ fun GifPicker(
                     GifCategoryTile(
                         name = category.name,
                         candidates = if (reduceMotion) {
-                            staticImageCandidates(category.src)
+                            stillCandidates(category.src)
                         } else {
                             listOf(category.src)
                                 .filter(String::isNotBlank)
                                 .distinct()
                         },
                         animated = !reduceMotion,
+                        videoFallback = firstVideoUrl(category.src),
                         onClick = {
                             isCategoryMode = true
                             showFavorites = false
@@ -170,6 +173,7 @@ private fun GifCategoryTile(
     candidates: List<String>,
     animated: Boolean,
     forceVideo: Boolean = false,
+    videoFallback: String? = null,
     onClick: () -> Unit,
 ) {
     Box(
@@ -184,7 +188,8 @@ private fun GifCategoryTile(
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop,
             animated = animated,
-            forceVideo = forceVideo
+            forceVideo = forceVideo,
+            videoFallback = videoFallback
         )
         Box(
             modifier = Modifier
@@ -209,22 +214,14 @@ private fun GifThumbnail(
     gif: Gif,
     onGifSelected: (Gif) -> Unit,
 ) {
-    val context = CoilLocalContext.current
     val reduceMotion = Settings.shared.reduceMotion
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
     val isDesktop = getPlatformName() == "windows"
     val animatePreview = !reduceMotion && (!isDesktop || isHovered)
     val candidates = remember(gif, reduceMotion, animatePreview) {
-        if (reduceMotion || (isDesktop && !animatePreview)) {
-            gifStaticCandidates(gif)
-        } else {
-            gifAnimatedCandidates(gif)
-        }
+        if (animatePreview) gifAnimatedCandidates(gif) else gifStaticCandidates(gif)
     }
-    // Switching Reduced Motion changes the available preview URLs. Reset the fallback index too, otherwise a previous failed animated URL can leave the new, static candidate list permanently out of bounds.
-    var candidateIndex by remember(gif, reduceMotion) { mutableIntStateOf(0) }
-    val imageUrl = candidates.getOrNull(candidateIndex)
 
     Box(
         modifier = Modifier
@@ -233,37 +230,15 @@ private fun GifThumbnail(
             .clip(RoundedCornerShape(16.dp))
             .hoverable(interactionSource)
     ) {
-        if (imageUrl != null) {
-            if (animatePreview && (gif.isVideo || isVideoMediaUrl(imageUrl))) {
-                VideoPlayer(
-                    url = imageUrl,
-                    modifier = Modifier.fillMaxSize(),
-                    loop = true,
-                    showControls = false,
-                    compact = true,
-                    autoPlay = true
-                )
-            } else {
-                CoilAsyncImage(
-                    model = CoilImageRequest.Builder(context)
-                        .data(imageUrl)
-                        .memoryCacheKey("gif-preview:$imageUrl")
-                        .memoryCachePolicy(
-                            if (getPlatformName() != "android" && getPlatformName() != "ios" && Settings.shared.desktopLowMemoryMode) CoilCachePolicy.DISABLED else CoilCachePolicy.ENABLED
-                        )
-                        .coilCrossfade(false)
-                        .build(),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
-                    onState = { state ->
-                        if (state is CoilState.Error && candidateIndex < candidates.lastIndex) {
-                            candidateIndex++
-                        }
-                    }
-                )
-            }
-        }
+        GifPreviewImage(
+            candidates = candidates,
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop,
+            animated = animatePreview,
+            forceVideo = gif.isVideo,
+            videoFallback = firstVideoUrl(gif.src, gif.gifSrc, gif.preview)
+        )
         Box(Modifier.matchParentSize().clickableCursor { onGifSelected(gif) })
     }
 }
@@ -276,12 +251,28 @@ private fun GifPreviewImage(
     contentScale: ContentScale,
     animated: Boolean,
     forceVideo: Boolean = false,
+    videoFallback: String? = null,
 ) {
     val context = CoilLocalContext.current
+    // Keyed on the candidate list so switching Reduce Motion or hover resets the fallback position instead of
+    // leaving it past the end of a shorter list.
     var candidateIndex by remember(candidates) { mutableIntStateOf(0) }
+    var stillsExhausted by remember(candidates) { mutableStateOf(false) }
     val imageUrl = candidates.getOrNull(candidateIndex)
+    // Video-only GIFs (Tenor categories, many favorites) have no image to decode, so the last resort for a
+    // still preview is the video's first frame, decoded paused.
+    val stillVideoUrl = if (!animated && (stillsExhausted || imageUrl == null)) videoFallback else null
 
-    if (imageUrl != null && animated && (forceVideo || isVideoMediaUrl(imageUrl))) {
+    if (stillVideoUrl != null) {
+        VideoPlayer(
+            url = stillVideoUrl,
+            modifier = modifier,
+            loop = false,
+            showControls = false,
+            compact = true,
+            autoPlay = false
+        )
+    } else if (imageUrl != null && animated && (forceVideo || isVideoMediaUrl(imageUrl))) {
         VideoPlayer(
             url = imageUrl,
             modifier = modifier,
@@ -294,18 +285,20 @@ private fun GifPreviewImage(
         CoilAsyncImage(
             model = CoilImageRequest.Builder(context)
                 .data(imageUrl)
-                .memoryCacheKey("gif-preview:$imageUrl")
+                .memoryCacheKey("gif-preview:$imageUrl#${if (animated) "animated" else "still"}")
                 .memoryCachePolicy(
                     if (getPlatformName() != "android" && getPlatformName() != "ios" && Settings.shared.desktopLowMemoryMode) CoilCachePolicy.DISABLED else CoilCachePolicy.ENABLED
                 )
                 .coilCrossfade(false)
+                // Still candidates end with the original GIF, which must render as its first frame.
+                .apply { extras[ALLOW_ANIMATION_KEY] = animated }
                 .build(),
             contentDescription = contentDescription,
             modifier = modifier,
             contentScale = contentScale,
             onState = { state ->
-                if (state is CoilState.Error && candidateIndex < candidates.lastIndex) {
-                    candidateIndex++
+                if (state is CoilState.Error) {
+                    if (candidateIndex < candidates.lastIndex) candidateIndex++ else stillsExhausted = true
                 }
             }
         )
@@ -326,7 +319,9 @@ private fun staticImageCandidates(vararg urls: String?): List<String> {
             "${'$'}1false"
         )
     }.filter { url ->
-        !isAnimatedMediaUrl(url)
+        // Discord's media proxy honours animated=false and returns the first frame even when the proxied
+        // path ends in .gif, so that rewrite is a real still rather than a guess.
+        !isAnimatedMediaUrl(url) || isProxiedStill(url)
     }.distinct()
 
     val variants = primary.flatMap { url ->
@@ -337,6 +332,9 @@ private fun staticImageCandidates(vararg urls: String?): List<String> {
             )
             val isAnimatedMedia = isAnimatedMediaUrl(staticUrl)
             if (staticUrl != url && !isAnimatedMedia) add(staticUrl)
+            // Hosts other than Tenor and Discord's CDN answer a guessed rendition that doesn't exist with a
+            // "content unavailable" placeholder image instead of an error, which would be shown as the preview.
+            if (!supportsGuessedStills(staticUrl)) return@buildList
 
             val mediaSuffix = animatedMediaSuffix(staticUrl)
             if (mediaSuffix != null) {
@@ -356,8 +354,34 @@ private fun staticImageCandidates(vararg urls: String?): List<String> {
     return (staticPrimary + variants).distinct()
 }
 
+private fun isDiscordMediaProxy(url: String): Boolean =
+    url.contains("images-ext-", ignoreCase = true) && url.contains(".discordapp.net/external/", ignoreCase = true) ||
+        url.contains("media.discordapp.net", ignoreCase = true)
+
+private fun isProxiedStill(url: String): Boolean =
+    isDiscordMediaProxy(url) && url.contains(Regex("""[?&]animated=false""", RegexOption.IGNORE_CASE))
+
+private fun supportsGuessedStills(url: String): Boolean {
+    // A proxied URL embeds the origin host in its path, so check what it actually points at.
+    val origin = url.substringAfter("/external/", url)
+    if (origin.contains("klipy.com", ignoreCase = true)) return false
+    return origin.contains("tenor.com", ignoreCase = true) ||
+        origin.contains("cdn.discordapp.com", ignoreCase = true) ||
+        origin.contains("media.discordapp.net", ignoreCase = true)
+}
+
 private fun gifStaticCandidates(gif: Gif): List<String> =
-    staticImageCandidates(gif.preview, gif.gifSrc, gif.src)
+    stillCandidates(gif.preview, gif.gifSrc, gif.src)
+
+// Guessed static renditions first, then the original GIF/WebP decoded without animation: Tenor in particular
+// often has no static rendition at all, and without this fallback the preview stays empty.
+private fun stillCandidates(vararg urls: String?): List<String> {
+    val originals = urls.filterNotNull().map(String::trim).filter(String::isNotBlank)
+    return (staticImageCandidates(*urls) + originals.filterNot(::isVideoMediaUrl)).distinct()
+}
+
+private fun firstVideoUrl(vararg urls: String?): String? =
+    urls.filterNotNull().map(String::trim).firstOrNull { it.isNotBlank() && isVideoMediaUrl(it) }
 
 private fun isAnimatedMediaUrl(url: String): Boolean =
     animatedMediaSuffix(url) != null
