@@ -20,7 +20,7 @@ It is designed to deliver a native, fast, and customizable Discord experience wi
 >[!Warning]
 >**Lampcord is in BETA**
 >
->The client is still in developement and many issues that we're currently fixing.
+>The client is still in developement and has many issues that we're currently fixing.
 >
 >So don't delete your current client yet. Unless you're sure about it.
 
