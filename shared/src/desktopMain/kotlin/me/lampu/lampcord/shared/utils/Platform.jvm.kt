@@ -111,8 +111,19 @@ private val webView2Available: Boolean by lazy {
     }
 }
 
-actual fun isEmbeddedWebViewAvailable(): Boolean =
-    getPlatformName() != "windows" || webView2Available
+// WebKitGTK is only an optional dependency of the Linux packages (and isn't in the AppImage); without it the
+// web view's native bridge throws UnsatisfiedLinkError from a static initializer. Ask the dynamic loader
+// directly by soname: the unversioned libwebkit2gtk-4.1.so only exists with the -dev package installed.
+private val webKitGtkAvailable: Boolean by lazy {
+    runCatching { com.sun.jna.NativeLibrary.getInstance("libwebkit2gtk-4.1.so.0") }.isSuccess
+}
+
+actual fun isEmbeddedWebViewAvailable(): Boolean = when (getPlatformName()) {
+    "windows" -> webView2Available
+    "linux" -> webKitGtkAvailable
+    // WKWebView ships with macOS.
+    else -> true
+}
 
 @Composable
 actual fun RequestMediaPermissions(onResult: (Boolean) -> Unit) {

@@ -98,7 +98,11 @@ fun PlayableEmbedView(
                     color = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    text = "Inline playback needs the Microsoft Edge WebView2 Runtime.",
+                    text = if (getPlatformName() == "linux") {
+                        "Inline playback needs WebKitGTK 4.1 (webkit2gtk-4.1)."
+                    } else {
+                        "Inline playback needs the Microsoft Edge WebView2 Runtime."
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

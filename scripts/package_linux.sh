@@ -35,7 +35,7 @@ deb_requires=(
   java-runtime libgtk-3-0 libnotify4 libnss3 libxss1 libxtst6 xdg-utils
   libatspi2.0-0 libuuid1 libsecret-1-0
 )
-deb_recommends=(libappindicator3-1 webkit2gtk-4.1)
+deb_recommends=(libappindicator3-1 libwebkit2gtk-4.1-0)
 rpm_requires=(java-runtime gtk3 libnotify nss libXScrnSaver libXtst xdg-utils at-spi2-core libuuid libsecret)
 pac_depends=(java-runtime gtk3 libnotify nss libxss libxtst xdg-utils at-spi2-core util-linux-libs libsecret)
 pac_optdepends=("libappindicator-gtk3" "webkit2gtk-4.1: embedded web content")
@@ -135,7 +135,7 @@ mkdir -p "$work/rpmbuild"/{SPECS,SOURCES,BUILD,RPMS,SRPMS,BUILDROOT}
   for dep in "${rpm_requires[@]}"; do echo "Requires:       $dep"; done
   echo ""
   echo "Recommends:     libappindicator-gtk3"
-  echo "Recommends:     webkit2gtk-4.1"
+  echo "Recommends:     webkit2gtk4.1"
   echo ""
   echo "%description"
   echo "$description"
