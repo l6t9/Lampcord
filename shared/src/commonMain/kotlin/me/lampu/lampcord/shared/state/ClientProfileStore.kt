@@ -74,26 +74,15 @@ class ClientProfileStore(
                     null
                 }
                 
-                val combined = mutableMapOf<String, CustomProfile>()
-                
-                userBgResponse?.users?.keys?.forEach { userId ->
-                    combined[userId] = CustomProfile(
-                        user_id = userId,
-                        banner = "https://usrbg.is-hardly.online/usrbg/v2/$userId"
-                    )
-                }
-                
-                userPfpResponse?.avatars?.forEach { (userId, avatarUrl) ->
-                    val existing = combined[userId]
-                    combined[userId] = if (existing != null) {
-                        existing.copy(avatar = avatarUrl)
-                    } else {
-                        CustomProfile(user_id = userId, avatar = avatarUrl)
-                    }
-                }
-                
-                if (combined.isNotEmpty()) {
-                    _customProfiles.value = ClientProfileMapping(combined)
+                val bannerUserIds = userBgResponse?.users?.keys
+                    ?.mapNotNull { it.toLongOrNull() }
+                    ?.toLongArray()
+                    ?.apply { sort() }
+                    ?: LongArray(0)
+                val avatars = userPfpResponse?.avatars.orEmpty()
+
+                if (bannerUserIds.isNotEmpty() || avatars.isNotEmpty()) {
+                    _customProfiles.value = ClientProfileMapping(bannerUserIds, avatars)
                 }
             } catch (e: Exception) {
             }
@@ -111,7 +100,7 @@ class ClientProfileStore(
     )
 
     fun getCustomProfile(userId: String): CustomProfile? {
-        val db = _customProfiles.value.users[userId]
+        val db = _customProfiles.value[userId]
         val local = _localOverrides.value[userId]
         
         return if (local != null) {
@@ -128,7 +117,7 @@ class ClientProfileStore(
 
     fun getLocalProfile(userId: String): CustomProfile? = _localOverrides.value[userId]
 
-    fun getRemoteProfile(userId: String): CustomProfile? = _customProfiles.value.users[userId]
+    fun getRemoteProfile(userId: String): CustomProfile? = _customProfiles.value[userId]
 
     fun setLocalBanner(userId: String, banner: String?) {
         val existing = _localOverrides.value[userId]
@@ -161,7 +150,7 @@ fun rememberGuildMediaUrls(
     val customProfiles by clientProfileStore.customProfiles.collectAsState()
     return remember(guildId, guildIconUrl, guildBannerUrl, localOverrides, customProfiles, settingsStore.userBg, settingsStore.userPfp) {
         val local = guildId?.let { localOverrides[it] }
-        val remote = guildId?.let { customProfiles.users[it] }
+        val remote = guildId?.let { customProfiles[it] }
         GuildMediaUrls(
             icon = local?.avatar?.takeIf { it.isNotEmpty() }
                 ?: (if (settingsStore.userPfp) remote?.avatar?.takeIf { it.isNotEmpty() } else null)

@@ -83,7 +83,7 @@ fun ProfileSettingsContent(
     val customProfile = remember(userVal.id, customProfiles, localOverrides, settingsStore.userBg, settingsStore.userPfp) {
         val local = localOverrides[userVal.id]
         val remote = if (settingsStore.userBg && settingsStore.userPfp) {
-            customProfiles.users[userVal.id]
+            customProfiles[userVal.id]
         } else null
         when {
             local == null -> remote
