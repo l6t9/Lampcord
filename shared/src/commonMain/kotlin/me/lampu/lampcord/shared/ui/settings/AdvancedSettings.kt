@@ -31,6 +31,7 @@ fun AdvancedSettings(
 fun AdvancedSettingsContent(settingsStore: SettingsStore = koinInject()) {
     Column(modifier = Modifier.fillMaxWidth()) {
         val isDesktop = remember { getPlatformName() != "android" && getPlatformName() != "ios" }
+        val isWindows = remember { getPlatformName() == "windows" }
         val devMode = settingsStore.userSettings?.developer_mode ?: false
         Material3SettingsGroup(
             title = "Developer Settings",
@@ -57,22 +58,23 @@ fun AdvancedSettingsContent(settingsStore: SettingsStore = koinInject()) {
         if (isDesktop) {
             Material3SettingsGroup(
                 title = "Window",
-                items = listOf(
-                    switchSettingsItem(
+                items = buildList {
+                    // Windows always uses the in-app title bar; see useSystemWindowFrame in the desktop Main.kt.
+                    if (!isWindows) add(switchSettingsItem(
                         title = "Use Custom Titlebar",
                         description = "Use a custom in-app title bar instead of the system window frame. Requires restart.",
                         checked = settingsStore.useCustomTitlebar,
                         onCheckedChange = { settingsStore.useCustomTitlebar = it }
-                    ),
-                    switchSettingsItem(
+                    ))
+                    add(switchSettingsItem(
                         title = "Enable Wayland Scaling Fix",
                         description = "Enables automatic display scaling detection on Wayland compositors. Requires restart.",
                         checked = settingsStore.enableWaylandScaling,
                         onCheckedChange = {
                             settingsStore.enableWaylandScaling = it
                         }
-                    )
-                )
+                    ))
+                }
             )
         }
 

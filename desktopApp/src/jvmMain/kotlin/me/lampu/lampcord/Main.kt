@@ -73,6 +73,7 @@ fun main() {
 
     val isLinux = getPlatformName() == "linux"
     val isMac = getPlatformName() == "macos"
+    val isWindows = getPlatformName() == "windows"
 
     // Older builds defaulted to the system window frame, and enableSystemWindowFrame already
     // defaults to true, so this migration only has to record that it ran. Forcing the value
@@ -88,7 +89,9 @@ fun main() {
     }
     // The window's native frame is fixed when the window is created, so this is read once and
     // never recomposed. Changing the setting takes effect on the next launch.
-    val useSystemWindowFrame = Settings.shared.enableSystemWindowFrame
+    // Nucleus always draws the window chrome itself on Windows, so there is no native frame to fall back
+    // to: skipping the title bar there leaves the window with no caption buttons at all.
+    val useSystemWindowFrame = !isWindows && Settings.shared.enableSystemWindowFrame
 
     nucleusApplication {
         val reloadKey by reloadTrigger.collectAsState()
