@@ -95,6 +95,16 @@ fun FullProfileDetails(
     val isOwnProfile = user.id == currentUser?.id
     val textColor = theme.customTextColor ?: MaterialTheme.colorScheme.onSurface
     val listState = remember(selectedTab) { LazyListState() }
+    // Board and the mutual tabs are optional, so the tab IDs aren't positions in the row: the row needs the
+    // selected tab's index among the tabs actually shown, or it indexes past the end when Board is hidden.
+    val visibleTabs = buildList {
+        add(TAB_ACTIVITY)
+        if (boardHasContent) add(TAB_BOARD)
+        if (!isOwnProfile) {
+            add(TAB_MUTUAL_FRIENDS)
+            add(TAB_MUTUAL_SERVERS)
+        }
+    }
 
     Column(
         modifier = modifier
@@ -103,33 +113,26 @@ fun FullProfileDetails(
     ) {
         CompositionLocalProvider(LocalContentColor provides textColor) {
             PrimaryTabRow(
-                selectedTabIndex = selectedTab,
+                selectedTabIndex = visibleTabs.indexOf(selectedTab).coerceAtLeast(0),
                 containerColor = Color.Transparent,
                 contentColor = textColor,
                 divider = {}
             ) {
-                Tab(
-                    selected = selectedTab == TAB_ACTIVITY,
-                    onClick = { selectedTab = TAB_ACTIVITY },
-                    text = { Text("Activity", color = textColor) }
-                )
-                if (boardHasContent) {
+                visibleTabs.forEach { tab ->
                     Tab(
-                        selected = selectedTab == TAB_BOARD,
-                        onClick = { selectedTab = TAB_BOARD },
-                        text = { Text("Board", color = textColor) }
-                    )
-                }
-                if (!isOwnProfile) {
-                    Tab(
-                        selected = selectedTab == TAB_MUTUAL_FRIENDS,
-                        onClick = { selectedTab = TAB_MUTUAL_FRIENDS },
-                        text = { Text("$friendsCount Mutual\nFriends", color = textColor) }
-                    )
-                    Tab(
-                        selected = selectedTab == TAB_MUTUAL_SERVERS,
-                        onClick = { selectedTab = TAB_MUTUAL_SERVERS },
-                        text = { Text("$serversCount Mutual\nServers", color = textColor) }
+                        selected = selectedTab == tab,
+                        onClick = { selectedTab = tab },
+                        text = {
+                            Text(
+                                when (tab) {
+                                    TAB_ACTIVITY -> "Activity"
+                                    TAB_BOARD -> "Board"
+                                    TAB_MUTUAL_FRIENDS -> "$friendsCount Mutual\nFriends"
+                                    else -> "$serversCount Mutual\nServers"
+                                },
+                                color = textColor
+                            )
+                        }
                     )
                 }
             }
