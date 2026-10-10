@@ -225,6 +225,9 @@ actual fun MobileBaseplate(
     LaunchedEffect(Unit) {
         navigationStore.focusChatRequest.collect {
             panelState.close()
+            // An explicit channel pick from another tab (Message on a friend, a DM without a guild) only changed
+            // the selection; the route-from-selection effect needs a guild, so bring Chat forward here.
+            if (navigationState.topLevelRoute != Screen.Chat) navigator.navigate(Screen.Chat)
         }
     }
 
@@ -661,6 +664,9 @@ actual fun MobileBaseplate(
                         NavigationBarItem(
                             selected = currentRoute == Screen.Friends,
                             onClick = {
+                                // The selection effect checks Friends before Mentions, so a stale flag from the
+                                // other tab would immediately navigate back to it.
+                                navigationStore.isMentionsSelected = false
                                 navigationStore.isFriendsSelected = true
                                 navigator.navigate(Screen.Friends)
                             },
@@ -684,6 +690,8 @@ actual fun MobileBaseplate(
                         NavigationBarItem(
                             selected = currentRoute == Screen.Mentions,
                             onClick = {
+                                // Clear Friends first: with both flags set the selection effect sends us back to Friends.
+                                navigationStore.isFriendsSelected = false
                                 navigationStore.isMentionsSelected = true
                                 navigator.navigate(Screen.Mentions)
                             },

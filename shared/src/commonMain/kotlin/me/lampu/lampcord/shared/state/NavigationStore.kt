@@ -342,8 +342,16 @@ class NavigationStore(
         val sameChannel = selectedChannel?.id == channel.id
         val hasMessages = messageStore.hasMessages(channel.id)
 
-        if (sameChannel && selectedThread == null && hasMessages) return
-        
+        if (sameChannel && selectedThread == null && hasMessages) {
+            // Already loaded, but an explicit pick (e.g. Message from the friends list) must still bring the
+            // chat to the front instead of silently doing nothing.
+            if (explicitlySelected) {
+                isFriendsSelected = false
+                triggerFocusChat()
+            }
+            return
+        }
+
         isFriendsSelected = false
         isChannelsAndRolesVisible = false
         isServerSettingsVisible = false

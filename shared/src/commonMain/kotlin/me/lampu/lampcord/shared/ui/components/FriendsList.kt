@@ -32,6 +32,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.Relationship
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -53,8 +54,16 @@ fun FriendsList(
     navigationStore: NavigationStore = koinInject()
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Online", "All", "Pending", "Blocked", "Add Friend")
-    
+    // Adding a friend is its own page behind the app bar button rather than a fifth tab: five labels don't
+    // fit a phone-width tab row and wrapped mid-word.
+    val tabs = listOf("Online", "All", "Pending", "Blocked")
+    var showAddFriend by remember { mutableStateOf(false) }
+
+    if (showAddFriend) {
+        AddFriendPage(onBack = { showAddFriend = false })
+        return
+    }
+
     val scrollState = androidx.compose.foundation.lazy.rememberLazyListState()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     var isHovered by remember { mutableStateOf(false) }
@@ -88,7 +97,7 @@ fun FriendsList(
                         }
                     },
                     actions = {
-                        IconButton(onClick = { /* TODO: Add Friend dialog or similar */ }) {
+                        IconButton(onClick = { showAddFriend = true }) {
                             Icon(Icons.Filled.PersonAdd, "Add Friend")
                         }
                     },
@@ -106,10 +115,13 @@ fun FriendsList(
                             onClick = { selectedTab = index },
                             text = { 
                                 Text(
-                                    title, 
+                                    title,
                                     style = MaterialTheme.typography.labelLarge,
-                                    fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Medium
-                                ) 
+                                    fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Medium,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis
+                                )
                             }
                         )
                     }
@@ -133,9 +145,7 @@ fun FriendsList(
                     }
                 }
         ) {
-            if (selectedTab == 4) {
-                AddFriendUI()
-            } else if (filteredRelationships.isEmpty()) {
+            if (filteredRelationships.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(
@@ -258,7 +268,10 @@ fun FriendItem(
                             Icon(Icons.Filled.Chat, "Message", modifier = Modifier.size(20.dp))
                         }
                         val errorColor = MaterialTheme.colorScheme.error
+                        // The menu opens on long press by default; the ⋮ button should open it on a plain tap.
+                        var menuRequest by remember { mutableIntStateOf(0) }
                         ContextMenu(
+                            openRequest = menuRequest,
                             items = remember(user.id, errorColor) {
                                 listOf(
                                     ContextMenuItem("Remove Friend", Icons.Filled.PersonRemove, onClick = { relationshipStore.removeFriend(user.id) }, group = "Primary"),
@@ -266,13 +279,37 @@ fun FriendItem(
                                 )
                             }
                         ) {
-                            IconButton(onClick = {}) {
+                            IconButton(onClick = { menuRequest++ }) {
                                 Icon(Icons.Filled.MoreVert, "More", modifier = Modifier.size(20.dp))
                             }
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AddFriendPage(onBack: () -> Unit) {
+    PlatformBackHandler(onBack = onBack)
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        topBar = {
+            TopAppBar(
+                title = { Text("Add Friend") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        }
+    ) { padding ->
+        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+            AddFriendUI()
         }
     }
 }
