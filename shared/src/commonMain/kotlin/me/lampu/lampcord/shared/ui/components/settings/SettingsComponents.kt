@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -292,6 +293,9 @@ val platform = remember { me.lampu.lampcord.shared.utils.getPlatformName() }
                             .verticalScroll(scrollState)
                     } else Modifier
                 )
+                // contentWindowInsets is zero so the page draws edge to edge; pad inside the scroll instead so the
+                // last setting can scroll clear of the system navigation bar.
+                .navigationBarsPadding()
                 .padding(vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
