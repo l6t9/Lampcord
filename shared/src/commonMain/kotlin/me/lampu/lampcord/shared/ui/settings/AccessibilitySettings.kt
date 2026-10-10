@@ -51,25 +51,15 @@ fun AccessibilitySettingsContent(settingsStore: SettingsStore = koinInject()) {
         )
 
         Material3SettingsGroup(
-            title = "Motion & Contrast",
-            items = buildList {
-                add(
-                    switchSettingsItem(
-                        title = "Reduced Motion",
-                        description = "Reduces interface motion and prevents GIFs, animated emojis, stickers, and avatars from playing automatically.",
-                        checked = Settings.shared.reduceMotion,
-                        onCheckedChange = { Settings.shared.reduceMotion = it }
-                    )
+            title = "Motion",
+            items = listOf(
+                switchSettingsItem(
+                    title = "Reduced Motion",
+                    description = "Reduces interface motion and prevents GIFs, animated emojis, stickers, and avatars from playing automatically.",
+                    checked = Settings.shared.reduceMotion,
+                    onCheckedChange = { Settings.shared.reduceMotion = it }
                 )
-                add(
-                    switchSettingsItem(
-                        title = "High Contrast",
-                        description = "Increases contrast between foreground and background elements.",
-                        checked = Settings.shared.reduceMotion,
-                        onCheckedChange = { Settings.shared.reduceMotion = it }
-                    )
-                )
-            }
+            )
         )
 
         Material3SettingsGroup(
