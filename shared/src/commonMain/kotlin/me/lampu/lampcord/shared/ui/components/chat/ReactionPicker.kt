@@ -27,6 +27,7 @@ fun ReactionPickerSheet(
         modifier = Modifier.fillMaxWidth()
     ) {
         EmojiPicker(
+            fillAvailableHeight = true,
             onEmojiSelected = { emoji ->
                 onEmojiSelected(emoji)
                 onDismiss()

@@ -36,6 +36,9 @@ import me.lampu.lampcord.shared.model.EmbedImage
 import org.koin.compose.koinInject
 import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
+// Smallest sticker tile; rows fit as many as the width allows and stretch them to fill it.
+private val StickerMinSize = 80.dp
+
 @Composable
 fun StickerPicker(
     mediaApi: MediaApi,
@@ -109,7 +112,7 @@ fun StickerPicker(
         var acc = 0
         stickerGroups.forEach { _ ->
             offsets.add(acc)
-            acc += 2 // 1 for header, 1 for stickers (FlowRow)
+            acc += 2 // 1 for header, 1 for the sticker grid
         }
         offsets
     }
@@ -177,50 +180,58 @@ fun StickerPicker(
                         }
                     }
                     item(key = "stickers_${pack.id}") {
-                        FlowRow(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            pack.stickers.forEach { sticker ->
-                                val stickerUrl = "https://cdn.discordapp.com/stickers/${sticker.id}.png?size=160"
-                                val stickerMenu = listOf(
-                                    ContextMenuItem("Copy Link", Icons.Filled.Link, onClick = {
-                                        setClipboardText(stickerUrl)
-                                        showToast("Copied to clipboard")
-                                    }),
-                                    ContextMenuItem("View Image", Icons.Filled.OpenInNew, onClick = {
-                                        val img = EmbedImage(url = stickerUrl, proxy_url = stickerUrl)
-                                        navigationStore.openAttachmentViewer(listOf(img))
-                                    }),
-                                    ContextMenuItem("Copy Sticker ID", Icons.Filled.Dns, onClick = {
-                                        setClipboardText(sticker.id)
-                                        showToast("Copied to clipboard")
-                                    })
-                                )
+                        // Fixed 80dp tiles left the leftover width as an empty strip on the right. Fit as many
+                        // columns as the width allows at that minimum size and stretch them to fill the row.
+                        BoxWithConstraints(modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)) {
+                            val spacing = 8.dp
+                            val columns = ((maxWidth + spacing) / (StickerMinSize + spacing)).toInt().coerceAtLeast(1)
+                            Column(verticalArrangement = Arrangement.spacedBy(spacing)) {
+                                pack.stickers.chunked(columns).forEach { rowStickers ->
+                                    Row(horizontalArrangement = Arrangement.spacedBy(spacing)) {
+                                        rowStickers.forEach { sticker ->
+                                            val stickerUrl = "https://cdn.discordapp.com/stickers/${sticker.id}.png?size=160"
+                                            val stickerMenu = listOf(
+                                                ContextMenuItem("Copy Link", Icons.Filled.Link, onClick = {
+                                                    setClipboardText(stickerUrl)
+                                                    showToast("Copied to clipboard")
+                                                }),
+                                                ContextMenuItem("View Image", Icons.Filled.OpenInNew, onClick = {
+                                                    val img = EmbedImage(url = stickerUrl, proxy_url = stickerUrl)
+                                                    navigationStore.openAttachmentViewer(listOf(img))
+                                                }),
+                                                ContextMenuItem("Copy Sticker ID", Icons.Filled.Dns, onClick = {
+                                                    setClipboardText(sticker.id)
+                                                    showToast("Copied to clipboard")
+                                                })
+                                            )
 
-                                val extra = listOf(
-                                    ContextMenuItem("Save Image", Icons.Filled.Download, onClick = {
-                                        uriHandler.openUri(stickerUrl)
-                                    }),
-                                    ContextMenuItem("Clone to other server", Icons.Filled.Upload, onClick = {
-                                        cloneImageUrl = stickerUrl
-                                        showCloneModal = true
-                                    })
-                                )
+                                            val extra = listOf(
+                                                ContextMenuItem("Save Image", Icons.Filled.Download, onClick = {
+                                                    uriHandler.openUri(stickerUrl)
+                                                }),
+                                                ContextMenuItem("Clone to other server", Icons.Filled.Upload, onClick = {
+                                                    cloneImageUrl = stickerUrl
+                                                    showCloneModal = true
+                                                })
+                                            )
 
-                                ContextMenu(items = stickerMenu + extra) {
-                                    AsyncImage(
-                                        model = stickerUrl,
-                                        contentDescription = sticker.name,
-                                        modifier = Modifier
-                                            .size(80.dp)
-                                            .clickableCursor {
-                                                emojiStore.onStickerUsed(sticker.id)
-                                                onStickerSelected(sticker)
+                                            ContextMenu(items = stickerMenu + extra, modifier = Modifier.weight(1f).aspectRatio(1f)) {
+                                                AsyncImage(
+                                                    model = stickerUrl,
+                                                    contentDescription = sticker.name,
+                                                    modifier = Modifier
+                                                        .fillMaxSize()
+                                                        .clickableCursor {
+                                                            emojiStore.onStickerUsed(sticker.id)
+                                                            onStickerSelected(sticker)
+                                                        }
+                                                        .padding(4.dp)
+                                                )
                                             }
-                                            .padding(4.dp)
-                                    )
+                                        }
+                                        // Keep a short last row on the same grid instead of stretching its tiles.
+                                        repeat(columns - rowStickers.size) { Spacer(Modifier.weight(1f)) }
+                                    }
                                 }
                             }
                         }

@@ -70,6 +70,9 @@ fun EmojiPicker(
     settingsStore: SettingsStore = koinInject(),
     modifier: Modifier = Modifier,
     onKeyboardClick: (() -> Unit)? = null,
+    // Under the chat input the picker stands in for the keyboard and takes its height. Hosted in a sheet
+    // (reactions) it should fill the sheet instead, or the keyboard height leaves most of it empty.
+    fillAvailableHeight: Boolean = false,
     onEmojiSelected: (Emoji) -> Unit
 ) {
     var selectedTab by remember { mutableStateOf(0) }
@@ -249,7 +252,10 @@ fun EmojiPicker(
     }
 
     Surface(
-        modifier = if (isMobile) {
+        modifier = if (isMobile && fillAvailableHeight) {
+            // Sheets draw edge to edge (no content insets), so keep the server bar above the system nav bar.
+            modifier.fillMaxSize().navigationBarsPadding()
+        } else if (isMobile) {
             modifier
                 .fillMaxWidth()
                 .height(keyboardHeight.coerceAtMost(600.dp))
