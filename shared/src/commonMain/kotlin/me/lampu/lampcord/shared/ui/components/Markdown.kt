@@ -263,6 +263,11 @@ fun DiscordMarkdownText(
                                 if (url == null && mentionsAtOffset == null) return@awaitEachGesture
 
                                 // Link presses are owned by this text gesture and must not open the parent message menu.
+                                // The message ContextMenu (respectChildGestures) runs on the Final pass and skips a down
+                                // that's already consumed, so claim it here; both menus waited out the same long-press
+                                // timeout, which opened the link dialog and the message sheet together. Mentions have no
+                                // menu of their own, so a long press on one still opens the message menu.
+                                if (url != null) pressed.consume()
                                 var isSlopExceeded = false
                                 val completedTap = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
                                     while (true) {
