@@ -75,7 +75,7 @@ val storeModule = module {
     single { UserGuildSettingsStore() }
     single { AppErrorStore() }
     single { PresenceStore(userApi = get()) }
-    single { ClientProfileStore(httpClient = get(), json = get(), scope = get()) }
+    single { ClientProfileStore(httpClient = get(), json = get(), scope = get(), settingsStore = get()) }
     single { RelationshipStore(userApi = get(), userStore = get(), scope = get()) }
     single {
         GuildStore(

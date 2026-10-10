@@ -6,10 +6,18 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
+import me.lampu.lampcord.shared.utils.Logging
 import kotlinx.serialization.json.Json
 import me.lampu.lampcord.shared.model.ClientProfileMapping
 import me.lampu.lampcord.shared.model.CustomProfile
@@ -19,20 +27,33 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import org.koin.compose.koinInject
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class ClientProfileStore(
     private val httpClient: HttpClient,
     private val json: Json,
-    private val scope: CoroutineScope
+    private val scope: CoroutineScope,
+    private val settingsStore: SettingsStore
 ) {
     private val _customProfiles = MutableStateFlow<ClientProfileMapping>(ClientProfileMapping())
     val customProfiles = _customProfiles.asStateFlow()
 
     private val _localOverrides = MutableStateFlow<Map<String, CustomProfile>>(emptyMap())
     val localOverrides = _localOverrides.asStateFlow()
-    
+
     init {
         loadLocalOverrides()
-        fetchCustomProfiles()
+        // Each third-party database is only contacted while its toggle is on, and dropped when it is turned off:
+        // the UserBG list alone is hundreds of thousands of ids. Fetches are independent, so one failing source
+        // doesn't take the other down with it.
+        val bannerUserIds = snapshotFlow { settingsStore.userBg }.distinctUntilChanged()
+            .mapLatest { enabled -> if (enabled) fetchUserBg() else LongArray(0) }
+            .onStart { emit(LongArray(0)) }
+        val avatars = snapshotFlow { settingsStore.userPfp }.distinctUntilChanged()
+            .mapLatest { enabled -> if (enabled) fetchUserPfp() else emptyMap() }
+            .onStart { emit(emptyMap()) }
+        scope.launch {
+            combine(bannerUserIds, avatars, ::ClientProfileMapping).collect { _customProfiles.value = it }
+        }
     }
 
     private fun loadLocalOverrides() {
@@ -55,38 +76,27 @@ class ClientProfileStore(
         me.lampu.lampcord.shared.settings.Settings.shared.localProfileOverrides = json.encodeToString(newOverrides)
     }
 
-    fun fetchCustomProfiles() {
-        scope.launch {
-            try {
-                val userBgRaw = httpClient.get("https://usrbg.is-hardly.online/users").bodyAsText()
-                val userBgResponse = try {
-                    json.decodeFromString<UserBgResponse>(userBgRaw)
-                } catch (e: Exception) {
-                    println("ClientProfileStore: Failed to decode UserBG: ${e.message}")
-                    null
-                }
+    private suspend fun fetchUserBg(): LongArray = try {
+        val raw = httpClient.get("https://usrbg.is-hardly.online/users").bodyAsText()
+        json.decodeFromString<UserBgResponse>(raw).users.keys
+            .mapNotNull { it.toLongOrNull() }
+            .toLongArray()
+            .apply { sort() }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        Logging.e("ClientProfileStore", "Failed to load UserBG", e)
+        LongArray(0)
+    }
 
-                val userPfpRaw = httpClient.get("https://raw.githubusercontent.com/UserPFP/UserPFP/main/source/data.json").bodyAsText()
-                val userPfpResponse = try {
-                    json.decodeFromString<UserPfpResponse>(userPfpRaw)
-                } catch (e: Exception) {
-                    println("ClientProfileStore: Failed to decode UserPFP: ${e.message}")
-                    null
-                }
-                
-                val bannerUserIds = userBgResponse?.users?.keys
-                    ?.mapNotNull { it.toLongOrNull() }
-                    ?.toLongArray()
-                    ?.apply { sort() }
-                    ?: LongArray(0)
-                val avatars = userPfpResponse?.avatars.orEmpty()
-
-                if (bannerUserIds.isNotEmpty() || avatars.isNotEmpty()) {
-                    _customProfiles.value = ClientProfileMapping(bannerUserIds, avatars)
-                }
-            } catch (e: Exception) {
-            }
-        }
+    private suspend fun fetchUserPfp(): Map<String, String> = try {
+        val raw = httpClient.get("https://raw.githubusercontent.com/UserPFP/UserPFP/main/source/data.json").bodyAsText()
+        json.decodeFromString<UserPfpResponse>(raw).avatars
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        Logging.e("ClientProfileStore", "Failed to load UserPFP", e)
+        emptyMap()
     }
 
     @kotlinx.serialization.Serializable
