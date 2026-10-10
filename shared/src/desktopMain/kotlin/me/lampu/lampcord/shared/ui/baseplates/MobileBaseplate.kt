@@ -428,6 +428,7 @@ actual fun MobileBaseplate(
             }
 
             DiscordBottomSheet(
+                fillHeight = true,
                 onDismissRequest = {
                     profileStore.selectedProfile = null
                     profileStore.isProfileExpanded = false

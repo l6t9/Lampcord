@@ -124,6 +124,7 @@ fun MediaPicker(
 
     if (isMobile) {
         DiscordBottomSheet(
+            fillHeight = true,
             onDismissRequest = { animatedDismiss() },
             sheetState = rememberDiscordSheetState()
         ) {

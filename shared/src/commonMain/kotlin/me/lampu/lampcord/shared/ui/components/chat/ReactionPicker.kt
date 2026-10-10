@@ -21,6 +21,7 @@ fun ReactionPickerSheet(
     val sheetState = rememberDiscordSheetState()
     
     DiscordBottomSheet(
+        fillHeight = true,
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         modifier = Modifier.fillMaxWidth()

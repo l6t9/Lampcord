@@ -796,6 +796,7 @@ actual fun MobileBaseplate(
         val sheetState = rememberDiscordSheetState()
 
         DiscordBottomSheet(
+            fillHeight = true,
             onDismissRequest = {
                 profileStore.selectedProfile = null
                 profileStore.isProfileExpanded = false

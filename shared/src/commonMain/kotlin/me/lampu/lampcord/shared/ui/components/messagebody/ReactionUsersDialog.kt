@@ -49,6 +49,7 @@ fun ReactionUsersDialog(
     
     if (isMobile) {
         me.lampu.lampcord.shared.ui.components.DiscordBottomSheet(
+            fillHeight = true,
             onDismissRequest = onDismiss,
             sheetState = rememberDiscordSheetState(),
             containerColor = MaterialTheme.colorScheme.surface,

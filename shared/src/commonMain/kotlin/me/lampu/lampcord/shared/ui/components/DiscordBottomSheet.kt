@@ -52,6 +52,9 @@ fun DiscordBottomSheet(
     dragHandle: @Composable (() -> Unit)? = null,
     scrimColor: Color = DiscordSheetScrimColor,
     contentWindowInsets: @Composable () -> WindowInsets = { WindowInsets(0, 0, 0, 0) },
+    // Pickers with tabs or async grids want a stable tall sheet; everything else (context menus, short lists)
+    // should wrap its content instead of leaving most of the screen empty.
+    fillHeight: Boolean = false,
     content: @Composable ColumnScope.() -> Unit
 ) {
     ModalBottomSheet(
@@ -79,7 +82,7 @@ fun DiscordBottomSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.9f)
+                .then(if (fillHeight) Modifier.fillMaxHeight(0.9f) else Modifier)
         ) {
             if (dragHandle == null && !Settings.shared.reduceMotion) {
                 Box(
