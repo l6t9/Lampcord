@@ -1,17 +1,13 @@
 # Lampcord
-An M3E non-electron discord client written from the ground up.
+Lampcord is a lightweight Discord client built with Compose Multiplatform for Android and Desktop (Linux & Windows).
 
----
+It is designed to deliver a native, fast, and customizable Discord experience without the bloat and heavy memory footprint of Electron or WebViews.
 
-## What the hell is a "lampcord" ?
-Lampcord, our own discord client built using KMP (Kotlin Multiplatform) to have the Material 3 Expressive (M3E) design language.
+## Inspiration
+- **[Aliucord](https://github.com/Aliucord/Aliucord)**: Lampcord inherits a lot of my work on Aliucord, and my [plugins](https://github.com/l6t9/AliucordPlugins) for it.
+- **[Nucleus](https://github.com/NucleusFramework/Nucleus)**: Used to provide proper support for Wayland.
 
-### Here's the concept:
-Discord uses Electron which is known to be **slow**, **bloated** and **limited**. **Lampcord** is built on KMP which **isn't bloated at all** and in fact **inceridbly customizable**, and **_very fast_**.
-
-# Screenshots.. please ?
-Sure, here you go!
-
+# Screenshots
 <img width="1264" height="2780" alt="lampcord-p1" src="https://github.com/user-attachments/assets/8963d016-ec49-4273-9ab3-f92f7ec6f50a" />
 <img width="2876" height="1796" alt="lampcord-p" src="https://github.com/user-attachments/assets/a35ecc79-a978-4b14-83a3-0197821b5ce9" />
 <img width="1264" height="2780" alt="lampcord-s1" src="https://github.com/user-attachments/assets/6c62d1fe-36c9-4a6d-acf8-aa604603648e" />
@@ -26,23 +22,45 @@ Sure, here you go!
 >
 >The client is still in developement and many issues that we're currently fixing.
 >
->So.. don't delete your current client yet. Unless you're sure about it..
+>So don't delete your current client yet. Unless you're sure about it.
 
-# What are the features ?
-Well, it has many. So many that I cannot list all of them here. But hey, if you really want to know what does it have for you, then.. why not give it a try ?
-Anyways, here is a quick summary of what it can do:
-- **M3E**: Also known as Material 3 Expressive. It's a fun, non-corporal design language built by Google to be super flexible and match the stock Android theme.
-- **Cross platform**: Works on macOS, iOS, Linux, and even WINDOWS (Yuck..) and all of your preferences are synced!
-- **Native encryption**: Are you paranoid ? Uh-hum.. (*clears throat*) sorry.. uhmm.. Do you care about your privacy ? Well, lampcord does ! And this is why we encrypt whatever the heck you keep spamming in your least favourite server. Wheter in Voice chat or in a text channel.
-- **No more nitro-only emojis**: Ever had the perfect emoji to react to something only to find out it belongs to another server and you have to buy nitro in order to use it ? Well, Lampcord removes that barrier. By doing some black magic and turning the emojis into gifs, you can send any emoji you like onto the chat without risking getting a cease and desist letter from discord.
-
-And that's not all ! Try it to discover the rest for yourself ;)
+# Features roadmap
+## Authentication
+  * [x] Password & token login
+  * [x] Remote QR code login
+  * [x] Multi-account switcher
+## Messaging and chat
+  * [x] Real-time chat & gateway sync
+  * [x] Markdown parsing & code highlighting
+  * [x] Custom emojis, reactions & stickers
+  * [x] Message replies & edit / delete
+  * [x] Message pinning & thread views
+  * [x] Local message deletion logger
+  * [ ] Slash commands & application options
+## Voice and media
+  * [x] Native DAVE voice protocol (DAVE v1)
+  * [x] Voice channels & in-call controls
+  * [x] Image / video viewer & audio player
+  * [x] Custom status & activity / rich presence
+  * [ ] Video calling & screen share rendering
+## Notifications
+  * [x] Android system notifications & conversation bubbles
+  * [x] Desktop system notifications & toasts
+  * [x] Background FCM push notification sync
+## Customization and themes
+  * [x] Custom Material 3 Expressive (M3E) themes & Matugen color sync
+  * [x] Custom font selection (Inter, Maple Mono, System)
+  * [x] Custom client profiles, UserBG & UserPFP
+  * [x] Client-side free Nitro emojis
+## Guild and channel management
+  * [ ] Server settings (roles, channels, emoji management)
+  * [ ] Stage & forum channel creation and moderation 
 
 ---
 
 <div align="center">
 
-<h1><a id="download-now"></a>Download Now</h1>
+<h1><a id="download-now"></a>Download Today !</h1>
 
 <h2>Stable Release</h2>
 
@@ -92,10 +110,9 @@ And that's not all ! Try it to discover the rest for yourself ;)
 
 ---
 
-## In case you're a nerd and hate yourself..
-Then you surely want to **build it from surce** (not a typo btw)
+# Building from source
 
-### Prerequisites
+## Prerequisites
 
 - **JDK 17+**
 - **Android SDK** (API 34+)
@@ -132,9 +149,9 @@ in the build, so macOS will need `xattr -d com.apple.quarantine` after first dow
 
 ---
 
-## Disclaimer & Notice
+## Important disclaimer
 
-Lampcord is a third-party open-source client and is **not** affiliated with, endorsed by, or sponsored by Discord Inc. Using third-party clients may violate Discord's Terms of Service. Use at your own risk.
+Lampcord is a third-party open-source client and is **not** affiliated with, endorsed by, or sponsored by Discord Inc. Lampcord DOES use third-party clients may violate Discord's Terms of Service. Use it at your own risk.
 
 ---
 
@@ -142,4 +159,4 @@ Lampcord is a third-party open-source client and is **not** affiliated with, end
 
 Lampcord is released under the [GNU General Public License v3.0 (GPL-3.0)](LICENSE).
 
-# Thank you for trying out Lampcord :)
+# Thank you for considering out Lampcord :)
