@@ -41,7 +41,9 @@ fun AttachmentImage(
     val isVideo = media.isVideo() && !isAnimatedImage
     val isGifv = isVideo && media.isGifv()
     val reduceMotion = Settings.shared.reduceMotion
-    var isInlinePlaying by remember(isGifv, reduceMotion) { mutableStateOf(isGifv && !reduceMotion) }
+    // GIFV is always shown inline, paused on its first frame under Reduce Motion, so one tap plays it. Starting
+    // on the thumbnail instead meant one tap to load the player and a second to start it.
+    var isInlinePlaying by remember(isGifv) { mutableStateOf(isGifv) }
     
     // The Windows FFmpeg backend is more reliable with Discord's original attachment URL. Keep the proxy-first path for other platforms.
     val url = if (isVideo && getPlatformName() == "windows") {
@@ -87,9 +89,9 @@ fun AttachmentImage(
 
         VideoPlayer(
             url = url,
-            loop = isGifv && !reduceMotion,
+            loop = isGifv,
             // GIFV media loops like an image and must not expose video playback controls such as a seek bar.
-            showControls = !isGifv || reduceMotion,
+            showControls = !isGifv,
             showSeekBar = !isGifv,
             title = title ?: (media as? Attachment)?.filename,
             subtitle = subtitle ?: (media as? Attachment)?.content_type,

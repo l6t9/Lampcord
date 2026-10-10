@@ -57,10 +57,12 @@ fun GifvView(
     onFullscreenClick: (() -> Unit)? = null
 ) {
     Box(modifier = modifier.clip(RoundedCornerShape(8.dp)).background(Color.Black)) {
+        // A GIF stays a GIF under Reduce Motion: it starts paused on its first frame and a tap plays it,
+        // rather than turning into a video with playback controls.
         VideoPlayer(
             url = video.url ?: "",
-            loop = !Settings.shared.reduceMotion,
-            showControls = Settings.shared.reduceMotion,
+            loop = true,
+            showControls = false,
             showSeekBar = false,
             compact = true,
             autoPlay = !Settings.shared.reduceMotion,

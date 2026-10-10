@@ -108,8 +108,9 @@ fun AttachmentViewer(
                     val isGifv = item.isGifv()
                     VideoPlayer(
                         url = item.url ?: item.proxy_url ?: "",
-                        loop = isGifv && !reduceMotion,
-                        showControls = !isGifv || reduceMotion,
+                        // Under Reduce Motion a GIF starts paused and a tap plays it; it never gets video controls.
+                        loop = isGifv,
+                        showControls = !isGifv,
                         showSeekBar = !isGifv,
                         autoPlay = !isGifv || !reduceMotion,
                         title = (item as? Attachment)?.filename,

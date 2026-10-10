@@ -126,9 +126,16 @@ actual fun VideoPlayer(
     Box(
         modifier = modifier
             .background(Color.Black)
-            .pointerInput(Unit) {
+            .pointerInput(showControls) {
                 detectTapGestures {
-                    areControlsVisible = !areControlsVisible
+                    // Without controls (GIFs) a tap is the only way to play or pause, matching desktop.
+                    if (showControls) {
+                        areControlsVisible = !areControlsVisible
+                    } else if (exoPlayer.isPlaying) {
+                        exoPlayer.pause()
+                    } else {
+                        exoPlayer.play()
+                    }
                 }
             },
         contentAlignment = Alignment.Center,
