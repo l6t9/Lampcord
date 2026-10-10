@@ -255,7 +255,7 @@ fun GuildRail(
                     onDragEnd = ::finishDrag,
                     onDragCancel = ::cancelDrag,
                     onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        haptic.performHapticFeedback(HapticFeedbackType.VirtualKey)
                         navigationStore.selectGuild(guild) { gatewayManager.sendSubscription(it) }
                     }
                 )

@@ -159,7 +159,7 @@ fun DMItem(
                 },
             onClick = {
                 navigationStore.selectChannel(channel, explicitlySelected = true)
-                haptic.performHapticFeedback(HapticFeedbackType.VirtualKey)
+                haptic.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
             },
             color = if (isSelected) 
                 MaterialTheme.colorScheme.surfaceVariant 
