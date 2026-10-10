@@ -75,6 +75,22 @@ fun AdditionalSettingsContent(
         )
 
         Material3SettingsGroup(
+            title = "Display",
+            items = listOf(
+                switchSettingsItem(
+                    title = "Scrolling Text",
+                    description = if (Settings.shared.reduceMotion) {
+                        "Unavailable while Reduce Motion is on."
+                    } else {
+                        "Scroll long names and titles that don't fit instead of cutting them off."
+                    },
+                    checked = Settings.shared.marqueeText,
+                    onCheckedChange = { Settings.shared.marqueeText = it }
+                )
+            )
+        )
+
+        Material3SettingsGroup(
             title = "Chatbox",
             items = listOf(
                 switchSettingsItem(

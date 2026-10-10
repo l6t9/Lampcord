@@ -1010,7 +1010,7 @@ private fun MainBaseplateContent(
                                                 fontWeight = FontWeight.Bold,
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis,
-                                                modifier = if (me.lampu.lampcord.shared.settings.Settings.shared.reduceMotion) {
+                                                modifier = if (!me.lampu.lampcord.shared.settings.Settings.shared.marqueeEnabled) {
                                                     Modifier
                                                 } else {
                                                     Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 3000, velocity = 30.dp)

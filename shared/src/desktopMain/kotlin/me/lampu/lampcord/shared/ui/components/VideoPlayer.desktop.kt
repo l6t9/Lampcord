@@ -453,7 +453,7 @@ private fun BottomVideoControls(
                                     color = Color.White,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
-                                    modifier = if (Settings.shared.reduceMotion) {
+                                    modifier = if (!Settings.shared.marqueeEnabled) {
                                         Modifier
                                     } else {
                                         Modifier.basicMarquee(

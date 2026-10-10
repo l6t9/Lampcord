@@ -178,7 +178,7 @@ fun UsernameView(
         MaterialTheme.colorScheme.onSurface
     }
 
-    val textModifier = if (marquee && !Settings.shared.reduceMotion) {
+    val textModifier = if (marquee && Settings.shared.marqueeEnabled) {
         Modifier.basicMarquee(
             iterations = if (getPlatformName() == "windows") 1 else Int.MAX_VALUE,
             initialDelayMillis = 3000,

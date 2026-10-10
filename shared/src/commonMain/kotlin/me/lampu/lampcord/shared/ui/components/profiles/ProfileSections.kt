@@ -359,7 +359,7 @@ private fun RoleBadge(role: me.lampu.lampcord.shared.model.Role) {
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
-                modifier = if (Settings.shared.reduceMotion) Modifier else Modifier.basicMarquee(
+                modifier = if (!Settings.shared.marqueeEnabled) Modifier else Modifier.basicMarquee(
                     iterations = if (getPlatformName() == "windows") 1 else Int.MAX_VALUE,
                     initialDelayMillis = 3000,
                     velocity = 30.dp

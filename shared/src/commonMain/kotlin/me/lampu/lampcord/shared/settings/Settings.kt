@@ -33,6 +33,10 @@ class Settings(private val settings: KmpSettings) {
     var panelAnimation by preferenceEnum("panel_animation", PanelAnimation.MINIMAL)
     var panelType by preferenceEnum("panel_type", PanelType.CENTER)
     var reduceMotion by preferenceBoolean("reduce_motion", false)
+    var marqueeText by preferenceBoolean("marquee_text", false)
+
+    // Scrolling text is motion too, so Reduce Motion wins over the marquee toggle.
+    val marqueeEnabled: Boolean get() = marqueeText && !reduceMotion
     var desktopLowMemoryMode by preferenceBoolean("desktop_low_memory_mode", false)
     var verboseLogging by preferenceBoolean("verbose_logging", false)
     var enableSystemWindowFrame by preferenceBoolean("enable_system_window_frame", true)

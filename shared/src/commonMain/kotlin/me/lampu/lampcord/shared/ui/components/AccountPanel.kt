@@ -223,7 +223,7 @@ fun AccountPanel(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = if (Settings.shared.reduceMotion) Modifier else Modifier.basicMarquee(
+                            modifier = if (!Settings.shared.marqueeEnabled) Modifier else Modifier.basicMarquee(
                                 iterations = if (getPlatformName() == "windows") 1 else Int.MAX_VALUE,
                                 initialDelayMillis = 3000,
                                 velocity = 30.dp

@@ -239,7 +239,7 @@ fun ProfileHeader(
                 baseStyle = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = profileTextColor,
-                marquee = !Settings.shared.reduceMotion,
+                marquee = Settings.shared.marqueeEnabled,
                 overflow = TextOverflow.Clip,
                 modifier = Modifier
             )
@@ -257,7 +257,7 @@ fun ProfileHeader(
                     style = MaterialTheme.typography.bodyMedium,
                     color = profileSecondaryTextColor,
                     modifier = Modifier.padding(start = 4.dp).then(
-                        if (Settings.shared.reduceMotion) Modifier else Modifier.basicMarquee(
+                        if (!Settings.shared.marqueeEnabled) Modifier else Modifier.basicMarquee(
                             iterations = if (getPlatformName() == "windows") 1 else Int.MAX_VALUE,
                             initialDelayMillis = 3000,
                             velocity = 30.dp

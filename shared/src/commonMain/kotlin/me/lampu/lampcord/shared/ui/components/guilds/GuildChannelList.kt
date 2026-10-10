@@ -245,7 +245,7 @@ fun GuildChannelList(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f).then(
-                            if (Settings.shared.reduceMotion) Modifier else Modifier.basicMarquee(
+                            if (!Settings.shared.marqueeEnabled) Modifier else Modifier.basicMarquee(
                                 iterations = 1,
                                 initialDelayMillis = 3000,
                                 velocity = 30.dp
