@@ -76,8 +76,7 @@ fun ProfileSettingsContent(
     val currentMember = remember(selectedGuildId, members) {
         selectedGuildId?.let { userStore.getMember(it, userVal.id) }
     }
-    val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
-    
+
     val customProfiles by clientProfileStore.customProfiles.collectAsState()
     val localOverrides by clientProfileStore.localOverrides.collectAsState()
     val customProfile = remember(userVal.id, customProfiles, localOverrides, settingsStore.userBg, settingsStore.userPfp) {
@@ -701,24 +700,6 @@ fun ProfileSettingsContent(
                     }
                 }
             }
-
-            var show3y3Confirmation by remember { mutableStateOf(false) }
-            var showUserBgConfirmation by remember { mutableStateOf(false) }
-            var showUserPfpConfirmation by remember { mutableStateOf(false) }
-
-            if (show3y3Confirmation) AlertDialog(onDismissRequest = { show3y3Confirmation = false }, title = { Text("Enable 3y3?") }, text = { Text("Embed customizations in bio?") }, confirmButton = { Button(onClick = { settingsStore.profile3y3 = true; show3y3Confirmation = false }) { Text("Enable") } }, dismissButton = { TextButton(onClick = { show3y3Confirmation = false }) { Text("Cancel") } })
-            if (showUserBgConfirmation) AlertDialog(onDismissRequest = { showUserBgConfirmation = false }, title = { Text("Enable UserBG?") }, text = { Text("See custom banners?") }, confirmButton = { Button(onClick = { settingsStore.userBg = true; showUserBgConfirmation = false }) { Text("Enable") } }, dismissButton = { TextButton(onClick = { showUserBgConfirmation = false }) { Text("Cancel") } })
-            if (showUserPfpConfirmation) AlertDialog(onDismissRequest = { showUserPfpConfirmation = false }, title = { Text("Enable UserPFP?") }, text = { Text("See custom icons?") }, confirmButton = { Button(onClick = { settingsStore.userPfp = true; showUserPfpConfirmation = false }) { Text("Enable") } }, dismissButton = { TextButton(onClick = { showUserPfpConfirmation = false }) { Text("Cancel") } })
-
-            Material3SettingsGroup(
-                title = "Profile Enhancements",
-                items = listOf(
-                    switchSettingsItem(title = "3y3 Profile Colors", description = "Invisible bio text.", checked = settingsStore.profile3y3, onCheckedChange = { if (it) show3y3Confirmation = true else settingsStore.profile3y3 = false }),
-                    switchSettingsItem(title = "UserBG Banners", description = "Custom banners database.", checked = settingsStore.userBg, onCheckedChange = { if (it) showUserBgConfirmation = true else settingsStore.userBg = false }),
-                    switchSettingsItem(title = "UserPFP Icons", description = "Custom icons database.", checked = settingsStore.userPfp, onCheckedChange = { if (it) showUserPfpConfirmation = true else settingsStore.userPfp = false }),
-                    Material3SettingsItem(icon = Icons.Rounded.Public, title = { Text("Set UserBG Banner") }, description = { Text("Join server.") }, onClick = { uriHandler.openUri("https://discord.gg/ECg96KZ3Fh") }),
-                )
-            )
         }
     }
 }

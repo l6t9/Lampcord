@@ -75,6 +75,7 @@ import me.lampu.lampcord.shared.ui.components.PlatformBackHandler
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.settings.AccessibilitySettingsContent
 import me.lampu.lampcord.shared.ui.settings.AccountSettingsContent
+import me.lampu.lampcord.shared.ui.settings.AdditionalSettingsContent
 import me.lampu.lampcord.shared.ui.settings.AdvancedSettingsContent
 import me.lampu.lampcord.shared.ui.settings.AppearanceSettingsContent
 import me.lampu.lampcord.shared.ui.settings.ChatSettingsContent
@@ -101,6 +102,7 @@ enum class SettingsSection(val title: String, val icon: ImageVector, val selecte
     CHAT("Chat", Icons.Rounded.Forum, Icons.Filled.Forum),
     NOTIFICATIONS("Notifications", Icons.Rounded.Notifications, Icons.Filled.Notifications),
     ADVANCED("Advanced", Icons.Rounded.Tune, Icons.Filled.Tune),
+    ADDITIONAL("Additional", Icons.Rounded.AutoAwesome, Icons.Filled.AutoAwesome),
     UPDATES("Updates", Icons.Rounded.Refresh, Icons.Filled.Refresh),
     ABOUT("About", Icons.Rounded.Info, Icons.Filled.Info),
 }
@@ -119,6 +121,7 @@ fun SettingsScreen(
     onNavigateToChat: () -> Unit = {},
     onNavigateToNotifications: () -> Unit = {},
     onNavigateToAdvanced: () -> Unit = {},
+    onNavigateToAdditional: () -> Unit = {},
     onNavigateToAbout: () -> Unit = {},
     onNavigateToUpdates: () -> Unit = {},
     onNavigateToTheming: () -> Unit = {},
@@ -235,6 +238,7 @@ fun SettingsScreen(
                         "CHAT" -> onNavigateToChat()
                         "NOTIFICATIONS" -> onNavigateToNotifications()
                         "ADVANCED" -> onNavigateToAdvanced()
+                        "ADDITIONAL" -> onNavigateToAdditional()
                         "UPDATES" -> onNavigateToUpdates()
                         "ABOUT" -> onNavigateToAbout()
                     }
@@ -449,6 +453,12 @@ fun SettingsScreen(
                                                 title = { Text("Advanced") },
                                                 description = { Text("Developer settings and experimental features") },
                                                 onClick = onNavigateToAdvanced
+                                            ),
+                                            Material3SettingsItem(
+                                                if (useRounded) Icons.Rounded.AutoAwesome else Icons.Filled.AutoAwesome,
+                                                title = { Text("Additional") },
+                                                description = { Text("Profile enhancements, emoji tweaks, logger and text replacement") },
+                                                onClick = onNavigateToAdditional
                                             )
                                         )
                                     )
@@ -684,6 +694,7 @@ fun SettingsDesktopOverlay(
                         SettingsSection.CHAT,
                         SettingsSection.NOTIFICATIONS,
                         SettingsSection.ADVANCED,
+                        SettingsSection.ADDITIONAL,
                         SettingsSection.ABOUT
                     )
 
@@ -804,6 +815,7 @@ fun SettingsDesktopOverlay(
                                     SettingsSection.CHAT -> ChatSettingsContent()
                                     SettingsSection.NOTIFICATIONS -> NotificationsSettingsContent()
                                     SettingsSection.ADVANCED -> AdvancedSettingsContent()
+                                    SettingsSection.ADDITIONAL -> AdditionalSettingsContent()
                                     SettingsSection.UPDATES -> UpdatesContent()
                                     SettingsSection.ABOUT -> AboutContent(
                                         version = me.lampu.lampcord.shared.update.APP_VERSION,
@@ -846,6 +858,7 @@ fun rememberSettingsSearchEntries(): List<SettingsSearchEntry> {
         add(SettingsSearchEntry("appearance-pure-black", "Pure Black", "Use pure black backgrounds in dark mode", "Appearance", "Theme", "amoled", getIcon(Icons.Rounded.Palette, Icons.Filled.Palette), "orange", SettingsSearchDestination.Appearance))
         add(SettingsSearchEntry("appearance-compact", "Compact Messages", "Denser layout for chat", "Appearance", "Display", "compact message denser", getIcon(Icons.Rounded.Palette, Icons.Filled.Palette), "orange", SettingsSearchDestination.Appearance))
         add(SettingsSearchEntry("appearance-bubbles", "Chat Bubbles", "Display messages inside rounded chat bubbles", "Appearance", "Display", "chat bubbles message layout theme", getIcon(Icons.Rounded.Palette, Icons.Filled.Palette), "orange", SettingsSearchDestination.Appearance))
+        add(SettingsSearchEntry("root-additional", "Additional", "Profile enhancements, emoji tweaks, logger and text replacement", "Additional", "App Settings", "3y3 userbg userpfp nitro emoji realmojis message logger silent typing text replacement", getIcon(Icons.Rounded.AutoAwesome, Icons.Filled.AutoAwesome), "neutral", SettingsSearchDestination.Advanced))
         add(SettingsSearchEntry("advanced-dev", "Developer Mode", "Exposes ID copying and debug tools", "Advanced", "Developer Settings", "id debug", getIcon(Icons.Rounded.Tune, Icons.Filled.Tune), "neutral", SettingsSearchDestination.Advanced))
     }
 }

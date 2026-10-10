@@ -253,6 +253,7 @@ actual fun MobileBaseplate(
         currentRoute == Screen.NotificationsSettings ||
         currentRoute == Screen.NavigationSettings ||
         currentRoute == Screen.AdvancedSettings ||
+        currentRoute == Screen.AdditionalSettings ||
         currentRoute == Screen.AboutSettings ||
         currentRoute == Screen.UpdatesSettings
     val isTabRoute = currentRoute in setOf(
@@ -345,6 +346,7 @@ actual fun MobileBaseplate(
                         onNavigateToChat = { navigator.navigate(Screen.ChatSettings) },
                         onNavigateToNotifications = { navigator.navigate(Screen.NotificationsSettings) },
                         onNavigateToAdvanced = { navigator.navigate(Screen.AdvancedSettings) },
+                        onNavigateToAdditional = { navigator.navigate(Screen.AdditionalSettings) },
                         onNavigateToAbout = { navigator.navigate(Screen.AboutSettings) },
                         onNavigateToUpdates = { navigator.navigate(Screen.UpdatesSettings) },
                         onNavigateToTheming = { navigator.navigate(Screen.Theming) },
@@ -387,6 +389,9 @@ actual fun MobileBaseplate(
             }
             entry<Screen.AdvancedSettings> {
                 AdvancedSettings(onBack = { navigator.goBack() })
+            }
+            entry<Screen.AdditionalSettings> {
+                AdditionalSettings(onBack = { navigator.goBack() })
             }
             entry<Screen.UpdatesSettings> {
                 SettingsSubScreen(title = "Updates", onNavigateBack = { navigator.goBack() }) {

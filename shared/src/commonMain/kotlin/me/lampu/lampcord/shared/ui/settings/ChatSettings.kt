@@ -9,16 +9,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.state.SettingsStore
-import me.lampu.lampcord.shared.state.MessageLogger
 import me.lampu.lampcord.shared.model.UserSettings
 import me.lampu.lampcord.shared.ui.components.settings.*
 import me.lampu.lampcord.shared.settings.ChatGestures
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.settings.TapTapAction
 import me.lampu.lampcord.shared.ui.icons.Icons
-import me.lampu.lampcord.shared.utils.showToast
 import me.lampu.lampcord.shared.utils.getPlatformName
-import me.lampu.lampcord.shared.ui.settings.TextReplaceSettings
 import org.koin.compose.koinInject
 
 @Composable
@@ -26,48 +23,21 @@ fun ChatSettings(
     onBack: () -> Unit,
     settingsStore: SettingsStore = koinInject()
 ) {
-    var currentSubTab by remember { mutableStateOf("main") }
-
     SettingsSubScreen(
-        title = if (currentSubTab == "text_replace") "Text Replacement" else "Chat",
-        onNavigateBack = {
-            if (currentSubTab == "text_replace") {
-                currentSubTab = "main"
-            } else {
-                onBack()
-            }
-        }
+        title = "Chat",
+        onNavigateBack = onBack
     ) {
-        if (currentSubTab == "text_replace") {
-            TextReplaceSettings(settingsStore = settingsStore)
-        } else {
-            ChatSettingsContent(
-                settingsStore = settingsStore,
-                onNavigateToTextReplace = { currentSubTab = "text_replace" }
-            )
-        }
+        ChatSettingsContent(settingsStore = settingsStore)
     }
 }
 
 @Composable
 fun ChatSettingsContent(
-    settingsStore: SettingsStore = koinInject(),
-    messageLogger: MessageLogger = koinInject(),
-    onNavigateToTextReplace: () -> Unit = {}
+    settingsStore: SettingsStore = koinInject()
 ) {
     val userSettings = settingsStore.userSettings
     val platform = remember { getPlatformName() }
     val isDesktop = platform != "android" && platform != "ios"
-    var showClearLoggerConfirmation by remember { mutableStateOf(false) }
-    var currentSubTab by remember { mutableStateOf("main") }
-
-    if (currentSubTab == "text_replace") {
-        SettingsSubScreen(title = "Text Replacement", onNavigateBack = { currentSubTab = "main" }) {
-            TextReplaceSettings(settingsStore = settingsStore)
-        }
-        return
-    }
-
     Column(modifier = Modifier.fillMaxWidth()) {
         Material3SettingsGroup(
             title = "Display",
@@ -170,18 +140,6 @@ fun ChatSettingsContent(
                     title = "Hide Emoji Button",
                     checked = settingsStore.chatboxHideEmojiButton,
                     onCheckedChange = { settingsStore.chatboxHideEmojiButton = it }
-                ),
-                switchSettingsItem(
-                    title = "Show Avatar in Chatbox",
-                    description = "Displays your current avatar inside the chat input bar.",
-                    checked = settingsStore.chatboxShowAvatar,
-                    onCheckedChange = { settingsStore.chatboxShowAvatar = it }
-                ),
-                switchSettingsItem(
-                        title = "Silent Typing",
-                        description = "Show a keyboard control for hiding your typing indicator.",
-                        checked = settingsStore.silentTypingButtonEnabled,
-                        onCheckedChange = { settingsStore.silentTypingButtonEnabled = it }
                 )
             ).let { items ->
                 if (platform == "android") {
@@ -318,84 +276,9 @@ fun ChatSettingsContent(
                         }
                     }
                 ))
-                add(switchSettingsItem(
-                    title = "Free Nitro Emojis",
-                    description = "Use emojis from any server for free.",
-                    checked = Settings.shared.freeNitroEmojis,
-                    onCheckedChange = { Settings.shared.freeNitroEmojis = it }
-                ))
-                add(switchSettingsItem(
-                    title = "Realmojis",
-                    description = "Makes free nitro emojis look like real ones.",
-                    checked = Settings.shared.realmojis,
-                    onCheckedChange = { Settings.shared.realmojis = it }
-                ))
             }
         )
 
-        Material3SettingsGroup(
-            title = "Logger",
-            items = buildList {
-                add(switchSettingsItem(
-                    title = "Message Logger",
-                    description = "Keep a local history of deleted and edited messages.",
-                    checked = Settings.shared.messageLoggerEnabled,
-                    onCheckedChange = { Settings.shared.messageLoggerEnabled = it }
-                ))
-                if (Settings.shared.messageLoggerEnabled) {
-                    add(switchSettingsItem(
-                        title = "Ignore Bots",
-                        checked = Settings.shared.messageLoggerIgnoreBots,
-                        onCheckedChange = { Settings.shared.messageLoggerIgnoreBots = it }
-                    ))
-                    add(switchSettingsItem(
-                        title = "Ignore Self",
-                        checked = Settings.shared.messageLoggerIgnoreSelf,
-                        onCheckedChange = { Settings.shared.messageLoggerIgnoreSelf = it }
-                    ))
-                }
-                add(Material3SettingsItem(
-                    title = { Text("Clear Logged Messages") },
-                    description = { Text("Permanently delete every message saved by Message Logger on this device.") },
-                    onClick = { showClearLoggerConfirmation = true }
-                ))
-            }
-        )
-
-        Material3SettingsGroup(
-            title = "Text Replacement",
-            items = listOf(
-                Material3SettingsItem(
-                    icon = Icons.Rounded.TextFields,
-                    title = { Text("Text Replacement Rules") },
-                    description = { Text("Manage automatic text substitution rules.") },
-                    onClick = {
-                        if (platform != "android" && platform != "ios") {
-                            currentSubTab = "text_replace"
-                        } else {
-                            onNavigateToTextReplace()
-                        }
-                    }
-                )
-            )
-        )
-    }
-
-    if (showClearLoggerConfirmation) {
-        AlertDialog(
-            onDismissRequest = { showClearLoggerConfirmation = false },
-            title = { Text("Clear logged messages?") },
-            text = { Text("This permanently deletes all Message Logger records stored on this device. This cannot be undone.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    showClearLoggerConfirmation = false
-                    messageLogger.clearLoggedMessages { showToast("Logged messages cleared") }
-                }) { Text("Clear") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showClearLoggerConfirmation = false }) { Text("Cancel") }
-            }
-        )
     }
 }
 
