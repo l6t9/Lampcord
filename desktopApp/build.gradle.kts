@@ -1,8 +1,14 @@
 import dev.nucleusframework.desktop.application.dsl.CompressionLevel
 import dev.nucleusframework.desktop.application.dsl.TargetFormat
+import java.awt.RenderingHints
+import java.awt.image.BufferedImage
+import java.io.ByteArrayOutputStream
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.Properties
+import javax.imageio.ImageIO
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -87,6 +93,86 @@ tasks.withType<org.gradle.api.tasks.JavaExec>().configureEach {
     }
 }
 
+// Without an .ico the launcher exe keeps the stock Kotlin icon, and Explorer, Task Manager and pinned taskbar
+// entries read the exe's embedded icon rather than the one the window sets at runtime.
+val windowsIconFile = layout.buildDirectory.file("generated/icons/logo.ico")
+
+val generateWindowsIcon by tasks.registering {
+    group = "distribution"
+    description = "Builds a multi-size logo.ico from logo.png for the Windows launcher and installer."
+    val source = file("src/jvmMain/resources/logo.png")
+    // Locals only: the configuration cache can't serialize references back into the build script.
+    val target = windowsIconFile.get().asFile
+    inputs.file(source)
+    outputs.file(target)
+    doLast {
+        fun resize(image: BufferedImage, size: Int): BufferedImage {
+            val scaled = BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB)
+            val g = scaled.createGraphics()
+            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC)
+            g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY)
+            g.drawImage(image, 0, 0, size, size, null)
+            g.dispose()
+            return scaled
+        }
+
+        fun pngBytes(image: BufferedImage): ByteArray =
+            ByteArrayOutputStream().also { ImageIO.write(image, "png", it) }.toByteArray()
+
+        fun dibBytes(image: BufferedImage): ByteArray {
+            val size = image.width
+            val maskStride = ((size + 31) / 32) * 4
+            val buffer = ByteBuffer.allocate(40 + size * size * 4 + maskStride * size).order(ByteOrder.LITTLE_ENDIAN)
+            // BITMAPINFOHEADER; ICO DIBs declare double height to cover the AND mask that follows the pixels.
+            buffer.putInt(40).putInt(size).putInt(size * 2).putShort(1).putShort(32)
+                .putInt(0).putInt(size * size * 4 + maskStride * size).putInt(0).putInt(0).putInt(0).putInt(0)
+            for (y in size - 1 downTo 0) {
+                for (x in 0 until size) {
+                    val argb = image.getRGB(x, y)
+                    buffer.put((argb and 0xFF).toByte())
+                    buffer.put(((argb shr 8) and 0xFF).toByte())
+                    buffer.put(((argb shr 16) and 0xFF).toByte())
+                    buffer.put(((argb ushr 24) and 0xFF).toByte())
+                }
+            }
+            // All-zero AND mask: transparency comes from the 32-bit alpha channel.
+            return buffer.array()
+        }
+
+        val original = ImageIO.read(source)
+        val entries = listOf(16, 20, 24, 32, 40, 48, 64, 96, 128, 256).map { size ->
+            // Halve in steps before the final resize; a single bicubic pass from 1024px aliases badly at 16-32px.
+            var image = original
+            while (image.width / 2 >= size) image = resize(image, image.width / 2)
+            image = resize(image, size)
+            // Small sizes go in as uncompressed DIBs because some shell paths only render PNG entries at 256px.
+            size to if (size == 256) pngBytes(image) else dibBytes(image)
+        }
+        val out = ByteArrayOutputStream()
+        fun le16(v: Int) { out.write(v and 0xFF); out.write((v shr 8) and 0xFF) }
+        fun le32(v: Int) { le16(v and 0xFFFF); le16((v ushr 16) and 0xFFFF) }
+        le16(0); le16(1); le16(entries.size)
+        var offset = 6 + 16 * entries.size
+        for ((size, bytes) in entries) {
+            out.write(if (size >= 256) 0 else size)
+            out.write(if (size >= 256) 0 else size)
+            out.write(0); out.write(0)
+            le16(1); le16(32)
+            le32(bytes.size); le32(offset)
+            offset += bytes.size
+        }
+        entries.forEach { out.write(it.second) }
+        target.parentFile.mkdirs()
+        target.writeBytes(out.toByteArray())
+    }
+}
+
+tasks.configureEach {
+    if (name.startsWith("package") || name.startsWith("createDistributable") || name.startsWith("createReleaseDistributable")) {
+        dependsOn(generateWindowsIcon)
+    }
+}
+
 nucleus.application {
     mainClass = "me.lampu.lampcord.MainKt"
     localProperties.getProperty("compose.desktop.javaHome")?.let {
@@ -129,6 +215,7 @@ nucleus.application {
         compressionLevel = CompressionLevel.Maximum
 
         windows {
+            iconFile.set(windowsIconFile)
             nsis {
                 oneClick = false
                 perMachine = false
