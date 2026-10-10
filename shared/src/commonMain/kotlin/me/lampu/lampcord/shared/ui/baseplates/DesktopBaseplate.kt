@@ -69,7 +69,6 @@ import me.lampu.lampcord.shared.ui.components.profiles.FullProfileOverlay
 import me.lampu.lampcord.shared.ui.components.profiles.ProfileCard
 import me.lampu.lampcord.shared.ui.components.profiles.UserProfileDialog
 import me.lampu.lampcord.shared.ui.icons.Icons
-import me.lampu.lampcord.shared.utils.getPlatformName
 import org.koin.compose.koinInject
 import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
@@ -88,8 +87,7 @@ fun DesktopBaseplate(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .padding(top = if (getPlatformName() == "windows") 32.dp else 0.dp) // Guild Rail background
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh) // Guild Rail background
     ) {
         Row(
             modifier = Modifier
