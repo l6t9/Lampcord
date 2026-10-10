@@ -47,6 +47,10 @@ expect fun showToast(text: String)
 
 expect fun restartApp()
 
+// Embedded web views depend on a system runtime that can be missing (WebView2 on Windows, e.g. LTSC/IoT
+// editions without Edge), and creating one then throws during composition and takes the app down.
+expect fun isEmbeddedWebViewAvailable(): Boolean
+
 @Composable
 expect fun RequestMediaPermissions(onResult: (Boolean) -> Unit)
 

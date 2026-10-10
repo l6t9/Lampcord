@@ -31,6 +31,7 @@ import me.lampu.lampcord.shared.ui.components.VideoPlayer
 import me.lampu.lampcord.shared.settings.Settings
 import androidx.compose.runtime.LaunchedEffect
 import me.lampu.lampcord.shared.utils.getPlatformName
+import me.lampu.lampcord.shared.utils.isEmbeddedWebViewAvailable
 import dev.nucleusframework.webview.web.WebView
 import dev.nucleusframework.webview.web.rememberWebViewNavigator
 import dev.nucleusframework.webview.web.rememberWebViewState
@@ -78,6 +79,34 @@ fun PlayableEmbedView(
     provider: String,
     modifier: Modifier = Modifier
 ) {
+    if (!remember { isEmbeddedWebViewAvailable() }) {
+        val openLink = rememberLinkOpener()
+        Surface(
+            onClick = { openLink(url) },
+            modifier = modifier.heightIn(min = 72.dp),
+            shape = RoundedCornerShape(8.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh
+        ) {
+            Column(
+                modifier = Modifier.fillMaxSize().padding(16.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Open ${provider.ifBlank { "embed" }} in browser",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = "Inline playback needs the Microsoft Edge WebView2 Runtime.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        return
+    }
+
     val navigator = rememberWebViewNavigator()
     val webViewState = rememberWebViewState(url)
     
@@ -143,10 +172,12 @@ fun EmbedView(
                 }
             }
             else -> {
-                if (embed.video != null) embedUrl else null
+                // A direct media file plays in the native player below; only player pages need a web view.
+                if (embed.video != null && !embed.video.isDirectVideoFile()) embedUrl else null
             }
         }
     }
+    val directVideo = embed.video?.takeIf { playableUrl == null && it.isDirectVideoFile() }
 
     val gifUrl = listOfNotNull(
         embed.image?.url,
@@ -206,7 +237,7 @@ fun EmbedView(
                         }
                     }
                     embed.thumbnail?.let { thumb ->
-                        if (embed.image == null && playableUrl == null) {
+                        if (embed.image == null && playableUrl == null && directVideo == null) {
                             Box(modifier = Modifier.padding(start = 8.dp).size(72.dp).clip(RoundedCornerShape(6.dp))) {
                                 AttachmentImage(
                                     media = thumb,
@@ -246,6 +277,15 @@ fun EmbedView(
                     )
                     Spacer(Modifier.height(8.dp))
                 }
+                if (directVideo != null) {
+                    AttachmentImage(
+                        media = directVideo,
+                        title = embed.title,
+                        subtitle = embed.provider?.name,
+                        onClick = { navigationStore.openAttachmentViewer(listOf(directVideo), 0) }
+                    )
+                    Spacer(Modifier.height(8.dp))
+                }
                 embed.image?.let { image ->
                     AttachmentImage(
                         media = image,
@@ -268,6 +308,11 @@ fun EmbedView(
             }
         }
     }
+}
+
+private fun EmbedVideo.isDirectVideoFile(): Boolean {
+    val path = (url ?: proxy_url)?.substringBefore('?')?.substringBefore('#') ?: return false
+    return listOf(".mp4", ".webm", ".mov", ".m4v").any { path.endsWith(it, ignoreCase = true) }
 }
 
 private fun String?.isGifUrl(): Boolean {

@@ -159,3 +159,6 @@ internal fun readBytes(path: String): ByteArray? {
 
 private const val SEEK_END = 2
 private const val SEEK_SET = 0
+
+// WKWebView ships with the OS.
+actual fun isEmbeddedWebViewAvailable(): Boolean = true

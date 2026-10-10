@@ -5,6 +5,8 @@ import androidx.compose.runtime.LaunchedEffect
 import me.lampu.lampcord.shared.model.LocalMedia
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import com.sun.jna.platform.win32.Advapi32Util
+import com.sun.jna.platform.win32.WinReg
 import me.lampu.lampcord.shared.database.AppDatabase
 import java.io.File
 import java.net.URI
@@ -91,6 +93,26 @@ actual fun showToast(text: String) {
 actual fun restartApp() {
     reloadTrigger.value++
 }
+
+// The Evergreen WebView2 runtime registers its version under this client GUID; checked machine-wide (both
+// registry views) and per-user, as Microsoft's distribution guide describes. Read once: installing the
+// runtime while the app is open is rare enough that a restart is fine.
+private val webView2Available: Boolean by lazy {
+    val client = "\\Microsoft\\EdgeUpdate\\Clients\\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
+    listOf(
+        WinReg.HKEY_LOCAL_MACHINE to "SOFTWARE\\WOW6432Node$client",
+        WinReg.HKEY_LOCAL_MACHINE to "SOFTWARE$client",
+        WinReg.HKEY_CURRENT_USER to "Software$client",
+    ).any { (root, path) ->
+        runCatching {
+            Advapi32Util.registryValueExists(root, path, "pv") &&
+                Advapi32Util.registryGetStringValue(root, path, "pv").let { it.isNotBlank() && it != "0.0.0.0" }
+        }.getOrDefault(false)
+    }
+}
+
+actual fun isEmbeddedWebViewAvailable(): Boolean =
+    getPlatformName() != "windows" || webView2Available
 
 @Composable
 actual fun RequestMediaPermissions(onResult: (Boolean) -> Unit) {

@@ -481,3 +481,6 @@ actual fun openDownloadsFolderAndSelect(filename: String) {
         }
     } catch (_: Exception) {}
 }
+
+// Android System WebView ships with the OS.
+actual fun isEmbeddedWebViewAvailable(): Boolean = true

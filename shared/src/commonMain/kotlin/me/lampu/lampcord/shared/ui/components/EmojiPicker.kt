@@ -405,10 +405,12 @@ fun EmojiPicker(
                                 onQueryChange = { searchQuery = it },
                                 mediaApi = mediaApi,
                                 onGifSelected = { gif ->
+                                    // Send the provider page (tenor.com/view/..., klipy.com/gifs/...) like Discord does:
+                                    // it embeds as a gifv, whereas the raw media URL embeds as a plain video.
                                     messageStore.sendMessageDraft(
-                                        gif.src.takeIf { it.isNotBlank() }
-                                            ?: gif.gifSrc?.takeIf { it.isNotBlank() }
-                                            ?: gif.url
+                                        gif.url.takeIf { it.isNotBlank() }
+                                            ?: gif.src.takeIf { it.isNotBlank() }
+                                            ?: gif.gifSrc.orEmpty()
                                     )
                                     navigationStore.isEmojiPickerVisible = false
                                 }
