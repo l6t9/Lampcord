@@ -84,6 +84,10 @@ internal class SkiaAnimatedImage(
                 target.notifyPixelsChanged()
                 activeSlot = slot
                 lastFrame = frame
+                // Every frame change wraps a new Image. Skia images are ref-counted natively, so closing the
+                // previous wrapper is safe even if a recorded picture still draws it, and it stops one native
+                // object per frame from waiting on the GC.
+                cachedImage?.close()
                 org.jetbrains.skia.Image.makeFromBitmap(target).also { cachedImage = it }
             }
         }

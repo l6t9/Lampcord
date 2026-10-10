@@ -60,7 +60,11 @@ internal class ApngFrameSource private constructor(
 
         private const val MAX_COMPOSITED_PIXELS = 24_000_000L
 
-        fun parse(bytes: ByteArray): ApngFrameSource? {
+        /**
+         * Frames are composited at full size but stored no larger than [maxWidth]x[maxHeight]. Every frame
+         * stays in memory, so a 288px decoration shown at avatar size would otherwise keep tens of MB.
+         */
+        fun parse(bytes: ByteArray, maxWidth: Int = Int.MAX_VALUE, maxHeight: Int = Int.MAX_VALUE): ApngFrameSource? {
             if (bytes.size < 8) return null
             for (index in SIGNATURE.indices) {
                 if (bytes[index] != SIGNATURE[index]) return null
@@ -148,15 +152,24 @@ internal class ApngFrameSource private constructor(
 
             if (frameStreams.isEmpty()) return null
 
-            val keep = if (frameStreams.size.toLong() * width * height <= MAX_COMPOSITED_PIXELS) {
+            val scale = minOf(1.0, maxWidth.toDouble() / width, maxHeight.toDouble() / height)
+            val outWidth = (width * scale).toInt().coerceIn(1, width)
+            val outHeight = (height * scale).toInt().coerceIn(1, height)
+
+            val keep = if (frameStreams.size.toLong() * outWidth * outHeight <= MAX_COMPOSITED_PIXELS) {
                 frameStreams.size
             } else {
                 1
             }
 
+            // Each step below allocates full-canvas native pixels. Close intermediates explicitly: their Java
+            // wrappers are tiny, so waiting for the GC would leave several canvases per frame alive at once.
             val canvasBitmap = Bitmap()
 
-            if (!canvasBitmap.allocN32Pixels(width, height, false)) return null
+            if (!canvasBitmap.allocN32Pixels(width, height, false)) {
+                canvasBitmap.close()
+                return null
+            }
             val canvas = Canvas(canvasBitmap)
 
             canvas.clear(Color.TRANSPARENT)
@@ -164,6 +177,7 @@ internal class ApngFrameSource private constructor(
             val durations = IntArray(keep)
             var previous: Bitmap? = null
 
+            try {
             for (index in 0 until keep) {
                 val control = frameControls[index]
                 val frameWidth = control[0]
@@ -173,7 +187,10 @@ internal class ApngFrameSource private constructor(
                     frameWidth.toFloat(), frameHeight.toFloat()
                 )
 
-                if (control[6] == DISPOSE_PREVIOUS) previous = copyOf(canvasBitmap, width, height)
+                if (control[6] == DISPOSE_PREVIOUS) {
+                    previous?.close()
+                    previous = copyOf(canvasBitmap, width, height)
+                }
 
                 if (control[7] == BLEND_SOURCE) {
                     canvas.save()
@@ -183,20 +200,27 @@ internal class ApngFrameSource private constructor(
                 }
 
                 val frameImage = Image.makeFromEncoded(frameStreams[index]) ?: break
-                if (frameImage.width != frameWidth || frameImage.height != frameHeight) {
+                try {
+                    if (frameImage.width != frameWidth || frameImage.height != frameHeight) {
 
-                    break
+                        break
+                    }
+                    canvas.drawImageRect(
+                        frameImage,
+                        Rect.makeWH(frameWidth.toFloat(), frameHeight.toFloat()),
+                        region,
+                        SamplingMode.LINEAR,
+                        null,
+                        false
+                    )
+                } finally {
+                    frameImage.close()
                 }
-                canvas.drawImageRect(
-                    frameImage,
-                    Rect.makeWH(frameWidth.toFloat(), frameHeight.toFloat()),
-                    region,
-                    SamplingMode.LINEAR,
-                    null,
-                    false
-                )
 
-                composited += Image.makeFromBitmap(copyOf(canvasBitmap, width, height))
+                // copyOf returns an immutable bitmap, so the Image shares its pixels instead of copying them.
+                val snapshot = copyOf(canvasBitmap, outWidth, outHeight)
+                composited += Image.makeFromBitmap(snapshot)
+                snapshot.close()
                 durations[index] = delayMillis(control[4], control[5])
 
                 when (control[6]) {
@@ -209,13 +233,18 @@ internal class ApngFrameSource private constructor(
 
                     DISPOSE_PREVIOUS -> previous?.let { saved ->
                         canvas.clear(Color.TRANSPARENT)
-                        canvas.drawImage(Image.makeFromBitmap(saved), 0f, 0f)
+                        Image.makeFromBitmap(saved).use { canvas.drawImage(it, 0f, 0f) }
                     }
                 }
             }
+            } finally {
+                previous?.close()
+                canvas.close()
+                canvasBitmap.close()
+            }
 
             if (composited.isEmpty()) return null
-            return ApngFrameSource(width, height, composited, durations)
+            return ApngFrameSource(outWidth, outHeight, composited, durations)
         }
 
         private fun buildPng(
@@ -258,11 +287,24 @@ internal class ApngFrameSource private constructor(
         private fun copyOf(source: Bitmap, width: Int, height: Int): Bitmap {
             val copy = Bitmap()
             if (!copy.allocN32Pixels(width, height, false)) return copy
-            Canvas(copy).apply {
-
-                clear(Color.TRANSPARENT)
-                drawImage(Image.makeFromBitmap(source), 0f, 0f)
+            Canvas(copy).use { canvas ->
+                canvas.clear(Color.TRANSPARENT)
+                Image.makeFromBitmap(source).use { image ->
+                    if (image.width == width && image.height == height) {
+                        canvas.drawImage(image, 0f, 0f)
+                    } else {
+                        canvas.drawImageRect(
+                            image,
+                            Rect.makeWH(image.width.toFloat(), image.height.toFloat()),
+                            Rect.makeWH(width.toFloat(), height.toFloat()),
+                            SamplingMode.MITCHELL,
+                            null,
+                            false
+                        )
+                    }
+                }
             }
+            copy.setImmutable()
             return copy
         }
 

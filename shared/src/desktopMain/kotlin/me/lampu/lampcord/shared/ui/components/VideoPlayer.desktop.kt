@@ -35,7 +35,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.toComposeImageBitmap
+import androidx.compose.ui.graphics.asComposeImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -60,6 +60,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.ShortBuffer
 import javax.sound.sampled.AudioFormat
+import javax.swing.SwingUtilities
 import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -635,6 +636,8 @@ private class DesktopVideoPlayer(
     @Volatile
     private var loadJobId = 0L
 
+    private val lifecycleLock = Any()
+
     @Volatile
     private var videoClockStartNanos = 0L
 
@@ -725,6 +728,27 @@ private class DesktopVideoPlayer(
                         }
                     }
 
+                    val renderer = audioRenderer
+                    // close() from the UI while this load was in flight already bumped loadJobId and found nothing to
+                    // release, so these would leak. Publishing under the lock means close() sees either the old state or this one.
+                    val published = synchronized(lifecycleLock) {
+                        if (loadJobId != currentLoadJobId || audioRenderer !== renderer) {
+                            false
+                        } else {
+                            grabber = candidateGrabber
+                            true
+                        }
+                    }
+                    if (!published) {
+                        runCatching { candidateGrabber.release() }
+                        if (renderer != null) {
+                            synchronized(lifecycleLock) { if (audioRenderer === renderer) audioRenderer = null }
+                            runCatching { renderer.close() }
+                        }
+                        return false
+                    }
+                    g = null
+
                     val nativeWidth = candidateGrabber.imageWidth
                     val nativeHeight = candidateGrabber.imageHeight
                     if (nativeWidth > 0 && nativeHeight > 0) {
@@ -739,8 +763,6 @@ private class DesktopVideoPlayer(
                         candidateGrabber.imageWidth = targetWidth
                         candidateGrabber.imageHeight = targetHeight
                     }
-                    grabber = candidateGrabber
-                    g = null
                     lastVideoPositionMs = positionProvider()
                     lastVideoTimestampMs = -1L
                     videoTimestampOffsetMs = null
@@ -943,10 +965,16 @@ private class DesktopVideoPlayer(
         } catch (e: InterruptedException) {
         }
         decodeThread = null
-        runCatching { audioRenderer?.close() }
-        audioRenderer = null
-        val g = grabber
-        grabber = null
+        val renderer: AudioRenderer?
+        val g: FFmpegFrameGrabber?
+        synchronized(lifecycleLock) {
+            loadJobId = System.nanoTime()
+            renderer = audioRenderer
+            audioRenderer = null
+            g = grabber
+            grabber = null
+        }
+        runCatching { renderer?.close() }
         runCatching { g?.release() }
         pendingSeekMs = null
         videoClockStartNanos = 0L
@@ -1079,18 +1107,41 @@ private class DesktopVideoPlayer(
                 src += 3
             }
         }
-        val image =
-            SkiaImage.makeRaster(
-                ImageInfo(width, height, ColorType.N32, ColorAlphaType.PREMUL, ColorSpace.sRGB),
-                // FFmpeg reuses its frame buffer on the next decode. Give Skia an immutable snapshot so a recycled portrait frame cannot turn the currently displayed image black.
-                pixels.copyOf(),
-                width * 4,
-            )
-        return image.toComposeImageBitmap()
+        // installPixels copies into memory the Bitmap owns, so the reused pixelBuffer can't change a displayed frame.
+        // Building the Bitmap directly avoids Image.toComposeImageBitmap(), which would make a second native copy.
+        val bitmap = Bitmap()
+        val installed = bitmap.installPixels(
+            ImageInfo(width, height, ColorType.N32, ColorAlphaType.PREMUL, ColorSpace.sRGB),
+            pixels,
+            width * 4,
+        )
+        if (!installed) {
+            bitmap.close()
+            return null
+        }
+        bitmap.setImmutable()
+        retireFrame(bitmap)
+        return bitmap.asComposeImageBitmap()
+    }
+
+    // Skia pixels are native memory that the GC can't see, and decoding produces only tiny Java garbage, so frames
+    // left to the Cleaner pile up at roughly width*height*4 bytes per frame while a video plays. Frames are closed
+    // a few frames after being replaced, on the EDT, so no composition or draw can still be using them.
+    private val recentFrames = ArrayDeque<Bitmap>()
+
+    private fun retireFrame(bitmap: Bitmap) {
+        synchronized(recentFrames) {
+            recentFrames.addLast(bitmap)
+            while (recentFrames.size > RETAINED_FRAMES) {
+                val old = recentFrames.removeFirst()
+                SwingUtilities.invokeLater { old.close() }
+            }
+        }
     }
 
     private companion object {
         const val MAX_DECODE_HEIGHT = 720
+        const val RETAINED_FRAMES = 3
         const val DROP_THRESHOLD_MS = 150L
         const val DEFAULT_FRAME_STEP_MS = 33L
         const val MAX_REASONABLE_TIMESTAMP_MS = 24L * 60L * 60L * 1_000L

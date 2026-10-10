@@ -5,6 +5,7 @@ import coil3.decode.DecodeResult
 import coil3.decode.Decoder
 import coil3.fetch.SourceFetchResult
 import coil3.request.Options
+import coil3.size.Dimension
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okio.Buffer
@@ -16,14 +17,16 @@ internal class DesktopAnimatedDecoder(
     private val source: okio.BufferedSource,
     private val timeSource: kotlin.time.TimeSource = kotlin.time.TimeSource.Monotonic,
     private val animates: Boolean = true,
+    private val maxWidth: Int = Int.MAX_VALUE,
+    private val maxHeight: Int = Int.MAX_VALUE,
 ) : Decoder {
 
     override suspend fun decode(): DecodeResult = withContext(Dispatchers.IO) {
         val data = source.readByteArray()
         if (hasApngChunk(data)) {
-            val frames = ApngFrameSource.parse(data)
+            val frames = ApngFrameSource.parse(data, maxWidth, maxHeight)
                 ?: error("Failed to parse APNG")
-            DecodeResult(SkiaAnimatedImage(frames, timeSource, animates), isSampled = false)
+            DecodeResult(SkiaAnimatedImage(frames, timeSource, animates), isSampled = maxWidth != Int.MAX_VALUE || maxHeight != Int.MAX_VALUE)
         } else {
             val codec = Codec.makeFromData(Data.makeFromBytes(data))
             val frameSource = SkiaCodecFrameSource(codec, codec.width, codec.height)
@@ -42,7 +45,11 @@ internal class DesktopAnimatedDecoder(
             val source = result.source.source()
 
             if (!isAnimatable(source)) return null
-            return DesktopAnimatedDecoder(source, timeSource, options.allowsAnimation())
+            return DesktopAnimatedDecoder(
+                source, timeSource, options.allowsAnimation(),
+                maxWidth = (options.size.width as? Dimension.Pixels)?.px ?: Int.MAX_VALUE,
+                maxHeight = (options.size.height as? Dimension.Pixels)?.px ?: Int.MAX_VALUE,
+            )
         }
     }
 }

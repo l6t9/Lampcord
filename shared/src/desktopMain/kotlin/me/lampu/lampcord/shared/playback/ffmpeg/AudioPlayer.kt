@@ -26,6 +26,11 @@ class AudioPlayer(
 
     private var currentVolume = 1.0f
 
+    // prepareFile runs on an IO thread while close() comes from the UI when the attachment is disposed.
+    // A close that lands mid-prepare must not let the finished decoder/renderer be stored, or they leak.
+    private val lifecycleLock = Any()
+    private var generation = 0L
+
     fun loadFile(
         path: String,
         headers: Map<String, String> = emptyMap(),
@@ -38,14 +43,22 @@ class AudioPlayer(
         startPaused: Boolean = true,
     ): Boolean {
         close()
+        val expectedGeneration = synchronized(lifecycleLock) { generation }
         var candidateDecoder: AudioDecoder? = null
         var candidateRenderer: AudioRenderer? = null
         return try {
             val d = AudioDecoder(path, headers).also { candidateDecoder = it }
             val r = AudioRenderer(d.audioFormat).also { candidateRenderer = it }
             r.setVolume(currentVolume)
-            decoder = d
-            renderer = r
+            synchronized(lifecycleLock) {
+                if (generation != expectedGeneration) {
+                    runCatching { r.close() }
+                    runCatching { d.close() }
+                    return false
+                }
+                decoder = d
+                renderer = r
+            }
             isPaused = startPaused
             isRunning = false
             true
@@ -220,11 +233,18 @@ class AudioPlayer(
             Thread.currentThread().interrupt()
         }
 
-        renderer?.close()
-        decoder?.close()
+        val r: AudioRenderer?
+        val d: AudioDecoder?
+        synchronized(lifecycleLock) {
+            generation++
+            r = renderer
+            d = decoder
+            renderer = null
+            decoder = null
+        }
+        r?.close()
+        d?.close()
 
-        renderer = null
-        decoder = null
         decodeThread = null
         renderThread = null
     }
