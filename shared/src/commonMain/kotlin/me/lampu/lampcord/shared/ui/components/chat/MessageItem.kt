@@ -609,7 +609,7 @@ fun MessageItem(
                     val hasSnapshots = !message.message_snapshots.isNullOrEmpty()
                     val snapshotContent = message.message_snapshots?.firstOrNull()?.message?.content
                     val isDuplicateForward = hasSnapshots && message.content.trim() == snapshotContent?.trim()
-                    val shouldShowContent = !hasSnapshots || (message.content.isNotEmpty() && !isDuplicateForward)
+                    val shouldShowContent = (!hasSnapshots || (message.content.isNotEmpty() && !isDuplicateForward)) && !message.isOnlyEmbeddedMediaLink()
 
                     if (shouldShowContent) {
                         Box(modifier = Modifier.fillMaxWidth()) {
@@ -764,7 +764,7 @@ fun MessageItem(
                                     val hasSnapshots = !message.message_snapshots.isNullOrEmpty()
                                     val snapshotContent = message.message_snapshots?.firstOrNull()?.message?.content
                                     val isDuplicateForward = hasSnapshots && message.content.trim() == snapshotContent?.trim()
-                                    val shouldShowContent = !hasSnapshots || (message.content.isNotEmpty() && !isDuplicateForward)
+                                    val shouldShowContent = (!hasSnapshots || (message.content.isNotEmpty() && !isDuplicateForward)) && !message.isOnlyEmbeddedMediaLink()
 
                                     if (shouldShowContent) {
                                         if (message.oldContent != null) {
@@ -1127,4 +1127,12 @@ private fun emojiFromKey(key: String): Emoji {
         val unicode = EmojiIndex.getCharForName(emojiName) ?: emojiName
         Emoji(name = unicode, id = null)
     }
+}
+
+// Like Discord, a message that is nothing but a link to a GIF or image shows only the embed: repeating the
+// URL above it adds nothing. Anything else in the message (text, a second link) keeps the content visible.
+private fun Message.isOnlyEmbeddedMediaLink(): Boolean {
+    val link = content.trim().removeSurrounding("<", ">")
+    if (link.isEmpty() || link.any(Char::isWhitespace) || !link.startsWith("http", ignoreCase = true)) return false
+    return embeds.any { embed -> (embed.type == "gifv" || embed.type == "image") && embed.url == link }
 }
