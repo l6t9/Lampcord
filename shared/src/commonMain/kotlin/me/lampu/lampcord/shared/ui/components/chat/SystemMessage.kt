@@ -11,8 +11,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.Message
 import me.lampu.lampcord.shared.state.*
@@ -71,53 +75,41 @@ fun SystemMessage(
             
             Spacer(modifier = Modifier.width(12.dp))
 
-            Column(modifier = Modifier.weight(1f)) {
-                androidx.compose.foundation.layout.FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    val randomMessages = listOf("pizzaPre", "slid", "everyoneWelcomePre", "showedUp", "hopped")
-                    val selectedMessage = randomMessages[message.id.takeLast(1).toIntOrNull()?.let { it % randomMessages.size } ?: 0]
-
-                    if (selectedMessage.contains("Pre")) {
-                        Text(
-                            text = when (selectedMessage) {
-                                "pizzaPre" -> "Welcome,"
-                                "everyoneWelcomePre" -> "Everyone welcome"
-                                else -> ""
-                            },
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-
-                    var profilePosition by remember { mutableStateOf(Offset.Zero) }
-                    Text(
-                        text = message.author?.global_name ?: message.author?.username ?: "Unknown User",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        softWrap = false,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier
-                            .onGloballyPositioned { profilePosition = it.positionInRoot() }
-                            .clickableCursor { message.author?.let { profileStore.showProfile(it.id, position = profilePosition) } }
-                    )
-
-                    Text(
-                        text = when (selectedMessage) {
-                            "pizzaPre" -> ". We hope you brought pizza."
-                            "everyoneWelcomePre" -> "!"
-                            "slid" -> " just slid into the server!"
-                            "showedUp" -> " just showed up!"
-                            "hopped" -> " hopped into the server."
-                            else -> " just slid into the server!"
-                        },
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+            // One text flow rather than separate Texts in a FlowRow: the pieces used to wrap independently, which
+            // dropped the space between the greeting and the name and left a stray leading space on the next line.
+            val (prefix, suffix) = remember(message.id) {
+                val templates = listOf(
+                    "Welcome, " to ". We hope you brought pizza.",
+                    "" to " just slid into the server!",
+                    "Everyone welcome " to "!",
+                    "" to " just showed up!",
+                    "" to " hopped into the server.",
+                )
+                templates[message.id.takeLast(1).toIntOrNull()?.let { it % templates.size } ?: 0]
+            }
+            val name = message.author?.global_name ?: message.author?.username ?: "Unknown User"
+            var profilePosition by remember { mutableStateOf(Offset.Zero) }
+            val nameStyle = SpanStyle(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+            val joinText = remember(prefix, suffix, name, nameStyle) {
+                buildAnnotatedString {
+                    append(prefix)
+                    withLink(
+                        LinkAnnotation.Clickable("profile", TextLinkStyles(style = nameStyle)) {
+                            message.author?.let { profileStore.showProfile(it.id, position = profilePosition) }
+                        }
+                    ) { append(name) }
+                    append(suffix)
                 }
             }
+            Text(
+                text = joinText,
+                style = MaterialTheme.typography.bodyMedium,
+                // Softer than the name so the person who joined is what stands out in a long welcome channel.
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .weight(1f)
+                    .onGloballyPositioned { profilePosition = it.positionInRoot() }
+            )
             
             Spacer(modifier = Modifier.width(8.dp))
             
