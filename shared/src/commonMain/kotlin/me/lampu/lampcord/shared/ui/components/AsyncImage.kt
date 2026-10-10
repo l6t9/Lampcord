@@ -36,7 +36,6 @@ import coil3.compose.LocalPlatformContext as CoilLocalContext
 import coil3.compose.AsyncImagePainter as CoilPainter
 import coil3.compose.AsyncImage as CoilAsyncImage
 import coil3.decode.ImageSource
-import coil3.request.CachePolicy as CoilCachePolicy
 import coil3.request.ImageRequest as CoilImageRequest
 import coil3.request.crossfade as coilCrossfade
 import coil3.size.Precision as CoilPrecision
@@ -102,8 +101,6 @@ fun AsyncImage(
     onSize: ((width: Int, height: Int) -> Unit)? = null
 ) {
     val coilContext = CoilLocalContext.current
-    val isDesktop = remember { getPlatformName() != "android" && getPlatformName() != "ios" }
-    val lowMemoryMode = isDesktop && Settings.shared.desktopLowMemoryMode
     val reducedMotion = Settings.shared.reduceMotion
     val staticModel = remember(model, reducedMotion, allowAnimation) {
         if (reducedMotion || !allowAnimation) model.toStaticDiscordGif() else model
@@ -114,7 +111,9 @@ fun AsyncImage(
 
     val isAnimatedSource = allowAnimation && !reducedMotion && effectiveModel.isAnimated()
 
-    val coilRequest = remember(coilContext, effectiveModel, lowMemoryMode, size, allowAnimation, isAnimatedSource) {
+    // The shared memory cache is bounded (App.kt), so it stays on everywhere: re-decoding on every scroll back
+    // costs far more than the few MB it can hold per screen.
+    val coilRequest = remember(coilContext, effectiveModel, size, allowAnimation, isAnimatedSource) {
         effectiveModel.toCoilData()?.let { data ->
             CoilImageRequest.Builder(coilContext)
                 .data(data)
@@ -122,16 +121,14 @@ fun AsyncImage(
                     if (effectiveModel is ByteArray) null
                     else "${effectiveModel}@${size ?: 0}#${isAnimatedSource}"
                 )
-                .memoryCachePolicy(if (lowMemoryMode) CoilCachePolicy.DISABLED else CoilCachePolicy.ENABLED)
-                .networkCachePolicy(if (lowMemoryMode) CoilCachePolicy.DISABLED else CoilCachePolicy.ENABLED)
                 .apply {
-                    if (effectiveModel !is ByteArray && lowMemoryMode.not()) {
+                    if (effectiveModel !is ByteArray) {
                         placeholderMemoryCacheKey(
                             "${effectiveModel}@${size ?: 0}#${!isAnimatedSource}"
                         )
                     }
                 }
-                .coilCrossfade(!reducedMotion && !lowMemoryMode)
+                .coilCrossfade(!reducedMotion)
                 .apply { extras[ALLOW_ANIMATION_KEY] = isAnimatedSource }
                 .precision(CoilPrecision.EXACT)
                 .scale(CoilScale.FIT)

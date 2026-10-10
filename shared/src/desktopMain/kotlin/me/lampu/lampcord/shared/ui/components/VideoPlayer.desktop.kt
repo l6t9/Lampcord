@@ -21,6 +21,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntSize
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -113,6 +118,8 @@ actual fun VideoPlayer(
         )
     }
 
+    var viewport by remember { mutableStateOf(IntSize.Zero) }
+
     LaunchedEffect(url, loadAttempt) {
         isResolving = true
         loadError = null
@@ -121,8 +128,17 @@ actual fun VideoPlayer(
         duration = 0L
         isPlaying = false
         hasEnded = false
+        // The decode size follows the drawn size, so wait for the first layout pass. If none arrives (zero-size
+        // host) the decoder falls back to the 1080p cap.
+        val drawnSize = withTimeoutOrNull(500) {
+            snapshotFlow { viewport }.first { it.width > 0 && it.height > 0 }
+        }
         val success = withContext(Dispatchers.IO) {
-            player.load(url, headers = mapOf("User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")) {
+            player.load(
+                url,
+                headers = mapOf("User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"),
+                viewport = drawnSize
+            ) {
                 currentTime
             }
         }
@@ -172,6 +188,7 @@ actual fun VideoPlayer(
 
     Box(
         modifier = modifier
+            .onSizeChanged { viewport = it }
             .hoverable(interactionSource),
         contentAlignment = Alignment.Center
     ) {
@@ -662,6 +679,7 @@ private class DesktopVideoPlayer(
     fun load(
         url: String,
         headers: Map<String, String> = emptyMap(),
+        viewport: IntSize? = null,
         positionProvider: () -> Long,
     ): Boolean {
         close()
@@ -752,12 +770,14 @@ private class DesktopVideoPlayer(
                     val nativeWidth = candidateGrabber.imageWidth
                     val nativeHeight = candidateGrabber.imageHeight
                     if (nativeWidth > 0 && nativeHeight > 0) {
-                        val maxDecodeHeight = if (Settings.shared.desktopLowMemoryMode) MAX_DECODE_HEIGHT else Int.MAX_VALUE
-                        val scale = if (nativeHeight > maxDecodeHeight) {
-                            maxDecodeHeight.toFloat() / nativeHeight
-                        } else {
-                            1f
-                        }
+                        // Every decoded frame is width*height*4 bytes of native memory and a few stay alive at
+                        // once, so decode no larger than the player is drawn (a 1080p clip in a 500dp inline
+                        // player needs a fraction of its pixels), and never above 1080p even fullscreen.
+                        val fitScale = viewport
+                            ?.takeIf { it.width > 0 && it.height > 0 }
+                            ?.let { minOf(it.width.toFloat() / nativeWidth, it.height.toFloat() / nativeHeight) }
+                            ?: 1f
+                        val scale = minOf(1f, fitScale, MAX_DECODE_HEIGHT.toFloat() / nativeHeight)
                         targetWidth = (nativeWidth * scale).roundToInt().coerceAtLeast(2)
                         targetHeight = (nativeHeight * scale).roundToInt().coerceAtLeast(2)
                         candidateGrabber.imageWidth = targetWidth
@@ -1140,7 +1160,7 @@ private class DesktopVideoPlayer(
     }
 
     private companion object {
-        const val MAX_DECODE_HEIGHT = 720
+        const val MAX_DECODE_HEIGHT = 1080
         const val RETAINED_FRAMES = 3
         const val DROP_THRESHOLD_MS = 150L
         const val DEFAULT_FRAME_STEP_MS = 33L

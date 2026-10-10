@@ -21,7 +21,6 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImagePainter.State as CoilState
 import coil3.compose.AsyncImage as CoilAsyncImage
 import coil3.compose.LocalPlatformContext as CoilLocalContext
-import coil3.request.CachePolicy as CoilCachePolicy
 import coil3.request.ImageRequest as CoilImageRequest
 import coil3.request.crossfade as coilCrossfade
 import kotlinx.coroutines.delay
@@ -286,9 +285,6 @@ private fun GifPreviewImage(
             model = CoilImageRequest.Builder(context)
                 .data(imageUrl)
                 .memoryCacheKey("gif-preview:$imageUrl#${if (animated) "animated" else "still"}")
-                .memoryCachePolicy(
-                    if (getPlatformName() != "android" && getPlatformName() != "ios" && Settings.shared.desktopLowMemoryMode) CoilCachePolicy.DISABLED else CoilCachePolicy.ENABLED
-                )
                 .coilCrossfade(false)
                 // Still candidates end with the original GIF, which must render as its first frame.
                 .apply { extras[ALLOW_ANIMATION_KEY] = animated }

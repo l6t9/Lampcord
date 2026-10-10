@@ -322,14 +322,6 @@ class SettingsStore(
             if (!value) silentTyping = false
         }
 
-    private var _desktopLowMemoryMode by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.desktopLowMemoryMode)
-    var desktopLowMemoryMode: Boolean
-        get() = _desktopLowMemoryMode
-        set(value) {
-            _desktopLowMemoryMode = value
-            me.lampu.lampcord.shared.settings.Settings.shared.desktopLowMemoryMode = value
-        }
-
     private var _enableSystemWindowFrame by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.enableSystemWindowFrame)
     var enableSystemWindowFrame: Boolean
         get() = _enableSystemWindowFrame

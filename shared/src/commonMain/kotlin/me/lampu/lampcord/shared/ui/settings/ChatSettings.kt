@@ -93,20 +93,6 @@ fun ChatSettingsContent(
             )
         )
 
-        if (isDesktop) {
-            Material3SettingsGroup(
-                title = "Performance",
-                items = listOf(
-                    switchSettingsItem(
-                        title = "Reduce RAM Usage",
-                        description = "Use less memory for images and video on desktop. Changes apply immediately.",
-                        checked = settingsStore.desktopLowMemoryMode,
-                        onCheckedChange = { settingsStore.desktopLowMemoryMode = it }
-                    )
-                )
-            )
-        }
-
         Material3SettingsGroup(
             title = "Chatbox Customization",
             items = listOf(

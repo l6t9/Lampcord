@@ -37,7 +37,6 @@ class Settings(private val settings: KmpSettings) {
 
     // Scrolling text is motion too, so Reduce Motion wins over the marquee toggle.
     val marqueeEnabled: Boolean get() = marqueeText && !reduceMotion
-    var desktopLowMemoryMode by preferenceBoolean("desktop_low_memory_mode", false)
     var verboseLogging by preferenceBoolean("verbose_logging", false)
     var enableSystemWindowFrame by preferenceBoolean("enable_system_window_frame", true)
     var linuxDefaultFrameApplied by preferenceBoolean("linux_default_frame_applied", false)
