@@ -56,8 +56,8 @@ class Settings(private val settings: KmpSettings) {
     var chatboxFontSize by preferenceFloat("chatbox_font_size", 1.0f)
     var chatboxShowAvatar by preferenceBoolean("chatbox_show_avatar", false)
 
-    var freeNitroEmojis by preferenceBoolean("free_nitro_emojis", true)
-    var realmojis by preferenceBoolean("realmojis", true)
+    var freeNitroEmojis by preferenceBoolean("free_nitro_emojis", false)
+    var realmojis by preferenceBoolean("realmojis", false)
     var compoundRealmojis by preferenceBoolean("compound_realmojis", true)
     var useWebpEmojis by preferenceBoolean("use_webp_emojis", true)
 
