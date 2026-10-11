@@ -9,7 +9,7 @@ import me.lampu.lampcord.shared.settings.Settings
 
 class EmojiStore {
     private val maxSamples = 70
-    
+
     private var usageMap = mutableMapOf<String, List<Long>>()
     private var stickerUsageMap = mutableMapOf<String, List<Long>>()
 
@@ -17,20 +17,23 @@ class EmojiStore {
         private set
     var frequentStickers by mutableStateOf<List<String>>(emptyList())
         private set
+    var favoriteStickers by mutableStateOf<List<String>>(emptyList())
+        private set
 
     init {
         loadUsage()
         updateFrequentEmojis()
         updateFrequentStickers()
+        loadFavoriteStickers()
     }
 
     fun onEmojiUsed(emojiKey: String) {
         val now = Clock.System.now().toEpochMilliseconds()
         val currentUsage = usageMap[emojiKey]?.toMutableList() ?: mutableListOf()
         currentUsage.add(now)
-        
+
         usageMap[emojiKey] = currentUsage.takeLast(maxSamples)
-        
+
         saveUsage()
         updateFrequentEmojis()
     }
@@ -39,11 +42,29 @@ class EmojiStore {
         val now = Clock.System.now().toEpochMilliseconds()
         val currentUsage = stickerUsageMap[stickerId]?.toMutableList() ?: mutableListOf()
         currentUsage.add(now)
-        
+
         stickerUsageMap[stickerId] = currentUsage.takeLast(maxSamples)
-        
+
         saveUsage()
         updateFrequentStickers()
+    }
+
+    fun updateFavoriteStickers(ids: List<String>) {
+        favoriteStickers = ids
+        try {
+            Settings.shared.favoriteStickersJson = Json.encodeToString(ids)
+        } catch (_: Exception) {
+        }
+    }
+
+    fun toggleFavoriteSticker(stickerId: String) {
+        val current = favoriteStickers.toMutableList()
+        if (current.contains(stickerId)) {
+            current.remove(stickerId)
+        } else {
+            current.add(0, stickerId)
+        }
+        updateFavoriteStickers(current)
     }
 
     private fun updateFrequentEmojis() {
@@ -97,6 +118,15 @@ class EmojiStore {
             stickerUsageMap = Json.decodeFromString<Map<String, List<Long>>>(json).toMutableMap()
         } catch (e: Exception) {
             stickerUsageMap = mutableMapOf()
+        }
+    }
+
+    private fun loadFavoriteStickers() {
+        try {
+            val json = Settings.shared.favoriteStickersJson
+            favoriteStickers = Json.decodeFromString<List<String>>(json)
+        } catch (e: Exception) {
+            favoriteStickers = emptyList()
         }
     }
 

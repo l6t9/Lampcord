@@ -321,6 +321,11 @@ class UserApi(private val rest: RestClient) {
         }
     }
 
+    suspend fun getFrecencySettingsProto(): String? = getUserSettingsProto(type = 2)
+
+    suspend fun updateFrecencySettingsProto(base64Payload: String): Boolean =
+        updateUserSettingsProto(base64Payload, type = 2)
+
     suspend fun getConnections(): List<ConnectedAccount> {
         return try {
             rest.httpClient.get("${rest.apiBase}/users/@me/connections") {

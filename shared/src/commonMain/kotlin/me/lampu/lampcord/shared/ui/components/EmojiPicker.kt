@@ -39,6 +39,7 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import me.lampu.lampcord.shared.api.MediaApi
+import me.lampu.lampcord.shared.api.UserApi
 import me.lampu.lampcord.shared.model.Emoji
 import me.lampu.lampcord.shared.model.Gif
 import me.lampu.lampcord.shared.model.customEmojiCdnUrl
@@ -69,6 +70,7 @@ fun EmojiPicker(
     messageStore: MessageStore = koinInject(),
     mediaApi: MediaApi = koinInject(),
     settingsStore: SettingsStore = koinInject(),
+    userApi: UserApi = koinInject(),
     modifier: Modifier = Modifier,
     onKeyboardClick: (() -> Unit)? = null,
     // Under the chat input the picker stands in for the keyboard and takes its height. Hosted in a sheet
@@ -404,7 +406,14 @@ fun EmojiPicker(
                                         } catch (e: Exception) { mutableListOf() }
                                         if (current.contains(key)) current.remove(key) else current.add(0, key)
                                         Settings.shared.favoriteEmojisJson = Json.encodeToString(current)
-                                                                },
+                                        coroutineScope.launch {
+                                            val payload = me.lampu.lampcord.shared.model.encodeFrecencyUserSettings(
+                                                favoriteEmojis = current,
+                                                favoriteStickers = emojiStore.favoriteStickers
+                                            )
+                                            userApi.updateFrecencySettingsProto(payload)
+                                        }
+                                    },
                                     modifier = Modifier.weight(1f)
                                 )
                                 if (filteredGroups.size > 1 && searchQuery.isEmpty()) {

@@ -92,6 +92,7 @@ class Settings(private val settings: KmpSettings) {
     var emojiUsageJson by preference("emoji_usage_v4", "{}")
     var stickerUsageJson by preference("sticker_usage_v1", "{}")
     var favoriteEmojisJson by preference("favorite_emojis_v1", "[]")
+    var favoriteStickersJson by preference("favorite_stickers_v1", "[]")
     var videoVolume by preferenceFloat("video_volume", 0.2f)
     var localProfileOverrides by preference("local_profile_overrides_v1", "{}")
     var readStateAcks by preference("read_state_acks_v1", "{}")

@@ -22,7 +22,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalUriHandler
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
 import me.lampu.lampcord.shared.api.MediaApi
+import me.lampu.lampcord.shared.api.UserApi
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.model.Sticker
 import me.lampu.lampcord.shared.model.StickerPack
@@ -46,6 +48,7 @@ fun StickerPicker(
     guildStore: GuildStore = koinInject(),
     emojiStore: EmojiStore = koinInject(),
     navigationStore: NavigationStore = koinInject(),
+    userApi: UserApi = koinInject(),
     onStickerSelected: (Sticker) -> Unit
 ) {
     val guilds by guildStore.guilds.collectAsState()
@@ -60,8 +63,23 @@ fun StickerPicker(
         isLoading = false
     }
 
-    val stickerGroups = remember(guilds, officialPacks, selectedGuild, emojiStore.frequentStickers) {
+    val stickerGroups = remember(guilds, officialPacks, selectedGuild, emojiStore.frequentStickers, emojiStore.favoriteStickers) {
         val groups = mutableListOf<StickerPack>()
+
+        if (emojiStore.favoriteStickers.isNotEmpty()) {
+            val allStickers = guilds.flatMap { it.stickers } + officialPacks.flatMap { it.stickers }
+            val favs = emojiStore.favoriteStickers.mapNotNull { id ->
+                allStickers.find { it.id == id }
+            }
+            if (favs.isNotEmpty()) {
+                groups.add(StickerPack(
+                    id = "favorites",
+                    name = "Favorites",
+                    stickers = favs,
+                    sku_id = ""
+                ))
+            }
+        }
 
         if (emojiStore.frequentStickers.isNotEmpty()) {
             val allStickers = guilds.flatMap { it.stickers } + officialPacks.flatMap { it.stickers }
@@ -216,6 +234,7 @@ fun StickerPicker(
                                     Row(horizontalArrangement = Arrangement.spacedBy(spacing)) {
                                         rowStickers.forEach { sticker ->
                                             val stickerUrl = "https://cdn.discordapp.com/stickers/${sticker.id}.png?size=160"
+                                            val isFavSticker = emojiStore.favoriteStickers.contains(sticker.id)
                                             val stickerMenu = listOf(
                                                 ContextMenuItem("Copy Link", Icons.Filled.Link, onClick = {
                                                     setClipboardText(stickerUrl)
@@ -241,7 +260,27 @@ fun StickerPicker(
                                                 })
                                             )
 
-                                            ContextMenu(items = stickerMenu + extra, modifier = Modifier.weight(1f).aspectRatio(1f)) {
+                                            val favItems = listOf(
+                                                ContextMenuItem(
+                                                    if (isFavSticker) "Remove from Favorites" else "Add to Favorites",
+                                                    if (isFavSticker) Icons.Filled.Favorite else Icons.Rounded.FavoriteBorder,
+                                                    onClick = {
+                                                        emojiStore.toggleFavoriteSticker(sticker.id)
+                                                        coroutineScope.launch {
+                                                            val current = try {
+                                                                Json.decodeFromString<List<String>>(Settings.shared.favoriteEmojisJson)
+                                                            } catch (e: Exception) { emptyList() }
+                                                            val payload = me.lampu.lampcord.shared.model.encodeFrecencyUserSettings(
+                                                                favoriteEmojis = current,
+                                                                favoriteStickers = emojiStore.favoriteStickers
+                                                            )
+                                                            userApi.updateFrecencySettingsProto(payload)
+                                                        }
+                                                    }
+                                                )
+                                            )
+
+                                            ContextMenu(items = stickerMenu + extra + favItems, modifier = Modifier.weight(1f).aspectRatio(1f)) {
                                                 AsyncImage(
                                                     model = stickerUrl,
                                                     contentDescription = sticker.name,
