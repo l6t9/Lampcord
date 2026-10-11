@@ -77,7 +77,7 @@ case "$mode" in
     [[ "$(plist_value CFBundleIdentifier)" == "$BUNDLE_ID" ]] || { echo "The archive has the wrong bundle identifier" >&2; exit 1; }
     [[ "$(plist_value CFBundleShortVersionString)" == "$MARKETING_VERSION" ]] || { echo "The archive has the wrong marketing version" >&2; exit 1; }
     [[ "$(plist_value CFBundleVersion)" == "$CURRENT_PROJECT_VERSION" ]] || { echo "The archive has the wrong build number" >&2; exit 1; }
-    lipo -verify_arch arm64 "$app/Lampcord"
+    lipo "$app/Lampcord" -verify_arch arm64
     xcrun vtool -show-build "$app/Lampcord" | grep -q 'platform IOS' \
       || { echo "The binary is not built for iOS" >&2; exit 1; }
 
