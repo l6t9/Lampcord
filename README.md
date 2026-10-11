@@ -56,8 +56,6 @@ Lampcord is a lightweight Discord client built with Compose Multiplatform for Mo
 <a id="download-now"></a>
 # Download
 
-Two channels are published on the [releases page](https://github.com/l6t9/Lampcord/releases): tagged **stable** builds under `v<version>` tags, and rolling **nightly** builds under the `nightly` tag.
-
 | Platform | Stable | Nightly | Artifact |
 | --- | --- | --- | --- |
 | **Android** (9+) | [Download APK](https://github.com/l6t9/Lampcord/releases/latest) | [Download APK](https://github.com/l6t9/Lampcord/releases/tag/nightly) | `lampcord-android-<version>.apk` |
