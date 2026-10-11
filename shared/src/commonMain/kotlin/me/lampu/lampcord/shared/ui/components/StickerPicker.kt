@@ -41,6 +41,7 @@ private val StickerMinSize = 80.dp
 
 @Composable
 fun StickerPicker(
+    query: String = "",
     mediaApi: MediaApi,
     guildStore: GuildStore = koinInject(),
     emojiStore: EmojiStore = koinInject(),
@@ -102,22 +103,39 @@ fun StickerPicker(
         groups
     }
 
+    val filteredStickerGroups = remember(stickerGroups, query) {
+        if (query.isBlank()) {
+            stickerGroups
+        } else {
+            stickerGroups.mapNotNull { pack ->
+                val matches = pack.stickers.filter { sticker ->
+                    sticker.name.contains(query, ignoreCase = true) ||
+                        sticker.description?.contains(query, ignoreCase = true) == true ||
+                        sticker.tags?.contains(query, ignoreCase = true) == true
+                }
+                // A pack only stays when it still has something to show, otherwise its header
+                // would sit above an empty strip.
+                if (matches.isEmpty()) null else pack.copy(stickers = matches)
+            }
+        }
+    }
+
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     var cloneImageUrl by remember { mutableStateOf<String?>(null) }
     var showCloneModal by remember { mutableStateOf(false) }
 
-    val groupOffsets = remember(stickerGroups) {
+    val groupOffsets = remember(filteredStickerGroups) {
         val offsets = mutableListOf<Int>()
         var acc = 0
-        stickerGroups.forEach { _ ->
+        filteredStickerGroups.forEach { _ ->
             offsets.add(acc)
             acc += 2 // 1 for header, 1 for the sticker grid
         }
         offsets
     }
 
-    var selectedGroupIndex by remember(stickerGroups) { mutableStateOf(0) }
+    var selectedGroupIndex by remember(filteredStickerGroups) { mutableStateOf(0) }
 
     fun groupForIndex(index: Int): Int {
         for (i in groupOffsets.indices) {
@@ -138,6 +156,14 @@ fun StickerPicker(
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             ContainedLoadingIndicator()
         }
+    } else if (filteredStickerGroups.isEmpty()) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text(
+                text = if (query.isBlank()) "No stickers available" else "No stickers found",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     } else {
         Column(modifier = Modifier.fillMaxSize()) {
             LazyColumn(
@@ -146,7 +172,7 @@ fun StickerPicker(
                     .weight(1f),
             contentPadding = PaddingValues(4.dp)
             ) {
-                stickerGroups.forEach { pack ->
+                filteredStickerGroups.forEach { pack ->
                     item(key = "header_${pack.id}") {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -239,9 +265,9 @@ fun StickerPicker(
                 }
             }
 
-            if (stickerGroups.size > 1) {
+            if (filteredStickerGroups.size > 1) {
                 StickerServerBar(
-                    groups = stickerGroups,
+                    groups = filteredStickerGroups,
                     selectedIndex = selectedGroupIndex,
                     onSelect = { index ->
                         selectedGroupIndex = index

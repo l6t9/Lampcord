@@ -1027,7 +1027,8 @@ fun MessageItem(
                     EmojiPicker(
                         userStore = userStore,
                         guildStore = guildStore,
-                        navigationStore = navigationStore
+                        navigationStore = navigationStore,
+                        emojisOnly = true
                     ) { emoji ->
                         messageStore.toggleReaction(message, emoji)
                         showReactionPicker = false

@@ -28,6 +28,7 @@ fun ReactionPickerSheet(
     ) {
         EmojiPicker(
             fillAvailableHeight = true,
+            emojisOnly = true,
             onEmojiSelected = { emoji ->
                 onEmojiSelected(emoji)
                 onDismiss()

@@ -73,6 +73,8 @@ fun EmojiPicker(
     // Under the chat input the picker stands in for the keyboard and takes its height. Hosted in a sheet
     // (reactions) it should fill the sheet instead, or the keyboard height leaves most of it empty.
     fillAvailableHeight: Boolean = false,
+    // Reactions only accept emojis, so the GIF and Sticker tabs are hidden when true.
+    emojisOnly: Boolean = false,
     onEmojiSelected: (Emoji) -> Unit
 ) {
     var selectedTab by remember { mutableStateOf(0) }
@@ -268,46 +270,47 @@ fun EmojiPicker(
     ) {
         Row(modifier = Modifier.fillMaxSize()) {
             Column(modifier = Modifier.weight(1f)) {
-                SecondaryTabRow(
-                    selectedTabIndex = selectedTab,
-                    containerColor = Color.Transparent,
-                    contentColor = MaterialTheme.colorScheme.primary,
-                    divider = {},
-                ) {
-                    Tab(
-                        selected = selectedTab == 0,
-                        onClick = { selectedTab = 0 },
-                        selectedContentColor = MaterialTheme.colorScheme.primary,
-                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                if (!emojisOnly) {
+                    SecondaryTabRow(
+                        selectedTabIndex = selectedTab,
+                        containerColor = Color.Transparent,
+                        contentColor = MaterialTheme.colorScheme.primary,
+                        divider = {},
                     ) {
-                        Box(Modifier.padding(12.dp)) {
-                            Text("Emoji", style = MaterialTheme.typography.labelLarge, fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal)
+                        Tab(
+                            selected = selectedTab == 0,
+                            onClick = { selectedTab = 0 },
+                            selectedContentColor = MaterialTheme.colorScheme.primary,
+                            unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        ) {
+                            Box(Modifier.padding(12.dp)) {
+                                Text("Emoji", style = MaterialTheme.typography.labelLarge, fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal)
+                            }
                         }
-                    }
-                    Tab(
-                        selected = selectedTab == 1,
-                        onClick = { selectedTab = 1 },
-                        selectedContentColor = MaterialTheme.colorScheme.primary,
-                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    ) {
-                        Box(Modifier.padding(12.dp)) {
-                            Text("GIFs", style = MaterialTheme.typography.labelLarge, fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal)
+                        Tab(
+                            selected = selectedTab == 1,
+                            onClick = { selectedTab = 1 },
+                            selectedContentColor = MaterialTheme.colorScheme.primary,
+                            unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        ) {
+                            Box(Modifier.padding(12.dp)) {
+                                Text("GIFs", style = MaterialTheme.typography.labelLarge, fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal)
+                            }
                         }
-                    }
-                    Tab(
-                        selected = selectedTab == 2,
-                        onClick = { selectedTab = 2 },
-                        selectedContentColor = MaterialTheme.colorScheme.primary,
-                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    ) {
-                        Box(Modifier.padding(12.dp)) {
-                            Text("Stickers", style = MaterialTheme.typography.labelLarge, fontWeight = if (selectedTab == 2) FontWeight.Bold else FontWeight.Normal)
+                        Tab(
+                            selected = selectedTab == 2,
+                            onClick = { selectedTab = 2 },
+                            selectedContentColor = MaterialTheme.colorScheme.primary,
+                            unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        ) {
+                            Box(Modifier.padding(12.dp)) {
+                                Text("Stickers", style = MaterialTheme.typography.labelLarge, fontWeight = if (selectedTab == 2) FontWeight.Bold else FontWeight.Normal)
+                            }
                         }
                     }
                 }
 
-                if (selectedTab == 0 || selectedTab == 1) {
-                    TextField(
+                TextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
                         modifier = Modifier
@@ -317,7 +320,11 @@ fun EmojiPicker(
                             .focusRequester(searchFocusRequester),
                         placeholder = { 
                             Text(
-                                if (selectedTab == 0) "Find the perfect emoji" else "Search GIFs (Klipy)", 
+                                when (selectedTab) {
+                                    0 -> "Find the perfect emoji"
+                                    1 -> "Search GIFs (Klipy)"
+                                    else -> "Search stickers"
+                                }, 
                                 style = MaterialTheme.typography.bodyMedium, 
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                             ) 
@@ -355,7 +362,6 @@ fun EmojiPicker(
                         singleLine = true,
                         textStyle = MaterialTheme.typography.bodyMedium
                     )
-                }
 
                 Box(modifier = Modifier.weight(1f).padding(16.dp)) {
                     AnimatedContent(
@@ -422,6 +428,7 @@ fun EmojiPicker(
                                 }
                             )
                             2 -> StickerPicker(
+                                query = searchQuery,
                                 mediaApi = mediaApi,
                                 onStickerSelected = { sticker ->
                                     val replacement = me.lampu.lampcord.shared.utils.FreeNitroEmojis.getStickerReplacement(
