@@ -47,4 +47,25 @@ class EmojiTest {
             Emoji(id = "123", name = "smile").getDisplayUrl()
         )
     }
+
+    @Test
+    fun sizeIsSnappedToAPowerOfTwoBecauseTheCdnRejectsAnythingElse() {
+        // Sizes derived from a font metric (e.g. 16sp * 1.4 * 2 = 44, jumbo = 89) 400 otherwise.
+        assertEquals(
+            "https://cdn.discordapp.com/emojis/123.webp?size=64&quality=lossless",
+            customEmojiCdnUrl("123", animated = false, size = 44)
+        )
+        assertEquals(
+            "https://cdn.discordapp.com/emojis/123.webp?size=128&quality=lossless",
+            customEmojiCdnUrl("123", animated = false, size = 89)
+        )
+        assertEquals(
+            "https://cdn.discordapp.com/emojis/123.webp?size=16&quality=lossless",
+            customEmojiCdnUrl("123", animated = false, size = 1)
+        )
+        assertEquals(
+            "https://cdn.discordapp.com/emojis/123.webp?size=32&quality=lossless",
+            customEmojiCdnUrl("123", animated = false, size = 32)
+        )
+    }
 }

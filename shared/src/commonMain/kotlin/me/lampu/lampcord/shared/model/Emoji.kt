@@ -22,9 +22,19 @@ data class Emoji(
 // (ModelEmojiCustom.setCdnUri). The extension carries the animation flag; there is no `animated=`
 // query parameter. `webp` is only downgraded to `png` on API 28/29, where animated WebP decoding
 // was still unreliable.
+//
+// The CDN rejects any size that isn't a power of two with a 400, which surfaces as a blank image,
+// so round up to the next one rather than passing a size derived from a font metric.
+private fun snapEmojiSize(size: Int): Int {
+    val clamped = size.coerceIn(16, 4096)
+    var snapped = 16
+    while (snapped < clamped) snapped = snapped shl 1
+    return snapped
+}
+
 fun customEmojiCdnUrl(id: String, animated: Boolean, size: Int = 64): String {
     val ext = if (animated) "gif" else "webp"
-    return "https://cdn.discordapp.com/emojis/$id.$ext?size=$size&quality=lossless"
+    return "https://cdn.discordapp.com/emojis/$id.$ext?size=${snapEmojiSize(size)}&quality=lossless"
 }
 
 fun isUnicodeEmoji(str: String): Boolean {
