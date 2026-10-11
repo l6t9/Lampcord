@@ -1,11 +1,17 @@
 # Lampcord
-Lampcord is a lightweight Discord client built with Compose Multiplatform for Android and Desktop (Linux & Windows).
 
-It is designed to deliver a native, fast, and customizable Discord experience without the bloat and heavy memory footprint of Electron or WebViews.
+Lampcord is a lightweight Discord client built with Compose Multiplatform for Android and Desktop (Linux & Windows), with macOS and iOS targets in the build as well. It aims for a native, fast, and customizable Discord experience without the bloat and heavy memory footprint of Electron or WebViews.
+
+Come hang out and follow development on the [Lampcord Discord server](https://discord.gg/uHXJJzxSD8).
+
+[![Latest release](https://img.shields.io/github/v/release/l6t9/Lampcord)](https://github.com/l6t9/Lampcord/releases/latest)
+[![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
+[![Discord](https://img.shields.io/badge/Discord-join-5865F2?logo=discord&logoColor=white)](https://discord.gg/uHXJJzxSD8)
 
 ## Inspiration
-- **[Aliucord](https://github.com/Aliucord/Aliucord)**: Lampcord inherits a lot of my work on Aliucord, and my [plugins](https://github.com/l6t9/AliucordPlugins) for it.
-- **[Nucleus](https://github.com/NucleusFramework/Nucleus)**: Used to provide proper support for Wayland.
+
+- **[Aliucord](https://github.com/Aliucord/Aliucord)**: Lampcord inherits a lot of my work on Aliucord and my [plugins](https://github.com/l6t9/AliucordPlugins) for it.
+- **[Nucleus](https://github.com/NucleusFramework/Nucleus)**: Provides proper support for Wayland.
 
 # Screenshots
 <img width="1264" height="2780" alt="lampcord-p1" src="https://github.com/user-attachments/assets/8963d016-ec49-4273-9ab3-f92f7ec6f50a" />
@@ -17,10 +23,10 @@ It is designed to deliver a native, fast, and customizable Discord experience wi
 
 ---
 
->[!Warning]
->**Lampcord is in BETA**
+> [!Warning]
+> **Lampcord is in BETA**
 >
->This is still in development and may not be ready for day-to-day use
+> This is still in development and may not be ready for day-to-day use
 >
 
 # Features roadmap
@@ -53,59 +59,26 @@ It is designed to deliver a native, fast, and customizable Discord experience wi
   * [x] Client-side free Nitro emojis
 ## Guild and channel management
   * [ ] Server settings (roles, channels, emoji management)
-  * [ ] Stage & forum channel creation and moderation 
+  * [ ] Stage & forum channel creation and moderation
 
 ---
 
-<div align="center">
+<a id="download-now"></a>
+# Download
 
-<h1><a id="download-now"></a>Download</h1>
+Two channels are published on the [releases page](https://github.com/l6t9/Lampcord/releases): tagged **stable** builds under `v<version>` tags, and rolling **nightly** builds under the `nightly` tag.
 
-<h2>Stable Release</h2>
+| Platform | Stable | Nightly | Artifact |
+| --- | --- | --- | --- |
+| **Android** (9+) | [Download APK](https://github.com/l6t9/Lampcord/releases/latest) | [Download APK](https://github.com/l6t9/Lampcord/releases/tag/nightly) | `lampcord-android-<version>.apk` |
+| **Windows** (10+, x64) | [Download ZIP](https://github.com/l6t9/Lampcord/releases/latest) | [ZIP / EXE installer](https://github.com/l6t9/Lampcord/releases/tag/nightly) | `lampcord-desktop-windows-x64-<version>.zip` |
+| **macOS** (unsigned) | [Download DMG](https://github.com/l6t9/Lampcord/releases/latest) | [Download DMG](https://github.com/l6t9/Lampcord/releases/tag/nightly) | `lampcord-desktop-macos-<version>.dmg` |
+| **Linux** (x86_64) | [Download AppImage](https://github.com/l6t9/Lampcord/releases/latest) | [AppImage / DEB / RPM / Arch](https://github.com/l6t9/Lampcord/releases/tag/nightly) | `lampcord-desktop-linux-x64-<version>.AppImage` |
+| **iOS** (unsigned) | [Download IPA](https://github.com/l6t9/Lampcord/releases/latest) | [Download IPA](https://github.com/l6t9/Lampcord/releases/tag/nightly) | `lampcord-ios-<version>.ipa` |
 
-<table>
-  <tr>
-    <th align="center">Obtainium</th>
-  </tr>
-  <tr>
-    <td align="center">
-      <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/l6t9/Lampcord/">
-        <img src="https://github.com/ImranR98/Obtainium/blob/main/assets/graphics/badge_obtainium.png" alt="Download from Obtainium" height="50">
-      </a>
-    </td>
-  </tr>
-  <tr>
-    <th align="center" colspan="2">GitHub</th>
-  </tr>
-  <tr>
-    <td align="center" colspan="2">
-      <a href="https://github.com/l6t9/Lampcord/releases/latest/">
-        <img src="https://github.com/machiav3lli/oandbackupx/blob/034b226cea5c1b30eb4f6a6f313e4dadcbb0ece4/badge_github.png" alt="Download from GitHub" height="75">
-      </a>
-    </td>
-  </tr>
-</table>
+The macOS DMG and iOS IPA are unsigned, so they need `xattr -d com.apple.quarantine` and a sideloading tool respectively. Every stable release also ships a `SHA256SUMS` file.
 
-<h2>Nightly Build</h2>
-
-<table>
-  <thead>
-    <tr>
-      <th align="center">GitHub</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td align="center">
-        <a href="https://github.com/l6t9/Lampcord/releases/tag/nightly">
-          <img src="https://github.com/machiav3lli/oandbackupx/blob/034b226cea5c1b30eb4f6a6f313e4dadcbb0ece4/badge_github.png" alt="Download from GitHub" height="75">
-        </a>
-      </td>
-    </tr>
-  </tbody>
-</table>
-
-</div>
+For Android, you can let [Obtainium](https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/l6t9/Lampcord/) handle updates straight from GitHub releases.
 
 ---
 
@@ -145,6 +118,22 @@ in the build, so macOS will need `xattr -d com.apple.quarantine` after first dow
 # For assembling the release APK
 ./gradlew :androidApp:assembleRelease
 ```
+
+### Voice (DAVE)
+
+Android and desktop use Discord's voice gateway v8 with UDP/RTP, Opus (48 kHz stereo), and the libdave protocol v1 for server channels and one-to-one/group DM calls. The native library is built from a pinned, SHA-256 verified source bundle rather than prebuilt binaries, and `voice_check` exercises a real MLS group negotiation without recording a microphone or contacting Discord. See [`native/voice/README.md`](native/voice/README.md) for the build, test, and live-verification details.
+
+---
+
+## Acknowledgements
+
+Besides the projects listed under [Inspiration](#inspiration), Lampcord stands on the libdave/MLSpp/BoringSSL sources used for end-to-end encrypted voice and the [Opus](https://opus-codec.org/) codec that carries it. Thanks to everyone maintaining the Compose Multiplatform and Kotlin ecosystem it is built on.
+
+---
+
+## Support
+
+Lampcord is free and open-source under the GPL. If it earns a place in your daily setup, you can support development via [GitHub Sponsors](https://github.com/sponsors/l6t9).
 
 ---
 
