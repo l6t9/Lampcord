@@ -84,6 +84,13 @@ kotlin {
         iosArm64(),
         iosSimulatorArm64()
     ).forEach {
+        it.compilations.all {
+            compilerOptions.configure {
+                freeCompilerArgs.add(
+                    "-Xdisable-phases=DevirtualizationAnalysis,DCEPhase,RemoveRedundantCallsToStaticInitializersPhase"
+                )
+            }
+        }
         it.binaries.framework {
             baseName = "Shared"
             // Dynamic, not static. A static framework has to merge every dependency klib into a

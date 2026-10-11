@@ -46,7 +46,7 @@ jobs:
       # native allocations, and capping workers stops a second native compilation from
       # competing for the same memory. Overrides gradle.properties for this job only.
       GRADLE_OPTS: >-
-        -Dorg.gradle.jvmargs="-XX:MaxRAMPercentage=25.0 -XX:+UseParallelGC -Dkotlin.daemon.jvm.options=-XX:MaxRAMPercentage=55.0 -XX:+UseParallelGC"
+        -Dorg.gradle.jvmargs="-XX:MaxRAMPercentage=60.0 -XX:MaxMetaspaceSize=512m -XX:+UseParallelGC -Dkotlin.daemon.jvm.options=-XX:MaxRAMPercentage=12.0 -XX:+UseParallelGC"
       ORG_GRADLE_PROJECT_org.gradle.workers.max: "2"
     steps:
       - name: Check out repository
