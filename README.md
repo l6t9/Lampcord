@@ -1,8 +1,6 @@
 # Lampcord
 
-Lampcord is a lightweight Discord client built with Compose Multiplatform for Android and Desktop (Linux & Windows), with macOS and iOS targets in the build as well. It aims for a native, fast, and customizable Discord experience without the bloat and heavy memory footprint of Electron or WebViews.
-
-Come hang out and follow development on the [Lampcord Discord server](https://discord.gg/uHXJJzxSD8).
+Lampcord is a lightweight Discord client built with Compose Multiplatform for Mobile and Desktop. It aims for a native, fast, and customizable Discord experience without the bloat and heavy memory footprint of Electron or WebViews.
 
 [![Latest release](https://img.shields.io/github/v/release/l6t9/Lampcord)](https://github.com/l6t9/Lampcord/releases/latest)
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
@@ -76,10 +74,6 @@ Two channels are published on the [releases page](https://github.com/l6t9/Lampco
 | **Linux** (x86_64) | [Download AppImage](https://github.com/l6t9/Lampcord/releases/latest) | [AppImage / DEB / RPM / Arch](https://github.com/l6t9/Lampcord/releases/tag/nightly) | `lampcord-desktop-linux-x64-<version>.AppImage` |
 | **iOS** (unsigned) | [Download IPA](https://github.com/l6t9/Lampcord/releases/latest) | [Download IPA](https://github.com/l6t9/Lampcord/releases/tag/nightly) | `lampcord-ios-<version>.ipa` |
 
-The macOS DMG and iOS IPA are unsigned, so they need `xattr -d com.apple.quarantine` and a sideloading tool respectively. Every stable release also ships a `SHA256SUMS` file.
-
-For Android, you can let [Obtainium](https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/l6t9/Lampcord/) handle updates straight from GitHub releases.
-
 ---
 
 # Building from source
@@ -119,21 +113,11 @@ in the build, so macOS will need `xattr -d com.apple.quarantine` after first dow
 ./gradlew :androidApp:assembleRelease
 ```
 
-### Voice (DAVE)
-
-Android and desktop use Discord's voice gateway v8 with UDP/RTP, Opus (48 kHz stereo), and the libdave protocol v1 for server channels and one-to-one/group DM calls. The native library is built from a pinned, SHA-256 verified source bundle rather than prebuilt binaries, and `voice_check` exercises a real MLS group negotiation without recording a microphone or contacting Discord. See [`native/voice/README.md`](native/voice/README.md) for the build, test, and live-verification details.
-
----
-
-## Acknowledgements
-
-Besides the projects listed under [Inspiration](#inspiration), Lampcord stands on the libdave/MLSpp/BoringSSL sources used for end-to-end encrypted voice and the [Opus](https://opus-codec.org/) codec that carries it. Thanks to everyone maintaining the Compose Multiplatform and Kotlin ecosystem it is built on.
-
 ---
 
 ## Support
 
-Lampcord is free and open-source under the GPL. If it earns a place in your daily setup, you can support development via [GitHub Sponsors](https://github.com/sponsors/l6t9).
+Lampcord is free and open-source under GPL-3.0. If you like it, you can support development via [GitHub Sponsors](https://github.com/sponsors/l6t9).
 
 ---
 
