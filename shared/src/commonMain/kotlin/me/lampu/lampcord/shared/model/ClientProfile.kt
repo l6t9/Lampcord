@@ -21,7 +21,7 @@ class ClientProfileMapping(
     private val avatars: Map<String, String> = emptyMap()
 ) {
     operator fun get(userId: String): CustomProfile? {
-        val hasBanner = userId.toLongOrNull()?.let { bannerUserIds.binarySearch(it) >= 0 } == true
+        val hasBanner = userId.toLongOrNull()?.let { bannerUserIds.asList().binarySearch(it) >= 0 } == true
         val avatar = avatars[userId]
         if (!hasBanner && avatar == null) return null
         return CustomProfile(
