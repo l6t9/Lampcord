@@ -20,6 +20,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.*
@@ -407,11 +408,20 @@ fun ChatInputBar(
                             }
 
                             Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                verticalAlignment = Alignment.Top
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(
+                                        Brush.verticalGradient(
+                                            0f to Color.Transparent,
+                                            0.45f to MaterialTheme.colorScheme.background.copy(alpha = 0.82f),
+                                            1f to MaterialTheme.colorScheme.background
+                                        )
+                                    )
+                                    .padding(start = 8.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Box(
-                                    modifier = Modifier.size(buttonSize),
+                                    modifier = Modifier.size(28.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     IconButton(
