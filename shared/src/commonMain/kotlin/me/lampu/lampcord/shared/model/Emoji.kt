@@ -18,6 +18,15 @@ data class Emoji(
     val guild_id: String? = null
 )
 
+// Discord's own client builds custom emoji URLs as /emojis/{id}.{gif|webp}?size={n}&quality=lossless
+// (ModelEmojiCustom.setCdnUri). The extension carries the animation flag; there is no `animated=`
+// query parameter. `webp` is only downgraded to `png` on API 28/29, where animated WebP decoding
+// was still unreliable.
+fun customEmojiCdnUrl(id: String, animated: Boolean, size: Int = 64): String {
+    val ext = if (animated) "gif" else "webp"
+    return "https://cdn.discordapp.com/emojis/$id.$ext?size=$size&quality=lossless"
+}
+
 fun isUnicodeEmoji(str: String): Boolean {
     if (str.isEmpty()) return false
     if (EmojiIndex.getNamesForChar(str) != null) return true
@@ -31,8 +40,8 @@ fun isUnicodeEmoji(str: String): Boolean {
 fun Emoji.getDisplayUrl(): String? {
     if (url != null) return url
     if (id != null) {
-        val ext = if (animated == true && !Settings.shared.reduceMotion) "gif" else "png"
-        return "https://cdn.discordapp.com/emojis/$id.$ext?size=64"
+        // Reduce Motion asks for the static frame, which the plain webp variant already is.
+        return customEmojiCdnUrl(id, animated == true && !Settings.shared.reduceMotion)
     }
     val nameStr = name ?: return null
     val unicode = EmojiIndex.getCharForName(nameStr) ?: nameStr

@@ -27,6 +27,7 @@ import kotlinx.coroutines.delay
 import org.koin.compose.koinInject
 import kotlin.time.Duration.Companion.milliseconds
 
+import me.lampu.lampcord.shared.model.customEmojiCdnUrl
 import me.lampu.lampcord.shared.model.getDisplayUrl
 import me.lampu.lampcord.shared.model.toTwemojiUrl
 import me.lampu.lampcord.shared.ui.kit.clickableCursor
@@ -133,19 +134,14 @@ fun CustomStatus(activity: Activity, modifier: Modifier = Modifier, compact: Boo
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         if (activity.emoji != null) {
-            val emojiUrl = if (activity.emoji.id != null) {
-                val extension = if (activity.emoji.animated == true && !Settings.shared.reduceMotion) {
-                    "gif"
-                } else {
-                    "png"
-                }
-                "https://cdn.discordapp.com/emojis/${activity.emoji.id}.$extension?size=32"
-            } else null
+            val isAnimated = activity.emoji.animated == true && !Settings.shared.reduceMotion
+            val emojiUrl = activity.emoji.id?.let { customEmojiCdnUrl(it, isAnimated, size = 64) }
             
             if (emojiUrl != null) {
                 AsyncImage(
                     model = emojiUrl,
                     contentDescription = activity.emoji.name,
+                    allowAnimation = isAnimated,
                     modifier = Modifier.size(20.dp)
                 )
             } else if (activity.emoji.name != null) {

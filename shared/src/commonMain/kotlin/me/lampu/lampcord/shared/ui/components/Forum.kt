@@ -33,6 +33,7 @@ import me.lampu.lampcord.shared.ui.icons.Icons
 import org.koin.compose.koinInject
 import me.lampu.lampcord.shared.utils.DateTimeUtils
 import me.lampu.lampcord.shared.state.UserStore
+import me.lampu.lampcord.shared.model.customEmojiCdnUrl
 import me.lampu.lampcord.shared.model.getDisplayUrl
 import me.lampu.lampcord.shared.utils.EmojiIndex
 import me.lampu.lampcord.shared.model.toTwemojiUrl
@@ -170,7 +171,7 @@ fun ForumPostList(
 fun TagEmoji(emojiId: String?, emojiName: String?, size: androidx.compose.ui.unit.Dp = 18.dp) {
     val emojiUrl = remember(emojiId, emojiName) {
         if (emojiId != null) {
-            "https://cdn.discordapp.com/emojis/$emojiId.png?size=48"
+            customEmojiCdnUrl(emojiId, animated = false, size = 64)
         } else if (emojiName != null) {
             val unicode = EmojiIndex.getCharForName(emojiName) ?: emojiName
             unicode.toTwemojiUrl()

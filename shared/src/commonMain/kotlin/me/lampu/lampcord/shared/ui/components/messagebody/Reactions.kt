@@ -94,12 +94,14 @@ fun ReactionsView(
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         val emojiUrl = reaction.emoji.getDisplayUrl()
+                        val isAnimated = reaction.emoji.animated == true
                         var loadFailed by remember(emojiUrl) { mutableStateOf(false) }
                         if (emojiUrl != null && !loadFailed) {
                             AsyncImage(
                                 model = emojiUrl, 
                                 contentDescription = reaction.emoji.name, 
                                 modifier = Modifier.size(16.dp), 
+                                allowAnimation = isAnimated,
                                 showPlaceholder = false, 
                                 onState = { state -> if (state is ImageLoadState.Error) loadFailed = true }
                             )

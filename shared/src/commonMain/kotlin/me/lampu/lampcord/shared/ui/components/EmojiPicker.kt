@@ -41,6 +41,7 @@ import kotlinx.coroutines.launch
 import me.lampu.lampcord.shared.api.MediaApi
 import me.lampu.lampcord.shared.model.Emoji
 import me.lampu.lampcord.shared.model.Gif
+import me.lampu.lampcord.shared.model.customEmojiCdnUrl
 import me.lampu.lampcord.shared.model.getDisplayUrl
 import me.lampu.lampcord.shared.model.isUnicodeEmoji
 import me.lampu.lampcord.shared.state.*
@@ -93,16 +94,23 @@ fun EmojiPicker(
         val groups = mutableListOf<EmojiGroup>()
         val customEmojisById = guilds.flatMap { it.emojis }.associateBy { it.id }
         fun emojiFromKey(key: String): Emoji? {
-            val normalized = key.trim().removePrefix("<a:").removePrefix("<:").removeSuffix(">")
-            val parts = normalized.split(":")
+            val trimmed = key.trim()
+            // "<a:name:id>" carries the animation flag in its prefix; the "a:" form below is the
+            // one this file writes, since favorites and frequently used are stored as "name:id".
+            val fromCode = trimmed.startsWith("<a:")
+            val normalized = trimmed.removePrefix("<a:").removePrefix("<:").removeSuffix(">")
+            val hasAPrefix = normalized.startsWith("a:") && normalized.drop(2).contains(":")
+            val isAnimatedKey = fromCode || hasAPrefix
+            val body = if (hasAPrefix) normalized.drop(2) else normalized
+            val parts = body.split(":")
             val id = parts.lastOrNull()?.takeIf { it.isNotEmpty() && it.all(Char::isDigit) }
-                ?: normalized.takeIf { it.length in 15..22 && it.all(Char::isDigit) }
+                ?: body.takeIf { it.length in 15..22 && it.all(Char::isDigit) }
             return if (id != null) {
                 customEmojisById[id] ?: parts.dropLast(1).joinToString(":")
                     .takeIf { it.isNotBlank() }
-                    ?.let { name -> Emoji(name = name, id = id, animated = key.startsWith("<a:")) }
+                    ?.let { name -> Emoji(name = name, id = id, animated = isAnimatedKey) }
             } else {
-                val emojiName = normalized.removeSurrounding(":")
+                val emojiName = body.removeSurrounding(":")
                 val unicode = EmojiIndex.getCharForName(emojiName) ?: emojiName
                 if (isUnicodeEmoji(unicode)) {
                     Emoji(name = unicode, url = unicode.toTwemojiUrl())
@@ -498,14 +506,15 @@ fun EmojiGrid(
                     }
                     items(group.emojis) { emoji ->
                         val url = emoji.getDisplayUrl()
+                        val isAnimated = emoji.animated == true
                         val displayUrl = if (Settings.shared.reduceMotion &&
-                            emoji.animated == true && emoji.id != null
+                            isAnimated && emoji.id != null
                         ) {
-                            "https://cdn.discordapp.com/emojis/${emoji.id}.png?size=48"
+                            customEmojiCdnUrl(emoji.id, animated = false, size = 48)
                         } else {
                             url
                         }
-                        val key = if (emoji.id != null) "${emoji.name}:${emoji.id}" else (emoji.name ?: "")
+                        val key = if (emoji.id != null) "${if (isAnimated) "a:" else ""}${emoji.name}:${emoji.id}" else (emoji.name ?: "")
                         val isFav = favorites.contains(key)
 
                         val menuItems = mutableListOf<ContextMenuItem>()
@@ -555,12 +564,13 @@ fun EmojiGrid(
                                             .fillMaxSize()
                                             .clip(RoundedCornerShape(4.dp))
                                             .clickableCursor {
-                                                val emojiStr = if (emoji.id != null) "${emoji.name}:${emoji.id}" else ":${emoji.name}:"
+                                                val emojiStr = if (emoji.id != null) "${if (isAnimated) "a:" else ""}${emoji.name}:${emoji.id}" else ":${emoji.name}:"
                                                 emojiStore.onEmojiUsed(emojiStr)
                                                 onEmojiSelected(emoji)
                                             }
                                             .padding(4.dp),
-                                        filterQuality = FilterQuality.Medium
+                                        filterQuality = FilterQuality.Medium,
+                                        allowAnimation = isAnimated && !Settings.shared.reduceMotion
                                     )
                                 } else if (emoji.name != null) {
                                     Box(
@@ -569,7 +579,7 @@ fun EmojiGrid(
                                             .clip(RoundedCornerShape(4.dp))
                                             .clickableCursor {
                                                 val emojiName = emoji.name
-                                                val emojiStr = if (emoji.id != null) "${emojiName}:${emoji.id}" else ":${emojiName}:"
+                                                val emojiStr = if (emoji.id != null) "${if (isAnimated) "a:" else ""}${emojiName}:${emoji.id}" else ":${emojiName}:"
                                                 emojiStore.onEmojiUsed(emojiStr)
                                                 onEmojiSelected(emoji)
                                             }

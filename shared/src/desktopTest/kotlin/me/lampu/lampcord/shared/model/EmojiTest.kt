@@ -18,4 +18,33 @@ class EmojiTest {
         val bytes = assertNotNull(ResourceLoader.readBytes("twemoji/72x72/1f600.png"))
         assertEquals("PNG", bytes.copyOfRange(1, 4).decodeToString())
     }
+
+    @Test
+    fun customEmojiUrlUsesGifForAnimatedAndWebpForStatic() {
+        // Matches Discord's own format, /emojis/{id}.{ext}?size={n}&quality=lossless.
+        assertEquals(
+            "https://cdn.discordapp.com/emojis/123.gif?size=64&quality=lossless",
+            customEmojiCdnUrl("123", animated = true)
+        )
+        assertEquals(
+            "https://cdn.discordapp.com/emojis/123.webp?size=64&quality=lossless",
+            customEmojiCdnUrl("123", animated = false)
+        )
+        assertEquals(
+            "https://cdn.discordapp.com/emojis/123.webp?size=32&quality=lossless",
+            customEmojiCdnUrl("123", animated = false, size = 32)
+        )
+    }
+
+    @Test
+    fun displayUrlPrefersGifOnlyWhenAnimated() {
+        assertEquals(
+            "https://cdn.discordapp.com/emojis/123.gif?size=64&quality=lossless",
+            Emoji(id = "123", name = "party").getDisplayUrl()
+        )
+        assertEquals(
+            "https://cdn.discordapp.com/emojis/123.webp?size=64&quality=lossless",
+            Emoji(id = "123", name = "smile").getDisplayUrl()
+        )
+    }
 }

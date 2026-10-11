@@ -39,6 +39,7 @@ import me.lampu.lampcord.shared.api.GuildApi
 import me.lampu.lampcord.shared.model.Emoji
 import me.lampu.lampcord.shared.model.Sticker
 import me.lampu.lampcord.shared.model.Guild
+import me.lampu.lampcord.shared.model.customEmojiCdnUrl
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
 import me.lampu.lampcord.shared.ui.components.settings.Material3SettingsGroup
@@ -154,8 +155,9 @@ fun ServerEmoji(guild: Guild, guildApi: GuildApi = koinInject()) {
                                 horizontalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
                                 AsyncImage(
-                                    model = "https://cdn.discordapp.com/emojis/${emoji.id}.png?size=96",
+                                    model = emoji.id?.let { customEmojiCdnUrl(it, emoji.animated == true, size = 128) },
                                     contentDescription = emoji.name,
+                                    allowAnimation = emoji.animated == true,
                                     modifier = Modifier.size(36.dp)
                                 )
                                 Column(modifier = Modifier.weight(1f)) {

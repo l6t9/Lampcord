@@ -26,6 +26,7 @@ import me.lampu.lampcord.shared.model.Emoji
 import me.lampu.lampcord.shared.model.Onboarding
 import me.lampu.lampcord.shared.model.OnboardingPrompt
 import me.lampu.lampcord.shared.model.OnboardingPromptOption
+import me.lampu.lampcord.shared.model.customEmojiCdnUrl
 import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.icons.Icons
@@ -260,10 +261,11 @@ private fun AsyncEmojiImage(id: String, size: Int) {
     val animated = id.startsWith("a_")
     val numeric = id.removePrefix("a_")
     AsyncImage(
-        model = "https://cdn.discordapp.com/emojis/$numeric.webp?size=96&animated=$animated",
+        model = customEmojiCdnUrl(numeric, animated, size = size * 2),
         contentDescription = null,
         modifier = Modifier.size(size.dp),
         filterQuality = androidx.compose.ui.graphics.FilterQuality.Medium,
+        allowAnimation = animated,
         showPlaceholder = false
     )
 }@Composable

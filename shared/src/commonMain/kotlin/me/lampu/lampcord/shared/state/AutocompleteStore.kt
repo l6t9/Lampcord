@@ -272,7 +272,7 @@ class AutocompleteStore(
                             if (realmojis) {
                                 "<${if (isAnimated) "a" else ""}:F_$rawName:${emoji.id}>"
                             } else {
-                                "https://cdn.discordapp.com/emojis/${emoji.id}.${if (isAnimated) "gif" else "png"}?size=48&name=$rawName"
+                                "${customEmojiCdnUrl(emoji.id!!, isAnimated, size = 48)}&name=$rawName"
                             }
                         } else {
                             "<${if (isAnimated) "a" else ""}:$rawName:${emoji.id}>"
@@ -282,7 +282,7 @@ class AutocompleteStore(
                             id = emoji.id ?: disambiguatedName,
                             title = ":$disambiguatedName:",
                             subtitle = if (isExternal) guildStore.guilds.value.find { it.id == emoji.guild_id }?.name else null,
-                            icon = if (emoji.id != null) "https://cdn.discordapp.com/emojis/${emoji.id}.png?size=64" else null,
+                            icon = if (emoji.id != null) customEmojiCdnUrl(emoji.id, isAnimated, size = 64) else null,
                             replacement = replacement,
                             inputText = ":$disambiguatedName:"
                         )

@@ -4,6 +4,7 @@ import me.lampu.lampcord.shared.model.Emoji
 import me.lampu.lampcord.shared.model.Message
 import me.lampu.lampcord.shared.model.Sticker
 import me.lampu.lampcord.shared.model.User
+import me.lampu.lampcord.shared.model.customEmojiCdnUrl
 import me.lampu.lampcord.shared.settings.Settings
 
 object FreeNitroEmojis {
@@ -35,8 +36,7 @@ object FreeNitroEmojis {
                 return "<${if (animated) "a" else ""}:F_$name:$id>"
             }
 
-            val ext = if (animated) "gif" else "png"
-            val url = "https://cdn.discordapp.com/emojis/$id.$ext?size=48&name=$name"
+            val url = "${customEmojiCdnUrl(id, animated, size = 48)}&name=$name"
             
             // Supporting the Aliucord format types (defaulting to standard markdown)
             return "[$name]($url)"
@@ -79,17 +79,9 @@ object FreeNitroEmojis {
             val isAnimated = match.groupValues[1].isNotEmpty()
             val emojiName = match.groupValues[3]
             val emojiId = match.groupValues[4]
-            val useWebp = settings.useWebpEmojis
 
-            val urlBuilder = StringBuilder("https://cdn.discordapp.com/emojis/$emojiId")
-            if (useWebp) {
-                urlBuilder.append(".webp?name=$emojiName&lossless=true")
-                if (isAnimated) urlBuilder.append("&animated=true")
-            } else {
-                urlBuilder.append(if (isAnimated) ".gif" else ".png")
-                urlBuilder.append("?name=$emojiName")
-            }
-            urlBuilder.append("&size=48")
+            val urlBuilder = StringBuilder(customEmojiCdnUrl(emojiId, isAnimated, size = 48))
+            urlBuilder.append("&name=$emojiName")
 
             "[$emojiName]($urlBuilder)"
         }

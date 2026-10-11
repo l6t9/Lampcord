@@ -13,6 +13,7 @@ import me.lampu.lampcord.shared.ui.rememberLinkOpener
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import me.lampu.lampcord.shared.model.MessageComponent
+import me.lampu.lampcord.shared.model.customEmojiCdnUrl
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.theme.DiscordGreen
@@ -67,8 +68,11 @@ fun MessageComponentsRow(
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             component.emoji?.let { emoji ->
-                                val emojiUrl = emoji.id?.let { "https://cdn.discordapp.com/emojis/$it.webp?size=48&animated=${emoji.animated == true && !me.lampu.lampcord.shared.settings.Settings.shared.reduceMotion}" }
-                                if (emojiUrl != null) { AsyncImage(model = emojiUrl, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                                val isAnimated = emoji.animated == true && !me.lampu.lampcord.shared.settings.Settings.shared.reduceMotion
+                                val emojiUrl = emoji.id?.let { customEmojiCdnUrl(it, isAnimated, size = 64) }
+                                if (emojiUrl != null) {
+                                    AsyncImage(model = emojiUrl, contentDescription = null, allowAnimation = isAnimated, modifier = Modifier.size(16.dp))
+                                }
                                 else { Text(emoji.name ?: "", fontSize = 14.sp) }
                             }
                             component.label?.let { Text(it, style = MaterialTheme.typography.labelMedium) }

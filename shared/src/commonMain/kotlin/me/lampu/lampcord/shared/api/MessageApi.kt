@@ -24,6 +24,7 @@ import me.lampu.lampcord.shared.model.Message
 import me.lampu.lampcord.shared.model.MessageReference
 import me.lampu.lampcord.shared.model.Poll
 import me.lampu.lampcord.shared.model.SearchResponse
+import me.lampu.lampcord.shared.model.customEmojiCdnUrl
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.utils.Logging
 
@@ -255,14 +256,8 @@ class MessageApi(private val rest: RestClient) {
             val animated = match.groupValues[1] == "a"
             val name = match.groupValues[2]
             val id = match.groupValues[3]
-            val useWebp = settings.useWebpEmojis
 
-            val url = if (useWebp) {
-                "https://cdn.discordapp.com/emojis/$id.webp?name=$name&animated=$animated&size=48"
-            } else {
-                val ext = if (animated) "gif" else "png"
-                "https://cdn.discordapp.com/emojis/$id.$ext?name=$name&size=48"
-            }
+            val url = customEmojiCdnUrl(id, animated, size = 48) + "&name=$name"
 
             if (settings.realmojis) "[$name]($url)" else url
         }

@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import kotlin.math.roundToInt
+import me.lampu.lampcord.shared.model.customEmojiCdnUrl
 import me.lampu.lampcord.shared.model.toTwemojiUrl
 import me.lampu.lampcord.shared.state.GuildStore
 import me.lampu.lampcord.shared.state.NavigationStore
@@ -146,7 +147,7 @@ fun DiscordMarkdownText(
             val id = parts[0]
             val animated = parts[1] == "a"
             val name = parts[2]
-            val url = "https://cdn.discordapp.com/emojis/$id.webp?size=44&animated=$animated"
+            val url = customEmojiCdnUrl(id, animated, size = (emojiSize.value * 2).toInt())
             
             map[annotation.item] = InlineTextContent(
                 Placeholder(emojiSize, emojiSize, PlaceholderVerticalAlign.Center)
@@ -156,6 +157,7 @@ fun DiscordMarkdownText(
                     contentDescription = name,
                     modifier = Modifier.fillMaxSize(),
                     filterQuality = FilterQuality.Medium,
+                    allowAnimation = animated,
                     showPlaceholder = false
                 )
             }
