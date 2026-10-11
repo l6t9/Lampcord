@@ -1,35 +1,34 @@
-<div align="center">
-
 # Lampcord
-
-**Lampcord** is a lightweight Discord client built with Compose Multiplatform for Android and Desktop (Linux & Windows).
+Lampcord is a lightweight Discord client built with Compose Multiplatform for Android and Desktop (Linux & Windows).
 
 It is designed to deliver a native, fast, and customizable Discord experience without the bloat and heavy memory footprint of Electron or WebViews.
 
-</div>
-
----
-
-<div align="center">
-
 ## Inspiration
-
 - **[Aliucord](https://github.com/Aliucord/Aliucord)**: Lampcord inherits a lot of my work on Aliucord, and my [plugins](https://github.com/l6t9/AliucordPlugins) for it.
 - **[Nucleus](https://github.com/NucleusFramework/Nucleus)**: Used to provide proper support for Wayland.
 
-</div>
+# Screenshots
+<img width="1264" height="2780" alt="lampcord-p1" src="https://github.com/user-attachments/assets/8963d016-ec49-4273-9ab3-f92f7ec6f50a" />
+<img width="2876" height="1796" alt="lampcord-p" src="https://github.com/user-attachments/assets/a35ecc79-a978-4b14-83a3-0197821b5ce9" />
+<img width="1264" height="2780" alt="lampcord-s1" src="https://github.com/user-attachments/assets/6c62d1fe-36c9-4a6d-acf8-aa604603648e" />
+<img width="2870" height="1796" alt="lampcord-s" src="https://github.com/user-attachments/assets/59aa0f6d-0636-41bc-9935-00a9a3ba84d3" />
+<img width="1264" height="2780" alt="lampcord-1" src="https://github.com/user-attachments/assets/405d73cf-f0d1-4610-b545-bedcc6803bc1" />
+<img width="2874" height="1796" alt="lampcord" src="https://github.com/user-attachments/assets/de2a75e1-2e5a-40e6-a0b2-00bac33d9ae9" />
 
 ---
 
-<div align="center">
+>[!Warning]
+>**Lampcord is in BETA**
+>
+>This is still in development and may not be ready for day-to-day use
+>
 
-## Features & Roadmap
-
- * **Authentication**
+# Features roadmap
+## Authentication
   * [x] Password & token login
   * [x] Remote QR code login
   * [x] Multi-account switcher
- * **Messaging & Chat**
+## Messaging and chat
   * [x] Real-time chat & gateway sync
   * [x] Markdown parsing & code highlighting
   * [x] Custom emojis, reactions & stickers
@@ -37,32 +36,30 @@ It is designed to deliver a native, fast, and customizable Discord experience wi
   * [x] Message pinning & thread views
   * [x] Local message deletion logger
   * [ ] Slash commands & application options
- * **Voice & Media**
+## Voice and media
   * [x] Native DAVE voice protocol (DAVE v1)
   * [x] Voice channels & in-call controls
   * [x] Image / video viewer & audio player
   * [x] Custom status & activity / rich presence
   * [ ] Video calling & screen share rendering
- * **Notifications**
+## Notifications
   * [x] Android system notifications & conversation bubbles
   * [x] Desktop system notifications & toasts
   * [x] Background FCM push notification sync
- * **Customization & Themes**
+## Customization and themes
   * [x] Custom Material 3 Expressive (M3E) themes & Matugen color sync
   * [x] Custom font selection (Inter, Maple Mono, System)
   * [x] Custom client profiles, UserBG & UserPFP
   * [x] Client-side free Nitro emojis
- * **Guild & Channel Management**
+## Guild and channel management
   * [ ] Server settings (roles, channels, emoji management)
-  * [ ] Stage & forum channel creation and moderation
-
-</div>
+  * [ ] Stage & forum channel creation and moderation 
 
 ---
 
 <div align="center">
 
-<h1><a id="download-now"></a>Download Now</h1>
+<h1><a id="download-now"></a>Download</h1>
 
 <h2>Stable Release</h2>
 
@@ -112,11 +109,9 @@ It is designed to deliver a native, fast, and customizable Discord experience wi
 
 ---
 
-<div align="center">
+# Building from source
 
-## Building from Source
-
-### Prerequisites
+## Prerequisites
 
 - **JDK 17+**
 - **Android SDK** (API 34+)
@@ -144,23 +139,21 @@ in the build, so macOS will need `xattr -d com.apple.quarantine` after first dow
 ### Android
 
 ```bash
-# Assemble Debug APK
+# For assembling the debug APK
 ./gradlew :androidApp:assembleDebug
 
-# Assemble Release APK
+# For assembling the release APK
 ./gradlew :androidApp:assembleRelease
 ```
 
 ---
 
-## Disclaimer & Notice
+## Important disclaimer
 
-Lampcord is a third-party open-source client and is **not** affiliated with, endorsed by, or sponsored by Discord Inc. Using third-party clients may violate Discord's Terms of Service. Use at your own risk.
+Lampcord is a third-party open-source client and is **not** affiliated with, endorsed by, or sponsored by Discord Inc. Lampcord may violate Discord's Terms of Service. Use it at your own risk.
 
 ---
 
 ## License
 
 Lampcord is released under the [GNU General Public License v3.0 (GPL-3.0)](LICENSE).
-
-</div>
