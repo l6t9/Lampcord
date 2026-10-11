@@ -11,14 +11,6 @@ Lampcord is a lightweight Discord client built with Compose Multiplatform for Mo
 - **[Aliucord](https://github.com/Aliucord/Aliucord)**: Lampcord inherits a lot of my work on Aliucord and my [plugins](https://github.com/l6t9/AliucordPlugins) for it.
 - **[Nucleus](https://github.com/NucleusFramework/Nucleus)**: Provides proper support for Wayland.
 
-# Screenshots
-<img width="1264" height="2780" alt="lampcord-p1" src="https://github.com/user-attachments/assets/8963d016-ec49-4273-9ab3-f92f7ec6f50a" />
-<img width="2876" height="1796" alt="lampcord-p" src="https://github.com/user-attachments/assets/a35ecc79-a978-4b14-83a3-0197821b5ce9" />
-<img width="1264" height="2780" alt="lampcord-s1" src="https://github.com/user-attachments/assets/6c62d1fe-36c9-4a6d-acf8-aa604603648e" />
-<img width="2870" height="1796" alt="lampcord-s" src="https://github.com/user-attachments/assets/59aa0f6d-0636-41bc-9935-00a9a3ba84d3" />
-<img width="1264" height="2780" alt="lampcord-1" src="https://github.com/user-attachments/assets/405d73cf-f0d1-4610-b545-bedcc6803bc1" />
-<img width="2874" height="1796" alt="lampcord" src="https://github.com/user-attachments/assets/de2a75e1-2e5a-40e6-a0b2-00bac33d9ae9" />
-
 ---
 
 > [!Warning]
