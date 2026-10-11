@@ -390,7 +390,7 @@ jobs:
           BASE_SHA: ${{ needs.prepare.outputs.base-sha }}
         run: |
           set -euo pipefail
-          git log "$BASE_SHA..$GITHUB_SHA" > release-assets/CHANGELOG.md
+          git log --pretty=format:"- %s" "$BASE_SHA..$GITHUB_SHA" > release-assets/CHANGELOG.md
 
       - name: Create release metadata
         shell: bash
