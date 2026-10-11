@@ -480,7 +480,7 @@ jobs:
             release-assets/* \
             --target "$GITHUB_SHA" \
             --title "Lampcord $APP_VERSION" \
-            --notes-file release-assets/CHANGELOG.md \
+            --notes "See CHANGELOG.md attachment for details." \
             --repo "$GITHUB_REPOSITORY"
 
       - name: Notify on Discord
