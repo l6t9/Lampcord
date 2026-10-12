@@ -2,9 +2,20 @@
 
 Lampcord is a lightweight Discord client built with Compose Multiplatform for Mobile and Desktop. It aims for a native, fast, and customizable Discord experience without the bloat and heavy memory footprint of Electron or WebViews.
 
-[![Latest release](https://img.shields.io/github/v/release/l6t9/Lampcord)](https://github.com/l6t9/Lampcord/releases/latest)
-[![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
-[![Discord](https://img.shields.io/badge/Discord-join-5865F2?logo=discord&logoColor=white)](https://discord.gg/uHXJJzxSD8)
+<div style="display: flex; gap: 0.5rem; align-items: center;">
+  <a href="https://github.com/l6t9/Lampcord/releases">
+    <img src="https://img.shields.io/github/v/release/l6t9/Lampcord?style=for-the-badge&labelColor=0d1117" alt="Latest release" />
+  </a>
+  <a href="https://github.com/l6t9/Lampcord/blob/main/LICENSE">
+    <img src="https://img.shields.io/github/license/l6t9/lampcord?style=for-the-badge&labelColor=0d1117" alt="License" />
+  </a>
+  <a href="https://github.com/l6t9/Lampcord/releases">
+    <img src="https://img.shields.io/github/downloads/l6t9/Lampcord/total?style=for-the-badge&labelColor=0d1117" alt="Downloads" />
+  </a>
+  <a href="https://discord.gg/uHXJJzxSD8">
+    <img src="https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord" />
+  </a>
+</div>
 
 ## Inspiration
 
