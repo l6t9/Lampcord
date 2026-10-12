@@ -348,7 +348,7 @@ exec "${'$'}DIR/Lampcord.bin" "${'$'}@"
 
 tasks.register("createAppImageLocal") {
     group = "distribution"
-    description = "Creates an AppImage using local appimagetool (replicated from Metrolist-KMP)."
+    description = "Creates an AppImage using local appimagetool."
     notCompatibleWithConfigurationCache("This task launches appimagetool directly.")
     dependsOn("patchLinuxLauncher")
 
