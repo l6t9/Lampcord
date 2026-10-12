@@ -36,7 +36,7 @@ import me.lampu.lampcord.shared.ui.components.ImageLoadState
 import me.lampu.lampcord.shared.ui.kit.combinedClickableCursor
 import me.lampu.lampcord.shared.ui.kit.handCursor
 
-internal fun profileBannerHeight(
+fun profileBannerHeight(
     width: Dp,
     isExpanded: Boolean,
     heightOverride: Dp?,

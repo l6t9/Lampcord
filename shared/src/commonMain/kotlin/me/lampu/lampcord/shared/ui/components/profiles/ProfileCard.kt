@@ -260,6 +260,7 @@ fun ProfileCard(
     bannerHeightRatio: Float = 0f,
     bannerContentScale: ContentScale = ContentScale.Crop,
     showBoardTab: Boolean = false,
+    showFrameOverlay: Boolean = true,
     userStore: UserStore = koinInject(),
     clientProfileStore: ClientProfileStore = koinInject(),
     settingsStore: me.lampu.lampcord.shared.state.SettingsStore = koinInject(),
@@ -387,20 +388,22 @@ fun ProfileCard(
             }
         }
 
-        if (effectProduct != null) {
-            ProfileEffectOverlay(
-                product = effectProduct,
-                modifier = Modifier.matchParentSize(),
-                animate = !Settings.shared.reduceMotion
-            )
-        }
+        if (showFrameOverlay) {
+            if (effectProduct != null) {
+                ProfileEffectOverlay(
+                    product = effectProduct,
+                    modifier = Modifier.matchParentSize(),
+                    animate = !Settings.shared.reduceMotion
+                )
+            }
 
-        if (frameProduct != null) {
-            ProfileFrameOverlay(
-                product = frameProduct,
-                modifier = Modifier.matchParentSize(),
-                railTop = railTop
-            )
+            if (frameProduct != null) {
+                ProfileFrameOverlay(
+                    product = frameProduct,
+                    modifier = Modifier.matchParentSize(),
+                    railTop = railTop
+                )
+            }
         }
     }
 }
