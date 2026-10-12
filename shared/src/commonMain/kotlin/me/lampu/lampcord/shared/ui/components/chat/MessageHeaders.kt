@@ -259,7 +259,8 @@ fun ReplyBar(
         val avatarUrl = remember(referencedMessage, navigationStore.selectedGuild) {
             val author = referencedMessage.author ?: return@remember null
             val guildId = referencedMessage.guild_id ?: navigationStore.selectedGuild?.id
-            val memberAvatar = referencedMessage.member?.avatar
+            val member = referencedMessage.member ?: (if (guildId != null) userStore.getMember(guildId, author.id) else null)
+            val memberAvatar = member?.avatar
             
             if (guildId != null && memberAvatar != null) {
                 CdnUrls.getMemberAvatarUrl(guildId, author.id, memberAvatar, author.avatar, 48)

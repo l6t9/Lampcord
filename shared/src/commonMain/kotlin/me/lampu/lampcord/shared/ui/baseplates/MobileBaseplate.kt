@@ -48,6 +48,7 @@ import me.lampu.lampcord.shared.ui.components.profiles.ProfileBanner
 import me.lampu.lampcord.shared.model.ProfileCollectibles
 import me.lampu.lampcord.shared.model.ProfileFrameProduct
 import me.lampu.lampcord.shared.ui.components.profiles.ProfileFrameOverlay
+import me.lampu.lampcord.shared.ui.components.profiles.rememberFrameInsets
 import me.lampu.lampcord.shared.ui.components.profiles.profileBannerHeight
 import me.lampu.lampcord.shared.ui.components.profiles.ProfileCard
 import me.lampu.lampcord.shared.ui.components.profiles.ProfileCardSkeleton
@@ -797,55 +798,45 @@ fun MobileBaseplate(
 
     if (profileStore.isProfileLoading || profileStore.selectedProfile != null) {
         val sheetState = rememberDiscordSheetState()
-        val profile = profileStore.selectedProfile
-        val frameSku = remember(profile) {
-            profile?.let { ProfileCollectibles.frameSku(it.user_profile, it.guild_member_profile) }
-        }
-        val frameProduct: ProfileFrameProduct? = remember(frameSku) { frameSku?.let { profileStore.getFrame(it) } }
-        val railTop = profile?.let { profileBannerHeight(560.dp, true, null, 0f) } ?: 0.dp
 
-        Box {
-            DiscordBottomSheet(
-                fillHeight = true,
-                onDismissRequest = {
-                    profileStore.selectedProfile = null
-                    profileStore.isProfileExpanded = false
-                    profileStore.isProfileLoading = false
-                },
-                sheetState = sheetState,
-            ) {
-                if (profileStore.selectedProfile != null) {
-                    val p = profileStore.selectedProfile!!
-                    ProfileCard(
-                        profile = p,
-                        modifier = Modifier.fillMaxSize(),
-                        showBorder = false,
-                        isExpanded = true,
-                        fillAvailableHeight = true,
-                        showBoardTab = true,
-                        onExpand = null,
-                        showFrameOverlay = false,
-                        onDismiss = {
-                            profileStore.selectedProfile = null
-                            profileStore.isProfileExpanded = false
-                            profileStore.isProfileLoading = false
-                        }
-                    )
-                } else {
-                    ProfileCardSkeleton(
-                        modifier = Modifier.fillMaxWidth(),
-                        isExpanded = true
-                    )
-                }
-            }
-
-            if (frameProduct != null) {
-                ProfileFrameOverlay(
-                    product = frameProduct,
+        DiscordBottomSheet(
+            fillHeight = true,
+            onDismissRequest = {
+                profileStore.selectedProfile = null
+                profileStore.isProfileExpanded = false
+                profileStore.isProfileLoading = false
+            },
+            sheetState = sheetState,
+        ) {
+            if (profileStore.selectedProfile != null) {
+                val p = profileStore.selectedProfile!!
+                val frameInsets = rememberFrameInsets(p, profileStore, 360.dp)
+                ProfileCard(
+                    profile = p,
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = DiscordSheetTopInset),
-                    railTop = railTop
+                        .fillMaxSize()
+                        .padding(
+                            start = frameInsets.horizontal,
+                            top = frameInsets.top,
+                            end = frameInsets.horizontal,
+                            bottom = frameInsets.bottom
+                        ),
+                    showBorder = false,
+                    isExpanded = true,
+                    fillAvailableHeight = true,
+                    showBoardTab = true,
+                    showFrameOverlay = true,
+                    onExpand = null,
+                    onDismiss = {
+                        profileStore.selectedProfile = null
+                        profileStore.isProfileExpanded = false
+                        profileStore.isProfileLoading = false
+                    }
+                )
+            } else {
+                ProfileCardSkeleton(
+                    modifier = Modifier.fillMaxWidth(),
+                    isExpanded = true
                 )
             }
         }

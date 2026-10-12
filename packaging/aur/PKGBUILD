@@ -1,6 +1,6 @@
 # Maintainer: Lampu <lampu@cord.lamp.delivery>
 pkgname=lampcord-bin
-pkgver=1.0.1
+pkgver=1.0.3
 pkgrel=1
 pkgdesc='Lightweight Discord client built with Kotlin Multiplatform'
 arch=('x86_64')

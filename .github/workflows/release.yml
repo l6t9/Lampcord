@@ -476,6 +476,14 @@ jobs:
           if gh release view "$tag" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
             gh release delete "$tag" --yes --repo "$GITHUB_REPOSITORY"
           fi
+
+          # Prepare unversioned alias copies for /releases/latest/download/ direct links
+          cp "release-assets/lampcord-android-${APP_VERSION}.apk" "release-assets/lampcord-android.apk" 2>/dev/null || true
+          cp "release-assets/lampcord-desktop-linux-x64-${APP_VERSION}.AppImage" "release-assets/lampcord-desktop-linux-x64.AppImage" 2>/dev/null || true
+          cp "release-assets/lampcord-desktop-windows-x64-${APP_VERSION}.zip" "release-assets/lampcord-desktop-windows-x64.zip" 2>/dev/null || true
+          cp "release-assets/lampcord-desktop-macos-${APP_VERSION}.dmg" "release-assets/lampcord-desktop-macos.dmg" 2>/dev/null || true
+          cp "release-assets/lampcord-ios-${APP_VERSION}.ipa" "release-assets/lampcord-ios.ipa" 2>/dev/null || true
+
           gh release create "$tag" \
             release-assets/* \
             --target "$GITHUB_SHA" \

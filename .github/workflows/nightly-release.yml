@@ -131,10 +131,13 @@ jobs:
             if [[ "$key" == "appVersion" ]]; then version="$value"; break; fi
           done < gradle.properties
           version="${version}-nightly.${{ github.run_number }}"
+          tag="v${version}"
 
           previous=""
-          if body="$(gh release view nightly --repo "$GITHUB_REPOSITORY" --json body --jq .body 2>/dev/null)"; then
-            previous="$(printf '%s' "$body" | grep -oE 'commit `[0-9a-f]{7,40}`' | head -n 1 | grep -oE '[0-9a-f]{7,40}' || true)"
+          if latest_tag="$(gh release list --repo "$GITHUB_REPOSITORY" --exclude-drafts --limit 10 --json tagName,isPrerelease --jq '.[] | select(.isPrerelease) | .tagName' | head -n 1 2>/dev/null)"; then
+            if [[ -n "$latest_tag" ]]; then
+              previous="$(gh release view "$latest_tag" --repo "$GITHUB_REPOSITORY" --json targetCommitish --jq .targetCommitish 2>/dev/null || true)"
+            fi
           fi
 
           notes=""
@@ -154,13 +157,13 @@ jobs:
           } > notes.md
 
           title="Lampcord Nightly ($version)"
-          if gh release view nightly --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
-            gh release edit nightly --target "$GITHUB_SHA" --prerelease --title "$title" --notes-file notes.md --repo "$GITHUB_REPOSITORY"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release edit "$tag" --target "$GITHUB_SHA" --prerelease --title "$title" --notes-file notes.md --repo "$GITHUB_REPOSITORY"
           else
-            gh release create nightly --prerelease --target "$GITHUB_SHA" --title "$title" --notes-file notes.md --repo "$GITHUB_REPOSITORY"
+            gh release create "$tag" --prerelease --target "$GITHUB_SHA" --title "$title" --notes-file notes.md --repo "$GITHUB_REPOSITORY"
           fi
 
-          echo "tag=nightly" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
   android:
@@ -242,10 +245,43 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Finalize Nightly Release
+      - name: Sync to nightly-latest rolling release
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ needs.stage.outputs.tag }}
+          VERSION: ${{ needs.stage.outputs.version }}
         run: |
-          echo "Nightly release build complete for tag $TAG."
+          set -euo pipefail
+          latest_tag="nightly-latest"
+          title="Lampcord Nightly (Latest)"
+
+          echo "Nightly release build complete for version $VERSION ($TAG)."
+
+          mkdir -p release-assets
+          mkdir -p nightly-latest-assets
+          gh release download "$TAG" --dir release-assets --repo "$GITHUB_REPOSITORY" || true
+
+          shopt -s nullglob
+          apk=(release-assets/lampcord-android-*.apk)
+          appimage=(release-assets/lampcord-desktop-linux-x64-*.AppImage)
+          winzip=(release-assets/lampcord-desktop-windows-x64-*.zip)
+          dmg=(release-assets/lampcord-desktop-macos-*.dmg)
+          ipa=(release-assets/lampcord-ios-*.ipa release-assets/Lampcord.ipa)
+          shopt -u nullglob
+
+          [[ ${#apk[@]} -gt 0 ]] && cp "${apk[0]}" nightly-latest-assets/lampcord-android-nightly.apk
+          [[ ${#appimage[@]} -gt 0 ]] && cp "${appimage[0]}" nightly-latest-assets/lampcord-desktop-linux-x64-nightly.AppImage
+          [[ ${#winzip[@]} -gt 0 ]] && cp "${winzip[0]}" nightly-latest-assets/lampcord-desktop-windows-x64-nightly.zip
+          [[ ${#dmg[@]} -gt 0 ]] && cp "${dmg[0]}" nightly-latest-assets/lampcord-desktop-macos-nightly.dmg
+          [[ ${#ipa[@]} -gt 0 ]] && cp "${ipa[0]}" nightly-latest-assets/lampcord-ios-nightly.ipa
+
+          if gh release view "$latest_tag" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release edit "$latest_tag" --target "$GITHUB_SHA" --prerelease --title "$title" --notes "Latest automated nightly build ($VERSION) from commit \`$GITHUB_SHA\`." --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$latest_tag" --prerelease --target "$GITHUB_SHA" --title "$title" --notes "Latest automated nightly build ($VERSION) from commit \`$GITHUB_SHA\`." --repo "$GITHUB_REPOSITORY"
+          fi
+
+          if ls nightly-latest-assets/* >/dev/null 2>&1; then
+            gh release upload "$latest_tag" nightly-latest-assets/* --clobber --repo "$GITHUB_REPOSITORY"
+          fi

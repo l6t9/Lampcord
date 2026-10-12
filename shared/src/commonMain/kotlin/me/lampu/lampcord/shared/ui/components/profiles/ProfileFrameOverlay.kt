@@ -36,7 +36,7 @@ internal data class FrameInsets(
 )
 
 @Composable
-internal fun rememberFrameInsets(
+fun rememberFrameInsets(
     profile: UserProfile?,
     profileStore: ProfileStore,
     cardWidth: Dp,
@@ -45,7 +45,7 @@ internal fun rememberFrameInsets(
     val sku = remember(profile) {
         profile?.let { ProfileCollectibles.frameSku(it.user_profile, it.guild_member_profile) }
     }
-    val metrics = remember(sku) { sku?.let { profileStore.getFrame(it)?.metrics } }
+    val metrics = sku?.let { profileStore.getFrame(it)?.metrics }
     return remember(metrics, cardWidth, gap) {
         val scale = cardWidth.value / (metrics?.innerWidth?.toFloat() ?: DEFAULT_INNER_WIDTH) * FRAME_ART_SCALE
         FrameInsets(

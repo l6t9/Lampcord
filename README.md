@@ -58,11 +58,11 @@ Lampcord is a lightweight Discord client built with Compose Multiplatform for Mo
 
 | Platform | Stable | Nightly | Artifact |
 | --- | --- | --- | --- |
-| **Android** (9+) | [Download APK](https://github.com/l6t9/Lampcord/releases/latest) | [Download APK](https://github.com/l6t9/Lampcord/releases/tag/nightly) | `lampcord-android-<version>.apk` |
-| **Windows** (10+, x64) | [Download ZIP](https://github.com/l6t9/Lampcord/releases/latest) | [ZIP / EXE installer](https://github.com/l6t9/Lampcord/releases/tag/nightly) | `lampcord-desktop-windows-x64-<version>.zip` |
-| **macOS** (unsigned) | [Download DMG](https://github.com/l6t9/Lampcord/releases/latest) | [Download DMG](https://github.com/l6t9/Lampcord/releases/tag/nightly) | `lampcord-desktop-macos-<version>.dmg` |
-| **Linux** (x86_64) | [Download AppImage](https://github.com/l6t9/Lampcord/releases/latest) | [AppImage / DEB / RPM / Arch](https://github.com/l6t9/Lampcord/releases/tag/nightly) | `lampcord-desktop-linux-x64-<version>.AppImage` |
-| **iOS** (unsigned) | [Download IPA](https://github.com/l6t9/Lampcord/releases/latest) | [Download IPA](https://github.com/l6t9/Lampcord/releases/tag/nightly) | `lampcord-ios-<version>.ipa` |
+| **Android** (9+) | [Download APK](https://github.com/l6t9/Lampcord/releases/latest/download/lampcord-android.apk) | [Download APK](https://github.com/l6t9/Lampcord/releases/download/nightly-latest/lampcord-android-nightly.apk) | `lampcord-android-<version>.apk` |
+| **Windows** (10+, x64) | [Download ZIP](https://github.com/l6t9/Lampcord/releases/latest/download/lampcord-desktop-windows-x64.zip) | [Download ZIP](https://github.com/l6t9/Lampcord/releases/download/nightly-latest/lampcord-desktop-windows-x64-nightly.zip) | `lampcord-desktop-windows-x64-<version>.zip` |
+| **macOS** (unsigned) | [Download DMG](https://github.com/l6t9/Lampcord/releases/latest/download/lampcord-desktop-macos.dmg) | [Download DMG](https://github.com/l6t9/Lampcord/releases/download/nightly-latest/lampcord-desktop-macos-nightly.dmg) | `lampcord-desktop-macos-<version>.dmg` |
+| **Linux** (x86_64) | [Download AppImage](https://github.com/l6t9/Lampcord/releases/latest/download/lampcord-desktop-linux-x64.AppImage) | [Download AppImage](https://github.com/l6t9/Lampcord/releases/download/nightly-latest/lampcord-desktop-linux-x64-nightly.AppImage) | `lampcord-desktop-linux-x64-<version>.AppImage` |
+| **iOS** (unsigned) | [Download IPA](https://github.com/l6t9/Lampcord/releases/latest/download/lampcord-ios.ipa) | [Download IPA](https://github.com/l6t9/Lampcord/releases/download/nightly-latest/lampcord-ios-nightly.ipa) | `lampcord-ios-<version>.ipa` |
 
 ---
 
