@@ -53,16 +53,103 @@ Lampcord is a lightweight Discord client built with Compose Multiplatform for Mo
 
 ---
 
-<a id="download-now"></a>
-# Download
+<div align="center">
 
-| Platform | Stable | Nightly | Artifact |
-| --- | --- | --- | --- |
-| **Android** (9+) | [Download APK](https://github.com/l6t9/Lampcord/releases/latest/download/lampcord-android.apk) | [Download APK](https://github.com/l6t9/Lampcord/releases/download/nightly-latest/lampcord-android-nightly.apk) | `lampcord-android-<version>.apk` |
-| **Windows** (10+, x64) | [Download ZIP](https://github.com/l6t9/Lampcord/releases/latest/download/lampcord-desktop-windows-x64.zip) | [Download ZIP](https://github.com/l6t9/Lampcord/releases/download/nightly-latest/lampcord-desktop-windows-x64-nightly.zip) | `lampcord-desktop-windows-x64-<version>.zip` |
-| **macOS** (unsigned) | [Download DMG](https://github.com/l6t9/Lampcord/releases/latest/download/lampcord-desktop-macos.dmg) | [Download DMG](https://github.com/l6t9/Lampcord/releases/download/nightly-latest/lampcord-desktop-macos-nightly.dmg) | `lampcord-desktop-macos-<version>.dmg` |
-| **Linux** (x86_64) | [Download AppImage](https://github.com/l6t9/Lampcord/releases/latest/download/lampcord-desktop-linux-x64.AppImage) | [Download AppImage](https://github.com/l6t9/Lampcord/releases/download/nightly-latest/lampcord-desktop-linux-x64-nightly.AppImage) | `lampcord-desktop-linux-x64-<version>.AppImage` |
-| **iOS** (unsigned) | [Download IPA](https://github.com/l6t9/Lampcord/releases/latest/download/lampcord-ios.ipa) | [Download IPA](https://github.com/l6t9/Lampcord/releases/download/nightly-latest/lampcord-ios-nightly.ipa) | `lampcord-ios-<version>.ipa` |
+<h1><a id="download-now"></a>Download now</h1>
+
+<table>
+  <tr>
+    <td align="center" valign="top" width="33%">
+      <h2>Android</h2>
+      <p>Android 9+</p>
+      <p>
+        <a href="https://github.com/l6t9/Lampcord/releases/latest/download/lampcord-android.apk">
+          <strong>Download Stable APK</strong>
+        </a>
+      </p>
+      <p>
+        <a href="https://github.com/l6t9/Lampcord/releases/download/nightly-latest/lampcord-android-nightly.apk">
+          Download Nightly APK
+        </a>
+      </p>
+    </td>
+    <td align="center" valign="top" width="33%">
+      <h2>Windows</h2>
+      <p>Windows 10+ · x64</p>
+      <p>
+        <a href="https://github.com/l6t9/Lampcord/releases/latest/download/lampcord-desktop-windows-x64.zip">
+          <strong>Download Stable ZIP</strong>
+        </a>
+      </p>
+      <p>
+        <a href="https://github.com/l6t9/Lampcord/releases/download/nightly-latest/lampcord-desktop-windows-x64-nightly.zip">
+          Download Nightly ZIP
+        </a>
+      </p>
+    </td>
+    <td align="center" valign="top" width="33%">
+      <h2>Linux</h2>
+      <p>x86_64 · AppImage or packages</p>
+      <p>
+        <a href="https://github.com/l6t9/Lampcord/releases/latest/download/lampcord-desktop-linux-x64.AppImage">
+          <strong>Download Stable AppImage</strong>
+        </a>
+      </p>
+      <p>
+        <a href="https://github.com/l6t9/Lampcord/releases/download/nightly-latest/lampcord-desktop-linux-x64-nightly.AppImage">
+          Download Nightly AppImage
+        </a>
+      </p>
+      <p>
+        <a href="https://aur.archlinux.org/packages/lampcord-bin">
+          AUR Package (lampcord-bin)
+        </a>
+      </p>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" valign="top" width="33%">
+      <h2>macOS</h2>
+      <p>macOS 12+ · x64 / ARM (unsigned)</p>
+      <p>
+        <a href="https://github.com/l6t9/Lampcord/releases/latest/download/lampcord-desktop-macos.dmg">
+          <strong>Download Stable DMG</strong>
+        </a>
+      </p>
+      <p>
+        <a href="https://github.com/l6t9/Lampcord/releases/download/nightly-latest/lampcord-desktop-macos-nightly.dmg">
+          Download Nightly DMG
+        </a>
+      </p>
+    </td>
+    <td align="center" valign="top" width="33%">
+      <h2>iOS</h2>
+      <p>iPhone &amp; iPad · iOS 17+ (unsigned)</p>
+      <p>
+        <a href="https://github.com/l6t9/Lampcord/releases/latest/download/lampcord-ios.ipa">
+          <strong>Download Stable IPA</strong>
+        </a>
+      </p>
+      <p>
+        <a href="https://github.com/l6t9/Lampcord/releases/download/nightly-latest/lampcord-ios-nightly.ipa">
+          Download Nightly IPA
+        </a>
+      </p>
+      <p><sub>AltStore · SideStore · TrollStore · Sideloadly</sub></p>
+    </td>
+    <td align="center" valign="top" width="33%">
+      <h2>All Releases</h2>
+      <p>All versioned builds &amp; packages</p>
+      <p>
+        <a href="https://github.com/l6t9/Lampcord/releases">
+          <strong>View GitHub Releases →</strong>
+        </a>
+      </p>
+    </td>
+  </tr>
+</table>
+
+</div>
 
 ---
 
