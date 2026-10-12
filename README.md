@@ -64,12 +64,12 @@ Lampcord is a lightweight Discord client built with Compose Multiplatform for Mo
       <p>Android 9+</p>
       <p>
         <a href="https://github.com/l6t9/Lampcord/releases/latest/download/lampcord-android.apk">
-          <strong>Download Stable APK</strong>
+          <img alt="Download Stable APK" src="https://img.shields.io/badge/Stable_APK-Android-3DDC84?style=for-the-badge&logo=android&logoColor=white" />
         </a>
       </p>
       <p>
         <a href="https://github.com/l6t9/Lampcord/releases/download/nightly-latest/lampcord-android-nightly.apk">
-          Download Nightly APK
+          <img alt="Download Nightly APK" src="https://img.shields.io/badge/Nightly_APK-Android-2e8b57?style=for-the-badge&logo=android&logoColor=white" />
         </a>
       </p>
     </td>
@@ -78,12 +78,12 @@ Lampcord is a lightweight Discord client built with Compose Multiplatform for Mo
       <p>Windows 10+ · x64</p>
       <p>
         <a href="https://github.com/l6t9/Lampcord/releases/latest/download/lampcord-desktop-windows-x64.zip">
-          <strong>Download Stable ZIP</strong>
+          <img alt="Download Stable ZIP" src="https://img.shields.io/badge/Stable_ZIP-Windows-0078D4?style=for-the-badge&logo=windows&logoColor=white" />
         </a>
       </p>
       <p>
         <a href="https://github.com/l6t9/Lampcord/releases/download/nightly-latest/lampcord-desktop-windows-x64-nightly.zip">
-          Download Nightly ZIP
+          <img alt="Download Nightly ZIP" src="https://img.shields.io/badge/Nightly_ZIP-Windows-005a9e?style=for-the-badge&logo=windows&logoColor=white" />
         </a>
       </p>
     </td>
@@ -92,17 +92,17 @@ Lampcord is a lightweight Discord client built with Compose Multiplatform for Mo
       <p>x86_64 · AppImage or packages</p>
       <p>
         <a href="https://github.com/l6t9/Lampcord/releases/latest/download/lampcord-desktop-linux-x64.AppImage">
-          <strong>Download Stable AppImage</strong>
+          <img alt="Download Stable AppImage" src="https://img.shields.io/badge/Stable_AppImage-Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black" />
         </a>
       </p>
       <p>
         <a href="https://github.com/l6t9/Lampcord/releases/download/nightly-latest/lampcord-desktop-linux-x64-nightly.AppImage">
-          Download Nightly AppImage
+          <img alt="Download Nightly AppImage" src="https://img.shields.io/badge/Nightly_AppImage-Linux-d4a017?style=for-the-badge&logo=linux&logoColor=black" />
         </a>
       </p>
       <p>
         <a href="https://aur.archlinux.org/packages/lampcord-bin">
-          AUR Package (lampcord-bin)
+          <img alt="AUR Package" src="https://img.shields.io/badge/AUR_Package-lampcord--bin-1793D1?style=for-the-badge&logo=archlinux&logoColor=white" />
         </a>
       </p>
     </td>
@@ -113,12 +113,12 @@ Lampcord is a lightweight Discord client built with Compose Multiplatform for Mo
       <p>macOS 12+ · x64 / ARM (unsigned)</p>
       <p>
         <a href="https://github.com/l6t9/Lampcord/releases/latest/download/lampcord-desktop-macos.dmg">
-          <strong>Download Stable DMG</strong>
+          <img alt="Download Stable DMG" src="https://img.shields.io/badge/Stable_DMG-macOS-000000?style=for-the-badge&logo=apple&logoColor=white" />
         </a>
       </p>
       <p>
         <a href="https://github.com/l6t9/Lampcord/releases/download/nightly-latest/lampcord-desktop-macos-nightly.dmg">
-          Download Nightly DMG
+          <img alt="Download Nightly DMG" src="https://img.shields.io/badge/Nightly_DMG-macOS-333333?style=for-the-badge&logo=apple&logoColor=white" />
         </a>
       </p>
     </td>
@@ -127,12 +127,12 @@ Lampcord is a lightweight Discord client built with Compose Multiplatform for Mo
       <p>iPhone &amp; iPad · iOS 17+ (unsigned)</p>
       <p>
         <a href="https://github.com/l6t9/Lampcord/releases/latest/download/lampcord-ios.ipa">
-          <strong>Download Stable IPA</strong>
+          <img alt="Download Stable IPA" src="https://img.shields.io/badge/Stable_IPA-iOS-000000?style=for-the-badge&logo=apple&logoColor=white" />
         </a>
       </p>
       <p>
         <a href="https://github.com/l6t9/Lampcord/releases/download/nightly-latest/lampcord-ios-nightly.ipa">
-          Download Nightly IPA
+          <img alt="Download Nightly IPA" src="https://img.shields.io/badge/Nightly_IPA-iOS-333333?style=for-the-badge&logo=apple&logoColor=white" />
         </a>
       </p>
       <p><sub>AltStore · SideStore · TrollStore · Sideloadly</sub></p>
@@ -142,7 +142,7 @@ Lampcord is a lightweight Discord client built with Compose Multiplatform for Mo
       <p>All versioned builds &amp; packages</p>
       <p>
         <a href="https://github.com/l6t9/Lampcord/releases">
-          <strong>View GitHub Releases →</strong>
+          <img alt="View GitHub Releases" src="https://img.shields.io/badge/GitHub-View_Releases-181717?style=for-the-badge&logo=github&logoColor=white" />
         </a>
       </p>
     </td>
