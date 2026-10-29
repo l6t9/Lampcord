@@ -67,7 +67,8 @@ jobs:
             :desktopApp:packageReleaseDmg \
             --no-daemon \
             --no-build-cache \
-            --no-configuration-cache
+            --no-configuration-cache \
+            --configure-on-demand
 
       - name: Verify macOS app bundle
         shell: bash

@@ -81,7 +81,7 @@ jobs:
 
       - name: Build Linux AppImage
         shell: bash
-        run: ./gradlew :desktopApp:createAppImageLocal --no-daemon --no-build-cache --no-configuration-cache
+        run: ./gradlew :desktopApp:createAppImageLocal --no-daemon --no-build-cache --no-configuration-cache --configure-on-demand
 
       - name: Collect Linux AppImage
         id: package
@@ -115,7 +115,7 @@ jobs:
           [[ -n "$VERSION_OVERRIDE" ]] && version="$VERSION_OVERRIDE"
 
           ./gradlew :desktopApp:packageUberJarForCurrentOS :desktopApp:createLinuxRuntimeImage \
-            --no-daemon --no-build-cache --no-configuration-cache
+            --no-daemon --no-build-cache --no-configuration-cache --configure-on-demand
 
           jar=$(find desktopApp/build/compose/jars -maxdepth 1 -name '*.jar' -type f | head -n 1)
           [[ -n "$jar" ]] || { echo "No uber jar was produced" >&2; exit 1; }
@@ -151,7 +151,7 @@ jobs:
 
           if [[ ! -x desktopApp/build/runtime-image/bin/java ]]; then
             ./gradlew :desktopApp:createLinuxRuntimeImage \
-              --no-daemon --no-build-cache --no-configuration-cache
+              --no-daemon --no-build-cache --no-configuration-cache --configure-on-demand
           fi
           test -x desktopApp/build/runtime-image/bin/java || {
             echo "No runtime image was produced" >&2

@@ -63,7 +63,7 @@ jobs:
 
       - name: Build Windows portable package
         shell: bash
-        run: ./gradlew :desktopApp:createDistributable --no-daemon --no-build-cache --no-configuration-cache
+        run: ./gradlew :desktopApp:createDistributable --no-daemon --no-build-cache --no-configuration-cache --configure-on-demand
 
       - name: Package Windows ZIP
         shell: pwsh
@@ -95,7 +95,7 @@ jobs:
           done < gradle.properties
           [[ -n "$VERSION_OVERRIDE" ]] && version="$VERSION_OVERRIDE"
           ./gradlew :desktopApp:packageDistributionForCurrentOS \
-            --no-daemon --no-build-cache --no-configuration-cache
+            --no-daemon --no-build-cache --no-configuration-cache --configure-on-demand
           installer=$(find desktopApp/build/compose/binaries/main/nsis -maxdepth 1 -name '*.exe' | head -1)
           [[ -n "$installer" ]] || { echo "No NSIS installer was produced" >&2; exit 1; }
           mkdir -p dist/native

@@ -92,7 +92,7 @@ jobs:
         if: ${{ !inputs.build-ipa }}
         shell: bash
         run: |
-          ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64
+          ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64 --configure-on-demand
 
       - name: Run iOS tests
 
@@ -105,7 +105,7 @@ jobs:
           devices = json.load(sys.stdin)["devices"]
           print(next(device["udid"] for runtime, items in devices.items() if ".iOS-" in runtime for device in items if device["name"].startswith("iPhone")))')
           xcrun simctl bootstatus "$device" -b
-          ./gradlew :shared:iosSimulatorArm64Test --device "$device"
+          ./gradlew :shared:iosSimulatorArm64Test --device "$device" --configure-on-demand
 
       - name: Shut down iOS simulator
         if: always()
