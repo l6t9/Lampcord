@@ -232,19 +232,11 @@ class NavigationStore(
     }
 
     fun selectFavorites() {
-        guildLoadingJob?.cancel()
-        channelLoadingJob?.cancel()
-        selectedGuild = null
-        selectedChannel = null
-        selectedThread = null
         isFavoritesSelected = true
         isFriendsSelected = false
         isMentionsSelected = false
         isChannelsAndRolesVisible = false
         isServerSettingsVisible = false
-        memberListStore.memberListItems.clear()
-        memberListStore.onlineCount = null
-        memberListStore.memberCount = null
         lastRequestedKey = null
         Settings.shared.setLastGuild("favorites")
     }

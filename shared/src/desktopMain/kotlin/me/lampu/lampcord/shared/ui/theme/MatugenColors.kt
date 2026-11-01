@@ -57,7 +57,7 @@ data class MatugenPalette(
     val dark: Map<String, String>,
 ) {
     fun schemeFor(isDark: Boolean): ColorScheme? {
-        val roles = (if (isDark) dark else light).ifEmpty { if (isDark) light else dark }
+        val roles = if (isDark) dark else light
         if (roles.isEmpty()) return null
         val base = if (isDark) darkColorScheme() else lightColorScheme()
         fun c(role: String, fallback: Color): Color = roles[role]?.toArgbColor() ?: fallback
@@ -102,7 +102,7 @@ data class MatugenPalette(
     }
 
     fun seedColor(isDark: Boolean): Color? {
-        val roles = if (isDark) dark.ifEmpty { light } else light.ifEmpty { dark }
+        val roles = if (isDark) dark else light
         return roles["primary"]?.toArgbColor()
     }
 }
@@ -129,8 +129,8 @@ fun readMatugenPalette(file: File): MatugenPalette? {
 
     if (lightRoles.isNotEmpty() || darkRoles.isNotEmpty()) {
         return MatugenPalette(
-            light = lightRoles.ifEmpty { darkRoles },
-            dark = darkRoles.ifEmpty { lightRoles }
+            light = lightRoles,
+            dark = darkRoles
         )
     }
 

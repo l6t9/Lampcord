@@ -282,7 +282,7 @@ fun GuildRail(
             if (guild != null) {
                 GuildIcon(
                     guild = guild,
-                    isSelected = navigationStore.selectedGuild?.id == guild.id,
+                    isSelected = !navigationStore.isFavoritesSelected && navigationStore.selectedGuild?.id == guild.id,
                     arrangeMode = canArrange,
                     isDragging = draggingKey == entry.key,
                     dragOffset = dragOffsetPx,
@@ -303,7 +303,7 @@ fun GuildRail(
                     if (singletonGuild != null) {
                         GuildIcon(
                             guild = singletonGuild,
-                            isSelected = navigationStore.selectedGuild?.id == singletonGuild.id,
+                            isSelected = !navigationStore.isFavoritesSelected && navigationStore.selectedGuild?.id == singletonGuild.id,
                             onClick = {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 navigationStore.selectGuild(singletonGuild) { gatewayManager.sendSubscription(it) }

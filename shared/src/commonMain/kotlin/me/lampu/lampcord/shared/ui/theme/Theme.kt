@@ -43,6 +43,7 @@ fun LampcordTheme(
         ThemePaletteStyle.EXPRESSIVE -> PaletteStyle.Expressive
         ThemePaletteStyle.RAINBOW -> PaletteStyle.Rainbow
         ThemePaletteStyle.FRUIT_SALAD -> PaletteStyle.FruitSalad
+        ThemePaletteStyle.CONTENT -> PaletteStyle.Content
         ThemePaletteStyle.MONOCHROME -> PaletteStyle.Monochrome
         ThemePaletteStyle.NEUTRAL -> PaletteStyle.Neutral
     }

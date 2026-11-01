@@ -12,6 +12,7 @@ enum class ThemePaletteStyle {
     EXPRESSIVE,
     RAINBOW,
     FRUIT_SALAD,
+    CONTENT,
     MONOCHROME,
     NEUTRAL,
 }

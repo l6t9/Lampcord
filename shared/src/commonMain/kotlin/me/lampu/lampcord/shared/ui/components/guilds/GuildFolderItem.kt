@@ -367,7 +367,7 @@ fun GuildFolderItem(
                     if (guild != null) {
                         GuildIcon(
                             guild = guild,
-                            isSelected = navigationStore.selectedGuild?.id == guild.id,
+                            isSelected = !navigationStore.isFavoritesSelected && navigationStore.selectedGuild?.id == guild.id,
                             onClick = {
                                 navigationStore.selectGuild(guild) { gatewayManager.sendSubscription(it) }
                                 haptic.performHapticFeedback(HapticFeedbackType.VirtualKey)
