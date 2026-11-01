@@ -179,8 +179,10 @@ fun GuildRail(
         contentPadding = PaddingValues(vertical = 8.dp)
     ) {
         item {
-            val isHomeSelected = navigationStore.selectedGuild == null
-            
+            val favoritesVisible = me.lampu.lampcord.shared.settings.Settings.shared.favoritesServerEnabled
+            val isHomeSelected = navigationStore.selectedGuild == null &&
+                !(navigationStore.isFavoritesSelected && favoritesVisible)
+
             val totalDmMentions = remember(privateChannels, readStates) {
                 privateChannels.sumOf { readStateStore.getMentionCount(it.id) }
             }
@@ -241,6 +243,37 @@ fun GuildRail(
                     }
                 }
             )
+        }
+
+        if (me.lampu.lampcord.shared.settings.Settings.shared.favoritesServerEnabled) {
+            item(key = "favorites-server") {
+                ExpressiveTooltip(
+                    anchorPosition = TooltipAnchorPosition.End,
+                    content = tooltipText("Favorites"),
+                    anchor = {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.graphicsLayer(clip = false)) {
+                            RegularGuildItem(
+                                isSelected = navigationStore.isFavoritesSelected,
+                                isMonogram = true,
+                                onClick = {
+                                    navigationStore.selectFavorites()
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                },
+                                selectedColor = MaterialTheme.colorScheme.primary,
+                                unselectedColor = MaterialTheme.colorScheme.surfaceVariant,
+                                monogramSelectedColor = MaterialTheme.colorScheme.onPrimary,
+                                monogramUnselectedColor = MaterialTheme.colorScheme.primary
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Star,
+                                    contentDescription = "Favorites",
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
+                        }
+                    }
+                )
+            }
         }
 
         items(railEntries, key = { it.key }) { entry ->

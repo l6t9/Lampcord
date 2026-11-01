@@ -241,40 +241,66 @@ class MessageStore(
         if (channelAccessOrder.size > CACHE_MAX_CHANNELS) {
             val oldest = channelAccessOrder.removeAt(0)
             messageCache.remove(oldest)
+            _hasMoreHistory.update { it + (oldest to true) }
         }
         trimChannelMessages(channelId)
     }
 
     private fun trimChannelMessages(channelId: String) {
+        if (selectionStore.activeChannelIdFlow.value == channelId) return
+
         val current = messageCache[channelId] ?: return
         if (current.size <= CACHE_MAX_MESSAGES_PER_CHANNEL) return
         val pending = current.filter { it.isPending }
         val keep = CACHE_MAX_MESSAGES_PER_CHANNEL - pending.size
         if (keep <= 0) return
-        val kept = current.filterNot { it.isPending }.take(keep) + pending
+        val nonPending = current.filterNot { it.isPending }
+        val kept = nonPending.take(keep) + pending
         messageCache[channelId] = kept.sortedByDescending { it.id.toLongOrNull() ?: 0L }
+        if (nonPending.size > keep) {
+            _hasMoreHistory.update { it + (channelId to true) }
+        }
     }
 
     fun addMessages(channelId: String, newMessages: List<Message>) {
-        val channelMessages = messageCache[channelId]?.toMutableList() ?: mutableListOf()
-        val existingIds = channelMessages.map { it.id }.toSet()
+        val channelMessages = messageCache[channelId] ?: emptyList()
+        val existingIds = channelMessages.mapTo(HashSet(channelMessages.size)) { it.id }
 
-        var changed = false
+        val incoming = ArrayList<Message>(newMessages.size)
         newMessages.forEach { msg ->
-            if (msg.id !in existingIds) {
+            if (existingIds.add(msg.id)) {
                 val preprocessed = preprocess(msg)
-                channelMessages.add(preprocessed)
+                incoming.add(preprocessed)
                 messageLogger.logMessage(preprocessed)
-                changed = true
             }
         }
 
-        if (changed) {
-            val sorted = channelMessages.sortedByDescending { it.id.toLongOrNull() ?: 0L }
-            messageCache[channelId] = sorted
+        if (incoming.isNotEmpty()) {
+            incoming.sortByDescending { it.id.toLongOrNull() ?: 0L }
+            messageCache[channelId] = mergeDescending(channelMessages, incoming)
             recordAccess(channelId)
             updateAllMessagesFlow()
         }
+    }
+
+    private fun mergeDescending(existing: List<Message>, incoming: List<Message>): List<Message> {
+        if (existing.isEmpty()) return incoming
+        if (incoming.isEmpty()) return existing
+        val merged = ArrayList<Message>(existing.size + incoming.size)
+        var left = 0
+        var right = 0
+        while (left < existing.size && right < incoming.size) {
+            val leftId = existing[left].id.toLongOrNull() ?: 0L
+            val rightId = incoming[right].id.toLongOrNull() ?: 0L
+            if (leftId >= rightId) {
+                merged.add(existing[left++])
+            } else {
+                merged.add(incoming[right++])
+            }
+        }
+        while (left < existing.size) merged.add(existing[left++])
+        while (right < incoming.size) merged.add(incoming[right++])
+        return merged
     }
 
     fun mergeMessages(channelId: String, newMessages: List<Message>) {
@@ -552,6 +578,33 @@ class MessageStore(
             } finally {
                 _loadingHistoryChannels.update { it - channelId }
                 historyLoadingJobs.remove(channelId)
+            }
+        }
+    }
+
+    fun jumpToMessage(channelId: String, messageId: String) {
+        if (messageCache[channelId]?.any { it.id == messageId } == true) {
+            scrollToMessageId = messageId
+            return
+        }
+
+        scope.launch {
+            try {
+                val around = messageApi.getMessagesAround(channelId, messageId)
+                if (around.isNotEmpty()) {
+                    around.forEach { msg ->
+                        msg.author?.let { author ->
+                            msg.member?.let { member ->
+                                userStore.cacheMember(msg.guild_id ?: "", author.id, member)
+                            }
+                        }
+                    }
+                    addMessages(channelId, around)
+                }
+            } catch (e: Exception) {
+                Logging.e("MessageStore", "Failed to jump to message $messageId: ${e.message}")
+            } finally {
+                scrollToMessageId = messageId
             }
         }
     }
@@ -962,7 +1015,6 @@ class MessageStore(
 
     fun isMessageMentioningMe(message: Message, currentUser: User?, currentMember: Member?): Boolean {
         val myId = currentUser?.id ?: return false
-        if (message.author?.id == myId) return false
         if (message.mentions.any { it.id == myId }) return true
         if (currentMember != null && message.mention_roles.any { it in currentMember.roles }) return true
         if (message.mention_everyone) return true

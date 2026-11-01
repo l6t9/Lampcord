@@ -12,6 +12,12 @@ actual fun VerticalScrollbar(
     isVisible: Boolean,
     reverseLayout: Boolean
 ) {
+    M3eVerticalScrollbar(
+        state = state,
+        modifier = modifier,
+        isVisible = isVisible,
+        reverseLayout = reverseLayout
+    )
 }
 
 @Composable
@@ -20,4 +26,9 @@ actual fun VerticalScrollbar(
     modifier: Modifier,
     isVisible: Boolean
 ) {
+    M3eVerticalScrollbar(
+        state = state,
+        modifier = modifier,
+        isVisible = isVisible
+    )
 }

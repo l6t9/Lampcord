@@ -51,6 +51,23 @@ fun MessageAttachments(
     message: Message? = null,
     navigationStore: NavigationStore = koinInject()
 ) {
+    val hasLinkContent = remember(content) {
+        content?.let {
+            it.contains("discord.gg", ignoreCase = true) ||
+                it.contains("discord.com/invite", ignoreCase = true) ||
+                it.contains("discordapp.com/invite", ignoreCase = true) ||
+                it.contains(".gif", ignoreCase = true) ||
+                it.contains(".mp4", ignoreCase = true) ||
+                it.contains(".webm", ignoreCase = true) ||
+                it.contains(".mov", ignoreCase = true)
+        } == true
+    }
+    if (attachments.isEmpty() && embeds.isEmpty() && stickerItems.isNullOrEmpty() &&
+        stickers.isNullOrEmpty() && poll == null && components.isNullOrEmpty() && !hasLinkContent
+    ) {
+        return
+    }
+
     val referencedAttachmentKeys = remember(components) { collectReferencedAttachments(components.orEmpty()) }
 
     val visibleAttachments = remember(attachments, referencedAttachmentKeys) {
@@ -100,15 +117,17 @@ fun MessageAttachments(
     }
 
     content?.let {
-        val codes = remember(it) {
-            DISCORD_INVITE_PATTERN.findAll(it)
-                .map { match -> match.groupValues[1] }
-                .distinct()
-                .toList()
-        }
-        codes.forEach { code ->
-            if (processedInvites.add(code)) {
-                InviteEmbedView(code)
+        if (it.contains("discord", ignoreCase = true)) {
+            val codes = remember(it) {
+                DISCORD_INVITE_PATTERN.findAll(it)
+                    .map { match -> match.groupValues[1] }
+                    .distinct()
+                    .toList()
+            }
+            codes.forEach { code ->
+                if (processedInvites.add(code)) {
+                    InviteEmbedView(code)
+                }
             }
         }
     }
@@ -166,9 +185,20 @@ private val mediaUrlPattern = Regex(
 private val DISCORD_INVITE_PATTERN =
     Regex("""(?:discord\.gg/|discord\.com/invite/|discordapp\.com/invite/|discord\.me/|discord\.li/|discord\.io/)([a-zA-Z0-9\-]+)""")
 
-private fun extractMediaUrls(content: String?): List<String> = content
-    ?.let { mediaUrlPattern.findAll(it).map { match -> match.value.trimEnd('.', ',', '!', '?', ';', ':') }.distinct().toList() }
-    ?: emptyList()
+private fun extractMediaUrls(content: String?): List<String> {
+    if (content == null) return emptyList()
+    if (!content.contains(".gif", ignoreCase = true) &&
+        !content.contains(".mp4", ignoreCase = true) &&
+        !content.contains(".webm", ignoreCase = true) &&
+        !content.contains(".mov", ignoreCase = true)
+    ) {
+        return emptyList()
+    }
+    return mediaUrlPattern.findAll(content)
+        .map { match -> match.value.trimEnd('.', ',', '!', '?', ';', ':') }
+        .distinct()
+        .toList()
+}
 
 private fun String.isGifUrl(): Boolean {
     val path = substringBefore('?').substringBefore('#')

@@ -13,6 +13,8 @@ internal class VoicePackets(private val key: ByteArray, private val aes: Boolean
     private var counter = 0L
     private var sequence = SecureRandom().nextInt(65536)
     private var timestamp = SecureRandom().nextInt()
+    private var packetCount = 0L
+    private var octetCount = 0L
     private val replay = mutableMapOf<Int, ReplayWindow>()
 
     init { require(key.size == 32) }
@@ -22,9 +24,36 @@ internal class VoicePackets(private val key: ByteArray, private val aes: Boolean
         val header = ByteBuffer.allocate(12).put(0x80.toByte()).put(120.toByte())
             .putShort(sequence++.toShort()).putInt(timestamp).putInt(ssrc).array()
         timestamp += 960
+        packetCount++
+        octetCount += frame.size
+        return encryptPacket(header, frame)
+    }
+
+    fun senderReport(): ByteArray {
+        check(counter <= 0xffffffffL) { "Voice transport nonce exhausted; reconnect required" }
+        val header = ByteBuffer.allocate(8)
+            .put(0x80.toByte())
+            .put(200.toByte())
+            .putShort(6)
+            .putInt(ssrc)
+            .array()
+        val now = System.currentTimeMillis() / 1000.0 + 2_208_988_800.0
+        val seconds = now.toLong()
+        val fraction = ((now - seconds) * 4_294_967_296.0).toLong()
+        val body = ByteBuffer.allocate(20)
+            .putInt(seconds.toInt())
+            .putInt(fraction.toInt())
+            .putInt(timestamp)
+            .putInt(packetCount.toInt())
+            .putInt(octetCount.toInt())
+            .array()
+        return encryptPacket(header, body)
+    }
+
+    private fun encryptPacket(header: ByteArray, payload: ByteArray): ByteArray {
         val suffix = ByteBuffer.allocate(4).putInt(counter++.toInt()).array()
         val nonce = suffix.copyOf(if (aes) 12 else 24)
-        val encrypted = checkNotNull(NativeVoice.aead(true, aes, key, nonce, header, frame))
+        val encrypted = checkNotNull(NativeVoice.aead(true, aes, key, nonce, header, payload))
         return header + encrypted + suffix
     }
 

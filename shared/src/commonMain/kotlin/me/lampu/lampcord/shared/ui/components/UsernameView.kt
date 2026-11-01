@@ -121,7 +121,7 @@ fun UsernameView(
 
     val useStyleColors = !ignoreColors && !styleColors.isNullOrEmpty()
 
-    val animateGradient = !Settings.shared.reduceMotion && getPlatformName() != "windows" && roleGradient != null && roleGradient.size > 1
+    val animateGradient = !Settings.shared.reduceMotion && getPlatformName() != "windows" && !ignoreEffects && roleGradient != null && roleGradient.size > 1
     val animValue = if (animateGradient) {
         val infiniteTransition = rememberInfiniteTransition(label = "usernameGradient")
         val value by infiniteTransition.animateFloat(

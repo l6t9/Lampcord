@@ -47,6 +47,7 @@ import me.lampu.lampcord.shared.ui.components.DiscordMarkdownText
 import me.lampu.lampcord.shared.ui.components.ClanTagView
 import me.lampu.lampcord.shared.ui.components.UserTagView
 import me.lampu.lampcord.shared.utils.DateTimeUtils
+import me.lampu.lampcord.shared.utils.getPlatformName
 import me.lampu.lampcord.shared.api.CdnUrls
 import org.koin.compose.koinInject
 import me.lampu.lampcord.shared.ui.kit.clickableCursor
@@ -59,9 +60,23 @@ fun MessageTimestamp(
     color: Color,
     modifier: Modifier = Modifier
 ) {
-    val fullDate = remember(timestamp) { DateTimeUtils.formatFullDate(timestamp) }
     val displayDate = remember(timestamp) { DateTimeUtils.formatTimestamp(timestamp) }
+    val desktop = getPlatformName() != "android" && getPlatformName() != "ios"
 
+    if (!desktop) {
+        Text(
+            text = displayDate,
+            style = style,
+            color = color,
+            modifier = modifier,
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Ellipsis
+        )
+        return
+    }
+
+    val fullDate = remember(timestamp) { DateTimeUtils.formatFullDate(timestamp) }
     TooltipBox(
         positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
             positioning = TooltipAnchorPosition.Above
@@ -78,8 +93,8 @@ fun MessageTimestamp(
                     }
                 } else {
                     Text(fullDate)
+                }
             }
-        }
         },
         state = rememberTooltipState()
     ) {
@@ -222,7 +237,7 @@ fun ReplyBar(
                 interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                 indication = null
             ) {
-                messageStore.scrollToMessageId = referencedMessage.id
+                messageStore.jumpToMessage(referencedMessage.channel_id, referencedMessage.id)
             },
         verticalAlignment = Alignment.CenterVertically
     ) {

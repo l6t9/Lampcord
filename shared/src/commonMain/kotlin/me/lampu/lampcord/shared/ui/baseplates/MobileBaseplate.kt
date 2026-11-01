@@ -137,6 +137,7 @@ fun MobileBaseplate(
             Screen.ChannelSettings to 10,
             Screen.Theming to 11,
             Screen.ThemeEditor::class to 12,
+            Screen.VoiceSettings to 12,
         )
     }
     val quickSpatialSpec = MaterialTheme.motionScheme.defaultSpatialSpec<IntOffset>()
@@ -260,6 +261,7 @@ fun MobileBaseplate(
         currentRoute == Screen.PrivacySettings ||
         currentRoute == Screen.ConnectionsSettings ||
         currentRoute == Screen.DevicesSettings ||
+        currentRoute == Screen.VoiceSettings ||
         currentRoute == Screen.ChatSettings ||
         currentRoute == Screen.NotificationsSettings ||
         currentRoute == Screen.NavigationSettings ||
@@ -355,6 +357,7 @@ fun MobileBaseplate(
                         onNavigateToAppearance = { navigator.navigate(Screen.AppearanceSettings) },
                         onNavigateToAccessibility = { navigator.navigate(Screen.AccessibilitySettings) },
                         onNavigateToLanguage = { navigator.navigate(Screen.LanguageSettings) },
+                        onNavigateToVoice = { navigator.navigate(Screen.VoiceSettings) },
                         onNavigateToChat = { navigator.navigate(Screen.ChatSettings) },
                         onNavigateToNotifications = { navigator.navigate(Screen.NotificationsSettings) },
                         onNavigateToAdvanced = { navigator.navigate(Screen.AdvancedSettings) },
@@ -392,6 +395,9 @@ fun MobileBaseplate(
             }
             entry<Screen.DevicesSettings> {
                 DevicesSettings(onBack = { navigator.goBack() })
+            }
+            entry<Screen.VoiceSettings> {
+                me.lampu.lampcord.shared.ui.settings.VoiceSettings(onBack = { navigator.goBack() })
             }
             entry<Screen.ChatSettings> {
                 ChatSettings(onBack = { navigator.goBack() })

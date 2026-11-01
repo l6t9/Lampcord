@@ -75,6 +75,9 @@ sealed class Screen : NavKey {
     data object DevicesSettings : Screen()
 
     @Serializable
+    data object VoiceSettings : Screen()
+
+    @Serializable
     data object ChatSettings : Screen()
 
     @Serializable

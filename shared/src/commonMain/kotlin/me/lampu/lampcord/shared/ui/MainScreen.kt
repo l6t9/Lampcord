@@ -28,8 +28,15 @@ fun MainScreen(
     errorStore: AppErrorStore = koinInject(),
     profileStore: ProfileStore = koinInject(),
     voiceStore: VoiceStore = koinInject(),
-    userStore: UserStore = koinInject()
+    userStore: UserStore = koinInject(),
+    guildStore: GuildStore = koinInject()
 ) {
+    val currentUser by userStore.currentUser.collectAsState()
+    val guilds by guildStore.guilds.collectAsState()
+    CompositionLocalProvider(
+        LocalCurrentUser provides currentUser,
+        LocalGuilds provides guilds
+    ) {
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val reduceMotion = Settings.shared.reduceMotion
 
@@ -136,5 +143,6 @@ fun MainScreen(
                 onDismiss = { navigationStore.forwardingMessage = null }
             )
         }
+    }
     }
 }

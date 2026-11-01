@@ -333,11 +333,9 @@ private fun SearchScreenContent(
                                     if (guild != null) {
                                         navigationStore.selectGuild(guild) { gatewayManager.sendSubscription(it) }
                                     }
-                                    if (channel != null) {
-                                        navigationStore.selectChannel(channel, explicitlySelected = true)
-                                        messageStore.scrollToMessageId = message.id
-                                        onDismiss()
-                                    }
+                                    navigationStore.selectChannelById(message.channel_id, explicitlySelected = true)
+                                    messageStore.jumpToMessage(message.channel_id, message.id)
+                                    onDismiss()
                                 }
 
                                 Column(

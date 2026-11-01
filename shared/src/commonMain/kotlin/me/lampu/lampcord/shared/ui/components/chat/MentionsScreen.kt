@@ -92,11 +92,11 @@ fun MentionsScreen(
                                     if (guild != null) {
                                         navigationStore.selectGuild(guild) { gatewayManager.sendSubscription(it) }
                                     }
-                                    navigationStore.selectChannel(targetChan, explicitlySelected = true)
-                                    messageStore.scrollToMessageId = message.id
+                                    navigationStore.selectChannelById(targetChan.id, explicitlySelected = true)
+                                    messageStore.jumpToMessage(targetChan.id, message.id)
                                 } else {
                                     channelNavigator.navigateToChannel(message.channel_id, message.guild_id)
-                                    messageStore.scrollToMessageId = message.id
+                                    messageStore.jumpToMessage(message.channel_id, message.id)
                                 }
                             }
                     ) {

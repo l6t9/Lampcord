@@ -51,6 +51,7 @@ import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.state.ProfileStore
 import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.state.UserStore
+import me.lampu.lampcord.shared.ui.LocalCurrentUser
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.ChannelItem
 import me.lampu.lampcord.shared.ui.components.ChannelSkeleton
@@ -72,15 +73,13 @@ fun GuildChannelList(
     profileStore: ProfileStore = koinInject()
 ) {
     val guild = navigationStore.selectedGuild
-    val currentUser by userStore.currentUser.collectAsState()
-    val allMembers by userStore.members.collectAsState()
-    
-    val member = remember(guild, currentUser, allMembers) {
-        val g = guild
-        val u = currentUser
-        if (g == null || u == null) null
-        else allMembers[g.id]?.get(u.id)
+    val currentUser = LocalCurrentUser.current
+    val memberState = remember(guild?.id, currentUser?.id) {
+        val guildId = guild?.id
+        val userId = currentUser?.id
+        if (guildId == null || userId == null) null else userStore.memberState(guildId, userId)
     }
+    val member = memberState?.value
     val showHidden = settingsStore.showHiddenChannels
 
     val guildMedia = rememberGuildMediaUrls(

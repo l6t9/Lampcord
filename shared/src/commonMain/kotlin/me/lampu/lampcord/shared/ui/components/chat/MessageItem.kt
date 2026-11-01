@@ -10,11 +10,9 @@ import me.lampu.lampcord.shared.generated.resources.retry
 import me.lampu.lampcord.shared.generated.resources.thread_name
 import org.jetbrains.compose.resources.stringResource
 
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
@@ -96,6 +94,8 @@ import me.lampu.lampcord.shared.ui.components.ContextMenu
 import me.lampu.lampcord.shared.ui.components.ContextMenuItem
 import me.lampu.lampcord.shared.ui.components.DiscordMarkdownText
 import me.lampu.lampcord.shared.ui.components.EmojiPicker
+import me.lampu.lampcord.shared.ui.LocalCurrentUser
+import me.lampu.lampcord.shared.ui.LocalGuilds
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.chat.ReactionPickerSheet
 import me.lampu.lampcord.shared.ui.components.ForwardedMessage
@@ -150,7 +150,7 @@ fun MessageItem(
     var showMessageContextMenu by remember { mutableStateOf(false) }
     var messageLongPressRequest by remember { mutableStateOf(0) }
 
-    val currentUser by userStore.currentUser.collectAsState()
+    val currentUser = LocalCurrentUser.current
     val userSettings = settingsStore.userSettings
     val scope = rememberCoroutineScope()
 
@@ -278,10 +278,7 @@ fun MessageItem(
     val isMentioned = remember(message, currentUser, currentMember) { if (message.isPending) false else messageStore.isMessageMentioningMe(message, currentUser, currentMember) }
 
     val reduceMotion = Settings.shared.reduceMotion
-    val messageAlpha by animateFloatAsState(
-        if (message.isPending) 0.5f else 1f,
-        animationSpec = if (reduceMotion) snap() else spring()
-    )
+    val messageAlpha = if (message.isPending) 0.5f else 1f
 
     val isInline = priorMessage != null
     val useBubbles = settingsStore.chatBubbles
@@ -337,80 +334,85 @@ fun MessageItem(
             .fillMaxWidth()
             .onSizeChanged { swipeWidthPx = it.width.toFloat() }
             .zIndex(if (isHovered || showReactionPicker) 10f else 1f)
-            .pointerInput(message.id, gestureMode, swipeThresholdPx) {
+            .then(
                 if (!isPreview && gestureMode) {
-
-                    awaitEachGesture {
-                        val down = awaitFirstDown(requireUnconsumed = false)
-                        val dragStart = awaitHorizontalTouchSlopOrCancellation(down.id) { change, _ ->
-                            if (change.position.x < down.position.x) {
-                                change.consume()
-                            }
-                        } ?: return@awaitEachGesture
-
-                        var lastX = dragStart.position.x
-                        scope.launch {
-                            offsetX.snapTo((offsetX.value + lastX - down.position.x).coerceIn(-swipeMaxPx, 0f))
-                        }
-                        while (true) {
-                            val event = awaitPointerEvent()
-                            val change = event.changes.firstOrNull { it.id == down.id } ?: break
-                            if (!change.pressed) break
-                            val dx = change.position.x - lastX
-                            lastX = change.position.x
-                            if (dx != 0f) {
-                                scope.launch {
-                                    offsetX.snapTo((offsetX.value + dx).coerceIn(-swipeMaxPx, 0f))
+                    Modifier.pointerInput(message.id, swipeThresholdPx) {
+                        awaitEachGesture {
+                            val down = awaitFirstDown(requireUnconsumed = false)
+                            val dragStart = awaitHorizontalTouchSlopOrCancellation(down.id) { change, _ ->
+                                if (change.position.x < down.position.x) {
+                                    change.consume()
                                 }
+                            } ?: return@awaitEachGesture
+
+                            var lastX = dragStart.position.x
+                            scope.launch {
+                                offsetX.snapTo((offsetX.value + lastX - down.position.x).coerceIn(-swipeMaxPx, 0f))
                             }
-                            change.consume()
-                        }
-
-                        val shouldReply = offsetX.value <= -swipeThresholdPx
-                        scope.launch {
-                            if (shouldReply) messageStore.replyingTo = message
-                            offsetX.animateTo(0f, swipeBackSpec)
-                        }
-                    }
-                }
-            }
-            .pointerInput(message.id, tapTapMode) {
-                if (!isPreview && tapTapMode != me.lampu.lampcord.shared.settings.TapTapAction.DISABLED) {
-                    detectTapGestures(
-                        onLongPress = if (getPlatformName() == "android") {
-                            { _ -> messageLongPressRequest++ }
-                        } else null,
-                        onDoubleTap = {
-                            val isMe = message.author?.id == currentUser?.id
-
-                            when (tapTapMode) {
-                                TapTapAction.REPLY_OR_EDIT -> {
-                                    if (isMe) {
-                                        messageStore.editingMessage = message
-                                    } else {
-                                        messageStore.replyingTo = message
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                                if (!change.pressed) break
+                                val dx = change.position.x - lastX
+                                lastX = change.position.x
+                                if (dx != 0f) {
+                                    scope.launch {
+                                        offsetX.snapTo((offsetX.value + dx).coerceIn(-swipeMaxPx, 0f))
                                     }
                                 }
-                                TapTapAction.EMOJI_PICKER -> if (canAddReaction) { showReactionPicker = true }
-                                TapTapAction.DELETE_MESSAGE -> if (isMe || canManageMessages) { messageStore.deleteMessage(message) }
+                                change.consume()
+                            }
 
+                            val shouldReply = offsetX.value <= -swipeThresholdPx
+                            scope.launch {
+                                if (shouldReply) messageStore.replyingTo = message
+                                offsetX.animateTo(0f, swipeBackSpec)
                             }
                         }
-                    )
-                }
-            }
-            .pointerInput(Unit) {
-                awaitPointerEventScope {
-                    while (true) {
-                        val event = awaitPointerEvent()
-                        when (event.type) {
-                            PointerEventType.Enter -> isHovered = true
-                            PointerEventType.Exit -> isHovered = false
+                    }
+                } else Modifier
+            )
+            .then(
+                if (!isPreview && tapTapMode != TapTapAction.DISABLED) {
+                    Modifier.pointerInput(message.id, tapTapMode) {
+                        detectTapGestures(
+                            onLongPress = if (getPlatformName() == "android") {
+                                { _ -> messageLongPressRequest++ }
+                            } else null,
+                            onDoubleTap = {
+                                val isMe = message.author?.id == currentUser?.id
+
+                                when (tapTapMode) {
+                                    TapTapAction.REPLY_OR_EDIT -> {
+                                        if (isMe) {
+                                            messageStore.editingMessage = message
+                                        } else {
+                                            messageStore.replyingTo = message
+                                        }
+                                    }
+                                    TapTapAction.EMOJI_PICKER -> if (canAddReaction) { showReactionPicker = true }
+                                    TapTapAction.DELETE_MESSAGE -> if (isMe || canManageMessages) { messageStore.deleteMessage(message) }
+                                }
+                            }
+                        )
+                    }
+                } else Modifier
+            )
+            .then(
+                if (getPlatformName() != "android" && getPlatformName() != "ios") {
+                    Modifier.pointerInput(Unit) {
+                        awaitPointerEventScope {
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                when (event.type) {
+                                    PointerEventType.Enter -> isHovered = true
+                                    PointerEventType.Exit -> isHovered = false
+                                }
+                            }
                         }
                     }
-                }
-            }
-            .graphicsLayer(clip = false)
+                } else Modifier
+            )
     ) {
         val guildId = message.guild_id ?: navigationStore.selectedGuild?.id
 
@@ -449,8 +451,6 @@ fun MessageItem(
                     }
                 )
                 .alpha(messageAlpha)
-                .animateContentSize(animationSpec = if (reduceMotion) snap() else spring())
-                .graphicsLayer(clip = false)
         ) {
             if (isMentioned || message.isDeleted) {
                 val barColor = if (message.isDeleted) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
@@ -551,7 +551,7 @@ fun MessageItem(
                 respectChildGestures = true,
                 openRequest = messageLongPressRequest
             ) {
-                val guilds by guildStore.guilds.collectAsState()
+                val guilds = LocalGuilds.current
                 val roleData = remember(message, guilds, navigationStore.selectedGuild, cAuthor, cMember) {
                     val guild = (if (message.guild_id != null) guilds.find { it.id == message.guild_id } else null)
                         ?: navigationStore.selectedGuild
@@ -588,7 +588,7 @@ fun MessageItem(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.padding(bottom = 2.dp)
                         ) {
-                            var namePosition by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+                            val namePosition = remember { floatArrayOf(0f, 0f) }
                             UsernameView(
                                 name = cMember?.nick ?: cAuthor.global_name ?: cAuthor.username ?: "Unknown User",
                                 style = cMember?.display_name_styles ?: cAuthor.display_name_styles,
@@ -601,8 +601,18 @@ fun MessageItem(
                                 roleGradient = roleGradient,
                                 overflow = TextOverflow.Clip,
                                 modifier = Modifier
-                                    .onGloballyPositioned { namePosition = it.positionInRoot() }
-                                    .clickableCursor(enabled = !isPreview) { profileStore.showProfile(cAuthor.id, guildId, namePosition) },
+                                    .onGloballyPositioned {
+                                        val position = it.positionInRoot()
+                                        namePosition[0] = position.x
+                                        namePosition[1] = position.y
+                                    }
+                                    .clickableCursor(enabled = !isPreview) {
+                                        profileStore.showProfile(
+                                            cAuthor.id,
+                                            guildId,
+                                            androidx.compose.ui.geometry.Offset(namePosition[0], namePosition[1])
+                                        )
+                                    },
                                 ignoreEffects = !isHovered,
                                 ignoreColors = false
                             )
@@ -753,7 +763,7 @@ fun MessageItem(
                                 ) {
                                     if (cAuthor != null) {
                                         val isDm = message.guild_id == null && navigationStore.selectedGuild == null
-                                        var namePosition by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+                                        val namePosition = remember { floatArrayOf(0f, 0f) }
 
                                         Row(
                                             verticalAlignment = Alignment.CenterVertically,
@@ -767,8 +777,18 @@ fun MessageItem(
                                                 roleGradient = roleGradient,
                                                 overflow = TextOverflow.Clip,
                                                 modifier = Modifier
-                                                    .onGloballyPositioned { namePosition = it.positionInRoot() }
-                                                    .clickableCursor { profileStore.showProfile(cAuthor.id, guildId, namePosition) },
+                                                    .onGloballyPositioned {
+                                                        val position = it.positionInRoot()
+                                                        namePosition[0] = position.x
+                                                        namePosition[1] = position.y
+                                                    }
+                                                    .clickableCursor {
+                                                        profileStore.showProfile(
+                                                            cAuthor.id,
+                                                            guildId,
+                                                            androidx.compose.ui.geometry.Offset(namePosition[0], namePosition[1])
+                                                        )
+                                                    },
                                                 ignoreEffects = !isHovered,
                                                 ignoreColors = false
                                             )
@@ -920,46 +940,32 @@ fun MessageItem(
         }
 
         val isMe = message.author?.id == currentUser?.id
-        val actions = remember(message, isMe) {
-            val list = mutableListOf(
-                Triple(Icons.Filled.AddReaction, "Add Reaction") { showReactionPicker = true },
-                Triple(Icons.Rounded.Reply, "Reply") { messageStore.replyingTo = message },
-                Triple(Icons.Filled.Forward, "Forward") {
-                    navigationStore.forwardingMessage = message
-                }
-            )
-            if (isMe) {
-                list.add(Triple(Icons.Filled.Edit, "Edit") {
-                    messageStore.editingMessage = message
-                })
-            }
-            list.add(Triple(Icons.Filled.Tag, "Create Thread") { showCreateThreadDialog = true })
-            list.add(Triple(Icons.Filled.MoreHoriz, "More") { showMessageContextMenu = true })
-            list
-        }
-
         val showActions = isHovered || showReactionPicker || showMessageContextMenu
-        val actionAlpha by animateFloatAsState(
-            targetValue = if (showActions) 1f else 0f,
-            animationSpec = if (reduceMotion) snap() else tween(durationMillis = 150),
-            label = "actionAlpha"
-        )
-        val actionScale by animateFloatAsState(
-            targetValue = if (showActions) 1f else 0.92f,
-            animationSpec = if (reduceMotion) snap() else spring(dampingRatio = 0.7f, stiffness = 400f),
-            label = "actionScale"
-        )
+        if (showActions) {
+            val actions = remember(message, isMe) {
+                val list = mutableListOf(
+                    Triple(Icons.Filled.AddReaction, "Add Reaction") { showReactionPicker = true },
+                    Triple(Icons.Rounded.Reply, "Reply") { messageStore.replyingTo = message },
+                    Triple(Icons.Filled.Forward, "Forward") {
+                        navigationStore.forwardingMessage = message
+                    }
+                )
+                if (isMe) {
+                    list.add(Triple(Icons.Filled.Edit, "Edit") {
+                        messageStore.editingMessage = message
+                    })
+                }
+                list.add(Triple(Icons.Filled.Tag, "Create Thread") { showCreateThreadDialog = true })
+                list.add(Triple(Icons.Filled.MoreHoriz, "More") { showMessageContextMenu = true })
+                list
+            }
 
-        if (actionAlpha > 0f) {
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(end = 16.dp)
                     .zIndex(2f)
                     .graphicsLayer {
-                        alpha = actionAlpha
-                        scaleX = actionScale
-                        scaleY = actionScale
                         clip = false
                         translationY = -16.dp.toPx()
                     }

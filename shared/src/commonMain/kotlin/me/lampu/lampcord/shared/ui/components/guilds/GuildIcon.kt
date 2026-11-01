@@ -41,6 +41,7 @@ import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.state.UserGuildSettingsStore
 import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.ui.baseplates.RegularGuildItem
+import me.lampu.lampcord.shared.ui.LocalCurrentUser
 import me.lampu.lampcord.shared.ui.components.*
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.setClipboardText
@@ -85,7 +86,7 @@ fun GuildIcon(
 
     val userGuildSettings by userGuildSettingsStore.userGuildSettings.collectAsState()
     val readStates by readStateStore.readStates.collectAsState()
-    val currentUser by userStore.currentUser.collectAsState()
+    val currentUser = LocalCurrentUser.current
 
     val isMuted = remember(guild.id, userGuildSettings[guild.id]) { userGuildSettingsStore.isGuildMuted(guild.id) }
     

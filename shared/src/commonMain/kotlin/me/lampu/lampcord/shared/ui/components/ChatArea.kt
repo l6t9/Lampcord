@@ -32,7 +32,10 @@ import androidx.compose.runtime.derivedStateOf
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -86,12 +89,16 @@ fun ChatArea(
     readStateStore: me.lampu.lampcord.shared.state.ReadStateStore = koinInject()
 ) {
     val joinVoice = me.lampu.lampcord.shared.voice.rememberVoiceJoin(voiceStore)
-    val channelId = navigationStore.selectedChannel?.id
+    val isMobile = me.lampu.lampcord.shared.utils.getPlatformName() == "android" ||
+        me.lampu.lampcord.shared.utils.getPlatformName() == "ios"
+    val channelId = navigationStore.selectedThread?.id ?: navigationStore.selectedChannel?.id
     val scrollState = remember(channelId) { LazyListState() }
     var isHovered by remember { mutableStateOf(false) }
     val messages by messageStore.messages.collectAsState()
     val relationships by relationshipStore.relationships.collectAsState()
-    val readStates by readStateStore.readStates.collectAsState()
+    val activeReadState by remember(channelId) {
+        readStateStore.readStates.map { it[channelId] }.distinctUntilChanged()
+    }.collectAsState(initial = readStateStore.readStates.value[channelId])
     val reduceMotion = Settings.shared.reduceMotion
 
     val themeBackgroundUrl = themeStore.themeBackgroundUrl ?: ""
@@ -99,23 +106,31 @@ fun ChatArea(
 
     val backgroundUrl = if (themeBackgroundUrl.isNotEmpty()) themeBackgroundUrl else settingsStore.chatBackground
 
-    val ackedMessageId = remember(readStates, channelId) {
-        if (channelId == null) "0" else readStates[channelId]?.last_message_id?.toString()?.removeSurrounding("\"") ?: "0"
+    val ackedMessageId = if (channelId == null) {
+        "0"
+    } else {
+        activeReadState?.last_message_id?.toString()?.removeSurrounding("\"") ?: "0"
     }
 
-    val unreadMessagesCount by remember {
+    val unreadInfo by remember(ackedMessageId) {
         derivedStateOf {
             val ackedLong = ackedMessageId.toLongOrNull() ?: 0L
-            messages.count { (it.id.toLongOrNull() ?: 0L) > ackedLong && !it.isPending }
+            var count = 0
+            var oldestUnreadId: String? = null
+            for (message in messages) {
+                if (message.isPending) continue
+                if ((message.id.toLongOrNull() ?: 0L) > ackedLong) {
+                    count++
+                    oldestUnreadId = message.id
+                } else {
+                    break
+                }
+            }
+            count to oldestUnreadId
         }
     }
-
-    val firstUnreadMessageId by remember {
-        derivedStateOf {
-            val ackedLong = ackedMessageId.toLongOrNull() ?: 0L
-            messages.findLast { (it.id.toLongOrNull() ?: 0L) > ackedLong && !it.isPending }?.id
-        }
-    }
+    val unreadMessagesCount = unreadInfo.first
+    val firstUnreadMessageId = unreadInfo.second
 
     val isScrolledFromBottom by remember(scrollState) {
         derivedStateOf { scrollState.firstVisibleItemIndex > 0 }
@@ -158,9 +173,9 @@ fun ChatArea(
                             }
                         }
                     }
-                    if (lastVisibleItemIndex >= messages.size - 5) {
+                    if (channelId != null && lastVisibleItemIndex >= messages.size - 5) {
                         messageStore.loadMoreMessages(
-                            navigationStore.selectedChannel?.id ?: "",
+                            channelId,
                             navigationStore.selectedGuild?.id,
                             navigationStore.selectedThread?.id
                         )
@@ -191,29 +206,32 @@ fun ChatArea(
     }
 
     LaunchedEffect(messageStore.scrollToMessageId) {
-        messageStore.scrollToMessageId?.let { messageId ->
-            val index = messages.indexOfFirst { it.id == messageId }
-            if (index != -1) {
-                messageStore.highlightedMessageId = messageId
+        val messageId = messageStore.scrollToMessageId ?: return@LaunchedEffect
+        val index = withTimeoutOrNull(5_000) {
+            snapshotFlow { messages.indexOfFirst { it.id == messageId } }
+                .first { it != -1 }
+        } ?: -1
 
-                val visibleItems = scrollState.layoutInfo.visibleItemsInfo
-                val viewportHeight = scrollState.layoutInfo.viewportSize.height
+        if (index != -1) {
+            messageStore.highlightedMessageId = messageId
 
-                if (visibleItems.isNotEmpty()) {
-                    val averageItemHeight = visibleItems.map { it.size }.average().toInt()
-                    val centerOffset = (viewportHeight / 2) - (averageItemHeight / 2)
+            val visibleItems = scrollState.layoutInfo.visibleItemsInfo
+            val viewportHeight = scrollState.layoutInfo.viewportSize.height
 
-                    if (reduceMotion) {
-                        scrollState.scrollToItem(index, scrollOffset = -centerOffset)
-                    } else {
-                        scrollState.animateScrollToItem(index, scrollOffset = -centerOffset)
-                    }
+            if (visibleItems.isNotEmpty()) {
+                val averageItemHeight = visibleItems.map { it.size }.average().toInt()
+                val centerOffset = (viewportHeight / 2) - (averageItemHeight / 2)
+
+                if (reduceMotion) {
+                    scrollState.scrollToItem(index, scrollOffset = -centerOffset)
                 } else {
-                    if (reduceMotion) scrollState.scrollToItem(index) else scrollState.animateScrollToItem(index)
+                    scrollState.animateScrollToItem(index, scrollOffset = -centerOffset)
                 }
+            } else {
+                if (reduceMotion) scrollState.scrollToItem(index) else scrollState.animateScrollToItem(index)
             }
-            messageStore.scrollToMessageId = null
         }
+        messageStore.scrollToMessageId = null
     }
 
     Box(
@@ -385,7 +403,7 @@ fun ChatArea(
         VerticalScrollbar(
             state = scrollState,
             modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
-            isVisible = isHovered,
+            isVisible = isHovered || isMobile,
             reverseLayout = true
         )
         if (unreadMessagesCount > 0 && isScrolledFromBottom) {

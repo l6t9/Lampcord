@@ -133,6 +133,7 @@ val storeModule = module {
     single { ApplicationStore(get(), get()) }
     single { TokenStore(json = get()) }
     single { SettingsStore(userApi = get()) }
+    single { FavoritesStore(json = get()) }
     single { ThemeStore(scope = get()) }
     single {
         NavigationStore(

@@ -30,6 +30,12 @@ fun ExtensionsSettingsContent(settingsStore: SettingsStore = koinInject()) {
             title = "Enhancements",
             items = listOf(
                 switchSettingsItem(
+                    title = "Favorites Server",
+                    description = "Pin channels from any server to a Favorites list at the top of the rail. Free for everyone.",
+                    checked = Settings.shared.favoritesServerEnabled,
+                    onCheckedChange = { Settings.shared.favoritesServerEnabled = it }
+                ),
+                switchSettingsItem(
                     title = "Free Nitro Emojis",
                     description = "Use emojis from any server for free.",
                     checked = Settings.shared.freeNitroEmojis,

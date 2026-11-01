@@ -81,6 +81,18 @@ fun AdditionalSettingsContent(
         )
 
         Material3SettingsGroup(
+            title = "Enhancements",
+            items = listOf(
+                switchSettingsItem(
+                    title = "Favorites Server",
+                    description = "Pin channels from any server to a Favorites list at the top of the rail. Free for everyone.",
+                    checked = Settings.shared.favoritesServerEnabled,
+                    onCheckedChange = { Settings.shared.favoritesServerEnabled = it }
+                )
+            )
+        )
+
+        Material3SettingsGroup(
             title = "Display",
             items = listOf(
                 switchSettingsItem(

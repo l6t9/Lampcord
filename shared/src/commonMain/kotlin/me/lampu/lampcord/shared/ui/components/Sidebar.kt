@@ -39,9 +39,9 @@ fun Sidebar(
     navigationStore: NavigationStore = koinInject(),
     voiceStore: VoiceStore = koinInject(),
     userStore: UserStore = koinInject(),
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showAccountPanel: Boolean = getPlatformName() != "android" && getPlatformName() != "ios"
 ) {
-    val isMobile = getPlatformName() == "android" || getPlatformName() == "ios"
 
     Column(
         modifier = modifier.fillMaxHeight(),
@@ -67,15 +67,21 @@ fun Sidebar(
                 color = MaterialTheme.colorScheme.surface,
                 tonalElevation = 0.dp
             ) {
-                if (navigationStore.selectedGuild != null) {
-                    GuildChannelList()
-                } else {
-                    DMList()
+                when {
+                    navigationStore.isFavoritesSelected && me.lampu.lampcord.shared.settings.Settings.shared.favoritesServerEnabled -> {
+                        FavoritesChannelList()
+                    }
+                    navigationStore.selectedGuild != null -> {
+                        GuildChannelList()
+                    }
+                    else -> {
+                        DMList()
+                    }
                 }
             }
         }
 
-        if (!isMobile) {
+        if (showAccountPanel) {
             Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)) {
                 androidx.compose.animation.AnimatedVisibility(
                     visible = voiceStore.activeChannel != null,

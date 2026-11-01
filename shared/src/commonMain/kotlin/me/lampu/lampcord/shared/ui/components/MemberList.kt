@@ -28,6 +28,7 @@ import me.lampu.lampcord.shared.state.PresenceStore
 import me.lampu.lampcord.shared.state.RelationshipStore
 import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.state.UserStore
+import me.lampu.lampcord.shared.ui.LocalCurrentUser
 import me.lampu.lampcord.shared.ui.components.members.MemberGroupItem
 import me.lampu.lampcord.shared.ui.components.members.MemberHeader
 import me.lampu.lampcord.shared.ui.components.members.MemberItem
@@ -78,7 +79,7 @@ fun MemberList(
     }
 
     val relationshipTypes = relationshipStore.relationshipTypes.collectAsState()
-    val currentUser by userStore.currentUser.collectAsState()
+    val currentUser = LocalCurrentUser.current
     val currentUserId = currentUser?.id
     val userSettings = settingsStore.userSettings
     val currentUserStatus = userSettings?.status

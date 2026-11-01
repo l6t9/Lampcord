@@ -26,9 +26,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import me.lampu.lampcord.shared.gateway.GatewayManager
 import me.lampu.lampcord.shared.model.Channel
+import me.lampu.lampcord.shared.model.Guild
 import me.lampu.lampcord.shared.settings.Settings
+import me.lampu.lampcord.shared.ui.LocalCurrentUser
 import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.components.chat.ChannelNotificationsSheet
 import me.lampu.lampcord.shared.ui.components.chat.InviteDialog
@@ -45,6 +50,8 @@ import me.lampu.lampcord.shared.ui.kit.combinedClickableCursor
 @Composable
 fun ChannelItem(
     channel: Channel,
+    guildOverride: Guild? = null,
+    showGuildName: Boolean = false,
     navigationStore: NavigationStore = koinInject(),
     readStateStore: ReadStateStore = koinInject(),
     userGuildSettingsStore: UserGuildSettingsStore = koinInject(),
@@ -54,33 +61,44 @@ fun ChannelItem(
     voiceStore: VoiceStore = koinInject(),
     presenceStore: PresenceStore = koinInject(),
     typingStore: TypingStore = koinInject(),
-    profileStore: ProfileStore = koinInject()
+    profileStore: ProfileStore = koinInject(),
+    favoritesStore: FavoritesStore = koinInject(),
+    gatewayManager: GatewayManager = koinInject()
 ) {
     val isSelected = navigationStore.selectedChannel?.id == channel.id
-    val readStates by readStateStore.readStates.collectAsState()
-    
-    val typingUsers by typingStore.typingUsers.collectAsState()
-    val isSomeoneTyping = remember(channel.id, typingUsers) {
-        typingUsers[channel.id]?.isNotEmpty() == true
-    }
+    val readState by remember(channel.id) {
+        readStateStore.readStates.map { it[channel.id] }.distinctUntilChanged()
+    }.collectAsState(initial = readStateStore.readStates.value[channel.id])
 
-    val recentIds by readStateStore.recentIds.collectAsState()
-    val isUnread = remember(channel, readStates[channel.id], recentIds[channel.id]) { readStateStore.isUnread(channel) }
-    val mentionCount = remember(channel, readStates[channel.id]) { readStateStore.getMentionCount(channel.id) }
-    
-    val userGuildSettings by userGuildSettingsStore.userGuildSettings.collectAsState()
-    val guildSettings = userGuildSettings[channel.guild_id]
-    val isMuted = remember(channel, guildSettings) { userGuildSettingsStore.isChannelMuted(channel.guild_id, channel.id) }
+    val isSomeoneTyping by remember(channel.id) {
+        typingStore.typingUsers.map { it[channel.id]?.isNotEmpty() == true }.distinctUntilChanged()
+    }.collectAsState(initial = typingStore.typingUsers.value[channel.id]?.isNotEmpty() == true)
 
-    val guild = navigationStore.selectedGuild
-    val currentUser by userStore.currentUser.collectAsState()
-    val allMembers by userStore.members.collectAsState()
+    val recentId by remember(channel.id) {
+        readStateStore.recentIds.map { it[channel.id] }.distinctUntilChanged()
+    }.collectAsState(initial = readStateStore.recentIds.value[channel.id])
+
+    val isUnread = remember(channel, readState, recentId) { readStateStore.isUnread(channel) }
+    val mentionCount = remember(channel, readState) { readStateStore.getMentionCount(channel.id) }
     
-    val member = remember(guild, currentUser, allMembers) {
-        val u = currentUser
-        if (guild == null || u == null) null
-        else allMembers[guild.id]?.get(u.id)
+    val isMuted by remember(channel.guild_id, channel.id) {
+        userGuildSettingsStore.userGuildSettings
+            .map { userGuildSettingsStore.isChannelMuted(channel.guild_id, channel.id) }
+            .distinctUntilChanged()
+    }.collectAsState(
+        initial = userGuildSettingsStore.isChannelMuted(channel.guild_id, channel.id)
+    )
+    val isFavorite = favoritesStore.isFavorite(channel.id)
+    val favoritesEnabled = Settings.shared.favoritesServerEnabled
+
+    val guild = guildOverride ?: navigationStore.selectedGuild
+    val currentUser = LocalCurrentUser.current
+    val memberState = remember(guild?.id, currentUser?.id) {
+        val guildId = guild?.id
+        val userId = currentUser?.id
+        if (guildId == null || userId == null) null else userStore.memberState(guildId, userId)
     }
+    val member = memberState?.value
     
     val canView = remember(channel, guild, member) {
         val u = currentUser
@@ -111,7 +129,7 @@ fun ChannelItem(
         else PermissionHelper.isChannelPrivate(guild, channel)
     }
 
-    val contextMenuItems = remember(channel, userSettings, isMuted, canView, canManageChannel) {
+    val contextMenuItems = remember(channel, userSettings, isMuted, isFavorite, favoritesEnabled, canView, canManageChannel) {
         val items = mutableListOf<ContextMenuItem>()
         if (canView) {
             if (isDmChannel) {
@@ -132,6 +150,15 @@ fun ChannelItem(
             items.add(ContextMenuItem(if (isMuted) "Unmute Channel" else "Mute Channel", if (isMuted) Icons.Filled.Notifications else Icons.AutoMirrored.Filled.VolumeOff, onClick = {
                 guildStore.toggleMuteChannel(channel.guild_id ?: "@me", channel.id)
             }, group = "Primary"))
+
+            if (favoritesEnabled && channel.guild_id != null && channel.type != 4) {
+                items.add(ContextMenuItem(
+                    if (isFavorite) "Remove from Favorites" else "Add to Favorites",
+                    Icons.Rounded.Star,
+                    onClick = { favoritesStore.toggle(channel.id) },
+                    group = "Primary"
+                ))
+            }
 
             val canManageThreads = if (guild == null || member == null) false 
                 else PermissionHelper.hasPermission(member, guild, channel, Permission.MANAGE_THREADS, currentUser?.id)
@@ -236,6 +263,8 @@ fun ChannelItem(
                             onClick = {
                                 if (isMobile && (channel.type == 2 || channel.type == 13)) {
                                     showVoiceJoinSheet = true
+                                } else if (navigationStore.isFavoritesSelected && guild != null) {
+                                    navigationStore.selectFavoriteChannel(channel) { gatewayManager.sendSubscription(it) }
                                 } else {
                                     navigationStore.selectChannel(channel, explicitlySelected = true)
                                 }
@@ -325,6 +354,17 @@ fun ChannelItem(
                                 )
                             )
                         )
+
+                        if (showGuildName && guild != null) {
+                            Text(
+                                text = guild.name ?: "",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = contentColor.copy(alpha = 0.55f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.padding(start = 6.dp)
+                            )
+                        }
 
                         if (isSomeoneTyping && !isSelected) {
                             TypingDots(

@@ -91,6 +91,7 @@ class NavigationStore(
     var pendingInviteCode by mutableStateOf<String?>(null)
     var isFriendsSelected by mutableStateOf(false)
     var isMentionsSelected by mutableStateOf(false)
+    var isFavoritesSelected by mutableStateOf(false)
 
     var isConnected by mutableStateOf(false)
     var isConnecting by mutableStateOf(false)
@@ -135,6 +136,7 @@ class NavigationStore(
         }
         if (existing != null) {
             selectedGuild = null
+            isFavoritesSelected = false
             Settings.shared.clearLastGuild()
             selectChannel(existing, explicitlySelected = true)
             return
@@ -144,6 +146,7 @@ class NavigationStore(
             if (dm != null) {
                 guildStore.handleChannelCreateOrUpdate(dm)
                 selectedGuild = null
+                isFavoritesSelected = false
                 Settings.shared.clearLastGuild()
                 selectChannel(dm, explicitlySelected = true)
             }
@@ -194,6 +197,7 @@ class NavigationStore(
     fun selectHome() {
         guildLoadingJob?.cancel()
         selectedGuild = null
+        isFavoritesSelected = false
         isChannelsAndRolesVisible = false
         isServerSettingsVisible = false
         lastRequestedKey = null
@@ -227,12 +231,51 @@ class NavigationStore(
         }
     }
 
+    fun selectFavorites() {
+        guildLoadingJob?.cancel()
+        channelLoadingJob?.cancel()
+        selectedGuild = null
+        selectedChannel = null
+        selectedThread = null
+        isFavoritesSelected = true
+        isFriendsSelected = false
+        isMentionsSelected = false
+        isChannelsAndRolesVisible = false
+        isServerSettingsVisible = false
+        memberListStore.memberListItems.clear()
+        memberListStore.onlineCount = null
+        memberListStore.memberCount = null
+        lastRequestedKey = null
+        Settings.shared.setLastGuild("favorites")
+    }
+
+    fun selectFavoriteChannel(channel: Channel, subscribeCallback: (String) -> Unit) {
+        val guild = channel.guild_id?.let { guildId ->
+            guildStore.guilds.value.find { it.id == guildId }
+        }
+
+        if (guild == null) {
+            selectedGuild = null
+            isFavoritesSelected = false
+            selectChannel(channel, explicitlySelected = true)
+            return
+        }
+
+        if (selectedGuild?.id == guild.id) {
+            selectChannel(channel, explicitlySelected = true)
+        } else {
+            selectGuild(guild, targetChannelId = channel.id, subscribeCallback = subscribeCallback)
+        }
+        isFavoritesSelected = true
+    }
+
     fun selectFriends() {
         selectedGuild = null
         selectedChannel = null
         selectedThread = null
         isFriendsSelected = true
         isMentionsSelected = false
+        isFavoritesSelected = false
         isChannelsAndRolesVisible = false
         isServerSettingsVisible = false
         Settings.shared.clearLastGuild()
@@ -245,6 +288,7 @@ class NavigationStore(
         selectedThread = null
         isFriendsSelected = false
         isMentionsSelected = true
+        isFavoritesSelected = false
         isChannelsAndRolesVisible = false
         isServerSettingsVisible = false
         Settings.shared.clearLastGuild()
@@ -253,6 +297,10 @@ class NavigationStore(
 
     fun restoreLastState(subscribeCallback: (String) -> Unit) {
         val lastGuildId = Settings.shared.getLastGuild()
+        if (lastGuildId == "favorites" && Settings.shared.favoritesServerEnabled) {
+            selectFavorites()
+            return
+        }
         val guild = lastGuildId?.let { id -> guildStore.guilds.value.find { it.id == id } }
         if (guild != null) {
             selectGuild(guild, subscribeCallback = subscribeCallback)
@@ -262,11 +310,12 @@ class NavigationStore(
     }
 
     fun selectGuild(guild: Guild, targetChannelId: String? = null, subscribeCallback: (String) -> Unit) {
-        if (selectedGuild?.id == guild.id && !isChannelsAndRolesVisible) return
+        if (selectedGuild?.id == guild.id && !isChannelsAndRolesVisible && !isFavoritesSelected) return
 
         guildLoadingJob?.cancel()
 
         selectedGuild = guild
+        isFavoritesSelected = false
         isChannelsAndRolesVisible = false
         isServerSettingsVisible = false
         lastRequestedKey = null
@@ -349,6 +398,9 @@ class NavigationStore(
         }
 
         isFriendsSelected = false
+        if (channel.guild_id == null) {
+            isFavoritesSelected = false
+        }
         isChannelsAndRolesVisible = false
         isServerSettingsVisible = false
         channelLoadingJob?.cancel()
@@ -506,6 +558,7 @@ class NavigationStore(
         selectedGuildOnboarding = null
         isFriendsSelected = false
         isMentionsSelected = false
+        isFavoritesSelected = false
         isConnected = false
         isConnecting = false
         isSettingsVisible = false

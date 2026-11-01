@@ -63,6 +63,7 @@ internal val navigationSavedStateConfiguration =
                     subclass(Screen.PrivacySettings::class, Screen.PrivacySettings.serializer())
                     subclass(Screen.ConnectionsSettings::class, Screen.ConnectionsSettings.serializer())
                     subclass(Screen.DevicesSettings::class, Screen.DevicesSettings.serializer())
+                    subclass(Screen.VoiceSettings::class, Screen.VoiceSettings.serializer())
                     subclass(Screen.ChatSettings::class, Screen.ChatSettings.serializer())
                     subclass(Screen.NotificationsSettings::class, Screen.NotificationsSettings.serializer())
                     subclass(Screen.AdvancedSettings::class, Screen.AdvancedSettings.serializer())

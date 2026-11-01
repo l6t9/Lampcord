@@ -41,7 +41,7 @@ fun SystemMessage(
             .then(
                 if (targetMessageId != null) {
                     Modifier.clickableCursor {
-                        messageStore.scrollToMessageId = targetMessageId
+                        messageStore.jumpToMessage(message.channel_id, targetMessageId)
                     }
                 } else Modifier
             )

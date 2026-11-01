@@ -59,6 +59,8 @@ class Settings(private val settings: KmpSettings) {
     var chatboxFontSize by preferenceFloat("chatbox_font_size", 1.0f)
     var chatboxShowAvatar by preferenceBoolean("chatbox_show_avatar", false)
 
+    var favoritesServerEnabled by preferenceBoolean("favorites_server_enabled", false)
+    var favoriteChannelsJson by preference("favorite_channels_v1", "[]")
     var freeNitroEmojis by preferenceBoolean("free_nitro_emojis", false)
     var realmojis by preferenceBoolean("realmojis", false)
     var compoundRealmojis by preferenceBoolean("compound_realmojis", true)
@@ -115,6 +117,10 @@ class Settings(private val settings: KmpSettings) {
     var textReplaceJson by preference("text_replace_v1", "[]")
 
     var noiseCancellation by preferenceBoolean("noise_cancellation", true)
+    var voiceInputDevice by preference("voice_input_device", "")
+    var voiceOutputDevice by preference("voice_output_device", "")
+    var voiceInputVolume by preferenceFloat("voice_input_volume", 1.0f)
+    var voiceOutputVolume by preferenceFloat("voice_output_volume", 1.0f)
     var httpProxyUrl by preference("http_proxy_url", "")
 
     init {

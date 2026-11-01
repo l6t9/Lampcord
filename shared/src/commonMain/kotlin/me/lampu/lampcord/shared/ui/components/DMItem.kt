@@ -22,8 +22,12 @@ import androidx.compose.ui.unit.sp
 import me.lampu.lampcord.shared.model.Channel
 import me.lampu.lampcord.shared.api.CdnUrls
 import me.lampu.lampcord.shared.state.*
+import me.lampu.lampcord.shared.ui.LocalCurrentUser
 import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.utils.getPlatformName
 import me.lampu.lampcord.shared.utils.setClipboardText
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import me.lampu.lampcord.shared.ui.kit.handCursor
@@ -42,10 +46,12 @@ fun DMItem(
 ) {
     val isSelected = navigationStore.selectedChannel?.id == channel.id
     val allUsers by userStore.users.collectAsState()
-    val readStates by readStateStore.readStates.collectAsState()
+    val readState by remember(channel.id) {
+        readStateStore.readStates.map { it[channel.id] }.distinctUntilChanged()
+    }.collectAsState(initial = readStateStore.readStates.value[channel.id])
     
     val isGroupDm = channel.type == 3
-    val currentUser by userStore.currentUser.collectAsState()
+    val currentUser = LocalCurrentUser.current
 
     val recipients = remember(channel.recipients, channel.recipient_ids, allUsers, currentUser) {
         val list = mutableListOf<me.lampu.lampcord.shared.model.User>()
@@ -92,12 +98,15 @@ fun DMItem(
 
     var isHovered by remember { mutableStateOf(false) }
 
-    val userGuildSettings by userGuildSettingsStore.userGuildSettings.collectAsState()
-    val isMuted = remember(channel, userGuildSettings) { userGuildSettingsStore.isChannelMuted(null, channel.id) }
+    val isMuted by remember(channel.id) {
+        userGuildSettingsStore.userGuildSettings
+            .map { userGuildSettingsStore.isChannelMuted(null, channel.id) }
+            .distinctUntilChanged()
+    }.collectAsState(initial = userGuildSettingsStore.isChannelMuted(null, channel.id))
 
     val scope = rememberCoroutineScope()
 
-    val mentionCount = remember(channel.id, readStates) { readStateStore.getMentionCount(channel.id) }
+    val mentionCount = remember(channel.id, readState) { readStateStore.getMentionCount(channel.id) }
 
     val errorColor = MaterialTheme.colorScheme.error
     val contextMenuItems = remember(channel, isGroupDm, userSettings, isMuted, recipient, errorColor) {
@@ -146,17 +155,21 @@ fun DMItem(
                 .handCursor()
 
                 .alpha(if (isMuted && !isSelected) 0.5f else 1f)
-                .pointerInput(Unit) {
-                    awaitPointerEventScope {
-                        while (true) {
-                            val event = awaitPointerEvent()
-                            when (event.type) {
-                                PointerEventType.Enter -> isHovered = true
-                                PointerEventType.Exit -> isHovered = false
+                .then(
+                    if (getPlatformName() != "android" && getPlatformName() != "ios") {
+                        Modifier.pointerInput(Unit) {
+                            awaitPointerEventScope {
+                                while (true) {
+                                    val event = awaitPointerEvent()
+                                    when (event.type) {
+                                        PointerEventType.Enter -> isHovered = true
+                                        PointerEventType.Exit -> isHovered = false
+                                    }
+                                }
                             }
                         }
-                    }
-                },
+                    } else Modifier
+                ),
             onClick = {
                 navigationStore.selectChannel(channel, explicitlySelected = true)
                 haptic.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)

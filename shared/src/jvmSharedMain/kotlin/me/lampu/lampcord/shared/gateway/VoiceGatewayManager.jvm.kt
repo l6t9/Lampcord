@@ -107,6 +107,7 @@ actual class VoiceGatewayManager actual constructor(private val client: HttpClie
         private val speaking = ConcurrentHashMap<String, Long>()
         private var mediaStarted = false
         private var resetCount = 0
+        private var pingSequence = 0
 
         private fun update(phase: VoicePhase = if (!gatewayReady) VoicePhase.CONNECTING else if (secure) VoicePhase.SECURE else VoicePhase.CONNECTED) {
             if (active === this) mutableStatus.value = VoiceConnectionStatus(channelId, phase, verificationCode = verificationCode, speaking = speaking.keys.toSet())
@@ -419,12 +420,13 @@ actual class VoiceGatewayManager actual constructor(private val client: HttpClie
             var tick = 0
             while (currentCoroutineContext().isActive) {
                 if (tick++ % 25 == 0) {
-                    val packet = ByteBuffer.allocate(74).putShort(1).putShort(70).putInt(ssrc).array()
-                    socket?.send(DatagramPacket(packet, packet.size))
-                }
-                if (secure && tick % 5 == 0) {
-                    val packet = synchronized(lock) { packets?.encrypt(OPUS_SILENCE) }
-                    packet?.let { socket?.send(DatagramPacket(it, it.size)) }
+                    val ping = ByteBuffer.allocate(8)
+                        .putInt(0x1337CAFE)
+                        .putInt(pingSequence++)
+                        .array()
+                    socket?.send(DatagramPacket(ping, ping.size))
+                    val report = synchronized(lock) { packets?.senderReport() }
+                    report?.let { socket?.send(DatagramPacket(it, it.size)) }
                 }
                 val cutoff = System.nanoTime() - 300_000_000L
                 val removed = speaking.entries.removeIf { it.value < cutoff }

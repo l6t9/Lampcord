@@ -26,7 +26,7 @@ Open a server voice channel and choose **Join voice**, or use the phone button i
 
 Android requests microphone and, on Android 12+, nearby-device permission. An ongoing microphone foreground service keeps an accepted call alive with the screen off and provides notification mute/hang-up actions. Wired/Bluetooth communication devices take precedence over the earpiece unless speaker is selected. Incoming-call notifications require a running main-gateway connection and notification permission; this does not add killed-app incoming-call delivery through FCM.
 
-Desktop uses the system default Java Sound capture/playback devices. A headset is recommended: desktop echo cancellation and device selection are not implemented. Android uses available platform echo cancellation/noise suppression. Audio is never saved to disk.
+Desktop and Android expose capture/playback device selection and input/output volume under Voice & Video settings. Device changes apply the next time a call is joined. A headset is recommended: desktop echo cancellation is not implemented. Android uses available platform echo cancellation/noise suppression. Audio is never saved to disk.
 
 No audio is sent before DAVE is ready, and unsupported/downgraded encryption ends the call. The only unencrypted Opus payload allowed inside the authenticated RTP transport is Discord's fixed three-byte silence marker. MLS identities are ephemeral per call; ordinary rekeys retain libdave's bounded old receive keys for in-flight packets, while full MLS resets discard them. WebSocket resume keeps the transport nonce counter and MLS state; a new voice server/session gets fresh transport and DAVE state.
 

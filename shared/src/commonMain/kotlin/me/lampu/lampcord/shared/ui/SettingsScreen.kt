@@ -13,6 +13,7 @@ import me.lampu.lampcord.shared.generated.resources.voice_and_video
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -23,8 +24,12 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -33,6 +38,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -65,6 +72,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -99,6 +107,7 @@ import me.lampu.lampcord.shared.ui.settings.ProfileSettingsContent
 import me.lampu.lampcord.shared.ui.settings.ThemeEditorScreen
 import me.lampu.lampcord.shared.ui.settings.ThemingSettingsContent
 import me.lampu.lampcord.shared.ui.settings.UpdatesContent
+import me.lampu.lampcord.shared.ui.settings.VoiceSettingsContent
 import me.lampu.lampcord.shared.ui.settings.DebugLogScreen
 import me.lampu.lampcord.shared.generated.resources.Res
 import me.lampu.lampcord.shared.generated.resources.app_settings
@@ -143,6 +152,7 @@ fun SettingsScreen(
     onNavigateToAppearance: () -> Unit = {},
     onNavigateToAccessibility: () -> Unit = {},
     onNavigateToLanguage: () -> Unit = {},
+    onNavigateToVoice: () -> Unit = {},
     onNavigateToChat: () -> Unit = {},
     onNavigateToNotifications: () -> Unit = {},
     onNavigateToAdvanced: () -> Unit = {},
@@ -261,6 +271,7 @@ fun SettingsScreen(
                         "APPEARANCE" -> onNavigateToAppearance()
                         "ACCESSIBILITY" -> onNavigateToAccessibility()
                         "LANGUAGE" -> onNavigateToLanguage()
+                        "VOICE_VIDEO" -> onNavigateToVoice()
                         "CHAT" -> onNavigateToChat()
                         "NOTIFICATIONS" -> onNavigateToNotifications()
                         "ADVANCED" -> onNavigateToAdvanced()
@@ -466,7 +477,7 @@ fun SettingsScreen(
                                                 if (useRounded) Icons.Rounded.Mic else Icons.Filled.Mic,
                                                 title = { Text(stringResource(Res.string.voice_and_video)) },
                                                 description = { Text("Input, output, and camera settings") },
-                                                onClick = { /* TODO */ }
+                                                onClick = onNavigateToVoice
                                             ),
                                             Material3SettingsItem(
                                                 if (useRounded) Icons.Rounded.Forum else Icons.Filled.Forum,
@@ -543,28 +554,61 @@ fun SettingsScreen(
                 }
             }
         } else {
-            val railState = rememberWideNavigationRailState(initialValue = WideNavigationRailValue.Expanded)
-            androidx.compose.ui.window.Dialog(
-                onDismissRequest = onDismiss,
-                properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.32f)),
+                contentAlignment = Alignment.Center
             ) {
-                SettingsDesktopOverlay(
-                    selectedCategory = selectedCategory,
-                    showThemer = showThemer,
-                    editingThemeJson = editingThemeJson,
-                    showDebugLogs = showDebugLogs,
-                    onShowThemerChanged = { showThemer = it },
-                    onEditingThemeJsonChanged = { editingThemeJson = it },
-                    onShowDebugLogsChanged = { showDebugLogs = it },
-                    onNavigateToTheming = finalOnNavigateToTheming,
-                    onNavigateToNavigation = finalOnNavigateToNavigation,
-                    onDismiss = onDismiss,
-                    onCategorySelected = { selectedCategory = it },
-                    onLogoutConfirmationChanged = { showLogoutConfirmation = it },
-                    railState = railState,
-                    finalOnNavigateToTheming = finalOnNavigateToTheming,
-                    finalOnNavigateToNavigation = finalOnNavigateToNavigation
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = onDismiss
+                        )
                 )
+                Card(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .widthIn(max = 1180.dp)
+                        .fillMaxWidth()
+                        .heightIn(max = 800.dp)
+                        .fillMaxHeight()
+                        .pointerInput(Unit) { detectTapGestures { } },
+                    shape = RoundedCornerShape(32.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                ) {
+                    SettingsDesktopOverlay(
+                        selectedCategory = selectedCategory,
+                        showThemer = showThemer,
+                        editingThemeJson = editingThemeJson,
+                        showDebugLogs = showDebugLogs,
+                        searchQuery = searchQuery,
+                        searchResults = searchResults,
+                        onSearchQueryChange = { searchQuery = it },
+                        onClearSearch = { searchQuery = "" },
+                        onSearchEntryClick = { entry ->
+                            if (entry.destination == SettingsSearchDestination.Logout) {
+                                showLogoutConfirmation = true
+                            } else {
+                                openSearchEntry(entry)
+                            }
+                        },
+                        onShowThemerChanged = { showThemer = it },
+                        onEditingThemeJsonChanged = { editingThemeJson = it },
+                        onShowDebugLogsChanged = { showDebugLogs = it },
+                        onNavigateToTheming = finalOnNavigateToTheming,
+                        onNavigateToNavigation = finalOnNavigateToNavigation,
+                        onDismiss = onDismiss,
+                        onCategorySelected = { selectedCategory = it },
+                        onLogoutConfirmationChanged = { showLogoutConfirmation = it },
+                        finalOnNavigateToTheming = finalOnNavigateToTheming,
+                        finalOnNavigateToNavigation = finalOnNavigateToNavigation
+                    )
+                }
             }
         }
     }
@@ -576,6 +620,11 @@ fun SettingsDesktopOverlay(
     showThemer: Boolean,
     editingThemeJson: String?,
     showDebugLogs: Boolean,
+    searchQuery: String,
+    searchResults: List<SettingsSearchEntry>,
+    onSearchQueryChange: (String) -> Unit,
+    onClearSearch: () -> Unit,
+    onSearchEntryClick: (SettingsSearchEntry) -> Unit,
     onShowThemerChanged: (Boolean) -> Unit,
     onEditingThemeJsonChanged: (String?) -> Unit,
     onShowDebugLogsChanged: (Boolean) -> Unit,
@@ -584,278 +633,149 @@ fun SettingsDesktopOverlay(
     onDismiss: () -> Unit,
     onCategorySelected: (SettingsSection) -> Unit,
     onLogoutConfirmationChanged: (Boolean) -> Unit,
-    railState: WideNavigationRailState,
     finalOnNavigateToTheming: () -> Unit = {},
     finalOnNavigateToNavigation: () -> Unit = {}
 ) {
     val activeCategory = selectedCategory ?: SettingsSection.ACCOUNT
     val reduceMotion = Settings.shared.reduceMotion
     val uriHandler = LocalUriHandler.current
-    var showOptionsMenu by remember { mutableStateOf(false) }
 
-    Surface(
-        modifier = Modifier
-            .widthIn(max = 1200.dp)
-            .fillMaxWidth(0.95f)
-            .heightIn(max = 850.dp)
-            .fillMaxHeight(0.9f)
-            .clip(MaterialTheme.shapes.large),
-        color = MaterialTheme.colorScheme.surfaceContainerLowest,
-        shape = MaterialTheme.shapes.large
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            Box(
+    Row(modifier = Modifier.fillMaxSize()) {
+        SettingsDesktopNavigationPane(
+            selectedCategory = activeCategory,
+            showThemer = showThemer,
+            editingThemeJson = editingThemeJson,
+            showDebugLogs = showDebugLogs,
+            searchQuery = searchQuery,
+            searchResults = searchResults,
+            onSearchQueryChange = onSearchQueryChange,
+            onClearSearch = onClearSearch,
+            onSearchEntryClick = onSearchEntryClick,
+            onCategorySelected = onCategorySelected,
+            onShowThemerChanged = onShowThemerChanged,
+            onEditingThemeJsonChanged = onEditingThemeJsonChanged,
+            onShowDebugLogsChanged = onShowDebugLogsChanged,
+            onLogoutConfirmationChanged = onLogoutConfirmationChanged,
+            modifier = Modifier.width(360.dp).fillMaxHeight()
+        )
+
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .padding(end = 12.dp, bottom = 12.dp)
+        ) {
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 8.dp, start = 16.dp, end = 16.dp)
+                    .height(80.dp)
+                    .padding(start = 32.dp, end = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                if (showThemer || editingThemeJson != null || showDebugLogs) {
-                    IconButton(
-                        onClick = { 
-                            if (editingThemeJson != null) onEditingThemeJsonChanged(null)
-                            else if (showThemer) onShowThemerChanged(false)
-                            else onShowDebugLogsChanged(false)
-                        },
-                        modifier = Modifier.align(Alignment.CenterStart)
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(Res.string.back), tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(20.dp))
-                    }
+                val title = when {
+                    editingThemeJson != null -> "Theme Editor"
+                    showThemer -> "Themer"
+                    showDebugLogs -> "Debug Logs"
+                    else -> activeCategory.title
                 }
-
-                Text(
-                    text = when {
-                        editingThemeJson != null -> "Theme Editor"
-                        showThemer -> "Themer"
-                        showDebugLogs -> "Debug Logs"
-                        else -> stringResource(Res.string.settings)
+                AnimatedContent(
+                    targetState = title,
+                    transitionSpec = {
+                        if (reduceMotion) {
+                            EnterTransition.None togetherWith ExitTransition.None
+                        } else {
+                            fadeIn(tween(150)) togetherWith fadeOut(tween(100))
+                        }
                     },
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.align(Alignment.Center)
-                )
-
-                Row(
-                    modifier = Modifier.align(Alignment.CenterEnd),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box {
-                        IconButton(onClick = { showOptionsMenu = true }) {
-                            Icon(Icons.Rounded.MoreVert, stringResource(Res.string.more_options), tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(20.dp))
-                        }
-                        androidx.compose.material3.DropdownMenu(
-                            expanded = showOptionsMenu,
-                            onDismissRequest = { showOptionsMenu = false }
-                        ) {
-                            androidx.compose.material3.DropdownMenuItem(
-                                text = { Text("Restart") },
-                                onClick = {
-                                    showOptionsMenu = false
-                                    me.lampu.lampcord.shared.utils.restartApp()
-                                },
-                                leadingIcon = { Icon(Icons.Rounded.Refresh, null) }
-                            )
-                            androidx.compose.material3.DropdownMenuItem(
-                                text = { Text("View Debug Logs") },
-                                onClick = {
-                                    showOptionsMenu = false
-                                    onShowDebugLogsChanged(true)
-                                },
-                                leadingIcon = { Icon(Icons.Rounded.Info, null) }
-                            )
-                            androidx.compose.material3.DropdownMenuItem(
-                                text = { Text(stringResource(Res.string.logout)) },
-                                onClick = {
-                                    showOptionsMenu = false
-                                    onLogoutConfirmationChanged(true)
-                                },
-                                leadingIcon = { Icon(Icons.AutoMirrored.Rounded.Logout, null) }
-                            )
-                        }
-                    }
-                    IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.Close, "Close", tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(20.dp))
-                    }
+                    contentAlignment = Alignment.CenterStart,
+                    label = "desktopSettingsTitle",
+                    modifier = Modifier.weight(1f)
+                ) { currentTitle ->
+                    Text(
+                        text = currentTitle,
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                IconButton(onClick = onDismiss) {
+                    Icon(Icons.Default.Close, "Close", modifier = Modifier.size(20.dp))
                 }
             }
 
-            Row(modifier = Modifier.fillMaxSize()) {
-                WideNavigationRail(
-                    state = railState,
-                    colors = WideNavigationRailDefaults.colors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
-                    ),
-                    windowInsets = WindowInsets(0.dp),
-                    contentPadding = PaddingValues(0.dp),
-                    header = {
-                        val scope = rememberCoroutineScope()
-                        val isExpanded = railState.currentValue == WideNavigationRailValue.Expanded
-                        Column(
-                            horizontalAlignment = Alignment.Start,
-                            modifier = Modifier.padding(start = 20.dp, top = 12.dp, bottom = 4.dp)
-                        ) {
-                            IconButton(onClick = { scope.launch { railState.toggle() } }) {
-                                Icon(
-                                    imageVector = if (isExpanded) Icons.AutoMirrored.Filled.MenuOpen else Icons.Filled.Menu,
-                                    contentDescription = "Toggle Sidebar",
-                                )
-                            }
-
-                            ExtendedFloatingActionButton(
-                                onClick = { 
-                                    onCategorySelected(SettingsSection.PROFILES)
-                                    onShowThemerChanged(false)
-                                    onEditingThemeJsonChanged(null)
-                                    onShowDebugLogsChanged(false)
-                                },
-                                expanded = isExpanded,
-                                icon = { Icon(Icons.Filled.Edit, null) },
-                                text = { Text("Edit profile") },
-                                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                shape = RoundedCornerShape(16.dp),
-                                modifier = Modifier.padding(top = 8.dp)
-                            )
-                        }
+            Surface(
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                shape = RoundedCornerShape(28.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerLow
+            ) {
+                val navigationState = remember(editingThemeJson, showThemer, showDebugLogs, activeCategory) {
+                    when {
+                        editingThemeJson != null -> "editor" to editingThemeJson
+                        showThemer -> "themer" to null
+                        showDebugLogs -> "logs" to null
+                        else -> activeCategory.name to null
                     }
-                ) {
-                    val railSections = listOf(
-                        SettingsSection.ACCOUNT,
-                        SettingsSection.APPEARANCE,
-                        SettingsSection.ACCESSIBILITY,
-                        SettingsSection.LANGUAGE,
-                        SettingsSection.CHAT,
-                        SettingsSection.NOTIFICATIONS,
-                        SettingsSection.ADVANCED,
-                        SettingsSection.ADDITIONAL,
-                        SettingsSection.ABOUT
-                    )
-
-                    railSections.forEach { section ->
-                        val isSelected = activeCategory == section && !showThemer && editingThemeJson == null && !showDebugLogs
-
-                        WideNavigationRailItem(
-                            selected = isSelected,
-                            railExpanded = railState.currentValue == WideNavigationRailValue.Expanded,
-                            onClick = { 
-                                onCategorySelected(section)
-                                onShowThemerChanged(false)
-                                onEditingThemeJsonChanged(null)
-                                onShowDebugLogsChanged(false)
-                            },
-                            icon = {
-                                Icon(
-                                    if (isSelected) section.selectedIcon else section.icon,
-                                    contentDescription = section.title,
-                                )
-                            },
-                            label = {
-                                Text(
-                                    section.title,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                        )
-                    }
-
-                    WideNavigationRailItem(
-                        selected = false,
-                        railExpanded = railState.currentValue == WideNavigationRailValue.Expanded,
-                        onClick = { onLogoutConfirmationChanged(true) },
-                        icon = {
-                            Icon(
-                                Icons.AutoMirrored.Filled.Logout,
-                                contentDescription = stringResource(Res.string.logout),
-                                tint = MaterialTheme.colorScheme.error,
-                            )
-                        },
-                        label = {
-                            Text(
-                                stringResource(Res.string.logout),
-                                color = MaterialTheme.colorScheme.error,
-                                maxLines = 1
-                            )
-                        }
-                    )
                 }
 
-                Surface(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .padding(end = 8.dp, bottom = 8.dp),
-                    shape = MaterialTheme.shapes.medium,
-                    color = MaterialTheme.colorScheme.surfaceContainerLow
-                ) {
-                    val navigationState = remember(editingThemeJson, showThemer, showDebugLogs, activeCategory) {
-                        when {
-                            editingThemeJson != null -> "editor" to editingThemeJson
-                            showThemer -> "themer" to null
-                            showDebugLogs -> "logs" to null
-                            else -> activeCategory.name to null
-                        }
-                    }
-
-                    AnimatedContent(
-                        targetState = navigationState,
-                        transitionSpec = {
-                            if (reduceMotion) {
-                                EnterTransition.None togetherWith ExitTransition.None
-                            } else {
-                                (fadeIn(animationSpec = tween(300)) + slideInVertically(animationSpec = tween(300)) { 20 }).togetherWith(
-                                    fadeOut(animationSpec = tween(200))
-                                )
-                            }
-                        },
-                        modifier = Modifier.fillMaxSize(),
-                        label = "settingsContent",
-                    ) { (target, data) ->
-                        if (target == "editor") {
-                            ThemeEditorScreen(themeJson = data!!, onBack = { onEditingThemeJsonChanged(null) })
-                        } else if (target == "themer") {
-                            ThemingSettingsContent(onNavigateToEditor = { onEditingThemeJsonChanged(it) })
-                        } else if (target == "logs") {
-                            DebugLogScreen(onBack = { onShowDebugLogsChanged(false) })
+                AnimatedContent(
+                    targetState = navigationState,
+                    transitionSpec = {
+                        if (reduceMotion) {
+                            EnterTransition.None togetherWith ExitTransition.None
                         } else {
-                            val scrollState = rememberScrollState()
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .verticalScroll(scrollState),
-                                verticalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                when (activeCategory) {
-                                    SettingsSection.ACCOUNT -> {
-                                        val userStore: UserStore = koinInject()
-                                        val user by userStore.currentUser.collectAsState()
-                                        user?.let { AccountSettingsContent(userVal = it) }
-                                    }
-                                    SettingsSection.PROFILES -> {
-                                        val userStore: UserStore = koinInject()
-                                        val user by userStore.currentUser.collectAsState()
-                                        user?.let { ProfileSettingsContent(userVal = it) }
-                                    }
-                                    SettingsSection.PRIVACY -> PrivacySettingsContent()
-                                    SettingsSection.CONNECTIONS -> ConnectionsSettingsContent()
-                                    SettingsSection.DEVICES -> DevicesSettingsContent()
-                                    SettingsSection.APPEARANCE -> AppearanceSettingsContent(
-                                        onNavigateToTheming = finalOnNavigateToTheming,
-                                        onNavigateToNavigation = finalOnNavigateToNavigation
-                                    )
-                                    SettingsSection.ACCESSIBILITY -> AccessibilitySettingsContent()
-                                    SettingsSection.LANGUAGE -> LanguageSettingsContent()
-                                    SettingsSection.VOICE_VIDEO -> { /* TODO */ }
-                                    SettingsSection.CHAT -> ChatSettingsContent()
-                                    SettingsSection.NOTIFICATIONS -> NotificationsSettingsContent()
-                                    SettingsSection.ADVANCED -> AdvancedSettingsContent()
-                                    SettingsSection.ADDITIONAL -> AdditionalSettingsContent()
-                                    SettingsSection.UPDATES -> UpdatesContent()
-                                    SettingsSection.ABOUT -> AboutContent(
-                                        version = me.lampu.lampcord.shared.update.APP_VERSION,
-                                        onOpenUrl = { uriHandler.openUri(it) }
-                                    )
+                            (fadeIn(animationSpec = tween(300)) + slideInVertically(animationSpec = tween(300)) { 20 }).togetherWith(
+                                fadeOut(animationSpec = tween(200))
+                            )
+                        }
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                    label = "settingsContent",
+                ) { (target, data) ->
+                    if (target == "editor") {
+                        ThemeEditorScreen(themeJson = data!!, onBack = { onEditingThemeJsonChanged(null) })
+                    } else if (target == "themer") {
+                        ThemingSettingsContent(onNavigateToEditor = { onEditingThemeJsonChanged(it) })
+                    } else if (target == "logs") {
+                        DebugLogScreen(onBack = { onShowDebugLogsChanged(false) })
+                    } else {
+                        val scrollState = rememberScrollState()
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .verticalScroll(scrollState),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            when (activeCategory) {
+                                SettingsSection.ACCOUNT -> {
+                                    val userStore: UserStore = koinInject()
+                                    val user by userStore.currentUser.collectAsState()
+                                    user?.let { AccountSettingsContent(userVal = it) }
                                 }
+                                SettingsSection.PROFILES -> {
+                                    val userStore: UserStore = koinInject()
+                                    val user by userStore.currentUser.collectAsState()
+                                    user?.let { ProfileSettingsContent(userVal = it) }
+                                }
+                                SettingsSection.PRIVACY -> PrivacySettingsContent()
+                                SettingsSection.CONNECTIONS -> ConnectionsSettingsContent()
+                                SettingsSection.DEVICES -> DevicesSettingsContent()
+                                SettingsSection.APPEARANCE -> AppearanceSettingsContent(
+                                    onNavigateToTheming = finalOnNavigateToTheming,
+                                    onNavigateToNavigation = finalOnNavigateToNavigation
+                                )
+                                SettingsSection.ACCESSIBILITY -> AccessibilitySettingsContent()
+                                SettingsSection.LANGUAGE -> LanguageSettingsContent()
+                                SettingsSection.VOICE_VIDEO -> VoiceSettingsContent()
+                                SettingsSection.CHAT -> ChatSettingsContent()
+                                SettingsSection.NOTIFICATIONS -> NotificationsSettingsContent()
+                                SettingsSection.ADVANCED -> AdvancedSettingsContent()
+                                SettingsSection.ADDITIONAL -> AdditionalSettingsContent()
+                                SettingsSection.UPDATES -> UpdatesContent()
+                                SettingsSection.ABOUT -> AboutContent(
+                                    version = me.lampu.lampcord.shared.update.APP_VERSION,
+                                    onOpenUrl = { uriHandler.openUri(it) }
+                                )
                             }
                         }
                     }
@@ -864,6 +784,203 @@ fun SettingsDesktopOverlay(
         }
     }
 }
+
+@Composable
+private fun SettingsDesktopNavigationPane(
+    selectedCategory: SettingsSection,
+    showThemer: Boolean,
+    editingThemeJson: String?,
+    showDebugLogs: Boolean,
+    searchQuery: String,
+    searchResults: List<SettingsSearchEntry>,
+    onSearchQueryChange: (String) -> Unit,
+    onClearSearch: () -> Unit,
+    onSearchEntryClick: (SettingsSearchEntry) -> Unit,
+    onCategorySelected: (SettingsSection) -> Unit,
+    onShowThemerChanged: (Boolean) -> Unit,
+    onEditingThemeJsonChanged: (String?) -> Unit,
+    onShowDebugLogsChanged: (Boolean) -> Unit,
+    onLogoutConfirmationChanged: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
+        SettingsSearchField(
+            query = searchQuery,
+            onQueryChange = onSearchQueryChange,
+            onClear = onClearSearch
+        )
+        Spacer(Modifier.height(16.dp))
+        if (searchQuery.isBlank()) {
+            val active = !showThemer && editingThemeJson == null && !showDebugLogs
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                contentPadding = PaddingValues(bottom = 16.dp)
+            ) {
+                desktopSettingsGroups.forEach { group ->
+                    item(key = "group:${group.title}") {
+                        Text(
+                            text = group.title,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 8.dp)
+                        )
+                    }
+                    itemsIndexed(group.sections, key = { _, section -> section.name }) { index, section ->
+                        val selected = active && selectedCategory == section
+                        DesktopSettingsNavItem(
+                            title = section.title,
+                            subtitle = section.subtitle(),
+                            icon = if (selected) section.selectedIcon else section.icon,
+                            selected = selected,
+                            first = index == 0,
+                            last = index == group.sections.lastIndex,
+                            onClick = {
+                                onCategorySelected(section)
+                                onShowThemerChanged(false)
+                                onEditingThemeJsonChanged(null)
+                                onShowDebugLogsChanged(false)
+                            }
+                        )
+                    }
+                }
+                item { Spacer(Modifier.height(8.dp)) }
+                item {
+                    DesktopSettingsNavItem(
+                        title = stringResource(Res.string.logout),
+                        subtitle = "Sign out of your account",
+                        icon = Icons.AutoMirrored.Filled.Logout,
+                        selected = false,
+                        first = true,
+                        last = true,
+                        destructive = true,
+                        onClick = { onLogoutConfirmationChanged(true) }
+                    )
+                }
+            }
+        } else {
+            SettingsSearchResults(
+                query = searchQuery,
+                results = searchResults,
+                onEntryClick = onSearchEntryClick,
+                modifier = Modifier.fillMaxSize(),
+                horizontalPadding = 0.dp,
+                showHeader = false
+            )
+        }
+    }
+}
+
+@Composable
+private fun DesktopSettingsNavItem(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    selected: Boolean,
+    first: Boolean,
+    last: Boolean,
+    onClick: () -> Unit,
+    destructive: Boolean = false
+) {
+    val background by animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer,
+        label = "settingsNavigationItem"
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 64.dp)
+            .clip(connectedSettingsShape(first, last))
+            .background(background)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(modifier = Modifier.size(32.dp), contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (destructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+        Spacer(Modifier.width(16.dp))
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                color = if (destructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (destructive) MaterialTheme.colorScheme.error.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+private fun connectedSettingsShape(first: Boolean, last: Boolean) = RoundedCornerShape(
+    topStart = if (first) 20.dp else 5.dp,
+    topEnd = if (first) 20.dp else 5.dp,
+    bottomStart = if (last) 20.dp else 5.dp,
+    bottomEnd = if (last) 20.dp else 5.dp
+)
+
+private fun SettingsSection.subtitle(): String = when (this) {
+    SettingsSection.ACCOUNT -> "Manage your account details and security"
+    SettingsSection.PROFILES -> "Customize your appearance across servers"
+    SettingsSection.PRIVACY -> "Manage who can contact you and what you see"
+    SettingsSection.CONNECTIONS -> "Connect your accounts from other platforms"
+    SettingsSection.DEVICES -> "Manage your active sessions"
+    SettingsSection.APPEARANCE -> "Theme, colors, and message display"
+    SettingsSection.ACCESSIBILITY -> "Visual and interactive adjustments"
+    SettingsSection.LANGUAGE -> "Select your preferred language"
+    SettingsSection.VOICE_VIDEO -> "Input, output, and camera settings"
+    SettingsSection.CHAT -> "Control how you interact with chat and media"
+    SettingsSection.NOTIFICATIONS -> "Control how you're notified"
+    SettingsSection.ADVANCED -> "Developer settings and experimental features"
+    SettingsSection.ADDITIONAL -> "Profile enhancements, emoji tweaks, logger and text replacement"
+    SettingsSection.UPDATES -> "Check for updates and read the changelog"
+    SettingsSection.ABOUT -> "App information and credits"
+}
+
+private data class DesktopSettingsGroup(val title: String, val sections: List<SettingsSection>)
+
+private val desktopSettingsGroups = listOf(
+    DesktopSettingsGroup(
+        "User Settings",
+        listOf(
+            SettingsSection.ACCOUNT,
+            SettingsSection.PROFILES,
+            SettingsSection.PRIVACY,
+            SettingsSection.CONNECTIONS,
+            SettingsSection.DEVICES
+        )
+    ),
+    DesktopSettingsGroup(
+        "App Settings",
+        listOf(
+            SettingsSection.APPEARANCE,
+            SettingsSection.ACCESSIBILITY,
+            SettingsSection.LANGUAGE,
+            SettingsSection.VOICE_VIDEO,
+            SettingsSection.CHAT,
+            SettingsSection.NOTIFICATIONS,
+            SettingsSection.ADVANCED,
+            SettingsSection.ADDITIONAL
+        )
+    ),
+    DesktopSettingsGroup(
+        "About",
+        listOf(SettingsSection.UPDATES, SettingsSection.ABOUT)
+    )
+)
 
 @Composable
 fun rememberSettingsSearchEntries(): List<SettingsSearchEntry> {
@@ -893,7 +1010,7 @@ fun rememberSettingsSearchEntries(): List<SettingsSearchEntry> {
         add(SettingsSearchEntry("appearance-pure-black", "Pure Black", "Use pure black backgrounds in dark mode", "Appearance", "Theme", "amoled", getIcon(Icons.Rounded.Palette, Icons.Filled.Palette), "orange", SettingsSearchDestination.Appearance))
         add(SettingsSearchEntry("appearance-compact", "Compact Messages", "Denser layout for chat", "Appearance", "Display", "compact message denser", getIcon(Icons.Rounded.Palette, Icons.Filled.Palette), "orange", SettingsSearchDestination.Appearance))
         add(SettingsSearchEntry("appearance-bubbles", "Chat Bubbles", "Display messages inside rounded chat bubbles", "Appearance", "Display", "chat bubbles message layout theme", getIcon(Icons.Rounded.Palette, Icons.Filled.Palette), "orange", SettingsSearchDestination.Appearance))
-        add(SettingsSearchEntry("root-additional", "Additional", "Profile enhancements, emoji tweaks, logger and text replacement", "Additional", "App Settings", "3y3 userbg userpfp nitro emoji realmojis message logger silent typing text replacement", getIcon(Icons.Rounded.AutoAwesome, Icons.Filled.AutoAwesome), "neutral", SettingsSearchDestination.Advanced))
+        add(SettingsSearchEntry("root-additional", "Additional", "Profile enhancements, emoji tweaks, logger and text replacement", "Additional", "App Settings", "3y3 userbg userpfp nitro emoji realmojis message logger silent typing text replacement favorites server pinned channels", getIcon(Icons.Rounded.AutoAwesome, Icons.Filled.AutoAwesome), "neutral", SettingsSearchDestination.Advanced))
         add(SettingsSearchEntry("advanced-dev", "Developer Mode", "Exposes ID copying and debug tools", "Advanced", "Developer Settings", "id debug", getIcon(Icons.Rounded.Tune, Icons.Filled.Tune), "neutral", SettingsSearchDestination.Advanced))
     }
 }

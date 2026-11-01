@@ -52,6 +52,7 @@ import me.lampu.lampcord.shared.state.PresenceStore
 import me.lampu.lampcord.shared.state.RelationshipStore
 import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.state.UserStore
+import me.lampu.lampcord.shared.ui.LocalCurrentUser
 import me.lampu.lampcord.shared.ui.icons.Icons
 import org.koin.compose.koinInject
 
@@ -78,7 +79,7 @@ fun FriendsList(
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     var isHovered by remember { mutableStateOf(false) }
     val relationships by relationshipStore.relationships.collectAsState()
-    val currentUser by userStore.currentUser.collectAsState()
+    val currentUser = LocalCurrentUser.current
     val userSettings = settingsStore.userSettings
 
     val filteredRelationships = remember(relationships, selectedTab, currentUser, userSettings) {
@@ -205,7 +206,7 @@ fun FriendItem(
     navigationStore: NavigationStore = koinInject()
 ) {
     val user = relationship.user ?: return
-    val currentUser by userStore.currentUser.collectAsState()
+    val currentUser = LocalCurrentUser.current
     val userSettings = settingsStore.userSettings
 
     val status = presenceStore.getUserStatus(user.id, currentUser?.id, userSettings?.status)

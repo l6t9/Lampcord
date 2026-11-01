@@ -1,6 +1,8 @@
 package me.lampu.lampcord.shared.ui.components.settings
 
 import androidx.compose.foundation.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -12,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.ui.icons.Icons
 
@@ -57,10 +60,19 @@ fun SettingsSearchField(
     onClear: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val focused by interactionSource.collectIsFocusedAsState()
     Surface(
-        modifier = modifier.fillMaxWidth().height(56.dp),
-        shape = RoundedCornerShape(28.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh
+        modifier = modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .border(
+                width = if (focused) 3.dp else 0.dp,
+                color = if (focused) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Transparent,
+                shape = CircleShape
+            ),
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.surfaceContainerHighest
     ) {
         Row(
             modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
@@ -77,6 +89,7 @@ fun SettingsSearchField(
                     onValueChange = onQueryChange,
                     modifier = Modifier.fillMaxWidth(),
                     textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+                    interactionSource = interactionSource,
                     singleLine = true
                 )
             }
@@ -95,20 +108,24 @@ fun SettingsSearchResults(
     results: List<SettingsSearchEntry>,
     onEntryClick: (SettingsSearchEntry) -> Unit,
     modifier: Modifier = Modifier,
+    horizontalPadding: Dp = 16.dp,
+    showHeader: Boolean = true,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
-        Text(
-            text = "Search Results",
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(bottom = 12.dp, top = 8.dp, start = 16.dp),
-        )
+        if (showHeader) {
+            Text(
+                text = "Search Results",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 12.dp, top = 8.dp, start = horizontalPadding),
+            )
+        }
 
         if (results.isEmpty()) {
             Surface(
                 shape = RoundedCornerShape(20.dp),
                 color = MaterialTheme.colorScheme.surfaceContainer,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = horizontalPadding),
             ) {
                 Column(
                     modifier = Modifier.padding(20.dp),
@@ -138,6 +155,7 @@ fun SettingsSearchResults(
                     entry = result,
                     isFirst = index == 0,
                     isLast = index == results.lastIndex,
+                    horizontalPadding = horizontalPadding,
                     onClick = { onEntryClick(result) },
                 )
             }
@@ -150,10 +168,11 @@ private fun SettingsSearchResultRow(
     entry: SettingsSearchEntry,
     isFirst: Boolean,
     isLast: Boolean,
+    horizontalPadding: Dp,
     onClick: () -> Unit,
 ) {
-    val cornerRadius = 24.dp
-    val reducedRadius = 6.dp
+    val cornerRadius = 20.dp
+    val reducedRadius = 5.dp
     val shape = RoundedCornerShape(
         topStart = if (isFirst) cornerRadius else reducedRadius,
         topEnd = if (isFirst) cornerRadius else reducedRadius,
@@ -167,7 +186,7 @@ private fun SettingsSearchResultRow(
         onClick = onClick,
         shape = shape,
         color = MaterialTheme.colorScheme.surfaceContainer,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = horizontalPadding),
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),

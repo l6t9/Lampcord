@@ -100,7 +100,10 @@ fun DesktopBaseplate(
                 WindowWidthBreakpoint.MEDIUM -> 240.dp
                 else -> 312.dp
             }
-            Sidebar(modifier = Modifier.width(sidebarWidth))
+            Sidebar(
+                modifier = Modifier.width(sidebarWidth),
+                showAccountPanel = true
+            )
 
             Column(
                 modifier = Modifier
