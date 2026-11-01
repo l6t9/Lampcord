@@ -251,7 +251,7 @@ val platform = remember { me.lampu.lampcord.shared.utils.getPlatformName() }
     val isMobile = platform == "android" || platform == "ios"
 
     if (!isMobile) {
-        Column(modifier = modifier.fillMaxWidth()) {
+        Column(modifier = modifier.fillMaxSize()) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(16.dp)) {
                 IconButton(onClick = onNavigateBack) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.back))
@@ -259,7 +259,14 @@ val platform = remember { me.lampu.lampcord.shared.utils.getPlatformName() }
                 Spacer(Modifier.width(8.dp))
                 Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             }
-            content()
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                content()
+            }
         }
         return
     }

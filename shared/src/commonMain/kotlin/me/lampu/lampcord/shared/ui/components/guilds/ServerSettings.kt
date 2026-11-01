@@ -25,10 +25,8 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -85,6 +83,7 @@ import me.lampu.lampcord.shared.ui.components.guilds.settings.ServerRoles
 import me.lampu.lampcord.shared.ui.components.guilds.settings.ServerStickers
 import me.lampu.lampcord.shared.ui.components.settings.Material3SettingsGroup
 import me.lampu.lampcord.shared.ui.components.settings.Material3SettingsItem
+import me.lampu.lampcord.shared.ui.components.settings.SettingsOverlayFrame
 import me.lampu.lampcord.shared.ui.components.settings.SettingsSubScreen
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.Permission
@@ -243,10 +242,7 @@ fun ServerSettings(
                 }
             }
         } else {
-            androidx.compose.ui.window.Dialog(
-                onDismissRequest = onDismiss,
-                properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
-            ) {
+            SettingsOverlayFrame(onDismiss = onDismiss) {
                 ServerSettingsDesktopOverlay(
                     navigationStore = navigationStore,
                     allowedSections = allowedSections,
@@ -279,38 +275,29 @@ fun ServerSettingsDesktopOverlay(
     val currentSection = selectedCategory ?: allowedSections.firstOrNull() ?: ServerSettingsSection.OVERVIEW
     val reduceMotion = Settings.shared.reduceMotion
 
-    Surface(
-        modifier = Modifier
-            .widthIn(max = 1200.dp)
-            .fillMaxWidth(0.95f)
-            .heightIn(max = 850.dp)
-            .fillMaxHeight(0.9f)
-            .clip(MaterialTheme.shapes.large),
-        color = MaterialTheme.colorScheme.surfaceContainerLowest,
-        shape = MaterialTheme.shapes.large
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            Box(
+    Column(modifier = Modifier.fillMaxSize()) {
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 8.dp, start = 16.dp, end = 16.dp)
+                    .height(80.dp)
+                    .padding(start = 32.dp, end = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = "Server Settings",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.align(Alignment.Center)
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
                 )
-                IconButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.align(Alignment.CenterEnd)
-                ) {
+                IconButton(onClick = onDismiss) {
                     Icon(Icons.Default.Close, "Close", tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(20.dp))
                 }
             }
 
-            Row(modifier = Modifier.fillMaxSize()) {
+            Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
                 val railState = rememberWideNavigationRailState(initialValue = WideNavigationRailValue.Expanded)
                 WideNavigationRail(
                     state = railState,
@@ -385,8 +372,8 @@ fun ServerSettingsDesktopOverlay(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
-                        .padding(end = 8.dp, bottom = 8.dp),
-                    shape = MaterialTheme.shapes.medium,
+                        .padding(end = 12.dp, bottom = 12.dp),
+                    shape = RoundedCornerShape(28.dp),
                     color = MaterialTheme.colorScheme.surfaceContainerLow
                 ) {
                     AnimatedContent(
@@ -423,7 +410,6 @@ fun ServerSettingsDesktopOverlay(
             }
         }
     }
-}
 
 @Composable
 private fun ServerSettingsContent(

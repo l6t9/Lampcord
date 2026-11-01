@@ -1,7 +1,12 @@
 package me.lampu.lampcord.shared.ui.theme
 
 import androidx.compose.material3.ColorScheme
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import com.materialkolor.PaletteStyle
@@ -9,9 +14,6 @@ import com.materialkolor.rememberDynamicColorScheme
 import dev.nucleusframework.systemcolor.systemAccentColor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import me.lampu.lampcord.shared.settings.FontOption
 import me.lampu.lampcord.shared.utils.appFontFamily
 import me.lampu.lampcord.shared.utils.getPlatformName
@@ -19,8 +21,6 @@ import java.io.File
 import java.nio.file.FileSystems
 import java.nio.file.StandardWatchEventKinds
 import java.util.concurrent.TimeUnit
-
-private val THEME_JSON = Json { ignoreUnknownKeys = true }
 
 private fun getXdgDir(envVar: String, defaultRelPath: String, home: String): File {
     val env = System.getenv(envVar)
@@ -38,12 +38,7 @@ private fun findMatugenCandidateFiles(home: String): List<File> {
         File(cacheHome, "matugen"),
         File(configHome, "quickshell"),
         File(stateHome, "quickshell"),
-        File(cacheHome, "quickshell"),
-        File(configHome, "caelestia"),
-        File(stateHome, "caelestia"),
-        configHome,
-        stateHome,
-        cacheHome
+        File(cacheHome, "quickshell")
     )
 
     val targetNames = setOf("colors.json", "color.txt", "colors-json.json", "scheme.json")
@@ -63,64 +58,12 @@ private fun findMatugenCandidateFiles(home: String): List<File> {
     return found.distinct().sortedByDescending { it.lastModified() }
 }
 
-private fun camelToSnake(key: String): String = buildString {
-    key.forEach { ch ->
-        if (ch.isUpperCase()) {
-            append('_')
-            append(ch.lowercaseChar())
-        } else {
-            append(ch)
-        }
-    }
-}
-
 private fun String.toThemeColor(): Color? {
     val hex = trim().removePrefix("#")
     if (hex.length != 6 && hex.length != 8) return null
     val value = hex.toLongOrNull(16) ?: return null
     return if (hex.length == 6) Color(value or 0xFF000000) else Color(value)
 }
-
-private class CaelestiaScheme(val palette: MatugenPalette, val isDark: Boolean)
-
-private fun readCaelestiaScheme(stateDir: File): CaelestiaScheme? {
-    val file = File(stateDir, "scheme.json")
-    if (!file.isFile) return null
-    val text = try {
-        file.readText()
-    } catch (_: Exception) {
-        return null
-    }
-    val root = try {
-        THEME_JSON.parseToJsonElement(text).jsonObject
-    } catch (_: Exception) {
-        return null
-    }
-    val colours = root["colours"]?.jsonObject ?: return null
-
-    val roles = HashMap<String, String>()
-    for ((key, element) in colours) {
-        val hex = element.jsonPrimitive.contentOrNullSafe() ?: continue
-        roles[camelToSnake(key)] = hex
-    }
-    if (roles.isEmpty()) return null
-
-    val isDark = root["mode"]?.jsonPrimitive?.contentOrNullSafe() != "light"
-    return CaelestiaScheme(
-        palette = MatugenPalette(light = roles, dark = roles),
-        isDark = isDark
-    )
-}
-
-private fun kotlinx.serialization.json.JsonPrimitive.contentOrNullSafe(): String? =
-    try {
-        content
-    } catch (_: Exception) {
-        null
-    }
-
-private suspend fun loadCaelestiaScheme(stateDir: File): CaelestiaScheme? =
-    withContext(Dispatchers.IO) { readCaelestiaScheme(stateDir) }
 
 private fun readMatugenPaletteFile(file: File): MatugenPalette? {
     if (!file.isFile) return null
@@ -130,11 +73,6 @@ private fun readMatugenPaletteFile(file: File): MatugenPalette? {
         null
     }
 }
-
-private suspend fun loadMatugenPalette(candidateFiles: List<File>): MatugenPalette? =
-    withContext(Dispatchers.IO) {
-        candidateFiles.firstNotNullOfOrNull { readMatugenPaletteFile(it) }
-    }
 
 private suspend fun loadMatugenSeed(candidateFiles: List<File>): Color? =
     withContext(Dispatchers.IO) {
@@ -156,9 +94,6 @@ private suspend fun loadMatugenSeed(candidateFiles: List<File>): Color? =
     }
 
 private class ThemeSources(
-    val caelestia: CaelestiaScheme? = null,
-    val matugen: MatugenPalette? = null,
-    val caelestiaSeed: Color? = null,
     val matugenSeed: Color? = null
 )
 
@@ -212,23 +147,18 @@ private fun watchThemeFiles(
 @Composable
 private fun rememberThemeSources(enabled: Boolean): ThemeSources {
     val home = remember { System.getProperty("user.home") }
-    val caelestiaStateDir = remember(home) { File("$home/.local/state/caelestia") }
     val matugenFiles = remember(home) { findMatugenCandidateFiles(home) }
 
     var sources by remember { mutableStateOf(ThemeSources()) }
 
-    LaunchedEffect(enabled, caelestiaStateDir, matugenFiles) {
+    LaunchedEffect(enabled, matugenFiles) {
         if (!enabled) {
             sources = ThemeSources()
             return@LaunchedEffect
         }
 
         suspend fun reload() {
-            val caelestia = loadCaelestiaScheme(caelestiaStateDir)
             sources = ThemeSources(
-                caelestia = caelestia,
-                matugen = loadMatugenPalette(matugenFiles),
-                caelestiaSeed = caelestia?.palette?.seedColor(caelestia.isDark),
                 matugenSeed = loadMatugenSeed(matugenFiles)
             )
         }
@@ -236,13 +166,9 @@ private fun rememberThemeSources(enabled: Boolean): ThemeSources {
         reload()
 
         val watcher = watchThemeFiles(
-            dirs = listOf(
-                caelestiaStateDir,
-                File(caelestiaStateDir, "wallpaper")
-            ) + matugenFiles.mapNotNull { it.parentFile },
+            dirs = matugenFiles.mapNotNull { it.parentFile },
             watchedNames = setOf(
-                "scheme.json", "current", "path.txt", "thumbnail.jpg",
-                "colors.json", "color.txt", "colors-json.json"
+                "colors.json", "color.txt", "colors-json.json", "scheme.json"
             )
         ) {
             reload()
@@ -267,11 +193,9 @@ actual fun rememberDynamicSeedColor(): Color? {
 
     val sources = rememberThemeSources(enabled = true)
 
-    sources.caelestiaSeed?.let { return it }
+    sources.matugenSeed?.let { return it }
 
-    systemAccentColor()?.let { return it }
-
-    return sources.matugenSeed
+    return systemAccentColor()
 }
 
 @Composable
@@ -285,18 +209,6 @@ actual fun rememberPlatformColorScheme(
     paletteStyle: PaletteStyle,
     useMaterialYou: Boolean
 ): ColorScheme {
-    val sources = rememberThemeSources(enabled = useMaterialYou)
-
-    sources.caelestia
-        ?.takeIf { it.isDark == isDark }
-        ?.palette
-        ?.schemeFor(isDark)
-        ?.let { return it }
-
-    if (useMaterialYou) {
-        sources.matugen?.schemeFor(isDark)?.let { return it }
-    }
-
     return rememberDynamicColorScheme(
         seedColor = seedColor,
         isDark = isDark,

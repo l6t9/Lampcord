@@ -434,7 +434,7 @@ fun ChatArea(
                     )
                     Spacer(Modifier.width(6.dp))
                     Text(
-                        text = "$unreadMessagesCount NEW MESSAGE${if (unreadMessagesCount > 1) "S" else ""}",
+                        text = "$unreadMessagesCount New Message${if (unreadMessagesCount > 1) "s" else ""}",
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontWeight = FontWeight.Black,
                             letterSpacing = 0.5.sp,
@@ -510,7 +510,7 @@ fun UnreadSeparator() {
     ) {
         HorizontalDivider(modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.error)
         Text(
-            text = "NEW MESSAGES",
+            text = "New Messages",
             modifier = Modifier.padding(horizontal = 8.dp),
             style = MaterialTheme.typography.labelSmall.copy(
                 fontSize = 10.sp,

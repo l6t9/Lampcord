@@ -11,12 +11,11 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import me.lampu.lampcord.shared.api.ChannelApi
 import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.ui.components.guilds.settings.ChannelEditor
 import me.lampu.lampcord.shared.ui.components.settings.SettingsLayout
+import me.lampu.lampcord.shared.ui.components.settings.SettingsOverlayFrame
 import me.lampu.lampcord.shared.ui.components.settings.SettingsSection
 import me.lampu.lampcord.shared.ui.components.settings.SettingsSubScreen
 import me.lampu.lampcord.shared.ui.icons.Icons
@@ -75,10 +74,7 @@ fun ChannelSettingsScreen(
         if (isCompact) {
             content()
         } else {
-            Dialog(
-                onDismissRequest = onDismiss,
-                properties = DialogProperties(usePlatformDefaultWidth = false)
-            ) {
+            SettingsOverlayFrame(onDismiss = onDismiss) {
                 content()
             }
         }

@@ -25,8 +25,6 @@ import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -38,8 +36,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -72,7 +68,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -88,6 +83,7 @@ import me.lampu.lampcord.shared.ui.components.settings.Material3SettingsGroup
 import me.lampu.lampcord.shared.ui.components.settings.Material3SettingsItem
 import me.lampu.lampcord.shared.ui.components.settings.SettingsSearchDestination
 import me.lampu.lampcord.shared.ui.components.settings.SettingsSearchEntry
+import me.lampu.lampcord.shared.ui.components.settings.SettingsOverlayFrame
 import me.lampu.lampcord.shared.ui.components.settings.SettingsSearchField
 import me.lampu.lampcord.shared.ui.components.settings.SettingsSearchResults
 import me.lampu.lampcord.shared.ui.components.PlatformBackHandler
@@ -554,33 +550,7 @@ fun SettingsScreen(
                 }
             }
         } else {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.32f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = onDismiss
-                        )
-                )
-                Card(
-                    modifier = Modifier
-                        .padding(16.dp)
-                        .widthIn(max = 1180.dp)
-                        .fillMaxWidth()
-                        .heightIn(max = 800.dp)
-                        .fillMaxHeight()
-                        .pointerInput(Unit) { detectTapGestures { } },
-                    shape = RoundedCornerShape(32.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-                ) {
+            SettingsOverlayFrame(onDismiss = onDismiss) {
                     SettingsDesktopOverlay(
                         selectedCategory = selectedCategory,
                         showThemer = showThemer,
@@ -608,7 +578,6 @@ fun SettingsScreen(
                         finalOnNavigateToTheming = finalOnNavigateToTheming,
                         finalOnNavigateToNavigation = finalOnNavigateToNavigation
                     )
-                }
             }
         }
     }
