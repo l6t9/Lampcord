@@ -69,10 +69,7 @@ fun DiscordPanels(
     swipeEnabled: Boolean = true,
     swipeToStartEnabled: Boolean = swipeEnabled,
     swipeToEndEnabled: Boolean = swipeEnabled,
-    /// A gesture that started inside an interactive child (the message input) must not pan panels.
     swipeBlocked: () -> Boolean = { false },
-    /// Called when a panel swipe begins. Return true when the gesture was used to dismiss the
-    /// keyboard or emoji panel, so it should not also move the panels.
     onSwipeStart: () -> Boolean = { false },
     startPanel: @Composable BoxScope.() -> Unit,
     endPanel: @Composable BoxScope.() -> Unit,

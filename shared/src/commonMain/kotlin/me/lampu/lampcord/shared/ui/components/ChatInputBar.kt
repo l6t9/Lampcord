@@ -679,18 +679,30 @@ fun ChatInputBar(
                                     )
                                     .pointerInput(Unit) {
                                         awaitEachGesture {
-                                            awaitFirstDown(requireUnconsumed = false)
+                                            val down = awaitFirstDown(requireUnconsumed = false)
                                             navigationStore.isChatInputGesture = true
-                                            if (navigationStore.isEmojiPickerVisible || navigationStore.isMediaPickerVisible) {
+                                            var moved = false
+                                            try {
+                                                var change = down
+                                                while (change.pressed) {
+                                                    val event = awaitPointerEvent()
+                                                    change = event.changes.firstOrNull { it.id == down.id } ?: break
+                                                    val dx = change.position.x - down.position.x
+                                                    val dy = change.position.y - down.position.y
+                                                    if (kotlin.math.hypot(dx, dy) > viewConfiguration.touchSlop) {
+                                                        moved = true
+                                                    }
+                                                }
+                                            } finally {
+                                                navigationStore.isChatInputGesture = false
+                                            }
+                                            if (!moved &&
+                                                (navigationStore.isEmojiPickerVisible || navigationStore.isMediaPickerVisible)
+                                            ) {
                                                 navigationStore.isEmojiPickerVisible = false
                                                 navigationStore.isMediaPickerVisible = false
                                                 focusRequester.requestFocus()
                                                 keyboardController?.show()
-                                            }
-                                            try {
-                                                waitForUpOrCancellation()
-                                            } finally {
-                                                navigationStore.isChatInputGesture = false
                                             }
                                         }
                                     },

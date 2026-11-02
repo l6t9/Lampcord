@@ -224,12 +224,6 @@ fun InlineMediaPicker(
         expandedHeight = expandedHeight
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            MediaPickerTabs(
-                selectedTab = selectedTab,
-                onTabSelected = { selectedTab = it },
-                onSystemPickerClick = { showSystemFilePicker = true },
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-            )
             Box(modifier = Modifier.weight(1f)) {
                 MediaPickerContent(
                     onDismiss = onDismiss,
@@ -240,6 +234,12 @@ fun InlineMediaPicker(
                     messageStore = messageStore
                 )
             }
+            MediaPickerTabs(
+                selectedTab = selectedTab,
+                onTabSelected = { selectedTab = it },
+                onSystemPickerClick = { showSystemFilePicker = true },
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+            )
         }
     }
 }

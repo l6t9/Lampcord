@@ -85,13 +85,16 @@ fun MemberHeader(
         modifier = Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surface)
-            .padding(top = 16.dp, bottom = 8.dp)
+            .padding(
+                top = if (overlapping) 4.dp else 16.dp,
+                bottom = if (overlapping) 4.dp else 8.dp
+            )
     ) {
         if (!isDesktop && overlapping) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp)
+                    .height(44.dp)
                     .padding(horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -436,7 +439,7 @@ fun MemberHeader(
             }
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(if (overlapping) 4.dp else 16.dp))
 
         if (!isDesktop && !overlapping) {
             Spacer(Modifier.height(16.dp))

@@ -55,8 +55,6 @@ fun DiscordBottomSheet(
     contentWindowInsets: @Composable () -> WindowInsets = { WindowInsets(0, 0, 0, 0) },
 
     fillHeight: Boolean = false,
-    /// Draws the sheet window across the whole screen so content (profile frames) can
-    /// overflow the sheet card without being clipped. The caller then draws its own card.
     fullBleed: Boolean = false,
     content: @Composable ColumnScope.() -> Unit
 ) {

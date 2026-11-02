@@ -27,10 +27,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
-/**
- * Inline panel below the message input. It starts at [collapsedHeight] (the keyboard height)
- * and can be dragged by its handle up to [expandedHeight] like a bottom sheet.
- */
 @Composable
 fun ExpandableInputPanel(
     expanded: Boolean,
@@ -75,7 +71,7 @@ fun ExpandableInputPanel(
                                 change.consume()
                                 val min = minOf(collapsedPx, expandedPx) - basePx
                                 val max = maxOf(collapsedPx, expandedPx) - basePx
-                                dragOffset = (dragOffset + dragAmount).coerceIn(min, max)
+                                dragOffset = (dragOffset - dragAmount).coerceIn(min, max)
                             },
                             onDragEnd = {
                                 val total = basePx + dragOffset

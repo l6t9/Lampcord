@@ -1,6 +1,7 @@
 package me.lampu.lampcord.shared.ui.components
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -215,12 +216,20 @@ fun MemberList(
                     verticalArrangement = Arrangement.spacedBy(2.dp),
                     contentPadding = PaddingValues(bottom = 52.dp)
                 ) {
-                    stickyHeader {
-                        activeChannel?.let { MemberHeader(it, onBack = onBack, overlapping = overlapping) }
-                    }
                     if (overlapping) {
                         stickyHeader {
-                            MemberListTabs(selectedTab) { selectedTab = it }
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(MaterialTheme.colorScheme.surface)
+                            ) {
+                                activeChannel?.let { MemberHeader(it, onBack = onBack, overlapping = true) }
+                                MemberListTabs(selectedTab) { selectedTab = it }
+                            }
+                        }
+                    } else {
+                        stickyHeader {
+                            activeChannel?.let { MemberHeader(it, onBack = onBack, overlapping = false) }
                         }
                     }
                     if (header != null) {

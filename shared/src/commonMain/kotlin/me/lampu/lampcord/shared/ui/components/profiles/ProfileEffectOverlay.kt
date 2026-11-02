@@ -36,7 +36,7 @@ fun ProfileEffectOverlay(
     if (product.layers.isEmpty() && product.source == null) return
 
     BoxWithConstraints(modifier = modifier) {
-        val canvasWidth = maxWidth
+        val canvasWidth = maxWidth.coerceIn(1.dp, 2000.dp)
         val scale = canvasWidth.value / EFFECT_CANVAS_WIDTH.toFloat()
         val surfaceHeight = remember(product.sku, canvasWidth, maxHeight) {
             val bottom = product.layers.maxOfOrNull { it.y + it.height } ?: EFFECT_CANVAS_WIDTH
@@ -74,6 +74,10 @@ fun ProfileEffectOverlay(
 
             for (layer in product.layers) {
                 if (!isLayerActive(layer, elapsed)) continue
+                val layerWidth = (canvasWidth * (layer.width / EFFECT_CANVAS_WIDTH).toFloat())
+                    .coerceIn(1.dp, 2000.dp)
+                val layerHeight = (canvasWidth * (layer.height / EFFECT_CANVAS_WIDTH).toFloat())
+                    .coerceIn(1.dp, 2000.dp)
                 AsyncImage(
                     model = layer.source,
                     contentDescription = null,
@@ -82,8 +86,8 @@ fun ProfileEffectOverlay(
                             x = canvasWidth * (layer.x / EFFECT_CANVAS_WIDTH).toFloat(),
                             y = canvasWidth * (layer.y / EFFECT_CANVAS_WIDTH).toFloat()
                         )
-                        .requiredWidth(canvasWidth * (layer.width / EFFECT_CANVAS_WIDTH).toFloat())
-                        .requiredHeight(canvasWidth * (layer.height / EFFECT_CANVAS_WIDTH).toFloat()),
+                        .requiredWidth(layerWidth)
+                        .requiredHeight(layerHeight),
                     contentScale = ContentScale.Fit,
                     allowAnimation = animate,
                     showPlaceholder = false,

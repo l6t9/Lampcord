@@ -25,12 +25,6 @@ import me.lampu.lampcord.shared.ui.components.ImageLoadState
 private const val DEFAULT_HEIGHT_RATIO = 0.75f
 internal const val FRAME_ART_SCALE = 1.0f
 
-/**
- * Draws a profile frame around the composable's bounds.
- *
- * [showBottom] drops the frame's bottom layers where the profile card is not a compact
- * floating card, so a sheet or a full profile does not get a second frame edge under it.
- */
 @Composable
 fun ProfileFrameOverlay(
     product: ProfileFrameProduct,
@@ -51,10 +45,14 @@ private fun BoxScope.FrameLayers(
     showBottom: Boolean,
 ) {
     val metrics = product.metrics
-    val scale = cardWidth.value / metrics.innerWidth.toFloat() * FRAME_ART_SCALE
-    val declaredWidth = ((metrics.innerWidth + 2f * metrics.overflowHorizontal) * scale).dp
-    val topOverflow = (metrics.overflowTop * scale).dp
-    val bottomOverflow = (metrics.overflowBottom * scale).dp
+    val innerWidth = metrics.innerWidth.takeIf { it > 0 } ?: 1200
+    val rawScale = cardWidth.value / innerWidth.toFloat() * FRAME_ART_SCALE
+    val scale = rawScale.takeIf { it.isFinite() && it > 0f } ?: 1f
+    val declaredWidth = ((innerWidth + 2f * metrics.overflowHorizontal) * scale)
+        .dp
+        .coerceIn(1.dp, 2000.dp)
+    val topOverflow = (metrics.overflowTop * scale).dp.coerceIn(0.dp, 2000.dp)
+    val bottomOverflow = (metrics.overflowBottom * scale).dp.coerceIn(0.dp, 2000.dp)
 
     LaunchedEffect(product.sku, cardWidth) {
         println(
@@ -74,12 +72,18 @@ private fun BoxScope.FrameLayers(
             layer.rail -> railTop
             else -> -topOverflow
         }
+        val rawLayerHeight = declaredWidth * heightRatio
+        val layerHeight = if (rawLayerHeight.value.isFinite() && rawLayerHeight.value > 0f) {
+            rawLayerHeight.coerceIn(1.dp, 2000.dp)
+        } else {
+            declaredWidth
+        }
         AsyncImage(
             model = ProfileCollectibles.frameAssetUrl(product.sku, layer.id),
             contentDescription = null,
             modifier = Modifier
                 .requiredWidth(declaredWidth)
-                .requiredHeight(declaredWidth * heightRatio)
+                .requiredHeight(layerHeight)
                 .align(if (isBottom) Alignment.BottomCenter else Alignment.TopCenter)
                 .offset(y = y),
             contentScale = ContentScale.Fit,
