@@ -42,6 +42,7 @@ class VoiceProtocolTest {
         val native = NativeVoice.create("1234123412341234", "1234567890")
         try {
             assertTrue(NativeVoice.init(native, 1).isNotEmpty())
+            assertEquals(0L, NativeVoice.decryptFailures())
             assertEquals(0, NativeVoice.transition(native, 0, false))
             assertEquals(1, NativeVoice.transition(native, 7, true))
             assertEquals(1, NativeVoice.transition(native, 7, false))

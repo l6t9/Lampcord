@@ -13,6 +13,7 @@ namespace dave = discord::dave;
 using Bytes = std::vector<uint8_t>;
 
 namespace {
+std::atomic<uint64_t> decryptFailureCount{0};
 struct Peer {
     std::unique_ptr<dave::IDecryptor> decryptor = dave::CreateDecryptor();
     std::unique_ptr<OpusDecoder, decltype(&opus_decoder_destroy)> decoder{nullptr, opus_decoder_destroy};
@@ -119,13 +120,14 @@ struct Voice {
     }
 
     bool execute(int transition) {
-        if (transition == lastExecuted) return true;
         auto it = transitions.find(transition);
-        if (it == transitions.end()) return false;
-        apply(std::move(it->second));
-        transitions.erase(it);
-        lastExecuted = transition;
-        return true;
+        if (it != transitions.end()) {
+            apply(std::move(it->second));
+            transitions.erase(it);
+            lastExecuted = transition;
+            return true;
+        }
+        return transition == lastExecuted;
     }
 };
 
@@ -326,8 +328,7 @@ extern "C" JNIEXPORT jbyteArray JNICALL JNI(decrypt)(JNIEnv* env, jobject, jlong
         size_t length = 0;
         auto result = peer->second.decryptor->Decrypt(dave::Audio, {in.data(), in.size()}, {out.data(), out.size()}, &length);
         if (result != dave::IDecryptor::Success) {
-            static std::atomic<uint64_t> failures{0};
-            auto count = failures.fetch_add(1) + 1;
+            auto count = decryptFailureCount.fetch_add(1) + 1;
             if (count == 1 || count % 100 == 0)
                 std::cerr << "Native voice: DAVE decrypt failed for user " << uid
                           << " (code " << static_cast<int>(result) << ", total " << count << ")" << std::endl;
@@ -352,6 +353,10 @@ extern "C" JNIEXPORT jshortArray JNICALL JNI(decode)(JNIEnv* env, jobject, jlong
         if (result) env->SetShortArrayRegion(result, 0, count * 2, pcm.data());
         return result;
     });
+}
+
+extern "C" JNIEXPORT jlong JNICALL JNI(decryptFailures)(JNIEnv*, jobject) {
+    return static_cast<jlong>(decryptFailureCount.load());
 }
 
 extern "C" JNIEXPORT jbyteArray JNICALL JNI(aead)(JNIEnv* env, jobject, jboolean encrypt, jboolean aes, jbyteArray key, jbyteArray nonce, jbyteArray header, jbyteArray payload) {
