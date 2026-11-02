@@ -28,7 +28,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
@@ -50,6 +52,7 @@ import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.material3.SheetValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -95,6 +98,22 @@ import kotlin.time.Duration.Companion.milliseconds
 import me.lampu.lampcord.shared.ui.kit.clickableCursor
 import me.lampu.lampcord.shared.ui.components.rememberDiscordSheetState
 
+@Stable
+class MediaPickerState {
+    var selectedTab by mutableStateOf(0)
+    var mediaList by mutableStateOf<List<LocalMedia>>(emptyList())
+    var fileList by mutableStateOf<List<LocalMedia>>(emptyList())
+    var isLoading by mutableStateOf(true)
+    var hasPermission by mutableStateOf(true)
+    var permissionRequested by mutableStateOf(false)
+    var pollQuestion by mutableStateOf("")
+    val pollAnswers = mutableStateListOf("", "")
+    var pollAllowMultiselect by mutableStateOf(false)
+    var threadName by mutableStateOf("")
+    val mediaGridState = LazyGridState()
+    val fileListState = LazyListState()
+}
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun MediaPicker(
@@ -103,7 +122,7 @@ fun MediaPicker(
 ) {
     val isMobile = getPlatformName() == "android" || getPlatformName() == "ios"
     val reduceMotion = Settings.shared.reduceMotion
-    var selectedTab by remember { mutableStateOf(0) }
+    val pickerState = remember { MediaPickerState() }
     var showSystemFilePicker by remember { mutableStateOf(false) }
 
     val scope = rememberCoroutineScope()
@@ -138,10 +157,9 @@ fun MediaPicker(
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 MediaPickerContent(
+                    state = pickerState,
                     onDismiss = onDismiss,
                     isMobile = true,
-                    selectedTab = selectedTab,
-                    onTabSelected = { selectedTab = it },
                     messageStore = messageStore
                 )
 
@@ -164,8 +182,8 @@ fun MediaPicker(
                     )
                 ) {
                     MediaPickerTabs(
-                        selectedTab = selectedTab,
-                        onTabSelected = { selectedTab = it },
+                        selectedTab = pickerState.selectedTab,
+                        onTabSelected = { pickerState.selectedTab = it },
                         onSystemPickerClick = { showSystemFilePicker = true },
                         modifier = Modifier
                             .graphicsLayer {
@@ -187,10 +205,9 @@ fun MediaPicker(
             color = MaterialTheme.colorScheme.surfaceContainerHigh
         ) {
             MediaPickerContent(
+                state = pickerState,
                 onDismiss = onDismiss,
                 isMobile = false,
-                selectedTab = selectedTab,
-                onTabSelected = { selectedTab = it },
                 onSystemPickerClick = { showSystemFilePicker = true }
             )
         }
@@ -200,9 +217,10 @@ fun MediaPicker(
 @Composable
 fun InlineMediaPicker(
     onDismiss: () -> Unit,
-    messageStore: MessageStore = koinInject()
+    state: MediaPickerState,
+    messageStore: MessageStore = koinInject(),
+    bottomInset: Boolean = false
 ) {
-    var selectedTab by remember { mutableStateOf(0) }
     var showSystemFilePicker by remember { mutableStateOf(false) }
 
     FilePicker(
@@ -213,22 +231,23 @@ fun InlineMediaPicker(
         onDismiss = { showSystemFilePicker = false }
     )
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        Box(modifier = Modifier.weight(1f)) {
-            MediaPickerContent(
-                onDismiss = onDismiss,
-                isMobile = true,
-                selectedTab = selectedTab,
-                onTabSelected = { selectedTab = it },
-                onSystemPickerClick = { showSystemFilePicker = true },
-                messageStore = messageStore
-            )
-        }
-        MediaPickerTabs(
-            selectedTab = selectedTab,
-            onTabSelected = { selectedTab = it },
+    Box(modifier = Modifier.fillMaxSize()) {
+        MediaPickerContent(
+            state = state,
+            onDismiss = onDismiss,
+            isMobile = true,
             onSystemPickerClick = { showSystemFilePicker = true },
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+            messageStore = messageStore
+        )
+        MediaPickerTabs(
+            selectedTab = state.selectedTab,
+            onTabSelected = { state.selectedTab = it },
+            onSystemPickerClick = { showSystemFilePicker = true },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .then(if (bottomInset) Modifier.navigationBarsPadding() else Modifier)
+                .padding(bottom = 12.dp)
+                .zIndex(1f)
         )
     }
 }
@@ -236,48 +255,37 @@ fun InlineMediaPicker(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun MediaPickerContent(
+    state: MediaPickerState,
     onDismiss: () -> Unit,
     isMobile: Boolean,
-    selectedTab: Int,
-    onTabSelected: (Int) -> Unit,
     onSystemPickerClick: (() -> Unit)? = null,
     messageStore: MessageStore = koinInject()
 ) {
     val tabs = listOf("Images", "Files", "Camera", "Thread", "Poll")
-
-    var mediaList by remember { mutableStateOf<List<LocalMedia>>(emptyList()) }
-    var fileList by remember { mutableStateOf<List<LocalMedia>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
-    var hasPermission by remember { mutableStateOf(true) }
-    var permissionRequested by remember { mutableStateOf(false) }
+    val selectedTab = state.selectedTab
+    val onTabSelected: (Int) -> Unit = { state.selectedTab = it }
     val scope = rememberCoroutineScope()
 
-    var pollQuestion by remember { mutableStateOf("") }
-    val pollAnswers = remember { mutableStateListOf("", "") }
-    var pollAllowMultiselect by remember { mutableStateOf(false) }
+    LaunchedEffect(selectedTab, state.permissionRequested) {
+        if (!state.permissionRequested) return@LaunchedEffect
 
-    var threadName by remember { mutableStateOf("") }
-
-    LaunchedEffect(selectedTab, permissionRequested) {
-        if (!permissionRequested) return@LaunchedEffect
-
-        isLoading = true
+        state.isLoading = true
         try {
-            if (selectedTab == 0 && mediaList.isEmpty()) {
-                mediaList = getLocalMedia()
-            } else if (selectedTab == 1 && fileList.isEmpty()) {
-                fileList = getLocalFiles()
+            if (selectedTab == 0 && state.mediaList.isEmpty()) {
+                state.mediaList = getLocalMedia()
+            } else if (selectedTab == 1 && state.fileList.isEmpty()) {
+                state.fileList = getLocalFiles()
             }
         } catch (e: Exception) {
         } finally {
-            isLoading = false
+            state.isLoading = false
         }
     }
 
-    if (!permissionRequested) {
+    if (!state.permissionRequested) {
         RequestMediaPermissions { granted ->
-            hasPermission = granted
-            permissionRequested = true
+            state.hasPermission = granted
+            state.permissionRequested = true
         }
     }
 
@@ -313,32 +321,33 @@ private fun MediaPickerContent(
         Box(modifier = Modifier.weight(1f)) {
             when (selectedTab) {
                 0 -> {
-                    if (!hasPermission) {
+                    if (!state.hasPermission) {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text("Permission denied", color = MaterialTheme.colorScheme.error)
-                                Button(onClick = { permissionRequested = false }) {
+                                Button(onClick = { state.permissionRequested = false }) {
                                     Text(stringResource(Res.string.retry))
                                 }
                             }
                         }
-                    } else if (isLoading) {
+                    } else if (state.isLoading) {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             ContainedLoadingIndicator()
                         }
-                    } else if (mediaList.isEmpty()) {
+                    } else if (state.mediaList.isEmpty()) {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             Text("No media found", color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     } else {
                         LazyVerticalGrid(
                             columns = GridCells.Fixed(3),
+                            state = state.mediaGridState,
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(bottom = 80.dp),
                             horizontalArrangement = Arrangement.spacedBy(1.dp),
                             verticalArrangement = Arrangement.spacedBy(1.dp)
                         ) {
-                            items(mediaList, key = { it.id }) { media ->
+                            items(state.mediaList, key = { it.id }) { media ->
                                 val isSelected = messageStore.pendingFiles.any { it.name == media.name }
 
                                 Box(
@@ -414,20 +423,20 @@ private fun MediaPickerContent(
                     }
                 }
                 1 -> {
-                    if (!hasPermission) {
+                    if (!state.hasPermission) {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text("Permission denied", color = MaterialTheme.colorScheme.error)
-                                Button(onClick = { permissionRequested = false }) {
+                                Button(onClick = { state.permissionRequested = false }) {
                                     Text(stringResource(Res.string.retry))
                                 }
                             }
                         }
-                    } else if (isLoading) {
+                    } else if (state.isLoading) {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             ContainedLoadingIndicator()
                         }
-                    } else if (fileList.isEmpty()) {
+                    } else if (state.fileList.isEmpty()) {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text("No files found", color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -441,11 +450,12 @@ private fun MediaPickerContent(
                         }
                     } else {
                         LazyColumn(
+                            state = state.fileListState,
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(bottom = 80.dp)
                         ) {
-                            items(fileList.size, key = { fileList[it].id }) { index ->
-                                val file = fileList[index]
+                            items(state.fileList.size, key = { state.fileList[it].id }) { index ->
+                                val file = state.fileList[index]
                                 val isSelected = messageStore.pendingFiles.any { it.name == file.name }
 
                                 FileItem(
@@ -496,8 +506,8 @@ private fun MediaPickerContent(
                         Text("Create a new thread", style = MaterialTheme.typography.titleMedium)
                         Spacer(Modifier.height(16.dp))
                         OutlinedTextField(
-                            value = threadName,
-                            onValueChange = { threadName = it },
+                            value = state.threadName,
+                            onValueChange = { state.threadName = it },
                             label = { Text(stringResource(Res.string.thread_name)) },
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true
@@ -507,7 +517,7 @@ private fun MediaPickerContent(
                             onClick = {
                                 onDismiss()
                             },
-                            enabled = threadName.isNotBlank()
+                            enabled = state.threadName.isNotBlank()
                         ) {
                             Text(stringResource(Res.string.create_thread))
                         }
@@ -524,34 +534,34 @@ private fun MediaPickerContent(
                         }
                         item {
                             OutlinedTextField(
-                                value = pollQuestion,
-                                onValueChange = { pollQuestion = it },
+                                value = state.pollQuestion,
+                                onValueChange = { state.pollQuestion = it },
                                 label = { Text("Question") },
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
-                        items(pollAnswers.size) { index ->
-                            val answer = pollAnswers[index]
+                        items(state.pollAnswers.size) { index ->
+                            val answer = state.pollAnswers[index]
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 OutlinedTextField(
                                     value = answer,
-                                    onValueChange = { pollAnswers[index] = it },
+                                    onValueChange = { state.pollAnswers[index] = it },
                                     label = { Text("Choice ${index + 1}") },
                                     modifier = Modifier.weight(1f)
                                 )
-                                if (pollAnswers.size > 2) {
-                                    IconButton(onClick = { pollAnswers.removeAt(index) }) {
+                                if (state.pollAnswers.size > 2) {
+                                    IconButton(onClick = { state.pollAnswers.removeAt(index) }) {
                                         Icon(Icons.Filled.Close, null)
                                     }
                                 }
                             }
                         }
-                        if (pollAnswers.size < 10) {
+                        if (state.pollAnswers.size < 10) {
                             item {
-                                TextButton(onClick = { pollAnswers.add("") }) {
+                                TextButton(onClick = { state.pollAnswers.add("") }) {
                                     Icon(Icons.Filled.Add, null)
                                     Spacer(Modifier.width(8.dp))
                                     Text("Add Choice")
@@ -560,20 +570,20 @@ private fun MediaPickerContent(
                         }
                         item {
                             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                                Checkbox(checked = pollAllowMultiselect, onCheckedChange = { pollAllowMultiselect = it })
+                                Checkbox(checked = state.pollAllowMultiselect, onCheckedChange = { state.pollAllowMultiselect = it })
                                 Text("Allow multiple answers", style = MaterialTheme.typography.bodyMedium)
                             }
                         }
                         item {
-                            val canPost = pollQuestion.isNotBlank() && pollAnswers.count { it.isNotBlank() } >= 2
+                            val canPost = state.pollQuestion.isNotBlank() && state.pollAnswers.count { it.isNotBlank() } >= 2
                             Button(
                                 onClick = {
                                     val poll = Poll(
-                                        question = PollMedia(text = pollQuestion),
-                                        answers = pollAnswers.filter { it.isNotBlank() }.mapIndexed { idx, text ->
+                                        question = PollMedia(text = state.pollQuestion),
+                                        answers = state.pollAnswers.filter { it.isNotBlank() }.mapIndexed { idx, text ->
                                             PollAnswer(answer_id = idx + 1, poll_media = PollMedia(text = text))
                                         },
-                                        allow_multiselect = pollAllowMultiselect
+                                        allow_multiselect = state.pollAllowMultiselect
                                     )
                                     messageStore.sendMessageDraft("", poll = poll)
                                     onDismiss()

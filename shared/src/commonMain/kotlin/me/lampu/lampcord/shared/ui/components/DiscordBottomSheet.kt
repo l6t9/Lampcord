@@ -71,7 +71,7 @@ fun DiscordBottomSheet(
                 spotColor = Color.Black
             ),
         sheetState = sheetState,
-        sheetMaxWidth = if (fullBleed) 100000.dp else sheetMaxWidth,
+        sheetMaxWidth = if (fullBleed) Dp.Unspecified else sheetMaxWidth,
         shape = sheetShape,
         containerColor = if (fullBleed) Color.Transparent else containerColor,
         contentColor = contentColor,

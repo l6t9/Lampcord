@@ -65,6 +65,7 @@ import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.components.chat.ExpandableInputPanel
 import me.lampu.lampcord.shared.ui.components.chat.InlineMediaPicker
 import me.lampu.lampcord.shared.ui.components.chat.MediaPicker
+import me.lampu.lampcord.shared.ui.components.chat.MediaPickerState
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.components.PlatformBackHandler
 import me.lampu.lampcord.shared.utils.EmojiIndex
@@ -148,6 +149,7 @@ fun ChatInputBar(
 
     var isFocused by remember { mutableStateOf(false) }
     var showFilePicker by remember { mutableStateOf(false) }
+    val mediaPickerState = remember { MediaPickerState() }
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
     val imeHeight = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
@@ -677,32 +679,12 @@ fun ChatInputBar(
                                     )
                                     .pointerInput(Unit) {
                                         awaitEachGesture {
-                                            val down = awaitFirstDown(requireUnconsumed = false)
+                                            awaitFirstDown(requireUnconsumed = false)
                                             navigationStore.isChatInputGesture = true
-                                            var moved = false
                                             try {
-                                                var change = down
-                                                while (change.pressed) {
-                                                    val event = awaitPointerEvent()
-                                                    change = event.changes.firstOrNull { it.id == down.id } ?: break
-                                                    val dx = change.position.x - down.position.x
-                                                    val dy = change.position.y - down.position.y
-                                                    if (kotlin.math.hypot(dx, dy) > viewConfiguration.touchSlop) {
-                                                        moved = true
-                                                    }
-                                                }
+                                                waitForUpOrCancellation()
                                             } finally {
                                                 navigationStore.isChatInputGesture = false
-                                            }
-                                            if (!moved &&
-                                                (navigationStore.isEmojiPickerVisible || navigationStore.isMediaPickerVisible)
-                                            ) {
-                                                navigationStore.isEmojiPickerVisible = false
-                                                navigationStore.isMediaPickerVisible = false
-                                                navigationStore.isEmojiPanelExpanded = false
-                                                navigationStore.isMediaPanelExpanded = false
-                                                focusRequester.requestFocus()
-                                                keyboardController?.show()
                                             }
                                         }
                                     },
@@ -771,6 +753,36 @@ if (it.selection.collapsed) {
                                             modifier = Modifier
                                                 .weight(1f)
                                                 .padding(start = 12.dp, top = 8.dp, bottom = 8.dp)
+                                                .pointerInput(
+                                                    navigationStore.isEmojiPickerVisible,
+                                                    navigationStore.isMediaPickerVisible
+                                                ) {
+                                                    awaitEachGesture {
+                                                        val down = awaitFirstDown(requireUnconsumed = false)
+                                                        var moved = false
+                                                        var change = down
+                                                        while (change.pressed) {
+                                                            val event = awaitPointerEvent()
+                                                            change = event.changes.firstOrNull { it.id == down.id } ?: break
+                                                            val dx = change.position.x - down.position.x
+                                                            val dy = change.position.y - down.position.y
+                                                            if (kotlin.math.hypot(dx, dy) > viewConfiguration.touchSlop) {
+                                                                moved = true
+                                                            }
+                                                        }
+                                                        if (!moved &&
+                                                            (navigationStore.isEmojiPickerVisible ||
+                                                                navigationStore.isMediaPickerVisible)
+                                                        ) {
+                                                            navigationStore.isEmojiPickerVisible = false
+                                                            navigationStore.isMediaPickerVisible = false
+                                                            navigationStore.isEmojiPanelExpanded = false
+                                                            navigationStore.isMediaPanelExpanded = false
+                                                            focusRequester.requestFocus()
+                                                            keyboardController?.show()
+                                                        }
+                                                    }
+                                                }
                                                 .focusRequester(focusRequester)
                                                 .onFocusChanged {
                                                     isFocused = it.isFocused
@@ -1009,7 +1021,7 @@ if (it.selection.collapsed) {
 
                         if (isMobileView) {
                             AnimatedVisibility(
-                                visible = navigationStore.isMediaPickerVisible && !navigationStore.isMediaPanelExpanded,
+                                visible = navigationStore.isMediaPickerVisible,
                                 enter = if (reduceMotion) EnterTransition.None else expandVertically() + fadeIn(),
                                 exit = if (reduceMotion) ExitTransition.None else shrinkVertically() + fadeOut()
                             ) {
@@ -1021,12 +1033,15 @@ if (it.selection.collapsed) {
                                         navigationStore.isMediaPanelExpanded = false
                                     }
                                 ) {
-                                    InlineMediaPicker(
-                                        onDismiss = {
-                                            navigationStore.isMediaPickerVisible = false
-                                            navigationStore.isMediaPanelExpanded = false
-                                        }
-                                    )
+                                    if (!navigationStore.isMediaPanelExpanded) {
+                                        InlineMediaPicker(
+                                            onDismiss = {
+                                                navigationStore.isMediaPickerVisible = false
+                                                navigationStore.isMediaPanelExpanded = false
+                                            },
+                                            state = mediaPickerState
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -1034,8 +1049,7 @@ if (it.selection.collapsed) {
                         AnimatedVisibility(
                             visible = navigationStore.isEmojiPickerVisible &&
                                 canSend &&
-                                !isDesktopTarget &&
-                                !navigationStore.isEmojiPanelExpanded,
+                                !isDesktopTarget,
                             enter = if (reduceMotion) EnterTransition.None else expandVertically() + fadeIn(),
                             exit = if (reduceMotion) ExitTransition.None else shrinkVertically() + fadeOut()
                         ) {
@@ -1051,18 +1065,20 @@ if (it.selection.collapsed) {
                                     navigationStore.isEmojiPanelExpanded = false
                                 }
                             ) {
-                                EmojiPicker(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    fillAvailableHeight = true,
-                                    onKeyboardClick = {
-                                        navigationStore.isEmojiPickerVisible = false
-                                        navigationStore.isEmojiPanelExpanded = false
-                                        focusRequester.requestFocus()
-                                    },
-                                    onEmojiSelected = { emoji ->
-                                        insertEmoji(emoji)
-                                    }
-                                )
+                                if (!navigationStore.isEmojiPanelExpanded) {
+                                    EmojiPicker(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        fillAvailableHeight = true,
+                                        onKeyboardClick = {
+                                            navigationStore.isEmojiPickerVisible = false
+                                            navigationStore.isEmojiPanelExpanded = false
+                                            focusRequester.requestFocus()
+                                        },
+                                        onEmojiSelected = { emoji ->
+                                            insertEmoji(emoji)
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
@@ -1073,13 +1089,16 @@ if (it.selection.collapsed) {
         if (navigationStore.isMediaPanelExpanded && navigationStore.isMediaPickerVisible) {
             DiscordBottomSheet(
                 fillHeight = true,
+                scrimColor = Color.Transparent,
                 onDismissRequest = { navigationStore.isMediaPanelExpanded = false }
             ) {
                 InlineMediaPicker(
                     onDismiss = {
                         navigationStore.isMediaPickerVisible = false
                         navigationStore.isMediaPanelExpanded = false
-                    }
+                    },
+                    state = mediaPickerState,
+                    bottomInset = true
                 )
             }
         }
@@ -1091,6 +1110,7 @@ if (it.selection.collapsed) {
         ) {
             DiscordBottomSheet(
                 fillHeight = true,
+                scrimColor = Color.Transparent,
                 onDismissRequest = { navigationStore.isEmojiPanelExpanded = false }
             ) {
                 EmojiPicker(
