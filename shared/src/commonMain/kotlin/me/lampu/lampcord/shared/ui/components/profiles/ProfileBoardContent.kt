@@ -161,7 +161,7 @@ private fun GameWidgetCard(entry: BoardGameEntry, info: BoardGameInfo?) {
     val comment = entry.comment?.takeIf { it.isNotBlank() }
     val tags = entry.tags
     val cardShape = RoundedCornerShape(20.dp)
-    val hasImage = info?.image != null
+    val image = info?.image
 
     Surface(
         modifier = Modifier.width(320.dp),
@@ -181,9 +181,9 @@ private fun GameWidgetCard(entry: BoardGameEntry, info: BoardGameInfo?) {
                 shape = RoundedCornerShape(10.dp),
                 color = MaterialTheme.colorScheme.surfaceContainerHighest
             ) {
-                if (hasImage) {
+                if (image != null) {
                     AsyncImage(
-                        model = info?.image,
+                        model = image,
                         contentDescription = name,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop,

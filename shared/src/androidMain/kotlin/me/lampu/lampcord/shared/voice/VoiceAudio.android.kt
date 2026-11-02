@@ -23,13 +23,24 @@ private class AndroidVoiceAudio : VoiceAudio {
     private val oldSpeaker = manager.isSpeakerphoneOn
     @Volatile private var closed = false
     @Volatile private var focused = true
+    @Volatile private var transientFocusLoss = false
     private var speaker = false
     private var input: AudioRecord? = null
     private var output: AudioTrack? = null
     private var echo: AcousticEchoCanceler? = null
     private var noise: NoiseSuppressor? = null
     private val mono = ShortArray(960)
-    private val focusListener = AudioManager.OnAudioFocusChangeListener { focused = it > 0 }
+    private val focusListener = AudioManager.OnAudioFocusChangeListener { change ->
+        when (change) {
+            AudioManager.AUDIOFOCUS_GAIN -> {
+                focused = true
+                transientFocusLoss = false
+            }
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT,
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> transientFocusLoss = true
+            else -> focused = false
+        }
+    }
     private val focusRequest = if (Build.VERSION.SDK_INT >= 26) AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
         .setAudioAttributes(attributes).setOnAudioFocusChangeListener(focusListener, Handler(Looper.getMainLooper())).build() else null
     private val devices = object : AudioDeviceCallback() {
@@ -81,7 +92,7 @@ private class AndroidVoiceAudio : VoiceAudio {
             offset += count
         }
         check(!closed)
-        val gain = Settings.shared.voiceInputVolume
+        val gain = if (transientFocusLoss) 0f else Settings.shared.voiceInputVolume
         for (i in mono.indices) {
             val sample = (mono[i] * gain).toInt().coerceIn(-32768, 32767).toShort()
             pcm[i * 2] = sample; pcm[i * 2 + 1] = sample

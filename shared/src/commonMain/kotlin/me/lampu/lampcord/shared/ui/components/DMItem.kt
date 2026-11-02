@@ -63,7 +63,7 @@ fun DMItem(
                 allUsers[id]?.let { list.add(it) }
             }
         }
-        val otherUsers = if (currentUser != null) list.filter { it.id != currentUser?.id } else list
+        val otherUsers = if (currentUser != null) list.filter { it.id != currentUser.id } else list
         if (otherUsers.isNotEmpty()) otherUsers else list
     }
 

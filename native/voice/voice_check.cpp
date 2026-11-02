@@ -68,14 +68,12 @@ int main() {
         add(carol, 1, 7);
         check(!carol.ready);
         exchange(bob);
-        alice.execute(7); bob.execute(7); carol.execute(7);
+        check(alice.execute(7)); check(bob.execute(7)); check(carol.execute(7));
         exchange(bob); exchange(carol);
         check(alice.session->GetLastEpochAuthenticator() == carol.session->GetLastEpochAuthenticator());
         alice.updateRoster({{std::stoull(carol.user), {}}});
         check(alice.peers.count(carol.user) == 0 && alice.roster.count(carol.user) == 0);
-        bool rejected = false;
-        try { alice.execute(99); } catch (const std::exception&) { rejected = true; }
-        check(rejected);
+        check(!alice.execute(99));
         check(!alice.initialize(1).empty());
         check(!alice.ready && alice.peers.empty() && alice.roster.empty() && alice.transitions.empty());
         std::cout << "DAVE join, rekey, Opus round-trip, tamper, replay and fail-closed checks passed\n";

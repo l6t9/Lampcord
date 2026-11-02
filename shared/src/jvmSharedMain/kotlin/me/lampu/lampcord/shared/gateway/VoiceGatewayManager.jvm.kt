@@ -97,7 +97,9 @@ actual class VoiceGatewayManager actual constructor(private val client: HttpClie
         private var ssrc = 0
         private var mode = ""
         private var sequence = -1
-        private var acknowledged = true
+        @Volatile private var acknowledged = true
+        @Volatile private var missedAcks = 0
+        @Volatile private var lastRtpAt = 0L
         @Volatile private var secure = false
         @Volatile private var gatewayReady = false
         private var verificationCode = ""
@@ -144,12 +146,17 @@ actual class VoiceGatewayManager actual constructor(private val client: HttpClie
                                         val data = payload["d"] as? JsonObject ?: JsonObject(emptyMap())
                                         when (payload.getValue("op").jsonPrimitive.int) {
                                             8 -> {
-                                                val interval = data.getValue("heartbeat_interval").jsonPrimitive.double.toLong().coerceIn(1000, 60_000)
+                                                val interval = data.getValue("heartbeat_interval").jsonPrimitive.double.toLong().coerceIn(1000, 5000)
                                                 acknowledged = true
+                                                missedAcks = 0
                                                 heartbeat?.cancel()
                                                 heartbeat = launch {
                                                     while (isActive) {
-                                                        if (!acknowledged) throw VoiceFailure("Voice heartbeat timed out")
+                                                        if (!acknowledged) {
+                                                            if (++missedAcks >= 2) throw VoiceFailure("Voice heartbeat timed out")
+                                                        } else {
+                                                            missedAcks = 0
+                                                        }
                                                         acknowledged = false
                                                         send(3, buildJsonObject { put("t", System.currentTimeMillis()); put("seq_ack", sequence) })
                                                         delay(interval)
@@ -174,6 +181,7 @@ actual class VoiceGatewayManager actual constructor(private val client: HttpClie
                                                 }.toByteArray()
                                                 synchronized(lock) { packets = VoicePackets(key, mode == AES_MODE, ssrc) }
                                                 initializeDave()
+                                                sendSpeaking(0)
                                                 audio = createVoiceAudio().also { it.setSpeaker(speaker) }
                                                 mediaStarted = true
                                                 gatewayReady = true
@@ -190,11 +198,22 @@ actual class VoiceGatewayManager actual constructor(private val client: HttpClie
                                                 if (sources.size < 1000 || sources.containsKey(source)) sources[source] = user
                                             }
                                             6 -> acknowledged = true
-                                            9 -> { attempts = 0; gatewayReady = true; update() }
+                                            9 -> {
+                                                attempts = 0
+                                                gatewayReady = true
+                                                sendSpeaking(0)
+                                                update()
+                                            }
                                             11 -> {
                                                 val ids = data.getValue("user_ids").jsonArray.map { it.jsonPrimitive.content }
                                                 require(users.size + ids.size <= 10000)
                                                 users.addAll(ids)
+                                            }
+                                            12 -> {
+                                                val user = data.getValue("user_id").jsonPrimitive.content
+                                                data["audio_ssrc"]?.jsonPrimitive?.content?.toUIntOrNull()?.toInt()?.let { source ->
+                                                    if (source != 0 && (sources.size < 1000 || sources.containsKey(source))) sources[source] = user
+                                                }
                                             }
                                             13 -> {
                                                 val user = data.getValue("user_id").jsonPrimitive.content
@@ -214,8 +233,8 @@ actual class VoiceGatewayManager actual constructor(private val client: HttpClie
                                             }
                                             22 -> {
                                                 val id = data.getValue("transition_id").jsonPrimitive.int
-                                                synchronized(lock) { NativeVoice.transition(handle, id, false) }
-                                                markSecure()
+                                                val applied = synchronized(lock) { NativeVoice.transition(handle, id, false) } != 0
+                                                if (applied) markSecure() else recoverDave()
                                             }
                                             24 -> {
                                                 requireE2EE(data.getValue("protocol_version").jsonPrimitive.int)
@@ -302,6 +321,11 @@ actual class VoiceGatewayManager actual constructor(private val client: HttpClie
             if (mediaStarted) update()
         }
 
+        private suspend fun recoverDave() {
+            if (++resetCount > 3) throw VoiceFailure("DAVE key exchange failed repeatedly. Rejoin the call.")
+            initializeDave()
+        }
+
         private suspend fun binary(bytes: ByteArray) {
             require(bytes.size >= 3)
             sequence = unsignedShort(bytes, 0)
@@ -323,7 +347,10 @@ actual class VoiceGatewayManager actual constructor(private val client: HttpClie
                             send(31, buildJsonObject { put("transition_id", transition) })
                             initializeDave()
                         }
-                        1, 2 -> { resetCount = 0; transitionReady(transition) }
+                        2 -> {
+                            resetCount = 0
+                            transitionReady(transition)
+                        }
                     }
                 }
             }
@@ -362,6 +389,7 @@ actual class VoiceGatewayManager actual constructor(private val client: HttpClie
                 if (canSend) {
                     if (!transmitting) {
                         if (!sendSpeaking(1)) { pcm.fill(0); continue }
+                        synchronized(lock) { packets?.startsTalkspurt() }
                         transmitting = true
                     }
                     silence = 5
@@ -369,12 +397,18 @@ actual class VoiceGatewayManager actual constructor(private val client: HttpClie
                     val packet = synchronized(lock) {
                         NativeVoice.encrypt(handle, ssrc, NativeVoice.encode(handle, pcm, denoise))?.let { packets?.encrypt(it) }
                     }
-                    packet?.let { socket?.send(DatagramPacket(it, it.size)) }
+                    packet?.let {
+                        socket?.send(DatagramPacket(it, it.size))
+                        lastRtpAt = System.nanoTime()
+                    }
                     if (pcm.any { kotlin.math.abs(it.toInt()) > 600 }) speaking[userId] = System.nanoTime()
                 } else if (transmitting && gatewayReady) {
                     if (silence-- > 0) {
                         val packet = synchronized(lock) { packets?.encrypt(OPUS_SILENCE) }
-                        packet?.let { socket?.send(DatagramPacket(it, it.size)) }
+                        packet?.let {
+                            socket?.send(DatagramPacket(it, it.size))
+                            lastRtpAt = System.nanoTime()
+                        }
                     } else {
                         if (sendSpeaking(0)) transmitting = false
                     }
@@ -419,6 +453,7 @@ actual class VoiceGatewayManager actual constructor(private val client: HttpClie
         private suspend fun keepAlive() {
             var tick = 0
             while (currentCoroutineContext().isActive) {
+                val now = System.nanoTime()
                 if (tick++ % 25 == 0) {
                     val ping = ByteBuffer.allocate(8)
                         .putInt(0x1337CAFE)
@@ -427,6 +462,17 @@ actual class VoiceGatewayManager actual constructor(private val client: HttpClie
                     socket?.send(DatagramPacket(ping, ping.size))
                     val report = synchronized(lock) { packets?.senderReport() }
                     report?.let { socket?.send(DatagramPacket(it, it.size)) }
+                }
+                if (packets != null && now - lastRtpAt >= 5_000_000_000L) {
+                    val packet = synchronized(lock) { packets?.encrypt(OPUS_SILENCE) }
+                    if (packet != null) {
+                        try {
+                            socket?.send(DatagramPacket(packet, packet.size))
+                            lastRtpAt = now
+                        } catch (_: Exception) {
+                            currentCoroutineContext().ensureActive()
+                        }
+                    }
                 }
                 val cutoff = System.nanoTime() - 300_000_000L
                 val removed = speaking.entries.removeIf { it.value < cutoff }

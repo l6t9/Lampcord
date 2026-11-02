@@ -8,7 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
@@ -310,7 +310,7 @@ private enum class MemberListTab(val label: String) {
 
 @Composable
 private fun MemberListTabs(selected: MemberListTab, onSelect: (MemberListTab) -> Unit) {
-    ScrollableTabRow(
+    PrimaryScrollableTabRow(
         selectedTabIndex = selected.ordinal,
         containerColor = MaterialTheme.colorScheme.surface,
         contentColor = MaterialTheme.colorScheme.primary,

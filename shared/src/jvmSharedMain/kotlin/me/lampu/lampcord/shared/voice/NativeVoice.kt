@@ -22,7 +22,7 @@ internal object NativeVoice {
     external fun externalSender(handle: Long, payload: ByteArray)
     external fun proposals(handle: Long, payload: ByteArray, users: Array<String>): ByteArray?
     external fun commit(handle: Long, payload: ByteArray, users: Array<String>, transition: Int, welcome: Boolean): Int
-    external fun transition(handle: Long, id: Int, prepare: Boolean)
+    external fun transition(handle: Long, id: Int, prepare: Boolean): Int
     external fun removeUser(handle: Long, user: String)
     external fun authenticator(handle: Long): ByteArray
     external fun encode(handle: Long, pcm: ShortArray, denoise: Boolean): ByteArray

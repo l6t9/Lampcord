@@ -10,6 +10,7 @@ internal const val XCHACHA_MODE = "aead_xchacha20_poly1305_rtpsize"
 internal data class VoicePacket(val ssrc: Int, val sequence: Int, val frame: ByteArray)
 
 internal class VoicePackets(private val key: ByteArray, private val aes: Boolean, private val ssrc: Int) {
+    private val epochNanos = System.nanoTime()
     private var counter = 0L
     private var sequence = SecureRandom().nextInt(65536)
     private var timestamp = SecureRandom().nextInt()
@@ -18,6 +19,12 @@ internal class VoicePackets(private val key: ByteArray, private val aes: Boolean
     private val replay = mutableMapOf<Int, ReplayWindow>()
 
     init { require(key.size == 32) }
+
+    fun startsTalkspurt(now: Long = System.nanoTime()) {
+        val elapsed = now - epochNanos
+        if (elapsed <= 0L) return
+        timestamp = ((elapsed / 1_000_000_000.0) * 48_000.0).toLong().toInt()
+    }
 
     fun encrypt(frame: ByteArray): ByteArray {
         check(counter <= 0xffffffffL) { "Voice transport nonce exhausted; reconnect required" }
