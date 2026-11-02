@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.sp
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.Logging
 import me.lampu.lampcord.shared.utils.DateTimeUtils
+import me.lampu.lampcord.shared.utils.setClipboardText
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
@@ -70,6 +71,11 @@ fun DebugLogScreen(onBack: () -> Unit) {
                     }
                 },
                 actions = {
+                    IconButton(onClick = {
+                        setClipboardText(filteredLogs.joinToString("\n") { it.toString() })
+                    }) {
+                        Icon(Icons.Rounded.ContentCopy, "Copy logs")
+                    }
                     IconButton(onClick = {  }) {
                         Icon(Icons.Rounded.Refresh, "Refresh")
                     }
