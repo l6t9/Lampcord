@@ -218,8 +218,7 @@ fun MediaPicker(
 fun InlineMediaPicker(
     onDismiss: () -> Unit,
     state: MediaPickerState,
-    messageStore: MessageStore = koinInject(),
-    bottomInset: Boolean = false
+    messageStore: MessageStore = koinInject()
 ) {
     var showSystemFilePicker by remember { mutableStateOf(false) }
 
@@ -245,7 +244,6 @@ fun InlineMediaPicker(
             onSystemPickerClick = { showSystemFilePicker = true },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .then(if (bottomInset) Modifier.navigationBarsPadding() else Modifier)
                 .padding(bottom = 12.dp)
                 .zIndex(1f)
         )

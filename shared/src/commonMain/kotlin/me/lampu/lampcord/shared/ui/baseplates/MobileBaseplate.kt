@@ -26,6 +26,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -555,8 +556,6 @@ fun MobileBaseplate(
                     navigationStore.isMediaPickerVisible
                 navigationStore.isEmojiPickerVisible = false
                 navigationStore.isMediaPickerVisible = false
-                navigationStore.isEmojiPanelExpanded = false
-                navigationStore.isMediaPanelExpanded = false
                 hadInputOpen
             },
             startPanel = {
@@ -881,6 +880,7 @@ fun MobileBaseplate(
         DiscordBottomSheet(
             fillHeight = true,
             fullBleed = true,
+            dragHandle = {},
             onDismissRequest = {
                 profileStore.selectedProfile = null
                 profileStore.isProfileExpanded = false
@@ -944,6 +944,17 @@ fun MobileBaseplate(
                             )
                         }
                     }
+                }
+
+                Box(modifier = cardLayout) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(top = 10.dp)
+                            .size(width = 36.dp, height = 4.dp)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(Color.White.copy(alpha = 0.65f))
+                    )
                 }
             }
         }

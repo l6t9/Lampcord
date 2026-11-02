@@ -38,6 +38,7 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextRange
@@ -153,7 +154,15 @@ fun ChatInputBar(
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
     val imeHeight = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
-    val keyboardHeight = remember(imeHeight) { if (imeHeight > 0.dp) imeHeight else 360.dp }
+    var lastImeHeight by remember { mutableStateOf(360.dp) }
+    LaunchedEffect(imeHeight) {
+        if (imeHeight > 0.dp) lastImeHeight = imeHeight
+    }
+    val keyboardHeight = lastImeHeight
+    val windowHeight = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() }
+    val expandedPanelHeight = (windowHeight * 0.72f)
+        .coerceIn(360.dp, 720.dp)
+        .coerceAtMost((windowHeight - 48.dp).coerceAtLeast(360.dp))
 
     DisposableEffect(Unit) {
         onDispose { navigationStore.isChatInputFocused = false }
@@ -191,11 +200,6 @@ fun ChatInputBar(
         if (navigationStore.isEmojiPickerVisible) return@LaunchedEffect
         if (messageStore.editingMessage != null || messageStore.replyingTo != null) return@LaunchedEffect
         focusRequester.requestFocus()
-    }
-
-    LaunchedEffect(navigationStore.isEmojiPickerVisible, navigationStore.isMediaPickerVisible) {
-        if (!navigationStore.isEmojiPickerVisible) navigationStore.isEmojiPanelExpanded = false
-        if (!navigationStore.isMediaPickerVisible) navigationStore.isMediaPanelExpanded = false
     }
 
     val replyTarget = messageStore.replyingTo
@@ -355,6 +359,14 @@ fun ChatInputBar(
         val isMobileDevice = platform == "android" || platform == "ios"
         val isMobileView = isMobileDevice || maxWidth < 600.dp
         val isDesktopTarget = platform == "desktop" || platform == "macos" || platform == "windows" || platform == "linux"
+        val showMediaPanel = isMobileView && navigationStore.isMediaPickerVisible
+        val showEmojiPanel = navigationStore.isEmojiPickerVisible && canSend && !isDesktopTarget
+        val showPickerPanel = showMediaPanel || showEmojiPanel
+        val pickerSpace by animateDpAsState(
+            targetValue = if (showPickerPanel) keyboardHeight else 0.dp,
+            animationSpec = if (reduceMotion) snap() else tween(220),
+            label = "pickerSpace"
+        )
 
         Column(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.fillMaxWidth()) {
@@ -595,8 +607,6 @@ fun ChatInputBar(
                                             navigationStore.isMediaPickerVisible = opening
                                             if (opening) {
                                                 navigationStore.isEmojiPickerVisible = false
-                                                navigationStore.isEmojiPanelExpanded = false
-                                                navigationStore.isMediaPanelExpanded = false
                                                 keyboardController?.hide()
                                             }
                                         } else {
@@ -776,8 +786,6 @@ if (it.selection.collapsed) {
                                                         ) {
                                                             navigationStore.isEmojiPickerVisible = false
                                                             navigationStore.isMediaPickerVisible = false
-                                                            navigationStore.isEmojiPanelExpanded = false
-                                                            navigationStore.isMediaPanelExpanded = false
                                                             focusRequester.requestFocus()
                                                             keyboardController?.show()
                                                         }
@@ -926,14 +934,11 @@ if (it.selection.collapsed) {
                                                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                                     if (navigationStore.isEmojiPickerVisible && showKeyboardIcon) {
                                                         navigationStore.isEmojiPickerVisible = false
-                                                        navigationStore.isEmojiPanelExpanded = false
                                                         focusRequester.requestFocus()
                                                         keyboardController?.show()
                                                     } else {
                                                         navigationStore.isEmojiPickerVisible = true
                                                         navigationStore.isMediaPickerVisible = false
-                                                        navigationStore.isMediaPanelExpanded = false
-                                                        navigationStore.isEmojiPanelExpanded = false
                                                         if (isMobileView) {
                                                             keyboardController?.hide()
                                                         }
@@ -1019,113 +1024,47 @@ if (it.selection.collapsed) {
                             }
                         }
 
-                        if (isMobileView) {
-                            AnimatedVisibility(
-                                visible = navigationStore.isMediaPickerVisible,
-                                enter = if (reduceMotion) EnterTransition.None else expandVertically() + fadeIn(),
-                                exit = if (reduceMotion) ExitTransition.None else shrinkVertically() + fadeOut()
-                            ) {
-                                ExpandableInputPanel(
-                                    collapsedHeight = keyboardHeight,
-                                    onExpandRequested = { navigationStore.isMediaPanelExpanded = true },
-                                    onDismissRequest = {
-                                        navigationStore.isMediaPickerVisible = false
-                                        navigationStore.isMediaPanelExpanded = false
-                                    }
-                                ) {
-                                    if (!navigationStore.isMediaPanelExpanded) {
-                                        InlineMediaPicker(
-                                            onDismiss = {
-                                                navigationStore.isMediaPickerVisible = false
-                                                navigationStore.isMediaPanelExpanded = false
-                                            },
-                                            state = mediaPickerState
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        AnimatedVisibility(
-                            visible = navigationStore.isEmojiPickerVisible &&
-                                canSend &&
-                                !isDesktopTarget,
-                            enter = if (reduceMotion) EnterTransition.None else expandVertically() + fadeIn(),
-                            exit = if (reduceMotion) ExitTransition.None else shrinkVertically() + fadeOut()
-                        ) {
-                            PlatformBackHandler(enabled = navigationStore.isEmojiPickerVisible) {
-                                navigationStore.isEmojiPickerVisible = false
-                                navigationStore.isEmojiPanelExpanded = false
-                            }
-                            ExpandableInputPanel(
-                                collapsedHeight = keyboardHeight,
-                                onExpandRequested = { navigationStore.isEmojiPanelExpanded = true },
-                                onDismissRequest = {
-                                    navigationStore.isEmojiPickerVisible = false
-                                    navigationStore.isEmojiPanelExpanded = false
-                                }
-                            ) {
-                                if (!navigationStore.isEmojiPanelExpanded) {
-                                    EmojiPicker(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        fillAvailableHeight = true,
-                                        onKeyboardClick = {
-                                            navigationStore.isEmojiPickerVisible = false
-                                            navigationStore.isEmojiPanelExpanded = false
-                                            focusRequester.requestFocus()
-                                        },
-                                        onEmojiSelected = { emoji ->
-                                            insertEmoji(emoji)
-                                        }
-                                    )
-                                }
-                            }
+                        if (showPickerPanel) {
+                            Spacer(Modifier.height(pickerSpace))
                         }
                     }
                 }
             }
         }
 
-        if (navigationStore.isMediaPanelExpanded && navigationStore.isMediaPickerVisible) {
-            DiscordBottomSheet(
-                fillHeight = true,
-                scrimColor = Color.Transparent,
-                onDismissRequest = { navigationStore.isMediaPanelExpanded = false }
-            ) {
-                InlineMediaPicker(
-                    onDismiss = {
-                        navigationStore.isMediaPickerVisible = false
-                        navigationStore.isMediaPanelExpanded = false
-                    },
-                    state = mediaPickerState,
-                    bottomInset = true
-                )
+        if (showPickerPanel) {
+            PlatformBackHandler(enabled = true) {
+                navigationStore.isMediaPickerVisible = false
+                navigationStore.isEmojiPickerVisible = false
             }
-        }
-
-        if (navigationStore.isEmojiPanelExpanded &&
-            navigationStore.isEmojiPickerVisible &&
-            canSend &&
-            !isDesktopTarget
-        ) {
-            DiscordBottomSheet(
-                fillHeight = true,
-                scrimColor = Color.Transparent,
-                onDismissRequest = { navigationStore.isEmojiPanelExpanded = false }
+            ExpandableInputPanel(
+                collapsedHeight = keyboardHeight,
+                expandedHeight = expandedPanelHeight,
+                onDismissRequest = {
+                    navigationStore.isEmojiPickerVisible = false
+                    navigationStore.isMediaPickerVisible = false
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
             ) {
-                EmojiPicker(
-                    modifier = Modifier.fillMaxWidth(),
-                    fillAvailableHeight = true,
-                    onKeyboardClick = {
-                        navigationStore.isEmojiPickerVisible = false
-                        navigationStore.isEmojiPanelExpanded = false
-                        focusRequester.requestFocus()
-                        keyboardController?.show()
-                    },
-                    onEmojiSelected = { emoji ->
-                        insertEmoji(emoji)
-                    }
-                )
+                if (showMediaPanel) {
+                    InlineMediaPicker(
+                        onDismiss = { navigationStore.isMediaPickerVisible = false },
+                        state = mediaPickerState
+                    )
+                } else {
+                    EmojiPicker(
+                        modifier = Modifier.fillMaxWidth(),
+                        fillAvailableHeight = true,
+                        onKeyboardClick = {
+                            navigationStore.isEmojiPickerVisible = false
+                            focusRequester.requestFocus()
+                            keyboardController?.show()
+                        },
+                        onEmojiSelected = { emoji -> insertEmoji(emoji) }
+                    )
+                }
             }
         }
     }
