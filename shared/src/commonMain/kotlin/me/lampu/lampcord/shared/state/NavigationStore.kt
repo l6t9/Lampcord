@@ -107,9 +107,6 @@ class NavigationStore(
     var isNotificationsSettingsVisible by mutableStateOf(false)
     var isMediaPickerVisible by mutableStateOf(false)
     var isEmojiPickerVisible by mutableStateOf(false)
-    var isChatPickerExpanded by mutableStateOf(false)
-    var isChatInputFocused by mutableStateOf(false)
-    var isChatInputGesture by mutableStateOf(false)
     var isPinsVisible by mutableStateOf(false)
     var isThreadPanelVisible by mutableStateOf(false)
     var isProfilePanelVisible by mutableStateOf(true)
@@ -562,8 +559,6 @@ class NavigationStore(
         isServerSettingsVisible = false
         isChannelsAndRolesVisible = false
         isMediaPickerVisible = false
-        isEmojiPickerVisible = false
-        isChatPickerExpanded = false
         isPinsVisible = false
         isForumLoading = false
         guildLoadingJob?.cancel()
