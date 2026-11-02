@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -54,34 +55,44 @@ fun DiscordBottomSheet(
     contentWindowInsets: @Composable () -> WindowInsets = { WindowInsets(0, 0, 0, 0) },
 
     fillHeight: Boolean = false,
+    /// Draws the sheet window across the whole screen so content (profile frames) can
+    /// overflow the sheet card without being clipped. The caller then draws its own card.
+    fullBleed: Boolean = false,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    val sheetShape = if (fullBleed) RectangleShape else shape
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
         modifier = modifier
-            .padding(top = DiscordSheetTopInset)
+            .padding(top = if (fullBleed) 0.dp else DiscordSheetTopInset)
             .shadow(
                 elevation = 8.dp,
-                shape = shape,
+                shape = sheetShape,
                 clip = false,
                 ambientColor = Color.Black,
                 spotColor = Color.Black
             ),
         sheetState = sheetState,
-        sheetMaxWidth = sheetMaxWidth,
-        shape = shape,
-        containerColor = containerColor,
+        sheetMaxWidth = if (fullBleed) 100000.dp else sheetMaxWidth,
+        shape = sheetShape,
+        containerColor = if (fullBleed) Color.Transparent else containerColor,
         contentColor = contentColor,
         tonalElevation = 0.dp,
         scrimColor = scrimColor,
-        dragHandle = dragHandle,
+        dragHandle = if (fullBleed) ({}) else dragHandle,
         contentWindowInsets = contentWindowInsets,
         properties = ModalBottomSheetDefaults.properties
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .then(if (fillHeight) Modifier.fillMaxHeight(0.9f) else Modifier)
+                .then(
+                    when {
+                        fullBleed -> Modifier.fillMaxSize()
+                        fillHeight -> Modifier.fillMaxHeight(0.9f)
+                        else -> Modifier
+                    }
+                )
         ) {
             if (dragHandle == null && !Settings.shared.reduceMotion) {
                 Box(

@@ -268,12 +268,8 @@ fun ChannelHeader(
         },
         expandedHeight = 56.dp,
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = if (Settings.shared.panelType == PanelType.CENTER)
-                MaterialTheme.colorScheme.surfaceContainer
-            else MaterialTheme.colorScheme.background,
-            scrolledContainerColor = if (Settings.shared.panelType == PanelType.CENTER)
-                MaterialTheme.colorScheme.surfaceContainer
-            else MaterialTheme.colorScheme.background
+            containerColor = MaterialTheme.colorScheme.surface,
+            scrolledContainerColor = MaterialTheme.colorScheme.surface
         )
     )
 }

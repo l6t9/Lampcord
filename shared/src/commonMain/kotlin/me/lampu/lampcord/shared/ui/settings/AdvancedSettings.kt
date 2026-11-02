@@ -17,7 +17,6 @@ import me.lampu.lampcord.shared.ui.components.settings.*
 import me.lampu.lampcord.shared.model.UserSettings
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.components.ExpressiveSwitch
-import me.lampu.lampcord.shared.utils.getPlatformName
 import me.lampu.lampcord.shared.generated.resources.Res
 import me.lampu.lampcord.shared.generated.resources.developer_mode
 import me.lampu.lampcord.shared.generated.resources.lampcord_settings_advanced
@@ -30,9 +29,6 @@ import me.lampu.lampcord.shared.generated.resources.lampcord_settings_reset_app_
 import me.lampu.lampcord.shared.generated.resources.lampcord_settings_reset_app_state_desc
 import me.lampu.lampcord.shared.generated.resources.lampcord_settings_show_hidden_channels
 import me.lampu.lampcord.shared.generated.resources.lampcord_settings_show_hidden_channels_desc
-import me.lampu.lampcord.shared.generated.resources.lampcord_settings_wayland_scaling
-import me.lampu.lampcord.shared.generated.resources.lampcord_settings_wayland_scaling_desc
-import me.lampu.lampcord.shared.generated.resources.lampcord_settings_window
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 
@@ -52,12 +48,9 @@ fun AdvancedSettings(
 @Composable
 fun AdvancedSettingsContent(settingsStore: SettingsStore = koinInject()) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        val isDesktop = remember { getPlatformName() != "android" && getPlatformName() != "ios" }
         val devMode = settingsStore.userSettings?.developer_mode ?: false
         val context = LocalPlatformContext.current
         val scope = rememberCoroutineScope()
-        val labelWaylandScaling = stringResource(Res.string.lampcord_settings_wayland_scaling)
-        val descWaylandScaling = stringResource(Res.string.lampcord_settings_wayland_scaling_desc)
         Material3SettingsGroup(
             title = stringResource(Res.string.lampcord_settings_developer_settings),
             items = listOf(
@@ -79,22 +72,6 @@ fun AdvancedSettingsContent(settingsStore: SettingsStore = koinInject()) {
                 )
             )
         )
-
-        if (isDesktop) {
-            Material3SettingsGroup(
-                title = stringResource(Res.string.lampcord_settings_window),
-                items = buildList {
-                    add(switchSettingsItem(
-                        title = labelWaylandScaling,
-                        description = descWaylandScaling,
-                        checked = settingsStore.enableWaylandScaling,
-                        onCheckedChange = {
-                            settingsStore.enableWaylandScaling = it
-                        }
-                    ))
-                }
-            )
-        }
 
         var proxyUrlText by remember { mutableStateOf(settingsStore.httpProxyUrl) }
 

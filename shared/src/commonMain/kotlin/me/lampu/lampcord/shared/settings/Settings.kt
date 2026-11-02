@@ -39,7 +39,6 @@ class Settings(private val settings: KmpSettings) {
 
     val marqueeEnabled: Boolean get() = marqueeText && !reduceMotion
     var verboseLogging by preferenceBoolean("verbose_logging", false)
-    var enableWaylandScaling by preferenceBoolean("enable_wayland_scaling", false)
     var windowWidth by preferenceInt("window_width", 1200)
     var windowHeight by preferenceInt("window_height", 800)
     var windowPlacement by preference("window_placement", "floating")

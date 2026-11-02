@@ -25,6 +25,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -557,7 +558,11 @@ fun MobileBaseplate(
             },
             endPanel = {
                 if (isChat) {
-                    MemberList()
+                    val overlapping = Settings.shared.panelType == PanelType.OVERLAPPING
+                    MemberList(
+                        overlapping = overlapping,
+                        onBack = if (overlapping) ({ panelState.close() }) else null
+                    )
                 }
             },
             centerPanel = {
@@ -864,6 +869,7 @@ fun MobileBaseplate(
 
         DiscordBottomSheet(
             fillHeight = true,
+            fullBleed = true,
             onDismissRequest = {
                 profileStore.selectedProfile = null
                 profileStore.isProfileExpanded = false
@@ -871,28 +877,63 @@ fun MobileBaseplate(
             },
             sheetState = sheetState,
         ) {
-            if (profileStore.selectedProfile != null) {
-                val p = profileStore.selectedProfile!!
-                ProfileCard(
-                    profile = p,
-                    modifier = Modifier.fillMaxSize(),
-                    showBorder = false,
-                    isExpanded = true,
-                    fillAvailableHeight = true,
-                    showBoardTab = true,
-                    showFrameOverlay = true,
-                    onExpand = null,
-                    onDismiss = {
-                        profileStore.selectedProfile = null
-                        profileStore.isProfileExpanded = false
-                        profileStore.isProfileLoading = false
+            val p = profileStore.selectedProfile
+            val cardShape = RoundedCornerShape(
+                topStart = DiscordSheetCornerRadius,
+                topEnd = DiscordSheetCornerRadius
+            )
+
+            Box(Modifier.fillMaxSize()) {
+                val cardLayout = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxHeight(0.9f)
+                    .widthIn(max = 560.dp)
+                    .fillMaxWidth()
+                Box(
+                    modifier = cardLayout
+                        .clip(cardShape)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                ) {
+                    if (p != null) {
+                        ProfileCard(
+                            profile = p,
+                            modifier = Modifier.fillMaxSize(),
+                            showBorder = false,
+                            isExpanded = true,
+                            fillAvailableHeight = true,
+                            showBoardTab = true,
+                            showFrameArt = false,
+                            onExpand = null,
+                            onDismiss = {
+                                profileStore.selectedProfile = null
+                                profileStore.isProfileExpanded = false
+                                profileStore.isProfileLoading = false
+                            }
+                        )
+                    } else {
+                        ProfileCardSkeleton(
+                            modifier = Modifier.fillMaxWidth(),
+                            isExpanded = true
+                        )
                     }
-                )
-            } else {
-                ProfileCardSkeleton(
-                    modifier = Modifier.fillMaxWidth(),
-                    isExpanded = true
-                )
+                }
+
+                if (p != null) {
+                    val frameSku = remember(p) {
+                        ProfileCollectibles.frameSku(p.user_profile, p.guild_member_profile)
+                    }
+                    val frameProduct = frameSku?.let { profileStore.getFrame(it) }
+                    frameProduct?.let { product ->
+                        Box(modifier = cardLayout) {
+                            ProfileFrameOverlay(
+                                product = product,
+                                modifier = Modifier.matchParentSize(),
+                                railTop = profileBannerHeight(0.dp, true, null, 0f),
+                                showBottom = false
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -1111,7 +1152,7 @@ private fun MainBaseplateContent(
                                                 contentDescription = stringResource(Res.string.back)
                                             )
                                         }
-                                    } else if (activeChannel != null && activeChannel.type != 1 && activeChannel.type != 3 && activeChannel.guild_id != null) {
+                                    } else if (Settings.shared.panelType != PanelType.OVERLAPPING && activeChannel != null && activeChannel.type != 1 && activeChannel.type != 3 && activeChannel.guild_id != null) {
                                         val channelIcon = when (activeChannel.type) {
                                             15 -> Icons.Rounded.Forum
                                             2, 13 -> Icons.AutoMirrored.Filled.VolumeUp
@@ -1159,7 +1200,14 @@ private fun MainBaseplateContent(
                                                 }
                                             }
                                         }
-                                    } else {
+                                    } else if (Settings.shared.panelType == PanelType.OVERLAPPING) {
+                                        IconButton(onClick = { panelState.openStart() }) {
+                                            Icon(
+                                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                                contentDescription = stringResource(Res.string.back)
+                                            )
+                                        }
+                                    } else if (activeChannel?.type != 1 && activeChannel?.type != 3) {
                                         IconButton(onClick = { panelState.openStart() }) {
                                             Icon(
                                                 imageVector = Icons.Filled.Menu,
@@ -1210,12 +1258,8 @@ private fun MainBaseplateContent(
                                 }
                             },
                             colors = TopAppBarDefaults.topAppBarColors(
-                                containerColor = if (me.lampu.lampcord.shared.settings.Settings.shared.panelType == me.lampu.lampcord.shared.settings.PanelType.CENTER)
-                                    MaterialTheme.colorScheme.surfaceContainer
-                                else MaterialTheme.colorScheme.background,
-                                scrolledContainerColor = if (me.lampu.lampcord.shared.settings.Settings.shared.panelType == me.lampu.lampcord.shared.settings.PanelType.CENTER)
-                                    MaterialTheme.colorScheme.surfaceContainer
-                                else MaterialTheme.colorScheme.background
+                                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                                scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer
                             )
                         )
                     }

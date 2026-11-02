@@ -63,6 +63,8 @@ fun MemberHeader(
     searchStore: SearchStore = koinInject(),
     autocompleteStore: AutocompleteStore = koinInject(),
     settingsStore: SettingsStore = koinInject(),
+    onBack: (() -> Unit)? = null,
+    overlapping: Boolean = false,
 ) {
     val currentUser by userStore.currentUser.collectAsState()
     val allUsers by userStore.users.collectAsState()
@@ -85,6 +87,50 @@ fun MemberHeader(
             .background(MaterialTheme.colorScheme.surface)
             .padding(top = 16.dp, bottom = 8.dp)
     ) {
+        if (!isDesktop && overlapping) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .padding(horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (onBack != null) {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                Spacer(Modifier.weight(1f))
+                IconButton(onClick = { navigationStore.isSearchVisible = true }) {
+                    Icon(
+                        imageVector = Icons.Filled.Search,
+                        contentDescription = "Search",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                IconButton(onClick = { navigationStore.isPinsVisible = true }) {
+                    Icon(
+                        imageVector = Icons.Filled.PushPin,
+                        contentDescription = "Pins",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                if (canManageChannel) {
+                    IconButton(onClick = { navigationStore.openChannelSettings(channel) }) {
+                        Icon(
+                            imageVector = Icons.Filled.Settings,
+                            contentDescription = "Settings",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+
         if (isDesktop) {
             val focusManager = LocalFocusManager.current
             var isFocused by remember { mutableStateOf(false) }
@@ -287,33 +333,35 @@ fun MemberHeader(
                     else PermissionHelper.isChannelPrivate(guild, channel)
                 }
 
-                Box(modifier = Modifier.size(24.dp)) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                if (!isDm || channel.type == 3) {
+                    Box(modifier = Modifier.size(24.dp)) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
 
-                    if (isPrivate && channel.type != 4 && !isDm) {
-                        Surface(
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .offset(x = 2.dp, y = (-2).dp)
-                                .size(12.dp),
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.surface,
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Lock,
-                                contentDescription = null,
-                                modifier = Modifier.padding(1.dp).fillMaxSize(),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                        if (isPrivate && channel.type != 4 && !isDm) {
+                            Surface(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .offset(x = 2.dp, y = (-2).dp)
+                                    .size(12.dp),
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.surface,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Lock,
+                                    contentDescription = null,
+                                    modifier = Modifier.padding(1.dp).fillMaxSize(),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
+                    Spacer(Modifier.width(12.dp))
                 }
-                Spacer(Modifier.width(12.dp))
                 Text(
                     text = name,
                     style = MaterialTheme.typography.titleLarge,
@@ -390,7 +438,7 @@ fun MemberHeader(
 
         Spacer(Modifier.height(16.dp))
 
-        if (!isDesktop) {
+        if (!isDesktop && !overlapping) {
             Spacer(Modifier.height(16.dp))
 
             ButtonGroup(

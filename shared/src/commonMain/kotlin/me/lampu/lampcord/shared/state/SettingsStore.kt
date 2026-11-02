@@ -330,14 +330,6 @@ class SettingsStore(
             if (!value) silentTyping = false
         }
 
-    private var _enableWaylandScaling by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.enableWaylandScaling)
-    var enableWaylandScaling: Boolean
-        get() = _enableWaylandScaling
-        set(value) {
-            _enableWaylandScaling = value
-            me.lampu.lampcord.shared.settings.Settings.shared.enableWaylandScaling = value
-        }
-
     private var _chatboxFontSize by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.chatboxFontSize)
     var chatboxFontSize: Float
         get() = _chatboxFontSize

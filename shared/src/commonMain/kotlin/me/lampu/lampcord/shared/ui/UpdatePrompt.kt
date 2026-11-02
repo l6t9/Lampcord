@@ -6,10 +6,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -38,6 +38,7 @@ import me.lampu.lampcord.shared.update.UpdateState
 import me.lampu.lampcord.shared.update.UpdateTarget
 import me.lampu.lampcord.shared.update.currentUpdateTarget
 import me.lampu.lampcord.shared.update.installUpdate
+import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
 import me.lampu.lampcord.shared.ui.components.DiscordBottomSheet
 import me.lampu.lampcord.shared.ui.components.rememberDiscordSheetState
 import org.koin.compose.koinInject
@@ -170,7 +171,7 @@ private fun UpdateSheet(
 
                 notes.isNotBlank() -> Text(notes, style = MaterialTheme.typography.bodyMedium)
 
-                else -> CircularProgressIndicator(modifier = Modifier.heightIn(max = 18.dp))
+                else -> ContainedLoadingIndicator(modifier = Modifier.size(40.dp))
             }
             footnote?.let {
                 Text(

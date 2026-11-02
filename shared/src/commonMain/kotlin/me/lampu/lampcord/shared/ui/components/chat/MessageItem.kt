@@ -10,6 +10,7 @@ import me.lampu.lampcord.shared.generated.resources.retry
 import me.lampu.lampcord.shared.generated.resources.thread_name
 import org.jetbrains.compose.resources.stringResource
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.Spring
@@ -24,6 +25,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.awaitHorizontalTouchSlopOrCancellation
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -144,6 +146,7 @@ fun MessageItem(
     }
 
     var isHovered by remember { mutableStateOf(false) }
+    var isPressed by remember { mutableStateOf(false) }
     var showReactionPicker by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showCreateThreadDialog by remember { mutableStateOf(false) }
@@ -413,6 +416,21 @@ fun MessageItem(
                     }
                 } else Modifier
             )
+            .then(
+                if (!isPreview) {
+                    Modifier.pointerInput(message.id) {
+                        awaitEachGesture {
+                            awaitFirstDown(requireUnconsumed = false)
+                            isPressed = true
+                            try {
+                                waitForUpOrCancellation()
+                            } finally {
+                                isPressed = false
+                            }
+                        }
+                    }
+                } else Modifier
+            )
     ) {
         val guildId = message.guild_id ?: navigationStore.selectedGuild?.id
 
@@ -436,20 +454,25 @@ fun MessageItem(
             )
         }
 
+        val messageBackground by animateColorAsState(
+            targetValue = when {
+                isHighlighted -> MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                isMentioned -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)
+                message.isDeleted -> MaterialTheme.colorScheme.error.copy(alpha = 0.15f)
+                isPressed -> MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.65f)
+                isHovered || showReactionPicker -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.12f)
+                message.sendError != null -> MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
+                else -> Color.Transparent
+            },
+            animationSpec = if (reduceMotion) snap() else tween(durationMillis = 120),
+            label = "messageBackground"
+        )
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .offset { IntOffset(offsetX.value.roundToInt(), 0) }
-                .background(
-                    color = when {
-                        isHighlighted -> MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                        isMentioned -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)
-                        message.isDeleted -> MaterialTheme.colorScheme.error.copy(alpha = 0.15f)
-                        isHovered || showReactionPicker -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.12f)
-                        message.sendError != null -> MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
-                        else -> Color.Transparent
-                    }
-                )
+                .background(color = messageBackground)
                 .alpha(messageAlpha)
         ) {
             if (isMentioned || message.isDeleted) {

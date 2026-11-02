@@ -1,11 +1,10 @@
 package me.lampu.lampcord.shared.ui.components.profiles
 
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.requiredWidth
-import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -20,91 +19,81 @@ import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.ANCHOR_BOTTOM
 import me.lampu.lampcord.shared.model.ProfileCollectibles
 import me.lampu.lampcord.shared.model.ProfileFrameProduct
-import me.lampu.lampcord.shared.model.UserProfile
-import me.lampu.lampcord.shared.state.ProfileStore
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.ImageLoadState
 
 private const val DEFAULT_HEIGHT_RATIO = 0.75f
-private const val DEFAULT_INNER_WIDTH = 1200f
 internal const val FRAME_ART_SCALE = 1.0f
 
-internal data class FrameInsets(
-    val horizontal: Dp = 0.dp,
-    val bottom: Dp = 0.dp,
-)
-
-@Composable
-internal fun rememberFrameInsets(
-    profile: UserProfile?,
-    profileStore: ProfileStore,
-    cardWidth: Dp,
-    gap: Dp = 8.dp,
-): FrameInsets {
-    val sku = remember(profile) {
-        profile?.let { ProfileCollectibles.frameSku(it.user_profile, it.guild_member_profile) }
-    }
-    val metrics = sku?.let { profileStore.getFrame(it)?.metrics }
-    return remember(metrics, cardWidth, gap) {
-        val scale = cardWidth.value / (metrics?.innerWidth?.toFloat() ?: DEFAULT_INNER_WIDTH) * FRAME_ART_SCALE
-        FrameInsets(
-            horizontal = ((metrics?.overflowHorizontal ?: 0) * scale).dp + gap,
-            bottom = ((metrics?.overflowBottom ?: 0) * scale).dp + gap,
-        )
-    }
-}
-
+/**
+ * Draws a profile frame around the composable's bounds.
+ *
+ * [showBottom] drops the frame's bottom layers where the profile card is not a compact
+ * floating card, so a sheet or a full profile does not get a second frame edge under it.
+ */
 @Composable
 fun ProfileFrameOverlay(
     product: ProfileFrameProduct,
     modifier: Modifier = Modifier,
     railTop: Dp = 0.dp,
+    showBottom: Boolean = true,
 ) {
     BoxWithConstraints(modifier = modifier) {
-        val metrics = product.metrics
-        val scale = maxWidth.value / metrics.innerWidth.toFloat() * FRAME_ART_SCALE
-        val declaredWidth = ((metrics.innerWidth + 2f * metrics.overflowHorizontal) * scale).dp
-        val topOverflow = (metrics.overflowTop * scale).dp
-        val bottomOverflow = (metrics.overflowBottom * scale).dp
+        FrameLayers(product, maxWidth, railTop, showBottom)
+    }
+}
 
-        LaunchedEffect(product.sku, maxWidth) {
-            println(
-                "[Frame] ${product.sku} card=$maxWidth layer=$declaredWidth top=$topOverflow " +
-                    "bottom=$bottomOverflow inner=${metrics.innerWidth} oh=${metrics.overflowHorizontal} " +
-                    "ot=${metrics.overflowTop} ob=${metrics.overflowBottom} " +
-                    "layers=${product.layers.map { "${it.id}:a${it.anchor}:f${it.front}:r${it.rail}" }}"
-            )
+@Composable
+private fun BoxScope.FrameLayers(
+    product: ProfileFrameProduct,
+    cardWidth: Dp,
+    railTop: Dp,
+    showBottom: Boolean,
+) {
+    val metrics = product.metrics
+    val scale = cardWidth.value / metrics.innerWidth.toFloat() * FRAME_ART_SCALE
+    val declaredWidth = ((metrics.innerWidth + 2f * metrics.overflowHorizontal) * scale).dp
+    val topOverflow = (metrics.overflowTop * scale).dp
+    val bottomOverflow = (metrics.overflowBottom * scale).dp
+
+    LaunchedEffect(product.sku, cardWidth) {
+        println(
+            "[Frame] ${product.sku} card=$cardWidth layer=$declaredWidth top=$topOverflow " +
+                "bottom=$bottomOverflow inner=${metrics.innerWidth} oh=${metrics.overflowHorizontal} " +
+                "ot=${metrics.overflowTop} ob=${metrics.overflowBottom} " +
+                "layers=${product.layers.map { "${it.id}:a${it.anchor}:f${it.front}:r${it.rail}" }}"
+        )
+    }
+
+    for (layer in product.layers.sortedBy { it.front }) {
+        val isBottom = layer.anchor == ANCHOR_BOTTOM
+        if (isBottom && !showBottom) continue
+        var heightRatio by remember(product.sku, layer.id) { mutableFloatStateOf(DEFAULT_HEIGHT_RATIO) }
+        val y = when {
+            isBottom -> bottomOverflow
+            layer.rail -> railTop
+            else -> -topOverflow
         }
-
-        for (layer in product.layers.sortedBy { it.front }) {
-            val isBottom = layer.anchor == ANCHOR_BOTTOM
-            var heightRatio by remember(product.sku, layer.id) { mutableFloatStateOf(DEFAULT_HEIGHT_RATIO) }
-            val y = when {
-                isBottom -> bottomOverflow
-                layer.rail -> railTop
-                else -> -topOverflow
-            }
-            AsyncImage(
-                model = ProfileCollectibles.frameAssetUrl(product.sku, layer.id),
-                contentDescription = null,
-                modifier = Modifier
-                    .requiredWidth(declaredWidth)
-                    .requiredHeight(declaredWidth * heightRatio)
-                    .align(if (isBottom) Alignment.BottomCenter else Alignment.TopCenter)
-                    .offset(y = y),
-                contentScale = ContentScale.Fit,
-                showPlaceholder = false,
-                onState = { state ->
-                    if (state is ImageLoadState.Error) {
-                        println("[Frame] layer ${layer.id} of ${product.sku} failed: ${state.message}")
-                    }
-                },
-                onSize = { width, height ->
-                    if (width > 0 && height > 0) {
-                        heightRatio = height.toFloat() / width
-                    }
+        AsyncImage(
+            model = ProfileCollectibles.frameAssetUrl(product.sku, layer.id),
+            contentDescription = null,
+            modifier = Modifier
+                .requiredWidth(declaredWidth)
+                .requiredHeight(declaredWidth * heightRatio)
+                .align(if (isBottom) Alignment.BottomCenter else Alignment.TopCenter)
+                .offset(y = y),
+            contentScale = ContentScale.Fit,
+            showPlaceholder = false,
+            onState = { state ->
+                if (state is ImageLoadState.Error) {
+                    println("[Frame] layer ${layer.id} of ${product.sku} failed: ${state.message}")
                 }
-            )
-        }
+            },
+            onSize = { width, height ->
+                if (width > 0 && height > 0) {
+                    heightRatio = height.toFloat() / width
+                }
+            }
+        )
     }
 }

@@ -57,7 +57,6 @@ actual fun rememberPlatformColorScheme(
 
     val view = LocalView.current
     val navigationStore: me.lampu.lampcord.shared.state.NavigationStore = org.koin.compose.koinInject()
-    val isOverlapping = me.lampu.lampcord.shared.settings.Settings.shared.panelType == me.lampu.lampcord.shared.settings.PanelType.OVERLAPPING
 
     if (!view.isInEditMode) {
         SideEffect {
@@ -66,13 +65,14 @@ actual fun rememberPlatformColorScheme(
                 val window = activity.window
                 val isAppearanceLight = !isDark
                 
-                val chatCentered = !navigationStore.isSettingsVisible &&
-                    !navigationStore.isChannelsAndRolesVisible
+                val inChat = !navigationStore.isSettingsVisible &&
+                    !navigationStore.isChannelsAndRolesVisible &&
+                    navigationStore.selectedChannel != null
 
                 val statusBarColor = when {
                     navigationStore.isSettingsVisible -> scheme.surface
                     navigationStore.isChannelsAndRolesVisible -> scheme.surfaceContainerHigh
-                    chatCentered && !isOverlapping -> scheme.surfaceContainer
+                    inChat -> scheme.surfaceContainer
                     else -> scheme.background
                 }
                 

@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.rememberWindowState
+import dev.nucleusframework.application.LocalNucleusWindow
 import dev.nucleusframework.application.Window
 import dev.nucleusframework.application.nucleusApplication
 import dev.nucleusframework.composenativetray.tray.api.Tray
@@ -31,6 +32,7 @@ import dev.nucleusframework.updater.UpdateResult
 import dev.nucleusframework.updater.provider.GitHubProvider
 import me.lampu.lampcord.shared.di.appModule
 import me.lampu.lampcord.shared.rpc.DesktopRPCServer
+import me.lampu.lampcord.shared.state.AppVisibilityStore
 import me.lampu.lampcord.shared.state.SessionManager
 import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.settings.Settings
@@ -43,8 +45,6 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 import me.lampu.lampcord.shared.utils.getPlatformName
 import me.lampu.lampcord.shared.utils.reloadTrigger
-import me.lampu.lampcord.ui.WaylandDensityProvider
-import me.lampu.lampcord.utils.WaylandScale
 import org.koin.compose.koinInject
 import org.koin.core.context.GlobalContext.get
 import org.koin.core.context.GlobalContext.getOrNull
@@ -54,8 +54,6 @@ import org.koin.core.context.stopKoin
 @OptIn(FlowPreview::class)
 fun main() {
     Logging.debugEnabled = Settings.shared.verboseLogging
-
-    WaylandScale.detectAndApply()
 
     fun initApp() {
         runCatching { getOrNull()?.getOrNull<SessionManager>()?.shutdown() }
@@ -205,6 +203,10 @@ fun main() {
                 state = windowState,
                 undecorated = isHyprland,
             ) {
+                val nucleusWindow = LocalNucleusWindow.current
+                LaunchedEffect(nucleusWindow) {
+                    nucleusWindow.focusFlow.collect { AppVisibilityStore.setVisible(it) }
+                }
                 MaterialTheme(
                     colorScheme = windowColorScheme,
                     typography = windowTypography,
@@ -214,9 +216,7 @@ fun main() {
                         EnergyManager.keepAwake()
                         onDispose { EnergyManager.releaseAwake() }
                     }
-                    WaylandDensityProvider {
-                        App()
-                    }
+                    App()
                 }
             }
         }

@@ -188,11 +188,7 @@ fun UserProfileDialog(
             (maxWidth - 24.dp).coerceAtLeast(200.dp)
         )
         val availableCardHeight = (maxHeight - 24.dp).coerceAtLeast(180.dp)
-        val frameInsets = rememberFrameInsets(profile, profileStore, availableCardWidth)
-        val frameInsetXPx = with(density) { frameInsets.horizontal.toPx() }
-        val frameInsetBottomPx = with(density) { frameInsets.bottom.toPx() }
         val cardWidthPx = with(density) { availableCardWidth.toPx() }
-        val outerWidthPx = cardWidthPx + frameInsetXPx * 2
 
         var cardHeightPx by remember(profile?.user?.id, isExpanded) {
             mutableIntStateOf(with(density) { 420.dp.roundToPx() })
@@ -204,9 +200,9 @@ fun UserProfileDialog(
 
         val placementOffset = if (isCentered) {
             IntOffset(
-                x = ((maxWidthPx - outerWidthPx) / 2f).roundToInt()
+                x = ((maxWidthPx - cardWidthPx) / 2f).roundToInt()
                     .coerceAtLeast(marginPx.roundToInt()),
-                y = ((maxHeightPx - cardHeightPx - frameInsetBottomPx) / 2f).roundToInt()
+                y = ((maxHeightPx - cardHeightPx) / 2f).roundToInt()
                     .coerceAtLeast(marginPx.roundToInt())
             )
         } else {
@@ -215,10 +211,10 @@ fun UserProfileDialog(
             } else {
                 anchor.x - cardWidthPx - with(density) { 20.dp.toPx() }
             }
-            val maxX = (maxWidthPx - outerWidthPx - marginPx).coerceAtLeast(marginPx)
-            val x = (preferredX - frameInsetXPx).coerceIn(marginPx, maxX)
+            val maxX = (maxWidthPx - cardWidthPx - marginPx).coerceAtLeast(marginPx)
+            val x = preferredX.coerceIn(marginPx, maxX)
             val preferredY = anchor.y - with(density) { 80.dp.toPx() }
-            val maxY = (maxHeightPx - cardHeightPx - frameInsetBottomPx - marginPx)
+            val maxY = (maxHeightPx - cardHeightPx - marginPx)
                 .coerceAtLeast(marginPx)
             IntOffset(x.roundToInt(), preferredY.roundToInt().coerceIn(marginPx.roundToInt(), maxY.roundToInt()))
         }
@@ -275,11 +271,6 @@ fun UserProfileDialog(
                     onExpand = { profileStore.isProfileExpanded = true },
                     onDismiss = onDismiss,
                     modifier = Modifier
-                        .padding(
-                            start = frameInsets.horizontal,
-                            end = frameInsets.horizontal,
-                            bottom = frameInsets.bottom
-                        )
                         .then(
                             if (isExpanded) {
                                 Modifier.width(availableCardWidth).heightIn(max = minOf(800.dp, availableCardHeight))
@@ -317,6 +308,8 @@ fun ProfileCard(
     bannerContentScale: ContentScale = ContentScale.Crop,
     showBoardTab: Boolean = false,
     showFrameOverlay: Boolean = true,
+    showFrameArt: Boolean = true,
+    showBottomFrame: Boolean = true,
     userStore: UserStore = koinInject(),
     clientProfileStore: ClientProfileStore = koinInject(),
     settingsStore: me.lampu.lampcord.shared.state.SettingsStore = koinInject(),
@@ -344,8 +337,8 @@ fun ProfileCard(
         val frameSku = remember(profile) {
             ProfileCollectibles.frameSku(profile.user_profile, profile.guild_member_profile)
         }
-        val effectProduct = effectSku?.let { profileStore.getEffect(it) }
-        val frameProduct = frameSku?.let { profileStore.getFrame(it) }
+        val effectProduct = if (showFrameOverlay) effectSku?.let { profileStore.getEffect(it) } else null
+        val frameProduct = if (showFrameArt) frameSku?.let { profileStore.getFrame(it) } else null
 
         Column(
             modifier = Modifier
@@ -444,22 +437,21 @@ fun ProfileCard(
             }
         }
 
-        if (showFrameOverlay) {
-            if (effectProduct != null) {
-                ProfileEffectOverlay(
-                    product = effectProduct,
-                    modifier = Modifier.matchParentSize(),
-                    animate = !Settings.shared.reduceMotion
-                )
-            }
+        if (showFrameOverlay && effectProduct != null) {
+            ProfileEffectOverlay(
+                product = effectProduct,
+                modifier = Modifier.matchParentSize(),
+                animate = !Settings.shared.reduceMotion
+            )
+        }
 
-            if (frameProduct != null) {
-                ProfileFrameOverlay(
-                    product = frameProduct,
-                    modifier = Modifier.matchParentSize(),
-                    railTop = railTop
-                )
-            }
+        if (showFrameArt && frameProduct != null) {
+            ProfileFrameOverlay(
+                product = frameProduct,
+                modifier = Modifier.matchParentSize(),
+                railTop = railTop,
+                showBottom = showBottomFrame
+            )
         }
     }
 }

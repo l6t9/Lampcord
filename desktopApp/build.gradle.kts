@@ -71,25 +71,6 @@ kotlin {
 
 tasks.withType<org.gradle.api.tasks.JavaExec>().configureEach {
     workingDir = rootProject.projectDir
-    environment("MALLOC_ARENA_MAX", "4")
-    if (platform == "linux") {
-        environment("MALLOC_MMAP_THRESHOLD_", "131072")
-        environment("LC_NUMERIC", "C")
-        environment("_JAVA_AWT_WM_NONREPARENTING", "1")
-        environment("SKIKO_RENDER_API", "OPENGL")
-
-        if (System.getenv("XDG_SESSION_TYPE") == "wayland") {
-            if (System.getenv("GDK_BACKEND") == null) {
-                environment("GDK_BACKEND", "wayland")
-            }
-            if (System.getenv("SKIKO_WAYLAND") == null) {
-                environment("SKIKO_WAYLAND", "1")
-            }
-        }
-
-        environment("WEBKIT_DISABLE_DMABUF_RENDERER", "1")
-        environment("WEBKIT_DISABLE_COMPOSITING_MODE", "1")
-    }
 }
 
 val windowsIconFile = layout.buildDirectory.file("generated/icons/logo.ico")
@@ -176,7 +157,6 @@ nucleus.application {
         javaHome = it
     }
     jvmArgs += listOf(
-        "-Dsun.java2d.uiScale.enabled=true",
         "--enable-native-access=ALL-UNNAMED",
         "-Xmx1g",
         "-Dskiko.gpu.resourceCacheLimit=64m"

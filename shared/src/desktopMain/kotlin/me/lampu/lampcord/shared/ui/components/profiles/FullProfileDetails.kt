@@ -1,5 +1,6 @@
 package me.lampu.lampcord.shared.ui.components.profiles
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -19,11 +21,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryTabRow
-import androidx.compose.material3.Tab
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -39,6 +39,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.api.ProfileBoard
 import me.lampu.lampcord.shared.api.ProfileBoardApi
@@ -61,7 +63,6 @@ private val TAB_MUTUAL_SERVERS = 3
 @Composable
 fun FullProfileDetails(
     profile: UserProfile,
-    theme: ProfileTheme,
     onOpenProfile: (String) -> Unit,
     onOpenGuild: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -93,7 +94,7 @@ fun FullProfileDetails(
         (profile.activities.ifEmpty { presence?.activities ?: emptyList() }).filter { it.type != 4 }
     }
     val isOwnProfile = user.id == currentUser?.id
-    val textColor = theme.customTextColor ?: MaterialTheme.colorScheme.onSurface
+    val textColor = MaterialTheme.colorScheme.onSurface
     val listState = remember(selectedTab) { LazyListState() }
 
     val visibleTabs = buildList {
@@ -108,35 +109,17 @@ fun FullProfileDetails(
     Column(
         modifier = modifier
             .clip(topShape)
-            .background(theme.backgroundBrush)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
     ) {
         CompositionLocalProvider(LocalContentColor provides textColor) {
-            PrimaryTabRow(
-                selectedTabIndex = visibleTabs.indexOf(selectedTab).coerceAtLeast(0),
-                containerColor = Color.Transparent,
-                contentColor = textColor,
-                divider = {}
-            ) {
-                visibleTabs.forEach { tab ->
-                    Tab(
-                        selected = selectedTab == tab,
-                        onClick = { selectedTab = tab },
-                        text = {
-                            Text(
-                                when (tab) {
-                                    TAB_ACTIVITY -> "Activity"
-                                    TAB_BOARD -> "Board"
-                                    TAB_MUTUAL_FRIENDS -> "$friendsCount Mutual\nFriends"
-                                    else -> "$serversCount Mutual\nServers"
-                                },
-                                color = textColor
-                            )
-                        }
-                    )
-                }
-            }
-
-            HorizontalDivider(color = textColor.copy(alpha = 0.15f))
+            ProfileTabBar(
+                tabs = visibleTabs,
+                selectedTab = selectedTab,
+                friendsCount = friendsCount,
+                serversCount = serversCount,
+                textColor = textColor,
+                onSelected = { selectedTab = it }
+            )
 
             Box(modifier = Modifier.weight(1f)) {
                 when (selectedTab) {
@@ -147,7 +130,7 @@ fun FullProfileDetails(
                     )
                     TAB_BOARD -> ProfileBoardContent(
                         profile = profile,
-                        modifier = Modifier.fillMaxSize().padding(16.dp),
+                        modifier = Modifier.fillMaxSize().padding(20.dp),
                         loadedBoard = boardData
                     )
                     TAB_MUTUAL_FRIENDS -> MutualFriendsTab(
@@ -178,6 +161,71 @@ fun FullProfileDetails(
 }
 
 @Composable
+private fun ProfileTabBar(
+    tabs: List<Int>,
+    selectedTab: Int,
+    friendsCount: Int,
+    serversCount: Int,
+    textColor: Color,
+    onSelected: (Int) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        tabs.forEachIndexed { index, tab ->
+            val selected = selectedTab == tab
+            val container by animateColorAsState(
+                targetValue = if (selected) {
+                    MaterialTheme.colorScheme.secondaryContainer
+                } else {
+                    MaterialTheme.colorScheme.surfaceContainerHigh
+                },
+                label = "profileTabContainer"
+            )
+            Surface(
+                onClick = { onSelected(tab) },
+                shape = connectedProfileTabShape(index == 0, index == tabs.lastIndex),
+                color = container,
+                contentColor = if (selected) {
+                    MaterialTheme.colorScheme.onSecondaryContainer
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+                modifier = Modifier
+                    .weight(1f)
+                    .height(64.dp)
+            ) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = when (tab) {
+                            TAB_ACTIVITY -> "Activity"
+                            TAB_BOARD -> "Board"
+                            TAB_MUTUAL_FRIENDS -> "$friendsCount Mutual\nFriends"
+                            else -> "$serversCount Mutual\nServers"
+                        },
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                        textAlign = TextAlign.Center,
+                        maxLines = 2,
+                        modifier = Modifier.padding(horizontal = 10.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun connectedProfileTabShape(first: Boolean, last: Boolean) = RoundedCornerShape(
+    topStart = if (first) 20.dp else 6.dp,
+    bottomStart = if (first) 20.dp else 6.dp,
+    topEnd = if (last) 20.dp else 6.dp,
+    bottomEnd = if (last) 20.dp else 6.dp
+)
+
+@Composable
 private fun ActivityTab(
     activities: List<Activity>,
     listState: LazyListState,
@@ -190,8 +238,8 @@ private fun ActivityTab(
     LazyColumn(
         state = listState,
         modifier = modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        contentPadding = PaddingValues(20.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         items(activities) { activity ->
             UserActivity(activity = activity, compact = false)

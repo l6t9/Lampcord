@@ -4,13 +4,16 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -23,18 +26,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
-import me.lampu.lampcord.shared.state.SettingsStore
-import me.lampu.lampcord.shared.ui.components.settings.Material3SettingsGroup
-import me.lampu.lampcord.shared.ui.components.settings.switchSettingsItem
-import me.lampu.lampcord.shared.update.APP_VERSION
-import me.lampu.lampcord.shared.update.InstallResult
-import me.lampu.lampcord.shared.update.NIGHTLY_BUILD
-import me.lampu.lampcord.shared.update.UpdateChannel
-import me.lampu.lampcord.shared.update.UpdateManager
-import me.lampu.lampcord.shared.update.UpdateState
-import me.lampu.lampcord.shared.update.installUpdate
 import me.lampu.lampcord.shared.generated.resources.Res
 import me.lampu.lampcord.shared.generated.resources.dismiss
 import me.lampu.lampcord.shared.generated.resources.download
@@ -56,6 +50,17 @@ import me.lampu.lampcord.shared.generated.resources.lampcord_settings_version_fm
 import me.lampu.lampcord.shared.generated.resources.lampcord_settings_view_changelog
 import me.lampu.lampcord.shared.generated.resources.try_again
 import me.lampu.lampcord.shared.generated.resources.whats_new
+import me.lampu.lampcord.shared.state.SettingsStore
+import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
+import me.lampu.lampcord.shared.ui.components.settings.Material3SettingsGroup
+import me.lampu.lampcord.shared.ui.components.settings.switchSettingsItem
+import me.lampu.lampcord.shared.update.APP_VERSION
+import me.lampu.lampcord.shared.update.InstallResult
+import me.lampu.lampcord.shared.update.NIGHTLY_BUILD
+import me.lampu.lampcord.shared.update.UpdateChannel
+import me.lampu.lampcord.shared.update.UpdateManager
+import me.lampu.lampcord.shared.update.UpdateState
+import me.lampu.lampcord.shared.update.installUpdate
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 
@@ -77,11 +82,35 @@ fun UpdatesContent(
     }
 
     Column(
-        modifier = modifier
-            .padding(16.dp),
+        modifier = modifier.padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text(stringResource(Res.string.lampcord_settings_version_fmt, APP_VERSION), style = MaterialTheme.typography.bodyMedium)
+        UpdateOverviewCard(
+            version = APP_VERSION,
+            channel = channel,
+            state = state,
+            installNote = installNote,
+            onCheck = { scope.launch { updateManager.check(channel, force = true) } },
+            onChangelog = { showChangelog = true },
+            onDownload = { scope.launch { updateManager.download() } },
+            onInstall = {
+                val ready = state as? UpdateState.ReadyToInstall
+                val target = me.lampu.lampcord.shared.update.currentUpdateTarget()
+                if (ready != null && target != null) {
+                    val result = installUpdate(
+                        target = target,
+                        downloadedFile = ready.file,
+                        version = ready.version,
+                    )
+                    installNote = when (result) {
+                        is InstallResult.Unsupported -> result.reason
+                        is InstallResult.Failed -> result.reason
+                        InstallResult.Started -> null
+                    }
+                }
+            },
+            onDismiss = { updateManager.reset() }
+        )
 
         Material3SettingsGroup(
             items = listOf(
@@ -102,93 +131,6 @@ fun UpdatesContent(
                 )
             )
         )
-
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(
-                onClick = { scope.launch { updateManager.check(channel, force = true) } },
-            ) { Text(stringResource(Res.string.lampcord_settings_check_now)) }
-            OutlinedButton(
-                onClick = { showChangelog = true },
-                enabled = (state as? UpdateState.Available) != null,
-            ) { Text(stringResource(Res.string.lampcord_settings_view_changelog)) }
-        }
-
-        Text(
-            if (channel == UpdateChannel.NIGHTLY) stringResource(Res.string.lampcord_settings_channel_nightly) else stringResource(Res.string.lampcord_settings_channel_stable),
-            style = MaterialTheme.typography.bodyMedium,
-        )
-
-        if (channel == UpdateChannel.NIGHTLY) {
-            Text(
-                stringResource(Res.string.lampcord_settings_nightly_desc),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-
-        when (val current = state) {
-            is UpdateState.Checking -> StatusRow(stringResource(Res.string.lampcord_settings_checking), busy = true)
-            is UpdateState.UpToDate -> StatusRow(stringResource(Res.string.lampcord_settings_up_to_date))
-            is UpdateState.Idle -> Button(
-                onClick = { scope.launch { updateManager.check(channel, force = true) } },
-            ) { Text(stringResource(Res.string.lampcord_settings_check_now)) }
-
-            is UpdateState.Available -> Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    stringResource(Res.string.lampcord_settings_available_fmt, current.version),
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = { showChangelog = true }) { Text(stringResource(Res.string.whats_new)) }
-                    Button(onClick = { scope.launch { updateManager.download() } }) {
-                        Text(stringResource(Res.string.download))
-                    }
-                }
-                TextButton(onClick = { updateManager.reset() }) { Text(stringResource(Res.string.dismiss)) }
-            }
-
-            is UpdateState.Downloading -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(stringResource(Res.string.lampcord_settings_downloading_fmt, current.version))
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-            }
-
-            is UpdateState.ReadyToInstall -> Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(stringResource(Res.string.lampcord_settings_ready_fmt, current.version))
-                installNote?.let {
-                    Text(
-                        it,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Button(
-                    onClick = {
-                        val result = installUpdate(
-                            target = me.lampu.lampcord.shared.update.currentUpdateTarget()
-                                ?: return@Button,
-                            downloadedFile = current.file,
-                            version = current.version,
-                        )
-                        installNote = when (result) {
-                            is InstallResult.Unsupported -> result.reason
-                            is InstallResult.Failed -> result.reason
-                            InstallResult.Started -> null
-                        }
-                    }
-                ) { Text(stringResource(Res.string.lampcord_settings_install_restart)) }
-            }
-
-            is UpdateState.Failed -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    current.reason,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.error,
-                )
-                OutlinedButton(
-                    onClick = { scope.launch { updateManager.check(channel, force = true) } },
-                ) { Text(stringResource(Res.string.try_again)) }
-            }
-        }
     }
 
     if (showChangelog) {
@@ -202,12 +144,189 @@ fun UpdatesContent(
 }
 
 @Composable
-private fun StatusRow(text: String, busy: Boolean = false) {
+private fun UpdateOverviewCard(
+    version: String,
+    channel: UpdateChannel,
+    state: UpdateState,
+    installNote: String?,
+    onCheck: () -> Unit,
+    onChangelog: () -> Unit,
+    onDownload: () -> Unit,
+    onInstall: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val nightly = channel == UpdateChannel.NIGHTLY
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(28.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Text(
+                        text = "Lampcord updates",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = stringResource(Res.string.lampcord_settings_version_fmt, version),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Surface(
+                    shape = CircleShape,
+                    color = if (nightly) {
+                        MaterialTheme.colorScheme.tertiaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.secondaryContainer
+                    },
+                    contentColor = if (nightly) {
+                        MaterialTheme.colorScheme.onTertiaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.onSecondaryContainer
+                    }
+                ) {
+                    Text(
+                        text = stringResource(
+                            if (nightly) {
+                                Res.string.lampcord_settings_channel_nightly
+                            } else {
+                                Res.string.lampcord_settings_channel_stable
+                            }
+                        ),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    )
+                }
+            }
+
+            if (nightly) {
+                Text(
+                    text = stringResource(Res.string.lampcord_settings_nightly_desc),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            when (val current = state) {
+                is UpdateState.Checking -> BusyStatus(
+                    title = stringResource(Res.string.lampcord_settings_checking),
+                    subtitle = "Looking for the latest release."
+                )
+
+                is UpdateState.UpToDate -> {
+                    Text(
+                        text = stringResource(Res.string.lampcord_settings_up_to_date),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    OutlinedButton(
+                        onClick = onCheck,
+                        shape = MaterialTheme.shapes.large
+                    ) { Text(stringResource(Res.string.lampcord_settings_check_now)) }
+                }
+
+                is UpdateState.Idle -> {
+                    Text(
+                        text = "Check for a new release when you're ready.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Button(
+                        onClick = onCheck,
+                        shape = MaterialTheme.shapes.large
+                    ) { Text(stringResource(Res.string.lampcord_settings_check_now)) }
+                }
+
+                is UpdateState.Available -> {
+                    Text(
+                        text = stringResource(Res.string.lampcord_settings_available_fmt, current.version),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = onDownload,
+                            shape = MaterialTheme.shapes.large
+                        ) { Text(stringResource(Res.string.download)) }
+                        FilledTonalButton(
+                            onClick = onChangelog,
+                            shape = MaterialTheme.shapes.large
+                        ) { Text(stringResource(Res.string.whats_new)) }
+                    }
+                    TextButton(onClick = onDismiss) { Text(stringResource(Res.string.dismiss)) }
+                }
+
+                is UpdateState.Downloading -> {
+                    BusyStatus(
+                        title = stringResource(Res.string.lampcord_settings_downloading_fmt, current.version),
+                        subtitle = "This can take a moment."
+                    )
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                }
+
+                is UpdateState.ReadyToInstall -> {
+                    Text(
+                        text = stringResource(Res.string.lampcord_settings_ready_fmt, current.version),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    installNote?.let {
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                    Button(
+                        onClick = onInstall,
+                        shape = MaterialTheme.shapes.large
+                    ) { Text(stringResource(Res.string.lampcord_settings_install_restart)) }
+                }
+
+                is UpdateState.Failed -> {
+                    Text(
+                        text = current.reason,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    OutlinedButton(
+                        onClick = onCheck,
+                        shape = MaterialTheme.shapes.large
+                    ) { Text(stringResource(Res.string.try_again)) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BusyStatus(title: String, subtitle: String) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        if (busy) CircularProgressIndicator(modifier = Modifier.heightIn(max = 18.dp))
-        Text(text, style = MaterialTheme.typography.bodyMedium)
+        ContainedLoadingIndicator(modifier = Modifier.size(40.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }

@@ -1,27 +1,12 @@
 package me.lampu.lampcord.shared.state
 
-import java.awt.Window
-import java.util.Timer
-import java.util.TimerTask
-
-private var registered = false
-
+/**
+ * Desktop window visibility is driven by the Nucleus window focus flow in the desktop
+ * entry point.
+ *
+ * Do not use AWT here: touching `java.awt.Window` at startup loads `libawt_xawt`, which
+ * puts `GDK_BACKEND=x11` into the process environment before Tao opens GTK. That forces
+ * the whole app onto XWayland, where a 2x monitor only gets an upscaled 1x buffer.
+ */
 internal actual fun registerVisibilityListener(onVisible: () -> Unit, onHidden: () -> Unit) {
-    if (registered) return
-    registered = true
-
-    var last = false
-
-    fun poll() {
-        val focused = Window.getWindows().any { it.isShowing && it.isFocused }
-        if (focused == last) return
-        last = focused
-        if (focused) onVisible() else onHidden()
-    }
-
-    Timer("lampcord-visibility", true).scheduleAtFixedRate(object : TimerTask() {
-        override fun run() {
-            poll()
-        }
-    }, 0L, 500L)
 }
