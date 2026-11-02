@@ -34,7 +34,9 @@ import kotlin.math.roundToInt
 fun ExpandableInputPanel(
     collapsedHeight: Dp,
     expandedHeight: Dp,
+    appearFraction: Float,
     onDismissRequest: () -> Unit,
+    onExpandedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
@@ -42,14 +44,16 @@ fun ExpandableInputPanel(
     val collapsedPx = with(density) { collapsedHeight.toPx() }
     val expandedPx = with(density) { expandedHeight.toPx() }
     val minPx = collapsedPx * 0.45f
+    val appear = appearFraction.coerceIn(0f, 1f)
 
     var expanded by remember { mutableStateOf(false) }
     var dragOffset by remember { mutableFloatStateOf(0f) }
     var dragging by remember { mutableStateOf(false) }
 
     val basePx = if (expanded) expandedPx else collapsedPx
+    val targetPx = (basePx + dragOffset).coerceIn(minPx, expandedPx) * appear
     val heightPx by animateFloatAsState(
-        targetValue = (basePx + dragOffset).coerceIn(minPx, expandedPx),
+        targetValue = targetPx,
         animationSpec = if (dragging) snap() else tween(220),
         label = "inputPanelHeight"
     )
@@ -61,7 +65,7 @@ fun ExpandableInputPanel(
                 val placeable = measurable.measure(
                     constraints.copy(minHeight = 0, maxHeight = Constraints.Infinity)
                 )
-                val reportedHeight = collapsedPx.roundToInt().coerceIn(0, constraints.maxHeight)
+                val reportedHeight = (collapsedPx * appear).roundToInt().coerceIn(0, constraints.maxHeight)
                 layout(placeable.width, reportedHeight) {
                     placeable.place(0, reportedHeight - placeable.height)
                 }
@@ -91,9 +95,17 @@ fun ExpandableInputPanel(
                                 dragging = false
                                 dragOffset = 0f
                                 if (total < collapsedPx * 0.7f) {
+                                    if (expanded) {
+                                        expanded = false
+                                        onExpandedChange(false)
+                                    }
                                     onDismissRequest()
                                 } else {
-                                    expanded = total > (collapsedPx + expandedPx) / 2f
+                                    val nowExpanded = total > (collapsedPx + expandedPx) / 2f
+                                    if (nowExpanded != expanded) {
+                                        expanded = nowExpanded
+                                        onExpandedChange(nowExpanded)
+                                    }
                                 }
                             },
                             onDragCancel = {

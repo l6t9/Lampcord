@@ -37,6 +37,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.AnnotatedString
@@ -74,6 +75,7 @@ import me.lampu.lampcord.shared.utils.FilePicker
 import me.lampu.lampcord.shared.utils.getClipboardFiles
 import me.lampu.lampcord.shared.utils.showToast
 import me.lampu.lampcord.shared.utils.getPlatformName
+import kotlinx.coroutines.delay
 import org.koin.compose.koinInject
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import me.lampu.lampcord.shared.ui.kit.clickableCursor
@@ -153,6 +155,7 @@ fun ChatInputBar(
     val mediaPickerState = remember { MediaPickerState() }
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
     val imeHeight = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
     var lastImeHeight by remember { mutableStateOf(360.dp) }
     LaunchedEffect(imeHeight) {
@@ -362,11 +365,29 @@ fun ChatInputBar(
         val showMediaPanel = isMobileView && navigationStore.isMediaPickerVisible
         val showEmojiPanel = navigationStore.isEmojiPickerVisible && canSend && !isDesktopTarget
         val showPickerPanel = showMediaPanel || showEmojiPanel
-        val pickerSpace by animateDpAsState(
-            targetValue = if (showPickerPanel) keyboardHeight else 0.dp,
+        var panelMounted by remember { mutableStateOf(false) }
+        val lastPickerIsMedia = remember { mutableStateOf(false) }
+        LaunchedEffect(showMediaPanel, showEmojiPanel) {
+            if (showMediaPanel) lastPickerIsMedia.value = true
+            else if (showEmojiPanel) lastPickerIsMedia.value = false
+        }
+        val pickerAppear by animateFloatAsState(
+            targetValue = if (showPickerPanel) 1f else 0f,
             animationSpec = if (reduceMotion) snap() else tween(220),
-            label = "pickerSpace"
+            label = "pickerAppear"
         )
+        LaunchedEffect(showPickerPanel) {
+            if (showPickerPanel) {
+                panelMounted = true
+            } else {
+                delay(260)
+                panelMounted = false
+            }
+        }
+        LaunchedEffect(showPickerPanel) {
+            if (!showPickerPanel) navigationStore.isChatPickerExpanded = false
+        }
+        val pickerSpace = (keyboardHeight * pickerAppear - imeHeight).coerceAtLeast(0.dp)
 
         Column(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.fillMaxWidth()) {
@@ -607,6 +628,7 @@ fun ChatInputBar(
                                             navigationStore.isMediaPickerVisible = opening
                                             if (opening) {
                                                 navigationStore.isEmojiPickerVisible = false
+                                                focusManager.clearFocus()
                                                 keyboardController?.hide()
                                             }
                                         } else {
@@ -940,6 +962,7 @@ if (it.selection.collapsed) {
                                                         navigationStore.isEmojiPickerVisible = true
                                                         navigationStore.isMediaPickerVisible = false
                                                         if (isMobileView) {
+                                                            focusManager.clearFocus()
                                                             keyboardController?.hide()
                                                         }
                                                     }
@@ -1024,7 +1047,7 @@ if (it.selection.collapsed) {
                             }
                         }
 
-                        if (showPickerPanel) {
+                        if (pickerSpace > 0.dp) {
                             Spacer(Modifier.height(pickerSpace))
                         }
                     }
@@ -1032,23 +1055,25 @@ if (it.selection.collapsed) {
             }
         }
 
-        if (showPickerPanel) {
-            PlatformBackHandler(enabled = true) {
+        if (panelMounted) {
+            PlatformBackHandler(enabled = showPickerPanel) {
                 navigationStore.isMediaPickerVisible = false
                 navigationStore.isEmojiPickerVisible = false
             }
             ExpandableInputPanel(
                 collapsedHeight = keyboardHeight,
                 expandedHeight = expandedPanelHeight,
+                appearFraction = pickerAppear,
                 onDismissRequest = {
                     navigationStore.isEmojiPickerVisible = false
                     navigationStore.isMediaPickerVisible = false
                 },
+                onExpandedChange = { navigationStore.isChatPickerExpanded = it },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding()
             ) {
-                if (showMediaPanel) {
+                if (lastPickerIsMedia.value) {
                     InlineMediaPicker(
                         onDismiss = { navigationStore.isMediaPickerVisible = false },
                         state = mediaPickerState

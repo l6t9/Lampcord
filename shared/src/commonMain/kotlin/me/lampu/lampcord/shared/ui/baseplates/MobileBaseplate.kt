@@ -15,9 +15,11 @@ import org.jetbrains.compose.resources.stringResource
 import me.lampu.lampcord.shared.api.CdnUrls
 import androidx.compose.animation.*
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -1323,6 +1325,24 @@ private fun MainBaseplateContent(
                                                 ForumPostList()
                                             } else {
                                                 ChatArea(modifier = Modifier.fillMaxSize())
+                                            }
+                                            val pickerScrimAlpha by animateFloatAsState(
+                                                targetValue = if (navigationStore.isChatPickerExpanded) 0.45f else 0f,
+                                                animationSpec = tween(150),
+                                                label = "pickerScrim"
+                                            )
+                                            if (pickerScrimAlpha > 0f) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .fillMaxSize()
+                                                        .background(Color.Black.copy(alpha = pickerScrimAlpha))
+                                                        .pointerInput(Unit) {
+                                                            detectTapGestures {
+                                                                navigationStore.isEmojiPickerVisible = false
+                                                                navigationStore.isMediaPickerVisible = false
+                                                            }
+                                                        }
+                                                )
                                             }
                                         }
                                         if (!(activeChannel.type == 15 && navigationStore.selectedThread == null)) {
