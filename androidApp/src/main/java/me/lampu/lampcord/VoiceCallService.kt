@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
+import android.net.wifi.WifiManager
 import androidx.compose.runtime.snapshotFlow
 import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.*
@@ -17,6 +18,7 @@ class VoiceCallService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val store get() = getKoin().get<VoiceStore>()
     private var wakeLock: PowerManager.WakeLock? = null
+    private var wifiLock: WifiManager.WifiLock? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -26,6 +28,11 @@ class VoiceCallService : Service() {
         )
         startForeground(NotificationIds.VOICE_SESSION, notification())
         wakeLock = getSystemService(PowerManager::class.java).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Lampcord:VoiceCall").also { it.acquire() }
+        @Suppress("DEPRECATION")
+        val wifiMode = if (Build.VERSION.SDK_INT >= 29) WifiManager.WIFI_MODE_FULL_LOW_LATENCY else WifiManager.WIFI_MODE_FULL_HIGH_PERF
+        wifiLock = getSystemService(WifiManager::class.java)
+            ?.createWifiLock(wifiMode, "Lampcord:VoiceWifi")
+            ?.also { it.setReferenceCounted(false); it.acquire() }
         scope.launch {
             snapshotFlow { Triple(store.activeChannel?.id, store.connection.phase, store.selfMuted) }.collect {
                 manager.notify(NotificationIds.VOICE_SESSION, notification())
@@ -73,6 +80,8 @@ class VoiceCallService : Service() {
         scope.cancel()
         wakeLock?.let { if (it.isHeld) it.release() }
         wakeLock = null
+        wifiLock?.let { if (it.isHeld) it.release() }
+        wifiLock = null
         super.onDestroy()
     }
 

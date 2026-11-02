@@ -1,6 +1,8 @@
 package me.lampu.lampcord.shared.gateway
 
 import io.ktor.client.HttpClient
+import io.ktor.client.plugins.HttpTimeoutConfig
+import io.ktor.client.plugins.timeout
 import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
 import io.ktor.client.plugins.websocket.webSocket
 import io.ktor.websocket.*
@@ -141,7 +143,14 @@ actual class VoiceGatewayManager actual constructor(private val client: HttpClie
                     if (!gatewayReady) throw VoiceFailure("Voice reconnection timed out. Rejoin the call.")
                 } else null
                 try {
-                    client.webSocket("wss://${endpoint.removeSuffix(":80")}/?v=8") {
+                    client.webSocket(
+                        urlString = "wss://${endpoint.removeSuffix(":80")}/?v=8",
+                        request = {
+                            timeout {
+                                socketTimeoutMillis = HttpTimeoutConfig.INFINITE_TIMEOUT_MS
+                            }
+                        }
+                    ) {
                         ws = this
                         var heartbeat: Job? = null
                         try {
