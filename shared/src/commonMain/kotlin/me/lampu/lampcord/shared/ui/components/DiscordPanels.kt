@@ -69,6 +69,11 @@ fun DiscordPanels(
     swipeEnabled: Boolean = true,
     swipeToStartEnabled: Boolean = swipeEnabled,
     swipeToEndEnabled: Boolean = swipeEnabled,
+    /// A gesture that started inside an interactive child (the message input) must not pan panels.
+    swipeBlocked: () -> Boolean = { false },
+    /// Called when a panel swipe begins. Return true when the gesture was used to dismiss the
+    /// keyboard or emoji panel, so it should not also move the panels.
+    onSwipeStart: () -> Boolean = { false },
     startPanel: @Composable BoxScope.() -> Unit,
     endPanel: @Composable BoxScope.() -> Unit,
     centerPanel: @Composable BoxScope.() -> Unit
@@ -134,6 +139,7 @@ fun DiscordPanels(
         val absProgress = abs(progress)
 
         val effectiveSwipeEnabled = swipeEnabled || swipeToStartEnabled || swipeToEndEnabled
+        var blockGesture by remember { mutableStateOf(false) }
 
         Box(
             modifier = Modifier
@@ -143,6 +149,7 @@ fun DiscordPanels(
                         Modifier.draggable(
                             orientation = Orientation.Horizontal,
                             state = rememberDraggableState { delta ->
+                                if (blockGesture || swipeBlocked()) return@rememberDraggableState
                                 val canDrag = when (state.currentValue) {
                                     DiscordPanelValue.Center -> {
                                         if (delta > 0f) swipeToStartEnabled
@@ -159,31 +166,48 @@ fun DiscordPanels(
                                     state.offset = (targetOffset + newOffset).coerceIn(minAllowed, maxAllowed) - targetOffset
                                 }
                             },
+                            onDragStarted = {
+                                blockGesture = false
+                                if (swipeBlocked()) {
+                                    blockGesture = true
+                                } else {
+                                    focusManager.clearFocus()
+                                    keyboardController?.hide()
+                                    if (onSwipeStart()) {
+                                        blockGesture = true
+                                    }
+                                }
+                            },
                             onDragStopped = { velocity ->
-                                val currentTotalOffset = targetOffset + state.offset
-                                val minFlingVelocity = with(density) { 400.dp.toPx() }
-                                val isFling = abs(velocity) > minFlingVelocity
-                                val isRightSwipe = velocity > 0f
+                                if (blockGesture) {
+                                    blockGesture = false
+                                    state.offset = 0f
+                                } else {
+                                    val currentTotalOffset = targetOffset + state.offset
+                                    val minFlingVelocity = with(density) { 400.dp.toPx() }
+                                    val isFling = abs(velocity) > minFlingVelocity
+                                    val isRightSwipe = velocity > 0f
 
-                                state.currentValue = when {
-                                    isFling -> {
-                                        if (isRightSwipe) {
-                                            when (state.currentValue) {
-                                                DiscordPanelValue.End -> DiscordPanelValue.Center
-                                                else -> if (swipeToStartEnabled) DiscordPanelValue.Start else DiscordPanelValue.Center
-                                            }
-                                        } else {
-                                            when (state.currentValue) {
-                                                DiscordPanelValue.Start -> DiscordPanelValue.Center
-                                                else -> if (swipeToEndEnabled) DiscordPanelValue.End else DiscordPanelValue.Center
+                                    state.currentValue = when {
+                                        isFling -> {
+                                            if (isRightSwipe) {
+                                                when (state.currentValue) {
+                                                    DiscordPanelValue.End -> DiscordPanelValue.Center
+                                                    else -> if (swipeToStartEnabled) DiscordPanelValue.Start else DiscordPanelValue.Center
+                                                }
+                                            } else {
+                                                when (state.currentValue) {
+                                                    DiscordPanelValue.Start -> DiscordPanelValue.Center
+                                                    else -> if (swipeToEndEnabled) DiscordPanelValue.End else DiscordPanelValue.Center
+                                                }
                                             }
                                         }
+                                        currentTotalOffset > startPanelWidthPx * 0.45f -> if (swipeToStartEnabled) DiscordPanelValue.Start else DiscordPanelValue.Center
+                                        currentTotalOffset < -endPanelWidthPx * 0.45f -> if (swipeToEndEnabled) DiscordPanelValue.End else DiscordPanelValue.Center
+                                        else -> DiscordPanelValue.Center
                                     }
-                                    currentTotalOffset > startPanelWidthPx * 0.45f -> if (swipeToStartEnabled) DiscordPanelValue.Start else DiscordPanelValue.Center
-                                    currentTotalOffset < -endPanelWidthPx * 0.45f -> if (swipeToEndEnabled) DiscordPanelValue.End else DiscordPanelValue.Center
-                                    else -> DiscordPanelValue.Center
+                                    state.offset = 0f
                                 }
-                                state.offset = 0f
                             }
                         )
                     } else Modifier

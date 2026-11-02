@@ -64,6 +64,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
@@ -192,6 +193,53 @@ fun MediaPicker(
                 onTabSelected = { selectedTab = it },
                 onSystemPickerClick = { showSystemFilePicker = true }
             )
+        }
+    }
+}
+
+@Composable
+fun InlineMediaPicker(
+    onDismiss: () -> Unit,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    collapsedHeight: Dp,
+    expandedHeight: Dp,
+    messageStore: MessageStore = koinInject()
+) {
+    var selectedTab by remember { mutableStateOf(0) }
+    var showSystemFilePicker by remember { mutableStateOf(false) }
+
+    FilePicker(
+        show = showSystemFilePicker,
+        onFileSelected = { files ->
+            messageStore.pendingFiles.addAll(files.map { PendingFile(it.first, it.second) })
+        },
+        onDismiss = { showSystemFilePicker = false }
+    )
+
+    ExpandableInputPanel(
+        expanded = expanded,
+        onExpandedChange = onExpandedChange,
+        collapsedHeight = collapsedHeight,
+        expandedHeight = expandedHeight
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            MediaPickerTabs(
+                selectedTab = selectedTab,
+                onTabSelected = { selectedTab = it },
+                onSystemPickerClick = { showSystemFilePicker = true },
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+            )
+            Box(modifier = Modifier.weight(1f)) {
+                MediaPickerContent(
+                    onDismiss = onDismiss,
+                    isMobile = true,
+                    selectedTab = selectedTab,
+                    onTabSelected = { selectedTab = it },
+                    onSystemPickerClick = { showSystemFilePicker = true },
+                    messageStore = messageStore
+                )
+            }
         }
     }
 }

@@ -12,6 +12,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -37,6 +38,7 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextRange
@@ -61,6 +63,8 @@ import me.lampu.lampcord.shared.model.Role
 import me.lampu.lampcord.shared.model.isUnicodeEmoji
 import me.lampu.lampcord.shared.api.CdnUrls
 import me.lampu.lampcord.shared.state.*
+import me.lampu.lampcord.shared.ui.components.chat.ExpandableInputPanel
+import me.lampu.lampcord.shared.ui.components.chat.InlineMediaPicker
 import me.lampu.lampcord.shared.ui.components.chat.MediaPicker
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.components.PlatformBackHandler
@@ -144,8 +148,22 @@ fun ChatInputBar(
 
     var isFocused by remember { mutableStateOf(false) }
     var showFilePicker by remember { mutableStateOf(false) }
+    var emojiPanelExpanded by remember { mutableStateOf(false) }
+    var mediaPanelExpanded by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
+    val imeHeight = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
+    val keyboardHeight = remember(imeHeight) { if (imeHeight > 0.dp) imeHeight else 360.dp }
+    val windowHeight = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() }
+    val expandedPanelHeight = if (windowHeight > 400.dp) {
+        (windowHeight * 0.72f).coerceIn(420.dp, 720.dp)
+    } else {
+        640.dp
+    }
+
+    DisposableEffect(Unit) {
+        onDispose { navigationStore.isChatInputFocused = false }
+    }
 
     val currentUser by userStore.currentUser.collectAsState()
     val member = remember(navigationStore.selectedGuild, currentUser) {
@@ -532,13 +550,7 @@ fun ChatInputBar(
                             }
                         }
 
-                        if (isMobileView) {
-                            if (navigationStore.isMediaPickerVisible) {
-                                MediaPicker(onDismiss = {
-                                    navigationStore.isMediaPickerVisible = false
-                                })
-                            }
-                        } else {
+                        if (!isMobileView) {
                             AnimatedVisibility(
                                 visible = navigationStore.isMediaPickerVisible,
                                 enter = if (reduceMotion) EnterTransition.None else expandVertically() + fadeIn(),
@@ -580,7 +592,13 @@ fun ChatInputBar(
                                     onClick = {
                                         if (getPlatformName() == "android") {
                                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            navigationStore.isMediaPickerVisible = !navigationStore.isMediaPickerVisible
+                                            val opening = !navigationStore.isMediaPickerVisible
+                                            navigationStore.isMediaPickerVisible = opening
+                                            if (opening) {
+                                                navigationStore.isEmojiPickerVisible = false
+                                                mediaPanelExpanded = false
+                                                keyboardController?.hide()
+                                            }
                                         } else {
                                             showFilePicker = true
                                         }
@@ -658,7 +676,24 @@ fun ChatInputBar(
                                     .heightIn(min = buttonSize)
                                     .animateContentSize(
                                         animationSpec = if (reduceMotion) snap() else spring(stiffness = Spring.StiffnessMediumLow)
-                                    ),
+                                    )
+                                    .pointerInput(Unit) {
+                                        awaitEachGesture {
+                                            awaitFirstDown(requireUnconsumed = false)
+                                            navigationStore.isChatInputGesture = true
+                                            if (navigationStore.isEmojiPickerVisible || navigationStore.isMediaPickerVisible) {
+                                                navigationStore.isEmojiPickerVisible = false
+                                                navigationStore.isMediaPickerVisible = false
+                                                focusRequester.requestFocus()
+                                                keyboardController?.show()
+                                            }
+                                            try {
+                                                waitForUpOrCancellation()
+                                            } finally {
+                                                navigationStore.isChatInputGesture = false
+                                            }
+                                        }
+                                    },
                                 shape = RoundedCornerShape(settings.chatboxBorderRadius.dp),
                                 color = MaterialTheme.colorScheme.surfaceContainerHigh
                             ) {
@@ -724,18 +759,11 @@ if (it.selection.collapsed) {
                                             modifier = Modifier
                                                 .weight(1f)
                                                 .padding(start = 12.dp, top = 8.dp, bottom = 8.dp)
-                                                .pointerInput(navigationStore.isEmojiPickerVisible) {
-                                                    if (!navigationStore.isEmojiPickerVisible) return@pointerInput
-                                                    awaitEachGesture {
-
-                                                        awaitFirstDown(requireUnconsumed = false)
-                                                        navigationStore.isEmojiPickerVisible = false
-                                                        focusRequester.requestFocus()
-                                                        keyboardController?.show()
-                                                    }
-                                                }
                                                 .focusRequester(focusRequester)
-                                                .onFocusChanged { isFocused = it.isFocused }
+                                                .onFocusChanged {
+                                                    isFocused = it.isFocused
+                                                    navigationStore.isChatInputFocused = it.isFocused
+                                                }
                                                 .onPreviewKeyEvent { event ->
                                                     if (!canSend) return@onPreviewKeyEvent false
                                                     if (event.type == KeyEventType.KeyDown) {
@@ -878,6 +906,8 @@ if (it.selection.collapsed) {
                                                         keyboardController?.show()
                                                     } else {
                                                         navigationStore.isEmojiPickerVisible = true
+                                                        navigationStore.isMediaPickerVisible = false
+                                                        emojiPanelExpanded = false
                                                         if (isMobileView) {
                                                             keyboardController?.hide()
                                                         }
@@ -963,6 +993,22 @@ if (it.selection.collapsed) {
                             }
                         }
 
+                        if (isMobileView) {
+                            AnimatedVisibility(
+                                visible = navigationStore.isMediaPickerVisible,
+                                enter = if (reduceMotion) EnterTransition.None else expandVertically() + fadeIn(),
+                                exit = if (reduceMotion) ExitTransition.None else shrinkVertically() + fadeOut()
+                            ) {
+                                InlineMediaPicker(
+                                    onDismiss = { navigationStore.isMediaPickerVisible = false },
+                                    expanded = mediaPanelExpanded,
+                                    onExpandedChange = { mediaPanelExpanded = it },
+                                    collapsedHeight = keyboardHeight,
+                                    expandedHeight = expandedPanelHeight
+                                )
+                            }
+                        }
+
                         AnimatedVisibility(
                             visible = navigationStore.isEmojiPickerVisible && canSend && !isDesktopTarget,
                             enter = if (reduceMotion) EnterTransition.None else expandVertically() + fadeIn(),
@@ -971,16 +1017,24 @@ if (it.selection.collapsed) {
                             PlatformBackHandler(enabled = navigationStore.isEmojiPickerVisible) {
                                 navigationStore.isEmojiPickerVisible = false
                             }
-                            EmojiPicker(
-                                modifier = Modifier.fillMaxWidth(),
-                                onKeyboardClick = {
-                                    navigationStore.isEmojiPickerVisible = false
-                                    focusRequester.requestFocus()
-                                },
-                                onEmojiSelected = { emoji ->
-                                    insertEmoji(emoji)
-                                }
-                            )
+                            ExpandableInputPanel(
+                                expanded = emojiPanelExpanded,
+                                onExpandedChange = { emojiPanelExpanded = it },
+                                collapsedHeight = keyboardHeight,
+                                expandedHeight = expandedPanelHeight
+                            ) {
+                                EmojiPicker(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    fillAvailableHeight = true,
+                                    onKeyboardClick = {
+                                        navigationStore.isEmojiPickerVisible = false
+                                        focusRequester.requestFocus()
+                                    },
+                                    onEmojiSelected = { emoji ->
+                                        insertEmoji(emoji)
+                                    }
+                                )
+                            }
                         }
                     }
                 }

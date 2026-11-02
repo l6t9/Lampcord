@@ -548,6 +548,15 @@ fun MobileBaseplate(
                 .statusBarsPadding(),
             swipeToStartEnabled = isChat && !navigationStore.isBubble,
             swipeToEndEnabled = isChat && !navigationStore.isBubble && !Settings.shared.swipeToReplyEnabled,
+            swipeBlocked = { navigationStore.isChatInputGesture },
+            onSwipeStart = {
+                val hadInputOpen = navigationStore.isChatInputFocused ||
+                    navigationStore.isEmojiPickerVisible ||
+                    navigationStore.isMediaPickerVisible
+                navigationStore.isEmojiPickerVisible = false
+                navigationStore.isMediaPickerVisible = false
+                hadInputOpen
+            },
             startPanel = {
                 if (isChat) {
                     val currentBottomPadding = (navBarHeight * navBarVisibleAmount).coerceAtLeast(0.dp)
