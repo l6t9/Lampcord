@@ -107,6 +107,8 @@ class NavigationStore(
     var isNotificationsSettingsVisible by mutableStateOf(false)
     var isMediaPickerVisible by mutableStateOf(false)
     var isEmojiPickerVisible by mutableStateOf(false)
+    var isEmojiPanelExpanded by mutableStateOf(false)
+    var isMediaPanelExpanded by mutableStateOf(false)
     var isChatInputFocused by mutableStateOf(false)
     var isChatInputGesture by mutableStateOf(false)
     var isPinsVisible by mutableStateOf(false)

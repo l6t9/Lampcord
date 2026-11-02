@@ -200,10 +200,6 @@ fun MediaPicker(
 @Composable
 fun InlineMediaPicker(
     onDismiss: () -> Unit,
-    expanded: Boolean,
-    onExpandedChange: (Boolean) -> Unit,
-    collapsedHeight: Dp,
-    expandedHeight: Dp,
     messageStore: MessageStore = koinInject()
 ) {
     var selectedTab by remember { mutableStateOf(0) }
@@ -217,30 +213,23 @@ fun InlineMediaPicker(
         onDismiss = { showSystemFilePicker = false }
     )
 
-    ExpandableInputPanel(
-        expanded = expanded,
-        onExpandedChange = onExpandedChange,
-        collapsedHeight = collapsedHeight,
-        expandedHeight = expandedHeight
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            Box(modifier = Modifier.weight(1f)) {
-                MediaPickerContent(
-                    onDismiss = onDismiss,
-                    isMobile = true,
-                    selectedTab = selectedTab,
-                    onTabSelected = { selectedTab = it },
-                    onSystemPickerClick = { showSystemFilePicker = true },
-                    messageStore = messageStore
-                )
-            }
-            MediaPickerTabs(
+    Column(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.weight(1f)) {
+            MediaPickerContent(
+                onDismiss = onDismiss,
+                isMobile = true,
                 selectedTab = selectedTab,
                 onTabSelected = { selectedTab = it },
                 onSystemPickerClick = { showSystemFilePicker = true },
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                messageStore = messageStore
             )
         }
+        MediaPickerTabs(
+            selectedTab = selectedTab,
+            onTabSelected = { selectedTab = it },
+            onSystemPickerClick = { showSystemFilePicker = true },
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+        )
     }
 }
 

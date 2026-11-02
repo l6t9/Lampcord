@@ -555,6 +555,8 @@ fun MobileBaseplate(
                     navigationStore.isMediaPickerVisible
                 navigationStore.isEmojiPickerVisible = false
                 navigationStore.isMediaPickerVisible = false
+                navigationStore.isEmojiPanelExpanded = false
+                navigationStore.isMediaPanelExpanded = false
                 hadInputOpen
             },
             startPanel = {

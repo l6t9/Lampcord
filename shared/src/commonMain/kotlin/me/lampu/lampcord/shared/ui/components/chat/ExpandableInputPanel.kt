@@ -1,8 +1,5 @@
 package me.lampu.lampcord.shared.ui.components.chat
 
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.snap
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
@@ -17,7 +14,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -29,33 +25,19 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun ExpandableInputPanel(
-    expanded: Boolean,
-    onExpandedChange: (Boolean) -> Unit,
     collapsedHeight: Dp,
-    expandedHeight: Dp,
+    onExpandRequested: () -> Unit,
+    onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    val density = LocalDensity.current
-    val collapsedPx = with(density) { collapsedHeight.toPx() }
-    val expandedPx = with(density) { expandedHeight.toPx() }
-    val basePx = if (expanded) expandedPx else collapsedPx
-
-    var dragOffset by remember { mutableFloatStateOf(0f) }
-    var dragging by remember { mutableStateOf(false) }
-    val heightPx by animateFloatAsState(
-        targetValue = (basePx + dragOffset).coerceIn(
-            minOf(collapsedPx, expandedPx),
-            maxOf(collapsedPx, expandedPx)
-        ),
-        animationSpec = if (dragging) snap() else tween(220),
-        label = "inputPanelHeight"
-    )
+    val threshold = with(LocalDensity.current) { 36.dp.toPx() }
+    var dragY by remember { mutableFloatStateOf(0f) }
 
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .height(with(density) { heightPx.toDp() }),
+            .height(collapsedHeight),
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
         color = MaterialTheme.colorScheme.surfaceContainerHigh
     ) {
@@ -64,25 +46,21 @@ fun ExpandableInputPanel(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(28.dp)
-                    .pointerInput(collapsedPx, expandedPx, basePx) {
+                    .pointerInput(Unit) {
                         detectVerticalDragGestures(
-                            onDragStart = { dragging = true },
                             onVerticalDrag = { change, dragAmount ->
                                 change.consume()
-                                val min = minOf(collapsedPx, expandedPx) - basePx
-                                val max = maxOf(collapsedPx, expandedPx) - basePx
-                                dragOffset = (dragOffset - dragAmount).coerceIn(min, max)
+                                dragY += dragAmount
+                                if (dragY < -threshold) {
+                                    dragY = 0f
+                                    onExpandRequested()
+                                } else if (dragY > threshold) {
+                                    dragY = 0f
+                                    onDismissRequest()
+                                }
                             },
-                            onDragEnd = {
-                                val total = basePx + dragOffset
-                                onExpandedChange(total > (collapsedPx + expandedPx) / 2f)
-                                dragOffset = 0f
-                                dragging = false
-                            },
-                            onDragCancel = {
-                                dragOffset = 0f
-                                dragging = false
-                            }
+                            onDragEnd = { dragY = 0f },
+                            onDragCancel = { dragY = 0f }
                         )
                     },
                 contentAlignment = Alignment.Center
