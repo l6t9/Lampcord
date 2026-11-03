@@ -14,7 +14,7 @@ internal data class VoicePacketStats(
     val nonAudio: Long,
     val malformed: Long,
     val authFailed: Long,
-    val replayed: Long
+    val nonceRepeats: Long
 )
 
 internal class VoicePackets(private val key: ByteArray, private val aes: Boolean, private val ssrc: Int) {
@@ -30,7 +30,7 @@ internal class VoicePackets(private val key: ByteArray, private val aes: Boolean
     private var nonAudio = 0L
     private var malformed = 0L
     private var authFailed = 0L
-    private var replayed = 0L
+    private var nonceRepeats = 0L
 
     init { require(key.size == 32) }
 
@@ -113,10 +113,7 @@ internal class VoicePackets(private val key: ByteArray, private val aes: Boolean
             malformed++
             return null
         }
-        if (!replay.getOrPut(ssrc) { ReplayWindow() }.accept(count)) {
-            replayed++
-            return null
-        }
+        if (!replay.getOrPut(ssrc) { ReplayWindow() }.accept(count)) nonceRepeats++
         val start = if (extension) unsignedShort(packet, base + 2) * 4 else 0
         val padding = if (packet[0].toInt() and 0x20 != 0) {
             val size = payload.lastOrNull()?.toInt()?.and(255) ?: return null
@@ -135,13 +132,13 @@ internal class VoicePackets(private val key: ByteArray, private val aes: Boolean
     }
 
     fun takeStats(): VoicePacketStats {
-        val result = VoicePacketStats(received, invalidRtp, nonAudio, malformed, authFailed, replayed)
+        val result = VoicePacketStats(received, invalidRtp, nonAudio, malformed, authFailed, nonceRepeats)
         received = 0
         invalidRtp = 0
         nonAudio = 0
         malformed = 0
         authFailed = 0
-        replayed = 0
+        nonceRepeats = 0
         return result
     }
 

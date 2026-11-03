@@ -517,7 +517,7 @@ actual class VoiceGatewayManager actual constructor(private val client: HttpClie
                         "udp rx=${rxPackets.getAndSet(0)} audio=${audioPackets.getAndSet(0)} " +
                             "rtpInvalid=${packetStats?.invalidRtp ?: 0} nonAudio=${packetStats?.nonAudio ?: 0} " +
                             "malformed=${packetStats?.malformed ?: 0} transportAuthFail=${packetStats?.authFailed ?: 0} " +
-                            "replayed=${packetStats?.replayed ?: 0} unknownSsrc=${unknownSsrc.getAndSet(0)} " +
+                            "nonceRepeats=${packetStats?.nonceRepeats ?: 0} unknownSsrc=${unknownSsrc.getAndSet(0)} " +
                             "mixed=${mixedFrames.getAndSet(0)} daveOk=+$successDelta daveFail=+$failureDelta " +
                             "playout=${playout.size} sources=${sources.size}"
                     )

@@ -20,7 +20,7 @@ class VoiceProtocolTest {
             assertNull(receiver.decrypt(tampered))
             assertContentEquals(opus, receiver.decrypt(second)!!.frame)
             assertContentEquals(opus, receiver.decrypt(first)!!.frame)
-            assertNull(receiver.decrypt(first))
+            assertContentEquals(opus, receiver.decrypt(first)!!.frame)
             for (size in 0..first.size) receiver.decrypt(first.copyOf(size))
 
             val paddedHeader = ByteBuffer.allocate(12).put(0xa0.toByte()).put(120).putShort(9).putInt(1920).putInt(43).array()
@@ -32,7 +32,7 @@ class VoiceProtocolTest {
 
             val packetStats = receiver.takeStats()
             assertTrue(packetStats.authFailed > 0)
-            assertTrue(packetStats.replayed > 0)
+            assertTrue(packetStats.nonceRepeats > 0)
 
             val header = ByteBuffer.allocate(20).put(0xb1.toByte()).put(120).putShort(7).putInt(960)
                 .putInt(43).putInt(123).putShort(0xbede.toShort()).putShort(1).array()
@@ -70,6 +70,7 @@ class VoiceProtocolTest {
         val jitter = VoicePlayout()
         val start = 1_000_000_000L
         jitter.offer(65535, byteArrayOf(1), start)
+        jitter.offer(65535, byteArrayOf(9), start + 1_000_000)
         jitter.offer(1, byteArrayOf(3), start + 40_000_000)
         jitter.offer(0, byteArrayOf(2), start + 20_000_000)
         val decoded = mutableListOf<Int?>()
