@@ -10,6 +10,7 @@ import android.os.Handler
 import android.os.Looper
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.utils.AndroidContextProvider
+import me.lampu.lampcord.shared.utils.Logging
 
 internal actual fun createVoiceAudio(): VoiceAudio = AndroidVoiceAudio()
 
@@ -55,28 +56,9 @@ private class AndroidVoiceAudio : VoiceAudio {
                 else manager.requestAudioFocus(focusListener, AudioManager.STREAM_VOICE_CALL, AudioManager.AUDIOFOCUS_GAIN)
             check(focus == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) { "Audio is in use by another call" }
             manager.mode = AudioManager.MODE_IN_COMMUNICATION
-            val inputSize = AudioRecord.getMinBufferSize(48000, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
-            check(inputSize > 0)
-            input = AudioRecord(MediaRecorder.AudioSource.VOICE_COMMUNICATION, 48000, AudioFormat.CHANNEL_IN_MONO,
-                AudioFormat.ENCODING_PCM_16BIT, maxOf(inputSize, 1920 * 3))
-            check(input!!.state == AudioRecord.STATE_INITIALIZED)
-            preferredDevice(Settings.shared.voiceInputDevice, AudioManager.GET_DEVICES_INPUTS)
-                ?.let { input!!.setPreferredDevice(it) }
-            val session = input!!.audioSessionId
-            if (AcousticEchoCanceler.isAvailable()) echo = AcousticEchoCanceler.create(session)?.also { it.enabled = true }
-            if (NoiseSuppressor.isAvailable()) noise = NoiseSuppressor.create(session)?.also { it.enabled = true }
-            val outputSize = AudioTrack.getMinBufferSize(48000, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT)
-            check(outputSize > 0)
-            output = AudioTrack.Builder().setAudioAttributes(attributes)
-                .setAudioFormat(AudioFormat.Builder().setSampleRate(48000).setEncoding(AudioFormat.ENCODING_PCM_16BIT).setChannelMask(AudioFormat.CHANNEL_OUT_STEREO).build())
-                .setTransferMode(AudioTrack.MODE_STREAM).setBufferSizeInBytes(maxOf(outputSize, 3840 * 3)).build()
-            check(output!!.state == AudioTrack.STATE_INITIALIZED)
-            preferredDevice(Settings.shared.voiceOutputDevice, AudioManager.GET_DEVICES_OUTPUTS)
-                ?.let { output!!.setPreferredDevice(it) }
-            output!!.play()
+            openInput()
+            openOutput()
             manager.registerAudioDeviceCallback(devices, Handler(Looper.getMainLooper()))
-            input!!.startRecording()
-            check(input!!.recordingState == AudioRecord.RECORDSTATE_RECORDING)
         } catch (e: Exception) {
             close()
             throw e
@@ -88,7 +70,14 @@ private class AndroidVoiceAudio : VoiceAudio {
         while (offset < mono.size && !closed) {
             check(focused) { "Audio focus was lost to another app" }
             val count = checkNotNull(input).read(mono, offset, mono.size - offset, AudioRecord.READ_BLOCKING)
-            check(count > 0) { "Microphone stopped" }
+            if (closed) break
+            if (count == AudioRecord.ERROR_DEAD_OBJECT || count == AudioRecord.ERROR_INVALID_OPERATION) {
+                mono.fill(0)
+                offset = 0
+                restartInput(count)
+                continue
+            }
+            check(count > 0) { "Microphone read failed ($count)" }
             offset += count
         }
         check(!closed)
@@ -110,7 +99,13 @@ private class AndroidVoiceAudio : VoiceAudio {
         var offset = 0
         while (offset < pcm.size && !closed) {
             val count = checkNotNull(output).write(pcm, offset, pcm.size - offset, AudioTrack.WRITE_BLOCKING)
-            check(count > 0) { "Audio output stopped" }
+            if (closed) break
+            if (count == AudioTrack.ERROR_DEAD_OBJECT || count == AudioTrack.ERROR_INVALID_OPERATION) {
+                offset = 0
+                restartOutput(count)
+                continue
+            }
+            check(count > 0) { "Audio output write failed ($count)" }
             offset += count
         }
         check(!closed)
@@ -142,6 +137,63 @@ private class AndroidVoiceAudio : VoiceAudio {
     private fun preferredDevice(id: String, direction: Int): AudioDeviceInfo? {
         val deviceId = id.toIntOrNull() ?: return null
         return manager.getDevices(direction).firstOrNull { it.id == deviceId }
+    }
+
+    private fun openInput() {
+        val inputSize = AudioRecord.getMinBufferSize(48000, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
+        check(inputSize > 0) { "No available microphone buffer" }
+        val recorder = AudioRecord(
+            MediaRecorder.AudioSource.VOICE_COMMUNICATION,
+            48000,
+            AudioFormat.CHANNEL_IN_MONO,
+            AudioFormat.ENCODING_PCM_16BIT,
+            maxOf(inputSize, 1920 * 3)
+        )
+        check(recorder.state == AudioRecord.STATE_INITIALIZED) { "Microphone initialization failed" }
+        preferredDevice(Settings.shared.voiceInputDevice, AudioManager.GET_DEVICES_INPUTS)?.let(recorder::setPreferredDevice)
+        input = recorder
+        val session = recorder.audioSessionId
+        if (AcousticEchoCanceler.isAvailable()) echo = AcousticEchoCanceler.create(session)?.also { it.enabled = true }
+        if (NoiseSuppressor.isAvailable()) noise = NoiseSuppressor.create(session)?.also { it.enabled = true }
+        recorder.startRecording()
+        check(recorder.recordingState == AudioRecord.RECORDSTATE_RECORDING) { "Microphone did not start" }
+    }
+
+    @Synchronized
+    private fun restartInput(error: Int) {
+        if (closed) return
+        Logging.w("Voice", "Android microphone became invalid ($error); recreating AudioRecord")
+        runCatching { input?.stop() }
+        input?.release()
+        input = null
+        echo?.release()
+        noise?.release()
+        echo = null
+        noise = null
+        openInput()
+    }
+
+    private fun restartOutput(error: Int) {
+        if (closed) return
+        Logging.w("Voice", "Android playback track became invalid ($error); recreating AudioTrack")
+        openOutput()
+    }
+
+    @Synchronized
+    private fun openOutput() {
+        if (closed) return
+        runCatching { output?.stop() }
+        output?.release()
+        output = null
+        val outputSize = AudioTrack.getMinBufferSize(48000, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT)
+        check(outputSize > 0) { "No available audio output buffer" }
+        val track = AudioTrack.Builder().setAudioAttributes(attributes)
+            .setAudioFormat(AudioFormat.Builder().setSampleRate(48000).setEncoding(AudioFormat.ENCODING_PCM_16BIT).setChannelMask(AudioFormat.CHANNEL_OUT_STEREO).build())
+            .setTransferMode(AudioTrack.MODE_STREAM).setBufferSizeInBytes(maxOf(outputSize, 3840 * 3)).build()
+        check(track.state == AudioTrack.STATE_INITIALIZED) { "Audio output initialization failed" }
+        preferredDevice(Settings.shared.voiceOutputDevice, AudioManager.GET_DEVICES_OUTPUTS)?.let(track::setPreferredDevice)
+        track.play()
+        output = track
     }
 
     @Synchronized override fun close() {

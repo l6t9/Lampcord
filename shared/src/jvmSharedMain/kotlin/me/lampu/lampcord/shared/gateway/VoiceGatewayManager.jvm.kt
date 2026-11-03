@@ -117,6 +117,7 @@ actual class VoiceGatewayManager actual constructor(private val client: HttpClie
         private val unknownSsrc = AtomicLong()
         private val mixedFrames = AtomicLong()
         private var loggedDecryptFailures = 0L
+        private var loggedDecryptSuccesses = 0L
         private var mediaStarted = false
         private var resetCount = 0
         private var pingSequence = 0
@@ -168,7 +169,15 @@ actual class VoiceGatewayManager actual constructor(private val client: HttpClie
                                                 acknowledged = true
                                                 missedAcks = 0
                                                 heartbeat?.cancel()
+                                                send(if (mediaStarted) 7 else 0, buildJsonObject {
+                                                    put("server_id", serverId); put("user_id", userId)
+                                                    put("session_id", sessionId); put("token", token)
+                                                    if (mediaStarted) put("seq_ack", sequence) else {
+                                                        put("video", false); put("max_dave_protocol_version", 1)
+                                                    }
+                                                })
                                                 heartbeat = launch {
+                                                    delay(interval)
                                                     while (isActive) {
                                                         if (!acknowledged) {
                                                             if (++missedAcks >= 2) throw VoiceFailure("Voice heartbeat timed out")
@@ -180,13 +189,6 @@ actual class VoiceGatewayManager actual constructor(private val client: HttpClie
                                                         delay(interval)
                                                     }
                                                 }
-                                                send(if (mediaStarted) 7 else 0, buildJsonObject {
-                                                    put("server_id", serverId); put("user_id", userId)
-                                                    put("session_id", sessionId); put("token", token)
-                                                    if (mediaStarted) put("seq_ack", sequence) else {
-                                                        put("video", false); put("max_dave_protocol_version", 1)
-                                                    }
-                                                })
                                             }
                                             2 -> ready(data)
                                             3 -> send(3, buildJsonObject { put("t", System.currentTimeMillis()); put("seq_ack", sequence) })
@@ -215,6 +217,7 @@ actual class VoiceGatewayManager actual constructor(private val client: HttpClie
                                                 val user = data.getValue("user_id").jsonPrimitive.content
                                                 val source = data.getValue("ssrc").jsonPrimitive.content.toUInt().toInt()
                                                 if (sources.size < 1000 || sources.containsKey(source)) sources[source] = user
+                                                Logging.i("Voice", "Speaking user=$user ssrc=$source flags=${data["speaking"]?.jsonPrimitive?.intOrNull}")
                                             }
                                             6 -> acknowledged = true
                                             9 -> {
@@ -503,9 +506,21 @@ actual class VoiceGatewayManager actual constructor(private val client: HttpClie
                     val report = synchronized(lock) { packets?.senderReport() }
                     report?.let { socket?.send(DatagramPacket(it, it.size)) }
                     val failures = NativeVoice.decryptFailures()
-                    val delta = failures - loggedDecryptFailures
+                    val failureDelta = failures - loggedDecryptFailures
                     loggedDecryptFailures = failures
-                    Logging.i("Voice", "udp rx=${rxPackets.getAndSet(0)} audio=${audioPackets.getAndSet(0)} unknownSsrc=${unknownSsrc.getAndSet(0)} mixed=${mixedFrames.getAndSet(0)} decryptFailures=$failures (+$delta) playout=${playout.size} sources=${sources.size}")
+                    val successes = NativeVoice.decryptSuccesses()
+                    val successDelta = successes - loggedDecryptSuccesses
+                    loggedDecryptSuccesses = successes
+                    val packetStats = synchronized(lock) { packets?.takeStats() }
+                    Logging.i(
+                        "Voice",
+                        "udp rx=${rxPackets.getAndSet(0)} audio=${audioPackets.getAndSet(0)} " +
+                            "rtpInvalid=${packetStats?.invalidRtp ?: 0} nonAudio=${packetStats?.nonAudio ?: 0} " +
+                            "malformed=${packetStats?.malformed ?: 0} transportAuthFail=${packetStats?.authFailed ?: 0} " +
+                            "replayed=${packetStats?.replayed ?: 0} unknownSsrc=${unknownSsrc.getAndSet(0)} " +
+                            "mixed=${mixedFrames.getAndSet(0)} daveOk=+$successDelta daveFail=+$failureDelta " +
+                            "playout=${playout.size} sources=${sources.size}"
+                    )
                 }
                 if (packets != null && now - lastRtpAt >= 5_000_000_000L) {
                     val packet = synchronized(lock) { packets?.encrypt(OPUS_SILENCE) }

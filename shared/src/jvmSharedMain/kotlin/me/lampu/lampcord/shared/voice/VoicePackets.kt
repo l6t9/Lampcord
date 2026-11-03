@@ -8,6 +8,14 @@ internal const val AES_MODE = "aead_aes256_gcm_rtpsize"
 internal const val XCHACHA_MODE = "aead_xchacha20_poly1305_rtpsize"
 
 internal data class VoicePacket(val ssrc: Int, val sequence: Int, val frame: ByteArray)
+internal data class VoicePacketStats(
+    val received: Long,
+    val invalidRtp: Long,
+    val nonAudio: Long,
+    val malformed: Long,
+    val authFailed: Long,
+    val replayed: Long
+)
 
 internal class VoicePackets(private val key: ByteArray, private val aes: Boolean, private val ssrc: Int) {
     private val epochNanos = System.nanoTime()
@@ -17,6 +25,12 @@ internal class VoicePackets(private val key: ByteArray, private val aes: Boolean
     private var packetCount = 0L
     private var octetCount = 0L
     private val replay = mutableMapOf<Int, ReplayWindow>()
+    private var received = 0L
+    private var invalidRtp = 0L
+    private var nonAudio = 0L
+    private var malformed = 0L
+    private var authFailed = 0L
+    private var replayed = 0L
 
     init { require(key.size == 32) }
 
@@ -65,28 +79,70 @@ internal class VoicePackets(private val key: ByteArray, private val aes: Boolean
     }
 
     fun decrypt(packet: ByteArray): VoicePacket? {
-        if (packet.size < 32 || packet[0].toInt() and 0xc0 != 0x80 || packet[1].toInt() and 0x7f != 120) return null
+        received++
+        if (packet.size < 12 || packet[0].toInt() and 0xc0 != 0x80) {
+            invalidRtp++
+            return null
+        }
+        if (packet[1].toInt() and 0x7f != 120) {
+            nonAudio++
+            return null
+        }
+        if (packet.size < 32) {
+            malformed++
+            return null
+        }
         val extension = packet[0].toInt() and 0x10 != 0
         val base = 12 + (packet[0].toInt() and 15) * 4
         val headerSize = base + if (extension) 4 else 0
-        if (headerSize + 20 > packet.size) return null
+        if (headerSize + 20 > packet.size) {
+            malformed++
+            return null
+        }
         val ssrc = ByteBuffer.wrap(packet, 8, 4).int
         val sequence = unsignedShort(packet, 2)
         val suffix = packet.copyOfRange(packet.size - 4, packet.size)
         val nonce = suffix.copyOf(if (aes) 12 else 24)
-        val payload = NativeVoice.aead(false, aes, key, nonce, packet.copyOf(headerSize), packet.copyOfRange(headerSize, packet.size - 4)) ?: return null
+        val payload = NativeVoice.aead(false, aes, key, nonce, packet.copyOf(headerSize), packet.copyOfRange(headerSize, packet.size - 4))
+        if (payload == null) {
+            authFailed++
+            return null
+        }
         val count = ByteBuffer.wrap(suffix).int.toLong() and 0xffffffffL
-        if (replay.size >= 1000 && ssrc !in replay) return null
-        if (!replay.getOrPut(ssrc) { ReplayWindow() }.accept(count)) return null
+        if (replay.size >= 1000 && ssrc !in replay) {
+            malformed++
+            return null
+        }
+        if (!replay.getOrPut(ssrc) { ReplayWindow() }.accept(count)) {
+            replayed++
+            return null
+        }
         val start = if (extension) unsignedShort(packet, base + 2) * 4 else 0
         val padding = if (packet[0].toInt() and 0x20 != 0) {
             val size = payload.lastOrNull()?.toInt()?.and(255) ?: return null
-            if (size == 0) return null
+            if (size == 0) {
+                malformed++
+                return null
+            }
             size
         } else 0
         val end = payload.size - padding
-        if (start >= end) return null
+        if (padding > payload.size || start >= end) {
+            malformed++
+            return null
+        }
         return VoicePacket(ssrc, sequence, payload.copyOfRange(start, end))
+    }
+
+    fun takeStats(): VoicePacketStats {
+        val result = VoicePacketStats(received, invalidRtp, nonAudio, malformed, authFailed, replayed)
+        received = 0
+        invalidRtp = 0
+        nonAudio = 0
+        malformed = 0
+        authFailed = 0
+        replayed = 0
+        return result
     }
 
     fun forget(ssrc: Int) { replay.remove(ssrc) }

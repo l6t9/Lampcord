@@ -14,6 +14,7 @@ using Bytes = std::vector<uint8_t>;
 
 namespace {
 std::atomic<uint64_t> decryptFailureCount{0};
+std::atomic<uint64_t> decryptSuccessCount{0};
 struct Peer {
     std::unique_ptr<dave::IDecryptor> decryptor = dave::CreateDecryptor();
     std::unique_ptr<OpusDecoder, decltype(&opus_decoder_destroy)> decoder{nullptr, opus_decoder_destroy};
@@ -334,6 +335,7 @@ extern "C" JNIEXPORT jbyteArray JNICALL JNI(decrypt)(JNIEnv* env, jobject, jlong
                           << " (code " << static_cast<int>(result) << ", total " << count << ")" << std::endl;
             return nullptr;
         }
+        decryptSuccessCount.fetch_add(1);
         out.resize(length);
         return array(env, out);
     });
@@ -357,6 +359,10 @@ extern "C" JNIEXPORT jshortArray JNICALL JNI(decode)(JNIEnv* env, jobject, jlong
 
 extern "C" JNIEXPORT jlong JNICALL JNI(decryptFailures)(JNIEnv*, jobject) {
     return static_cast<jlong>(decryptFailureCount.load());
+}
+
+extern "C" JNIEXPORT jlong JNICALL JNI(decryptSuccesses)(JNIEnv*, jobject) {
+    return static_cast<jlong>(decryptSuccessCount.load());
 }
 
 extern "C" JNIEXPORT jbyteArray JNICALL JNI(aead)(JNIEnv* env, jobject, jboolean encrypt, jboolean aes, jbyteArray key, jbyteArray nonce, jbyteArray header, jbyteArray payload) {

@@ -23,6 +23,17 @@ class VoiceProtocolTest {
             assertNull(receiver.decrypt(first))
             for (size in 0..first.size) receiver.decrypt(first.copyOf(size))
 
+            val paddedHeader = ByteBuffer.allocate(12).put(0xa0.toByte()).put(120).putShort(9).putInt(1920).putInt(43).array()
+            val paddedPayload = opus + byteArrayOf(0, 2)
+            val paddedNonce = ByteArray(if (aes) 12 else 24).also { it[3] = 9 }
+            val paddedCiphertext = NativeVoice.aead(true, aes, key, paddedNonce, paddedHeader, paddedPayload)!!
+            val paddedPacket = paddedHeader + paddedCiphertext + paddedNonce.copyOf(4)
+            assertContentEquals(opus, receiver.decrypt(paddedPacket)!!.frame)
+
+            val packetStats = receiver.takeStats()
+            assertTrue(packetStats.authFailed > 0)
+            assertTrue(packetStats.replayed > 0)
+
             val header = ByteBuffer.allocate(20).put(0xb1.toByte()).put(120).putShort(7).putInt(960)
                 .putInt(43).putInt(123).putShort(0xbede.toShort()).putShort(1).array()
             val payload = byteArrayOf(0x10, 0x7f, 0, 0) + opus + byteArrayOf(0, 2)

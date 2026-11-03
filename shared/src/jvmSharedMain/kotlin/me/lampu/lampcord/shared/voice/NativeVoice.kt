@@ -30,6 +30,7 @@ internal object NativeVoice {
     external fun decrypt(handle: Long, user: String, frame: ByteArray): ByteArray?
     external fun decode(handle: Long, user: String, opus: ByteArray?): ShortArray?
     external fun decryptFailures(): Long
+    external fun decryptSuccesses(): Long
     external fun aead(encrypt: Boolean, aes: Boolean, key: ByteArray, nonce: ByteArray, header: ByteArray, payload: ByteArray): ByteArray?
 }
 
