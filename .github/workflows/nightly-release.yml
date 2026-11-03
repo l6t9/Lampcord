@@ -67,13 +67,13 @@ jobs:
               [[ -z "$f" ]] && continue
 
               case "$f" in
-                androidApp/**|shared/androidMain/**|shared/src/androidMain/**|native/**)
+                androidApp/**|shared/androidMain/**|shared/src/androidMain/**|shared/jvmSharedMain/**|shared/src/jvmSharedMain/**|native/**)
                   android_changed=true
                   ;;
               esac
 
               case "$f" in
-                desktopApp/**|shared/desktopMain/**|shared/jvmMain/**|shared/src/desktopMain/**|shared/src/jvmMain/**|scripts/**|packaging/**)
+                desktopApp/**|shared/desktopMain/**|shared/jvmMain/**|shared/jvmSharedMain/**|shared/src/desktopMain/**|shared/src/jvmMain/**|shared/src/jvmSharedMain/**|native/**|scripts/**|packaging/**)
                   linux_changed=true
                   windows_changed=true
                   macos_changed=true
@@ -94,12 +94,18 @@ jobs:
                   macos_changed=true
                   ios_changed=true
                   ;;
-                build.gradle.kts|build.gradle|gradle.properties|settings.gradle.kts|settings.gradle|gradle/**|.github/workflows/reusable-*.yml|.github/workflows/nightly-release.yml|.github/actions/**)
+                build.gradle.kts|build.gradle|gradle.properties|settings.gradle.kts|settings.gradle|gradle/**|.github/workflows/reusable-*.yml|.github/actions/**)
                   android_changed=true
                   linux_changed=true
                   windows_changed=true
                   macos_changed=true
                   ios_changed=true
+                  ;;
+                .github/workflows/nightly-release.yml)
+                  android_changed=true
+                  linux_changed=true
+                  windows_changed=true
+                  macos_changed=true
                   ;;
               esac
             done <<< "$changed_files"
