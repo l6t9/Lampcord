@@ -119,7 +119,7 @@
         <item quantity="other">{days} дней</item>
     </plurals>
     <plurals name="form_help_last_seen_1_members">
-        <item quantity="one">1 человека, который не появлялся</item>
+        <item quantity="one">1 человек, который не появлялся</item>
         <item quantity="other">{members} чел., которые не появлялись</item>
     </plurals>
     <plurals name="gift_confirmation_nitro_time_frame_months_time">
