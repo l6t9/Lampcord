@@ -98,7 +98,7 @@ private fun ScrollbarThumb(
 ) {
     BoxWithConstraints(modifier.width(SCROLLBAR_HIT_WIDTH).fillMaxHeight()) {
         val viewportHeight = constraints.maxHeight.toFloat()
-        if (viewportHeight <= 0f) return@BoxWithConstraints
+        if (viewportHeight <= 0f || scrollablePixels <= 0f) return@BoxWithConstraints
 
         val density = LocalDensity.current
         val thumbHeight = (viewportHeight * viewportHeight / (viewportHeight + scrollablePixels))
