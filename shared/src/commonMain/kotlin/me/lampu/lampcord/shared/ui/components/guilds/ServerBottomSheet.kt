@@ -5,6 +5,7 @@ import me.lampu.lampcord.shared.generated.resources.copy_id
 import me.lampu.lampcord.shared.generated.resources.leave_server
 import me.lampu.lampcord.shared.generated.resources.mark_as_read
 import me.lampu.lampcord.shared.generated.resources.roles
+import me.lampu.lampcord.shared.api.CdnUrls
 import org.jetbrains.compose.resources.stringResource
 
 import androidx.compose.foundation.background
@@ -131,7 +132,7 @@ fun ServerBottomSheet(
             Box(modifier = Modifier.fillMaxWidth()) {
                 val guildMedia = rememberGuildMediaUrls(
                     guildId = guild.id,
-                    guildIconUrl = guild.icon?.let { "https://cdn.discordapp.com/icons/${guild.id}/$it.png?size=160" },
+                    guildIconUrl = guild.icon?.let { CdnUrls.getGuildIconUrl(guild.id, guild.icon, 160) },
                     guildBannerUrl = guild.banner?.let { "https://cdn.discordapp.com/banners/${guild.id}/$it.png?size=600" }
                 )
                 val bannerUrl = guildMedia.banner

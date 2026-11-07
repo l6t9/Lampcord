@@ -17,6 +17,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import me.lampu.lampcord.shared.api.CdnUrls
 import me.lampu.lampcord.shared.api.GuildApi
 import me.lampu.lampcord.shared.api.JoinGuildResult
 import me.lampu.lampcord.shared.model.Invite
@@ -154,7 +155,7 @@ fun GuildProfileSheet(
                 Box(modifier = Modifier.fillMaxWidth()) {
                     val guildMedia = rememberGuildMediaUrls(
                         guildId = guild.id,
-                        guildIconUrl = guild.icon?.let { "https://cdn.discordapp.com/icons/${guild.id}/$it.png?size=160" },
+                        guildIconUrl = guild.icon?.let { CdnUrls.getGuildIconUrl(guild.id, guild.icon, 160) },
                         guildBannerUrl = guild.banner?.let { "https://cdn.discordapp.com/banners/${guild.id}/$it.png?size=600" }
                     )
                     val bannerUrl = guildMedia.banner

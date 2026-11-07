@@ -61,6 +61,7 @@ import me.lampu.lampcord.shared.utils.Permission
 import me.lampu.lampcord.shared.utils.PermissionHelper
 import me.lampu.lampcord.shared.utils.getPlatformName
 import me.lampu.lampcord.shared.utils.setClipboardText
+import kotlinx.coroutines.flow.MutableStateFlow
 import org.koin.compose.koinInject
 import me.lampu.lampcord.shared.ui.kit.handCursor
 
@@ -129,13 +130,14 @@ fun GuildChannelList(
                 }
             }
     ) {
-        val allGuildChannels by guildStore.allGuildChannels.collectAsState()
-        val visibleChannels = remember(guild, member, showHidden, allGuildChannels) {
+        val guildChannels by remember(guild?.id) {
+            guild?.id?.let { guildStore.channelsForGuild(it) } ?: MutableStateFlow(emptyList())
+        }.collectAsState()
+        val visibleChannels = remember(guild, member, showHidden, guildChannels) {
             val g = guild
             val u = currentUser
             if (g == null) emptyList()
-            else allGuildChannels.values.filter { channel ->
-                if (channel.guild_id != g.id) return@filter false
+            else guildChannels.filter { channel ->
                 if (showHidden) return@filter true
 
                 val currentMember = member
@@ -144,11 +146,7 @@ fun GuildChannelList(
             }
         }
 
-        val allChannelsForThisGuild = remember(guild, allGuildChannels) {
-            val g = guild
-            if (g == null) emptyList()
-            else allGuildChannels.values.filter { it.guild_id == g.id }
-        }
+        val allChannelsForThisGuild = guildChannels
 
         val categories = visibleChannels.filter { it.type == 4 }.distinctBy { it.id }.sortedBy { it.position ?: 0 }
         val rootChannels = visibleChannels.filter { it.parent_id == null && it.type != 4 }

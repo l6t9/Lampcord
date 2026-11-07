@@ -139,12 +139,18 @@ class ReadStateStore(private val channelApi: ChannelApi) {
         }
     }
 
-    fun isUnread(channel: Channel): Boolean {
+    fun isUnread(channel: Channel): Boolean = isUnread(channel, _readStates.value, _recentIds.value)
+
+    internal fun isUnread(
+        channel: Channel,
+        readStates: Map<String, ReadState>,
+        recentIds: Map<String, String>
+    ): Boolean {
         val channelMsgId = channel.lastMessageId()?.toLongOrNull() ?: 0L
-        val recentMsgId = _recentIds.value[channel.id]?.toLongOrNull() ?: 0L
+        val recentMsgId = recentIds[channel.id]?.toLongOrNull() ?: 0L
         val lastMsgId = maxOf(channelMsgId, recentMsgId)
         if (lastMsgId <= 0L) return false
-        val ackedId = _readStates.value[channel.id]?.lastMessageId()?.toLongOrNull()
+        val ackedId = readStates[channel.id]?.lastMessageId()?.toLongOrNull()
             ?: localAcks[channel.id]?.toLongOrNull()
             ?: 0L
         return lastMsgId > ackedId

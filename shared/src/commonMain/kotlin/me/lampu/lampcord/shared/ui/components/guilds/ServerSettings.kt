@@ -2,6 +2,7 @@ package me.lampu.lampcord.shared.ui.components.guilds
 
 import me.lampu.lampcord.shared.generated.resources.Res
 import me.lampu.lampcord.shared.generated.resources.server_settings
+import me.lampu.lampcord.shared.api.CdnUrls
 import org.jetbrains.compose.resources.stringResource
 
 import androidx.compose.animation.AnimatedContent
@@ -189,7 +190,7 @@ fun ServerSettings(
                                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                val iconUrl = guild.icon?.let { "https://cdn.discordapp.com/icons/${guild.id}/$it.png?size=160" }
+                                val iconUrl = guild.icon?.let { CdnUrls.getGuildIconUrl(guild.id, guild.icon, 160) }
                                 if (iconUrl != null) {
                                     AsyncImage(
                                         model = iconUrl,

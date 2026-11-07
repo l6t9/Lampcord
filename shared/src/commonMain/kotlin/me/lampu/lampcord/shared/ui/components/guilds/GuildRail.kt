@@ -49,7 +49,6 @@ import androidx.compose.material3.Text
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
-import me.lampu.lampcord.shared.state.ReadStateStore
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableFloatStateOf
@@ -85,7 +84,6 @@ private fun GuildFolder.guildIds(): List<String> = guild_ids.mapNotNull { it.jso
 fun GuildRail(
     guildStore: GuildStore = koinInject(),
     navigationStore: NavigationStore = koinInject(),
-    readStateStore: ReadStateStore = koinInject(),
     userStore: UserStore = koinInject(),
     settingsStore: SettingsStore = koinInject(),
     gatewayManager: GatewayManager = koinInject(),
@@ -94,7 +92,6 @@ fun GuildRail(
     val railScrollState = rememberLazyListState()
     val guilds by guildStore.guilds.collectAsState()
     val privateChannels by guildStore.privateChannels.collectAsState()
-    val readStates by readStateStore.readStates.collectAsState()
     val userSettings = settingsStore.userSettings
 
     val haptic = LocalHapticFeedback.current
@@ -183,9 +180,7 @@ fun GuildRail(
             val isHomeSelected = navigationStore.selectedGuild == null &&
                 !(navigationStore.isFavoritesSelected && favoritesVisible)
 
-            val totalDmMentions = remember(privateChannels, readStates) {
-                privateChannels.sumOf { readStateStore.getMentionCount(it.id) }
-            }
+            val totalDmMentions = guildStore.privateMentionCountState().value
 
             ExpressiveTooltip(
                 anchorPosition = TooltipAnchorPosition.End,

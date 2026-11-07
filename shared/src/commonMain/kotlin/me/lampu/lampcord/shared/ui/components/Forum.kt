@@ -4,6 +4,7 @@ import me.lampu.lampcord.shared.generated.resources.Res
 import me.lampu.lampcord.shared.generated.resources.cancel
 import me.lampu.lampcord.shared.generated.resources.title
 import me.lampu.lampcord.shared.generated.resources.user_profile_message
+import me.lampu.lampcord.shared.api.CdnUrls
 import org.jetbrains.compose.resources.stringResource
 
 import androidx.compose.foundation.background
@@ -399,7 +400,7 @@ fun ForumPostItem(
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     val avatarUrl =
-                        author?.avatar?.let { "https://cdn.discordapp.com/avatars/${author.id}/$it.png?size=64" }
+                        author?.avatar?.let { CdnUrls.getUserAvatarUrl(author.id, author.avatar, 64) }
                     AsyncImage(
                         model = avatarUrl,
                         contentDescription = null,

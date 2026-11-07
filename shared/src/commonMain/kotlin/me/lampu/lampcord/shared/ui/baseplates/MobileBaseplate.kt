@@ -763,7 +763,7 @@ fun MobileBaseplate(
                                 },
                                 icon = {
                                     val user = currentUser
-                                    val avatarUrl = user?.avatar?.let { "https://cdn.discordapp.com/avatars/${user.id}/$it.png?size=64" }
+                                    val avatarUrl = user?.avatar?.let { CdnUrls.getUserAvatarUrl(user.id, user.avatar, 64) }
                                     if (avatarUrl != null) {
                                         Box(modifier = Modifier.size(24.dp)) {
                                             AvatarWithDecoration(
@@ -1098,7 +1098,7 @@ private fun MainBaseplateContent(
                                             if (recipient != null) {
                                                 Box(modifier = Modifier.size(32.dp)) {
                                                     AvatarWithDecoration(
-                                                        avatarUrl = recipient.avatar?.let { "https://cdn.discordapp.com/avatars/${recipient.id}/$it.png?size=64" },
+                                                        avatarUrl = recipient.avatar?.let { CdnUrls.getUserAvatarUrl(recipient.id, recipient.avatar, 64) },
                                                         decorationData = recipient.avatar_decoration_data,
                                                         size = 32.dp,
                                                         status = presenceStore.getUserStatus(recipient.id, currentUser?.id, settingsStore.userSettings?.status)

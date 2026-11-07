@@ -36,7 +36,6 @@ import me.lampu.lampcord.shared.state.rememberGuildMediaUrls
 import me.lampu.lampcord.shared.state.GuildStore
 import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.state.ProfileStore
-import me.lampu.lampcord.shared.state.ReadStateStore
 import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.state.UserGuildSettingsStore
 import me.lampu.lampcord.shared.state.UserStore
@@ -46,6 +45,8 @@ import me.lampu.lampcord.shared.ui.components.*
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.setClipboardText
 import me.lampu.lampcord.shared.utils.getPlatformName
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withTimeoutOrNull
 import org.koin.compose.koinInject
 
@@ -57,7 +58,6 @@ fun GuildIcon(
     onClick: () -> Unit,
     guildStore: GuildStore = koinInject(),
     userGuildSettingsStore: UserGuildSettingsStore = koinInject(),
-    readStateStore: ReadStateStore = koinInject(),
     settingsStore: SettingsStore = koinInject(),
     navigationStore: NavigationStore = koinInject(),
     profileStore: ProfileStore = koinInject(),
@@ -84,14 +84,15 @@ fun GuildIcon(
         guildMedia.icon ?: me.lampu.lampcord.shared.api.CdnUrls.getGuildIconUrl(guild.id, guild.icon, iconSizePx)
     }
 
-    val userGuildSettings by userGuildSettingsStore.userGuildSettings.collectAsState()
-    val readStates by readStateStore.readStates.collectAsState()
+    val guildSettings by remember(guild.id) {
+        userGuildSettingsStore.userGuildSettings.map { it[guild.id] }.distinctUntilChanged()
+    }.collectAsState(initial = userGuildSettingsStore.userGuildSettings.value[guild.id])
     val currentUser = LocalCurrentUser.current
 
-    val isMuted = remember(guild.id, userGuildSettings[guild.id]) { userGuildSettingsStore.isGuildMuted(guild.id) }
+    val isMuted = remember(guild.id, guildSettings) { userGuildSettingsStore.isGuildMuted(guild.id) }
     
-    val isUnread = remember(guild.id, readStates, userGuildSettings[guild.id]) { guildStore.isGuildUnread(guild.id) }
-    val mentionCount = remember(guild.id, readStates) { guildStore.getGuildMentionCount(guild.id) }
+    val isUnread = guildStore.guildUnreadState(guild.id).value
+    val mentionCount = guildStore.guildMentionCountState(guild.id).value
 
     var showMuteDialog by remember { mutableStateOf(false) }
     var showLeaveDialog by remember { mutableStateOf(false) }

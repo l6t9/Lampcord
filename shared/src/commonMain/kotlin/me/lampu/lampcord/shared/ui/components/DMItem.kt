@@ -45,7 +45,6 @@ fun DMItem(
     profileStore: ProfileStore = koinInject()
 ) {
     val isSelected = navigationStore.selectedChannel?.id == channel.id
-    val allUsers by userStore.users.collectAsState()
     val readState by remember(channel.id) {
         readStateStore.readStates.map { it[channel.id] }.distinctUntilChanged()
     }.collectAsState(initial = readStateStore.readStates.value[channel.id])
@@ -53,18 +52,15 @@ fun DMItem(
     val isGroupDm = channel.type == 3
     val currentUser = LocalCurrentUser.current
 
-    val recipients = remember(channel.recipients, channel.recipient_ids, allUsers, currentUser) {
-        val list = mutableListOf<me.lampu.lampcord.shared.model.User>()
-        channel.recipients?.forEach { user ->
-            list.add(allUsers[user.id] ?: user)
+    val recipients by remember(channel.recipients, channel.recipient_ids, currentUser) {
+        derivedStateOf {
+            val fallback = channel.recipients?.associateBy { it.id }.orEmpty()
+            val ids = channel.recipients?.map { it.id }.orEmpty()
+                .ifEmpty { channel.recipient_ids.orEmpty() }
+            val list = ids.mapNotNull { id -> userStore.userState(id).value ?: fallback[id] }
+            val otherUsers = if (currentUser != null) list.filter { it.id != currentUser.id } else list
+            if (otherUsers.isNotEmpty()) otherUsers else list
         }
-        if (list.isEmpty() && !channel.recipient_ids.isNullOrEmpty()) {
-            channel.recipient_ids.forEach { id ->
-                allUsers[id]?.let { list.add(it) }
-            }
-        }
-        val otherUsers = if (currentUser != null) list.filter { it.id != currentUser.id } else list
-        if (otherUsers.isNotEmpty()) otherUsers else list
     }
 
     val recipient = recipients.firstOrNull()

@@ -3,6 +3,7 @@ package me.lampu.lampcord.shared.ui.components
 import me.lampu.lampcord.shared.generated.resources.Res
 import me.lampu.lampcord.shared.generated.resources.form_label_muted
 import me.lampu.lampcord.shared.generated.resources.voice_channel_deafened
+import me.lampu.lampcord.shared.api.CdnUrls
 import org.jetbrains.compose.resources.stringResource
 
 import androidx.compose.animation.animateColorAsState
@@ -208,7 +209,7 @@ private fun VoiceParticipantTile(
                     .size(80.dp)
             ) {
                 AvatarWithDecoration(
-                    avatarUrl = user?.avatar?.let { "https://cdn.discordapp.com/avatars/${state.user_id}/$it.png?size=160" },
+                    avatarUrl = user?.avatar?.let { CdnUrls.getUserAvatarUrl(state.user_id, user?.avatar, 160) },
                     decorationData = member?.avatar_decoration_data ?: user?.avatar_decoration_data,
                     size = 80.dp
                 )

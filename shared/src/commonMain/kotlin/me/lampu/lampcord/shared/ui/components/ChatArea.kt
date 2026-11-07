@@ -45,6 +45,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -94,7 +95,8 @@ fun ChatArea(
     val channelId = navigationStore.selectedThread?.id ?: navigationStore.selectedChannel?.id
     val scrollState = remember(channelId) { LazyListState() }
     var isHovered by remember { mutableStateOf(false) }
-    val messages by messageStore.messages.collectAsState()
+    val messagesState = messageStore.messages.collectAsState()
+    val messages by messagesState
     val relationships by relationshipStore.relationships.collectAsState()
     val activeReadState by remember(channelId) {
         readStateStore.readStates.map { it[channelId] }.distinctUntilChanged()
@@ -117,7 +119,7 @@ fun ChatArea(
             val ackedLong = ackedMessageId.toLongOrNull() ?: 0L
             var count = 0
             var oldestUnreadId: String? = null
-            for (message in messages) {
+            for (message in messagesState.value) {
                 if (message.isPending) continue
                 if ((message.id.toLongOrNull() ?: 0L) > ackedLong) {
                     count++
@@ -147,6 +149,9 @@ fun ChatArea(
         }
     }
 
+    val currentMessages by rememberUpdatedState(messages)
+    val currentAckedMessageId by rememberUpdatedState(ackedMessageId)
+
     LaunchedEffect(scrollState) {
         var ackJob: Job? = null
         snapshotFlow {
@@ -163,9 +168,9 @@ fun ChatArea(
                     if (channelId != null) {
                         navigationStore.setChatInteraction(channelId, atBottom)
                     }
-                    if (atBottom && messages.isNotEmpty()) {
-                        val latestId = messages.first().id
-                        if ((latestId.toLongOrNull() ?: 0L) > (ackedMessageId.toLongOrNull() ?: 0L)) {
+                    if (atBottom && currentMessages.isNotEmpty()) {
+                        val latestId = currentMessages.first().id
+                        if ((latestId.toLongOrNull() ?: 0L) > (currentAckedMessageId.toLongOrNull() ?: 0L)) {
                             ackJob?.cancel()
                             ackJob = launch {
                                 delay(1500)
@@ -173,7 +178,7 @@ fun ChatArea(
                             }
                         }
                     }
-                    if (channelId != null && lastVisibleItemIndex >= messages.size - 5) {
+                    if (channelId != null && lastVisibleItemIndex >= currentMessages.size - 5) {
                         messageStore.loadMoreMessages(
                             channelId,
                             navigationStore.selectedGuild?.id,
@@ -185,7 +190,7 @@ fun ChatArea(
     }
 
     LaunchedEffect(channelId) {
-        if (channelId != null && messages.isEmpty()) {
+        if (channelId != null && !messageStore.hasMessages(channelId)) {
             messageStore.loadMoreMessages(
                 channelId,
                 navigationStore.selectedGuild?.id,
@@ -208,7 +213,7 @@ fun ChatArea(
     LaunchedEffect(messageStore.scrollToMessageId) {
         val messageId = messageStore.scrollToMessageId ?: return@LaunchedEffect
         val index = withTimeoutOrNull(5_000) {
-            snapshotFlow { messages.indexOfFirst { it.id == messageId } }
+            snapshotFlow { messagesState.value.indexOfFirst { it.id == messageId } }
                 .first { it != -1 }
         } ?: -1
 

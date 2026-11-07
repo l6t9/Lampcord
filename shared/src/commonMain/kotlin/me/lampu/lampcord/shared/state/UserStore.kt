@@ -22,12 +22,18 @@ class UserStore {
     val members: StateFlow<Map<String, Map<String, Member>>> = _members.asStateFlow()
 
     private val memberStates = mutableMapOf<String, MutableState<Member?>>()
+    private val userStates = mutableMapOf<String, MutableState<User?>>()
 
     private fun memberKey(guildId: String, userId: String): String = "$guildId\u0000$userId"
 
     fun memberState(guildId: String, userId: String): State<Member?> =
         memberStates.getOrPut(memberKey(guildId, userId)) {
             mutableStateOf(_members.value[guildId]?.get(userId))
+        }
+
+    fun userState(userId: String): State<User?> =
+        userStates.getOrPut(userId) {
+            mutableStateOf(_users.value[userId])
         }
 
     fun setCurrentUser(user: User?, raw: JsonObject? = null) {
@@ -46,6 +52,9 @@ class UserStore {
             val next = current.toMutableMap()
             for ((user, raw) in updates) next[user.id] = mergeUser(next[user.id], user, raw)
             next
+        }
+        updates.forEach { (user, _) ->
+            userStates[user.id]?.value = _users.value[user.id]
         }
         val currentId = _currentUser.value?.id ?: return
         if (updates.any { it.first.id == currentId }) {
@@ -135,6 +144,8 @@ class UserStore {
         _currentUser.value = null
         memberStates.values.forEach { it.value = null }
         memberStates.clear()
+        userStates.values.forEach { it.value = null }
+        userStates.clear()
     }
 
     fun getCurrentMember(guildId: String?): Member? {

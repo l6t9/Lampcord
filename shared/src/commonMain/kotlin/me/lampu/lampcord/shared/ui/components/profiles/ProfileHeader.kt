@@ -83,8 +83,10 @@ fun ProfileHeader(
         dbProfile?.copy(avatar = resolvedAvatar)
     }
 
-    val avatarUrl = customProfile?.avatar ?: profile.guild_member?.avatar?.let {
-        "https://cdn.discordapp.com/guilds/${profile.guild_id}/users/${user.id}/avatars/$it.png?size=512"
+    val avatarUrl = customProfile?.avatar ?: profile.guild_member?.avatar?.let { memberAvatar ->
+        profile.guild_id?.let { guildId ->
+            CdnUrls.getMemberAvatarUrl(guildId, user.id, memberAvatar, user.avatar, 512)
+        }
     } ?: CdnUrls.getUserAvatarUrl(user.id, user.avatar, 512)
 
     val presences by presenceStore.presences.collectAsState()

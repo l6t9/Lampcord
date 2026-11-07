@@ -3,6 +3,9 @@ package me.lampu.lampcord.shared.state
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.State
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.mutableStateOf
 import me.lampu.lampcord.shared.api.GuildApi
 import me.lampu.lampcord.shared.model.*
 import me.lampu.lampcord.shared.utils.Logging
@@ -24,6 +27,17 @@ class GuildStore(
     private companion object {        const val CHANNEL_OPT_IN_FLAG = 1 shl 10
     }
 
+    private data class GuildActivity(
+        val unreadGuildIds: Set<String> = emptySet(),
+        val mentionCounts: Map<String, Int> = emptyMap(),
+        val privateMentionCount: Int = 0
+    )
+
+    private val guildActivitySnapshot = mutableStateOf(GuildActivity())
+    private val guildUnreadStates = mutableMapOf<String, State<Boolean>>()
+    private val guildMentionStates = mutableMapOf<String, State<Int>>()
+    private val privateMentionState = derivedStateOf { guildActivitySnapshot.value.privateMentionCount }
+
     private val _guildIds = MutableStateFlow<List<String>>(emptyList())
     val guilds: StateFlow<List<Guild>> = combine(_guildIds, entityStore.guilds) { ids, allGuilds ->
         ids.mapNotNull { allGuilds[it] }
@@ -36,6 +50,38 @@ class GuildStore(
     }.stateIn(scope, SharingStarted.Eagerly, emptyList())
 
     val allGuildChannels = entityStore.channels
+
+    fun channelsForGuild(guildId: String): StateFlow<List<Channel>> = entityStore.channelsForGuild(guildId)
+
+    private val guildActivity = combine(
+        entityStore.channels,
+        _privateChannelIds,
+        readStateStore.readStates,
+        readStateStore.recentIds,
+        userGuildSettingsStore.userGuildSettings
+    ) { channels, privateChannelIds, readStates, recentIds, _ ->
+        val unread = mutableSetOf<String>()
+        val mentions = mutableMapOf<String, Int>()
+        channels.values.forEach { channel ->
+            val guildId = channel.guild_id ?: return@forEach
+            val count = readStates[channel.id]?.mention_count ?: 0
+            if (count > 0) mentions[guildId] = (mentions[guildId] ?: 0) + count
+            if (readStateStore.isUnread(channel, readStates, recentIds) &&
+                !userGuildSettingsStore.isGuildMuted(guildId) &&
+                !userGuildSettingsStore.isChannelMuted(guildId, channel.id)
+            ) {
+                unread.add(guildId)
+            }
+        }
+        val privateMentions = privateChannelIds.sumOf { readStates[it]?.mention_count ?: 0 }
+        GuildActivity(unread, mentions, privateMentions)
+    }.stateIn(scope, SharingStarted.Eagerly, GuildActivity())
+
+    init {
+        scope.launch {
+            guildActivity.collect { guildActivitySnapshot.value = it }
+        }
+    }
 
     fun setGuilds(newGuilds: List<Guild>, order: List<String>) {
         Logging.i("GuildStore", "Setting ${newGuilds.size} guilds")
@@ -377,6 +423,18 @@ class GuildStore(
     fun getGuildMentionCount(guildId: String): Int {
         return allGuildChannels.value.values.filter { it.guild_id == guildId }.sumOf { readStateStore.getMentionCount(it.id) }
     }
+
+    fun guildUnreadState(guildId: String): State<Boolean> =
+        guildUnreadStates.getOrPut(guildId) {
+            derivedStateOf { guildId in guildActivitySnapshot.value.unreadGuildIds }
+        }
+
+    fun guildMentionCountState(guildId: String): State<Int> =
+        guildMentionStates.getOrPut(guildId) {
+            derivedStateOf { guildActivitySnapshot.value.mentionCounts[guildId] ?: 0 }
+        }
+
+    fun privateMentionCountState(): State<Int> = privateMentionState
 
     fun getForumThreads(channelId: String): List<Channel> {
         return allGuildChannels.value.values.filter { it.parent_id == channelId }

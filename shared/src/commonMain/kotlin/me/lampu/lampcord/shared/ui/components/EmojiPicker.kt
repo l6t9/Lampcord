@@ -4,6 +4,7 @@ package me.lampu.lampcord.shared.ui.components
 import me.lampu.lampcord.shared.generated.resources.Res
 import me.lampu.lampcord.shared.generated.resources.emoji
 import me.lampu.lampcord.shared.generated.resources.expression_picker_gif
+import me.lampu.lampcord.shared.api.CdnUrls
 import me.lampu.lampcord.shared.generated.resources.expression_picker_sticker
 import org.jetbrains.compose.resources.stringResource
 
@@ -172,12 +173,12 @@ fun EmojiPicker(
             groups.addAll(
                 orderedGuilds
                     .map { guild ->
-                        EmojiGroup(guild.id, guild.name, guild.emojis, guild.icon?.let { "https://cdn.discordapp.com/icons/${guild.id}/$it.png?size=64" })
+                        EmojiGroup(guild.id, guild.name, guild.emojis, guild.icon?.let { CdnUrls.getGuildIconUrl(guild.id, guild.icon, 64) })
                     }.filter { it.emojis.isNotEmpty() }
             )
         } else {
             selectedGuild?.let { guild ->
-                groups.add(EmojiGroup(guild.id, guild.name, guild.emojis, guild.icon?.let { "https://cdn.discordapp.com/icons/${guild.id}/$it.png?size=64" }))
+                groups.add(EmojiGroup(guild.id, guild.name, guild.emojis, guild.icon?.let { CdnUrls.getGuildIconUrl(guild.id, guild.icon, 64) }))
             }
         }
 

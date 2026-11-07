@@ -143,8 +143,6 @@ fun GuildFolderItem(
     folder: GuildFolder,
     navigationStore: NavigationStore = koinInject(),
     guildStore: GuildStore = koinInject(),
-    readStateStore: ReadStateStore = koinInject(),
-    userGuildSettingsStore: UserGuildSettingsStore = koinInject(),
     settingsStore: SettingsStore = koinInject(),
     gatewayManager: GatewayManager = koinInject()
     , arrangeMode: Boolean = false
@@ -166,11 +164,8 @@ fun GuildFolderItem(
     val isAnyChildSelected = guildIds.any { id -> id == navigationStore.selectedGuild?.id }
     val reduceMotion = Settings.shared.reduceMotion
 
-    val readStates by readStateStore.readStates.collectAsState()
-    val userGuildSettings by userGuildSettingsStore.userGuildSettings.collectAsState()
-
-    val isUnread = remember(folder, readStates, userGuildSettings) { guildStore.isFolderUnread(folder) }
-    val mentionCount = remember(folder, readStates, userGuildSettings) { guildStore.getFolderMentionCount(folder) }
+    val isUnread = guildIds.any { guildStore.guildUnreadState(it).value }
+    val mentionCount = guildIds.sumOf { guildStore.guildMentionCountState(it).value }
 
     val contextMenuItems = remember(folder, guildIds) {
         listOf(

@@ -5,6 +5,7 @@ import me.lampu.lampcord.shared.generated.resources.unban
 import org.jetbrains.compose.resources.stringResource
 
 import androidx.compose.foundation.background
+import me.lampu.lampcord.shared.api.CdnUrls
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -82,7 +83,7 @@ fun ServerMembers(guild: Guild, guildApi: GuildApi = koinInject()) {
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
-                                val avatarUrl = user.avatar?.let { "https://cdn.discordapp.com/avatars/${user.id}/$it.png?size=64" }
+                                val avatarUrl = user.avatar?.let { CdnUrls.getUserAvatarUrl(user.id, user.avatar, 64) }
                                 AsyncImage(
                                     model = avatarUrl,
                                     contentDescription = null,
@@ -213,7 +214,7 @@ fun ServerBans(guild: Guild, guildApi: GuildApi = koinInject()) {
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
-                                val avatarUrl = user.avatar?.let { "https://cdn.discordapp.com/avatars/${user.id}/$it.png?size=64" }
+                                val avatarUrl = user.avatar?.let { CdnUrls.getUserAvatarUrl(user.id, user.avatar, 64) }
                                 AsyncImage(
                                     model = avatarUrl,
                                     contentDescription = null,

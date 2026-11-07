@@ -17,6 +17,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import me.lampu.lampcord.shared.api.CdnUrls
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
@@ -132,9 +133,7 @@ fun ForwardedMessage(
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     if (guild != null) {
-                        val iconUrl = guild.icon?.let {
-                            "https://cdn.discordapp.com/icons/${guild.id}/$it.png?size=48"
-                        }
+                        val iconUrl = guild.icon?.let { CdnUrls.getGuildIconUrl(guild.id, guild.icon, 48) }
                         if (iconUrl != null) {
                             AsyncImage(
                                 model = iconUrl,

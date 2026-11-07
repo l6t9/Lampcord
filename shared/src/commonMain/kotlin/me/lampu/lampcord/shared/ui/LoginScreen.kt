@@ -24,6 +24,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import me.lampu.lampcord.shared.state.SessionManager
 import me.lampu.lampcord.shared.api.RemoteAuthClient
 import me.lampu.lampcord.shared.api.RemoteAuthState
+import me.lampu.lampcord.shared.api.CdnUrls
 import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
 import kotlinx.coroutines.launch
 import me.lampu.lampcord.shared.ui.icons.Icons
@@ -393,9 +394,7 @@ fun LoginScreen(
                                 }
                                 is RemoteAuthState.UserScanned -> {
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        val avatarUrl = state.user.avatar?.let {
-                                            "https://cdn.discordapp.com/avatars/${state.user.id}/$it.png?size=128"
-                                        }
+                                        val avatarUrl = state.user.avatar?.let { CdnUrls.getUserAvatarUrl(state.user.id, it, 128) }
                                         if (avatarUrl != null) {
                                             me.lampu.lampcord.shared.ui.components.AsyncImage(
                                                 model = avatarUrl,

@@ -15,6 +15,41 @@ class EntityStore(
     private val _channels = MutableStateFlow<Map<String, Channel>>(emptyMap())
     val channels: StateFlow<Map<String, Channel>> = _channels.asStateFlow()
 
+    private val guildChannelFlows = MutableStateFlow<Map<String, MutableStateFlow<List<Channel>>>>(emptyMap())
+
+    private fun guildChannelFlow(guildId: String): MutableStateFlow<List<Channel>> {
+        guildChannelFlows.value[guildId]?.let { return it }
+        guildChannelFlows.update { current ->
+            if (current.containsKey(guildId)) current
+            else current + (guildId to MutableStateFlow(
+                _channels.value.values.filter { it.guild_id == guildId }
+            ))
+        }
+        return guildChannelFlows.value.getValue(guildId)
+    }
+
+    fun channelsForGuild(guildId: String): StateFlow<List<Channel>> = guildChannelFlow(guildId)
+
+    private fun publishGuildChannel(guildId: String?, channel: Channel) {
+        if (guildId == null) return
+        val flow = guildChannelFlow(guildId)
+        flow.update { current ->
+            val index = current.indexOfFirst { it.id == channel.id }
+            when {
+                index == -1 -> current + channel
+                current[index] === channel -> current
+                else -> current.toMutableList().also { it[index] = channel }
+            }
+        }
+    }
+
+    private fun removeGuildChannel(guildId: String?, channelId: String) {
+        if (guildId == null) return
+        guildChannelFlows.value[guildId]?.update { current ->
+            current.filterNot { it.id == channelId }
+        }
+    }
+
     fun updateGuild(guild: Guild) {
         _guilds.update { current ->
             val existing = current[guild.id]
@@ -66,6 +101,7 @@ class EntityStore(
         _channels.update { current ->
             current.filterValues { it.guild_id != guildId }
         }
+        guildChannelFlows.value[guildId]?.value = emptyList()
     }
 
     fun updateChannel(channel: Channel) {
@@ -74,6 +110,7 @@ class EntityStore(
             val type = channel.type ?: existing?.type
             val isDm = type == 1 || type == 3
             val newGuildId = if (isDm) null else (channel.guild_id ?: existing?.guild_id)
+            val oldGuildId = existing?.guild_id
 
             val updatedRecipients = if (!channel.recipients.isNullOrEmpty()) channel.recipients else existing?.recipients
             val updatedRecipientIds = if (!channel.recipient_ids.isNullOrEmpty()) {
@@ -108,18 +145,32 @@ class EntityStore(
                 recipient_ids = updatedRecipientIds
             )
             
-            updated.recipients?.forEach { userStore.handleUserUpdate(it) }
-            
+            channel.recipients?.forEach { userStore.handleUserUpdate(it) }
+
+            val guildChanged = oldGuildId != newGuildId
+            val lastMessageOnlyChange = !guildChanged && existing != null &&
+                updated.copy(last_message_id = existing.last_message_id) == existing
+            if (guildChanged) {
+                removeGuildChannel(oldGuildId, updated.id)
+            }
+            if (guildChanged || !lastMessageOnlyChange) {
+                publishGuildChannel(newGuildId, updated)
+            }
+
             current + (channel.id to updated)
         }
     }
 
     fun removeChannel(channelId: String) {
+        val removed = _channels.value[channelId]
         _channels.update { it - channelId }
+        removeGuildChannel(removed?.guild_id, channelId)
     }
 
     fun clear() {
         _guilds.value = emptyMap()
         _channels.value = emptyMap()
+        guildChannelFlows.value.values.forEach { it.value = emptyList() }
+        guildChannelFlows.value = emptyMap()
     }
 }

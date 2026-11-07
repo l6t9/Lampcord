@@ -102,12 +102,13 @@ class MessageEventHandler(
                 recipients = updatedRecipients,
                 recipient_ids = updatedRecipientIds
             )
-            entityStore.updateChannel(updated)
             if (updated.guild_id == null && (updated.type == 1 || updated.type == 3)) {
                 guildStore.handleChannelCreateOrUpdate(updated)
                 if (updated.recipients.isNullOrEmpty()) {
                     hydrateDmChannel(message.channel_id, message.id)
                 }
+            } else {
+                entityStore.updateChannel(updated)
             }
         } else if (message.guild_id == null) {
             val dummyChannel = me.lampu.lampcord.shared.model.Channel(

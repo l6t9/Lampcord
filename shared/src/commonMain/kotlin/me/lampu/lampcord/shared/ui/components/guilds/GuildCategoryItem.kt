@@ -15,7 +15,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -31,6 +30,7 @@ import me.lampu.lampcord.shared.state.GuildStore
 import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.state.UserStore
+import me.lampu.lampcord.shared.ui.LocalCurrentUser
 import me.lampu.lampcord.shared.ui.components.ChannelItem
 import me.lampu.lampcord.shared.ui.components.ContextMenu
 import me.lampu.lampcord.shared.ui.components.ContextMenuItem
@@ -54,17 +54,16 @@ fun GuildCategoryItem(
     val isHovered by interactionSource.collectIsHoveredAsState()
 
     val guild = navigationStore.selectedGuild
-    val currentUser by userStore.currentUser.collectAsState()
-    val allMembers by userStore.members.collectAsState()
-    
-    val member = remember(guild?.id, currentUser, allMembers) {
-        val g = guild
-        val u = currentUser
-        if (g != null && u != null) allMembers[g.id]?.get(u.id) else null
+    val currentUser = LocalCurrentUser.current
+    val currentUserId = currentUser?.id
+    val memberState = remember(guild?.id, currentUserId) {
+        val guildId = guild?.id
+        val userId = currentUserId
+        if (guildId == null || userId == null) null else userStore.memberState(guildId, userId)
     }
+    val member = memberState?.value
     val showHidden = settingsStore.showHiddenChannels
 
-    val currentUserId = currentUser?.id
     val categoryChannels = remember(channels, category.id, guild, member, showHidden, currentUserId) {
         val g = guild
         val u = currentUser

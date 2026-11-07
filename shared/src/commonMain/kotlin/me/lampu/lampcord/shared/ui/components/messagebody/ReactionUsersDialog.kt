@@ -4,6 +4,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import me.lampu.lampcord.shared.api.CdnUrls
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
@@ -183,7 +184,7 @@ private fun ReactionUserList(
             ) {
                 items(users) { user ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        val avatarUrl = user.avatar?.let { "https://cdn.discordapp.com/avatars/${user.id}/$it.png?size=64" }
+                        val avatarUrl = user.avatar?.let { CdnUrls.getUserAvatarUrl(user.id, user.avatar, 64) }
                         AsyncImage(
                             model = avatarUrl,
                             contentDescription = null,

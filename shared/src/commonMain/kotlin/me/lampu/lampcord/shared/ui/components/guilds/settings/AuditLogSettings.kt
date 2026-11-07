@@ -3,6 +3,7 @@ package me.lampu.lampcord.shared.ui.components.guilds.settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import me.lampu.lampcord.shared.api.CdnUrls
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -69,7 +70,7 @@ fun ServerAuditLog(guild: Guild, guildApi: GuildApi = koinInject()) {
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
-                                val avatarUrl = user?.avatar?.let { "https://cdn.discordapp.com/avatars/${user.id}/$it.png?size=64" }
+                                val avatarUrl = user?.avatar?.let { CdnUrls.getUserAvatarUrl(user.id, user.avatar, 64) }
                                 AsyncImage(
                                     model = avatarUrl,
                                     contentDescription = null,

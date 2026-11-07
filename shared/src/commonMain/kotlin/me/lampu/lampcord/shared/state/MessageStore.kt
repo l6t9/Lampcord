@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
@@ -64,11 +65,9 @@ class MessageStore(
     private val lastTypingEmissionMillis = mutableMapOf<String, Long>()
     private val messageCache = mutableMapOf<String, List<Message>>()
 
-    private val _allMessages = MutableStateFlow<Map<String, List<Message>>>(emptyMap())
+    private val _activeMessages = MutableStateFlow<List<Message>>(emptyList())
 
-    val messages: StateFlow<List<Message>> = combine(_allMessages, selectionStore.activeChannelIdFlow) { all, activeId ->
-        if (activeId == null) emptyList() else all[activeId] ?: emptyList()
-    }.stateIn(scope, SharingStarted.Eagerly, emptyList())
+    val messages: StateFlow<List<Message>> = _activeMessages.asStateFlow()
 
     private val _loadingHistoryChannels = MutableStateFlow<Set<String>>(emptySet())
     val isLoadingHistory: StateFlow<Boolean> = combine(_loadingHistoryChannels, selectionStore.activeChannelIdFlow) { loading, activeId ->
@@ -174,6 +173,12 @@ class MessageStore(
 
     init {
         scope.launch {
+            selectionStore.activeChannelIdFlow.collect { channelId ->
+                _activeMessages.value =
+                    if (channelId == null) emptyList() else messageCache[channelId] ?: emptyList()
+            }
+        }
+        scope.launch {
             try {
                 val text = ResourceLoader.readText("files/loading_messages.txt")
                 val lines = text?.split("\n")
@@ -210,7 +215,7 @@ class MessageStore(
     fun clear() {
         messageCache.clear()
         channelAccessOrder.clear()
-        _allMessages.value = emptyMap()
+        _activeMessages.value = emptyList()
         messageNonceIds.clear()
         _hasMoreHistory.value = emptyMap()
         _loadingHistoryChannels.value = emptySet()
@@ -227,8 +232,10 @@ class MessageStore(
         }
     }
 
-    private fun updateAllMessagesFlow() {
-        _allMessages.value = messageCache.toMap()
+    private fun publishMessages(channelId: String) {
+        if (selectionStore.activeChannelIdFlow.value == channelId) {
+            _activeMessages.value = messageCache[channelId] ?: emptyList()
+        }
     }
 
     fun hasMessages(channelId: String): Boolean {
@@ -241,6 +248,7 @@ class MessageStore(
         if (channelAccessOrder.size > CACHE_MAX_CHANNELS) {
             val oldest = channelAccessOrder.removeAt(0)
             messageCache.remove(oldest)
+            publishMessages(oldest)
             _hasMoreHistory.update { it + (oldest to true) }
         }
         trimChannelMessages(channelId)
@@ -279,7 +287,7 @@ class MessageStore(
             incoming.sortByDescending { it.id.toLongOrNull() ?: 0L }
             messageCache[channelId] = mergeDescending(channelMessages, incoming)
             recordAccess(channelId)
-            updateAllMessagesFlow()
+            publishMessages(channelId)
         }
     }
 
@@ -325,7 +333,7 @@ class MessageStore(
             val sorted = channelMessages.sortedByDescending { it.id.toLongOrNull() ?: 0L }
             messageCache[channelId] = sorted
             recordAccess(channelId)
-            updateAllMessagesFlow()
+            publishMessages(channelId)
         }
     }
 
@@ -367,7 +375,7 @@ class MessageStore(
 
         messageCache[channelId] = channelMessages
         recordAccess(channelId)
-        updateAllMessagesFlow()
+        publishMessages(channelId)
     }
 
     fun handleMessageUpdate(message: Message, dataObj: JsonObject) {
@@ -382,14 +390,13 @@ class MessageStore(
             messageLogger.logUpdate(preprocessed)
             channelMessages[index] = preprocessed
             messageCache[channelId] = channelMessages
-            updateAllMessagesFlow()
+            publishMessages(channelId)
         }
     }
 
     fun handleMessageDelete(id: String, channelId: String? = null) {
         Logging.d("MessageStore", "Handling MESSAGE_DELETE: $id")
         val keepInLog = me.lampu.lampcord.shared.settings.Settings.shared.messageLoggerEnabled
-        var changed = false
         val entries = if (channelId != null) {
             messageCache[channelId]?.let { listOf(channelId to it) }.orEmpty()
         } else {
@@ -414,10 +421,9 @@ class MessageStore(
             }
             if (channelChanged) {
                 messageCache[chanId] = newList
-                changed = true
+                publishMessages(chanId)
             }
         }
-        if (changed) updateAllMessagesFlow()
     }
 
     fun handleReactionAdd(update: MessageReactionAdd) {
@@ -472,7 +478,7 @@ class MessageStore(
         }
         if (msgChanged) {
             messageCache[channelId] = newList
-            updateAllMessagesFlow()
+            publishMessages(channelId)
         }
     }
 
@@ -518,7 +524,7 @@ class MessageStore(
         }
         if (msgChanged) {
             messageCache[channelId] = newList
-            updateAllMessagesFlow()
+            publishMessages(channelId)
         }
     }
 
@@ -529,7 +535,7 @@ class MessageStore(
             if (msg.id == update.message_id) msg.copy(reactions = emptyList()) else msg
         }
         messageCache[channelId] = newList
-        updateAllMessagesFlow()
+        publishMessages(channelId)
     }
 
     fun handleReactionRemoveEmoji(update: MessageReactionRemoveEmoji) {
@@ -545,7 +551,7 @@ class MessageStore(
             } else msg
         }
         messageCache[channelId] = newList
-        updateAllMessagesFlow()
+        publishMessages(channelId)
     }
 
     fun loadMoreMessages(channelId: String, guildId: String?, threadId: String?) {
@@ -751,7 +757,7 @@ class MessageStore(
             if (index != -1) {
                 channelMessages[index] = channelMessages[index].copy(sendError = error, isPending = true)
                 messageCache[task.channelId] = channelMessages
-                updateAllMessagesFlow()
+                publishMessages(task.channelId)
             }
             errorStore.pushError("Message failed: $error")
         }
@@ -781,7 +787,7 @@ class MessageStore(
                 if (index != -1) {
                     channelMessages[index] = channelMessages[index].copy(sendError = null, isPending = true)
                     messageCache[channelId] = channelMessages
-                    updateAllMessagesFlow()
+                    publishMessages(channelId)
                 }
 
                 queue.retry(task)
@@ -795,7 +801,7 @@ class MessageStore(
         val channelMessages = messageCache[channelId] ?: return
         val newList = channelMessages.filter { msg -> msg.nonce != nonce }
         messageCache[channelId] = newList
-        updateAllMessagesFlow()
+        publishMessages(channelId)
         scope.launch {
             queuesMutex.withLock {
                 queues[channelId]?.cancel(nonce)
@@ -833,7 +839,7 @@ class MessageStore(
 
         current[idx] = oldMessage.copy(content = preprocessed, oldContent = oldMessage.content)
         messageCache[channelId] = current
-        updateAllMessagesFlow()
+        publishMessages(channelId)
 
         scope.launch {
             try {
@@ -843,7 +849,7 @@ class MessageStore(
                     if (rIdx != -1) {
                         rollback[rIdx] = oldMessage
                         messageCache[channelId] = rollback
-                        updateAllMessagesFlow()
+                        publishMessages(channelId)
                     }
                     errorStore.pushError("Failed to edit message.")
                 }
@@ -853,7 +859,7 @@ class MessageStore(
                 if (rIdx != -1) {
                     rollback[rIdx] = oldMessage
                     messageCache[channelId] = rollback
-                    updateAllMessagesFlow()
+                    publishMessages(channelId)
                 }
             }
         }
@@ -874,7 +880,7 @@ class MessageStore(
                         if (!current.any { it.id == id }) {
                             current.add(restored)
                             messageCache[channelId] = current.sortedByDescending { it.id.toLongOrNull() ?: 0L }
-                            updateAllMessagesFlow()
+                            publishMessages(channelId)
                         }
                     }
                     errorStore.pushError("Failed to delete message")
@@ -885,7 +891,7 @@ class MessageStore(
                     if (!current.any { it.id == id }) {
                         current.add(restored)
                         messageCache[channelId] = current.sortedByDescending { it.id.toLongOrNull() ?: 0L }
-                        updateAllMessagesFlow()
+                        publishMessages(channelId)
                     }
                 }
             }
@@ -934,7 +940,7 @@ class MessageStore(
         if (idx != -1) {
             current[idx] = current[idx].copy(pinned = pinned)
             messageCache[channelId] = current
-            updateAllMessagesFlow()
+            publishMessages(channelId)
         }
     }
 
