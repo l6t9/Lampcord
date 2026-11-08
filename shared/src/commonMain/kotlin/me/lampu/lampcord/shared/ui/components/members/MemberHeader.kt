@@ -442,13 +442,13 @@ fun MemberHeader(
         Spacer(Modifier.height(if (overlapping) 4.dp else 16.dp))
 
         if (!isDesktop && !overlapping) {
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(8.dp))
 
             ButtonGroup(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
-                    .height(64.dp),
+                    .height(48.dp),
                 overflowIndicator = { menuState -> ButtonGroupDefaults.OverflowIndicator(menuState) },
                 horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
             ) {
