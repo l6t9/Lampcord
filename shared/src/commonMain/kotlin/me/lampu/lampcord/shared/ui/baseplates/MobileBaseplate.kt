@@ -1352,6 +1352,7 @@ private fun MainBaseplateContent(
                                     modifier = Modifier
                                         .fillMaxSize()
                                 ) {
+                                    DmCallStage(activeChannel)
                                     Box(modifier = Modifier.weight(1f)) {
                                             if (activeChannel.type == 15 && navigationStore.selectedThread == null) {
                                                 ForumPostList()

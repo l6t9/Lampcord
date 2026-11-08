@@ -53,6 +53,7 @@ import me.lampu.lampcord.shared.ui.components.ChannelHeader
 import me.lampu.lampcord.shared.ui.components.ChatArea
 import me.lampu.lampcord.shared.ui.components.ChatInputBar
 import me.lampu.lampcord.shared.ui.components.ChatSkeleton
+import me.lampu.lampcord.shared.ui.components.DmCallStage
 import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
 import me.lampu.lampcord.shared.ui.components.ForumPostList
 import me.lampu.lampcord.shared.ui.components.FriendsList
@@ -140,6 +141,7 @@ fun DesktopBaseplate(
                             val isVoice = activeChannel.type == 2 || activeChannel.type == 13
                             Column(modifier = Modifier.fillMaxSize()) {
                                 ChannelHeader(activeChannel, navigationStore, isCompactMemberList = widthBreakpoint == WindowWidthBreakpoint.MEDIUM)
+                                DmCallStage(activeChannel)
 
                                 Box(modifier = Modifier.weight(1f)) {
                                     if (isVoice) {

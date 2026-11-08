@@ -3,9 +3,11 @@ package me.lampu.lampcord.shared.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarDefaults
@@ -28,6 +30,7 @@ import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.state.VoiceStore
 import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.state.GuildStore
+import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.ui.components.guilds.GuildChannelList
 import me.lampu.lampcord.shared.ui.components.guilds.GuildRail
 import me.lampu.lampcord.shared.ui.icons.Icons
@@ -95,11 +98,6 @@ fun Sidebar(
                         .padding(start = 0.dp, top = 4.dp, end = 0.dp, bottom = 0.dp)
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(16.dp))
-                        .border(
-                            1.dp,
-                            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-                            RoundedCornerShape(16.dp)
-                        )
                 ) {
                     AccountPanel()
                 }
@@ -115,88 +113,89 @@ fun SidebarVoicePanel(
 ) {
     val activeChannel = voiceStore.activeChannel ?: return
     val guildStore: GuildStore = koinInject()
+    val settingsStore: SettingsStore = koinInject()
     val guilds by guildStore.guilds.collectAsState()
     val guild = remember(activeChannel.guild_id, guilds) {
         guilds.find { it.id == activeChannel.guild_id }
     }
-    
+    val connected = voiceStore.isVoiceConnected
+    val name = if (guild != null) "${activeChannel.name ?: "Voice"} / ${guild.name}" else voiceChannelName(activeChannel, userStore)
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .padding(bottom = 4.dp),
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        tonalElevation = 2.dp
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh
     ) {
-        Column(modifier = Modifier.padding(8.dp)) {
+        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    Icons.Filled.Campaign, 
-                    null, 
-                    tint = Color(0xFF23A559),
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(Modifier.width(8.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
-                        "Voice Connected",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = Color(0xFF23A559),
-                        fontWeight = FontWeight.Bold
+                        if (connected) "Voice Connected" else "Connecting",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = if (connected) Color(0xFF6DD58C) else MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.SemiBold
                     )
                     Text(
-                        "${activeChannel.name ?: "Voice Call"} / ${guild?.name ?: "DM"}",
+                        "$name · ${voiceStatusText(voiceStore)}",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                
-                IconButton(onClick = { /* TODO: Noise suppression? */ }, modifier = Modifier.size(24.dp)) {
-                    Icon(Icons.Filled.Tune, null, modifier = Modifier.size(16.dp))
-                }
-                
                 IconButton(
                     onClick = { voiceStore.disconnectFromVoice() },
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(36.dp)
                 ) {
-                    Icon(Icons.AutoMirrored.Filled.Logout, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Filled.CallEnd, "Disconnect", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
                 }
             }
-            
-            Spacer(Modifier.height(8.dp))
-            
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                VoicePanelButton(Icons.Filled.Videocam, "Video") { /* TODO */ }
-                VoicePanelButton(Icons.Filled.ScreenShare, "Screen") { /* TODO */ }
-                VoicePanelButton(Icons.Filled.Devices, "Activities") { /* TODO */ }
-                VoicePanelButton(Icons.Filled.VolumeUp, "Soundboard") { /* TODO */ }
+                // Sending camera and screen video is not implemented yet; only receiving is.
+                VoicePanelButton(Icons.Filled.Videocam, "Turn on camera", enabled = false) {}
+                VoicePanelButton(Icons.Filled.ScreenShare, "Share your screen", enabled = false) {}
+                VoicePanelButton(
+                    Icons.Filled.GraphicEq,
+                    if (settingsStore.noiseCancellation) "Turn off noise suppression" else "Turn on noise suppression",
+                    checked = settingsStore.noiseCancellation
+                ) { settingsStore.noiseCancellation = !settingsStore.noiseCancellation }
             }
         }
     }
 }
 
 @Composable
-private fun VoicePanelButton(
+private fun RowScope.VoicePanelButton(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     contentDescription: String,
+    enabled: Boolean = true,
+    checked: Boolean = false,
     onClick: () -> Unit
 ) {
     Surface(
         onClick = onClick,
-        modifier = Modifier.size(width = 44.dp, height = 32.dp),
-        shape = RoundedCornerShape(8.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHighest
+        enabled = enabled,
+        modifier = Modifier.weight(1f).height(36.dp),
+        shape = CircleShape,
+        color = if (checked) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
+        contentColor = if (checked) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface
     ) {
         Box(contentAlignment = Alignment.Center) {
-            Icon(icon, contentDescription, modifier = Modifier.size(18.dp))
+            Icon(
+                icon,
+                contentDescription,
+                modifier = Modifier.size(18.dp),
+                tint = if (enabled) LocalContentColor.current else LocalContentColor.current.copy(alpha = 0.38f)
+            )
         }
     }
 }

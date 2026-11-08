@@ -13,9 +13,6 @@ import me.lampu.lampcord.shared.generated.resources.status_invisible
 import me.lampu.lampcord.shared.generated.resources.status_online
 import org.jetbrains.compose.resources.stringResource
 
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.snap
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -35,8 +32,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ButtonGroup
-import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -49,8 +44,6 @@ import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.api.CdnUrls
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.ToggleButton
-import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -124,11 +117,10 @@ fun AccountPanel(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .height(68.dp)
+            .height(60.dp)
             .handCursor()
             .onGloballyPositioned { panelPosition = it.positionInRoot() },
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        tonalElevation = 4.dp
+        color = MaterialTheme.colorScheme.surfaceContainerHigh
     ) {
         val member = navigationStore.selectedGuild?.let { userStore.getMember(it.id, user.id) }
         val nameplate = member?.collectibles?.nameplate ?: user.collectibles?.nameplate
@@ -243,93 +235,22 @@ fun AccountPanel(
                     }
                 }
                 
-                ButtonGroup(
-                    modifier = Modifier
-                        .height(32.dp)
-                        .animateContentSize(
-                            animationSpec = if (Settings.shared.reduceMotion) {
-                                snap()
-                            } else {
-                                spring(dampingRatio = 0.6f, stiffness = 400f)
-                            }
-                        ),
-                    overflowIndicator = { menuState -> ButtonGroupDefaults.OverflowIndicator(menuState) },
-                    horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
-                ) {
-                    customItem(
-                        buttonGroupContent = {
-                            ToggleButton(
-                                checked = isMuted, 
-                                onCheckedChange = { voiceStore.toggleVoiceMute() },
-                                shapes = ButtonGroupDefaults.connectedLeadingButtonShapes(),
-                                colors = ToggleButtonDefaults.tonalToggleButtonColors(),
-                                contentPadding = PaddingValues(0.dp),
-                                modifier = Modifier.fillMaxSize()
-                            ) {
-                                Icon(
-                                    imageVector = if (isMuted) Icons.Filled.MicOff else Icons.Rounded.Mic,
-                                    contentDescription = stringResource(Res.string.mute),
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        },
-                        menuContent = {
-                            DropdownMenuItem(
-                                modifier = Modifier.handCursor(),
-                                text = { Text(if (isMuted) "Unmute" else "Mute") },
-                                onClick = { voiceStore.toggleVoiceMute() },
-                                leadingIcon = { Icon(if (isMuted) Icons.Filled.MicOff else Icons.Rounded.Mic, null, modifier = Modifier.size(18.dp)) }
-                            )
-                        }
+                Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                    AccountPanelButton(
+                        if (isMuted) Icons.Filled.MicOff else Icons.Rounded.Mic,
+                        if (isMuted) "Unmute" else stringResource(Res.string.mute),
+                        active = isMuted,
+                        onClick = voiceStore::toggleVoiceMute
                     )
-                    customItem(
-                        buttonGroupContent = {
-                            ToggleButton(
-                                checked = isDeafened, 
-                                onCheckedChange = { voiceStore.toggleVoiceDeaf() },
-                                shapes = ButtonGroupDefaults.connectedMiddleButtonShapes(),
-                                colors = ToggleButtonDefaults.tonalToggleButtonColors(),
-                                contentPadding = PaddingValues(0.dp),
-                                modifier = Modifier.fillMaxSize()
-                            ) {
-                                Icon(
-                                    imageVector = if (isDeafened) Icons.Filled.HeadsetOff else Icons.Rounded.Headphones,
-                                    contentDescription = stringResource(Res.string.deafen),
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        },
-                        menuContent = {
-                            DropdownMenuItem(
-                                modifier = Modifier.handCursor(),
-                                text = { Text(if (isDeafened) "Undeafen" else "Deafen") },
-                                onClick = { voiceStore.toggleVoiceDeaf() },
-                                leadingIcon = { Icon(if (isDeafened) Icons.Filled.HeadsetOff else Icons.Rounded.Headphones, null, modifier = Modifier.size(18.dp)) }
-                            )
-                        }
+                    AccountPanelButton(
+                        if (isDeafened) Icons.Filled.HeadsetOff else Icons.Rounded.Headphones,
+                        if (isDeafened) "Undeafen" else stringResource(Res.string.deafen),
+                        active = isDeafened,
+                        onClick = voiceStore::toggleVoiceDeaf
                     )
-                    customItem(
-                        buttonGroupContent = {
-                            ToggleButton(
-                                checked = false,
-                                onCheckedChange = { navigationStore.isSettingsVisible = true },
-                                shapes = ButtonGroupDefaults.connectedTrailingButtonShapes(),
-                                colors = ToggleButtonDefaults.tonalToggleButtonColors(),
-                                contentPadding = PaddingValues(0.dp),
-                                modifier = Modifier.fillMaxSize()
-                            ) {
-                                Icon(Icons.Rounded.Settings, "Settings", modifier = Modifier.size(18.dp))
-                            }
-                        },
-                        menuContent = {
-                            DropdownMenuItem(
-                                modifier = Modifier.handCursor(),
-                                text = { Text(stringResource(Res.string.settings)) },
-                                onClick = { navigationStore.isSettingsVisible = true },
-                                leadingIcon = { Icon(Icons.Rounded.Settings, null) }
-                            )
-                        }
-                    )
+                    AccountPanelButton(Icons.Rounded.Settings, stringResource(Res.string.settings)) {
+                        navigationStore.isSettingsVisible = true
+                    }
                 }
             }
 
@@ -559,4 +480,24 @@ fun CustomStatusDialog(
         shape = MaterialTheme.shapes.extraLarge,
         tonalElevation = AlertDialogDefaults.TonalElevation
     )
+}
+
+@Composable
+private fun AccountPanelButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
+    active: Boolean = false,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        shape = CircleShape,
+        color = if (active) MaterialTheme.colorScheme.errorContainer else Color.Transparent,
+        contentColor = if (active) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.size(36.dp).handCursor()
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(icon, contentDescription, modifier = Modifier.size(20.dp))
+        }
+    }
 }

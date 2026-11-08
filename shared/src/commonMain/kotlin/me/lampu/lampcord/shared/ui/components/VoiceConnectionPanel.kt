@@ -27,12 +27,7 @@ fun VoiceConnectionPanel(voiceStore: VoiceStore = koinInject(), userStore: UserS
     var showVerification by remember { mutableStateOf(false) }
     var showScreenshareDialog by remember { mutableStateOf(false) }
     val secure = voiceStore.connection.phase == VoicePhase.SECURE
-    val duration = voiceStore.voiceConnectionDuration
-    val status = when (voiceStore.connection.phase) {
-        VoicePhase.SECURE -> "DAVE encrypted · ${duration / 60}:${(duration % 60).toString().padStart(2, '0')}"
-        VoicePhase.CONNECTED -> "Waiting for encrypted audio"
-        else -> "Connecting"
-    }
+    val status = voiceStatusText(voiceStore)
     Surface(color = MaterialTheme.colorScheme.surfaceContainerHigh) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f).padding(8.dp)) {
@@ -121,7 +116,16 @@ fun VoiceCallDialogs(voiceStore: VoiceStore = koinInject(), guildStore: GuildSto
     }
 }
 
-private fun voiceChannelName(channel: Channel, users: UserStore): String = channel.name?.takeIf { it.isNotBlank() }
+internal fun voiceStatusText(voiceStore: VoiceStore): String {
+    val duration = voiceStore.voiceConnectionDuration
+    return when (voiceStore.connection.phase) {
+        VoicePhase.SECURE -> "DAVE encrypted · ${duration / 60}:${(duration % 60).toString().padStart(2, '0')}"
+        VoicePhase.CONNECTED -> "Waiting for encrypted audio"
+        else -> "Connecting"
+    }
+}
+
+internal fun voiceChannelName(channel: Channel, users: UserStore): String = channel.name?.takeIf { it.isNotBlank() }
     ?: channel.recipients?.firstOrNull()?.let { it.global_name ?: it.username }
     ?: channel.recipient_ids?.firstOrNull()?.let { users.getUser(it)?.let { user -> user.global_name ?: user.username } }
     ?: "Voice call"
