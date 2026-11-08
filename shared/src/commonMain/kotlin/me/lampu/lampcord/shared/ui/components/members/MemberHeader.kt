@@ -442,29 +442,28 @@ fun MemberHeader(
         Spacer(Modifier.height(if (overlapping) 4.dp else 16.dp))
 
         if (!isDesktop && !overlapping) {
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(12.dp))
 
             ButtonGroup(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .height(48.dp),
+                    .padding(horizontal = 16.dp),
                 overflowIndicator = { menuState -> ButtonGroupDefaults.OverflowIndicator(menuState) },
                 horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
             ) {
                 val allActions = listOf(
                     HeaderButtonData(
-                        icon = Icons.Filled.Search,
+                        icon = Icons.Rounded.Search,
                         label = "Search",
                         onClick = { navigationStore.isSearchVisible = true }
                     ),
                     HeaderButtonData(
-                        icon = Icons.Filled.PushPin,
+                        icon = Icons.Rounded.PushPin,
                         label = "Pins",
                         onClick = { navigationStore.isPinsVisible = true }
                     ),
                     HeaderButtonData(
-                        icon = Icons.Filled.Settings,
+                        icon = Icons.Rounded.Settings,
                         label = "Settings",
                         onClick = { navigationStore.openChannelSettings(channel) },
                         enabled = channel.type != 1 && channel.type != 3 && channel.guild_id != null && canManageChannel
@@ -496,28 +495,33 @@ fun MemberHeader(
                                 onClick = action.onClick,
                                 enabled = action.enabled,
                                 shapes = shapes,
-                                modifier = Modifier.weight(1f).fillMaxHeight(),
-                                contentPadding = PaddingValues(0.dp)
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .heightIn(min = 56.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)
                             ) {
-                                val contentAlpha = if (action.enabled) 1f else 0.4f
+                                val contentColor = if (action.enabled) {
+                                    MaterialTheme.colorScheme.onSecondaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                }
                                 Column(
                                     horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.Center
+                                    verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically)
                                 ) {
                                     Icon(
                                         imageVector = action.icon,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(20.dp).alpha(contentAlpha)
+                                        contentDescription = action.label,
+                                        modifier = Modifier.size(24.dp),
+                                        tint = contentColor
                                     )
-                                    Spacer(Modifier.height(4.dp))
                                     Text(
                                         text = action.label,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = contentAlpha),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = contentColor,
                                         textAlign = TextAlign.Center,
                                         maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        fontSize = 10.sp
+                                        overflow = TextOverflow.Ellipsis
                                     )
                                 }
                             }
