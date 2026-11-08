@@ -28,7 +28,9 @@ data class Channel(
     val message: Message? = null,
     val permission_overwrites: List<PermissionOverwrite>? = null,
     val member_list_id: String? = null,
-    val flags: Int? = null
+    val flags: Int? = null,
+    val is_message_request: Boolean? = null,
+    val is_spam: Boolean? = null
 ) {
     fun lastMessageId(): String? = last_message_id?.jsonPrimitive?.contentOrNull
 }

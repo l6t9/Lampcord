@@ -32,14 +32,12 @@ class GuildStore(
 
     private data class GuildActivity(
         val unreadGuildIds: Set<String> = emptySet(),
-        val mentionCounts: Map<String, Int> = emptyMap(),
-        val privateMentionCount: Int = 0
+        val mentionCounts: Map<String, Int> = emptyMap()
     )
 
     private val guildActivitySnapshot = mutableStateOf(GuildActivity())
     private val guildUnreadStates = mutableMapOf<String, State<Boolean>>()
     private val guildMentionStates = mutableMapOf<String, State<Int>>()
-    private val privateMentionState = derivedStateOf { guildActivitySnapshot.value.privateMentionCount }
 
     private val _guildIds = MutableStateFlow<List<String>>(emptyList())
     val guilds: StateFlow<List<Guild>> = combine(_guildIds, entityStore.guilds) { ids, allGuilds ->
@@ -58,11 +56,10 @@ class GuildStore(
 
     private val guildActivity = combine(
         entityStore.channels,
-        _privateChannelIds,
         readStateStore.readStates,
         readStateStore.recentIds,
         userGuildSettingsStore.userGuildSettings
-    ) { channels, privateChannelIds, readStates, recentIds, _ ->
+    ) { channels, readStates, recentIds, _ ->
         val unread = mutableSetOf<String>()
         val mentions = mutableMapOf<String, Int>()
         val mutedGuilds = mutableMapOf<String, Boolean>()
@@ -76,8 +73,7 @@ class GuildStore(
                 unread.add(guildId)
             }
         }
-        val privateMentions = privateChannelIds.sumOf { readStates[it]?.mention_count ?: 0 }
-        GuildActivity(unread, mentions, privateMentions)
+        GuildActivity(unread, mentions)
     }.stateIn(scope, SharingStarted.Eagerly, GuildActivity())
 
     init {
@@ -449,8 +445,6 @@ class GuildStore(
         guildMentionStates.getOrPut(guildId) {
             derivedStateOf { guildActivitySnapshot.value.mentionCounts[guildId] ?: 0 }
         }
-
-    fun privateMentionCountState(): State<Int> = privateMentionState
 
     fun getForumThreads(channelId: String): List<Channel> {
         return allGuildChannels.value.values.filter { it.parent_id == channelId }
