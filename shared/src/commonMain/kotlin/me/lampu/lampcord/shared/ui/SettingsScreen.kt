@@ -54,6 +54,7 @@ import androidx.compose.material3.WideNavigationRailItem
 import androidx.compose.material3.WideNavigationRailState
 import androidx.compose.material3.WideNavigationRailValue
 import androidx.compose.material3.rememberWideNavigationRailState
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -339,6 +340,7 @@ fun SettingsScreen(
                     Scaffold(
                         modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
                         containerColor = MaterialTheme.colorScheme.surface,
+                        contentWindowInsets = WindowInsets(0),
                         topBar = {
                             LargeTopAppBar(
                                 title = { Text(stringResource(Res.string.settings)) },
@@ -351,6 +353,7 @@ fun SettingsScreen(
                                     containerColor = MaterialTheme.colorScheme.surface,
                                     scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer
                                 ),
+                                windowInsets = TopAppBarDefaults.windowInsets,
                                 actions = {
                                     Box {
                                         IconButton(onClick = { showOptionsMenu = true }) {

@@ -127,7 +127,7 @@ fun MemberList(
         }
 
         Surface(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().statusBarsPadding(),
             color = MaterialTheme.colorScheme.surface,
             shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
         ) {
@@ -190,6 +190,7 @@ fun MemberList(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .statusBarsPadding()
             .pointerInput(Unit) {
                 awaitPointerEventScope {
                     while (true) {

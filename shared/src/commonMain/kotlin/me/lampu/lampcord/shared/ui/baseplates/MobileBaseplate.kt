@@ -358,44 +358,28 @@ fun MobileBaseplate(
                 }
 
                 Box(modifier = Modifier.fillMaxSize()) {
-                    val cardShape = RoundedCornerShape(topStart = DiscordSheetCornerRadius, topEnd = DiscordSheetCornerRadius)
-                    val cardLayout = Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxHeight(0.9f)
-                        .widthIn(max = 560.dp)
-                        .fillMaxWidth()
-
-                    Box(
-                        modifier = cardLayout
-                            .clip(cardShape)
-                            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                    ) {
-                        if (profile != null) {
-                            ProfileCard(
-                                profile = profile,
-                                modifier = Modifier.fillMaxSize(),
-                                isExpanded = true,
-                                fillAvailableHeight = true,
-                                showBorder = false,
-                                showFrameArt = false,
-                                showMemberSince = true,
-                                contentBottomPadding = 112.dp,
-                                onOpenFriends = { navigator.navigate(Screen.Friends) }
-                            )
-                        } else if (me != null) {
-                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                ContainedLoadingIndicator(modifier = Modifier.size(40.dp))
-                            }
-                        }
-                    }
+                    val contentLayout = Modifier
+                        .fillMaxSize()
+                        .statusBarsPadding()
 
                     if (profile != null) {
+                        ProfileCard(
+                            profile = profile,
+                            modifier = contentLayout,
+                            isExpanded = true,
+                            fillAvailableHeight = true,
+                            showBorder = false,
+                            showFrameArt = false,
+                            showMemberSince = true,
+                            contentBottomPadding = 112.dp,
+                            onOpenFriends = { navigator.navigate(Screen.Friends) }
+                        )
                         val frameSku = remember(profile) {
                             ProfileCollectibles.frameSku(profile.user_profile, profile.guild_member_profile)
                         }
                         val frameProduct = frameSku?.let { profileStore.getFrame(it) }
                         frameProduct?.let { product ->
-                            Box(modifier = cardLayout) {
+                            Box(modifier = contentLayout) {
                                 ProfileFrameOverlay(
                                     product = product,
                                     modifier = Modifier.matchParentSize(),
@@ -403,6 +387,10 @@ fun MobileBaseplate(
                                     showBottom = false
                                 )
                             }
+                        }
+                    } else if (me != null) {
+                        Box(contentLayout, contentAlignment = Alignment.Center) {
+                            ContainedLoadingIndicator(modifier = Modifier.size(40.dp))
                         }
                     }
 
@@ -651,9 +639,7 @@ fun MobileBaseplate(
     ) {
         DiscordPanels(
             state = panelState,
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding(),
+            modifier = Modifier.fillMaxSize(),
             swipeToStartEnabled = isChat && !navigationStore.isBubble,
             swipeToEndEnabled = isChat && !navigationStore.isBubble && !Settings.shared.swipeToReplyEnabled,
             startPanel = {

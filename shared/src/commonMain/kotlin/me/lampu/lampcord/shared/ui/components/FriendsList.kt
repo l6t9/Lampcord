@@ -112,6 +112,7 @@ fun FriendsList(
                             Icon(Icons.Filled.PersonAdd, "Add Friend")
                         }
                     },
+                    windowInsets = TopAppBarDefaults.windowInsets,
                     scrollBehavior = scrollBehavior
                 )
                 PrimaryTabRow(

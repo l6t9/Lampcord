@@ -289,6 +289,7 @@ val platform = remember { me.lampu.lampcord.shared.utils.getPlatformName() }
                     containerColor = MaterialTheme.colorScheme.surface,
                     scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer
                 ),
+                windowInsets = TopAppBarDefaults.windowInsets,
                 scrollBehavior = scrollBehavior
             )
         }

@@ -51,6 +51,7 @@ fun GlobalSearchScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.back))
                     }
                 },
+                windowInsets = TopAppBarDefaults.windowInsets,
                 scrollBehavior = scrollBehavior
             )
         }
