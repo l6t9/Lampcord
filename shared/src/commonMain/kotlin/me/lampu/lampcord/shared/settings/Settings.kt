@@ -112,7 +112,8 @@ class Settings(private val settings: KmpSettings) {
     var showNavSearch by preferenceBoolean("show_nav_search", true)
     var showNavMentions by preferenceBoolean("show_nav_mentions", true)
     var showNavSettings by preferenceBoolean("show_nav_settings", true)
-    var navTabsOrderJson by preference("nav_tabs_order", "[\"home\",\"dm\",\"friends\",\"search\",\"mentions\",\"settings\"]")
+    var useYouBar by preferenceBoolean("use_you_bar", false)
+    var navTabsOrderJson by preference("nav_tabs_order", "[\"home\",\"dm\",\"search\",\"mentions\",\"you\"]")
     var secretTabEnabled by preferenceBoolean("secret_tab_enabled", false)
     var textReplaceJson by preference("text_replace_v1", "[]")
 

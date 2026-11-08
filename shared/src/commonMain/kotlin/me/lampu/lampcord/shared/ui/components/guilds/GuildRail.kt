@@ -2,6 +2,7 @@ package me.lampu.lampcord.shared.ui.components.guilds
 
 import me.lampu.lampcord.shared.generated.resources.Res
 import me.lampu.lampcord.shared.generated.resources.home
+import me.lampu.lampcord.shared.generated.resources.messages
 import org.jetbrains.compose.resources.stringResource
 
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -217,8 +218,8 @@ fun GuildRail(
                                 monogramUnselectedColor = MaterialTheme.colorScheme.primary
                             ) {
                                 Icon(
-                                    imageVector = Icons.Rounded.Home,
-                                    contentDescription = stringResource(Res.string.home),
+                                    imageVector = Icons.Rounded.ChatBubble,
+                                    contentDescription = stringResource(Res.string.messages),
                                     modifier = Modifier.size(28.dp)
                                 )
                             }

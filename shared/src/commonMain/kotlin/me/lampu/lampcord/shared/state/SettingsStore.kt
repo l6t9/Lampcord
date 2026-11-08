@@ -201,6 +201,14 @@ class SettingsStore(
             me.lampu.lampcord.shared.settings.Settings.shared.showNavSettings = value
         }
 
+    private var _useYouBar by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.useYouBar)
+    var useYouBar: Boolean
+        get() = _useYouBar
+        set(value) {
+            _useYouBar = value
+            me.lampu.lampcord.shared.settings.Settings.shared.useYouBar = value
+        }
+
     private var _navTabsOrderJson by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.navTabsOrderJson)
     var navTabsOrderJson: String
         get() = _navTabsOrderJson

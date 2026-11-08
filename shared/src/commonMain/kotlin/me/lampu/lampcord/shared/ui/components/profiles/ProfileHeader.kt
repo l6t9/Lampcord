@@ -297,34 +297,124 @@ fun ProfileHeader(
             }
         } else if (user.id != currentUser?.id) {
             Spacer(Modifier.height(12.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth().height(40.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Button(
-                    onClick = {
-                        navigationStore.openDm(user.id)
-                        onDismiss?.invoke()
-                    },
-                    modifier = Modifier.weight(1f).fillMaxHeight(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = theme.buttonColor,
-                        contentColor = theme.buttonTextColor
-                    ),
-                    shape = CircleShape,
-                    contentPadding = PaddingValues(horizontal = 12.dp)
+            if (isFriend) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().height(40.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = if (isFriend) Icons.Filled.Chat else Icons.Filled.PersonAdd,
-                        contentDescription = if (isFriend) "Message" else "Add Friend",
-                        modifier = Modifier.size(16.dp)
+                    Button(
+                        onClick = {
+                            navigationStore.openDm(user.id)
+                            onDismiss?.invoke()
+                        },
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = theme.buttonColor,
+                            contentColor = theme.buttonTextColor
+                        ),
+                        shape = CircleShape,
+                        contentPadding = PaddingValues(horizontal = 12.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Chat,
+                            contentDescription = "Message",
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = "Message",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            } else {
+                ButtonGroup(
+                    overflowIndicator = { menuState -> ButtonGroupDefaults.OverflowIndicator(menuState) },
+                    modifier = Modifier.fillMaxWidth().height(40.dp),
+                    horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
+                ) {
+                    customItem(
+                        buttonGroupContent = {
+                            FilledTonalButton(
+                                onClick = { relationshipStore.addFriend(user.id) },
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                                colors = ButtonDefaults.filledTonalButtonColors(
+                                    containerColor = theme.buttonColor,
+                                    contentColor = theme.buttonTextColor
+                                ),
+                                shapes = ButtonDefaults.shapes(
+                                    shape = ButtonGroupDefaults.connectedLeadingButtonShape,
+                                    pressedShape = ButtonGroupDefaults.connectedLeadingButtonPressShape
+                                ),
+                                contentPadding = PaddingValues(horizontal = 12.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.PersonAdd,
+                                    contentDescription = "Add Friend",
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    text = "Add Friend",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        },
+                        menuContent = { menuState ->
+                            DropdownMenuItem(
+                                text = { Text("Add Friend") },
+                                onClick = {
+                                    relationshipStore.addFriend(user.id)
+                                    menuState.dismiss()
+                                },
+                                leadingIcon = { Icon(Icons.Filled.PersonAdd, null) }
+                            )
+                        }
                     )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = if (isFriend) "Message" else "Add Friend",
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Medium
+                    customItem(
+                        buttonGroupContent = {
+                            FilledTonalButton(
+                                onClick = {
+                                    navigationStore.openDm(user.id)
+                                    onDismiss?.invoke()
+                                },
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                                colors = ButtonDefaults.filledTonalButtonColors(
+                                    containerColor = theme.buttonColor,
+                                    contentColor = theme.buttonTextColor
+                                ),
+                                shapes = ButtonDefaults.shapes(
+                                    shape = ButtonGroupDefaults.connectedTrailingButtonShape,
+                                    pressedShape = ButtonGroupDefaults.connectedTrailingButtonPressShape
+                                ),
+                                contentPadding = PaddingValues(horizontal = 12.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Chat,
+                                    contentDescription = "Message",
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    text = "Message",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        },
+                        menuContent = { menuState ->
+                            DropdownMenuItem(
+                                text = { Text("Message") },
+                                onClick = {
+                                    navigationStore.openDm(user.id)
+                                    onDismiss?.invoke()
+                                    menuState.dismiss()
+                                },
+                                leadingIcon = { Icon(Icons.Filled.Chat, null) }
+                            )
+                        }
                     )
                 }
             }

@@ -15,6 +15,9 @@ sealed class Screen : NavKey {
     data object Settings : Screen()
 
     @Serializable
+    data object You : Screen()
+
+    @Serializable
     data object ServerSettings : Screen()
 
     @Serializable

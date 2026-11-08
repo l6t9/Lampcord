@@ -65,7 +65,7 @@
     <string name="lampcord_settings_message_sound_desc">メッセージの受信時に音を鳴らします。</string>
     <string name="lampcord_settings_motion">アニメーション</string>
     <string name="lampcord_settings_nav_home">ホーム</string>
-    <string name="lampcord_settings_nav_you">自分</string>
+    <string name="lampcord_settings_nav_you">プロフィール</string>
     <string name="lampcord_settings_navigation">ナビゲーション</string>
     <string name="lampcord_settings_nightly_desc">Nightly版はmainブランチの最新コミットからビルドされるため、動作が不安定な場合があります。</string>
     <string name="lampcord_settings_no_connections">接続済みのアカウントはありません</string>
@@ -97,4 +97,6 @@
     <string name="lampcord_settings_wayland_scaling">Waylandのスケーリング補正を有効にする</string>
     <string name="lampcord_settings_wayland_scaling_desc">Waylandコンポジターで画面の拡大率を自動検出します。再起動が必要です。</string>
     <string name="lampcord_settings_window">ウィンドウ</string>
+    <string name="lampcord_settings_you_bar">プロフィールバー</string>
+    <string name="lampcord_settings_you_bar_desc">ナビゲーションバーを、プロフィールを表示しジェスチャーに対応したプロフィールバーに置き換えます。</string>
 </resources>

@@ -1,6 +1,7 @@
 package me.lampu.lampcord.shared.ui.components.profiles
 
 import me.lampu.lampcord.shared.generated.resources.Res
+import me.lampu.lampcord.shared.generated.resources.friends
 import me.lampu.lampcord.shared.generated.resources.manage_user
 import me.lampu.lampcord.shared.generated.resources.mutual_friends
 import me.lampu.lampcord.shared.generated.resources.mutual_guilds
@@ -69,6 +70,7 @@ fun ProfileSections(
     isExpanded: Boolean,
     showMemberSince: Boolean = false,
     showMutualsInConnections: Boolean = true,
+    onOpenFriends: (() -> Unit)? = null,
     guildStore: GuildStore = koinInject(),
     presenceStore: PresenceStore = koinInject(),
     userStore: UserStore = koinInject()
@@ -216,7 +218,7 @@ fun ProfileSections(
             val mutualFriendsCount = profile.mutual_friends_count ?: profile.mutual_friends?.size ?: 0
             val hasMutuals = !isOwnProfile && (mutualFriendsCount > 0 || !profile.mutual_guilds.isNullOrEmpty())
 
-            if (profile.connected_accounts.isNotEmpty() || hasMutuals) {
+            if (profile.connected_accounts.isNotEmpty() || hasMutuals || onOpenFriends != null) {
                 Column {
                     ProfileSectionHeader("Connections", profileTextColor)
                     Material3SettingsGroup(
@@ -278,6 +280,25 @@ fun ProfileSections(
                                     }
                                 )
                             })
+
+                            onOpenFriends?.let { openFriends ->
+                                add(
+                                    Material3SettingsItem(
+                                        icon = Icons.Rounded.Person,
+                                        iconTint = profileTextColor,
+                                        containerColor = theme.cardColor.copy(alpha = 0.3f),
+                                        title = { Text(stringResource(Res.string.friends), color = profileTextColor) },
+                                        onClick = openFriends,
+                                        trailingContent = {
+                                            Icon(
+                                                Icons.Rounded.KeyboardArrowRight,
+                                                contentDescription = null,
+                                                tint = profileSecondaryTextColor
+                                            )
+                                        }
+                                    )
+                                )
+                            }
                         }
                     )
                 }

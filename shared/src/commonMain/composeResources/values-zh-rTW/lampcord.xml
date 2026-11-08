@@ -65,7 +65,7 @@
     <string name="lampcord_settings_message_sound_desc">收到訊息時播放音效。</string>
     <string name="lampcord_settings_motion">動態效果</string>
     <string name="lampcord_settings_nav_home">首頁</string>
-    <string name="lampcord_settings_nav_you">你</string>
+    <string name="lampcord_settings_nav_you">個人檔案</string>
     <string name="lampcord_settings_navigation">導覽</string>
     <string name="lampcord_settings_nightly_desc">Nightly 版本以 main 分支的最新提交建置，可能不穩定。</string>
     <string name="lampcord_settings_no_connections">尚未連接任何帳號</string>
@@ -97,4 +97,6 @@
     <string name="lampcord_settings_wayland_scaling">啟用 Wayland 縮放修正</string>
     <string name="lampcord_settings_wayland_scaling_desc">在 Wayland 合成器下自動偵測顯示縮放比例。需重新啟動。</string>
     <string name="lampcord_settings_window">視窗</string>
+    <string name="lampcord_settings_you_bar">個人檔案列</string>
+    <string name="lampcord_settings_you_bar_desc">將導覽列替換為顯示你的個人檔案並支援手勢的個人檔案列。</string>
 </resources>

@@ -294,6 +294,7 @@ fun ProfileCard(
     fillAvailableHeight: Boolean = false,
     showMemberSince: Boolean = false,
     showMutualsInConnections: Boolean = true,
+    onOpenFriends: (() -> Unit)? = null,
     onExpand: (() -> Unit)? = null,
     onDismiss: (() -> Unit)? = null,
     onEditBanner: (() -> Unit)? = null,
@@ -415,7 +416,8 @@ fun ProfileCard(
                                 theme = theme,
                                 isExpanded = isExpanded,
                                 showMemberSince = showMemberSince,
-                                showMutualsInConnections = showMutualsInConnections
+                                showMutualsInConnections = showMutualsInConnections,
+                                onOpenFriends = onOpenFriends
                             )
                         } else {
                             ProfileBoardContent(
