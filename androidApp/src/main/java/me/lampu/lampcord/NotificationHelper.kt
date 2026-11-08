@@ -33,7 +33,6 @@ object NotificationHelper {
     const val GROUP_KEY_MESSAGES = "me.lampu.lampcord.MESSAGES"
     const val EXTRA_CHANNEL_ID = "me.lampu.lampcord.extra.CHANNEL_ID"
     const val EXTRA_GUILD_ID = "me.lampu.lampcord.extra.GUILD_ID"
-    const val EXTRA_IS_BUBBLE = "me.lampu.lampcord.extra.IS_BUBBLE"
     const val EXTRA_MESSAGE_ID = "me.lampu.lampcord.extra.MESSAGE_ID"
     const val KEY_TEXT_REPLY = "me.lampu.lampcord.key.TEXT_REPLY"
 
@@ -211,11 +210,9 @@ object NotificationHelper {
     }
 
     fun buildBubbleIntent(context: Context, channelId: String, guildId: String?): PendingIntent {
-        val intent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        val intent = Intent(context, BubbleActivity::class.java).apply {
             putExtra(EXTRA_CHANNEL_ID, channelId)
             putExtra(EXTRA_GUILD_ID, guildId)
-            putExtra(EXTRA_IS_BUBBLE, true)
         }
         return PendingIntent.getActivity(
             context,
@@ -293,7 +290,6 @@ object NotificationHelper {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
             putExtra(EXTRA_CHANNEL_ID, channelId)
             putExtra(EXTRA_GUILD_ID, guildId)
-            putExtra(EXTRA_IS_BUBBLE, true)
         }
         val shortcut = ShortcutInfoCompat.Builder(context, shortcutIdFor(channelId))
             .setShortLabel(conversationName)

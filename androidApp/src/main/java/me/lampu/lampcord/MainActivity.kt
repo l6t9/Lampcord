@@ -12,14 +12,15 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
-import me.lampu.lampcord.shared.state.AppVisibilityStore
 import me.lampu.lampcord.shared.state.ChannelNavigator
 import me.lampu.lampcord.shared.state.DiscordLinkHandler
 import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.ui.App
 import org.koin.core.context.GlobalContext
 
-class MainActivity : ComponentActivity() {
+open class MainActivity : ComponentActivity() {
+
+    protected open val isBubble: Boolean = false
 
     private val requestNotificationsPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
@@ -48,17 +49,13 @@ class MainActivity : ComponentActivity() {
         handleDeepLink(intent)
     }
 
-    override fun onStart() {
-        super.onStart()
-        AppVisibilityStore.setVisible(true)
-    }
-
-    override fun onStop() {
-        AppVisibilityStore.setVisible(false)
-        super.onStop()
+    override fun onResume() {
+        super.onResume()
+        GlobalContext.get().get<NavigationStore>().isBubble = isBubble
     }
 
     private fun requestNotificationsPermissionIfNeeded() {
+        if (isBubble) return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val granted = ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
             if (granted != PackageManager.PERMISSION_GRANTED) {
@@ -69,11 +66,6 @@ class MainActivity : ComponentActivity() {
 
     private fun handleNotificationIntent(intent: Intent?) {
         if (intent == null) return
-        val navigationStore = GlobalContext.get().get<NavigationStore>()
-
-        navigationStore.isBubble = intent.getBooleanExtra(NotificationHelper.EXTRA_IS_BUBBLE, false)
-        intent.removeExtra(NotificationHelper.EXTRA_IS_BUBBLE)
-
         val channelId = intent.getStringExtra(NotificationHelper.EXTRA_CHANNEL_ID) ?: return
         val guildId = intent.getStringExtra(NotificationHelper.EXTRA_GUILD_ID)
         intent.removeExtra(NotificationHelper.EXTRA_CHANNEL_ID)
