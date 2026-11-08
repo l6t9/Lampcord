@@ -218,7 +218,7 @@ fun ProfileSections(
             val mutualFriendsCount = profile.mutual_friends_count ?: profile.mutual_friends?.size ?: 0
             val hasMutuals = !isOwnProfile && (mutualFriendsCount > 0 || !profile.mutual_guilds.isNullOrEmpty())
 
-            if (profile.connected_accounts.isNotEmpty() || hasMutuals || onOpenFriends != null) {
+            if (profile.connected_accounts.isNotEmpty() || hasMutuals) {
                 Column {
                     ProfileSectionHeader("Connections", profileTextColor)
                     Material3SettingsGroup(
@@ -280,26 +280,32 @@ fun ProfileSections(
                                     }
                                 )
                             })
-
-                            onOpenFriends?.let { openFriends ->
-                                add(
-                                    Material3SettingsItem(
-                                        icon = Icons.Rounded.Person,
-                                        iconTint = profileTextColor,
-                                        containerColor = theme.cardColor.copy(alpha = 0.3f),
-                                        title = { Text(stringResource(Res.string.friends), color = profileTextColor) },
-                                        onClick = openFriends,
-                                        trailingContent = {
-                                            Icon(
-                                                Icons.Rounded.KeyboardArrowRight,
-                                                contentDescription = null,
-                                                tint = profileSecondaryTextColor
-                                            )
-                                        }
-                                    )
-                                )
-                            }
                         }
+                    )
+                }
+            }
+
+            onOpenFriends?.let { openFriends ->
+                Column {
+                    ProfileSectionHeader("Friends", profileTextColor)
+                    Material3SettingsGroup(
+                        horizontalPadding = 0.dp,
+                        items = listOf(
+                            Material3SettingsItem(
+                                icon = Icons.Rounded.Person,
+                                iconTint = profileTextColor,
+                                containerColor = theme.cardColor.copy(alpha = 0.3f),
+                                title = { Text(stringResource(Res.string.friends), color = profileTextColor) },
+                                onClick = openFriends,
+                                trailingContent = {
+                                    Icon(
+                                        Icons.Rounded.KeyboardArrowRight,
+                                        contentDescription = null,
+                                        tint = profileSecondaryTextColor
+                                    )
+                                }
+                            )
+                        )
                     )
                 }
             }

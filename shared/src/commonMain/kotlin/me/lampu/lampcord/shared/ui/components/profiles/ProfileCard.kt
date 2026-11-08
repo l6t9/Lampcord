@@ -311,6 +311,7 @@ fun ProfileCard(
     showFrameOverlay: Boolean = true,
     showFrameArt: Boolean = true,
     showBottomFrame: Boolean = true,
+    contentBottomPadding: Dp = 0.dp,
     userStore: UserStore = koinInject(),
     clientProfileStore: ClientProfileStore = koinInject(),
     settingsStore: me.lampu.lampcord.shared.state.SettingsStore = koinInject(),
@@ -429,6 +430,9 @@ fun ProfileCard(
                                     if (loaded != null) boardResolved = true
                                 }
                             )
+                        }
+                        if (contentBottomPadding > 0.dp) {
+                            Spacer(Modifier.height(contentBottomPadding))
                         }
                     }
                 }

@@ -20,16 +20,13 @@ import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.getPlatformName
 import me.lampu.lampcord.shared.generated.resources.Res
 import me.lampu.lampcord.shared.generated.resources.lampcord_settings_hide_nav_labels
-import me.lampu.lampcord.shared.generated.resources.lampcord_settings_hide_nav_labels_desc
 import me.lampu.lampcord.shared.generated.resources.lampcord_settings_nav_dm
-import me.lampu.lampcord.shared.generated.resources.lampcord_settings_nav_dm_desc
 import me.lampu.lampcord.shared.generated.resources.lampcord_settings_nav_home
 import me.lampu.lampcord.shared.generated.resources.lampcord_settings_nav_you
 import me.lampu.lampcord.shared.generated.resources.lampcord_settings_navigation
 import me.lampu.lampcord.shared.generated.resources.lampcord_settings_tab_order
 import me.lampu.lampcord.shared.generated.resources.lampcord_settings_tabs_visibility
 import me.lampu.lampcord.shared.generated.resources.lampcord_settings_you_bar
-import me.lampu.lampcord.shared.generated.resources.lampcord_settings_you_bar_desc
 import me.lampu.lampcord.shared.generated.resources.mentions
 import me.lampu.lampcord.shared.generated.resources.search
 import org.jetbrains.compose.resources.stringResource
@@ -94,7 +91,6 @@ private fun NavigationSettingsContent(
                 ),
                 switchSettingsItem(
                     title = labelDm,
-                    description = stringResource(Res.string.lampcord_settings_nav_dm_desc),
                     checked = settingsStore.showNavDm,
                     onCheckedChange = { settingsStore.showNavDm = it }
                 ),
@@ -114,16 +110,22 @@ private fun NavigationSettingsContent(
                     onCheckedChange = { settingsStore.showNavSettings = it }
                 ),
                 switchSettingsItem(
-                    title = stringResource(Res.string.lampcord_settings_you_bar),
-                    description = stringResource(Res.string.lampcord_settings_you_bar_desc),
-                    checked = settingsStore.useYouBar,
-                    onCheckedChange = { settingsStore.useYouBar = it }
-                ),
-                switchSettingsItem(
                     title = stringResource(Res.string.lampcord_settings_hide_nav_labels),
-                    description = stringResource(Res.string.lampcord_settings_hide_nav_labels_desc),
                     checked = settingsStore.hideNavLabels,
                     onCheckedChange = { settingsStore.hideNavLabels = it }
+                )
+            )
+        )
+
+        Spacer(Modifier.height(16.dp))
+
+        Material3SettingsGroup(
+            title = stringResource(Res.string.lampcord_settings_you_bar),
+            items = listOf(
+                switchSettingsItem(
+                    title = stringResource(Res.string.lampcord_settings_you_bar),
+                    checked = settingsStore.useYouBar,
+                    onCheckedChange = { settingsStore.useYouBar = it }
                 )
             )
         )

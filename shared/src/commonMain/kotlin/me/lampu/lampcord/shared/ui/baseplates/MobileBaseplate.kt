@@ -18,6 +18,8 @@ import org.jetbrains.compose.resources.stringResource
 import me.lampu.lampcord.shared.api.CdnUrls
 import androidx.compose.animation.*
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -375,6 +377,7 @@ fun MobileBaseplate(
                                 fillAvailableHeight = true,
                                 showBorder = false,
                                 showMemberSince = true,
+                                contentBottomPadding = 96.dp,
                                 onOpenFriends = { navigator.navigate(Screen.Friends) }
                             )
                         }
@@ -839,21 +842,131 @@ fun MobileBaseplate(
                             }
                         }
 
-                        IconButton(
-                            onClick = { navigator.navigate(Screen.Mentions) },
-                            modifier = Modifier.size(48.dp)
+                        val favoritesVisible = Settings.shared.favoritesServerEnabled
+                        val dmSelected = currentRoute == Screen.Chat &&
+                            navigationStore.selectedGuild == null &&
+                            !(navigationStore.isFavoritesSelected && favoritesVisible)
+                        val profileActions = buildList {
+                            if (settingsStore.showNavDm) add("dm")
+                            if (settingsStore.showNavSearch) add("search")
+                            add("mentions")
+                        }
+
+                        ButtonGroup(
+                            modifier = Modifier
+                                .height(40.dp)
+                                .animateContentSize(
+                                    animationSpec = if (Settings.shared.reduceMotion) snap() else spring(dampingRatio = 0.8f, stiffness = 500f)
+                                ),
+                            overflowIndicator = { menuState -> ButtonGroupDefaults.OverflowIndicator(menuState) },
+                            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
                         ) {
-                            BadgedBox(
-                                badge = {
-                                    if (dmMentionCount > 0) {
-                                        Badge { Text(if (dmMentionCount > 99) "99+" else dmMentionCount.toString()) }
+                            profileActions.forEachIndexed { index, action ->
+                                val isFirst = index == 0
+                                val isLast = index == profileActions.lastIndex
+                                customItem(
+                                    buttonGroupContent = {
+                                        val shapes = when {
+                                            profileActions.size == 1 -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                                            isFirst -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                            isLast -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                            else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                                        }
+                                        when (action) {
+                                            "dm" -> ToggleButton(
+                                                checked = dmSelected,
+                                                onCheckedChange = {
+                                                    navigationStore.isSettingsVisible = false
+                                                    navigationStore.isSearchVisible = false
+                                                    navigationStore.selectHome()
+                                                    navigator.navigate(Screen.Chat)
+                                                },
+                                                shapes = shapes,
+                                                colors = ToggleButtonDefaults.tonalToggleButtonColors(),
+                                                contentPadding = PaddingValues(0.dp),
+                                                modifier = Modifier.fillMaxSize().widthIn(min = 40.dp)
+                                            ) {
+                                                BadgedBox(
+                                                    badge = {
+                                                        if (dmMentionCount > 0) {
+                                                            Badge { Text(if (dmMentionCount > 99) "99+" else dmMentionCount.toString()) }
+                                                        }
+                                                    }
+                                                ) {
+                                                    Icon(
+                                                        imageVector = if (dmSelected) Icons.Filled.ChatBubble else Icons.Rounded.ChatBubble,
+                                                        contentDescription = stringResource(Res.string.messages),
+                                                        modifier = Modifier.size(20.dp)
+                                                    )
+                                                }
+                                            }
+                                            "search" -> ToggleButton(
+                                                checked = currentRoute == Screen.GlobalSearch,
+                                                onCheckedChange = { navigator.navigate(Screen.GlobalSearch) },
+                                                shapes = shapes,
+                                                colors = ToggleButtonDefaults.tonalToggleButtonColors(),
+                                                contentPadding = PaddingValues(0.dp),
+                                                modifier = Modifier.fillMaxSize().widthIn(min = 40.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Filled.Search,
+                                                    contentDescription = stringResource(Res.string.search),
+                                                    modifier = Modifier.size(20.dp)
+                                                )
+                                            }
+                                            else -> ToggleButton(
+                                                checked = currentRoute == Screen.Mentions,
+                                                onCheckedChange = {
+                                                    navigationStore.isFriendsSelected = false
+                                                    navigationStore.isMentionsSelected = true
+                                                    navigator.navigate(Screen.Mentions)
+                                                },
+                                                shapes = shapes,
+                                                colors = ToggleButtonDefaults.tonalToggleButtonColors(),
+                                                contentPadding = PaddingValues(0.dp),
+                                                modifier = Modifier.fillMaxSize().widthIn(min = 40.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Rounded.AlternateEmail,
+                                                    contentDescription = stringResource(Res.string.mentions),
+                                                    modifier = Modifier.size(20.dp)
+                                                )
+                                            }
+                                        }
+                                    },
+                                    menuContent = {
+                                        DropdownMenuItem(
+                                            text = {
+                                                Text(
+                                                    when (action) {
+                                                        "dm" -> stringResource(Res.string.messages)
+                                                        "search" -> stringResource(Res.string.search)
+                                                        else -> stringResource(Res.string.mentions)
+                                                    }
+                                                )
+                                            },
+                                            onClick = {
+                                                when (action) {
+                                                    "dm" -> {
+                                                        navigationStore.selectHome()
+                                                        navigator.navigate(Screen.Chat)
+                                                    }
+                                                    "search" -> navigator.navigate(Screen.GlobalSearch)
+                                                    else -> navigator.navigate(Screen.Mentions)
+                                                }
+                                            },
+                                            leadingIcon = {
+                                                Icon(
+                                                    when (action) {
+                                                        "dm" -> Icons.Rounded.ChatBubble
+                                                        "search" -> Icons.Filled.Search
+                                                        else -> Icons.Rounded.AlternateEmail
+                                                    },
+                                                    null
+                                                )
+                                            }
+                                        )
                                     }
-                                }
-                            ) {
-                                Icon(
-                                    Icons.Rounded.Notifications,
-                                    contentDescription = stringResource(Res.string.mentions),
-                                    tint = if (currentRoute == Screen.Mentions) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }

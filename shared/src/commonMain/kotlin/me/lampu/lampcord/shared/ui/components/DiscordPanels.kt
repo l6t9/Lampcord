@@ -298,6 +298,7 @@ fun DiscordPanels(
             val endSheetVisible = progress < -0.001f || state.currentValue == DiscordPanelValue.End
             if (endSheetVisible) {
                 val isOverlapping = panelType == PanelType.OVERLAPPING
+                val endProgress = (-progress).coerceIn(0f, 1f)
                 Surface(
                     modifier = Modifier
                         .fillMaxHeight()
@@ -306,13 +307,33 @@ fun DiscordPanels(
                         .padding(end = if (!isOverlapping) 8.dp else 0.dp)
                         .zIndex(if (isOverlapping) 3f else 1f)
                         .graphicsLayer {
+                            val isEffectivelyVisible = progress < -0.001f || state.currentValue == DiscordPanelValue.End
+                            alpha = if (isEffectivelyVisible) 1f else 0f
+                            transformOrigin = TransformOrigin(0.5f, 0f)
+
                             if (isOverlapping) {
                                 translationX = if (progress < 0) endPanelWidthPx * (1f + progress) else endPanelWidthPx
                                 shadowElevation = if (reduceMotion) 0f else 8.dp.toPx()
+                                scaleX = 1f
+                                scaleY = 1f
+                            } else if (reduceMotion) {
+                                translationX = 0f
+                                scaleX = 1f
+                                scaleY = 1f
+                                shadowElevation = 0f
+                            } else if (animationType == PanelAnimation.EXPRESSIVE) {
+                                translationX = (1f - endProgress) * (endPanelWidthPx * 0.3f)
+                                val scale = 0.92f + (endProgress * 0.08f)
+                                scaleX = scale
+                                scaleY = scale
+                                shadowElevation = 4.dp.toPx()
                             } else {
                                 translationX = 0f
-                                alpha = 1f
+                                scaleX = 1f
+                                scaleY = 1f
+                                shadowElevation = 0f
                             }
+
                             shape = if (!isOverlapping) RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp) else RoundedCornerShape(0.dp)
                             clip = !isOverlapping
                         },
