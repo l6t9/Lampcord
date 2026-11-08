@@ -299,11 +299,10 @@ fun MobileBaseplate(
     val isTabRoute = currentRoute in setOf(
         Screen.Chat, Screen.Mentions, Screen.GlobalSearch
     )
-    val showSettingsTabBar = currentRoute == Screen.Settings && isSettingsRoot
 
-    val targetNavBarVisibleAmount = remember(panelState.progress, panelState.currentValue, currentRoute, isTabRoute, showSettingsTabBar) {
+    val targetNavBarVisibleAmount = remember(panelState.progress, panelState.currentValue, currentRoute, isTabRoute) {
         val progress = panelState.progress
-        if (isTabRoute || showSettingsTabBar) {
+        if (isTabRoute) {
             if (currentRoute == Screen.Chat) {
                 if (panelState.currentValue == DiscordPanelValue.Start) {
                     1f
@@ -349,7 +348,6 @@ fun MobileBaseplate(
                 }
             }
             entry<Screen.You> {
-                val currentBottomPadding = (navBarHeight * navBarVisibleAmount).coerceAtLeast(0.dp)
                 val me = currentUser
                 val profile = profileStore.ownProfile?.takeIf { it.user.id == me?.id }
 
@@ -359,39 +357,52 @@ fun MobileBaseplate(
                     }
                 }
 
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .padding(bottom = currentBottomPadding)
-                ) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    val cardShape = RoundedCornerShape(topStart = DiscordSheetCornerRadius, topEnd = DiscordSheetCornerRadius)
+                    val cardLayout = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxHeight(0.9f)
+                        .widthIn(max = 560.dp)
+                        .fillMaxWidth()
+
+                    Box(
+                        modifier = cardLayout
+                            .clip(cardShape)
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                    ) {
+                        if (profile != null) {
+                            ProfileCard(
+                                profile = profile,
+                                modifier = Modifier.fillMaxSize(),
+                                isExpanded = true,
+                                fillAvailableHeight = true,
+                                showBorder = false,
+                                showFrameArt = false,
+                                showMemberSince = true,
+                                contentBottomPadding = 112.dp,
+                                onOpenFriends = { navigator.navigate(Screen.Friends) }
+                            )
+                        } else if (me != null) {
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                ContainedLoadingIndicator(modifier = Modifier.size(40.dp))
+                            }
+                        }
+                    }
+
                     if (profile != null) {
-                        val p = profile
-                        ProfileCard(
-                            profile = p,
-                            modifier = Modifier.fillMaxSize(),
-                            isExpanded = true,
-                            fillAvailableHeight = true,
-                            showBorder = false,
-                            showFrameArt = false,
-                            showMemberSince = true,
-                            contentBottomPadding = 96.dp,
-                            onOpenFriends = { navigator.navigate(Screen.Friends) }
-                        )
-                        val frameSku = remember(p) {
-                            ProfileCollectibles.frameSku(p.user_profile, p.guild_member_profile)
+                        val frameSku = remember(profile) {
+                            ProfileCollectibles.frameSku(profile.user_profile, profile.guild_member_profile)
                         }
                         val frameProduct = frameSku?.let { profileStore.getFrame(it) }
                         frameProduct?.let { product ->
-                            ProfileFrameOverlay(
-                                product = product,
-                                modifier = Modifier.matchParentSize(),
-                                railTop = profileBannerHeight(0.dp, true, null, 0f),
-                                showBottom = false
-                            )
-                        }
-                    } else if (me != null) {
-                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            ContainedLoadingIndicator(modifier = Modifier.size(40.dp))
+                            Box(modifier = cardLayout) {
+                                ProfileFrameOverlay(
+                                    product = product,
+                                    modifier = Modifier.matchParentSize(),
+                                    railTop = profileBannerHeight(0.dp, true, null, 0f),
+                                    showBottom = false
+                                )
+                            }
                         }
                     }
 
@@ -626,7 +637,7 @@ fun MobileBaseplate(
             } else {
                 chatBackground
             }
-        } else if (isSettingsRoute || showSettingsTabBar) {
+        } else if (isSettingsRoute) {
             settingsContainerColor
         } else {
             darkPanelColor
@@ -754,7 +765,7 @@ fun MobileBaseplate(
             if (items.isEmpty()) listOf(BottomNavItem("easter", Screen.EasterEgg)) else items
         }
 
-        if ((isTabRoute || showSettingsTabBar) && navBarVisibleAmount > 0.001f) {
+        if (isTabRoute && navBarVisibleAmount > 0.001f) {
             if (settingsStore.useYouBar) {
                 val privateChannels by guildStore.privateChannels.collectAsState()
                 val readStates by readStateStore.readStates.collectAsState()
