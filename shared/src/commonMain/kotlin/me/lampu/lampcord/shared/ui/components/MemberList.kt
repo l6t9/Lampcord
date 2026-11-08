@@ -138,15 +138,14 @@ fun MemberList(
                 Modifier
                     .fillMaxWidth()
                     .windowInsetsTopHeight(WindowInsets.statusBars)
-                    .background(
-                        if (showStatusBarInset) MaterialTheme.colorScheme.surface else Color.Transparent
-                    )
+                    .background(MaterialTheme.colorScheme.surface)
             )
             LazyColumn(
                 state = scrollState,
                 modifier = Modifier
                     .fillMaxSize()
-                    .statusBarsPadding(),
+                    .statusBarsPadding()
+                    .background(MaterialTheme.colorScheme.surface),
                 contentPadding = PaddingValues(top = 8.dp, bottom = 52.dp)
             ) {
                 stickyHeader {

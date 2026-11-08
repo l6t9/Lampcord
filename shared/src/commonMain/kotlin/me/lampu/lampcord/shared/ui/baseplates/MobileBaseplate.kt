@@ -1371,7 +1371,6 @@ private fun MainBaseplateContent(
                 contentWindowInsets = WindowInsets(0, 0, 0, 0),
                 topBar = {
                     if (activeChannel != null || navigationStore.isChannelsAndRolesVisible) {
-                        val chatBarFocused = panelState.currentValue == DiscordPanelValue.Center
                         TopAppBar(
                             windowInsets = TopAppBarDefaults.windowInsets,
                             title = {
@@ -1606,16 +1605,8 @@ private fun MainBaseplateContent(
                                 }
                             },
                             colors = TopAppBarDefaults.topAppBarColors(
-                                containerColor = if (chatBarFocused) {
-                                    MaterialTheme.colorScheme.surfaceContainer
-                                } else {
-                                    Color.Transparent
-                                },
-                                scrolledContainerColor = if (chatBarFocused) {
-                                    MaterialTheme.colorScheme.surfaceContainer
-                                } else {
-                                    Color.Transparent
-                                }
+                                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                                scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer
                             )
                         )
                     }
