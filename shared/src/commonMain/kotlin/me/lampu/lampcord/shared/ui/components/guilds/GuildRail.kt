@@ -218,7 +218,7 @@ fun GuildRail(
                                 monogramUnselectedColor = MaterialTheme.colorScheme.primary
                             ) {
                                 Icon(
-                                    imageVector = Icons.Rounded.ChatBubble,
+                                    imageVector = Icons.Brand.Discord,
                                     contentDescription = stringResource(Res.string.messages),
                                     modifier = Modifier.size(28.dp)
                                 )

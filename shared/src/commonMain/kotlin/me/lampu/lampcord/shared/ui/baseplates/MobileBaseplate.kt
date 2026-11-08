@@ -67,7 +67,6 @@ import me.lampu.lampcord.shared.api.UserApi
 import me.lampu.lampcord.shared.model.UserProfile
 import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.HorizontalFloatingToolbar
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.foundation.shape.CircleShape
 import me.lampu.lampcord.shared.utils.PermissionHelper
@@ -272,6 +271,10 @@ fun MobileBaseplate(
         }
     }
 
+    LaunchedEffect(currentUser?.id) {
+        profileStore.preloadOwnProfile(currentUser?.id)
+    }
+
     val currentRoute = navigationState.topLevelRoute
     val isChat = currentRoute == Screen.Chat
     val isSettingsRoot = currentRoute == Screen.Settings &&
@@ -294,9 +297,9 @@ fun MobileBaseplate(
         currentRoute == Screen.AboutSettings ||
         currentRoute == Screen.UpdatesSettings
     val isTabRoute = currentRoute in setOf(
-        Screen.Chat, Screen.You, Screen.Mentions, Screen.GlobalSearch
+        Screen.Chat, Screen.Mentions, Screen.GlobalSearch
     )
-    val showSettingsTabBar = (currentRoute == Screen.Settings && isSettingsRoot) || currentRoute == Screen.You
+    val showSettingsTabBar = currentRoute == Screen.Settings && isSettingsRoot
 
     val targetNavBarVisibleAmount = remember(panelState.progress, panelState.currentValue, currentRoute, isTabRoute, showSettingsTabBar) {
         val progress = panelState.progress
@@ -347,15 +350,13 @@ fun MobileBaseplate(
             }
             entry<Screen.You> {
                 val currentBottomPadding = (navBarHeight * navBarVisibleAmount).coerceAtLeast(0.dp)
-                val userApi: UserApi = koinInject()
                 val me = currentUser
-                var profile by remember(me?.id) { mutableStateOf<UserProfile?>(null) }
-                var loading by remember(me?.id) { mutableStateOf(true) }
+                val profile = profileStore.ownProfile?.takeIf { it.user.id == me?.id }
 
-                LaunchedEffect(me?.id) {
-                    loading = true
-                    profile = me?.id?.let { userApi.getUserProfile(it) }
-                    loading = false
+                LaunchedEffect(me?.id, profile) {
+                    if (me?.id != null && profile == null) {
+                        profileStore.preloadOwnProfile(me.id)
+                    }
                 }
 
                 Box(
@@ -363,28 +364,34 @@ fun MobileBaseplate(
                         .fillMaxSize()
                         .padding(bottom = currentBottomPadding)
                 ) {
-                    when {
-                        loading -> {
-                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                CircularProgressIndicator()
-                            }
+                    if (profile != null) {
+                        val p = profile
+                        ProfileCard(
+                            profile = p,
+                            modifier = Modifier.fillMaxSize(),
+                            isExpanded = true,
+                            fillAvailableHeight = true,
+                            showBorder = false,
+                            showFrameArt = false,
+                            showMemberSince = true,
+                            contentBottomPadding = 96.dp,
+                            onOpenFriends = { navigator.navigate(Screen.Friends) }
+                        )
+                        val frameSku = remember(p) {
+                            ProfileCollectibles.frameSku(p.user_profile, p.guild_member_profile)
                         }
-                        profile != null -> {
-                            ProfileCard(
-                                profile = profile!!,
-                                modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 8.dp),
-                                isExpanded = true,
-                                fillAvailableHeight = true,
-                                showBorder = false,
-                                showMemberSince = true,
-                                contentBottomPadding = 96.dp,
-                                onOpenFriends = { navigator.navigate(Screen.Friends) }
+                        val frameProduct = frameSku?.let { profileStore.getFrame(it) }
+                        frameProduct?.let { product ->
+                            ProfileFrameOverlay(
+                                product = product,
+                                modifier = Modifier.matchParentSize(),
+                                railTop = profileBannerHeight(0.dp, true, null, 0f),
+                                showBottom = false
                             )
                         }
-                        else -> {
-                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text("Couldn't load profile", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
+                    } else if (me != null) {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            ContainedLoadingIndicator(modifier = Modifier.size(40.dp))
                         }
                     }
 
@@ -795,13 +802,25 @@ fun MobileBaseplate(
                     tonalElevation = 3.dp,
                     shadowElevation = 2.dp
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 72.dp)
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                    val nameplate = currentUser?.collectibles?.nameplate
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        if (nameplate != null) {
+                            val decoUrl = "https://cdn.discordapp.com/assets/collectibles/${nameplate.asset}img.png?passthrough=true"
+                            AsyncImage(
+                                model = decoUrl,
+                                contentDescription = null,
+                                modifier = Modifier.matchParentSize(),
+                                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                alpha = 0.4f
+                            )
+                        }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 72.dp)
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                         val user = currentUser
                         Row(
                             modifier = Modifier
@@ -970,6 +989,7 @@ fun MobileBaseplate(
                                 )
                             }
                         }
+                    }
                     }
                 }
             } else {

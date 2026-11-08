@@ -14,12 +14,17 @@ class ProfileStore(
     private val scope: CoroutineScope
 ) {
     var selectedProfile by mutableStateOf<UserProfile?>(null)
+    var ownProfile by mutableStateOf<UserProfile?>(null)
+        private set
     var sidebarProfile by mutableStateOf<UserProfile?>(null)
     var isSidebarProfileLoading by mutableStateOf(false)
     var isProfileExpanded by mutableStateOf(false)
     var isProfileLoading by mutableStateOf(false)
     var profilePosition by mutableStateOf<Offset?>(null)
     var isFullProfileVisible by mutableStateOf(false)
+
+    private var ownProfileUserId: String? = null
+    private var ownProfileJob: Job? = null
 
     fun openFullProfile() {
         if (selectedProfile != null) isFullProfileVisible = true
@@ -67,6 +72,17 @@ class ProfileStore(
         }
     }
 
+    fun preloadOwnProfile(userId: String?, force: Boolean = false) {
+        if (userId == null) return
+        if (!force && ownProfileUserId == userId && ownProfile != null) return
+        if (!force && ownProfileUserId == userId && ownProfileJob?.isActive == true) return
+        ownProfileUserId = userId
+        ownProfileJob?.cancel()
+        ownProfileJob = scope.launch {
+            userApi.getUserProfile(userId)?.let { ownProfile = it }
+        }
+    }
+
     fun updateMemberRoles(userId: String, roles: List<String>) {
         selectedProfile?.let { p ->
             if (p.user.id == userId) {
@@ -82,6 +98,10 @@ class ProfileStore(
 
     fun clear() {
         selectedProfile = null
+        ownProfile = null
+        ownProfileUserId = null
+        ownProfileJob?.cancel()
+        ownProfileJob = null
         sidebarProfile = null
         isSidebarProfileLoading = false
         isProfileExpanded = false
