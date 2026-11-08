@@ -14,6 +14,8 @@ object AppLifecycleTracker : Application.ActivityLifecycleCallbacks {
     var onForegroundChanged: ((Boolean) -> Unit)? = null
 
     fun register(application: Application) {
+        // The process can start from a push or service with no activity shown.
+        AppVisibilityStore.setVisible(isInForeground)
         application.registerActivityLifecycleCallbacks(this)
     }
 

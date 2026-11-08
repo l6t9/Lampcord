@@ -398,7 +398,10 @@ class NavigationStore(
         channelLoadingJob?.cancel()
         selectedChannel = channel
         selectedThread = null
-        notifier?.dismissChannelNotifications(channel.id)
+        // Restoring the last channel in the background must not clear its notifications.
+        if (explicitlySelected || AppVisibilityStore.isVisibleNow) {
+            notifier?.dismissChannelNotifications(channel.id)
+        }
         if (explicitlySelected) triggerFocusChat()
 
         val guild = selectedGuild
