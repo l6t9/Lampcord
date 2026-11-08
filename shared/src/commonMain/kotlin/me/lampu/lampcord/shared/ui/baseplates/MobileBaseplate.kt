@@ -87,13 +87,15 @@ import me.lampu.lampcord.shared.ui.navigation.entry
 import me.lampu.lampcord.shared.ui.icons.Icons
 import org.koin.compose.koinInject
 import me.lampu.lampcord.shared.ui.kit.clickableCursor
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.text.style.TextAlign
 
 private data class BottomNavItem(val key: String, val screen: Screen)
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun MobileBaseplate(
     navigationStore: NavigationStore = koinInject(),
@@ -103,7 +105,7 @@ fun MobileBaseplate(
 ) {
     val presenceStore: PresenceStore = koinInject()
     val settingsStore: SettingsStore = koinInject()
-    val tokenStore: TokenStore = koinInject()
+    val sessionManager: SessionManager = koinInject()
     val guildStore: GuildStore = koinInject()
     val readStateStore: ReadStateStore = koinInject()
     val allUsers by userStore.users.collectAsState()
@@ -655,7 +657,8 @@ fun MobileBaseplate(
                     val overlapping = Settings.shared.panelType == PanelType.OVERLAPPING
                     MemberList(
                         overlapping = overlapping,
-                        onBack = if (overlapping) ({ panelState.close() }) else null
+                        onBack = if (overlapping) ({ panelState.close() }) else null,
+                        showStatusBarInset = panelState.currentValue == DiscordPanelValue.End
                     )
                 }
             },
@@ -823,7 +826,13 @@ fun MobileBaseplate(
                             modifier = Modifier
                                 .weight(1f)
                                 .clip(MaterialTheme.shapes.large)
-                                .clickableCursor { navigator.navigate(Screen.You) }
+                                .combinedClickable(
+                                    onClick = { navigator.navigate(Screen.You) },
+                                    onLongClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        showUserStatusSheet = true
+                                    }
+                                )
                                 .padding(horizontal = 8.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -1281,8 +1290,7 @@ fun MobileBaseplate(
         UserStatusBottomSheet(
             onDismiss = { showUserStatusSheet = false },
             onSwitchAccount = { account ->
-                tokenStore.switchAccount(account.token)
-                me.lampu.lampcord.shared.utils.restartApp()
+                sessionManager.switchAccount(account.token)
             },
             onSetCustomStatus = { showCustomStatusDialog = true },
             onAddAccount = { showAddAccountDialog = true }
@@ -1364,7 +1372,11 @@ private fun MainBaseplateContent(
                 topBar = {
                     if (activeChannel != null || navigationStore.isChannelsAndRolesVisible) {
                         TopAppBar(
-                            windowInsets = TopAppBarDefaults.windowInsets,
+                            windowInsets = if (panelState.currentValue == DiscordPanelValue.Center) {
+                                TopAppBarDefaults.windowInsets
+                            } else {
+                                WindowInsets(0, 0, 0, 0)
+                            },
                             title = {
                                 val canOpenMemberList = settingsStore.mobileShowMemberListButton &&
                                         activeChannel != null &&

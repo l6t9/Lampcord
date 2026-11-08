@@ -54,7 +54,8 @@ fun MemberList(
     relationshipStore: RelationshipStore = koinInject(),
     header: @Composable (() -> Unit)? = null,
     overlapping: Boolean = false,
-    onBack: (() -> Unit)? = null
+    onBack: (() -> Unit)? = null,
+    showStatusBarInset: Boolean = true
 ) {
     val scrollState = rememberLazyListState()
     var isHovered by remember { mutableStateOf(false) }
@@ -127,7 +128,7 @@ fun MemberList(
         }
 
         Surface(
-            modifier = Modifier.fillMaxSize().statusBarsPadding(),
+            modifier = Modifier.fillMaxSize().then(if (showStatusBarInset) Modifier.statusBarsPadding() else Modifier),
             color = MaterialTheme.colorScheme.surface,
             shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
         ) {
@@ -190,7 +191,7 @@ fun MemberList(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .statusBarsPadding()
+            .then(if (showStatusBarInset) Modifier.statusBarsPadding() else Modifier)
             .pointerInput(Unit) {
                 awaitPointerEventScope {
                     while (true) {

@@ -121,7 +121,7 @@ fun UserStatusBottomSheet(
                     icon = { StatusIndicator(status = "online", size = 20.dp, borderWidth = 0.dp) },
                     label = "Online",
                     onClick = {
-                        scope.launch { userApi.updateStatus("online") }
+                        scope.launch { presenceStore.updateStatus("online") }
                         onDismiss()
                     }
                 )
@@ -129,7 +129,7 @@ fun UserStatusBottomSheet(
                     icon = { StatusIndicator(status = "idle", size = 20.dp, borderWidth = 0.dp) },
                     label = "Idle",
                     onClick = {
-                        scope.launch { userApi.updateStatus("idle") }
+                        scope.launch { presenceStore.updateStatus("idle") }
                         onDismiss()
                     }
                 )
@@ -137,7 +137,7 @@ fun UserStatusBottomSheet(
                     icon = { StatusIndicator(status = "dnd", size = 20.dp, borderWidth = 0.dp) },
                     label = "Do Not Disturb",
                     onClick = {
-                        scope.launch { userApi.updateStatus("dnd") }
+                        scope.launch { presenceStore.updateStatus("dnd") }
                         onDismiss()
                     }
                 )
@@ -145,7 +145,7 @@ fun UserStatusBottomSheet(
                     icon = { StatusIndicator(status = "invisible", size = 20.dp, borderWidth = 0.dp) },
                     label = "Invisible",
                     onClick = {
-                        scope.launch { userApi.updateStatus("invisible") }
+                        scope.launch { presenceStore.updateStatus("invisible") }
                         onDismiss()
                     }
                 )
