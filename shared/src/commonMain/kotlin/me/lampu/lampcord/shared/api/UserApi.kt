@@ -197,18 +197,31 @@ class UserApi(private val rest: RestClient) {
         }
     }
 
-    suspend fun addRelationshipByUsername(username: String, discriminator: String? = null): Boolean {
+    suspend fun addRelationshipByUsername(
+        username: String,
+        discriminator: String? = null,
+        note: String? = null
+    ): Boolean {
         return try {
             val response = rest.httpClient.post("${rest.apiBase}/users/@me/relationships") {
                 standardHeaders(rest)
                 contentType(ContentType.Application.Json)
                 setBody(buildJsonObject {
                     put("username", username)
-                    if (discriminator != null) put("discriminator", discriminator)
+                    // `discriminator` is required but nullable: migrated users must send null.
+                    put("discriminator", discriminator?.let(::JsonPrimitive) ?: JsonNull)
+                    note?.take(120)?.let { put("note", it) }
                 })
+            }
+            if (!response.status.isSuccess()) {
+                Logging.e(
+                    "Relationship",
+                    "Friend request to $username failed: ${response.status} ${response.bodyAsText()}"
+                )
             }
             response.status.isSuccess()
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Logging.e("Relationship", "Error sending friend request by username: ${e.message}")
             false
         }

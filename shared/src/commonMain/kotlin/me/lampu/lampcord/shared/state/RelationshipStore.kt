@@ -72,7 +72,31 @@ class RelationshipStore(
         }
     }
 
-    fun sendFriendRequest(username: String, discriminator: String?, onResult: (Boolean) -> Unit = {}) {
+    fun sendFriendRequest(input: String, onResult: (Boolean) -> Unit = {}) {
+        val trimmed = input.trim().removePrefix("@")
+        if (trimmed.isBlank()) {
+            onResult(false)
+            return
+        }
+
+        // Accept both the modern username and the legacy username#discriminator form.
+        val hashIndex = trimmed.lastIndexOf('#')
+        val username: String
+        val discriminator: String?
+        if (hashIndex > 0) {
+            val suffix = trimmed.substring(hashIndex + 1)
+            if (suffix.isNotEmpty() && suffix.all { it.isDigit() }) {
+                username = trimmed.substring(0, hashIndex)
+                discriminator = suffix
+            } else {
+                username = trimmed
+                discriminator = null
+            }
+        } else {
+            username = trimmed
+            discriminator = null
+        }
+
         scope.launch {
             val success = userApi.addRelationshipByUsername(username, discriminator)
             if (success) fetchRelationships()
