@@ -727,7 +727,7 @@ fun MobileBaseplate(
                 .align(Alignment.TopCenter)
                 .fillMaxWidth()
                 .height(WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
-                .background(MaterialTheme.colorScheme.surface)
+                .background(MaterialTheme.colorScheme.surfaceContainer)
         )
 
         val navItems = remember(
