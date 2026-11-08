@@ -230,7 +230,15 @@ fun ProfileHeader(
         }
     }
 
-    Column(modifier = Modifier.offset(y = (-35).dp)) {
+    Column(
+        modifier = Modifier.layout { measurable, constraints ->
+            val placeable = measurable.measure(constraints)
+            val overlap = 35.dp.roundToPx()
+            layout(placeable.width, (placeable.height - overlap).coerceAtLeast(0)) {
+                placeable.placeRelative(0, -overlap)
+            }
+        }
+    ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp)
