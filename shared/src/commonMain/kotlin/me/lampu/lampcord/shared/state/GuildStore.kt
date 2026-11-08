@@ -9,6 +9,7 @@ import androidx.compose.runtime.mutableStateOf
 import me.lampu.lampcord.shared.api.GuildApi
 import me.lampu.lampcord.shared.model.*
 import me.lampu.lampcord.shared.utils.Logging
+import me.lampu.lampcord.shared.utils.PermissionHelper
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlin.time.Clock
@@ -24,7 +25,9 @@ class GuildStore(
     private val userStore: UserStore,
     private val scope: CoroutineScope
 ) {
-    private companion object {        const val CHANNEL_OPT_IN_FLAG = 1 shl 10
+    private companion object {
+        const val CHANNEL_OPT_IN_FLAG = 1 shl 10
+        val NON_UNREAD_CHANNEL_TYPES = setOf(2, 4, 10, 11, 12, 13, 14)
     }
 
     private data class GuildActivity(
@@ -62,14 +65,14 @@ class GuildStore(
     ) { channels, privateChannelIds, readStates, recentIds, _ ->
         val unread = mutableSetOf<String>()
         val mentions = mutableMapOf<String, Int>()
+        val mutedGuilds = mutableMapOf<String, Boolean>()
         channels.values.forEach { channel ->
             val guildId = channel.guild_id ?: return@forEach
             val count = readStates[channel.id]?.mention_count ?: 0
             if (count > 0) mentions[guildId] = (mentions[guildId] ?: 0) + count
-            if (readStateStore.isUnread(channel, readStates, recentIds) &&
-                !userGuildSettingsStore.isGuildMuted(guildId) &&
-                !userGuildSettingsStore.isChannelMuted(guildId, channel.id)
-            ) {
+            if (guildId in unread) return@forEach
+            if (mutedGuilds.getOrPut(guildId) { userGuildSettingsStore.isGuildMuted(guildId) }) return@forEach
+            if (countsTowardGuildUnread(channel, channels) { readStateStore.isUnread(channel, readStates, recentIds) }) {
                 unread.add(guildId)
             }
         }
@@ -413,11 +416,24 @@ class GuildStore(
         }
     }
 
-    fun isGuildUnread(guildId: String): Boolean {
-        if (userGuildSettingsStore.isGuildMuted(guildId)) return false
-        return allGuildChannels.value.values.any { 
-            it.guild_id == guildId && !userGuildSettingsStore.isChannelMuted(it.guild_id, it.id) && readStateStore.isUnread(it) 
-        }
+    fun isGuildUnread(guildId: String): Boolean = guildId in guildActivitySnapshot.value.unreadGuildIds
+
+    private inline fun countsTowardGuildUnread(
+        channel: Channel,
+        channels: Map<String, Channel>,
+        isUnread: () -> Boolean
+    ): Boolean {
+        val guildId = channel.guild_id ?: return false
+        if (channel.type in NON_UNREAD_CHANNEL_TYPES) return false
+        if (!isUnread()) return false
+        if (userGuildSettingsStore.isChannelMuted(guildId, channel.id)) return false
+        val parentId = channel.parent_id
+        if (parentId != null && channels[parentId]?.type == 4 &&
+            userGuildSettingsStore.isChannelMuted(guildId, parentId)
+        ) return false
+        val guild = entityStore.guilds.value[guildId] ?: return true
+        val member = userStore.getCurrentMember(guildId) ?: return true
+        return PermissionHelper.canViewChannel(member, guild, channel, userStore.currentUser.value?.id)
     }
 
     fun getGuildMentionCount(guildId: String): Int {

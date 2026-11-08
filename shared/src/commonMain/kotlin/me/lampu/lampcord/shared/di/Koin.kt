@@ -82,7 +82,7 @@ val storeModule = module {
     single { UserStore() }
     single { EntityStore(get()) }
     single { SelectionStore() }
-    single { ReadStateStore(get()) }
+    single { ReadStateStore(get(), get(), get()) }
     single { UserGuildSettingsStore() }
     single { AppErrorStore() }
     single { PresenceStore(userApi = get()) }
