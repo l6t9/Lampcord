@@ -1371,12 +1371,9 @@ private fun MainBaseplateContent(
                 contentWindowInsets = WindowInsets(0, 0, 0, 0),
                 topBar = {
                     if (activeChannel != null || navigationStore.isChannelsAndRolesVisible) {
+                        val chatBarFocused = panelState.currentValue == DiscordPanelValue.Center
                         TopAppBar(
-                            windowInsets = if (panelState.currentValue == DiscordPanelValue.Center) {
-                                TopAppBarDefaults.windowInsets
-                            } else {
-                                WindowInsets(0, 0, 0, 0)
-                            },
+                            windowInsets = TopAppBarDefaults.windowInsets,
                             title = {
                                 val canOpenMemberList = settingsStore.mobileShowMemberListButton &&
                                         activeChannel != null &&
@@ -1609,8 +1606,16 @@ private fun MainBaseplateContent(
                                 }
                             },
                             colors = TopAppBarDefaults.topAppBarColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                                scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer
+                                containerColor = if (chatBarFocused) {
+                                    MaterialTheme.colorScheme.surfaceContainer
+                                } else {
+                                    Color.Transparent
+                                },
+                                scrolledContainerColor = if (chatBarFocused) {
+                                    MaterialTheme.colorScheme.surfaceContainer
+                                } else {
+                                    Color.Transparent
+                                }
                             )
                         )
                     }
