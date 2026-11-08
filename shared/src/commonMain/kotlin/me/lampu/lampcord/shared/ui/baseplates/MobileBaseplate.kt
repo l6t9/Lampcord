@@ -602,12 +602,12 @@ fun MobileBaseplate(
         }
     )
 
-    val lightPanelColor = MaterialTheme.colorScheme.surfaceContainerHigh
-    val darkPanelColor = MaterialTheme.colorScheme.surfaceContainerLowest
-    val chatBackground = MaterialTheme.colorScheme.background
+    val lightPanelColor = MaterialTheme.colorScheme.surfaceContainer
+    val darkPanelColor = MaterialTheme.colorScheme.surfaceContainer
+    val chatBackground = MaterialTheme.colorScheme.surfaceContainer
     val memberHeaderColor = MaterialTheme.colorScheme.surface
 
-    val settingsContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+    val settingsContainerColor = MaterialTheme.colorScheme.surfaceContainer
 
     val activePanelColor = remember(currentRoute, panelState.progress, lightPanelColor, darkPanelColor, chatBackground, memberHeaderColor, settingsContainerColor, isSettingsRoute, Settings.shared.panelType) {
         if (currentRoute == Screen.Chat) {
