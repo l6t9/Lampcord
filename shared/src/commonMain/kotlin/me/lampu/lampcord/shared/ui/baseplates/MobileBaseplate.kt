@@ -4,6 +4,7 @@ import me.lampu.lampcord.shared.generated.resources.Res
 import me.lampu.lampcord.shared.generated.resources.back
 import me.lampu.lampcord.shared.generated.resources.channels
 import me.lampu.lampcord.shared.generated.resources.friends
+import me.lampu.lampcord.shared.generated.resources.messages
 import me.lampu.lampcord.shared.generated.resources.home
 import me.lampu.lampcord.shared.generated.resources.lampcord_settings_nav_you
 import me.lampu.lampcord.shared.generated.resources.mentions
@@ -75,6 +76,8 @@ import me.lampu.lampcord.shared.ui.navigation.entry
 import me.lampu.lampcord.shared.ui.icons.Icons
 import org.koin.compose.koinInject
 import me.lampu.lampcord.shared.ui.kit.clickableCursor
+
+private data class BottomNavItem(val key: String, val screen: Screen)
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -626,23 +629,34 @@ fun MobileBaseplate(
             }
         )
 
-        val navItems = remember(settingsStore.navTabsOrderJson, settingsStore.showNavHome, settingsStore.showNavFriends, settingsStore.showNavSearch, settingsStore.showNavMentions, settingsStore.showNavSettings) {
+        val navItems = remember(
+            settingsStore.navTabsOrderJson,
+            settingsStore.showNavHome,
+            settingsStore.showNavDm,
+            settingsStore.showNavFriends,
+            settingsStore.showNavSearch,
+            settingsStore.showNavMentions,
+            settingsStore.showNavSettings
+        ) {
             val order = runCatching {
                 settingsStore.navTabsOrderJson.removeSurrounding("[", "]").split(",").map { it.trim().removeSurrounding("\"") }
-            }.getOrDefault(listOf("home", "friends", "search", "mentions", "settings"))
+            }.getOrDefault(listOf("home", "dm", "friends", "search", "mentions", "settings"))
 
-            val items = order.mapNotNull { key ->
+            val normalizedOrder = if ("dm" in order) order else order + "dm"
+
+            val items = normalizedOrder.mapNotNull { key ->
                 when (key) {
-                    "home" -> if (settingsStore.showNavHome) Screen.Chat else null
-                    "friends" -> if (settingsStore.showNavFriends) Screen.Friends else null
-                    "search" -> if (settingsStore.showNavSearch) Screen.GlobalSearch else null
-                    "mentions" -> if (settingsStore.showNavMentions) Screen.Mentions else null
-                    "settings" -> if (settingsStore.showNavSettings) Screen.Settings else null
+                    "home" -> if (settingsStore.showNavHome) BottomNavItem("home", Screen.Chat) else null
+                    "dm" -> if (settingsStore.showNavDm) BottomNavItem("dm", Screen.Chat) else null
+                    "friends" -> if (settingsStore.showNavFriends) BottomNavItem("friends", Screen.Friends) else null
+                    "search" -> if (settingsStore.showNavSearch) BottomNavItem("search", Screen.GlobalSearch) else null
+                    "mentions" -> if (settingsStore.showNavMentions) BottomNavItem("mentions", Screen.Mentions) else null
+                    "settings" -> if (settingsStore.showNavSettings) BottomNavItem("settings", Screen.Settings) else null
                     else -> null
                 }
             }
 
-            if (items.isEmpty()) listOf(Screen.EasterEgg) else items
+            if (items.isEmpty()) listOf(BottomNavItem("easter", Screen.EasterEgg)) else items
         }
 
         if ((isTabRoute || showSettingsTabBar) && navBarVisibleAmount > 0.001f) {
@@ -658,11 +672,16 @@ fun MobileBaseplate(
                 tonalElevation = 0.dp,
                 windowInsets = WindowInsets.navigationBars
             ) {
-                navItems.forEach { screen ->
-                    when (screen) {
-                        Screen.Chat -> {
+                navItems.forEach { item ->
+                    when (item.key) {
+                        "home" -> {
+                            val favoritesVisible = Settings.shared.favoritesServerEnabled
+                            val dmSelected = currentRoute == Screen.Chat &&
+                                navigationStore.selectedGuild == null &&
+                                !(navigationStore.isFavoritesSelected && favoritesVisible)
+                            val homeSelected = currentRoute == Screen.Chat && (!settingsStore.showNavDm || !dmSelected)
                             NavigationBarItem(
-                                selected = currentRoute == Screen.Chat,
+                                selected = homeSelected,
                                 onClick = {
                                     navigationStore.isFriendsSelected = false
                                     navigationStore.isSettingsVisible = false
@@ -682,12 +701,36 @@ fun MobileBaseplate(
                                     }
                                     navigator.navigate(Screen.Chat)
                                 },
-                                icon = { Icon(if (currentRoute == Screen.Chat) Icons.Brand.DiscordRounded else Icons.Brand.DiscordRoundedOutline, "Home") },
+                                icon = { Icon(if (homeSelected) Icons.Filled.Home else Icons.Rounded.Home, "Home") },
                                 label = { Text(stringResource(Res.string.home)) },
                                 alwaysShowLabel = !settingsStore.hideNavLabels
                             )
                         }
-                        Screen.Friends -> {
+                        "dm" -> {
+                            val favoritesVisible = Settings.shared.favoritesServerEnabled
+                            val dmSelected = currentRoute == Screen.Chat &&
+                                navigationStore.selectedGuild == null &&
+                                !(navigationStore.isFavoritesSelected && favoritesVisible)
+                            NavigationBarItem(
+                                selected = dmSelected,
+                                onClick = {
+                                    navigationStore.isSettingsVisible = false
+                                    navigationStore.isSearchVisible = false
+                                    navigationStore.selectHome()
+                                    if (currentRoute != Screen.Chat) {
+                                        if (lastPanelValue == DiscordPanelValue.Center) {
+                                            lastPanelValue = DiscordPanelValue.Start
+                                        }
+                                        panelState.currentValue = lastPanelValue
+                                    }
+                                    navigator.navigate(Screen.Chat)
+                                },
+                                icon = { Icon(if (dmSelected) Icons.Filled.ChatBubble else Icons.Rounded.ChatBubble, "Direct Messages") },
+                                label = { Text(stringResource(Res.string.messages)) },
+                                alwaysShowLabel = !settingsStore.hideNavLabels
+                            )
+                        }
+                        "friends" -> {
                             NavigationBarItem(
                                 selected = currentRoute == Screen.Friends,
                                 onClick = {
@@ -700,7 +743,7 @@ fun MobileBaseplate(
                                 alwaysShowLabel = !settingsStore.hideNavLabels
                             )
                         }
-                        Screen.GlobalSearch -> {
+                        "search" -> {
                             NavigationBarItem(
                                 selected = currentRoute == Screen.GlobalSearch,
                                 onClick = {
@@ -711,7 +754,7 @@ fun MobileBaseplate(
                                 alwaysShowLabel = !settingsStore.hideNavLabels
                             )
                         }
-                        Screen.Mentions -> {
+                        "mentions" -> {
                             NavigationBarItem(
                                 selected = currentRoute == Screen.Mentions,
                                 onClick = {
@@ -724,7 +767,7 @@ fun MobileBaseplate(
                                 alwaysShowLabel = !settingsStore.hideNavLabels
                             )
                         }
-                        Screen.Settings -> {
+                        "settings" -> {
                             NavigationBarItem(
                                 selected = currentRoute == Screen.Settings,
                                 onClick = {
@@ -785,7 +828,7 @@ fun MobileBaseplate(
                                 alwaysShowLabel = !settingsStore.hideNavLabels
                             )
                         }
-                        Screen.EasterEgg -> {
+                        "easter" -> {
                             NavigationBarItem(
                                 selected = currentRoute == Screen.EasterEgg,
                                 onClick = { navigator.navigate(Screen.EasterEgg) },
@@ -1326,7 +1369,7 @@ private fun MainBaseplateContent(
                         } else {
                             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Icon(Icons.Brand.Discord, null, modifier = Modifier.size(80.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f))
+                                    Icon(Icons.Rounded.Home, null, modifier = Modifier.size(80.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f))
                                     Spacer(Modifier.height(24.dp))
                                     Text("Select a channel to start chatting", color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     Spacer(Modifier.height(24.dp))

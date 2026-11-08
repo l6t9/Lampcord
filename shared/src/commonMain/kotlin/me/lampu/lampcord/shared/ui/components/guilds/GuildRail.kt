@@ -175,69 +175,71 @@ fun GuildRail(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = PaddingValues(vertical = 8.dp)
     ) {
-        item {
-            val favoritesVisible = me.lampu.lampcord.shared.settings.Settings.shared.favoritesServerEnabled
-            val isHomeSelected = navigationStore.selectedGuild == null &&
-                !(navigationStore.isFavoritesSelected && favoritesVisible)
+        if (!settingsStore.showNavDm) {
+            item {
+                val favoritesVisible = me.lampu.lampcord.shared.settings.Settings.shared.favoritesServerEnabled
+                val isHomeSelected = navigationStore.selectedGuild == null &&
+                    !(navigationStore.isFavoritesSelected && favoritesVisible)
 
-            val totalDmMentions = guildStore.privateMentionCountState().value
+                val totalDmMentions = guildStore.privateMentionCountState().value
 
-            ExpressiveTooltip(
-                anchorPosition = TooltipAnchorPosition.End,
-                content = tooltipText("Direct Messages"),
-                anchor = {
-                    Box(contentAlignment = Alignment.Center, modifier = Modifier.graphicsLayer(clip = false)) {
-                        RegularGuildItem(
-                            isSelected = isHomeSelected,
-                            isMonogram = true,
-                            onClick = {
-                                navigationStore.selectHome()
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            },
-                            selectedColor = MaterialTheme.colorScheme.primary,
-                            unselectedColor = MaterialTheme.colorScheme.surfaceVariant,
-                            monogramSelectedColor = MaterialTheme.colorScheme.onPrimary,
-                            monogramUnselectedColor = MaterialTheme.colorScheme.primary
-                        ) {
-                            Icon(
-                                imageVector = Icons.Brand.DiscordRounded,
-                                contentDescription = stringResource(Res.string.home),
-                                modifier = Modifier.size(28.dp)
-                            )
-                        }
+                ExpressiveTooltip(
+                    anchorPosition = TooltipAnchorPosition.End,
+                    content = tooltipText("Direct Messages"),
+                    anchor = {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.graphicsLayer(clip = false)) {
+                            RegularGuildItem(
+                                isSelected = isHomeSelected,
+                                isMonogram = true,
+                                onClick = {
+                                    navigationStore.selectHome()
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                },
+                                selectedColor = MaterialTheme.colorScheme.primary,
+                                unselectedColor = MaterialTheme.colorScheme.surfaceVariant,
+                                monogramSelectedColor = MaterialTheme.colorScheme.onPrimary,
+                                monogramUnselectedColor = MaterialTheme.colorScheme.primary
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Home,
+                                    contentDescription = stringResource(Res.string.home),
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
 
-                        if (totalDmMentions > 0) {
-                            Box(modifier = Modifier.size(48.dp)) {
-                                Surface(
-                                    color = MaterialTheme.colorScheme.error,
-                                    shape = CircleShape,
-                                    modifier = Modifier
-                                        .align(Alignment.BottomEnd)
-                                        .offset(x = 3.dp, y = 3.dp)
-                                        .height(20.dp)
-                                        .widthIn(min = 20.dp),
-                                    shadowElevation = 2.dp,
-                                    border = if (isHomeSelected) null else androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.surface)
-                                ) {
-                                    Box(
-                                        contentAlignment = Alignment.Center,
-                                        modifier = Modifier.padding(horizontal = 5.dp)
+                            if (totalDmMentions > 0) {
+                                Box(modifier = Modifier.size(48.dp)) {
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.error,
+                                        shape = CircleShape,
+                                        modifier = Modifier
+                                            .align(Alignment.BottomEnd)
+                                            .offset(x = 3.dp, y = 3.dp)
+                                            .height(20.dp)
+                                            .widthIn(min = 20.dp),
+                                        shadowElevation = 2.dp,
+                                        border = if (isHomeSelected) null else androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.surface)
                                     ) {
-                                        Text(
-                                            text = if (totalDmMentions > 99) "99+" else totalDmMentions.toString(),
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onError,
-                                            fontWeight = FontWeight.ExtraBold,
-                                            fontSize = 11.sp,
-                                            maxLines = 1
-                                        )
+                                        Box(
+                                            contentAlignment = Alignment.Center,
+                                            modifier = Modifier.padding(horizontal = 5.dp)
+                                        ) {
+                                            Text(
+                                                text = if (totalDmMentions > 99) "99+" else totalDmMentions.toString(),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onError,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                fontSize = 11.sp,
+                                                maxLines = 1
+                                            )
+                                        }
                                     }
                                 }
                             }
                         }
                     }
-                }
-            )
+                )
+            }
         }
 
         if (me.lampu.lampcord.shared.settings.Settings.shared.favoritesServerEnabled) {

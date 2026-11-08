@@ -15,5 +15,7 @@ data class AutocompleteItem(
     val commandObj: ApplicationCommand? = null,
     val color: Color? = null,
     val gradient: List<Color>? = null,
-    val inputText: String? = null
+    val inputText: String? = null,
+    val status: String? = null,
+    val isBot: Boolean = false
 )

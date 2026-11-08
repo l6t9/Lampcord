@@ -126,51 +126,80 @@ fun AutocompletePicker(
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Box(
-                                modifier = Modifier.size(if (type == AutocompleteType.EMOJI) 32.dp else 28.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (item.icon != null) {
-                                    val imageShape = when(type) {
-                                        AutocompleteType.MENTION, AutocompleteType.USER -> CircleShape
-                                        AutocompleteType.EMOJI -> androidx.compose.ui.graphics.RectangleShape
-                                        else -> RoundedCornerShape(4.dp)
+                            val avatarSize = if (type == AutocompleteType.EMOJI) 32.dp else 28.dp
+                            Box(modifier = Modifier.size(avatarSize)) {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (item.icon != null) {
+                                        val imageShape = when(type) {
+                                            AutocompleteType.MENTION, AutocompleteType.USER -> CircleShape
+                                            AutocompleteType.EMOJI -> androidx.compose.ui.graphics.RectangleShape
+                                            else -> RoundedCornerShape(4.dp)
+                                        }
+                                        AsyncImage(
+                                            model = item.icon,
+                                            contentDescription = null,
+                                            modifier = Modifier.fillMaxSize().clip(imageShape),
+                                            contentScale = if (type == AutocompleteType.EMOJI) ContentScale.Fit else ContentScale.Crop
+                                        )
+                                    } else if (item.iconType != null) {
+                                        Icon(
+                                            imageVector = item.iconType,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(22.dp),
+                                            tint = item.color ?: MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    } else {
+                                        Box(
+                                            modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(item.title.take(1).uppercase(), style = MaterialTheme.typography.labelMedium)
+                                        }
                                     }
-                                    AsyncImage(
-                                        model = item.icon,
-                                        contentDescription = null,
-                                        modifier = Modifier.fillMaxSize().clip(imageShape),
-                                        contentScale = if (type == AutocompleteType.EMOJI) ContentScale.Fit else ContentScale.Crop
+                                }
+
+                                if (item.status != null) {
+                                    StatusIndicator(
+                                        status = item.status,
+                                        size = 10.dp,
+                                        borderColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                                        modifier = Modifier.align(Alignment.BottomEnd)
                                     )
-                                } else if (item.iconType != null) {
-                                    Icon(
-                                        imageVector = item.iconType,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(22.dp),
-                                        tint = item.color ?: MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                } else {
-                                    Box(
-                                        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(item.title.take(1).uppercase(), style = MaterialTheme.typography.labelMedium)
-                                    }
                                 }
                             }
                             
                             Spacer(Modifier.width(12.dp))
                             
                             Column(modifier = Modifier.weight(1f)) {
-                                UsernameView(
-                                    name = item.title,
-                                    style = null,
-                                    baseStyle = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = item.color ?: MaterialTheme.colorScheme.onSurface,
-                                    roleGradient = item.gradient,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    UsernameView(
+                                        name = item.title,
+                                        style = null,
+                                        baseStyle = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                        color = item.color ?: MaterialTheme.colorScheme.onSurface,
+                                        roleGradient = item.gradient,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f, fill = false)
+                                    )
+                                    if (item.isBot) {
+                                        Spacer(Modifier.width(6.dp))
+                                        Surface(
+                                            shape = RoundedCornerShape(4.dp),
+                                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
+                                        ) {
+                                            Text(
+                                                text = "BOT",
+                                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                                color = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                            )
+                                        }
+                                    }
+                                }
                                 if (item.subtitle != null) {
                                     Text(
                                         text = item.subtitle,

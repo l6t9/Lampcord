@@ -19,7 +19,8 @@ class AutocompleteStore(
     private val guildStore: GuildStore,
     private val userStore: UserStore,
     private val commandStore: CommandStore,
-    private val guildApi: GuildApi
+    private val guildApi: GuildApi,
+    private val presenceStore: PresenceStore
 ) {
     private val scope = CoroutineScope(Dispatchers.Main)
     private var memberSearchJob: Job? = null
@@ -27,23 +28,34 @@ class AutocompleteStore(
     var autocompleteType by mutableStateOf<AutocompleteType?>(null)
     var autocompleteQuery by mutableStateOf("")
     var autocompleteSelectedIndex by mutableStateOf(0)
+    var autocompleteStart by mutableStateOf(-1)
     val autocompleteItems = mutableStateListOf<AutocompleteItem>()
     
     var searchAutocompleteType by mutableStateOf<AutocompleteType?>(null)
     var searchAutocompleteQuery by mutableStateOf("")
     var searchAutocompleteSelectedIndex by mutableStateOf(0)
+    var searchAutocompleteStart by mutableStateOf(-1)
     val searchAutocompleteItems = mutableStateListOf<AutocompleteItem>()
 
-    fun updateAutocomplete(type: AutocompleteType?, query: String, selectedGuild: Guild?, selectedChannel: Channel? = null, isSearch: Boolean = false) {
+    fun updateAutocomplete(
+        type: AutocompleteType?,
+        query: String,
+        selectedGuild: Guild?,
+        selectedChannel: Channel? = null,
+        isSearch: Boolean = false,
+        start: Int = -1
+    ) {
         memberSearchJob?.cancel()
         if (type == null) {
             if (isSearch) {
                 searchAutocompleteType = null
                 searchAutocompleteQuery = ""
+                searchAutocompleteStart = -1
                 searchAutocompleteItems.clear()
             } else {
                 autocompleteType = null
                 autocompleteQuery = ""
+                autocompleteStart = -1
                 autocompleteItems.clear()
             }
             return
@@ -52,9 +64,11 @@ class AutocompleteStore(
         if (isSearch) {
             searchAutocompleteType = type
             searchAutocompleteQuery = query
+            searchAutocompleteStart = start
         } else {
             autocompleteType = type
             autocompleteQuery = query
+            autocompleteStart = start
         }
         
         val results = mutableListOf<AutocompleteItem>()
@@ -337,6 +351,8 @@ class AutocompleteStore(
                 } else null
             } else null
 
+            val currentUser = userStore.currentUser.value
+
             AutocompleteItem(
                 id = user.id,
                 title = name,
@@ -346,7 +362,9 @@ class AutocompleteStore(
                 searchReplacement = user.username,
                 color = roleData?.first,
                 gradient = roleData?.second,
-                inputText = if (isSearch) user.id else "@$name"
+                inputText = if (isSearch) user.id else "@$name",
+                status = presenceStore.getUserStatus(user.id, currentUser?.id, null),
+                isBot = user.bot == true
             )
         })
     }

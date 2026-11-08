@@ -121,7 +121,7 @@ val storeModule = module {
     single {
         AutocompleteStore(
             memberListStore = get(), relationshipStore = get(), guildStore = get(),
-            userStore = get(), commandStore = get(), guildApi = get()
+            userStore = get(), commandStore = get(), guildApi = get(), presenceStore = get()
         )
     }
     single { CommandStore(guildApi = get(), gatewayManager = get(), scope = get()) }

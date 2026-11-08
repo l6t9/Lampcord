@@ -65,6 +65,8 @@
     <string name="lampcord_settings_message_sound_desc">Play a sound when you receive a message.</string>
     <string name="lampcord_settings_motion">Motion</string>
     <string name="lampcord_settings_nav_home">Home</string>
+    <string name="lampcord_settings_nav_dm">Direct Messages</string>
+    <string name="lampcord_settings_nav_dm_desc">Show a Direct Messages button in the navigation bar instead of the top of the server list.</string>
     <string name="lampcord_settings_nav_you">You</string>
     <string name="lampcord_settings_navigation">Navigation</string>
     <string name="lampcord_settings_nightly_desc">Nightly builds come from the latest commit to main and can be unstable.</string>

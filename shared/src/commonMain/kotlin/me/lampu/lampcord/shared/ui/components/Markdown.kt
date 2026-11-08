@@ -459,7 +459,7 @@ private fun AnnotatedString.Builder.appendDiscordMarkdown(
         }
 
         if (range.first > lastIndex) {
-            append(content.substring(lastIndex, range.first))
+            appendPlain(content.substring(lastIndex, range.first))
         }
 
         when (tag) {
@@ -507,7 +507,7 @@ private fun AnnotatedString.Builder.appendDiscordMarkdown(
                     )
                     withStyle(style = SpanStyle(color = Color.Transparent, background = Color.DarkGray)) {
                         pushLink(link)
-                        append(spoilerText)
+                        appendPlain(spoilerText)
                         pop()
                     }
                 }
@@ -522,7 +522,8 @@ private fun AnnotatedString.Builder.appendDiscordMarkdown(
                 }
             }
             "URL", "URL_SUPPRESSED" -> {
-                val url = if (tag == "URL_SUPPRESSED") match!!.groupValues[1] else match!!.groupValues[0]
+                val raw = if (tag == "URL_SUPPRESSED") match!!.groupValues[1] else match!!.groupValues[0]
+                val url = raw.trimEnd('.', ',', '!', '?', ';', ':', '\'', '"', ']', '}')
 
                 val resolved = DiscordLinkResolver.resolve(
                     url,
@@ -530,6 +531,12 @@ private fun AnnotatedString.Builder.appendDiscordMarkdown(
                     guildStore.allGuildChannels.value
                 )
                 appendResolvedLink(url, resolved, primaryColor)
+                if (url.length < raw.length) {
+                    appendPlain(raw.substring(url.length))
+                }
+            }
+            "BOLD_ITALIC" -> withStyle(style = SpanStyle(fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic)) {
+                appendDiscordMarkdown(match!!.groupValues[1], revealedSpoilers, primaryColor, navigationStore, guildStore, userStore, profileStore, onSpoilerClick)
             }
             "BOLD" -> withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
                 appendDiscordMarkdown(match!!.groupValues[1], revealedSpoilers, primaryColor, navigationStore, guildStore, userStore, profileStore, onSpoilerClick)
@@ -621,7 +628,14 @@ private fun AnnotatedString.Builder.appendDiscordMarkdown(
                 }
 
                 val isMentionLink = tag == "MENTION"
-                withStyle(style = SpanStyle(color = mentionColor, fontWeight = FontWeight.Bold, background = mentionBg)) {
+                withStyle(
+                    style = SpanStyle(
+                        color = mentionColor,
+                        fontWeight = FontWeight.Bold,
+                        background = mentionBg,
+                        textDecoration = TextDecoration.None
+                    )
+                ) {
                     if (isMentionLink) {
                         pushStringAnnotation("MENTION", id)
                     }
@@ -638,31 +652,53 @@ private fun AnnotatedString.Builder.appendDiscordMarkdown(
     }
 
     if (lastIndex < content.length) {
-        append(content.substring(lastIndex))
+        appendPlain(content.substring(lastIndex))
     }
 }
 
-private val maskedLinkPattern = Regex("""(?:\\)?\[([^\]\r\n]+)]\(<?(https?://[^\s<>]+)>?\)""")
+private val ESCAPABLE_MARKDOWN_CHARS = "\\`*_{}[]()#+-.!|~>".toSet()
+
+private fun AnnotatedString.Builder.appendPlain(text: String) {
+    if ('\\' !in text) {
+        append(text)
+        return
+    }
+    var i = 0
+    while (i < text.length) {
+        val char = text[i]
+        if (char == '\\' && i + 1 < text.length && text[i + 1] in ESCAPABLE_MARKDOWN_CHARS) {
+            append(text[i + 1])
+            i += 2
+        } else {
+            append(char)
+            i++
+        }
+    }
+}
+
+private val maskedLinkPattern = Regex("""(?<!\\)\[([^\]\r\n]+)]\(<?(https?://[^\s<>]+)>?\)""")
 
 private val DISCORD_MARKDOWN_PATTERNS: List<Pair<Regex, String>> = listOf(
-    Regex("""```(\w*)\n?([\s\S]*?)\n?```""") to "CODE_BLOCK",
-    Regex("""^>>> ([\s\S]*)$""", RegexOption.MULTILINE) to "BLOCKQUOTE_MULTI",
+    Regex("""```([\w+#.\-]*)\n?([\s\S]*?)\n?```""") to "CODE_BLOCK",
+    Regex("""^>>> ?([\s\S]*)$""", RegexOption.MULTILINE) to "BLOCKQUOTE_MULTI",
     Regex("""^> (.*)$""", RegexOption.MULTILINE) to "BLOCKQUOTE",
     Regex("""^### (.*)$""", RegexOption.MULTILINE) to "H3",
     Regex("""^## (.*)$""", RegexOption.MULTILINE) to "H2",
     Regex("""^# (.*)$""", RegexOption.MULTILINE) to "H1",
     Regex("""^[*\-]\s+(.*)$""", RegexOption.MULTILINE) to "BULLET",
     Regex("""^-# (.*)$""", RegexOption.MULTILINE) to "SUBTEXT",
-    Regex("""\|\|([\s\S]+?)\|\|""") to "SPOILER",
+    Regex("""(?<!\\)\|\|([\s\S]+?)\|\|""") to "SPOILER",
     Regex("""<(https?://[^>]+)>""") to "URL_SUPPRESSED",
     maskedLinkPattern to "MASKED_LINK",
-    Regex("""(https?://[^\s)>]+)""") to "URL",
-    Regex("""\*\*([^*]+)\*\*""") to "BOLD",
-    Regex("""__([^_]+)__""") to "UNDERLINE",
-    Regex("""\*([^*]+)\*""") to "ITALIC",
-    Regex("""_([^_]+)_""") to "ITALIC",
-    Regex("""~~([^~]+)~~""") to "STRIKE",
-    Regex("""`([^`]+)`""") to "CODE",
+    Regex("""(?<!\\)(https?://[^\s)>]+)""") to "URL",
+    Regex("""(?<!\\)\*\*\*([^*]+)\*\*\*""") to "BOLD_ITALIC",
+    Regex("""(?<!\\)___([^_]+)___""") to "BOLD_ITALIC",
+    Regex("""(?<!\\)\*\*([^*]+)\*\*""") to "BOLD",
+    Regex("""(?<!\\)__([^_]+)__""") to "UNDERLINE",
+    Regex("""(?<!\\)\*([^*]+)\*""") to "ITALIC",
+    Regex("""(?<!\\)_([^_]+)_""") to "ITALIC",
+    Regex("""(?<!\\)~~([^~]+)~~""") to "STRIKE",
+    Regex("""(?<!\\)`([^`]+)`""") to "CODE",
     me.lampu.lampcord.shared.utils.FreeNitroEmojis.emojiRegex to "EMOJI",
     Regex("""<t:(-?\d+)(?::([tTdDfFR]))?>""") to "TIMESTAMP",
     Regex("""<@!?(\d+)>""") to "MENTION",

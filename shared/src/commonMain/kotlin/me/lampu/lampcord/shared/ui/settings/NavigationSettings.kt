@@ -22,6 +22,8 @@ import me.lampu.lampcord.shared.generated.resources.Res
 import me.lampu.lampcord.shared.generated.resources.friends
 import me.lampu.lampcord.shared.generated.resources.lampcord_settings_hide_nav_labels
 import me.lampu.lampcord.shared.generated.resources.lampcord_settings_hide_nav_labels_desc
+import me.lampu.lampcord.shared.generated.resources.lampcord_settings_nav_dm
+import me.lampu.lampcord.shared.generated.resources.lampcord_settings_nav_dm_desc
 import me.lampu.lampcord.shared.generated.resources.lampcord_settings_nav_home
 import me.lampu.lampcord.shared.generated.resources.lampcord_settings_nav_you
 import me.lampu.lampcord.shared.generated.resources.lampcord_settings_navigation
@@ -58,10 +60,11 @@ private fun NavigationSettingsContent(
     val json = Json { ignoreUnknownKeys = true }
     
     var items by remember(settingsStore.navTabsOrderJson) {
-        val order = runCatching { 
+        val order = runCatching {
             json.decodeFromString<List<String>>(settingsStore.navTabsOrderJson)
-        }.getOrDefault(listOf("home", "friends", "search", "mentions", "settings"))
-        mutableStateOf(order)
+        }.getOrDefault(listOf("home", "dm", "friends", "search", "mentions", "settings"))
+        val normalized = if ("dm" in order) order else order + "dm"
+        mutableStateOf(normalized)
     }
 
     fun updateOrder(newList: List<String>) {
@@ -70,6 +73,7 @@ private fun NavigationSettingsContent(
     }
 
     val labelHome = stringResource(Res.string.lampcord_settings_nav_home)
+    val labelDm = stringResource(Res.string.lampcord_settings_nav_dm)
     val labelFriends = stringResource(Res.string.friends)
     val labelSearch = stringResource(Res.string.search)
     val labelMentions = stringResource(Res.string.mentions)
@@ -83,6 +87,12 @@ private fun NavigationSettingsContent(
                     title = labelHome,
                     checked = settingsStore.showNavHome,
                     onCheckedChange = { settingsStore.showNavHome = it }
+                ),
+                switchSettingsItem(
+                    title = labelDm,
+                    description = stringResource(Res.string.lampcord_settings_nav_dm_desc),
+                    checked = settingsStore.showNavDm,
+                    onCheckedChange = { settingsStore.showNavDm = it }
                 ),
                 switchSettingsItem(
                     title = labelFriends,
@@ -130,6 +140,7 @@ private fun NavigationSettingsContent(
             items.forEachIndexed { index, item ->
                 val label = when (item) {
                     "home" -> labelHome
+                    "dm" -> labelDm
                     "friends" -> labelFriends
                     "search" -> labelSearch
                     "mentions" -> labelMentions
@@ -137,7 +148,8 @@ private fun NavigationSettingsContent(
                     else -> item
                 }
                 val icon = when (item) {
-                    "home" -> Icons.Brand.Discord
+                    "home" -> Icons.Rounded.Home
+                    "dm" -> Icons.Rounded.ChatBubble
                     "friends" -> Icons.Rounded.Person
                     "search" -> Icons.Filled.Search
                     "mentions" -> Icons.Rounded.AlternateEmail

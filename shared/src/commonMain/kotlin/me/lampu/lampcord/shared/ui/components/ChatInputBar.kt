@@ -46,6 +46,7 @@ import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.IntOffset
@@ -73,13 +74,41 @@ import org.koin.compose.koinInject
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
-class DiscordInputVisualTransformation(val primaryColor: Color) : VisualTransformation {
+class DiscordInputVisualTransformation(
+    val primaryColor: Color,
+    val highlightRanges: List<IntRange> = emptyList()
+) : VisualTransformation {
     override fun filter(text: AnnotatedString): TransformedText {
         val build = AnnotatedString.Builder()
         val rawText = text.text
+        val ranges = highlightRanges
+            .filter { it.first >= 0 && it.last < rawText.length && it.first <= it.last }
+            .sortedBy { it.first }
 
+        var rangeIndex = 0
         var i = 0
         while (i < rawText.length) {
+            while (rangeIndex < ranges.size && ranges[rangeIndex].last < i) {
+                rangeIndex++
+            }
+            val activeRange = ranges.getOrNull(rangeIndex)
+            if (activeRange != null && i >= activeRange.first) {
+                val end = activeRange.last + 1
+                build.withStyle(
+                    SpanStyle(
+                        color = primaryColor,
+                        fontWeight = FontWeight.Bold,
+                        background = primaryColor.copy(alpha = 0.12f),
+                        textDecoration = TextDecoration.None
+                    )
+                ) {
+                    append(rawText.substring(i, end))
+                }
+                i = end
+                rangeIndex++
+                continue
+            }
+
             val char = rawText[i]
             if (char == '@' || char == '#' || char == '/' || char == ':') {
                  if (i == 0 || rawText[i-1].isWhitespace()) {
@@ -103,7 +132,14 @@ class DiscordInputVisualTransformation(val primaryColor: Color) : VisualTransfor
                              end++
                          }
                      }
-                     build.withStyle(SpanStyle(color = primaryColor, fontWeight = FontWeight.Bold)) {
+                     build.withStyle(
+                         SpanStyle(
+                             color = primaryColor,
+                             fontWeight = FontWeight.Bold,
+                             background = primaryColor.copy(alpha = 0.12f),
+                             textDecoration = TextDecoration.None
+                         )
+                     ) {
                          append(rawText.substring(i, end))
                      }
                      i = end
@@ -200,7 +236,7 @@ fun ChatInputBar(
         )
     }
 
-    fun applyAutocomplete(item: AutocompleteItem) {
+    fun applyAutocomplete(item: AutocompleteItem, startOverride: Int? = null) {
         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
         val text = textFieldValue.text
         val selection = textFieldValue.selection
@@ -214,7 +250,13 @@ fun ChatInputBar(
                 if (idx >= 0) idx else lastWordStart
             } else lastWordStart
 
-            val actualStart = if (item.isCommand) 0 else colonStart
+            val trackedStart = autocompleteStore.autocompleteStart
+            val actualStart = when {
+                item.isCommand -> 0
+                startOverride != null -> startOverride.coerceIn(0, cursor)
+                trackedStart in 0..cursor -> trackedStart
+                else -> colonStart
+            }
 
             val inputText = item.inputText ?: item.replacement
             val newText = text.replaceRange(actualStart, cursor, inputText)
@@ -304,12 +346,15 @@ fun ChatInputBar(
         } else null
 
         if (emoji.id != null && serverReplacement != null) {
-            applyAutocomplete(AutocompleteItem(
-                id = emoji.id,
-                title = ":${emoji.name}:",
-                replacement = serverReplacement,
-                inputText = ":${emoji.name}:"
-            ))
+            applyAutocomplete(
+                AutocompleteItem(
+                    id = emoji.id,
+                    title = ":${emoji.name}:",
+                    replacement = serverReplacement,
+                    inputText = ":${emoji.name}:"
+                ),
+                startOverride = textFieldValue.selection.start
+            )
         } else {
 
             val char = emoji.name ?: return
@@ -699,20 +744,41 @@ fun ChatInputBar(
 if (it.selection.collapsed) {
                                                         val cursor = it.selection.start
                                                         val textBefore = it.text.take(cursor)
-                                                        val lastWord = textBefore.substring(textBefore.lastIndexOfAny(charArrayOf(' ', '\n')) + 1)
+                                                        val lastWordStart = textBefore.lastIndexOfAny(charArrayOf(' ', '\n')) + 1
+                                                        val lastWord = textBefore.substring(lastWordStart)
 
-                                                        val (type, query) = when {
+                                                        val activeType = autocompleteStore.autocompleteType
+                                                        val trackedStart = autocompleteStore.autocompleteStart
+                                                        val mentionStillOpen = activeType == AutocompleteType.MENTION &&
+                                                            trackedStart in 0..cursor &&
+                                                            cursor > trackedStart &&
+                                                            it.text.getOrNull(trackedStart) == '@' &&
+                                                            !it.text.substring(trackedStart, cursor).contains('\n')
+
+                                                        val (type, query, start) = when {
                                                             it.text.startsWith('/') && !it.text.contains(' ') ->
-                                                                AutocompleteType.COMMAND to it.text.substring(1)
-                                                            lastWord.length > 2 && lastWord.startsWith(':') ->
-                                                                AutocompleteType.EMOJI to lastWord.substring(1)
+                                                                Triple(AutocompleteType.COMMAND, it.text.substring(1), 0)
+                                                            mentionStillOpen ->
+                                                                Triple(
+                                                                    AutocompleteType.MENTION,
+                                                                    it.text.substring(trackedStart + 1, cursor),
+                                                                    trackedStart
+                                                                )
+                                                            lastWord.length >= 2 && lastWord.startsWith(':') ->
+                                                                Triple(AutocompleteType.EMOJI, lastWord.substring(1), lastWordStart)
                                                             lastWord.startsWith('@') ->
-                                                                AutocompleteType.MENTION to lastWord.substring(1)
+                                                                Triple(AutocompleteType.MENTION, lastWord.substring(1), lastWordStart)
                                                             lastWord.startsWith('#') ->
-                                                                AutocompleteType.CHANNEL to lastWord.substring(1)
-                                                            else -> null to ""
+                                                                Triple(AutocompleteType.CHANNEL, lastWord.substring(1), lastWordStart)
+                                                            else -> Triple(null, "", -1)
                                                         }
-                                                        autocompleteStore.updateAutocomplete(type, query, navigationStore.selectedGuild, channel)
+                                                        autocompleteStore.updateAutocomplete(
+                                                            type,
+                                                            query,
+                                                            navigationStore.selectedGuild,
+                                                            channel,
+                                                            start = start
+                                                        )
                                                     } else {
                                                         autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild, channel)
                                                     }
@@ -720,7 +786,10 @@ if (it.selection.collapsed) {
                                                     if (it.text.isNotEmpty() && !it.text.startsWith('/')) messageStore.sendTyping(channel.id)
                                                 }
                                             },
-                                            visualTransformation = DiscordInputVisualTransformation(primaryColor),
+                                            visualTransformation = DiscordInputVisualTransformation(
+                                                primaryColor,
+                                                highlightRanges = mentionRanges.keys.toList()
+                                            ),
                                             modifier = Modifier
                                                 .weight(1f)
                                                 .padding(start = 12.dp, top = 8.dp, bottom = 8.dp)
