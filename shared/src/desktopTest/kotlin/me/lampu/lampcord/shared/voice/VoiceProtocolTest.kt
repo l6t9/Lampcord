@@ -62,7 +62,8 @@ class VoiceProtocolTest {
             val frame = NativeVoice.encode(native, ShortArray(1920), false)
             assertTrue(frame.isNotEmpty())
             assertNull(NativeVoice.encrypt(native, 42, frame))
-            assertNull(NativeVoice.decrypt(native, "5678567856785678", frame))
+            assertNull(NativeVoice.decrypt(native, "5678567856785678", frame, false))
+            assertNull(NativeVoice.decrypt(native, "5678567856785678", frame, true))
             assertFailsWith<IllegalStateException> { NativeVoice.init(native, 0) }
             assertFailsWith<IllegalStateException> { NativeVoice.encode(native, ShortArray(10), false) }
         } finally { NativeVoice.destroy(native) }

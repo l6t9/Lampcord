@@ -22,7 +22,8 @@ class VoiceStore(
     private val json: Json,
     private val scope: CoroutineScope
 ) : GatewayEventHandler {
-    override val supportedEvents = setOf("VOICE_STATE_UPDATE", "VOICE_SERVER_UPDATE", "CALL_CREATE", "CALL_UPDATE", "CALL_DELETE", "READY_SUPPLEMENTAL", "GUILD_CREATE", "GUILD_DELETE")
+    override val supportedEvents = setOf("VOICE_STATE_UPDATE", "VOICE_SERVER_UPDATE", "CALL_CREATE", "CALL_UPDATE", "CALL_DELETE", "READY_SUPPLEMENTAL", "GUILD_CREATE", "GUILD_DELETE",
+        "STREAM_CREATE", "STREAM_SERVER_UPDATE", "STREAM_UPDATE", "STREAM_DELETE")
     var currentVoiceState by mutableStateOf<VoiceState?>(null)
         private set
     var activeChannel by mutableStateOf<Channel?>(null)
@@ -44,6 +45,19 @@ class VoiceStore(
     val calls = mutableStateMapOf<String, List<String>>()
     var incomingChannelId by mutableStateOf<String?>(null)
         private set
+    /** Latest camera frame per participant of the joined call. */
+    val videoFrames get() = voiceGatewayManager.videoFrames
+    val streamFrame get() = voiceGatewayManager.streamFrame
+    /** Key of the Go Live stream being watched, see [streamKey]. */
+    var watchedStream by mutableStateOf<String?>(null)
+        private set
+    var streamConnection by mutableStateOf(VoiceConnectionStatus())
+        private set
+    var streamPaused by mutableStateOf(false)
+        private set
+    private var streamServerId: String? = null
+    private var streamServer: Pair<String, String>? = null
+    private var connectedStream: Pair<String, String>? = null
     private var server: VoiceServerUpdate? = null
     private var connectedServer: VoiceServerUpdate? = null
     private var joinTimeout: Job? = null
@@ -73,6 +87,56 @@ class VoiceStore(
                 }
             }
         }
+        scope.launch {
+            voiceGatewayManager.streamStatus.collect { status ->
+                if (status.channelId != watchedStream) return@collect
+                streamConnection = status
+                if (status.phase == VoicePhase.FAILED) {
+                    stopWatchingStream()
+                    error = status.error ?: "Could not watch the stream."
+                }
+            }
+        }
+    }
+
+    fun streamKey(channel: Channel, userId: String) =
+        if (channel.guild_id != null) "guild:${channel.guild_id}:${channel.id}:$userId" else "call:${channel.id}:$userId"
+
+    /** Starts watching [userId]'s Go Live stream in the joined call. */
+    fun watchStream(userId: String) {
+        val channel = activeChannel ?: return
+        val key = streamKey(channel, userId)
+        if (watchedStream == key) return
+        stopWatchingStream()
+        watchedStream = key
+        streamConnection = VoiceConnectionStatus(key, VoicePhase.CONNECTING)
+        scope.launch { gatewayManager.sendPayload(GatewayPayload(op = 20, d = buildJsonObject { put("stream_key", key) })) }
+    }
+
+    fun stopWatchingStream() {
+        val key = watchedStream ?: return
+        stopStreamLocal()
+        scope.launch { gatewayManager.sendPayload(GatewayPayload(op = 19, d = buildJsonObject { put("stream_key", key) })) }
+    }
+
+    private fun stopStreamLocal() {
+        watchedStream = null
+        streamServerId = null
+        streamServer = null
+        connectedStream = null
+        streamPaused = false
+        streamConnection = VoiceConnectionStatus()
+        voiceGatewayManager.stopStream()
+    }
+
+    private fun connectStream() {
+        val key = watchedStream ?: return
+        val rtcServerId = streamServerId ?: return
+        val (endpoint, token) = streamServer ?: return
+        val state = currentVoiceState ?: return
+        if (state.session_id.isEmpty() || connectedStream == streamServer) return
+        connectedStream = streamServer
+        voiceGatewayManager.watchStream(endpoint, rtcServerId, key, state.user_id, state.session_id, token)
     }
 
     fun connectToVoice(channel: Channel, ring: Boolean = false) {
@@ -122,6 +186,7 @@ class VoiceStore(
     }
 
     private fun stopLocal() {
+        stopStreamLocal()
         activeChannel?.let { channel -> userStore.currentUser.value?.id?.let { voiceStates[channel.guild_id ?: "@me"]?.remove(it) } }
         activeChannel = null
         currentVoiceState = null
@@ -203,6 +268,24 @@ class VoiceStore(
                 voiceStates["@me"]?.entries?.filter { it.value.channel_id == id }?.forEach { voiceStates["@me"]?.remove(it.key) }
                 if (activeChannel?.id == id) stopLocal()
             }
+            "STREAM_CREATE", "STREAM_UPDATE" -> {
+                if (value["stream_key"]?.jsonPrimitive?.content != watchedStream) return
+                streamPaused = value["paused"]?.jsonPrimitive?.booleanOrNull == true
+                value["rtc_server_id"]?.jsonPrimitive?.contentOrNull?.let { streamServerId = it }
+                connectStream()
+            }
+            "STREAM_SERVER_UPDATE" -> {
+                if (value["stream_key"]?.jsonPrimitive?.content != watchedStream) return
+                val endpoint = value["endpoint"]?.jsonPrimitive?.contentOrNull ?: return
+                streamServer = endpoint to value.getValue("token").jsonPrimitive.content
+                connectStream()
+            }
+            "STREAM_DELETE" -> {
+                if (value["stream_key"]?.jsonPrimitive?.content != watchedStream) return
+                stopStreamLocal()
+                val reason = value["reason"]?.jsonPrimitive?.contentOrNull
+                if (reason != null && reason != "user_requested" && reason != "stream_ended") error = "The stream is no longer available ($reason)."
+            }
             "READY_SUPPLEMENTAL" -> seedGuilds(value)
             "GUILD_CREATE" -> seedGuild(value)
             "GUILD_DELETE" -> {
@@ -251,6 +334,7 @@ class VoiceStore(
 
             val moved = guildStore.allGuildChannels.value[state.channel_id] ?: Channel(state.channel_id, 2, state.guild_id)
             activeChannel = moved
+            stopStreamLocal()
             connectedServer = null
             voiceGatewayManager.disconnect()
             awaitConnection(moved)

@@ -1,6 +1,6 @@
 # Audio voice
 
-Android and desktop use Discord voice gateway v8, UDP/RTP, Opus (48 kHz stereo), and libdave protocol v1 for server channels and one-to-one/group DM calls. Video, screen sharing, Stage channels, and iOS voice are not implemented. Existing iOS targets and all four Android ABIs remain available.
+Android and desktop use Discord voice gateway v8, UDP/RTP, Opus (48 kHz stereo), and libdave protocol v1 for server channels and one-to-one/group DM calls. They also receive camera video and Go Live streams (H264 or VP8, DAVE-decrypted, decoded with FFmpeg on desktop and MediaCodec on Android). Sending camera or screen video, Stage channels, and iOS voice are not implemented. Existing iOS targets and all four Android ABIs remain available.
 
 The native library is built from source. `CMakeLists.txt` pins and SHA-256 verifies the libdave/MLSpp/BoringSSL source bundle from KyokoBot/libdave-jvm and Opus 1.5.2. No JVM wrapper or prebuilt crypto library from that project is used. Dependency notices ship in `shared/src/commonMain/resources/voice-licenses`.
 
@@ -19,6 +19,10 @@ build/voice-desktop/voice_check
 On Visual Studio generators the last executable is `build/voice-desktop/Release/voice_check.exe`. For a phone-only development APK, `-PvoiceAbis=arm64-v8a` skips the other native architectures without changing release defaults.
 
 `voice_check` uses Discord's test external sender to form a real MLS group, exchange encrypted Opus, add a third member, execute a rekey, and reject tampered/replayed/plaintext frames. The desktop test checks the JNI boundary, AES-GCM against Java's implementation, both transport modes, RTP extensions/padding/replay handling, and jitter/sequence wrapping. Neither test records a microphone or contacts Discord. They do not replace a live interoperability call.
+
+## Video
+
+Video packets go through a per-sender jitter buffer that reorders them, NACKs gaps (repairs arrive as RTX), and requests a keyframe with PLI after giving up on a gap. Frames are rebuilt from RTP (H264 as Annex B with four-byte start codes, which libdave expects) before DAVE decryption. The client reports a high receive bitrate with REMB; without it the SFU throttles forwarding and asks senders for lower quality. Watching a Go Live stream opens a second voice connection to the stream's RTC server, whose DAVE group ID is `rtc_server_id - 1`; its audio is mixed into the call output and the microphone is not opened. The periodic `Voice` log line reports per-frame `wait`, `queue` and `decode` times plus drops and keyframe requests.
 
 ## Using calls
 

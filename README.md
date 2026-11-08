@@ -48,7 +48,7 @@ Lampcord is a lightweight Discord client built with Compose Multiplatform for Mo
   * [x] Voice channels & in-call controls
   * [x] Image / video viewer & audio player
   * [x] Custom status & activity / rich presence
-  * [ ] Video calling & screen share rendering
+  * [x] Video calling & screen share rendering
 ## Notifications
   * [x] Android system notifications & conversation bubbles
   * [x] Desktop system notifications & toasts

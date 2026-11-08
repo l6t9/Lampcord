@@ -5,11 +5,14 @@ import io.ktor.client.plugins.HttpTimeoutConfig
 import io.ktor.client.plugins.timeout
 import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
 import io.ktor.client.plugins.websocket.webSocket
+import androidx.compose.ui.graphics.ImageBitmap
 import io.ktor.websocket.*
 import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.serialization.json.*
 import me.lampu.lampcord.shared.voice.*
 import me.lampu.lampcord.shared.settings.Settings
@@ -26,8 +29,16 @@ actual class VoiceGatewayManager actual constructor(private val client: HttpClie
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val mutableStatus = MutableStateFlow(VoiceConnectionStatus())
     actual val status: StateFlow<VoiceConnectionStatus> = mutableStatus.asStateFlow()
+    private val mutableVideo = MutableStateFlow<Map<String, ImageBitmap>>(emptyMap())
+    actual val videoFrames: StateFlow<Map<String, ImageBitmap>> = mutableVideo.asStateFlow()
+    private val mutableStreamStatus = MutableStateFlow(VoiceConnectionStatus())
+    actual val streamStatus: StateFlow<VoiceConnectionStatus> = mutableStreamStatus.asStateFlow()
+    private val mutableStreamFrame = MutableStateFlow<ImageBitmap?>(null)
+    actual val streamFrame: StateFlow<ImageBitmap?> = mutableStreamFrame.asStateFlow()
     @Volatile private var active: Connection? = null
+    @Volatile private var stream: Connection? = null
     private var job: Job? = null
+    private var streamJob: Job? = null
     private var muted = false
     private var deafened = false
     private var speaker = false
@@ -35,28 +46,53 @@ actual class VoiceGatewayManager actual constructor(private val client: HttpClie
     actual fun connect(endpoint: String, serverId: String, channelId: String, userId: String, sessionId: String, token: String) {
         val previousJob = job
         disconnect()
-        val connection = Connection(endpoint, serverId, channelId, userId, sessionId, token)
+        val connection = Connection(endpoint, serverId, channelId, channelId, userId, sessionId, token, isStream = false)
         connection.muted = muted
         connection.deafened = deafened
         active = connection
         Logging.i("Voice", "Connecting channel=$channelId endpoint=$endpoint")
         mutableStatus.value = VoiceConnectionStatus(channelId, VoicePhase.CONNECTING)
-        job = scope.launch {
-            try {
-                previousJob?.join()
-                connection.run()
-                error("Voice server closed the connection")
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Throwable) {
-                if (active === connection) {
+        job = launchConnection(connection, previousJob, "Voice connection failed. Check your audio devices and network, then retry.")
+    }
 
-                    val message = if (e is VoiceFailure) e.message else "Voice connection failed. Check your audio devices and network, then retry."
-                    mutableStatus.value = VoiceConnectionStatus(channelId, VoicePhase.FAILED, message)
-                }
-            } finally {
-                connection.close()
+    actual fun watchStream(endpoint: String, rtcServerId: String, streamKey: String, userId: String, sessionId: String, token: String) {
+        val previousJob = streamJob
+        stopStream()
+        // Go Live connections run their own MLS group, keyed one below the RTC server ID.
+        val group = rtcServerId.toULongOrNull()?.takeIf { it > 0u }?.minus(1u)?.toString() ?: return
+        val connection = Connection(endpoint, rtcServerId, streamKey, group, userId, sessionId, token, isStream = true)
+        connection.muted = true
+        connection.deafened = deafened
+        stream = connection
+        Logging.i("Voice", "Watching stream=$streamKey endpoint=$endpoint")
+        mutableStreamStatus.value = VoiceConnectionStatus(streamKey, VoicePhase.CONNECTING)
+        streamJob = launchConnection(connection, previousJob, "Could not connect to the stream. Retry watching.")
+    }
+
+    actual fun stopStream() {
+        val old = stream
+        stream = null
+        old?.stopIO()
+        streamJob?.cancel()
+        streamJob = null
+        mutableStreamStatus.value = VoiceConnectionStatus()
+        mutableStreamFrame.value = null
+    }
+
+    private fun launchConnection(connection: Connection, previousJob: Job?, fallback: String) = scope.launch {
+        try {
+            previousJob?.join()
+            connection.run()
+            error("Voice server closed the connection")
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            if (connection.isCurrent) {
+                val message = if (e is VoiceFailure) e.message else fallback
+                connection.statusFlow.value = VoiceConnectionStatus(connection.channelId, VoicePhase.FAILED, message)
             }
+        } finally {
+            connection.close()
         }
     }
 
@@ -64,6 +100,7 @@ actual class VoiceGatewayManager actual constructor(private val client: HttpClie
         this.muted = muted
         this.deafened = deafened
         active?.let { it.muted = muted; it.deafened = deafened }
+        stream?.deafened = deafened
     }
 
     actual fun setSpeaker(enabled: Boolean) {
@@ -78,19 +115,96 @@ actual class VoiceGatewayManager actual constructor(private val client: HttpClie
         job?.cancel()
         job = null
         mutableStatus.value = VoiceConnectionStatus()
+        mutableVideo.value = emptyMap()
     }
 
     actual fun close() {
+        stopStream()
         disconnect()
         scope.cancel()
     }
 
     private class VoiceFailure(message: String) : Exception(message)
 
+    private companion object {
+        /** Bandwidth announced to the SFU so it neither throttles what it forwards nor asks senders to scale down. */
+        const val RECEIVE_BITRATE = 20_000_000L
+    }
+
+    private class QueuedFrame(val codec: VideoCodec, val data: ByteArray, val arrivedAt: Long, val queuedAt: Long)
+
+    /** Where a video frame's time goes between its first packet and the decoded picture. */
+    private class VideoStats {
+        private var frames = 0L
+        private var waitNanos = 0L
+        private var queueNanos = 0L
+        private var decodeNanos = 0L
+        var dropped = 0L
+        var keyframeRequests = 0L
+
+        @Synchronized fun record(arrivedAt: Long, queuedAt: Long, started: Long, done: Long) {
+            frames++
+            waitNanos += queuedAt - arrivedAt
+            queueNanos += started - queuedAt
+            decodeNanos += done - started
+        }
+
+        @Synchronized fun take(): String {
+            fun average(total: Long) = if (frames == 0L) 0 else total / frames / 1_000_000
+            val result = "wait=${average(waitNanos)}ms queue=${average(queueNanos)}ms decode=${average(decodeNanos)}ms drop=$dropped pli=$keyframeRequests"
+            frames = 0; waitNanos = 0; queueNanos = 0; decodeNanos = 0; dropped = 0; keyframeRequests = 0
+            return result
+        }
+    }
+
+    /** Receive state for one remote video SSRC: reassembly, keyframe gating and a decode worker. */
+    private inner class VideoFeed(val connection: Connection, val user: String, val ssrc: Int, scope: CoroutineScope) {
+        val buffer = VideoJitterBuffer()
+        @Volatile var waitingForKeyframe = true
+        var lastPictureLoss = 0L
+        val frames = Channel<QueuedFrame>(4)
+        private val worker = scope.launch(Dispatchers.Default) {
+            var decoder: VideoDecoder? = null
+            try {
+                for (queued in frames) {
+                    val codec = queued.codec
+                    try {
+                        if (decoder?.codec != codec) {
+                            decoder?.close()
+                            decoder = null
+                            decoder = createVideoDecoder(codec)
+                        }
+                        val started = System.nanoTime()
+                        val image = decoder.decode(queued.data)
+                        val done = System.nanoTime()
+                        connection.stats.record(queued.arrivedAt, queued.queuedAt, started, done)
+                        image?.let { connection.publish(user, it) }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        Logging.w("Voice", "Video decode failed user=$user codec=$codec: ${e.message}")
+                        decoder?.close()
+                        decoder = null
+                        waitingForKeyframe = true
+                    }
+                }
+            } finally {
+                decoder?.close()
+            }
+        }
+
+        fun close() {
+            frames.close()
+            worker.cancel()
+        }
+    }
+
     private inner class Connection(
-        val endpoint: String, val serverId: String, val channelId: String,
-        val userId: String, val sessionId: String, val token: String
+        val endpoint: String, val serverId: String, val channelId: String, val daveGroup: String,
+        val userId: String, val sessionId: String, val token: String, val isStream: Boolean
     ) {
+        val isCurrent get() = (if (isStream) stream else active) === this
+        val statusFlow get() = if (isStream) mutableStreamStatus else mutableStatus
         @Volatile var muted = false
         @Volatile var deafened = false
         @Volatile var audio: VoiceAudio? = null
@@ -110,6 +224,13 @@ actual class VoiceGatewayManager actual constructor(private val client: HttpClie
         private var verificationCode = ""
         private val users = mutableSetOf(userId)
         private val sources = ConcurrentHashMap<Int, String>()
+        private val videoSources = HashMap<Int, String>()
+        private val rtxSources = HashMap<Int, Int>()
+        private val videoFeeds = HashMap<Int, VideoFeed>()
+        private var mediaScope: CoroutineScope? = null
+        private val videoFrames = AtomicLong()
+        val stats = VideoStats()
+        private var lastEstimate = 0L
         private val playout = mutableMapOf<String, VoicePlayout>()
         private val speaking = ConcurrentHashMap<String, Long>()
         private val rxPackets = AtomicLong()
@@ -123,13 +244,13 @@ actual class VoiceGatewayManager actual constructor(private val client: HttpClie
         private var pingSequence = 0
 
         private fun update(phase: VoicePhase = if (!gatewayReady) VoicePhase.CONNECTING else if (secure) VoicePhase.SECURE else VoicePhase.CONNECTED) {
-            if (active === this) mutableStatus.value = VoiceConnectionStatus(channelId, phase, verificationCode = verificationCode, speaking = speaking.keys.toSet())
+            if (isCurrent) statusFlow.value = VoiceConnectionStatus(channelId, phase, verificationCode = verificationCode, speaking = speaking.keys.toSet())
         }
 
         suspend fun run() = coroutineScope {
-            require(serverId.toULongOrNull() != null && channelId.toULongOrNull() != null && userId.toULongOrNull() != null)
+            require(serverId.toULongOrNull() != null && daveGroup.toULongOrNull() != null && userId.toULongOrNull() != null)
             require(endpoint.matches(Regex("[A-Za-z0-9.-]+(?::[0-9]{1,5})?")))
-            synchronized(lock) { handle = NativeVoice.create(userId, channelId); check(handle != 0L) }
+            synchronized(lock) { handle = NativeVoice.create(userId, daveGroup); check(handle != 0L) }
             Logging.i("Voice", "Gateway opened channel=$channelId")
             try {
             val handshake = launch {
@@ -137,6 +258,7 @@ actual class VoiceGatewayManager actual constructor(private val client: HttpClie
                 if (!mediaStarted) throw VoiceFailure("Voice handshake timed out. Retry the call.")
             }
             val mediaScope = this
+            this@Connection.mediaScope = this
             var attempts = 0
             while (isActive) {
                 val resumeTimeout = if (mediaStarted) launch {
@@ -173,7 +295,13 @@ actual class VoiceGatewayManager actual constructor(private val client: HttpClie
                                                     put("server_id", serverId); put("user_id", userId)
                                                     put("session_id", sessionId); put("token", token)
                                                     if (mediaStarted) put("seq_ack", sequence) else {
-                                                        put("video", false); put("max_dave_protocol_version", 1)
+                                                        put("video", true); put("max_dave_protocol_version", 1)
+                                                        putJsonArray("streams") {
+                                                            add(buildJsonObject {
+                                                                put("type", if (isStream) "screen" else "video")
+                                                                put("rid", "100"); put("quality", 100)
+                                                            })
+                                                        }
                                                     }
                                                 })
                                                 heartbeat = launch {
@@ -199,18 +327,27 @@ actual class VoiceGatewayManager actual constructor(private val client: HttpClie
                                                 val key = data.getValue("secret_key").jsonArray.map {
                                                     it.jsonPrimitive.int.also { value -> require(value in 0..255) }.toByte()
                                                 }.toByteArray()
-                                                synchronized(lock) { packets = VoicePackets(key, mode == AES_MODE, ssrc) }
-                                                Logging.i("Voice", "Session description mode=$mode dave=${data["dave_protocol_version"]?.jsonPrimitive?.intOrNull}")
+                                                synchronized(lock) { packets = VoicePackets(key, mode == AES_MODE, ssrc, setOf(OPUS_PAYLOAD_TYPE) + VideoCodec.payloadTypes) }
+                                                Logging.i("Voice", "Session description mode=$mode dave=${data["dave_protocol_version"]?.jsonPrimitive?.intOrNull} video=${data["video_codec"]?.jsonPrimitive?.contentOrNull}")
                                                 initializeDave()
                                                 sendSpeaking(0)
-                                                audio = createVoiceAudio().also { it.setSpeaker(speaker) }
+                                                send(12, buildJsonObject {
+                                                    put("audio_ssrc", ssrc.toLong() and 0xffffffffL); put("video_ssrc", 0); put("rtx_ssrc", 0)
+                                                    putJsonArray("streams") { }
+                                                })
+                                                send(15, buildJsonObject { put("any", 100) })
+                                                // A stream viewer only plays the stream's audio, mixed into the call output.
+                                                if (!isStream) audio = createVoiceAudio().also { it.setSpeaker(speaker) }
                                                 mediaStarted = true
                                                 gatewayReady = true
                                                 handshake.cancel()
                                                 update()
-                                                mediaScope.launch { receiveAudio() }
-                                                mediaScope.launch { captureAudio() }
-                                                mediaScope.launch { playAudio() }
+                                                mediaScope.launch { receive() }
+                                                mediaScope.launch { pollVideo() }
+                                                if (!isStream) {
+                                                    mediaScope.launch { captureAudio() }
+                                                    mediaScope.launch { playAudio() }
+                                                }
                                                 mediaScope.launch { keepAlive() }
                                             }
                                             5 -> {
@@ -236,10 +373,13 @@ actual class VoiceGatewayManager actual constructor(private val client: HttpClie
                                                 data["audio_ssrc"]?.jsonPrimitive?.content?.toUIntOrNull()?.toInt()?.let { source ->
                                                     if (source != 0 && (sources.size < 1000 || sources.containsKey(source))) sources[source] = user
                                                 }
+                                                video(user, data)
+                                                send(15, sinkWants())
                                             }
                                             13 -> {
                                                 val user = data.getValue("user_id").jsonPrimitive.content
                                                 users.remove(user); speaking.remove(user)
+                                                removeVideo(user)
                                                 synchronized(lock) {
                                                     sources.entries.filter { it.value == user }.forEach { packets?.forget(it.key); sources.remove(it.key) }
                                                     playout.remove(user)
@@ -310,7 +450,12 @@ actual class VoiceGatewayManager actual constructor(private val client: HttpClie
             val modes = data.getValue("modes").jsonArray.map { it.jsonPrimitive.content }
             mode = when { AES_MODE in modes -> AES_MODE; XCHACHA_MODE in modes -> XCHACHA_MODE; else -> throw VoiceFailure("No supported voice transport encryption") }
             val port = data.getValue("port").jsonPrimitive.int.also { require(it in 1..65535) }
-            val udp = DatagramSocket().also { socket = it; it.soTimeout = 5000 }
+            val udp = DatagramSocket().also {
+                socket = it
+                it.soTimeout = 5000
+                // Keyframes of a 1080p stream arrive as bursts of hundreds of packets.
+                it.receiveBufferSize = 4 shl 20
+            }
             udp.connect(InetSocketAddress(data.getValue("ip").jsonPrimitive.content, port))
             val request = ByteBuffer.allocate(74).putShort(1).putShort(70).putInt(ssrc).array()
             val response = ByteArray(256)
@@ -335,7 +480,14 @@ actual class VoiceGatewayManager actual constructor(private val client: HttpClie
                 put("protocol", "udp")
                 putJsonObject("data") { put("address", address); put("port", externalPort); put("mode", mode) }
                 putJsonArray("codecs") {
-                    add(buildJsonObject { put("name", "opus"); put("type", "audio"); put("priority", 1000); put("payload_type", 120) })
+                    add(buildJsonObject { put("name", "opus"); put("type", "audio"); put("priority", 1000); put("payload_type", OPUS_PAYLOAD_TYPE) })
+                    VideoCodec.entries.forEach { codec ->
+                        add(buildJsonObject {
+                            put("name", codec.name); put("type", "video"); put("priority", codec.priority)
+                            put("payload_type", codec.payloadType); put("rtx_payload_type", codec.rtxPayloadType)
+                            put("encode", false); put("decode", true)
+                        })
+                    }
                 }
             })
         }
@@ -452,24 +604,155 @@ actual class VoiceGatewayManager actual constructor(private val client: HttpClie
             }
         }
 
-        private suspend fun receiveAudio() {
+        private suspend fun receive() {
             val buffer = ByteArray(65536)
             while (currentCoroutineContext().isActive) {
                 val datagram = DatagramPacket(buffer, buffer.size)
                 try { checkNotNull(socket).receive(datagram) } catch (_: SocketTimeoutException) { continue }
                 val data = buffer.copyOf(datagram.length)
                 rxPackets.incrementAndGet()
+                var feedback: List<ByteArray> = emptyList()
                 synchronized(lock) {
                     val packet = packets?.decrypt(data) ?: return@synchronized
+                    if (packet.payloadType != OPUS_PAYLOAD_TYPE) {
+                        feedback = receiveVideo(packet)
+                        return@synchronized
+                    }
                     audioPackets.incrementAndGet()
                     val user = sources[packet.ssrc] ?: run { unknownSsrc.incrementAndGet(); return@synchronized }
                     if (user == userId || deafened) return@synchronized
                     if (packet.frame.contentEquals(OPUS_SILENCE)) return@synchronized
-                    val opus = NativeVoice.decrypt(handle, user, packet.frame) ?: return@synchronized
+                    val opus = NativeVoice.decrypt(handle, user, packet.frame, false) ?: return@synchronized
                     val now = System.nanoTime()
                     playout.getOrPut(user) { VoicePlayout() }.offer(packet.sequence, opus, now)
                     speaking[user] = now
                 }
+                feedback.forEach { socket?.send(DatagramPacket(it, it.size)) }
+            }
+        }
+
+        private fun video(user: String, data: JsonObject) {
+            fun ssrc(value: JsonElement?) = value?.jsonPrimitive?.content?.toUIntOrNull()?.toInt() ?: 0
+            val video = ssrc(data["video_ssrc"])
+            if (video == 0) {
+                removeVideo(user)
+                return
+            }
+            synchronized(lock) {
+                val streams = data["streams"]?.jsonArray.orEmpty().map { it.jsonObject }
+                    .filter { it["active"]?.jsonPrimitive?.booleanOrNull != false }
+                val media = (listOf(video) + streams.map { ssrc(it["ssrc"]) }).filter { it != 0 }.toSet()
+                val rtx = buildMap {
+                    ssrc(data["rtx_ssrc"]).takeIf { it != 0 }?.let { put(it, video) }
+                    streams.forEach { stream -> ssrc(stream["rtx_ssrc"]).takeIf { it != 0 }?.let { put(it, ssrc(stream["ssrc"])) } }
+                }
+                videoSources.entries.removeIf { it.value == user && it.key !in media }
+                if (videoSources.size + media.size > 1000) return
+                media.forEach { videoSources[it] = user }
+                rtx.forEach { (repair, source) -> rtxSources[repair] = source }
+                Logging.i("Voice", "Video user=$user ssrcs=${media.map { it.toUInt() }}")
+            }
+        }
+
+        /** Asks for every known video source at full quality. */
+        private fun sinkWants() = buildJsonObject {
+            put("any", 100)
+            synchronized(lock) { videoSources.keys.toList() }.forEach { put((it.toLong() and 0xffffffffL).toString(), 100) }
+        }
+
+        private fun removeVideo(user: String) {
+            synchronized(lock) {
+                val removed = videoSources.filterValues { it == user }.keys
+                videoSources.keys.removeAll(removed)
+                rtxSources.values.removeAll(removed)
+                removed.forEach { videoFeeds.remove(it)?.close() }
+            }
+            if (isCurrent) {
+                if (isStream) mutableStreamFrame.value = null else mutableVideo.update { it - user }
+            }
+        }
+
+        fun publish(user: String, image: ImageBitmap) {
+            if (!isCurrent || synchronized(lock) { videoSources.values.none { it == user } }) return
+            videoFrames.incrementAndGet()
+            if (isStream) mutableStreamFrame.value = image else mutableVideo.update { it + (user to image) }
+        }
+
+        /** Called under [lock]. Returns RTCP feedback to send once the lock is released. */
+        private fun receiveVideo(packet: VoicePacket): List<ByteArray> {
+            val repair = VideoCodec.forRtx(packet.payloadType)
+            val codec = repair ?: VideoCodec.forPayload(packet.payloadType) ?: return emptyList()
+            val source = if (repair != null) rtxSources[packet.ssrc] ?: return emptyList() else packet.ssrc
+            val user = videoSources[source] ?: run { unknownSsrc.incrementAndGet(); return emptyList() }
+            if (user == userId || repair != null && packet.frame.size <= 2) return emptyList()
+            val scope = mediaScope ?: return emptyList()
+            val feed = videoFeeds[source]?.takeIf { it.user == user } ?: run {
+                if (videoFeeds.size >= 64) return emptyList()
+                videoFeeds.remove(source)?.close()
+                VideoFeed(this, user, source, scope).also { videoFeeds[source] = it }
+            }
+            if (repair != null) {
+                feed.buffer.insert(codec, unsignedShort(packet.frame, 0), packet.timestamp, packet.marker, packet.frame.copyOfRange(2, packet.frame.size), System.nanoTime())
+            } else {
+                feed.buffer.insert(codec, packet.sequence, packet.timestamp, packet.marker, packet.frame, System.nanoTime())
+            }
+            return drain(feed, System.nanoTime())
+        }
+
+        /** Called under [lock]: turns reassembled frames into decoder input and keyframe/NACK requests. */
+        private fun drain(feed: VideoFeed, now: Long): List<ByteArray> {
+            val transport = packets ?: return emptyList()
+            val poll = feed.buffer.poll(now)
+            if (poll.lost) feed.waitingForKeyframe = true
+            for (frame in poll.frames) {
+                val plain = depacketize(frame.codec, frame.packets)?.let { encrypted ->
+                    runCatching { NativeVoice.decrypt(handle, feed.user, encrypted, true) }.getOrNull()
+                }
+                if (plain == null) {
+                    feed.waitingForKeyframe = true
+                    continue
+                }
+                if (feed.waitingForKeyframe) {
+                    if (!isKeyframe(frame.codec, plain)) continue
+                    feed.waitingForKeyframe = false
+                }
+                if (!feed.frames.trySend(QueuedFrame(frame.codec, plain, frame.arrivedAt, now)).isSuccess) {
+                    feed.waitingForKeyframe = true
+                    synchronized(stats) { stats.dropped++ }
+                }
+            }
+            val feedback = mutableListOf<ByteArray>()
+            transport.nack(feed.ssrc, poll.nacks)?.let { feedback += it }
+            if (feed.waitingForKeyframe && now - feed.lastPictureLoss > 1_000_000_000L) {
+                feed.lastPictureLoss = now
+                synchronized(stats) { stats.keyframeRequests++ }
+                feedback += transport.pictureLoss(feed.ssrc)
+            }
+            return feedback
+        }
+
+        private suspend fun pollVideo() {
+            while (currentCoroutineContext().isActive) {
+                val feedback = synchronized(lock) {
+                    val now = System.nanoTime()
+                    val feedback = videoFeeds.values.flatMap { drain(it, now) }.toMutableList()
+                    if (videoFeeds.isNotEmpty() && now - lastEstimate >= 500_000_000L) {
+                        lastEstimate = now
+                        packets?.estimatedBitrate(RECEIVE_BITRATE, videoFeeds.keys.toList())?.let { feedback += it }
+                    }
+                    feedback
+                }
+                feedback.forEach { socket?.send(DatagramPacket(it, it.size)) }
+                delay(20)
+            }
+        }
+
+        /** Mixes this (stream) connection's received audio into another connection's output. */
+        fun mixInto(mixed: IntArray, now: Long) {
+            synchronized(lock) {
+                if (handle == 0L) return
+                if (!deafened) playout.forEach { (user, buffer) -> buffer.mix(mixed, now) { NativeVoice.decode(handle, user, it) } }
+                else playout.clear()
             }
         }
 
@@ -482,6 +765,7 @@ actual class VoiceGatewayManager actual constructor(private val client: HttpClie
                     if (!deafened) playout.forEach { (user, buffer) -> buffer.mix(mixed, System.nanoTime()) { NativeVoice.decode(handle, user, it) } }
                     else playout.clear()
                 }
+                stream?.mixInto(mixed, System.nanoTime())
                 var heard = false
                 for (i in pcm.indices) {
                     if (mixed[i] != 0) heard = true
@@ -519,7 +803,8 @@ actual class VoiceGatewayManager actual constructor(private val client: HttpClie
                             "malformed=${packetStats?.malformed ?: 0} transportAuthFail=${packetStats?.authFailed ?: 0} " +
                             "nonceRepeats=${packetStats?.nonceRepeats ?: 0} unknownSsrc=${unknownSsrc.getAndSet(0)} " +
                             "mixed=${mixedFrames.getAndSet(0)} daveOk=+$successDelta daveFail=+$failureDelta " +
-                            "playout=${playout.size} sources=${sources.size}"
+                            "playout=${playout.size} sources=${sources.size} video=${videoFeeds.size}/${videoFrames.getAndSet(0)} ${stats.take()}" +
+                            if (isStream) " stream" else ""
                     )
                 }
                 if (packets != null && now - lastRtpAt >= 5_000_000_000L) {
@@ -555,6 +840,8 @@ actual class VoiceGatewayManager actual constructor(private val client: HttpClie
                 handle = 0L
                 packets?.close(); packets = null
                 playout.clear()
+                videoFeeds.values.forEach { it.close() }
+                videoFeeds.clear(); videoSources.clear(); rtxSources.clear()
             }
         }
     }

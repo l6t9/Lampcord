@@ -317,22 +317,22 @@ extern "C" JNIEXPORT jbyteArray JNICALL JNI(encrypt)(JNIEnv* env, jobject, jlong
     });
 }
 
-extern "C" JNIEXPORT jbyteArray JNICALL JNI(decrypt)(JNIEnv* env, jobject, jlong handle, jstring user, jbyteArray frame) {
+extern "C" JNIEXPORT jbyteArray JNICALL JNI(decrypt)(JNIEnv* env, jobject, jlong handle, jstring user, jbyteArray frame, jboolean video) {
     return checked<jbyteArray>(env, nullptr, [&]() -> jbyteArray {
         auto& v = voice(handle);
         auto uid = string(env, user);
         auto peer = v.peers.find(uid);
         if (peer == v.peers.end()) return nullptr;
         auto in = fromJavaBytes(env, frame);
-        if (in.size() > 8192) return nullptr;
+        if (!video && in.size() > 8192) return nullptr;
         Bytes out(in.size());
         size_t length = 0;
-        auto result = peer->second.decryptor->Decrypt(dave::Audio, {in.data(), in.size()}, {out.data(), out.size()}, &length);
+        auto result = peer->second.decryptor->Decrypt(video ? dave::Video : dave::Audio, {in.data(), in.size()}, {out.data(), out.size()}, &length);
         if (result != dave::IDecryptor::Success) {
             auto count = decryptFailureCount.fetch_add(1) + 1;
             if (count == 1 || count % 100 == 0)
                 std::cerr << "Native voice: DAVE decrypt failed for user " << uid
-                          << " (code " << static_cast<int>(result) << ", total " << count << ")" << std::endl;
+                          << (video ? " video" : " audio") << " (code " << static_cast<int>(result) << ", total " << count << ")" << std::endl;
             return nullptr;
         }
         decryptSuccessCount.fetch_add(1);

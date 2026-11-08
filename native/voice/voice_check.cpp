@@ -65,6 +65,44 @@ int main() {
             check(decryptor->Decrypt(dave::Audio, {opus.data(), opus.size()}, {plain.data(), plain.size()}, &length) != dave::IDecryptor::Success);
         };
         exchange(bob);
+        {
+            // H264 sent with short start codes must decrypt after the receiver rebuilds it with
+            // long start codes, as VideoPackets.depacketize does.
+            auto annexB = [](const std::vector<Bytes>& nalus, size_t startCode) {
+                Bytes out;
+                for (const auto& nalu : nalus) {
+                    out.insert(out.end(), startCode - 1, 0); out.push_back(1);
+                    out.insert(out.end(), nalu.begin(), nalu.end());
+                }
+                return out;
+            };
+            Bytes idr{0x65, 0x88, 0x84};
+            for (int i = 0; i < 600; ++i) idr.push_back(static_cast<uint8_t>(i * 7 + 3));
+            std::vector<Bytes> nalus{{0x67, 0x42, 0xc0, 0x1f, 0xda}, {0x68, 0xce, 0x3c, 0x80}, idr};
+            auto sent = annexB(nalus, 3);
+            alice.encryptor->AssignSsrcToCodec(43, dave::H264);
+            Bytes encrypted(alice.encryptor->GetMaxCiphertextByteSize(dave::Video, sent.size()));
+            size_t length;
+            check(alice.encryptor->Encrypt(dave::Video, 43, {sent.data(), sent.size()}, {encrypted.data(), encrypted.size()}, &length) == dave::IEncryptor::Success);
+            encrypted.resize(length);
+            std::vector<Bytes> received;
+            for (size_t i = 0; i + 2 < encrypted.size();) {
+                if (encrypted[i] == 0 && encrypted[i + 1] == 0 && encrypted[i + 2] == 1) {
+                    received.emplace_back(); i += 3;
+                } else {
+                    if (!received.empty()) received.back().push_back(encrypted[i]);
+                    ++i;
+                }
+            }
+            for (size_t i = encrypted.size() - 2; i < encrypted.size(); ++i) received.back().push_back(encrypted[i]);
+            for (auto& nalu : received) while (nalu.size() > 1 && nalu.back() == 0 && &nalu != &received.back()) nalu.pop_back();
+            check(received.size() == nalus.size());
+            auto rebuilt = annexB(received, 4);
+            Bytes plain(rebuilt.size());
+            check(bob.peers.at(alice.user).decryptor->Decrypt(dave::Video, {rebuilt.data(), rebuilt.size()}, {plain.data(), plain.size()}, &length) == dave::IDecryptor::Success);
+            plain.resize(length);
+            check(plain == annexB(nalus, 4));
+        }
         add(carol, 1, 7);
         check(!carol.ready);
         exchange(bob);
@@ -76,7 +114,7 @@ int main() {
         check(!alice.execute(99));
         check(!alice.initialize(1).empty());
         check(!alice.ready && alice.peers.empty() && alice.roster.empty() && alice.transitions.empty());
-        std::cout << "DAVE join, rekey, Opus round-trip, tamper, replay and fail-closed checks passed\n";
+        std::cout << "DAVE join, rekey, Opus and H264 round-trip, tamper, replay and fail-closed checks passed\n";
         return 0;
     } catch (const std::exception& e) {
         std::cerr << e.what() << '\n';

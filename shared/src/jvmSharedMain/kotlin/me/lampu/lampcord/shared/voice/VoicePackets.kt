@@ -7,7 +7,16 @@ internal val OPUS_SILENCE = byteArrayOf(0xf8.toByte(), 0xff.toByte(), 0xfe.toByt
 internal const val AES_MODE = "aead_aes256_gcm_rtpsize"
 internal const val XCHACHA_MODE = "aead_xchacha20_poly1305_rtpsize"
 
-internal data class VoicePacket(val ssrc: Int, val sequence: Int, val frame: ByteArray)
+internal const val OPUS_PAYLOAD_TYPE = 120
+
+internal data class VoicePacket(
+    val ssrc: Int,
+    val sequence: Int,
+    val frame: ByteArray,
+    val payloadType: Int = OPUS_PAYLOAD_TYPE,
+    val timestamp: Int = 0,
+    val marker: Boolean = false
+)
 internal data class VoicePacketStats(
     val received: Long,
     val invalidRtp: Long,
@@ -17,7 +26,12 @@ internal data class VoicePacketStats(
     val nonceRepeats: Long
 )
 
-internal class VoicePackets(private val key: ByteArray, private val aes: Boolean, private val ssrc: Int) {
+internal class VoicePackets(
+    private val key: ByteArray,
+    private val aes: Boolean,
+    private val ssrc: Int,
+    private val payloadTypes: Set<Int> = setOf(OPUS_PAYLOAD_TYPE)
+) {
     private val epochNanos = System.nanoTime()
     private var counter = 0L
     private var sequence = SecureRandom().nextInt(65536)
@@ -71,6 +85,55 @@ internal class VoicePackets(private val key: ByteArray, private val aes: Boolean
         return encryptPacket(header, body)
     }
 
+    /** RTCP picture loss indication (RFC 4585 6.3.1) asking [media] for a keyframe. */
+    fun pictureLoss(media: Int): ByteArray {
+        check(counter <= 0xffffffffL) { "Voice transport nonce exhausted; reconnect required" }
+        val header = ByteBuffer.allocate(8).put(0x81.toByte()).put(206.toByte()).putShort(2).putInt(ssrc).array()
+        return encryptPacket(header, ByteBuffer.allocate(4).putInt(media).array())
+    }
+
+    /** RTCP generic NACK (RFC 4585 6.2.1) for 16-bit sequence numbers of [media], given in arrival order. */
+    fun nack(media: Int, sequences: List<Int>): ByteArray? {
+        if (sequences.isEmpty()) return null
+        check(counter <= 0xffffffffL) { "Voice transport nonce exhausted; reconnect required" }
+        val items = mutableListOf<Int>()
+        val sorted = sequences.distinct()
+        var index = 0
+        while (index < sorted.size && items.size < 16) {
+            val pid = sorted[index++]
+            var mask = 0
+            while (index < sorted.size) {
+                val distance = (sorted[index] - pid) and 65535
+                if (distance !in 1..16) break
+                mask = mask or (1 shl (distance - 1))
+                index++
+            }
+            items += (pid shl 16) or mask
+        }
+        val header = ByteBuffer.allocate(8).put(0x81.toByte()).put(205.toByte()).putShort((items.size + 2).toShort()).putInt(ssrc).array()
+        val body = ByteBuffer.allocate(4 + items.size * 4).putInt(media)
+        items.forEach { body.putInt(it) }
+        return encryptPacket(header, body.array())
+    }
+
+    /**
+     * RTCP receiver estimated maximum bitrate (draft-alvestrand-rmcat-remb). Without bandwidth
+     * feedback the SFU assumes a slow receiver, queues packets and asks senders for less.
+     */
+    fun estimatedBitrate(bitsPerSecond: Long, media: List<Int>): ByteArray? {
+        if (media.isEmpty()) return null
+        check(counter <= 0xffffffffL) { "Voice transport nonce exhausted; reconnect required" }
+        val sources = media.take(255)
+        var mantissa = bitsPerSecond.coerceAtLeast(0)
+        var exponent = 0
+        while (mantissa > 0x3ffff) { mantissa = mantissa shr 1; exponent++ }
+        val header = ByteBuffer.allocate(8).put(0x8f.toByte()).put(206.toByte()).putShort((sources.size + 4).toShort()).putInt(ssrc).array()
+        val body = ByteBuffer.allocate(12 + sources.size * 4).putInt(0).put("REMB".toByteArray(Charsets.US_ASCII))
+            .putInt((sources.size shl 24) or (exponent shl 18) or mantissa.toInt())
+        sources.forEach { body.putInt(it) }
+        return encryptPacket(header, body.array())
+    }
+
     private fun encryptPacket(header: ByteArray, payload: ByteArray): ByteArray {
         val suffix = ByteBuffer.allocate(4).putInt(counter++.toInt()).array()
         val nonce = suffix.copyOf(if (aes) 12 else 24)
@@ -84,7 +147,8 @@ internal class VoicePackets(private val key: ByteArray, private val aes: Boolean
             invalidRtp++
             return null
         }
-        if (packet[1].toInt() and 0x7f != 120) {
+        val payloadType = packet[1].toInt() and 0x7f
+        if (payloadType !in payloadTypes) {
             nonAudio++
             return null
         }
@@ -128,7 +192,9 @@ internal class VoicePackets(private val key: ByteArray, private val aes: Boolean
             malformed++
             return null
         }
-        return VoicePacket(ssrc, sequence, payload.copyOfRange(start, end))
+        val timestamp = ByteBuffer.wrap(packet, 4, 4).int
+        val marker = packet[1].toInt() and 0x80 != 0
+        return VoicePacket(ssrc, sequence, payload.copyOfRange(start, end), payloadType, timestamp, marker)
     }
 
     fun takeStats(): VoicePacketStats {
