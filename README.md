@@ -17,11 +17,6 @@ Lampcord is a lightweight Discord client built with Compose Multiplatform for Mo
   </a>
 </div>
 
-## Inspiration
-
-- **[Aliucord](https://github.com/Aliucord/Aliucord)**: Lampcord inherits a lot of my work on Aliucord and my [plugins](https://github.com/l6t9/AliucordPlugins) for it.
-- **[Nucleus](https://github.com/NucleusFramework/Nucleus)**: Provides proper support for Wayland.
-
 ---
 
 > [!Warning]
@@ -196,6 +191,13 @@ in the build, so macOS will need `xattr -d com.apple.quarantine` after first dow
 ## Support
 
 Lampcord is free and open-source under GPL-3.0. If you like it, you can support development via [GitHub Sponsors](https://github.com/sponsors/l6t9).
+
+---
+
+## Inspiration
+
+- **[Aliucord](https://github.com/Aliucord/Aliucord)**: Lampcord inherits a lot of my work on Aliucord and my [plugins](https://github.com/l6t9/AliucordPlugins) for it.
+- **[Nucleus](https://github.com/NucleusFramework/Nucleus)**: Provides proper support for Wayland.
 
 ---
 
