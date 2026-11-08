@@ -47,7 +47,7 @@ fun Sidebar(
 ) {
 
     Column(
-        modifier = modifier.fillMaxHeight().statusBarsPadding(),
+        modifier = modifier.fillMaxHeight(),
         verticalArrangement = Arrangement.Top
     ) {
         Row(

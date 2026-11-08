@@ -362,7 +362,6 @@ fun MobileBaseplate(
                 Box(modifier = Modifier.fillMaxSize()) {
                     val contentLayout = Modifier
                         .fillMaxSize()
-                        .statusBarsPadding()
 
                     if (profile != null) {
                         ProfileCard(
@@ -641,7 +640,9 @@ fun MobileBaseplate(
     ) {
         DiscordPanels(
             state = panelState,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding(),
             swipeToStartEnabled = isChat && !navigationStore.isBubble,
             swipeToEndEnabled = isChat && !navigationStore.isBubble && !Settings.shared.swipeToReplyEnabled,
             startPanel = {
@@ -657,8 +658,7 @@ fun MobileBaseplate(
                     val overlapping = Settings.shared.panelType == PanelType.OVERLAPPING
                     MemberList(
                         overlapping = overlapping,
-                        onBack = if (overlapping) ({ panelState.close() }) else null,
-                        showStatusBarInset = panelState.currentValue == DiscordPanelValue.End
+                        onBack = if (overlapping) ({ panelState.close() }) else null
                     )
                 }
             },
@@ -720,6 +720,14 @@ fun MobileBaseplate(
                     }
                 }
             }
+        )
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+                .height(WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
+                .background(MaterialTheme.colorScheme.surface)
         )
 
         val navItems = remember(

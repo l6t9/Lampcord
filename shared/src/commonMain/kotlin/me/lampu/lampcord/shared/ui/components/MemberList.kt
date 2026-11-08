@@ -15,8 +15,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
@@ -56,8 +54,7 @@ fun MemberList(
     relationshipStore: RelationshipStore = koinInject(),
     header: @Composable (() -> Unit)? = null,
     overlapping: Boolean = false,
-    onBack: (() -> Unit)? = null,
-    showStatusBarInset: Boolean = true
+    onBack: (() -> Unit)? = null
 ) {
     val scrollState = rememberLazyListState()
     var isHovered by remember { mutableStateOf(false) }
@@ -129,23 +126,15 @@ fun MemberList(
             list.distinctBy { it.id }
         }
 
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.surface,
+            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
         ) {
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .windowInsetsTopHeight(WindowInsets.statusBars)
-                    .background(MaterialTheme.colorScheme.surface)
-            )
             LazyColumn(
                 state = scrollState,
                 modifier = Modifier
-                    .fillMaxSize()
-                    .statusBarsPadding()
-                    .background(MaterialTheme.colorScheme.surface),
+                    .fillMaxSize(),
                 contentPadding = PaddingValues(top = 8.dp, bottom = 52.dp)
             ) {
                 stickyHeader {
@@ -213,28 +202,17 @@ fun MemberList(
                 }
             }
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.surface,
+            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+            tonalElevation = 0.dp
         ) {
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .windowInsetsTopHeight(WindowInsets.statusBars)
-                    .background(
-                        if (showStatusBarInset) MaterialTheme.colorScheme.surface else Color.Transparent
-                    )
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .statusBarsPadding()
-                    .background(MaterialTheme.colorScheme.surface)
-            ) {
+            Box(modifier = Modifier.fillMaxSize()) {
                 LazyColumn(
                     state = scrollState,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(2.dp),
                     contentPadding = PaddingValues(bottom = 52.dp)
                 ) {
