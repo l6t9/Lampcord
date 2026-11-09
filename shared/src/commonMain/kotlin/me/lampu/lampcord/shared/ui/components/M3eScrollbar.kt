@@ -32,6 +32,7 @@ import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -112,15 +113,18 @@ private fun ScrollbarThumb(
         val pressed = dragTop != null
         val scope = rememberCoroutineScope()
 
+        var scrollJob by remember { mutableStateOf<Job?>(null) }
         val seek: (Float) -> Unit = { top ->
             val clamped = top.coerceIn(0f, maxThumbTop)
             dragTop = clamped
             val fraction = if (maxThumbTop > 0f) clamped / maxThumbTop else 0f
-            scope.launch { scrollToFraction(if (reverseLayout) 1f - fraction else fraction) }
+            scrollJob?.cancel()
+            scrollJob = scope.launch { scrollToFraction(if (reverseLayout) 1f - fraction else fraction) }
         }
 
         val latestSeek by rememberUpdatedState(seek)
         val latestRestingTop by rememberUpdatedState(restingTop)
+        val latestMaxThumbTop by rememberUpdatedState(maxThumbTop)
 
         val thumbWidth by animateDpAsState(
             if (pressed) 8.dp else 4.dp,
@@ -154,7 +158,7 @@ private fun ScrollbarThumb(
                             }
 
                             if (slop != null) drag(slop.id) { change ->
-                                top += change.positionChange().y
+                                top = (top + change.positionChange().y).coerceIn(0f, latestMaxThumbTop)
                                 latestSeek(top)
                                 change.consume()
                             }
