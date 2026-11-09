@@ -23,7 +23,7 @@
     <string name="lampcord_login_use_backup">Использовать резервный код</string>
     <string name="lampcord_login_with_credentials">Использовать электронную почту и пароль</string>
     <string name="lampcord_login_with_token">Войти с помощью токена</string>
-    <string name="lampcord_settings_add_connection">Добавить интеграцию</string>
+    <string name="lampcord_settings_add_connection">Добавить учётную запись</string>
     <string name="lampcord_settings_advanced">Расширенные</string>
     <string name="lampcord_settings_all">Все</string>
     <string name="lampcord_settings_all_tags">Все теги</string>

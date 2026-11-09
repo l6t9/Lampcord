@@ -47,9 +47,9 @@
         <item quantity="other">, {#} непрочитанных сообщений</item>
     </plurals>
     <plurals name="duration_days_capitalize_days">
-        <item quantity="one">1 День</item>
-        <item quantity="few">{days} Дня</item>
-        <item quantity="other">{days} Дней</item>
+        <item quantity="one">1 день</item>
+        <item quantity="few">{days} дня</item>
+        <item quantity="other">{days} дней</item>
     </plurals>
     <plurals name="duration_days_days">
         <item quantity="one">1 день</item>
@@ -57,9 +57,9 @@
         <item quantity="other">{days} дней</item>
     </plurals>
     <plurals name="duration_hours_capitalize_hours">
-        <item quantity="one">{hours} Час</item>
-        <item quantity="few">{hours} Часа</item>
-        <item quantity="other">{hours} Часов</item>
+        <item quantity="one">{hours} час</item>
+        <item quantity="few">{hours} часа</item>
+        <item quantity="other">{hours} часов</item>
     </plurals>
     <plurals name="duration_hours_hours">
         <item quantity="one">{hours} час</item>
@@ -70,9 +70,9 @@
         <item quantity="other">{mins}</item>
     </plurals>
     <plurals name="duration_minutes_capitalize_minutes">
-        <item quantity="one">1 Минута</item>
-        <item quantity="few">{minutes} Минуты</item>
-        <item quantity="other">{minutes} Минут</item>
+        <item quantity="one">1 минута</item>
+        <item quantity="few">{minutes} минуты</item>
+        <item quantity="other">{minutes} минут</item>
     </plurals>
     <plurals name="duration_minutes_minutes">
         <item quantity="one">1 минуту</item>
@@ -80,14 +80,14 @@
         <item quantity="other">{minutes} минут</item>
     </plurals>
     <plurals name="duration_months_capitalize_months">
-        <item quantity="one">1 Месяц</item>
-        <item quantity="few">{months} Месяца</item>
-        <item quantity="other">{months} Месяцев</item>
+        <item quantity="one">1 месяц</item>
+        <item quantity="few">{months} месяца</item>
+        <item quantity="other">{months} месяцев</item>
     </plurals>
     <plurals name="duration_seconds_capitalize_seconds">
-        <item quantity="one">1 Секунда</item>
-        <item quantity="few">{seconds} Секунды</item>
-        <item quantity="other">{seconds} Секунд</item>
+        <item quantity="one">1 секунда</item>
+        <item quantity="few">{seconds} секунды</item>
+        <item quantity="other">{seconds} секунд</item>
     </plurals>
     <plurals name="duration_seconds_seconds">
         <item quantity="one">1 секунда</item>
@@ -95,14 +95,14 @@
         <item quantity="other">{seconds} секунд</item>
     </plurals>
     <plurals name="duration_weeks_capitalize_weeks">
-        <item quantity="one">1 Неделя</item>
-        <item quantity="few">{weeks} Недели</item>
-        <item quantity="other">{weeks} Недель</item>
+        <item quantity="one">1 неделя</item>
+        <item quantity="few">{weeks} недели</item>
+        <item quantity="other">недель</item>
     </plurals>
     <plurals name="duration_years_capitalize_years">
-        <item quantity="one">1 Год</item>
-        <item quantity="few">{years} Года</item>
-        <item quantity="other">{years} Лет</item>
+        <item quantity="one">1 год</item>
+        <item quantity="few">{years} года</item>
+        <item quantity="other">{years} лет</item>
     </plurals>
     <plurals name="emoji_slots_available_count">
         <item quantity="one">{count} слот свободен</item>
@@ -114,12 +114,12 @@
         <item quantity="other">{count} эмодзи</item>
     </plurals>
     <plurals name="form_help_last_seen_1_days">
-        <item quantity="one">1 день</item>
-        <item quantity="few">{days} дня</item>
-        <item quantity="other">{days} дней</item>
+        <item quantity="one">1 день</item>
+        <item quantity="few">{days} дня</item>
+        <item quantity="other">{days} дней</item>
     </plurals>
     <plurals name="form_help_last_seen_1_members">
-        <item quantity="one">1 человек, который не появлялся</item>
+        <item quantity="one">1 человека, который не появлялся</item>
         <item quantity="other">{members} чел., которые не появлялись</item>
     </plurals>
     <plurals name="gift_confirmation_nitro_time_frame_months_time">
@@ -483,8 +483,8 @@
         <item quantity="other">{count}</item>
     </plurals>
     <plurals name="vanity_url_header_uses_uses">
-        <item quantity="one">1 использование</item>
-        <item quantity="few">{uses} использования</item>
-        <item quantity="other">{uses} использований</item>
+        <item quantity="one">1 использование</item>
+        <item quantity="few">{uses} использования</item>
+        <item quantity="other">{uses} использований</item>
     </plurals>
 </resources>
