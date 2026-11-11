@@ -73,7 +73,11 @@ fun GuildChannelList(
     guildStore: GuildStore = koinInject(),
     profileStore: ProfileStore = koinInject()
 ) {
-    val guild = navigationStore.selectedGuild
+    val selectedGuild = navigationStore.selectedGuild
+    val storeGuilds by guildStore.guilds.collectAsState()
+    val guild = remember(selectedGuild, storeGuilds) {
+        selectedGuild?.let { selected -> storeGuilds.firstOrNull { it.id == selected.id } ?: selected }
+    }
     val currentUser = LocalCurrentUser.current
     val memberState = remember(guild?.id, currentUser?.id) {
         val guildId = guild?.id

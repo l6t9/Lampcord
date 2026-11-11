@@ -144,6 +144,16 @@ class GuildStore(
     fun joinCompleted(guild: Guild) {
         entityStore.updateGuild(guild)
         _guildIds.update { if (guild.id in it) it else it + guild.id }
+        scope.launch { hydrateJoinedGuild(guild) }
+    }
+
+    private suspend fun hydrateJoinedGuild(joined: Guild) {
+        val full = guildApi.getGuild(joined.id)
+        val roles = full?.roles?.takeIf { it.isNotEmpty() }
+            ?: entityStore.guilds.value[joined.id]?.roles?.takeIf { it.isNotEmpty() }
+            ?: guildApi.getGuildRoles(joined.id)
+        if (roles.isEmpty() && full == null) return
+        entityStore.updateGuild((full ?: joined).copy(roles = roles))
     }
 
     fun handleGuildDelete(guildId: String) {

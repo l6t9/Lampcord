@@ -4,6 +4,9 @@ import me.lampu.lampcord.shared.generated.resources.Res
 import me.lampu.lampcord.shared.generated.resources.cancel
 import me.lampu.lampcord.shared.generated.resources.join_guild
 import me.lampu.lampcord.shared.generated.resources.join_server_button_cta
+import me.lampu.lampcord.shared.generated.resources.lampcord_join_dialog_hint
+import me.lampu.lampcord.shared.generated.resources.lampcord_join_dialog_title
+import me.lampu.lampcord.shared.generated.resources.lampcord_join_error_invalid_link
 import org.jetbrains.compose.resources.stringResource
 
 import androidx.compose.foundation.layout.*
@@ -35,17 +38,23 @@ fun JoinServerDialog(
 ) {
     var input by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
+    var invalidLink by remember { mutableStateOf(false) }
+    var failure by remember { mutableStateOf<JoinGuildResult.Failed?>(null) }
     val scope = rememberCoroutineScope()
+    val errorText = when {
+        invalidLink -> stringResource(Res.string.lampcord_join_error_invalid_link)
+        else -> failure?.let { joinFailureText(it) }
+    }
 
     suspend fun join() {
         val code = extractInviteCode(input)
         if (code == null) {
-            error = "That does not look like an invite link."
+            invalidLink = true
             return
         }
         busy = true
-        error = null
+        invalidLink = false
+        failure = null
         val result = guildApi.joinGuild(code)
         busy = false
         when (result) {
@@ -53,28 +62,28 @@ fun JoinServerDialog(
                 onJoined(result.guild)
                 onDismiss()
             }
-            is JoinGuildResult.Failed -> error = result.message
+            is JoinGuildResult.Failed -> failure = result
         }
     }
 
     AlertDialog(
         onDismissRequest = { if (!busy) onDismiss() },
-        title = { Text("Join a Server") },
+        title = { Text(stringResource(Res.string.lampcord_join_dialog_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = "Paste an invite link below.",
+                    text = stringResource(Res.string.lampcord_join_dialog_hint),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 OutlinedTextField(
                     value = input,
-                    onValueChange = { input = it; error = null },
+                    onValueChange = { input = it; invalidLink = false; failure = null },
                     placeholder = { Text("discord.gg/example", maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     singleLine = true,
                     enabled = !busy,
-                    isError = error != null,
-                    supportingText = { error?.let { Text(it) } },
+                    isError = errorText != null,
+                    supportingText = { errorText?.let { Text(it) } },
                     keyboardOptions = KeyboardOptions(
                         capitalization = KeyboardCapitalization.None,
                         keyboardType = KeyboardType.Uri,

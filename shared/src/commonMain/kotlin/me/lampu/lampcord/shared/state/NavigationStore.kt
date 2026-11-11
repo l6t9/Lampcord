@@ -18,6 +18,7 @@ import me.lampu.lampcord.shared.api.MessageApi
 import me.lampu.lampcord.shared.api.UserApi
 import me.lampu.lampcord.shared.model.Channel
 import me.lampu.lampcord.shared.model.Guild
+import me.lampu.lampcord.shared.model.Invite
 import me.lampu.lampcord.shared.model.Onboarding
 import me.lampu.lampcord.shared.model.memberListId
 import me.lampu.lampcord.shared.notifications.MessageNotifier
@@ -88,7 +89,7 @@ class NavigationStore(
         set(value) { selectionStore.selectedThread = value }
 
     var selectedGuildOnboarding by mutableStateOf<Onboarding?>(null)
-    var pendingInviteCode by mutableStateOf<String?>(null)
+    var pendingInvite by mutableStateOf<Invite?>(null)
     var isFriendsSelected by mutableStateOf(false)
     var isMentionsSelected by mutableStateOf(false)
     var isFavoritesSelected by mutableStateOf(false)

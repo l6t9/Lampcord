@@ -20,12 +20,22 @@ import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.api.CdnUrls
 import me.lampu.lampcord.shared.api.GuildApi
 import me.lampu.lampcord.shared.api.JoinGuildResult
+import me.lampu.lampcord.shared.generated.resources.Res
+import me.lampu.lampcord.shared.generated.resources.guild_profile_join_server_button
+import me.lampu.lampcord.shared.generated.resources.invite_embed_joined
+import me.lampu.lampcord.shared.generated.resources.lampcord_guild_profile_invite_required
+import me.lampu.lampcord.shared.generated.resources.lampcord_guild_profile_joining
+import me.lampu.lampcord.shared.generated.resources.lampcord_guild_profile_load_failed
+import me.lampu.lampcord.shared.generated.resources.lampcord_guild_profile_unnamed
+import me.lampu.lampcord.shared.generated.resources.lampcord_invite_members_fmt
+import me.lampu.lampcord.shared.generated.resources.lampcord_invite_online_fmt
+import org.jetbrains.compose.resources.stringResource
 import me.lampu.lampcord.shared.model.Invite
 import me.lampu.lampcord.shared.model.Guild
 import me.lampu.lampcord.shared.state.rememberGuildMediaUrls
+import me.lampu.lampcord.shared.state.ChannelNavigator
 import me.lampu.lampcord.shared.state.GuildStore
 import me.lampu.lampcord.shared.state.MemberListStore
-import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.ui.components.DiscordBottomSheet
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
@@ -91,20 +101,21 @@ fun GuildProfileSkeleton() {
 fun GuildProfileSheet(
     guildId: String,
     onDismiss: () -> Unit,
+    invite: Invite? = null,
     guildApi: GuildApi = koinInject(),
     guildStore: GuildStore = koinInject(),
-    navigationStore: NavigationStore = koinInject(),
+    channelNavigator: ChannelNavigator = koinInject(),
     memberListStore: MemberListStore = koinInject()
 ) {
     var inviteData by remember { mutableStateOf<Invite?>(null) }
     var isLoading by remember { mutableStateOf(true) }
-    var error by remember { mutableStateOf<String?>(null) }
+    var loadFailed by remember { mutableStateOf(false) }
 
     LaunchedEffect(guildId) {
         isLoading = true
-        val guild = guildStore.guilds.value.find { it.id == guildId }
-        if (guild != null) {
-            inviteData = Invite(code = "", guild = guild, approximate_member_count = guild.member_count)
+        val local = profileInviteFor(guildStore.guilds.value.find { it.id == guildId }, invite)
+        if (local != null) {
+            inviteData = local
             isLoading = false
         } else {
             val fetched = guildApi.getGuildPreview(guildId)
@@ -119,15 +130,15 @@ fun GuildProfileSheet(
                 val widget = guildApi.getGuildWidget(guildId)
                 if (widget != null) {
                     val name = widget["name"]?.jsonPrimitive?.contentOrNull
-                    val invite = widget["instant_invite"]?.jsonPrimitive?.contentOrNull
+                    val widgetInvite = widget["instant_invite"]?.jsonPrimitive?.contentOrNull
                     val presenceCount = widget["presence_count"]?.jsonPrimitive?.intOrNull
                     inviteData = Invite(
-                        code = invite ?: "",
+                        code = widgetInvite ?: "",
                         guild = Guild(id = guildId, name = name),
                         approximate_presence_count = presenceCount
                     )
                 } else {
-                    error = "Could not load server profile."
+                    loadFailed = true
                 }
             }
             isLoading = false
@@ -140,12 +151,13 @@ fun GuildProfileSheet(
     ) {
         if (isLoading) {
             GuildProfileSkeleton()
-        } else if (error != null) {
+        } else if (loadFailed) {
             Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-                Text(error!!, color = MaterialTheme.colorScheme.error)
+                Text(stringResource(Res.string.lampcord_guild_profile_load_failed), color = MaterialTheme.colorScheme.error)
             }
         } else if (inviteData?.guild != null) {
-            val guild = inviteData!!.guild!!
+            val profile = inviteData!!
+            val guild = profile.guild!!
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -192,7 +204,7 @@ fun GuildProfileSheet(
                 Spacer(Modifier.height(48.dp))
 
                 Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                    Text(text = guild.name ?: "Server", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    Text(text = guild.name ?: stringResource(Res.string.lampcord_guild_profile_unnamed), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
 
                     if (guild.description?.isNotBlank() == true) {
                         Text(
@@ -208,18 +220,23 @@ fun GuildProfileSheet(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(modifier = Modifier.size(8.dp).background(Color(0xFF23A559), CircleShape))
                         Spacer(Modifier.width(4.dp))
-                        val onlineCount = guild.approximate_presence_count ?: memberListStore.getOnlineCount(guild.id)
+                        val onlineCount = profile.approximate_presence_count
+                            ?: guild.approximate_presence_count
+                            ?: memberListStore.getOnlineCount(guild.id)
                         Text(
-                            "$onlineCount Online",
+                            stringResource(Res.string.lampcord_invite_online_fmt, onlineCount),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(Modifier.width(16.dp))
                         Box(modifier = Modifier.size(8.dp).background(Color(0xFFB5BAC1), CircleShape))
                         Spacer(Modifier.width(4.dp))
-                        val memberCount = guild.approximate_member_count ?: guild.member_count ?: memberListStore.getMemberCount(guild.id)
+                        val memberCount = profile.approximate_member_count
+                            ?: guild.approximate_member_count
+                            ?: guild.member_count
+                            ?: memberListStore.getMemberCount(guild.id)
                         Text(
-                            "${memberCount.takeIf { it > 0 } ?: 0} Members",
+                            stringResource(Res.string.lampcord_invite_members_fmt, memberCount.coerceAtLeast(0)),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -229,26 +246,31 @@ fun GuildProfileSheet(
 
                     val isMember = guildStore.guilds.value.any { it.id == guild.id }
                     val scope = rememberCoroutineScope()
-                    var joinError by remember { mutableStateOf<String?>(null) }
+                    var joinError by remember { mutableStateOf<JoinGuildResult.Failed?>(null) }
+                    var joining by remember { mutableStateOf(false) }
+                    val joinCode = joinCodeFor(invite?.code, inviteData?.code)
 
                     Button(
                         onClick = {
                             if (isMember) {
-                                navigationStore.selectGuild(guild) {  }
+                                channelNavigator.navigateToGuild(guild.id)
                                 onDismiss()
                             } else {
-                                inviteData?.code?.let { code ->
-                                    if (code.isNotBlank()) {
-                                        scope.launch {
-                                            joinError = null
+                                joinCode?.takeIf { !joining }?.let { code ->
+                                    scope.launch {
+                                        joining = true
+                                        joinError = null
+                                        try {
                                             when (val result = guildApi.joinGuild(code)) {
                                                 is JoinGuildResult.Joined -> {
-                                                    guildStore.handleGuildCreate(result.guild, emptyList())
-                                                    navigationStore.selectGuild(result.guild) { }
+                                                    guildStore.joinCompleted(result.guild)
+                                                    channelNavigator.navigateToGuild(result.guild.id)
                                                     onDismiss()
                                                 }
-                                                is JoinGuildResult.Failed -> joinError = result.message
+                                                is JoinGuildResult.Failed -> joinError = result
                                             }
+                                        } finally {
+                                            joining = false
                                         }
                                     }
                                 }
@@ -256,14 +278,21 @@ fun GuildProfileSheet(
                         },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(8.dp),
-                        enabled = isMember || (inviteData?.code?.isNotBlank() == true)
+                        enabled = isMember || (joinCode != null && !joining)
                     ) {
-                        Text(if (isMember) "Joined" else if (inviteData?.code?.isNotBlank() == true) "Join Server" else "Invite Required")
+                        Text(
+                            when {
+                                isMember -> stringResource(Res.string.invite_embed_joined)
+                                joining -> stringResource(Res.string.lampcord_guild_profile_joining)
+                                joinCode != null -> stringResource(Res.string.guild_profile_join_server_button)
+                                else -> stringResource(Res.string.lampcord_guild_profile_invite_required)
+                            }
+                        )
                     }
 
                     joinError?.let {
                         Text(
-                            it,
+                            joinFailureText(it),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error,
                             modifier = Modifier.padding(top = 8.dp)
@@ -273,4 +302,19 @@ fun GuildProfileSheet(
             }
         }
     }
+}
+
+internal fun joinCodeFor(explicit: String?, fetched: String?): String? =
+    explicit?.trim()?.takeIf { it.isNotEmpty() }
+        ?: fetched?.trim()?.takeIf { it.isNotEmpty() }
+
+internal fun profileInviteFor(storeGuild: Guild?, invite: Invite?): Invite? = when {
+    storeGuild != null -> Invite(
+        code = invite?.code.orEmpty(),
+        guild = storeGuild,
+        approximate_member_count = storeGuild.member_count ?: invite?.approximate_member_count,
+        approximate_presence_count = invite?.approximate_presence_count,
+    )
+    invite?.guild != null -> invite
+    else -> null
 }

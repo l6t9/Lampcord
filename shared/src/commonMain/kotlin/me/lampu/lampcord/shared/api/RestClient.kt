@@ -110,20 +110,6 @@ data class DiscordApiError(val code: Int? = null, val message: String? = null)
 fun RestClient.discordError(body: String): DiscordApiError? =
     runCatching { json.decodeFromString<DiscordApiError>(body) }.getOrNull()
 
-fun discordErrorMessage(message: String?, status: HttpStatusCode): String {
-    message?.takeIf { it.isNotBlank() }?.let { return it }
-    return when {
-        status == HttpStatusCode.TooManyRequests ->
-            "Discord is rate limiting this action. Wait a moment and try again."
-        status.value in 500..599 ->
-            "Discord is having trouble right now (HTTP ${status.value}). Try again in a moment."
-        status == HttpStatusCode.Unauthorized -> "Discord rejected the request. Sign in again."
-        status == HttpStatusCode.Forbidden -> "Discord says you do not have permission to do that."
-        status == HttpStatusCode.NotFound -> "Discord could not find that."
-        else -> "Discord rejected the request (HTTP ${status.value})."
-    }
-}
-
 fun HttpRequestBuilder.standardHeaders(rest: RestClient) {
     val platform = getPlatformName()
     val isMobile = platform == "android" || platform == "ios"
