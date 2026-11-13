@@ -28,7 +28,6 @@ import kotlinx.serialization.json.put
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import me.lampu.lampcord.shared.captcha.CaptchaCoordinator
 import me.lampu.lampcord.shared.model.ApplicationCommandIndex
 import me.lampu.lampcord.shared.model.AuditLog
 import me.lampu.lampcord.shared.model.Ban
@@ -72,7 +71,6 @@ sealed interface JoinGuildResult {
 
 class GuildApi(
     private val rest: RestClient,
-    private val captcha: CaptchaCoordinator,
 ) {
 
     suspend fun getGuild(guildId: String): Guild? {
@@ -362,30 +360,16 @@ class GuildApi(
 
     suspend fun joinGuild(inviteCode: String): JoinGuildResult {
         return try {
-            var response = postJoin(inviteCode, captchaKey = null, captchaRqtoken = null, captchaSessionId = null)
-            var body = if (response.status.isSuccess()) "" else response.bodyAsText()
+            val response = postJoin(inviteCode)
+            val body = if (response.status.isSuccess()) "" else response.bodyAsText()
             if (!response.status.isSuccess()) {
-                val challenge = parseCaptchaChallenge(body)
-                if (challenge != null) {
-                    val token = captcha.solve(challenge)
-                        ?: return JoinGuildResult.Failed(JoinFailure.CaptchaCancelled)
-                    response = postJoin(
-                        inviteCode,
-                        captchaKey = token,
-                        captchaRqtoken = challenge.rqtoken,
-                        captchaSessionId = challenge.sessionId,
-                    )
-                    body = if (response.status.isSuccess()) "" else response.bodyAsText()
-                }
-            }
-            if (!response.status.isSuccess()) {
-                val failed = if (body.contains("captcha_key")) {
+                val failed = if (isCaptchaResponseBody(body)) {
                     JoinGuildResult.Failed(JoinFailure.CaptchaRejected)
                 } else {
                     val error = rest.discordError(body)
                     joinFailureFor(error?.code, error?.message, response.status)
                 }
-                Logging.e("Invite", "Join failed for $inviteCode: HTTP ${response.status.value}, body=${body.take(300)}")
+                Logging.e("Invite", "Join failed for $inviteCode: HTTP ${response.status.value}, captchaRejected=${isCaptchaResponseBody(body)}")
                 return failed
             }
             val guild = runCatching { response.body<Invite>() }.getOrNull()?.guild
@@ -394,6 +378,8 @@ class GuildApi(
             } else {
                 JoinGuildResult.Joined(guild)
             }
+        } catch (e: CaptchaCancelledException) {
+            JoinGuildResult.Failed(JoinFailure.CaptchaCancelled)
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             Logging.e("Invite", "Error joining with code $inviteCode: ${e.message}")
@@ -402,17 +388,9 @@ class GuildApi(
     }
 
     @OptIn(ExperimentalEncodingApi::class)
-    private suspend fun postJoin(
-        inviteCode: String,
-        captchaKey: String?,
-        captchaRqtoken: String?,
-        captchaSessionId: String?,
-    ): HttpResponse = rest.httpClient.post("${rest.apiBase}/invites/$inviteCode") {
+    private suspend fun postJoin(inviteCode: String): HttpResponse = rest.httpClient.post("${rest.apiBase}/invites/$inviteCode") {
         standardHeaders(rest)
         header("X-Context-Properties", Base64.encode(JOIN_CONTEXT.encodeToByteArray()))
-        captchaKey?.let { header("X-Captcha-Key", it) }
-        captchaRqtoken?.let { header("X-Captcha-Rqtoken", it) }
-        captchaSessionId?.let { header("X-Captcha-Session-Id", it) }
         contentType(ContentType.Application.Json)
         setBody(buildJsonObject { put("session_id", rest.heartbeatSessionId) }.toString())
     }

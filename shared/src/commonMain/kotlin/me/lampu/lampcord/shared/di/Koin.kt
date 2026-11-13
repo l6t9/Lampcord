@@ -41,7 +41,7 @@ val coreModule = module {
             explicitNulls = false
         }
     }
-    single { createHttpClient() }
+    single { createHttpClient(get()) }
     single { RestClient(get(), get()) }
     single {
         CoroutineScope(
@@ -57,10 +57,10 @@ val coreModule = module {
 
 val apiModule = module {
     single { CaptchaCoordinator() }
-    single { AuthApi(get(), get()) }
+    single { AuthApi(get()) }
     single { ChannelApi(get()) }
     single { MessageApi(get()) }
-    single { GuildApi(get(), get()) }
+    single { GuildApi(get()) }
     single { UserApi(get()) }
     single { MediaApi(get()) }
     single { ApplicationApi(get()) }

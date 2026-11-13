@@ -11,9 +11,6 @@ data class LoginRequest(
     val undelete: Boolean = false,
     val login_source: String? = null,
     val gift_code_sku_id: String? = null,
-    val captcha_key: String? = null,
-    val captcha_rqtoken: String? = null,
-    val captcha_session_id: String? = null
 )
 
 @Serializable

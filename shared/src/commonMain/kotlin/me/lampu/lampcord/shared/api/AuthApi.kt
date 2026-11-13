@@ -14,7 +14,6 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import io.ktor.client.statement.HttpResponse
-import me.lampu.lampcord.shared.captcha.CaptchaCoordinator
 import me.lampu.lampcord.shared.model.FingerprintResponse
 import me.lampu.lampcord.shared.model.LoginRequest
 import me.lampu.lampcord.shared.model.LoginResponse
@@ -23,7 +22,6 @@ import me.lampu.lampcord.shared.utils.Logging
 
 class AuthApi(
     val rest: RestClient,
-    private val captcha: CaptchaCoordinator,
 ) {
 
     fun setToken(token: String?) {
@@ -44,46 +42,26 @@ class AuthApi(
 
     suspend fun login(request: LoginRequest, fingerprint: String): LoginResponse? {
         return try {
-            var response = postLogin(request, fingerprint)
-            var responseBody = response.bodyAsText()
-            if (!response.status.isSuccess()) {
-                val challenge = parseCaptchaChallenge(responseBody)
-                if (challenge != null) {
-                    val token = captcha.solve(challenge)
-                        ?: return LoginResponse(captchaCancelled = true)
-                    response = postLogin(
-                        request.copy(captcha_key = token, captcha_rqtoken = challenge.rqtoken),
-                        fingerprint,
-                        captchaHeaders = buildMap {
-                            put("X-Captcha-Key", token)
-                            challenge.rqtoken?.let { put("X-Captcha-Rqtoken", it) }
-                            challenge.sessionId?.let { put("X-Captcha-Session-Id", it) }
-                        },
-                    )
-                    responseBody = response.bodyAsText()
-                }
-            }
+            val response = postLogin(request, fingerprint)
+            val responseBody = response.bodyAsText()
             if (response.status.isSuccess()) {
                 runCatching { rest.json.decodeFromString<LoginResponse>(responseBody) }.getOrNull()
             } else {
                 val message = loginErrorMessage(rest, responseBody, response.status.value)
-                Logging.e("Auth", "Login failed with status: ${response.status}, body: $responseBody")
+                Logging.e("Auth", "Login failed with status: ${response.status}, captchaRejected=${isCaptchaResponseBody(responseBody)}")
                 LoginResponse(message = message)
             }
+        } catch (e: CaptchaCancelledException) {
+            LoginResponse(captchaCancelled = true)
         } catch (e: Exception) {
             Logging.e("Auth", "Error logging in: ${e.message}")
             LoginResponse(message = "Could not reach Discord. Check your connection and try again.")
         }
     }
 
-    private suspend fun postLogin(
-        request: LoginRequest,
-        fingerprint: String,
-        captchaHeaders: Map<String, String> = emptyMap(),
-    ): HttpResponse =
+    private suspend fun postLogin(request: LoginRequest, fingerprint: String): HttpResponse =
         rest.httpClient.post("${rest.apiBase}/auth/login") {
             loginHeaders(rest, fingerprint)
-            captchaHeaders.forEach { (name, value) -> header(name, value) }
             contentType(ContentType.Application.Json)
             setBody(request)
         }
@@ -102,6 +80,8 @@ class AuthApi(
                 Logging.e("Auth", "MFA failed with status: ${response.status}, body: $responseBody")
                 LoginResponse(message = mfaErrorMessage(rest, responseBody, response.status.value))
             }
+        } catch (e: CaptchaCancelledException) {
+            LoginResponse(captchaCancelled = true)
         } catch (e: Exception) {
             Logging.e("Auth", "Error verifying MFA: ${e.message}")
             LoginResponse(message = "Could not reach Discord. Check your connection and try again.")
@@ -115,7 +95,7 @@ class AuthApi(
             status == 400 && body.contains("password", ignoreCase = true) -> "Invalid email or password."
             status == 429 -> "Discord is rate limiting login attempts. Wait a moment and try again."
             status in 500..599 -> "Discord is having trouble right now (HTTP $status). Try again in a moment."
-            body.contains("captcha", ignoreCase = true) -> "Discord requires a captcha. Try again later."
+            isCaptchaResponseBody(body) -> "Discord rejected the captcha. Try again."
             discord?.code == 50035 -> "Invalid email or password."
             !discord?.message.isNullOrBlank() -> discord.message
             else -> "Login failed (HTTP $status)."
@@ -128,7 +108,7 @@ class AuthApi(
             status == 401 -> "That code is invalid or has expired."
             status == 429 -> "Discord is rate limiting login attempts. Wait a moment and try again."
             status in 500..599 -> "Discord is having trouble right now (HTTP $status). Try again in a moment."
-            body.contains("captcha", ignoreCase = true) -> "Discord requires a captcha. Try again later."
+            isCaptchaResponseBody(body) -> "Discord rejected the captcha. Try again."
             discord?.code == 50035 -> "That code is invalid or has expired."
             !discord?.message.isNullOrBlank() -> discord.message
             else -> "Could not verify that code (HTTP $status)."
