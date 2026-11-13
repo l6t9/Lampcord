@@ -12,7 +12,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.state.SettingsStore
+import me.lampu.lampcord.shared.utils.setClipboardText
 import me.lampu.lampcord.shared.ui.components.settings.*
 import me.lampu.lampcord.shared.model.UserSettings
 import me.lampu.lampcord.shared.ui.icons.Icons
@@ -51,6 +53,7 @@ fun AdvancedSettingsContent(settingsStore: SettingsStore = koinInject()) {
         val devMode = settingsStore.userSettings?.developer_mode ?: false
         val context = LocalPlatformContext.current
         val scope = rememberCoroutineScope()
+        var showTokenWarning by remember { mutableStateOf(false) }
         Material3SettingsGroup(
             title = stringResource(Res.string.lampcord_settings_developer_settings),
             items = listOf(
@@ -72,6 +75,40 @@ fun AdvancedSettingsContent(settingsStore: SettingsStore = koinInject()) {
                 )
             )
         )
+
+        Material3SettingsGroup(
+            title = "Account Token",
+            items = listOf(
+                Material3SettingsItem(
+                    title = { Text("Copy Account Token") },
+                    description = { Text("Copies the token for the current account") },
+                    onClick = { showTokenWarning = true }
+                )
+            )
+        )
+
+        if (showTokenWarning) {
+            AlertDialog(
+                onDismissRequest = { showTokenWarning = false },
+                title = { Text("Copy account token?") },
+                text = {
+                    Text(
+                        "This token can be used to access your account. Never send it to anyone and keep it hidden."
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            setClipboardText(Settings.shared.discordToken)
+                            showTokenWarning = false
+                        }
+                    ) { Text("Copy") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showTokenWarning = false }) { Text("Cancel") }
+                }
+            )
+        }
 
         var proxyUrlText by remember { mutableStateOf(settingsStore.httpProxyUrl) }
 

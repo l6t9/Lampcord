@@ -11,9 +11,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import me.lampu.lampcord.shared.state.SessionManager
+import me.lampu.lampcord.shared.state.TokenStore
 import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.api.CdnUrls
 import me.lampu.lampcord.shared.ui.components.AsyncImage
+import me.lampu.lampcord.shared.ui.components.AccountSwitcherItem
 import me.lampu.lampcord.shared.ui.components.settings.*
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.generated.resources.Res
@@ -50,8 +53,15 @@ fun AccountSettings(
 }
 
 @Composable
-fun AccountSettingsContent(userVal: me.lampu.lampcord.shared.model.User) {
-    Column(modifier = Modifier.fillMaxWidth()) {
+fun AccountSettingsContent(
+    userVal: me.lampu.lampcord.shared.model.User,
+    tokenStore: TokenStore = koinInject(),
+    sessionManager: SessionManager = koinInject(),
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
         Material3SettingsGroup(
             title = stringResource(Res.string.form_label_account_information),
             items = listOf(
@@ -72,6 +82,27 @@ fun AccountSettingsContent(userVal: me.lampu.lampcord.shared.model.User) {
                     }
                 )
             )
+        )
+
+        Material3SettingsGroup(
+            title = "Switch Account",
+            content = {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    tokenStore.getAccounts().forEach { account ->
+                        val isSelected = account.user.id == userVal.id
+                        AccountSwitcherItem(
+                            account = account,
+                            isSelected = isSelected,
+                            onClick = {
+                                if (!isSelected) sessionManager.switchAccount(account.token)
+                            }
+                        )
+                    }
+                }
+            }
         )
 
         Material3SettingsGroup(
