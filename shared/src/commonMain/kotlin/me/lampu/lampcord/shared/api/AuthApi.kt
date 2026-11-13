@@ -2,6 +2,7 @@ package me.lampu.lampcord.shared.api
 
 import io.ktor.client.call.body
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
@@ -12,13 +13,18 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import io.ktor.client.statement.HttpResponse
+import me.lampu.lampcord.shared.captcha.CaptchaCoordinator
 import me.lampu.lampcord.shared.model.FingerprintResponse
 import me.lampu.lampcord.shared.model.LoginRequest
 import me.lampu.lampcord.shared.model.LoginResponse
 import me.lampu.lampcord.shared.model.MFALoginRequest
 import me.lampu.lampcord.shared.utils.Logging
 
-class AuthApi(val rest: RestClient) {
+class AuthApi(
+    val rest: RestClient,
+    private val captcha: CaptchaCoordinator,
+) {
 
     fun setToken(token: String?) {
         rest.setToken(token)
@@ -38,13 +44,25 @@ class AuthApi(val rest: RestClient) {
 
     suspend fun login(request: LoginRequest, fingerprint: String): LoginResponse? {
         return try {
-            val response = rest.httpClient.post("${rest.apiBase}/auth/login") {
-                loginHeaders(rest, fingerprint)
-                contentType(ContentType.Application.Json)
-                setBody(request)
+            var response = postLogin(request, fingerprint)
+            var responseBody = response.bodyAsText()
+            if (!response.status.isSuccess()) {
+                val challenge = parseCaptchaChallenge(responseBody)
+                if (challenge != null) {
+                    val token = captcha.solve(challenge)
+                        ?: return LoginResponse(captchaCancelled = true)
+                    response = postLogin(
+                        request.copy(captcha_key = token, captcha_rqtoken = challenge.rqtoken),
+                        fingerprint,
+                        captchaHeaders = buildMap {
+                            put("X-Captcha-Key", token)
+                            challenge.rqtoken?.let { put("X-Captcha-Rqtoken", it) }
+                            challenge.sessionId?.let { put("X-Captcha-Session-Id", it) }
+                        },
+                    )
+                    responseBody = response.bodyAsText()
+                }
             }
-
-            val responseBody = response.bodyAsText()
             if (response.status.isSuccess()) {
                 runCatching { rest.json.decodeFromString<LoginResponse>(responseBody) }.getOrNull()
             } else {
@@ -57,6 +75,18 @@ class AuthApi(val rest: RestClient) {
             LoginResponse(message = "Could not reach Discord. Check your connection and try again.")
         }
     }
+
+    private suspend fun postLogin(
+        request: LoginRequest,
+        fingerprint: String,
+        captchaHeaders: Map<String, String> = emptyMap(),
+    ): HttpResponse =
+        rest.httpClient.post("${rest.apiBase}/auth/login") {
+            loginHeaders(rest, fingerprint)
+            captchaHeaders.forEach { (name, value) -> header(name, value) }
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
 
     suspend fun loginMFA(request: MFALoginRequest, fingerprint: String, type: String): LoginResponse? {
         return try {

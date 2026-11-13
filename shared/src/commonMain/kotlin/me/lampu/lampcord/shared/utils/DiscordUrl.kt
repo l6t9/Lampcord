@@ -13,13 +13,13 @@ object DiscordUrl {
         "ptb.discordapp.com",
     )
 
-    private val inviteHosts = setOf("discord.gg", "www.discord.gg", "discord.new")
+    private val inviteHosts = setOf("discord.gg", "www.discord.gg")
 
     private val cdnHosts = setOf("cdn.discordapp.com", "media.discordapp.net")
 
     private val channelPath = Regex("^/channels/(@me|[1-9][0-9]{0,18})/([1-9][0-9]{0,18})(?:/([1-9][0-9]{0,18}))?/?$")
     private val threadPath = Regex("^/channels/([1-9][0-9]{0,18})/([1-9][0-9]{0,18})/threads/([1-9][0-9]{0,18})/?$")
-    private val invitePath = Regex("^/(?:invites?)/([A-Za-z0-9-]{2,64})$")
+    private val invitePath = Regex("^/(?:invites?)/([A-Za-z0-9-]{2,64})/?$")
     private val userPath = Regex("^/users/([1-9][0-9]{0,18})/?$")
     private val attachmentPath = Regex("^/(?:attachments|ephemeral-attachments)/([1-9][0-9]{0,18})/([1-9][0-9]{0,18})/([^/]+)$")
     private val inviteCode = Regex("^[A-Za-z0-9-]{2,64}$")

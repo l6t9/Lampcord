@@ -67,17 +67,16 @@ class DiscordLinkHandler(
 
             is DiscordUrl.Target.Invite -> {
                 val invite = withContext(Dispatchers.IO) {
-                    runCatching { guildApi.resolveInvite(target.code) }.getOrNull()
+                    runCatching { guildApi.resolveInviteCached(target.code) }.getOrNull()
                 } ?: run {
                     Logging.w(TAG, "Could not resolve the invite ${target.code}")
                     return
                 }
                 val guild = invite.guild
-                if (guild != null && entityStore.guilds.value.containsKey(guild.id)) {
-                    channelNavigator.navigateToGuild(guild.id)
-                } else {
-                    navigationStore.pendingInviteCode = target.code
-        externalLinkOpener("https://discord.gg/${target.code}")
+                when {
+                    guild == null -> externalLinkOpener("https://discord.gg/${target.code}")
+                    entityStore.guilds.value.containsKey(guild.id) -> channelNavigator.navigateToGuild(guild.id)
+                    else -> navigationStore.pendingInvite = invite.copy(code = invite.code.ifBlank { target.code })
                 }
             }
 

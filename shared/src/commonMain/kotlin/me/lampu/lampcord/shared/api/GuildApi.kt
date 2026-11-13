@@ -3,11 +3,15 @@ package me.lampu.lampcord.shared.api
 import io.ktor.client.call.body
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.request.parameter
 import io.ktor.client.request.patch
 import io.ktor.client.request.post
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
+import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.client.request.forms.MultiPartFormDataContent
@@ -22,6 +26,9 @@ import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import me.lampu.lampcord.shared.captcha.CaptchaCoordinator
 import me.lampu.lampcord.shared.model.ApplicationCommandIndex
 import me.lampu.lampcord.shared.model.AuditLog
 import me.lampu.lampcord.shared.model.Ban
@@ -34,12 +41,39 @@ import me.lampu.lampcord.shared.model.Role
 import me.lampu.lampcord.shared.model.UserGuildSettings
 import me.lampu.lampcord.shared.utils.Logging
 
-sealed interface JoinGuildResult {
-    data class Joined(val guild: Guild) : JoinGuildResult
-    data class Failed(val message: String) : JoinGuildResult
+enum class JoinFailure {
+    CaptchaCancelled,
+    CaptchaRejected,
+    NoServerReturned,
+    Unreachable,
+    ServerLimit,
+    ServerFull,
+    JoinRestricted,
+    InvalidInvite,
+    Banned,
+    VerificationLevel,
+    NoPermission,
+    NoAccess,
+    RegionBlocked,
+    VerifyAccount,
+    RateLimited,
+    DiscordUnavailable,
+    Unauthorized,
+    Forbidden,
+    NotFound,
+    Rejected,
+    ServerMessage,
 }
 
-class GuildApi(private val rest: RestClient) {
+sealed interface JoinGuildResult {
+    data class Joined(val guild: Guild) : JoinGuildResult
+    data class Failed(val failure: JoinFailure, val detail: String? = null) : JoinGuildResult
+}
+
+class GuildApi(
+    private val rest: RestClient,
+    private val captcha: CaptchaCoordinator,
+) {
 
     suspend fun getGuild(guildId: String): Guild? {
         return try {
@@ -311,29 +345,76 @@ class GuildApi(private val rest: RestClient) {
         }
     }
 
+    private val inviteCache = LinkedHashMap<String, Invite>()
+    private val inviteCacheLock = Mutex()
+
+    suspend fun resolveInviteCached(code: String): Invite? {
+        inviteCacheLock.withLock { inviteCache[code] }?.let { return it }
+        val invite = resolveInvite(code) ?: return null
+        inviteCacheLock.withLock {
+            if (inviteCache.size >= INVITE_CACHE_SIZE) {
+                inviteCache.remove(inviteCache.keys.first())
+            }
+            inviteCache[code] = invite
+        }
+        return invite
+    }
+
     suspend fun joinGuild(inviteCode: String): JoinGuildResult {
         return try {
-            val response = rest.httpClient.post("${rest.apiBase}/invites/$inviteCode") {
-                standardHeaders(rest)
+            var response = postJoin(inviteCode, captchaKey = null, captchaRqtoken = null, captchaSessionId = null)
+            var body = if (response.status.isSuccess()) "" else response.bodyAsText()
+            if (!response.status.isSuccess()) {
+                val challenge = parseCaptchaChallenge(body)
+                if (challenge != null) {
+                    val token = captcha.solve(challenge)
+                        ?: return JoinGuildResult.Failed(JoinFailure.CaptchaCancelled)
+                    response = postJoin(
+                        inviteCode,
+                        captchaKey = token,
+                        captchaRqtoken = challenge.rqtoken,
+                        captchaSessionId = challenge.sessionId,
+                    )
+                    body = if (response.status.isSuccess()) "" else response.bodyAsText()
+                }
             }
             if (!response.status.isSuccess()) {
-                val body = response.bodyAsText()
-                val error = rest.discordError(body)
-                val message = joinErrorMessage(error?.code, error?.message, response.status)
-                Logging.e("Invite", "Error joining with code $inviteCode: $message")
-                return JoinGuildResult.Failed(message)
+                val failed = if (body.contains("captcha_key")) {
+                    JoinGuildResult.Failed(JoinFailure.CaptchaRejected)
+                } else {
+                    val error = rest.discordError(body)
+                    joinFailureFor(error?.code, error?.message, response.status)
+                }
+                Logging.e("Invite", "Join failed for $inviteCode: HTTP ${response.status.value}, body=${body.take(300)}")
+                return failed
             }
             val guild = runCatching { response.body<Invite>() }.getOrNull()?.guild
             if (guild == null) {
-                JoinGuildResult.Failed("Discord accepted the invite but did not return the server. Try again.")
+                JoinGuildResult.Failed(JoinFailure.NoServerReturned)
             } else {
                 JoinGuildResult.Joined(guild)
             }
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             Logging.e("Invite", "Error joining with code $inviteCode: ${e.message}")
-            JoinGuildResult.Failed("Could not reach Discord. Check your connection and try again.")
+            JoinGuildResult.Failed(JoinFailure.Unreachable)
         }
+    }
+
+    @OptIn(ExperimentalEncodingApi::class)
+    private suspend fun postJoin(
+        inviteCode: String,
+        captchaKey: String?,
+        captchaRqtoken: String?,
+        captchaSessionId: String?,
+    ): HttpResponse = rest.httpClient.post("${rest.apiBase}/invites/$inviteCode") {
+        standardHeaders(rest)
+        header("X-Context-Properties", Base64.encode(JOIN_CONTEXT.encodeToByteArray()))
+        captchaKey?.let { header("X-Captcha-Key", it) }
+        captchaRqtoken?.let { header("X-Captcha-Rqtoken", it) }
+        captchaSessionId?.let { header("X-Captcha-Session-Id", it) }
+        contentType(ContentType.Application.Json)
+        setBody(buildJsonObject { put("session_id", rest.heartbeatSessionId) }.toString())
     }
 
     suspend fun getGuildAuditLog(guildId: String): AuditLog? {
@@ -509,20 +590,31 @@ class GuildApi(private val rest: RestClient) {
     }
 }
 
-internal fun joinErrorMessage(code: Int?, message: String?, status: HttpStatusCode): String {
-    return when (code) {
-        30001 -> "You are in 100 servers, the maximum for a Discord account. Leave a server and try again."
-        30019 -> "That server is full."
-        340015 -> "Discord has limited your account from joining new servers. Try again later."
-        10006 -> "That invite is invalid or has expired."
-        40007 -> "You are banned from that server."
-        50009 -> "That server requires a higher verification level."
-        50013 -> "You do not have permission to join that server."
-        50001 -> "Discord says you do not have access to that server."
-        50020 -> "That invite is invalid or has expired."
-        50035 -> "That invite is invalid or has expired."
-        50095 -> "That server is not available in your region."
-        40002 -> "Verify your Discord account before joining this server."
-        else -> discordErrorMessage(message, status)
+private const val INVITE_CACHE_SIZE = 100
+private const val JOIN_CONTEXT = "{\"location\":\"Accept Invite Page\"}"
+
+internal fun joinFailureFor(code: Int?, message: String?, status: HttpStatusCode): JoinGuildResult.Failed {
+    val known = when (code) {
+        30001 -> JoinFailure.ServerLimit
+        30019 -> JoinFailure.ServerFull
+        340015 -> JoinFailure.JoinRestricted
+        10006, 50020, 50035 -> JoinFailure.InvalidInvite
+        40007 -> JoinFailure.Banned
+        50009 -> JoinFailure.VerificationLevel
+        50013 -> JoinFailure.NoPermission
+        50001 -> JoinFailure.NoAccess
+        50095 -> JoinFailure.RegionBlocked
+        40002 -> JoinFailure.VerifyAccount
+        else -> null
+    }
+    if (known != null) return JoinGuildResult.Failed(known)
+    message?.takeIf { it.isNotBlank() }?.let { return JoinGuildResult.Failed(JoinFailure.ServerMessage, it) }
+    return when {
+        status == HttpStatusCode.TooManyRequests -> JoinGuildResult.Failed(JoinFailure.RateLimited)
+        status.value in 500..599 -> JoinGuildResult.Failed(JoinFailure.DiscordUnavailable, status.value.toString())
+        status == HttpStatusCode.Unauthorized -> JoinGuildResult.Failed(JoinFailure.Unauthorized)
+        status == HttpStatusCode.Forbidden -> JoinGuildResult.Failed(JoinFailure.Forbidden)
+        status == HttpStatusCode.NotFound -> JoinGuildResult.Failed(JoinFailure.NotFound)
+        else -> JoinGuildResult.Failed(JoinFailure.Rejected, status.value.toString())
     }
 }

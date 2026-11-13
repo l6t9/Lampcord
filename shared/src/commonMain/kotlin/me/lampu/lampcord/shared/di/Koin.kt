@@ -9,6 +9,7 @@ import me.lampu.lampcord.shared.api.ApplicationApi
 import me.lampu.lampcord.shared.api.AuthApi
 import me.lampu.lampcord.shared.api.ChannelApi
 import me.lampu.lampcord.shared.api.GuildApi
+import me.lampu.lampcord.shared.captcha.CaptchaCoordinator
 import me.lampu.lampcord.shared.api.MediaApi
 import me.lampu.lampcord.shared.api.MessageApi
 import me.lampu.lampcord.shared.api.ProfileBoardApi
@@ -55,10 +56,11 @@ val coreModule = module {
 }
 
 val apiModule = module {
-    single { AuthApi(get()) }
+    single { CaptchaCoordinator() }
+    single { AuthApi(get(), get()) }
     single { ChannelApi(get()) }
     single { MessageApi(get()) }
-    single { GuildApi(get()) }
+    single { GuildApi(get(), get()) }
     single { UserApi(get()) }
     single { MediaApi(get()) }
     single { ApplicationApi(get()) }

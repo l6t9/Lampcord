@@ -14,10 +14,20 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.api.GuildApi
+import me.lampu.lampcord.shared.generated.resources.Res
+import me.lampu.lampcord.shared.generated.resources.invite_embed_joined
+import me.lampu.lampcord.shared.generated.resources.join_guild
+import me.lampu.lampcord.shared.generated.resources.lampcord_guild_profile_unnamed
+import me.lampu.lampcord.shared.generated.resources.lampcord_invite_header
+import me.lampu.lampcord.shared.generated.resources.lampcord_invite_header_inviter_fmt
+import me.lampu.lampcord.shared.generated.resources.lampcord_invite_header_member
+import me.lampu.lampcord.shared.generated.resources.lampcord_invite_members_fmt
+import me.lampu.lampcord.shared.generated.resources.lampcord_invite_online_fmt
 import me.lampu.lampcord.shared.model.Invite
 import me.lampu.lampcord.shared.state.GuildStore
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.guilds.GuildProfileSheet
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 
 @Composable
@@ -26,13 +36,18 @@ fun InviteEmbedView(
     guildApi: GuildApi = koinInject(),
     guildStore: GuildStore = koinInject()
 ) {
-    var invite by remember { mutableStateOf<Invite?>(null) }
-    var isLoading by remember { mutableStateOf(true) }
+    var invite by remember(code) { mutableStateOf<Invite?>(null) }
+    var isLoading by remember(code) { mutableStateOf(true) }
     var showProfile by remember { mutableStateOf(false) }
+    val joinedGuilds by guildStore.guilds.collectAsState()
 
     LaunchedEffect(code) {
-        invite = guildApi.resolveInvite(code)
-        isLoading = false
+        isLoading = true
+        try {
+            invite = guildApi.resolveInviteCached(code)
+        } finally {
+            isLoading = false
+        }
     }
 
     if (isLoading) {
@@ -50,7 +65,7 @@ fun InviteEmbedView(
 
     val data = invite ?: return
     val guild = data.guild ?: return
-    val isMember = guildStore.guilds.value.any { it.id == guild.id }
+    val isMember = joinedGuilds.any { it.id == guild.id }
 
     Surface(
         onClick = { showProfile = true },
@@ -93,9 +108,12 @@ fun InviteEmbedView(
 
                 Column(modifier = Modifier.weight(1f)) {
                     val inviteHeader = when {
-                        isMember -> "YOU ARE A MEMBER"
-                        data.inviter != null -> "${data.inviter.global_name ?: data.inviter.username} INVITED YOU TO JOIN"
-                        else -> "YOU WERE INVITED TO JOIN"
+                        isMember -> stringResource(Res.string.lampcord_invite_header_member)
+                        data.inviter != null -> stringResource(
+                            Res.string.lampcord_invite_header_inviter_fmt,
+                            data.inviter.global_name ?: data.inviter.username.orEmpty()
+                        )
+                        else -> stringResource(Res.string.lampcord_invite_header)
                     }
                     Text(
                         text = inviteHeader.uppercase(),
@@ -106,7 +124,7 @@ fun InviteEmbedView(
                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
                     Text(
-                        text = guild.name ?: "Server",
+                        text = guild.name ?: stringResource(Res.string.lampcord_guild_profile_unnamed),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
@@ -115,7 +133,7 @@ fun InviteEmbedView(
                         Box(modifier = Modifier.size(8.dp).background(Color(0xFF23A559), CircleShape))
                         Spacer(Modifier.width(4.dp))
                         Text(
-                            "${data.approximate_presence_count ?: 0} Online",
+                            stringResource(Res.string.lampcord_invite_online_fmt, data.approximate_presence_count ?: 0),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -123,7 +141,7 @@ fun InviteEmbedView(
                         Box(modifier = Modifier.size(8.dp).background(Color(0xFFB5BAC1), CircleShape))
                         Spacer(Modifier.width(4.dp))
                         Text(
-                            "${data.approximate_member_count ?: 0} Members",
+                            stringResource(Res.string.lampcord_invite_members_fmt, data.approximate_member_count ?: 0),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -138,7 +156,7 @@ fun InviteEmbedView(
                         contentColor = if (isMember) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onPrimary
                     )
                 ) {
-                    Text(if (isMember) "Joined" else "Join")
+                    Text(stringResource(if (isMember) Res.string.invite_embed_joined else Res.string.join_guild))
                 }
             }
         }
@@ -147,6 +165,7 @@ fun InviteEmbedView(
     if (showProfile) {
         GuildProfileSheet(
             guildId = guild.id,
+            invite = data,
             onDismiss = { showProfile = false }
         )
     }

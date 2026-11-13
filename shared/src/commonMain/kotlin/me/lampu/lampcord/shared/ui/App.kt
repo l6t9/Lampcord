@@ -1,5 +1,7 @@
 package me.lampu.lampcord.shared.ui
 
+import me.lampu.lampcord.shared.ui.components.captcha.CaptchaHost
+import me.lampu.lampcord.shared.ui.components.guilds.PendingInviteHost
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
@@ -70,6 +72,8 @@ fun App() {
             ProvideClipboard()
             MainScreen()
             UpdatePrompt()
+            PendingInviteHost()
+            CaptchaHost()
         }
     }
 }
