@@ -4,37 +4,29 @@ import me.lampu.lampcord.shared.generated.resources.Res
 import me.lampu.lampcord.shared.generated.resources.back
 import me.lampu.lampcord.shared.generated.resources.lampcord_settings_clear
 import me.lampu.lampcord.shared.generated.resources.search
+import me.lampu.lampcord.shared.generated.resources.search_filter_menu_title
 import org.jetbrains.compose.resources.stringResource
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.gateway.GatewayManager
 import me.lampu.lampcord.shared.state.*
-import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
-import me.lampu.lampcord.shared.utils.getPlatformName
-import me.lampu.lampcord.shared.model.AutocompleteType
-import me.lampu.lampcord.shared.ui.components.AutocompletePicker
-import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.TextRange
 import me.lampu.lampcord.shared.ui.components.PlatformBackHandler
+import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.utils.getPlatformName
 import org.koin.compose.koinInject
 import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
@@ -95,28 +87,27 @@ private fun SearchScreenContent(
     gatewayManager: GatewayManager = koinInject(),
     messageStore: MessageStore = koinInject()
 ) {
+    remember {
+        val scopedChannelName = navigationStore.selectedChannel?.takeIf { navigationStore.selectedGuild != null }?.name
+        searchStore.searchQuery = withChannelScope(searchStore.searchQuery, scopedChannelName)
+        Unit
+    }
+
     var textFieldValue by remember {
         mutableStateOf(TextFieldValue(searchStore.searchQuery, TextRange(searchStore.searchQuery.length)))
     }
+    var showFilterMenu by remember { mutableStateOf(false) }
 
     LaunchedEffect(searchStore.searchQuery) {
         if (searchStore.searchQuery != textFieldValue.text) {
             textFieldValue = TextFieldValue(searchStore.searchQuery, TextRange(searchStore.searchQuery.length))
         }
     }
-    val searchOptions = remember {
-        listOf(
-            SearchOption("from", Icons.Filled.Person, "user"),
-            SearchOption("mentions", Icons.Rounded.AlternateEmail, "user"),
-            SearchOption("has", Icons.Filled.Link, "link, embed or file"),
-            SearchOption("in", Icons.Filled.Tag, "channel"),
-            SearchOption("sort", Icons.AutoMirrored.Filled.List, "old"),
-            SearchOption("authorType", Icons.Filled.Person, "user, bot or webhook"),
-            SearchOption("exclude", Icons.Filled.Remove, "link, embed or file"),
-            SearchOption("before", Icons.Filled.History, "specific date"),
-            SearchOption("during", Icons.Filled.History, "specific date"),
-            SearchOption("after", Icons.Filled.History, "specific date")
-        )
+
+    fun setQuery(value: TextFieldValue) {
+        textFieldValue = value
+        searchStore.searchQuery = value.text
+        updateSearchAutocomplete(value, autocompleteStore, navigationStore)
     }
 
     PlatformBackHandler(enabled = autocompleteStore.searchAutocompleteType != null || searchStore.searchResults.isNotEmpty() || searchStore.searchQuery.isNotEmpty()) {
@@ -135,6 +126,7 @@ private fun SearchScreenContent(
         Column(modifier = Modifier.fillMaxSize()) {
             TopAppBar(
                 title = {
+                    val targetName = navigationStore.selectedGuild?.name ?: navigationStore.selectedChannel?.name ?: "Discord"
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -146,42 +138,17 @@ private fun SearchScreenContent(
                             .padding(horizontal = 12.dp),
                         contentAlignment = Alignment.CenterStart
                     ) {
-                        if (textFieldValue.text.isEmpty()) {
-                            val targetName = navigationStore.selectedGuild?.name ?: navigationStore.selectedChannel?.name ?: "Discord"
-                            Text(
-                                "Search in $targetName",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                            )
-                        }
-                        BasicTextField(
+                        SearchFilterField(
                             value = textFieldValue,
-                            onValueChange = {
-                                textFieldValue = it
-                                searchStore.searchQuery = it.text
-                                if (it.text.isNotBlank()) {
-                                    val lastPart = it.text.split(" ").last()
-                                    val (type, query) = when {
-                                        lastPart.startsWith("from:", ignoreCase = true) -> AutocompleteType.USER to lastPart.substring(5)
-                                        lastPart.startsWith("mentions:", ignoreCase = true) -> AutocompleteType.USER to lastPart.substring(9)
-                                        lastPart.startsWith("in:", ignoreCase = true) -> AutocompleteType.CHANNEL to lastPart.substring(3)
-                                        lastPart.startsWith("@") -> AutocompleteType.MENTION to lastPart.substring(1)
-                                        lastPart.startsWith("#") -> AutocompleteType.CHANNEL to lastPart.substring(1)
-                                        else -> null to ""
-                                    }
-                                    autocompleteStore.updateAutocomplete(type, query, navigationStore.selectedGuild, navigationStore.selectedChannel, isSearch = true)
-                                } else {
-                                    autocompleteStore.clear(isSearch = true)
-                                }
+                            onValueChange = { value ->
+                                textFieldValue = value
+                                searchStore.searchQuery = value.text
                             },
-                            modifier = Modifier.fillMaxWidth(),
-                            textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
-                            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                            keyboardActions = KeyboardActions(onSearch = {
+                            placeholder = "Search in $targetName",
+                            onSearch = {
                                 searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel)
-                            })
+                            },
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
                 },
@@ -191,11 +158,25 @@ private fun SearchScreenContent(
                     }
                 },
                 actions = {
+                    Box {
+                        IconButton(onClick = { showFilterMenu = true }) {
+                            Icon(
+                                imageVector = Icons.Rounded.Tune,
+                                contentDescription = stringResource(Res.string.search_filter_menu_title)
+                            )
+                        }
+                        SearchFilterMenu(
+                            expanded = showFilterMenu,
+                            onDismiss = { showFilterMenu = false },
+                            onPick = { def -> setQuery(appendSearchFilter(textFieldValue, def.key)) }
+                        )
+                    }
                     if (textFieldValue.text.isNotEmpty()) {
                         IconButton(onClick = {
                             searchStore.searchQuery = ""
                             searchStore.searchResults.clear()
                             autocompleteStore.clear(isSearch = true)
+                            textFieldValue = TextFieldValue("")
                         }) {
                             Icon(Icons.Filled.Close, contentDescription = stringResource(Res.string.lampcord_settings_clear))
                         }
@@ -219,28 +200,18 @@ private fun SearchScreenContent(
                                     color = MaterialTheme.colorScheme.primary
                                 )
                             }
-                            items(searchOptions) { option ->
+                            items(SEARCH_FILTER_DEFS) { def ->
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                    .clickableCursor {
-                                            val prefix = "${option.key}:"
-                                            val newText = if (textFieldValue.text.isEmpty()) prefix else "${textFieldValue.text} $prefix"
-                                            textFieldValue = TextFieldValue(newText, TextRange(newText.length))
-                                            searchStore.searchQuery = newText
-                                            
-                                            val type = when (option.key) {
-                                                "from", "mentions" -> AutocompleteType.USER
-                                                "in" -> AutocompleteType.CHANNEL
-                                                else -> null
-                                            }
-                                            autocompleteStore.updateAutocomplete(type, "", navigationStore.selectedGuild, navigationStore.selectedChannel, isSearch = true)
+                                        .clickableCursor {
+                                            setQuery(appendSearchFilter(textFieldValue, def.key))
                                         }
                                         .padding(horizontal = 16.dp, vertical = 12.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(
-                                        imageVector = option.icon,
+                                        imageVector = searchFilterIcon(def.key),
                                         contentDescription = null,
                                         modifier = Modifier.size(24.dp),
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -248,12 +219,13 @@ private fun SearchScreenContent(
                                     Spacer(Modifier.width(24.dp))
                                     Column {
                                         Text(
-                                            text = buildString {
-                                                append(option.key)
-                                                append(": ")
-                                                append(option.valueHint)
-                                            },
+                                            text = "${def.key}:",
                                             style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+                                        )
+                                        Text(
+                                            text = stringResource(def.label),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
                                 }
@@ -380,29 +352,6 @@ private fun SearchScreenContent(
                     }
                 }
 
-                if (autocompleteStore.searchAutocompleteType != null) {
-                    AutocompletePicker(
-                        type = autocompleteStore.searchAutocompleteType!!,
-                        query = autocompleteStore.searchAutocompleteQuery,
-                        selectedIndex = autocompleteStore.searchAutocompleteSelectedIndex,
-                        isSearch = true,
-                        modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(horizontal = 8.dp),
-                        onItemSelected = { item ->
-                            val currentQuery = textFieldValue.text
-                            val parts = currentQuery.split(" ").toMutableList()
-                            if (parts.isNotEmpty()) {
-                                val lastPart = parts.last()
-                                val prefix = if (lastPart.contains(":")) lastPart.substringBefore(":") + ":" else ""
-                                val replacement = item.searchReplacement ?: item.replacement
-                                parts[parts.lastIndex] = prefix + replacement
-                                val newText = parts.joinToString(" ") + " "
-                                textFieldValue = TextFieldValue(newText, TextRange(newText.length))
-                                searchStore.searchQuery = newText
-                            }
-                            autocompleteStore.clear(isSearch = true)
-                        }
-                    )
-                }
             }
         }
 
@@ -422,9 +371,3 @@ private fun SearchScreenContent(
         }
     }
 }
-
-data class SearchOption(
-    val key: String,
-    val icon: ImageVector,
-    val valueHint: String
-)

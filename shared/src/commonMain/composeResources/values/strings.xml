@@ -3503,4 +3503,20 @@
     <string name="yes_text">Yes</string>
     <string name="zh_cn">Chinese, China</string>
     <string name="zh_tw">Chinese, Taiwan</string>
+    <string name="lampcord_settings_account_token">Account Token</string>
+    <string name="lampcord_settings_copy_account_token">Copy Account Token</string>
+    <string name="lampcord_settings_copy_account_token_desc">Copies the token for the current account</string>
+    <string name="lampcord_settings_copy_token_title">Copy account token?</string>
+    <string name="lampcord_settings_copy_token_warning">This token can be used to access your account. Never send it to anyone and keep it hidden.</string>
+    <string name="search_filter_menu_title">Filter results</string>
+    <string name="search_filter_label_from">From a user</string>
+    <string name="search_filter_label_mentions">Mentions a user</string>
+    <string name="search_filter_label_in">In a channel</string>
+    <string name="search_filter_label_has">Has attachment or link</string>
+    <string name="search_filter_label_exclude">Doesn\'t have</string>
+    <string name="search_filter_label_author_type">Author type</string>
+    <string name="search_filter_label_before">Sent before date</string>
+    <string name="search_filter_label_during">Sent on date</string>
+    <string name="search_filter_label_after">Sent after date</string>
+    <string name="search_filter_label_sort">Sort order</string>
 </resources>

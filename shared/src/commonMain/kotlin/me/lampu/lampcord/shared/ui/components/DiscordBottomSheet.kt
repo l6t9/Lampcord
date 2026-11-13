@@ -87,8 +87,8 @@ fun DiscordBottomSheet(
                 .then(
                     when {
                         fullBleed -> Modifier.fillMaxSize()
-                        fillHeight -> Modifier.fillMaxHeight(0.9f)
-                        else -> Modifier
+                        fillHeight -> Modifier.fillMaxHeight(0.9f).navigationBarsPadding()
+                        else -> Modifier.navigationBarsPadding()
                     }
                 )
         ) {

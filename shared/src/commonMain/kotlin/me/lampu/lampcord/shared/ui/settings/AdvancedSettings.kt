@@ -21,7 +21,14 @@ import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.components.ExpressiveSwitch
 import me.lampu.lampcord.shared.generated.resources.Res
 import me.lampu.lampcord.shared.generated.resources.developer_mode
+import me.lampu.lampcord.shared.generated.resources.cancel
+import me.lampu.lampcord.shared.generated.resources.copy
+import me.lampu.lampcord.shared.generated.resources.lampcord_settings_account_token
 import me.lampu.lampcord.shared.generated.resources.lampcord_settings_advanced
+import me.lampu.lampcord.shared.generated.resources.lampcord_settings_copy_account_token
+import me.lampu.lampcord.shared.generated.resources.lampcord_settings_copy_account_token_desc
+import me.lampu.lampcord.shared.generated.resources.lampcord_settings_copy_token_title
+import me.lampu.lampcord.shared.generated.resources.lampcord_settings_copy_token_warning
 import me.lampu.lampcord.shared.generated.resources.lampcord_settings_clear_cache
 import me.lampu.lampcord.shared.generated.resources.lampcord_settings_clear_cache_desc
 import me.lampu.lampcord.shared.generated.resources.lampcord_settings_data_management
@@ -77,11 +84,11 @@ fun AdvancedSettingsContent(settingsStore: SettingsStore = koinInject()) {
         )
 
         Material3SettingsGroup(
-            title = "Account Token",
+            title = stringResource(Res.string.lampcord_settings_account_token),
             items = listOf(
                 Material3SettingsItem(
-                    title = { Text("Copy Account Token") },
-                    description = { Text("Copies the token for the current account") },
+                    title = { Text(stringResource(Res.string.lampcord_settings_copy_account_token)) },
+                    description = { Text(stringResource(Res.string.lampcord_settings_copy_account_token_desc)) },
                     onClick = { showTokenWarning = true }
                 )
             )
@@ -90,11 +97,9 @@ fun AdvancedSettingsContent(settingsStore: SettingsStore = koinInject()) {
         if (showTokenWarning) {
             AlertDialog(
                 onDismissRequest = { showTokenWarning = false },
-                title = { Text("Copy account token?") },
+                title = { Text(stringResource(Res.string.lampcord_settings_copy_token_title)) },
                 text = {
-                    Text(
-                        "This token can be used to access your account. Never send it to anyone and keep it hidden."
-                    )
+                    Text(stringResource(Res.string.lampcord_settings_copy_token_warning))
                 },
                 confirmButton = {
                     TextButton(
@@ -102,10 +107,10 @@ fun AdvancedSettingsContent(settingsStore: SettingsStore = koinInject()) {
                             setClipboardText(Settings.shared.discordToken)
                             showTokenWarning = false
                         }
-                    ) { Text("Copy") }
+                    ) { Text(stringResource(Res.string.copy)) }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showTokenWarning = false }) { Text("Cancel") }
+                    TextButton(onClick = { showTokenWarning = false }) { Text(stringResource(Res.string.cancel)) }
                 }
             )
         }

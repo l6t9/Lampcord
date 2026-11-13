@@ -313,27 +313,30 @@ class MessageApi(private val rest: RestClient) {
     suspend fun searchChannelMessages(
         channelId: String,
         content: String? = null,
-        authorId: String? = null,
-        mentions: String? = null,
-        has: String? = null,
+        authorIds: List<String> = emptyList(),
+        mentions: List<String> = emptyList(),
+        has: List<String> = emptyList(),
         before: String? = null,
         after: String? = null,
         during: String? = null,
-        sort: String? = null,
-        authorType: String? = null
+        sortOrder: String? = null,
+        authorTypes: List<String> = emptyList()
     ): SearchResponse? {
         return try {
             val response = rest.httpClient.get("${rest.apiBase}/channels/$channelId/messages/search") {
                 standardHeaders(rest)
                 content?.let { parameter("content", it) }
-                authorId?.let { parameter("author_id", it) }
-                mentions?.let { parameter("mentions", it) }
-                has?.let { parameter("has", it) }
+                authorIds.forEach { parameter("author_id", it) }
+                mentions.forEach { parameter("mentions", it) }
+                has.forEach { parameter("has", it) }
                 before?.let { parameter("before", it) }
                 after?.let { parameter("after", it) }
                 during?.let { parameter("during", it) }
-                sort?.let { parameter("sort_by", it) }
-                authorType?.let { parameter("author_type", it) }
+                sortOrder?.let {
+                    parameter("sort_by", "timestamp")
+                    parameter("sort_order", it)
+                }
+                authorTypes.forEach { parameter("author_type", it) }
             }
             if (response.status.isSuccess()) response.body() else null
         } catch (e: Exception) {
@@ -346,29 +349,32 @@ class MessageApi(private val rest: RestClient) {
     suspend fun searchGuildMessages(
         guildId: String,
         content: String? = null,
-        authorId: String? = null,
-        mentions: String? = null,
-        has: String? = null,
-        channelId: String? = null,
+        authorIds: List<String> = emptyList(),
+        mentions: List<String> = emptyList(),
+        has: List<String> = emptyList(),
+        channelIds: List<String> = emptyList(),
         before: String? = null,
         after: String? = null,
         during: String? = null,
-        sort: String? = null,
-        authorType: String? = null
+        sortOrder: String? = null,
+        authorTypes: List<String> = emptyList()
     ): SearchResponse? {
         return try {
             val response = rest.httpClient.get("${rest.apiBase}/guilds/$guildId/messages/search") {
                 standardHeaders(rest)
                 content?.let { parameter("content", it) }
-                authorId?.let { parameter("author_id", it) }
-                mentions?.let { parameter("mentions", it) }
-                has?.let { parameter("has", it) }
-                channelId?.let { parameter("channel_id", it) }
+                authorIds.forEach { parameter("author_id", it) }
+                mentions.forEach { parameter("mentions", it) }
+                has.forEach { parameter("has", it) }
+                channelIds.forEach { parameter("channel_id", it) }
                 before?.let { parameter("before", it) }
                 after?.let { parameter("after", it) }
                 during?.let { parameter("during", it) }
-                sort?.let { parameter("sort_by", it) }
-                authorType?.let { parameter("author_type", it) }
+                sortOrder?.let {
+                    parameter("sort_by", "timestamp")
+                    parameter("sort_order", it)
+                }
+                authorTypes.forEach { parameter("author_type", it) }
             }
             if (response.status.isSuccess()) response.body() else null
         } catch (e: Exception) {

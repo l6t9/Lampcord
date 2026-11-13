@@ -65,6 +65,7 @@ fun ProfileSettingsContent(
     userVal: me.lampu.lampcord.shared.model.User,
     userApi: me.lampu.lampcord.shared.api.UserApi = koinInject(),
     userStore: UserStore = koinInject(),
+    profileStore: me.lampu.lampcord.shared.state.ProfileStore = koinInject(),
     guildStore: me.lampu.lampcord.shared.state.GuildStore = koinInject(),
     guildApi: me.lampu.lampcord.shared.api.GuildApi = koinInject(),
     clientProfileStore: me.lampu.lampcord.shared.state.ClientProfileStore = koinInject(),
@@ -614,6 +615,7 @@ fun ProfileSettingsContent(
                                             ))
                                             if (updated != null) userStore.cacheMember(selectedGuildId!!, userVal.id, updated)
                                         }
+                                        profileStore.preloadOwnProfile(userVal.id, force = true)
                                         showToast("Profile saved!")
                                     }
                                 },

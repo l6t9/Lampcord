@@ -39,6 +39,11 @@ import me.lampu.lampcord.shared.model.AutocompleteType
 import me.lampu.lampcord.shared.model.Channel
 import me.lampu.lampcord.shared.model.Emoji
 import me.lampu.lampcord.shared.state.AutocompleteStore
+import me.lampu.lampcord.shared.state.withChannelScope
+import me.lampu.lampcord.shared.ui.components.chat.SearchFilterField
+import me.lampu.lampcord.shared.ui.components.chat.SearchFilterMenu
+import me.lampu.lampcord.shared.ui.components.chat.appendSearchFilter
+import me.lampu.lampcord.shared.ui.components.chat.updateSearchAutocomplete
 import me.lampu.lampcord.shared.state.GuildStore
 import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.state.SearchStore
@@ -137,6 +142,7 @@ fun MemberHeader(
         if (isDesktop) {
             val focusManager = LocalFocusManager.current
             var isFocused by remember { mutableStateOf(false) }
+            var showFilterMenu by remember { mutableStateOf(false) }
             var textFieldValue by remember {
                 mutableStateOf<TextFieldValue>(TextFieldValue(searchStore.searchQuery, TextRange(searchStore.searchQuery.length)))
             }
@@ -147,7 +153,7 @@ fun MemberHeader(
                 }
             }
 
-            Box(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
@@ -163,124 +169,67 @@ fun MemberHeader(
                         else Color.Transparent,
                         RoundedCornerShape(20.dp)
                     )
+                    .padding(start = 12.dp, end = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                BasicTextField(
+                Icon(
+                    imageVector = Icons.Filled.Search,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = if (isFocused) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.width(10.dp))
+                SearchFilterField(
                     value = textFieldValue,
                     onValueChange = { value ->
                         textFieldValue = value
                         searchStore.searchQuery = value.text
-                        if (value.text.isNotBlank()) {
-                            val lastPart = value.text.split(" ").last()
-                            val (type, query) = when {
-                                lastPart.startsWith("from:", ignoreCase = true) -> AutocompleteType.USER to lastPart.substring(5)
-                                lastPart.startsWith("mentions:", ignoreCase = true) -> AutocompleteType.USER to lastPart.substring(9)
-                                lastPart.startsWith("in:", ignoreCase = true) -> AutocompleteType.CHANNEL to lastPart.substring(3)
-                                lastPart.startsWith("@") -> AutocompleteType.MENTION to lastPart.substring(1)
-                                lastPart.startsWith("#") -> AutocompleteType.CHANNEL to lastPart.substring(1)
-                                else -> null to ""
-                            }
-                            autocompleteStore.updateAutocomplete(type, query, navigationStore.selectedGuild, channel, isSearch = true)
-                        } else {
-                            autocompleteStore.clear(isSearch = true)
-                        }
                     },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .align(Alignment.CenterStart)
-                        .onFocusChanged { isFocused = it.isFocused },
-                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
-                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(onSearch = {
+                    placeholder = "Search in ${channel.name ?: "channel"}",
+                    onSearch = {
                         if (searchStore.searchQuery.isNotBlank()) {
+                            searchStore.searchQuery = withChannelScope(
+                                searchStore.searchQuery,
+                                channel.name.takeIf { channel.guild_id != null }
+                            )
                             searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel)
                             navigationStore.isSearchVisible = true
                             focusManager.clearFocus()
                         }
-                    }),
-                    decorationBox = { innerTextField: @Composable () -> Unit ->
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Search,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
-                                tint = if (isFocused) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(Modifier.width(10.dp))
-                            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-                                if (searchStore.searchQuery.isEmpty()) {
-                                    Text(
-                                        "Search in ${channel.name ?: "channel"}",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                    )
-                                }
-                                innerTextField()
-                            }
-                            if (searchStore.searchQuery.isNotEmpty()) {
-                                IconButton(
-                                    onClick = {
-                                        searchStore.searchQuery = ""
-                                        autocompleteStore.clear(isSearch = true)
-                                    },
-                                    modifier = Modifier.size(24.dp)
-                                ) {
-                                    Icon(
-                                        Icons.Filled.Close,
-                                        contentDescription = stringResource(Res.string.lampcord_settings_clear),
-                                        modifier = Modifier.size(16.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
-                    }
+                    },
+                    modifier = Modifier.weight(1f),
+                    onFocusChange = { isFocused = it }
                 )
-
-                DropdownMenu(
-                    expanded = isFocused && autocompleteStore.searchAutocompleteType != null && autocompleteStore.searchAutocompleteItems.isNotEmpty(),
-                    onDismissRequest = {  },
-                    properties = androidx.compose.ui.window.PopupProperties(focusable = false),
-                    modifier = Modifier.width(300.dp).background(MaterialTheme.colorScheme.surfaceContainerHigh),
-                    offset = DpOffset(16.dp, 4.dp)
-                ) {
-                    autocompleteStore.searchAutocompleteItems.forEach { item ->
-                        DropdownMenuItem(
-                            modifier = Modifier.handCursor(),
-                            text = {
-                                Text(
-                                    item.title,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            },
-                            leadingIcon = item.icon?.let { icon ->
-                                {
-                                    AsyncImage(
-                                        model = icon,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(24.dp).clip(CircleShape)
-                                    )
-                                }
-                            },
-                            onClick = {
-                                val currentQuery = textFieldValue.text
-                                val parts = currentQuery.split(" ").toMutableList()
-                                if (parts.isNotEmpty()) {
-                                    val lastPart = parts.last()
-                                    val prefix = if (lastPart.contains(":")) lastPart.substringBefore(":") + ":" else ""
-                                    val replacement = item.searchReplacement ?: item.replacement
-                                    parts[parts.lastIndex] = prefix + replacement
-                                    val newText = parts.joinToString(" ") + " "
-                                    textFieldValue = TextFieldValue(newText, TextRange(newText.length))
-                                    searchStore.searchQuery = newText
-                                }
-                                autocompleteStore.clear(isSearch = true)
-                            }
+                Box {
+                    IconButton(onClick = { showFilterMenu = true }) {
+                        Icon(
+                            imageVector = Icons.Rounded.Tune,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    SearchFilterMenu(
+                        expanded = showFilterMenu,
+                        onDismiss = { showFilterMenu = false },
+                        onPick = { def ->
+                            val updated = appendSearchFilter(textFieldValue, def.key)
+                            textFieldValue = updated
+                            searchStore.searchQuery = updated.text
+                            updateSearchAutocomplete(updated, autocompleteStore, navigationStore)
+                        }
+                    )
+                }
+                if (searchStore.searchQuery.isNotEmpty()) {
+                    IconButton(onClick = {
+                        searchStore.searchQuery = ""
+                        autocompleteStore.clear(isSearch = true)
+                    }) {
+                        Icon(
+                            Icons.Filled.Close,
+                            contentDescription = stringResource(Res.string.lampcord_settings_clear),
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }

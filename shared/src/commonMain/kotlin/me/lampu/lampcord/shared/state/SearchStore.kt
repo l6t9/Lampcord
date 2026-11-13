@@ -39,7 +39,7 @@ class SearchStore(
     fun performSearch(selectedGuild: Guild?, selectedChannel: Channel?) {
         val query = searchQuery
         if (query.isBlank()) return
-        
+
         if (!searchHistory.contains(query)) {
             searchHistory.add(0, query)
             if (searchHistory.size > 20) searchHistory.removeAt(searchHistory.lastIndex)
@@ -48,103 +48,95 @@ class SearchStore(
 
         isSearchLoading = true
         searchResults.clear()
-        
-        scope.launch {
-            val filters = mutableMapOf<String, String>()
-            val contentWords = mutableListOf<String>()
-            
-            val parts = query.split(" ")
-            for (part in parts) {
-                if (part.contains(":")) {
-                    val split = part.split(":", limit = 2)
-                    val key = split[0].lowercase()
-                    val value = split[1]
-                    if (value.isNotEmpty()) {
-                        val finalValue = when(key) {
-                            "from", "mentions" -> {
-                                if (value.toLongOrNull() == null) {
-                                    val username = if (value.startsWith("@")) value.substring(1) else value
-                                    
-                                    val member = if (selectedGuild != null) {
-                                        memberListStore.memberListItems.filterNotNull().mapNotNull { it.member }.find {
-                                            it.user?.username?.equals(username, ignoreCase = true) == true ||
-                                                    it.nick?.equals(username, ignoreCase = true) == true ||
-                                                    it.user?.global_name?.equals(username, ignoreCase = true) == true
-                                        }
-                                    } else if (selectedChannel != null && selectedChannel.guild_id == null) {
-                                        val dmUsers = mutableListOf<User>()
-                                        selectedChannel.recipients?.let { dmUsers.addAll(it) }
-                                        if (selectedChannel.recipients.isNullOrEmpty() && !selectedChannel.recipient_ids.isNullOrEmpty()) {
-                                            selectedChannel.recipient_ids.forEach { id ->
-                                                userStore.getUser(id)?.let { dmUsers.add(it) }
-                                            }
-                                        }
-                                        userStore.currentUser.value?.let { dmUsers.add(it) }
-                                        dmUsers.distinctBy { it.id }.map { me.lampu.lampcord.shared.model.Member(user = it) }.find {
-                                            it.user?.username?.equals(username, ignoreCase = true) == true ||
-                                                    it.user?.global_name?.equals(username, ignoreCase = true) == true
-                                        }
-                                    } else null
 
-                                    member?.user?.id ?: value
-                                } else value
-                            }
-                            "in" -> {
-                                if (value.toLongOrNull() == null) {
-                                    val name = if (value.startsWith("#")) value.substring(1) else value
-                                    val channel = guildStore.allGuildChannels.value.values.find { it.name?.equals(name, ignoreCase = true) == true }
-                                    channel?.id ?: value
-                                } else value
-                            }
-                            else -> value
-                        }
-                        filters[key] = finalValue
-                        continue
-                    }
-                }
-                contentWords.add(part)
-            }
-            
-            val content = contentWords.joinToString(" ").takeIf { it.isNotBlank() }
-            
+        scope.launch {
+            val parsed = parseSearchQuery(query)
+            val authorIds = parsed.values("from").map { resolveUserValue(it, selectedGuild, selectedChannel) }
+            val mentionIds = parsed.values("mentions").map { resolveUserValue(it, selectedGuild, selectedChannel) }
+            val channelIds = parsed.values("in").map { resolveChannelValue(it) }
+            val has = parsed.values("has")
+            val excludes = parsed.values("exclude")
+            val authorTypes = parsed.values("authortype")
+            val sortOrder = parsed.values("sort").firstOrNull()?.let { if (it.equals("old", ignoreCase = true)) "asc" else "desc" }
+            val before = parsed.values("before").firstOrNull()?.let(::resolveSearchDate)
+            val after = parsed.values("after").firstOrNull()?.let(::resolveSearchDate)
+            val during = parsed.values("during").firstOrNull()?.let(::resolveSearchDate)
+            val content = parsed.text.takeIf { it.isNotBlank() }
+
             val response = if (selectedGuild != null) {
                 messageApi.searchGuildMessages(
                     guildId = selectedGuild.id,
                     content = content,
-                    authorId = filters["from"],
-                    mentions = filters["mentions"],
-                    has = filters["has"],
-                    channelId = filters["in"],
-                    before = filters["before"],
-                    after = filters["after"],
-                    during = filters["during"],
-                    sort = filters["sort"],
-                    authorType = filters["authortype"]
+                    authorIds = authorIds,
+                    mentions = mentionIds,
+                    has = has,
+                    channelIds = channelIds,
+                    before = before,
+                    after = after,
+                    during = during,
+                    sortOrder = sortOrder,
+                    authorTypes = authorTypes
                 )
             } else if (selectedChannel != null) {
                 messageApi.searchChannelMessages(
                     channelId = selectedChannel.id,
                     content = content,
-                    authorId = filters["from"],
-                    mentions = filters["mentions"],
-                    has = filters["has"],
-                    before = filters["before"],
-                    after = filters["after"],
-                    during = filters["during"],
-                    sort = filters["sort"],
-                    authorType = filters["authortype"]
+                    authorIds = authorIds,
+                    mentions = mentionIds,
+                    has = has,
+                    before = before,
+                    after = after,
+                    during = during,
+                    sortOrder = sortOrder,
+                    authorTypes = authorTypes
                 )
             } else null
-            
+
             response?.let {
-                totalSearchResults = it.total_results
-                val hits = it.messages.flatMap { group -> 
-                    group.filter { message -> message.hit }
+                val hits = it.messages.flatMap { group ->
+                    group.filter { message ->
+                        message.hit && excludes.none { kind -> message.matchesSearchExclusion(kind) }
+                    }
                 }
                 searchResults.addAll(hits)
+                totalSearchResults = if (excludes.isEmpty()) it.total_results else hits.size
             }
             isSearchLoading = false
         }
+    }
+
+    private fun resolveUserValue(value: String, selectedGuild: Guild?, selectedChannel: Channel?): String {
+        if (value.toLongOrNull() != null) return value
+        val username = value.removePrefix("@")
+        val member = if (selectedGuild != null) {
+            memberListStore.memberListItems.filterNotNull().mapNotNull { it.member }.find {
+                it.user?.username?.equals(username, ignoreCase = true) == true ||
+                        it.nick?.equals(username, ignoreCase = true) == true ||
+                        it.user?.global_name?.equals(username, ignoreCase = true) == true
+            }
+        } else if (selectedChannel != null && selectedChannel.guild_id == null) {
+            val dmUsers = mutableListOf<User>()
+            selectedChannel.recipients?.let { dmUsers.addAll(it) }
+            if (selectedChannel.recipients.isNullOrEmpty() && !selectedChannel.recipient_ids.isNullOrEmpty()) {
+                selectedChannel.recipient_ids.forEach { id ->
+                    userStore.getUser(id)?.let { dmUsers.add(it) }
+                }
+            }
+            userStore.currentUser.value?.let { dmUsers.add(it) }
+            dmUsers.distinctBy { it.id }.map { me.lampu.lampcord.shared.model.Member(user = it) }.find {
+                it.user?.username?.equals(username, ignoreCase = true) == true ||
+                        it.user?.global_name?.equals(username, ignoreCase = true) == true
+            }
+        } else null
+
+        return member?.user?.id ?: value
+    }
+
+    private fun resolveChannelValue(value: String): String {
+        if (value.toLongOrNull() != null) return value
+        val name = value.removePrefix("#")
+        return guildStore.allGuildChannels.value.values
+            .find { it.name?.equals(name, ignoreCase = true) == true }?.id ?: value
     }
 
     fun clear() {
