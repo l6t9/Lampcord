@@ -3,6 +3,7 @@ package me.lampu.lampcord.shared.api
 import io.ktor.client.call.save
 import io.ktor.client.plugins.HttpSend
 import io.ktor.client.plugins.api.createClientPlugin
+import io.ktor.client.plugins.plugin
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
