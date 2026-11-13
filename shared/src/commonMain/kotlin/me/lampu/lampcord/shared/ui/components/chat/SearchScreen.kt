@@ -223,7 +223,7 @@ private fun SearchScreenContent(
                                             style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
                                         )
                                         Text(
-                                            text = stringResource(def.label),
+                                            text = def.label,
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )

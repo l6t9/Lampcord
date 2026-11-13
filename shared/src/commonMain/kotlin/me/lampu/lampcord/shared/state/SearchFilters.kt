@@ -1,11 +1,9 @@
 package me.lampu.lampcord.shared.state
 
-import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
-import me.lampu.lampcord.shared.generated.resources.Res
 import me.lampu.lampcord.shared.model.Message
-import org.jetbrains.compose.resources.StringResource
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 
 private val HAS_CHOICES = listOf("link", "embed", "file", "image", "video", "sound", "sticker", "poll")
@@ -14,22 +12,22 @@ enum class SearchFilterKind { USER, CHANNEL, CHOICE, DATE }
 
 data class SearchFilterDef(
     val key: String,
-    val label: StringResource,
+    val label: String,
     val kind: SearchFilterKind,
     val choices: List<String> = emptyList(),
 )
 
 val SEARCH_FILTER_DEFS: List<SearchFilterDef> = listOf(
-    SearchFilterDef("from", Res.string.search_filter_label_from, SearchFilterKind.USER),
-    SearchFilterDef("mentions", Res.string.search_filter_label_mentions, SearchFilterKind.USER),
-    SearchFilterDef("in", Res.string.search_filter_label_in, SearchFilterKind.CHANNEL),
-    SearchFilterDef("has", Res.string.search_filter_label_has, SearchFilterKind.CHOICE, HAS_CHOICES),
-    SearchFilterDef("exclude", Res.string.search_filter_label_exclude, SearchFilterKind.CHOICE, HAS_CHOICES),
-    SearchFilterDef("authortype", Res.string.search_filter_label_author_type, SearchFilterKind.CHOICE, listOf("user", "bot", "webhook")),
-    SearchFilterDef("before", Res.string.search_filter_label_before, SearchFilterKind.DATE),
-    SearchFilterDef("during", Res.string.search_filter_label_during, SearchFilterKind.DATE),
-    SearchFilterDef("after", Res.string.search_filter_label_after, SearchFilterKind.DATE),
-    SearchFilterDef("sort", Res.string.search_filter_label_sort, SearchFilterKind.CHOICE, listOf("new", "old")),
+    SearchFilterDef("from", "From a user", SearchFilterKind.USER),
+    SearchFilterDef("mentions", "Mentions a user", SearchFilterKind.USER),
+    SearchFilterDef("in", "In a channel", SearchFilterKind.CHANNEL),
+    SearchFilterDef("has", "Has attachment or link", SearchFilterKind.CHOICE, HAS_CHOICES),
+    SearchFilterDef("exclude", "Doesn't have", SearchFilterKind.CHOICE, HAS_CHOICES),
+    SearchFilterDef("authortype", "Author type", SearchFilterKind.CHOICE, listOf("user", "bot", "webhook")),
+    SearchFilterDef("before", "Sent before date", SearchFilterKind.DATE),
+    SearchFilterDef("during", "Sent on date", SearchFilterKind.DATE),
+    SearchFilterDef("after", "Sent after date", SearchFilterKind.DATE),
+    SearchFilterDef("sort", "Sort order", SearchFilterKind.CHOICE, listOf("new", "old")),
 )
 
 private val SEARCH_KEY_ALIASES = mapOf(

@@ -55,14 +55,12 @@ import me.lampu.lampcord.shared.state.parseSearchQuery
 import me.lampu.lampcord.shared.state.searchFilterDef
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.icons.Icons
-import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 
 data class SearchSuggestion(
     val title: String,
     val subtitle: String?,
-    val subtitleRes: StringResource?,
     val avatar: String?,
     val icon: ImageVector?,
     val insertText: String,
@@ -97,8 +95,7 @@ fun buildSearchSuggestions(value: TextFieldValue, userItems: List<AutocompleteIt
             .map { def ->
                 SearchSuggestion(
                     title = "${def.key}:",
-                    subtitle = null,
-                    subtitleRes = def.label,
+                    subtitle = def.label,
                     avatar = null,
                     icon = searchFilterIcon(def.key),
                     insertText = "${def.key}:"
@@ -113,7 +110,6 @@ fun buildSearchSuggestions(value: TextFieldValue, userItems: List<AutocompleteIt
             SearchSuggestion(
                 title = item.title,
                 subtitle = item.subtitle,
-                subtitleRes = null,
                 avatar = item.icon,
                 icon = item.iconType,
                 insertText = "$key:${item.searchReplacement ?: item.replacement} "
@@ -124,8 +120,7 @@ fun buildSearchSuggestions(value: TextFieldValue, userItems: List<AutocompleteIt
             options.filter { it.startsWith(partial, ignoreCase = true) }.map { option ->
                 SearchSuggestion(
                     title = option,
-                    subtitle = null,
-                    subtitleRes = def.label,
+                    subtitle = def.label,
                     avatar = null,
                     icon = searchFilterIcon(key),
                     insertText = "$key:$option "
@@ -286,7 +281,7 @@ fun SearchFilterField(
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
-                            val subtitleText = suggestion.subtitle ?: suggestion.subtitleRes?.let { stringResource(it) }
+                            val subtitleText = suggestion.subtitle
                             if (subtitleText != null) {
                                 Text(
                                     text = subtitleText,
@@ -333,7 +328,7 @@ fun SearchFilterMenu(
         )
         SEARCH_FILTER_DEFS.forEach { def ->
             DropdownMenuItem(
-                text = { Text(stringResource(def.label)) },
+                text = { Text(def.label) },
                 leadingIcon = {
                     Icon(
                         imageVector = searchFilterIcon(def.key),
