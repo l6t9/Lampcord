@@ -8,7 +8,6 @@ import me.lampu.lampcord.shared.generated.resources.user_popout_about_me
 import org.jetbrains.compose.resources.stringResource
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items

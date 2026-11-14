@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil3.SingletonImageLoader
 import coil3.compose.LocalPlatformContext
@@ -12,23 +11,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.state.SettingsStore
-import me.lampu.lampcord.shared.utils.setClipboardText
 import me.lampu.lampcord.shared.ui.components.settings.*
 import me.lampu.lampcord.shared.model.UserSettings
-import me.lampu.lampcord.shared.ui.icons.Icons
-import me.lampu.lampcord.shared.ui.components.ExpressiveSwitch
 import me.lampu.lampcord.shared.generated.resources.Res
 import me.lampu.lampcord.shared.generated.resources.developer_mode
-import me.lampu.lampcord.shared.generated.resources.cancel
-import me.lampu.lampcord.shared.generated.resources.copy
-import me.lampu.lampcord.shared.generated.resources.lampcord_settings_account_token
 import me.lampu.lampcord.shared.generated.resources.lampcord_settings_advanced
-import me.lampu.lampcord.shared.generated.resources.lampcord_settings_copy_account_token
-import me.lampu.lampcord.shared.generated.resources.lampcord_settings_copy_account_token_desc
-import me.lampu.lampcord.shared.generated.resources.lampcord_settings_copy_token_title
-import me.lampu.lampcord.shared.generated.resources.lampcord_settings_copy_token_warning
 import me.lampu.lampcord.shared.generated.resources.lampcord_settings_clear_cache
 import me.lampu.lampcord.shared.generated.resources.lampcord_settings_clear_cache_desc
 import me.lampu.lampcord.shared.generated.resources.lampcord_settings_data_management
@@ -60,7 +48,6 @@ fun AdvancedSettingsContent(settingsStore: SettingsStore = koinInject()) {
         val devMode = settingsStore.userSettings?.developer_mode ?: false
         val context = LocalPlatformContext.current
         val scope = rememberCoroutineScope()
-        var showTokenWarning by remember { mutableStateOf(false) }
         Material3SettingsGroup(
             title = stringResource(Res.string.lampcord_settings_developer_settings),
             items = listOf(
@@ -82,38 +69,6 @@ fun AdvancedSettingsContent(settingsStore: SettingsStore = koinInject()) {
                 )
             )
         )
-
-        Material3SettingsGroup(
-            title = stringResource(Res.string.lampcord_settings_account_token),
-            items = listOf(
-                Material3SettingsItem(
-                    title = { Text(stringResource(Res.string.lampcord_settings_copy_account_token)) },
-                    description = { Text(stringResource(Res.string.lampcord_settings_copy_account_token_desc)) },
-                    onClick = { showTokenWarning = true }
-                )
-            )
-        )
-
-        if (showTokenWarning) {
-            AlertDialog(
-                onDismissRequest = { showTokenWarning = false },
-                title = { Text(stringResource(Res.string.lampcord_settings_copy_token_title)) },
-                text = {
-                    Text(stringResource(Res.string.lampcord_settings_copy_token_warning))
-                },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            setClipboardText(Settings.shared.discordToken)
-                            showTokenWarning = false
-                        }
-                    ) { Text(stringResource(Res.string.copy)) }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showTokenWarning = false }) { Text(stringResource(Res.string.cancel)) }
-                }
-            )
-        }
 
         var proxyUrlText by remember { mutableStateOf(settingsStore.httpProxyUrl) }
 

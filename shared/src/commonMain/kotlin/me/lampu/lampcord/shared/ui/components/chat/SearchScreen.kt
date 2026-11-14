@@ -2,10 +2,16 @@ package me.lampu.lampcord.shared.ui.components.chat
 
 import me.lampu.lampcord.shared.generated.resources.Res
 import me.lampu.lampcord.shared.generated.resources.back
-import me.lampu.lampcord.shared.generated.resources.lampcord_settings_clear
 import me.lampu.lampcord.shared.generated.resources.search
-import me.lampu.lampcord.shared.generated.resources.search_filter_menu_title
 import me.lampu.lampcord.shared.generated.resources.members
+import me.lampu.lampcord.shared.generated.resources.search_panel_in
+import me.lampu.lampcord.shared.generated.resources.search_panel_fallback
+import me.lampu.lampcord.shared.generated.resources.search_panel_media
+import me.lampu.lampcord.shared.generated.resources.search_panel_links
+import me.lampu.lampcord.shared.generated.resources.search_panel_files
+import me.lampu.lampcord.shared.generated.resources.search_panel_options
+import me.lampu.lampcord.shared.generated.resources.search_panel_history
+import me.lampu.lampcord.shared.generated.resources.search_panel_no_results
 import me.lampu.lampcord.shared.generated.resources.messages
 import org.jetbrains.compose.resources.stringResource
 
@@ -46,7 +52,6 @@ fun SearchScreen(
     onDismiss: () -> Unit
 ) {
     val isMobile = getPlatformName() == "android" || getPlatformName() == "ios"
-
     if (isMobile) {
         Surface(
             modifier = Modifier.fillMaxSize(),
@@ -102,7 +107,6 @@ private fun SearchScreenContent(
             searchStore.searchQuery,
             navigationStore.selectedChannel?.takeIf { navigationStore.selectedGuild != null }?.name
         )
-        searchStore.searchQuery = scoped
         SearchInputState(
             autocompleteStore,
             navigationStore,
@@ -112,6 +116,10 @@ private fun SearchScreenContent(
                 else searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel)
             }
         ).apply { setQuery(scoped) }
+    }
+
+    LaunchedEffect(Unit) {
+        if (searchInput.toQuery() != searchStore.searchQuery) searchStore.searchQuery = searchInput.toQuery()
     }
 
     val resultsListState = rememberLazyListState()
@@ -168,7 +176,7 @@ private fun SearchScreenContent(
             SearchInputBar(
                 state = searchInput,
                 externalQuery = searchStore.searchQuery,
-                placeholder = "Search in ${navigationStore.selectedGuild?.name ?: navigationStore.selectedChannel?.name ?: "Discord"}",
+                placeholder = "${stringResource(Res.string.search_panel_in)} ${navigationStore.selectedGuild?.name ?: navigationStore.selectedChannel?.name ?: stringResource(Res.string.search_panel_fallback)}",
                 onSearch = {
                     searchStore.searchQuery = searchInput.finalQuery()
                     searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel)
@@ -187,9 +195,9 @@ private fun SearchScreenContent(
                 listOf(
                     "messages" to stringResource(Res.string.messages),
                     "members" to stringResource(Res.string.members),
-                    "media" to "Media",
-                    "links" to "Links",
-                    "files" to "Files"
+                    "media" to stringResource(Res.string.search_panel_media),
+                    "links" to stringResource(Res.string.search_panel_links),
+                    "files" to stringResource(Res.string.search_panel_files)
                 ).forEach { (id, label) ->
                     val selected = searchStore.activeTab == id
                     Text(
@@ -212,8 +220,9 @@ private fun SearchScreenContent(
                 }
             }
 
-            if (searchInput.suggestions().isNotEmpty()) {
-                SearchSuggestionList(state = searchInput, modifier = Modifier.weight(1f))
+            val suggestions = searchInput.suggestions()
+            if (suggestions.isNotEmpty()) {
+                SearchSuggestionList(suggestions = suggestions, modifier = Modifier.weight(1f))
             } else {
             Box(modifier = Modifier.weight(1f)) {
                 if (searchStore.activeTab == "members") {
@@ -234,7 +243,7 @@ private fun SearchScreenContent(
                         if (searchStore.searchQuery.isEmpty() && searchStore.activeTab == "messages") {
                             item {
                                 Text(
-                                    "Search Options",
+                                    stringResource(Res.string.search_panel_options),
                                     style = MaterialTheme.typography.titleSmall,
                                     modifier = Modifier.padding(16.dp),
                                     color = MaterialTheme.colorScheme.primary
@@ -279,7 +288,7 @@ private fun SearchScreenContent(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text(
-                                            "History",
+                                            stringResource(Res.string.search_panel_history),
                                             style = MaterialTheme.typography.titleSmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -316,7 +325,7 @@ private fun SearchScreenContent(
                         } else {
                             item {
                                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                    Text("No results found", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(stringResource(Res.string.search_panel_no_results), color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
                         }
@@ -424,11 +433,14 @@ private fun SearchMemberList(query: String, onPick: (String) -> Unit) {
             loadImages = true
         )
     }
-    val members = memberListStore.memberListItems.filterNotNull().mapNotNull { it.member }
-    val filtered = members.filter { member ->
-        val username = member.user?.username.orEmpty()
-        val display = member.nick ?: member.user?.global_name ?: username
-        query.isBlank() || display.contains(query, ignoreCase = true) || username.contains(query, ignoreCase = true)
+    val filtered by remember(query) {
+        derivedStateOf {
+            memberListStore.memberListItems.mapNotNull { it?.member }.filter { member ->
+                val username = member.user?.username.orEmpty()
+                val display = member.nick ?: member.user?.global_name ?: username
+                query.isBlank() || display.contains(query, ignoreCase = true) || username.contains(query, ignoreCase = true)
+            }
+        }
     }
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         items(filtered) { member ->

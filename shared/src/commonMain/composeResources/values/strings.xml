@@ -3503,10 +3503,13 @@
     <string name="yes_text">Yes</string>
     <string name="zh_cn">Chinese, China</string>
     <string name="zh_tw">Chinese, Taiwan</string>
-    <string name="lampcord_settings_account_token">Account Token</string>
-    <string name="lampcord_settings_copy_account_token">Copy Account Token</string>
-    <string name="lampcord_settings_copy_account_token_desc">Copies the token for the current account</string>
-    <string name="lampcord_settings_copy_token_title">Copy account token?</string>
-    <string name="lampcord_settings_copy_token_warning">This token can be used to access your account. Never send it to anyone and keep it hidden.</string>
     <string name="search_filter_menu_title">Filter results</string>
+    <string name="search_panel_in">Search in</string>
+    <string name="search_panel_fallback">Search</string>
+    <string name="search_panel_media">Media</string>
+    <string name="search_panel_links">Links</string>
+    <string name="search_panel_files">Files</string>
+    <string name="search_panel_options">Search options</string>
+    <string name="search_panel_history">History</string>
+    <string name="search_panel_no_results">No results found</string>
 </resources>

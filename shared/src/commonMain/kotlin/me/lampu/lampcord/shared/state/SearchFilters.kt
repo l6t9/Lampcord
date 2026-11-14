@@ -3,10 +3,6 @@ package me.lampu.lampcord.shared.state
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
-import me.lampu.lampcord.shared.model.Message
-import kotlin.time.Clock
-import kotlin.time.Duration.Companion.days
 
 private val HAS_CHOICES = listOf("link", "embed", "file", "image", "video", "sound", "sticker", "poll")
 
@@ -72,28 +68,6 @@ fun parseSearchQuery(query: String): ParsedSearchQuery {
         }
     }
     return ParsedSearchQuery(tokens, text.joinToString(" "))
-}
-
-fun resolveSearchDate(value: String): String {
-    val zone = TimeZone.currentSystemDefault()
-    val now = Clock.System.now()
-    return when (value.lowercase()) {
-        "today" -> now.toLocalDateTime(zone).date.toString()
-        "yesterday" -> now.minus(1.days).toLocalDateTime(zone).date.toString()
-        else -> value
-    }
-}
-
-fun Message.matchesSearchExclusion(kind: String): Boolean = when (kind) {
-    "embed" -> embeds.isNotEmpty()
-    "file" -> attachments.isNotEmpty()
-    "image" -> attachments.any { it.content_type?.startsWith("image/") == true }
-    "video" -> attachments.any { it.content_type?.startsWith("video/") == true }
-    "sound" -> attachments.any { it.content_type?.startsWith("audio/") == true }
-    "sticker" -> !sticker_items.isNullOrEmpty() || !stickers.isNullOrEmpty()
-    "poll" -> poll != null
-    "link" -> Regex("https?://\\S+").containsMatchIn(content)
-    else -> false
 }
 
 fun withChannelScope(query: String, channelName: String?): String {

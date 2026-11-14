@@ -58,9 +58,7 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.PopupProperties
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import me.lampu.lampcord.shared.generated.resources.Res
@@ -259,13 +257,6 @@ class SearchInputState(
 
     private fun dropActiveWord(): String = if (typed.contains(' ')) typed.substringBeforeLast(' ') else ""
 
-    private fun replaceActiveWord(replacement: String) {
-        val base = dropActiveWord()
-        typed = if (base.isEmpty()) replacement else "$base $replacement"
-        publish()
-        refreshAutocomplete()
-    }
-
     private fun commitCompletedWord(): Boolean {
         val trimmed = typed.trimEnd()
         val word = trimmed.substringAfterLast(' ')
@@ -318,7 +309,7 @@ fun SearchInputBar(
     val interactionSource = remember { MutableInteractionSource() }
 
     LaunchedEffect(externalQuery) {
-        if (externalQuery != state.toQuery()) state.setQuery(externalQuery)
+        if (externalQuery.isNotEmpty() && externalQuery != state.toQuery()) state.setQuery(externalQuery)
     }
 
     Row(
@@ -455,8 +446,7 @@ fun SearchFilterActions(state: SearchInputState) {
 }
 
 @Composable
-fun SearchSuggestionList(state: SearchInputState, modifier: Modifier = Modifier) {
-    val suggestions = state.suggestions()
+fun SearchSuggestionList(suggestions: List<SearchSuggestion>, modifier: Modifier = Modifier) {
     LazyColumn(modifier = modifier.fillMaxWidth()) {
         items(suggestions) { suggestion ->
             Row(
@@ -481,39 +471,6 @@ fun SearchSuggestionList(state: SearchInputState, modifier: Modifier = Modifier)
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-fun SearchSuggestionMenu(state: SearchInputState) {
-    val suggestions = state.suggestions()
-    DropdownMenu(
-        expanded = suggestions.isNotEmpty(),
-        onDismissRequest = {},
-        properties = PopupProperties(focusable = false),
-        modifier = Modifier.width(300.dp),
-        offset = DpOffset(0.dp, 4.dp)
-    ) {
-        suggestions.take(12).forEach { suggestion ->
-            DropdownMenuItem(
-                text = {
-                    Column {
-                        Text(text = suggestion.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        suggestion.subtitle?.let {
-                            Text(
-                                text = it,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    }
-                },
-                leadingIcon = { SuggestionLeading(suggestion) },
-                onClick = { suggestion.onPick() }
-            )
         }
     }
 }

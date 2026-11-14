@@ -49,6 +49,8 @@ data class AttachmentRequest(
     val description: String? = null
 )
 
+private val RETRY_AFTER_REGEX = Regex("\"retry_after\"\\s*:\\s*([0-9.]+)")
+
 class MessageApi(private val rest: RestClient) {
 
     suspend fun sendMessage(
@@ -347,7 +349,7 @@ class MessageApi(private val rest: RestClient) {
             if (response.status.value == 202) {
                 if (attempt == 2) return null
                 val body = response.bodyAsText()
-                val retryAfter = Regex("\"retry_after\"\\s*:\\s*([0-9.]+)").find(body)?.groupValues?.get(1)?.toDoubleOrNull() ?: 1.0
+                val retryAfter = RETRY_AFTER_REGEX.find(body)?.groupValues?.get(1)?.toDoubleOrNull() ?: 1.0
                 delay((retryAfter * 1000).toLong().coerceAtLeast(500L))
                 continue
             }
