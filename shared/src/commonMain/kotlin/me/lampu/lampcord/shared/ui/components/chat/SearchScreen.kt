@@ -51,6 +51,22 @@ import me.lampu.lampcord.shared.ui.LocalCurrentUser
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
+private fun dmSearchLabel(channel: me.lampu.lampcord.shared.model.Channel?, userStore: UserStore): String? {
+    if (channel == null) return null
+    if (!channel.name.isNullOrBlank() && channel.type != 1) return channel.name
+    val recipients = channel.recipients.orEmpty().ifEmpty {
+        channel.recipient_ids.orEmpty().mapNotNull { userStore.getUser(it) }
+    }
+    val isGroup = channel.type == 3 || recipients.size > 1
+    return if (isGroup) {
+        channel.name?.takeIf { it.isNotBlank() } ?: "Group DM"
+    } else {
+        val other = recipients.firstOrNull { it.id != userStore.currentUser.value?.id } ?: recipients.firstOrNull()
+        val name = other?.global_name ?: other?.username
+        if (name != null) "@$name" else "Direct Message"
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
@@ -105,7 +121,8 @@ private fun SearchScreenContent(
     autocompleteStore: AutocompleteStore = koinInject(),
     guildStore: GuildStore = koinInject(),
     gatewayManager: GatewayManager = koinInject(),
-    messageStore: MessageStore = koinInject()
+    messageStore: MessageStore = koinInject(),
+    userStore: UserStore = koinInject()
 ) {
     val searchInput = remember {
         val scoped = withChannelScope(
@@ -117,20 +134,19 @@ private fun SearchScreenContent(
             navigationStore,
             onQueryChange = { searchStore.searchQuery = it },
             onFilterCommitted = {
-                if (searchStore.searchQuery.isBlank() && searchStore.activeTab == "messages") searchStore.searchResults.clear()
+                val q = searchStore.searchQuery
+                if (q.isBlank() && searchStore.activeTab == "messages") searchStore.searchResults.clear()
                 else searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel)
             }
         ).apply { setQuery(scoped) }
     }
 
-    LaunchedEffect(Unit) {
-        if (searchInput.toQuery() != searchStore.searchQuery) searchStore.searchQuery = searchInput.toQuery()
-    }
-
     val resultsListState = rememberLazyListState()
 
     LaunchedEffect(Unit) {
-        if (searchStore.searchQuery.isNotBlank() && searchStore.searchResults.isEmpty()) {
+        val q = searchInput.toQuery()
+        if (q != searchStore.searchQuery) searchStore.searchQuery = q
+        if (searchStore.searchQuery.isNotBlank() && searchStore.searchResults.isEmpty() && searchStore.activeTab != "members") {
             searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel)
         }
     }
@@ -178,10 +194,15 @@ private fun SearchScreenContent(
                 },
             )
 
+            val searchContextLabel = when {
+                navigationStore.selectedGuild != null -> navigationStore.selectedGuild?.name ?: navigationStore.selectedChannel?.name
+                navigationStore.selectedChannel != null -> dmSearchLabel(navigationStore.selectedChannel, userStore)
+                else -> null
+            } ?: stringResource(Res.string.search_panel_fallback)
             SearchInputBar(
                 state = searchInput,
                 externalQuery = searchStore.searchQuery,
-                placeholder = "${stringResource(Res.string.search_panel_in)} ${navigationStore.selectedGuild?.name ?: navigationStore.selectedChannel?.name ?: stringResource(Res.string.search_panel_fallback)}",
+                placeholder = "${stringResource(Res.string.search_panel_in)} $searchContextLabel",
                 onSearch = {
                     searchStore.searchQuery = searchInput.finalQuery()
                     searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel)
@@ -366,6 +387,7 @@ private fun SearchScreenContent(
                             items(searchStore.searchResults) { message ->
                                 val channel = guildStore.allGuildChannels.value[message.channel_id] ?: guildStore.privateChannels.value.find { it.id == message.channel_id }
                                 val guild = guildStore.guilds.value.firstOrNull { it.id == message.guild_id }
+                                val isDmSearch = navigationStore.selectedGuild == null
 
                                 val onClick = {
                                     if (guild != null) {
@@ -382,22 +404,24 @@ private fun SearchScreenContent(
                                         .padding(vertical = 4.dp)
                                         .clickableCursor(onClick = onClick)
                                 ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            text = channel?.name ?: "unknown-channel",
-                                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        )
-                                        if (guild != null) {
-                                            Spacer(Modifier.width(8.dp))
+                                    if (!isDmSearch) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
                                             Text(
-                                                text = guild.name ?: "unknown-server",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                                text = channel?.name ?: "unknown-channel",
+                                                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                                                color = MaterialTheme.colorScheme.onSurface
                                             )
+                                            if (guild != null) {
+                                                Spacer(Modifier.width(8.dp))
+                                                Text(
+                                                    text = guild.name ?: "unknown-server",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                                )
+                                            }
                                         }
                                     }
 

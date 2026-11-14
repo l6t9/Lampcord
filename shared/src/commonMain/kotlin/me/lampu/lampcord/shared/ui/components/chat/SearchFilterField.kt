@@ -1,23 +1,27 @@
 package me.lampu.lampcord.shared.ui.components.chat
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -30,7 +34,10 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.InputChip
+import androidx.compose.material3.InputChipDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -43,20 +50,20 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.height
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.datetime.TimeZone
@@ -82,7 +89,6 @@ import kotlin.time.Instant
 
 private const val SEARCH_SENTINEL = "\u200B"
 
-private val ChipHeight = 28.dp
 
 data class SearchChip(val key: String, val value: String)
 
@@ -118,17 +124,13 @@ class SearchInputState(
     var selectedChip by mutableStateOf<Int?>(null)
     var fieldFocused by mutableStateOf(false)
 
-    val fieldValue: TextFieldValue
-        get() {
-            val text = SEARCH_SENTINEL + typed
-            return TextFieldValue(text, TextRange(text.length))
-        }
-
     fun setQuery(query: String) {
         val parsed = parseSearchQuery(query)
         chips.clear()
         parsed.tokens.forEach { chips.add(SearchChip(it.key, it.value)) }
-        typed = parsed.text
+        typed = parsed.text.ifEmpty { if (chips.isNotEmpty()) " " else "" }
+        selectedChip = null
+        refreshAutocomplete()
     }
 
     fun toQuery(): String {
@@ -144,34 +146,45 @@ class SearchInputState(
         return toQuery()
     }
 
-    fun onFieldChange(newValue: TextFieldValue) {
-        val raw = newValue.text
+    fun onTypedChange(next: String) {
         var committed = false
-        if (raw.startsWith(SEARCH_SENTINEL)) {
-            val next = raw.removePrefix(SEARCH_SENTINEL)
-            selectedChip = null
-            typed = next
-            if (next.endsWith(" ")) committed = commitCompletedWord()
-        } else if (typed.isEmpty()) {
-            val selected = selectedChip
-            if (selected != null && selected in chips.indices) {
-                chips.removeAt(selected)
-                selectedChip = null
-                committed = true
-            } else if (chips.isNotEmpty()) {
-                selectedChip = chips.lastIndex
-            }
-        } else {
-            typed = raw
-        }
+        selectedChip = null
+        typed = next
+        if (next.endsWith(" ")) committed = commitCompletedWord()
         openDateIfNeeded()
         publish()
         if (committed) onFilterCommitted()
         refreshAutocomplete()
     }
 
+    fun onBackspaceAtStart(): Boolean {
+        if (typed.isNotEmpty() && typed != " ") return false
+        if (typed == " " && chips.isNotEmpty()) {
+            // allow deleting the padding space first; if becomes empty next time handle chip
+            typed = ""
+            publish()
+            refreshAutocomplete()
+            return false
+        }
+        if (typed.isNotEmpty()) return false
+        val selected = selectedChip
+        return if (selected != null && selected in chips.indices) {
+            chips.removeAt(selected)
+            selectedChip = null
+            publish()
+            refreshAutocomplete()
+            onFilterCommitted()
+            true
+        } else if (chips.isNotEmpty()) {
+            selectedChip = chips.lastIndex
+            true
+        } else {
+            false
+        }
+    }
+
     fun pickChip(key: String, value: String) {
-        typed = dropActiveWord()
+        typed = dropActiveWord().let { if (it.isEmpty()) " " else "$it " }
         chips.add(SearchChip(key, value))
         selectedChip = null
         pendingDateKey = null
@@ -198,6 +211,16 @@ class SearchInputState(
         typed = dropActiveWord()
         publish()
         refreshAutocomplete()
+    }
+
+    fun removeChip(index: Int) {
+        if (index !in chips.indices) return
+        chips.removeAt(index)
+        selectedChip = null
+        if (chips.isNotEmpty() && typed.isEmpty()) typed = " "
+        publish()
+        refreshAutocomplete()
+        onFilterCommitted()
     }
 
     fun clearAll() {
@@ -266,7 +289,7 @@ class SearchInputState(
         val value = word.substring(colon + 1)
         if (value.isEmpty()) return false
         chips.add(SearchChip(key, value))
-        typed = if (trimmed.contains(' ')) trimmed.substringBeforeLast(' ') else ""
+        typed = if (trimmed.contains(' ')) trimmed.substringBeforeLast(' ') else " "
         return true
     }
 
@@ -294,7 +317,7 @@ class SearchInputState(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchInputBar(
     state: SearchInputState,
@@ -307,72 +330,102 @@ fun SearchInputBar(
     var focused by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
     val interactionSource = remember { MutableInteractionSource() }
+    val scrollState = rememberScrollState()
 
     LaunchedEffect(externalQuery) {
-        if (externalQuery.isNotEmpty() && externalQuery != state.toQuery()) state.setQuery(externalQuery)
+        if (externalQuery != state.toQuery()) state.setQuery(externalQuery)
     }
 
-    Row(
-        modifier = modifier
-            .clip(RoundedCornerShape(24.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .border(
-                1.dp,
-                if (focused) MaterialTheme.colorScheme.primary.copy(alpha = 0.6f) else Color.Transparent,
-                RoundedCornerShape(24.dp)
-            )
-            .padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 6.dp)
-            .clickable(interactionSource = interactionSource, indication = null) {
-                focusRequester.requestFocus()
-            },
-        verticalAlignment = Alignment.CenterVertically
+    LaunchedEffect(state.typed, state.chips.size) {
+        scrollState.scrollTo(scrollState.maxValue)
+    }
+
+    val containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+
+    Surface(
+        modifier = modifier,
+        shape = SearchBarDefaults.inputFieldShape,
+        color = containerColor,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp
     ) {
-        Icon(
-            imageVector = Icons.Filled.Search,
-            contentDescription = null,
-            modifier = Modifier.size(18.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(Modifier.width(8.dp))
-        FlowRow(
-            modifier = Modifier.weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            state.chips.forEachIndexed { index, chip ->
-                SearchChipView(chip, selected = state.selectedChip == index, onClick = { state.selectedChip = index })
-            }
-            BasicTextField(
-                value = state.fieldValue,
-                onValueChange = { state.onFieldChange(it) },
-                modifier = Modifier
-                    .focusRequester(focusRequester)
-                    .defaultMinSize(minWidth = 96.dp)
-                    .height(ChipHeight)
-                    .onFocusChanged {
-                        focused = it.isFocused
-                        state.fieldFocused = it.isFocused
-                    },
-                textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
-                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(onSearch = { onSearch() }),
-                decorationBox = { innerTextField ->
-                    Box(modifier = Modifier.fillMaxHeight(), contentAlignment = Alignment.CenterStart) {
-                        if (state.typed.isEmpty() && state.chips.isEmpty()) {
-                            Text(
-                                text = placeholder,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                            )
-                        }
-                        innerTextField()
-                    }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .clickable(interactionSource = interactionSource, indication = null) {
+                    focusRequester.requestFocus()
                 }
+                .padding(start = 16.dp, end = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Search,
+                contentDescription = null,
+                modifier = Modifier.size(24.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            Spacer(Modifier.width(16.dp))
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .horizontalScroll(scrollState),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                state.chips.forEachIndexed { index, chip ->
+                    SearchChipView(
+                        chip = chip,
+                        selected = state.selectedChip == index,
+                        onRemove = { state.removeChip(index) },
+                        onClick = {
+                            state.selectedChip = if (state.selectedChip == index) null else index
+                            focusRequester.requestFocus()
+                        }
+                    )
+                }
+                BasicTextField(
+                    value = state.typed,
+                    onValueChange = { state.onTypedChange(it) },
+                    modifier = Modifier
+                        .focusRequester(focusRequester)
+                        .widthIn(min = if (state.chips.isEmpty()) 120.dp else 48.dp)
+                        .defaultMinSize(minWidth = if (state.chips.isEmpty()) 120.dp else 48.dp)
+                        .onPreviewKeyEvent { event ->
+                            if (event.type == KeyEventType.KeyDown && event.key == Key.Backspace) {
+                                state.onBackspaceAtStart()
+                            } else {
+                                false
+                            }
+                        }
+                        .onFocusChanged {
+                            focused = it.isFocused
+                            state.fieldFocused = it.isFocused
+                        },
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(onSearch = { onSearch() }),
+                    decorationBox = { innerTextField ->
+                        Box(contentAlignment = Alignment.CenterStart) {
+                            if (state.typed.isEmpty() && state.chips.isEmpty()) {
+                                Text(
+                                    text = placeholder,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            innerTextField()
+                        }
+                    }
+                )
+            }
+            trailing()
         }
-        trailing()
     }
 
     state.pendingDateKey?.let { key ->
@@ -388,30 +441,54 @@ fun SearchInputBar(
 }
 
 @Composable
-private fun SearchChipView(chip: SearchChip, selected: Boolean, onClick: () -> Unit) {
-    Surface(
+private fun SearchChipView(chip: SearchChip, selected: Boolean, onRemove: () -> Unit, onClick: () -> Unit) {
+    InputChip(
+        selected = selected,
         onClick = onClick,
-        modifier = Modifier.height(ChipHeight),
-        shape = RoundedCornerShape(8.dp),
-        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
-        border = BorderStroke(
-            1.dp,
-            if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
-        )
-    ) {
-        Row(
-            modifier = Modifier.fillMaxHeight().padding(horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        label = {
             Text(
                 text = "${chip.key}: ${chip.value}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-        }
-    }
+        },
+        leadingIcon = {
+            Icon(
+                imageVector = searchFilterIcon(chip.key),
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
+            )
+        },
+        trailingIcon = {
+            Icon(
+                imageVector = Icons.Filled.Close,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp).clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onRemove
+                )
+            )
+        },
+        modifier = Modifier.heightIn(min = 32.dp),
+        shape = RoundedCornerShape(8.dp),
+        border = InputChipDefaults.inputChipBorder(
+            enabled = true,
+            selected = selected,
+            borderColor = MaterialTheme.colorScheme.outline,
+            selectedBorderColor = MaterialTheme.colorScheme.primary
+        ),
+        colors = InputChipDefaults.inputChipColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            leadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            trailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+            selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            selectedLeadingIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            selectedTrailingIconColor = MaterialTheme.colorScheme.onSecondaryContainer
+        )
+    )
 }
 
 @Composable
