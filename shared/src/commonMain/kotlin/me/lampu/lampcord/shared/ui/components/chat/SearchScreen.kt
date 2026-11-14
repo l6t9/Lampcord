@@ -20,6 +20,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import me.lampu.lampcord.shared.gateway.GatewayManager
@@ -131,6 +134,7 @@ private fun SearchScreenContent(
         onDispose {
             searchStore.searchQuery = ""
             searchStore.searchResults.clear()
+            searchStore.activeTab = "messages"
             autocompleteStore.clear(isSearch = true)
         }
     }
@@ -166,6 +170,33 @@ private fun SearchScreenContent(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
                 trailing = { SearchFilterActions(searchInput) }
             )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                listOf("messages" to "Messages", "media" to "Media", "links" to "Links", "files" to "Files").forEach { (id, label) ->
+                    val selected = searchStore.activeTab == id
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
+                            .clickableCursor {
+                                searchStore.activeTab = id
+                                if (searchStore.searchQuery.isNotBlank()) {
+                                    searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel)
+                                }
+                            }
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                    )
+                }
+            }
 
             if (searchInput.suggestions().isNotEmpty()) {
                 SearchSuggestionList(state = searchInput, modifier = Modifier.weight(1f))

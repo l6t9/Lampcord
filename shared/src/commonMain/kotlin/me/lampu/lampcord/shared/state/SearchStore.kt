@@ -25,6 +25,7 @@ class SearchStore(
     val searchResults = mutableStateListOf<Message>()
     var isSearchLoading by mutableStateOf(false)
     var isLoadingMore by mutableStateOf(false)
+    var activeTab by mutableStateOf("messages")
     var totalSearchResults by mutableStateOf(0)
     val searchHistory = mutableStateListOf<String>()
 
@@ -91,7 +92,7 @@ class SearchStore(
         val authorIds = parsed.values("from").map { resolveUserValue(it, selectedGuild, selectedChannel) }
         val mentionIds = parsed.values("mentions").map { resolveUserValue(it, selectedGuild, selectedChannel) }
         val channelIds = parsed.values("in").map { resolveChannelValue(it) }
-        val has = parsed.values("has") + parsed.values("exclude").map { "-$it" }
+        val has = parsed.values("has") + parsed.values("exclude").map { "-$it" } + tabHasFilters()
         val authorTypes = parsed.values("authortype")
         val sortOrder = parsed.values("sort").firstOrNull()?.let { if (it.equals("old", ignoreCase = true)) "asc" else "desc" }
         val content = parsed.text.takeIf { it.isNotBlank() }
@@ -132,6 +133,13 @@ class SearchStore(
                 offset = offset
             )
         } else null
+    }
+
+    private fun tabHasFilters(): List<String> = when (activeTab) {
+        "media" -> listOf("image")
+        "links" -> listOf("link")
+        "files" -> listOf("file")
+        else -> emptyList()
     }
 
     private fun appendPage(response: SearchResponse) {
