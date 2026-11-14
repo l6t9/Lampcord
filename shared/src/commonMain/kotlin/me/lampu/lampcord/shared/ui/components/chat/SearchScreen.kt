@@ -34,6 +34,10 @@ import me.lampu.lampcord.shared.ui.components.PlatformBackHandler
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.getPlatformName
 import org.koin.compose.koinInject
+import me.lampu.lampcord.shared.ui.components.members.MemberItem
+import me.lampu.lampcord.shared.ui.components.members.MemberRowEnv
+import me.lampu.lampcord.shared.ui.LocalCurrentUser
+import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -396,6 +400,28 @@ private fun SearchScreenContent(
 @Composable
 private fun SearchMemberList(query: String, onPick: (String) -> Unit) {
     val memberListStore: MemberListStore = koinInject()
+    val presenceStore: PresenceStore = koinInject()
+    val relationshipStore: RelationshipStore = koinInject()
+    val settingsStore: SettingsStore = koinInject()
+    val navigationStore: NavigationStore = koinInject()
+    val relationshipTypes = relationshipStore.relationshipTypes.collectAsState()
+    val currentUser = LocalCurrentUser.current
+    val userSettings = settingsStore.userSettings
+    val isTouch = remember { getPlatformName().let { it == "android" || it == "ios" } }
+    val reduceMotion = Settings.shared.reduceMotion
+    val env = remember(navigationStore.selectedGuild, currentUser?.id, userSettings?.status, userSettings?.developer_mode, reduceMotion) {
+        MemberRowEnv(
+            guild = navigationStore.selectedGuild,
+            currentUserId = currentUser?.id,
+            currentUserStatus = userSettings?.status,
+            developerMode = userSettings?.developer_mode == true,
+            presenceStore = presenceStore,
+            relationshipTypes = relationshipTypes,
+            animate = !isTouch && !reduceMotion,
+            isTouch = isTouch,
+            loadImages = true
+        )
+    }
     val members = memberListStore.memberListItems.filterNotNull().mapNotNull { it.member }
     val filtered = members.filter { member ->
         val username = member.user?.username.orEmpty()
@@ -404,23 +430,7 @@ private fun SearchMemberList(query: String, onPick: (String) -> Unit) {
     }
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         items(filtered) { member ->
-            val username = member.user?.username.orEmpty()
-            val display = member.nick ?: member.user?.global_name ?: username
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickableCursor { onPick(username) }
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
-            ) {
-                Text(text = display, style = MaterialTheme.typography.bodyLarge)
-                if (display != username) {
-                    Text(
-                        text = "@$username",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
+            MemberItem(member, env)
         }
     }
 }
