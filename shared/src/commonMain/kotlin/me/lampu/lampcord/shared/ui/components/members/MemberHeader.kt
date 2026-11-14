@@ -1,6 +1,7 @@
 package me.lampu.lampcord.shared.ui.components.members
 
 import me.lampu.lampcord.shared.generated.resources.Res
+import me.lampu.lampcord.shared.generated.resources.search
 import me.lampu.lampcord.shared.generated.resources.close_dm
 import me.lampu.lampcord.shared.generated.resources.copy_id
 import me.lampu.lampcord.shared.generated.resources.lampcord_settings_clear
