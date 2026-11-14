@@ -108,7 +108,7 @@ private fun SearchScreenContent(
             navigationStore,
             onQueryChange = { searchStore.searchQuery = it },
             onFilterCommitted = {
-                if (searchStore.searchQuery.isBlank()) searchStore.searchResults.clear()
+                if (searchStore.searchQuery.isBlank() && searchStore.activeTab == "messages") searchStore.searchResults.clear()
                 else searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel)
             }
         ).apply { setQuery(scoped) }
@@ -201,7 +201,9 @@ private fun SearchScreenContent(
                             .background(if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
                             .clickableCursor {
                                 searchStore.activeTab = id
-                                if (id != "members" && searchStore.searchQuery.isNotBlank()) {
+                                if (id == "messages" && searchStore.searchQuery.isBlank()) {
+                                    searchStore.searchResults.clear()
+                                } else if (id != "members") {
                                     searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel)
                                 }
                             }
@@ -229,7 +231,7 @@ private fun SearchScreenContent(
                     }
                 } else if (searchStore.searchResults.isEmpty()) {
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        if (searchStore.searchQuery.isEmpty()) {
+                        if (searchStore.searchQuery.isEmpty() && searchStore.activeTab == "messages") {
                             item {
                                 Text(
                                     "Search Options",

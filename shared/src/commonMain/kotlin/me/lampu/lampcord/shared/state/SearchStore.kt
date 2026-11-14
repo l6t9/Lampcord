@@ -49,9 +49,9 @@ class SearchStore(
 
     fun performSearch(selectedGuild: Guild?, selectedChannel: Channel?) {
         val query = searchQuery
-        if (query.isBlank()) return
+        if (query.isBlank() && activeTab == "messages") return
 
-        if (!searchHistory.contains(query)) {
+        if (query.isNotBlank() && !searchHistory.contains(query)) {
             searchHistory.add(0, query)
             if (searchHistory.size > 20) searchHistory.removeAt(searchHistory.lastIndex)
             Settings.shared.searchHistoryJson = json.encodeToString(searchHistory.toList())

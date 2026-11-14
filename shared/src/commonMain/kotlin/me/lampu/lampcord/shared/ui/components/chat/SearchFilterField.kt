@@ -205,8 +205,10 @@ class SearchInputState(
     fun clearAll() {
         chips.clear()
         typed = ""
+        selectedChip = null
         publish()
         refreshAutocomplete()
+        onFilterCommitted()
     }
 
     fun suggestions(): List<SearchSuggestion> {
