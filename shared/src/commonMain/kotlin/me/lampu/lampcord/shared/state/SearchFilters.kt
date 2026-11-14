@@ -1,5 +1,6 @@
 package me.lampu.lampcord.shared.state
 
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import me.lampu.lampcord.shared.model.Message
@@ -103,31 +104,16 @@ fun withChannelScope(query: String, channelName: String?): String {
 private const val DISCORD_EPOCH_MILLIS = 1_420_070_400_000L
 private const val DAY_MILLIS = 86_400_000L
 
-private fun searchDateMillis(date: String): Long? {
-    val parts = date.split("-")
-    if (parts.size != 3) return null
-    val year = parts[0].toIntOrNull() ?: return null
-    val month = parts[1].toIntOrNull() ?: return null
-    val day = parts[2].toIntOrNull() ?: return null
-    val y = if (month <= 2) year - 1 else year
-    val era = y / 400
-    val yoe = y - era * 400
-    val mp = (month + 9) % 12
-    val doy = (153 * mp + 2) / 5 + day - 1
-    val doe = yoe * 365 + yoe / 4 - yoe / 100 + doy
-    val epochDay = era.toLong() * 146097L + doe - 719468L
-    return epochDay * DAY_MILLIS
-}
-
 private fun snowflakeFromMillis(millis: Long): Long = (millis - DISCORD_EPOCH_MILLIS).coerceAtLeast(0L) shl 22
 
 fun searchDateBounds(key: String, date: String): Pair<String?, String?>? {
-    val start = searchDateMillis(date) ?: return null
-    val nextStart = start + DAY_MILLIS
+    val zone = TimeZone.currentSystemDefault()
+    val day = runCatching { LocalDate.parse(date) }.getOrNull() ?: return null
+    val start = day.atStartOfDayIn(zone).toEpochMilliseconds()
+    val end = start + DAY_MILLIS
     return when (key) {
-        "before" -> null to snowflakeFromMillis(nextStart).toString()
-        "after" -> (snowflakeFromMillis(start) - 1).toString() to null
-        else -> (snowflakeFromMillis(start) - 1).toString() to snowflakeFromMillis(nextStart).toString()
+        "before" -> null to (snowflakeFromMillis(start) - 1).toString()
+        "after" -> (snowflakeFromMillis(end) - 1).toString() to null
+        else -> (snowflakeFromMillis(start) - 1).toString() to (snowflakeFromMillis(end) - 1).toString()
     }
 }
-

@@ -43,9 +43,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -79,6 +83,8 @@ import kotlin.time.Instant
 
 private const val SEARCH_SENTINEL = "\u200B"
 
+private val ChipHeight = 28.dp
+
 data class SearchChip(val key: String, val value: String)
 
 data class SearchSuggestion(
@@ -111,6 +117,7 @@ class SearchInputState(
         private set
     var pendingDateKey by mutableStateOf<String?>(null)
     var selectedChip by mutableStateOf<Int?>(null)
+    var fieldFocused by mutableStateOf(false)
 
     val fieldValue: TextFieldValue
         get() {
@@ -304,6 +311,8 @@ fun SearchInputBar(
     trailing: @Composable () -> Unit = {},
 ) {
     var focused by remember { mutableStateOf(false) }
+    val focusRequester = remember { FocusRequester() }
+    val interactionSource = remember { MutableInteractionSource() }
 
     LaunchedEffect(externalQuery) {
         if (externalQuery != state.toQuery()) state.setQuery(externalQuery)
@@ -318,7 +327,10 @@ fun SearchInputBar(
                 if (focused) MaterialTheme.colorScheme.primary.copy(alpha = 0.6f) else Color.Transparent,
                 RoundedCornerShape(24.dp)
             )
-            .padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
+            .padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 6.dp)
+            .clickable(interactionSource = interactionSource, indication = null) {
+                focusRequester.requestFocus()
+            },
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
@@ -340,16 +352,20 @@ fun SearchInputBar(
                 value = state.fieldValue,
                 onValueChange = { state.onFieldChange(it) },
                 modifier = Modifier
+                    .focusRequester(focusRequester)
                     .defaultMinSize(minWidth = 96.dp)
-                    .padding(vertical = 4.dp)
-                    .onFocusChanged { focused = it.isFocused },
+                    .height(ChipHeight)
+                    .onFocusChanged {
+                        focused = it.isFocused
+                        state.fieldFocused = it.isFocused
+                    },
                 textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = { onSearch() }),
                 decorationBox = { innerTextField ->
-                    Box(contentAlignment = Alignment.CenterStart) {
+                    Box(modifier = Modifier.fillMaxHeight(), contentAlignment = Alignment.CenterStart) {
                         if (state.typed.isEmpty() && state.chips.isEmpty()) {
                             Text(
                                 text = placeholder,
@@ -381,6 +397,7 @@ fun SearchInputBar(
 private fun SearchChipView(chip: SearchChip, selected: Boolean, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
+        modifier = Modifier.height(ChipHeight),
         shape = RoundedCornerShape(8.dp),
         color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
         border = BorderStroke(
@@ -388,14 +405,18 @@ private fun SearchChipView(chip: SearchChip, selected: Boolean, onClick: () -> U
             if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
         )
     ) {
-        Text(
-            text = "${chip.key}: ${chip.value}",
-            style = MaterialTheme.typography.bodyMedium,
-            color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-        )
+        Row(
+            modifier = Modifier.fillMaxHeight().padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "${chip.key}: ${chip.value}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
     }
 }
 

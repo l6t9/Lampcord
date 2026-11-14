@@ -20,6 +20,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import me.lampu.lampcord.shared.gateway.GatewayManager
 import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
@@ -122,13 +124,21 @@ private fun SearchScreenContent(
         }
     }
 
-    PlatformBackHandler(enabled = autocompleteStore.searchAutocompleteType != null || searchStore.searchResults.isNotEmpty() || searchStore.searchQuery.isNotEmpty()) {
-        if (autocompleteStore.searchAutocompleteType != null) {
-            autocompleteStore.clear(isSearch = true)
-        } else if (searchStore.searchResults.isNotEmpty() || searchStore.searchQuery.isNotEmpty()) {
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    DisposableEffect(Unit) {
+        onDispose {
             searchStore.searchQuery = ""
             searchStore.searchResults.clear()
             autocompleteStore.clear(isSearch = true)
+        }
+    }
+
+    PlatformBackHandler(enabled = true) {
+        if (searchInput.fieldFocused) {
+            focusManager.clearFocus()
+            keyboardController?.hide()
         } else {
             onDismiss()
         }
@@ -333,19 +343,6 @@ private fun SearchScreenContent(
             }
         }
 
-        if (getPlatformName() == "android" && searchStore.searchQuery.isNotBlank() && !searchStore.isSearchLoading) {
-            ExtendedFloatingActionButton(
-                onClick = { searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel) },
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(16.dp)
-                    .navigationBarsPadding()
-                    .imePadding(),
-                icon = { Icon(Icons.Filled.Search, null) },
-                text = { Text(stringResource(Res.string.search)) },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            )
         }
     }
 }
