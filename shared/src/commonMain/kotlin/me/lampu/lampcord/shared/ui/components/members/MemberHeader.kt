@@ -140,35 +140,29 @@ fun MemberHeader(
         }
 
         if (isDesktop) {
-            val focusManager = LocalFocusManager.current
-            val searchInput = remember {
-                SearchInputState(
-                    autocompleteStore,
-                    navigationStore,
-                    onQueryChange = { searchStore.searchQuery = it },
-                    onFilterCommitted = {
-                        searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel)
-                    }
-                ).apply { setQuery(searchStore.searchQuery) }
-            }
-            Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-                SearchInputBar(
-                    state = searchInput,
-                    externalQuery = searchStore.searchQuery,
-                    placeholder = "Search in ${channel.name ?: "channel"}",
-                    onSearch = {
-                        searchStore.searchQuery = withChannelScope(
-                            searchInput.finalQuery(),
-                            channel.name.takeIf { channel.guild_id != null }
-                        )
-                        searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel)
-                        navigationStore.isSearchVisible = true
-                        focusManager.clearFocus()
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    trailing = { SearchFilterActions(searchInput) }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .height(40.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                    .clickable { navigationStore.isSearchVisible = true }
+                    .padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Search,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                SearchSuggestionMenu(state = searchInput)
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    text = stringResource(Res.string.search),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         } else {
             Row(

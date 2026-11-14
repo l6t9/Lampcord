@@ -5,6 +5,8 @@ import me.lampu.lampcord.shared.generated.resources.back
 import me.lampu.lampcord.shared.generated.resources.lampcord_settings_clear
 import me.lampu.lampcord.shared.generated.resources.search
 import me.lampu.lampcord.shared.generated.resources.search_filter_menu_title
+import me.lampu.lampcord.shared.generated.resources.members
+import me.lampu.lampcord.shared.generated.resources.messages
 import org.jetbrains.compose.resources.stringResource
 
 import androidx.compose.foundation.background
@@ -178,7 +180,13 @@ private fun SearchScreenContent(
                     .padding(horizontal = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                listOf("messages" to "Messages", "media" to "Media", "links" to "Links", "files" to "Files").forEach { (id, label) ->
+                listOf(
+                    "messages" to stringResource(Res.string.messages),
+                    "members" to stringResource(Res.string.members),
+                    "media" to "Media",
+                    "links" to "Links",
+                    "files" to "Files"
+                ).forEach { (id, label) ->
                     val selected = searchStore.activeTab == id
                     Text(
                         text = label,
@@ -189,7 +197,7 @@ private fun SearchScreenContent(
                             .background(if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
                             .clickableCursor {
                                 searchStore.activeTab = id
-                                if (searchStore.searchQuery.isNotBlank()) {
+                                if (id != "members" && searchStore.searchQuery.isNotBlank()) {
                                     searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel)
                                 }
                             }
@@ -202,7 +210,16 @@ private fun SearchScreenContent(
                 SearchSuggestionList(state = searchInput, modifier = Modifier.weight(1f))
             } else {
             Box(modifier = Modifier.weight(1f)) {
-                if (searchStore.isSearchLoading) {
+                if (searchStore.activeTab == "members") {
+                    SearchMemberList(
+                        query = parseSearchQuery(searchStore.searchQuery).text,
+                        onPick = { username ->
+                            searchStore.searchQuery = "from:$username"
+                            searchStore.activeTab = "messages"
+                            searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel)
+                        }
+                    )
+                } else if (searchStore.isSearchLoading) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         ContainedLoadingIndicator()
                     }
@@ -371,6 +388,38 @@ private fun SearchScreenContent(
                 }
 
             }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchMemberList(query: String, onPick: (String) -> Unit) {
+    val memberListStore: MemberListStore = koinInject()
+    val members = memberListStore.memberListItems.filterNotNull().mapNotNull { it.member }
+    val filtered = members.filter { member ->
+        val username = member.user?.username.orEmpty()
+        val display = member.nick ?: member.user?.global_name ?: username
+        query.isBlank() || display.contains(query, ignoreCase = true) || username.contains(query, ignoreCase = true)
+    }
+    LazyColumn(modifier = Modifier.fillMaxSize()) {
+        items(filtered) { member ->
+            val username = member.user?.username.orEmpty()
+            val display = member.nick ?: member.user?.global_name ?: username
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickableCursor { onPick(username) }
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+            ) {
+                Text(text = display, style = MaterialTheme.typography.bodyLarge)
+                if (display != username) {
+                    Text(
+                        text = "@$username",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }
