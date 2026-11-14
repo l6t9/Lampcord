@@ -266,7 +266,9 @@ class SearchStore(
 
         cached?.user?.id?.let { return it }
         if (selectedGuild == null) return null
-        return guildApi.searchGuildMembers(selectedGuild.id, username, limit = 10)
+        guildApi.searchGuildMembers(selectedGuild.id, username, limit = 1000)
+            .firstOrNull { matchesName(it, username) }?.user?.id?.let { return it }
+        return guildApi.getGuildMembers(selectedGuild.id, limit = 1000)
             .firstOrNull { matchesName(it, username) }?.user?.id
     }
 

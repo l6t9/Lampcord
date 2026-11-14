@@ -42,6 +42,9 @@ import me.lampu.lampcord.shared.ui.components.PlatformBackHandler
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.getPlatformName
 import org.koin.compose.koinInject
+import me.lampu.lampcord.shared.api.GuildApi
+import me.lampu.lampcord.shared.model.Member
+import kotlinx.coroutines.delay
 import me.lampu.lampcord.shared.ui.components.members.MemberItem
 import me.lampu.lampcord.shared.ui.components.members.MemberRowEnv
 import me.lampu.lampcord.shared.ui.LocalCurrentUser
@@ -446,13 +449,18 @@ private fun SearchMemberList(query: String, onPick: (String) -> Unit) {
             loadImages = true
         )
     }
+    val guildApi: GuildApi = koinInject()
+    val guildId = navigationStore.selectedGuild?.id
+    var serverMembers by remember { mutableStateOf<List<Member>>(emptyList()) }
+    LaunchedEffect(guildId, query) {
+        if (guildId == null) return@LaunchedEffect
+        delay(250)
+        serverMembers = guildApi.searchGuildMembers(guildId, query, limit = 100)
+    }
     val filtered by remember(query) {
         derivedStateOf {
-            memberListStore.memberListItems.mapNotNull { it?.member }.filter { member ->
-                val username = member.user?.username.orEmpty()
-                val display = member.nick ?: member.user?.global_name ?: username
-                query.isBlank() || display.contains(query, ignoreCase = true) || username.contains(query, ignoreCase = true)
-            }
+            val cached = memberListStore.memberListItems.mapNotNull { it?.member }.filter { matchesMemberQuery(it, query) }
+            (serverMembers + cached).distinctBy { it.user?.id }
         }
     }
     LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -460,4 +468,11 @@ private fun SearchMemberList(query: String, onPick: (String) -> Unit) {
             MemberItem(member, env)
         }
     }
+}
+
+private fun matchesMemberQuery(member: Member, query: String): Boolean {
+    if (query.isBlank()) return true
+    val username = member.user?.username.orEmpty()
+    val display = member.nick ?: member.user?.global_name ?: username
+    return display.contains(query, ignoreCase = true) || username.contains(query, ignoreCase = true)
 }
