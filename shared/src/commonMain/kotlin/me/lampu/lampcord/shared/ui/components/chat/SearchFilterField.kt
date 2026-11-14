@@ -104,11 +104,13 @@ class SearchInputState(
     private val autocompleteStore: AutocompleteStore,
     private val navigationStore: NavigationStore,
     private val onQueryChange: (String) -> Unit,
+    private val onFilterCommitted: () -> Unit,
 ) {
     val chips = mutableStateListOf<SearchChip>()
     var typed by mutableStateOf("")
         private set
     var pendingDateKey by mutableStateOf<String?>(null)
+    var selectedChip by mutableStateOf<Int?>(null)
 
     val fieldValue: TextFieldValue
         get() {
@@ -138,24 +140,38 @@ class SearchInputState(
 
     fun onFieldChange(newValue: TextFieldValue) {
         val raw = newValue.text
+        var committed = false
         if (raw.startsWith(SEARCH_SENTINEL)) {
             val next = raw.removePrefix(SEARCH_SENTINEL)
+            selectedChip = null
             typed = next
-            if (next.endsWith(" ")) commitCompletedWord()
+            if (next.endsWith(" ")) committed = commitCompletedWord()
         } else if (typed.isEmpty()) {
-            if (chips.isNotEmpty()) chips.removeAt(chips.lastIndex)
+            val selected = selectedChip
+            if (selected != null && selected in chips.indices) {
+                chips.removeAt(selected)
+                selectedChip = null
+                committed = true
+            } else if (chips.isNotEmpty()) {
+                selectedChip = chips.lastIndex
+            }
         } else {
             typed = raw
         }
+        openDateIfNeeded()
         publish()
+        if (committed) onFilterCommitted()
         refreshAutocomplete()
     }
 
     fun pickChip(key: String, value: String) {
         typed = dropActiveWord()
         chips.add(SearchChip(key, value))
+        selectedChip = null
+        pendingDateKey = null
         publish()
         refreshAutocomplete()
+        onFilterCommitted()
     }
 
     fun startFilter(key: String) {
@@ -165,6 +181,15 @@ class SearchInputState(
             typed.endsWith(" ") -> "$typed$key:"
             else -> "$typed $key:"
         }
+        selectedChip = null
+        openDateIfNeeded()
+        publish()
+        refreshAutocomplete()
+    }
+
+    fun cancelDate() {
+        pendingDateKey = null
+        typed = dropActiveWord()
         publish()
         refreshAutocomplete()
     }
@@ -178,21 +203,8 @@ class SearchInputState(
 
     fun suggestions(): List<SearchSuggestion> {
         val word = activeWord()
-        if (word.isEmpty()) return emptyList()
         val colon = word.indexOf(':')
-        if (colon < 0) {
-            return SEARCH_FILTER_DEFS
-                .filter { it.key.startsWith(word.lowercase()) }
-                .map { def ->
-                    SearchSuggestion(
-                        title = "${def.key}:",
-                        subtitle = def.label,
-                        avatar = null,
-                        icon = searchFilterIcon(def.key),
-                        onPick = { replaceActiveWord("${def.key}:") }
-                    )
-                }
-        }
+        if (colon <= 0) return emptyList()
         val key = canonicalSearchKey(word.substring(0, colon)) ?: return emptyList()
         val def = searchFilterDef(key) ?: return emptyList()
         val partial = word.substring(colon + 1)
@@ -217,16 +229,16 @@ class SearchInputState(
                         onPick = { pickChip(key, choice) }
                     )
                 }
-            SearchFilterKind.DATE -> listOf(
-                SearchSuggestion(
-                    title = def.label,
-                    subtitle = null,
-                    avatar = null,
-                    icon = searchFilterIcon(key),
-                    onPick = { pendingDateKey = key }
-                )
-            )
+            SearchFilterKind.DATE -> emptyList()
         }
+    }
+
+    private fun openDateIfNeeded() {
+        val word = activeWord()
+        val colon = word.indexOf(':')
+        if (colon <= 0 || word.length != colon + 1) return
+        val def = canonicalSearchKey(word.substring(0, colon))?.let(::searchFilterDef) ?: return
+        if (def.kind == SearchFilterKind.DATE) pendingDateKey = def.key
     }
 
     private fun publish() {
@@ -244,16 +256,17 @@ class SearchInputState(
         refreshAutocomplete()
     }
 
-    private fun commitCompletedWord() {
+    private fun commitCompletedWord(): Boolean {
         val trimmed = typed.trimEnd()
         val word = trimmed.substringAfterLast(' ')
         val colon = word.indexOf(':')
-        if (colon <= 0) return
-        val key = canonicalSearchKey(word.substring(0, colon)) ?: return
+        if (colon <= 0) return false
+        val key = canonicalSearchKey(word.substring(0, colon)) ?: return false
         val value = word.substring(colon + 1)
-        if (value.isEmpty()) return
+        if (value.isEmpty()) return false
         chips.add(SearchChip(key, value))
         typed = if (trimmed.contains(' ')) trimmed.substringBeforeLast(' ') else ""
+        return true
     }
 
     private fun refreshAutocomplete() {
@@ -320,7 +333,9 @@ fun SearchInputBar(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            state.chips.forEach { chip -> SearchChipView(chip) }
+            state.chips.forEachIndexed { index, chip ->
+                SearchChipView(chip, selected = state.selectedChip == index, onClick = { state.selectedChip = index })
+            }
             BasicTextField(
                 value = state.fieldValue,
                 onValueChange = { state.onFieldChange(it) },
@@ -353,7 +368,7 @@ fun SearchInputBar(
     state.pendingDateKey?.let { key ->
         SearchDatePickerDialog(
             title = searchFilterDef(key)?.label ?: key,
-            onDismiss = { state.pendingDateKey = null },
+            onDismiss = { state.cancelDate() },
             onConfirm = { date ->
                 state.pendingDateKey = null
                 state.pickChip(key, date)
@@ -363,16 +378,20 @@ fun SearchInputBar(
 }
 
 @Composable
-private fun SearchChipView(chip: SearchChip) {
+private fun SearchChipView(chip: SearchChip, selected: Boolean, onClick: () -> Unit) {
     Surface(
+        onClick = onClick,
         shape = RoundedCornerShape(8.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHighest,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
+        border = BorderStroke(
+            1.dp,
+            if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+        )
     ) {
         Text(
             text = "${chip.key}: ${chip.value}",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)

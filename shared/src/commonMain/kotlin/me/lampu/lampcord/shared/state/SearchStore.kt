@@ -8,6 +8,7 @@ import me.lampu.lampcord.shared.api.MessageApi
 import me.lampu.lampcord.shared.model.Channel
 import me.lampu.lampcord.shared.model.Guild
 import me.lampu.lampcord.shared.model.Message
+import me.lampu.lampcord.shared.model.SearchResponse
 import me.lampu.lampcord.shared.model.User
 import me.lampu.lampcord.shared.settings.Settings
 
@@ -23,8 +24,17 @@ class SearchStore(
     var searchQuery by mutableStateOf("")
     val searchResults = mutableStateListOf<Message>()
     var isSearchLoading by mutableStateOf(false)
+    var isLoadingMore by mutableStateOf(false)
     var totalSearchResults by mutableStateOf(0)
     val searchHistory = mutableStateListOf<String>()
+
+    private var activeQuery = ""
+    private var searchOffset = 0
+    private var apiTotal = 0
+    private var lastPageFull = false
+
+    val hasMoreResults: Boolean
+        get() = searchOffset <= 9_975 && (searchOffset < apiTotal || lastPageFull)
 
     init {
         try {
@@ -46,63 +56,96 @@ class SearchStore(
             Settings.shared.searchHistoryJson = json.encodeToString(searchHistory.toList())
         }
 
+        activeQuery = query
+        searchOffset = 0
+        apiTotal = 0
+        lastPageFull = false
         isSearchLoading = true
         searchResults.clear()
 
         scope.launch {
-            val parsed = parseSearchQuery(query)
-            val authorIds = parsed.values("from").map { resolveUserValue(it, selectedGuild, selectedChannel) }
-            val mentionIds = parsed.values("mentions").map { resolveUserValue(it, selectedGuild, selectedChannel) }
-            val channelIds = parsed.values("in").map { resolveChannelValue(it) }
-            val has = parsed.values("has")
-            val excludes = parsed.values("exclude")
-            val authorTypes = parsed.values("authortype")
-            val sortOrder = parsed.values("sort").firstOrNull()?.let { if (it.equals("old", ignoreCase = true)) "asc" else "desc" }
-            val before = parsed.values("before").firstOrNull()?.let(::resolveSearchDate)
-            val after = parsed.values("after").firstOrNull()?.let(::resolveSearchDate)
-            val during = parsed.values("during").firstOrNull()?.let(::resolveSearchDate)
-            val content = parsed.text.takeIf { it.isNotBlank() }
-
-            val response = if (selectedGuild != null) {
-                messageApi.searchGuildMessages(
-                    guildId = selectedGuild.id,
-                    content = content,
-                    authorIds = authorIds,
-                    mentions = mentionIds,
-                    has = has,
-                    channelIds = channelIds,
-                    before = before,
-                    after = after,
-                    during = during,
-                    sortOrder = sortOrder,
-                    authorTypes = authorTypes
-                )
-            } else if (selectedChannel != null) {
-                messageApi.searchChannelMessages(
-                    channelId = selectedChannel.id,
-                    content = content,
-                    authorIds = authorIds,
-                    mentions = mentionIds,
-                    has = has,
-                    before = before,
-                    after = after,
-                    during = during,
-                    sortOrder = sortOrder,
-                    authorTypes = authorTypes
-                )
-            } else null
-
-            response?.let {
-                val hits = it.messages.flatMap { group ->
-                    group.filter { message ->
-                        message.hit && excludes.none { kind -> message.matchesSearchExclusion(kind) }
-                    }
-                }
-                searchResults.addAll(hits)
-                totalSearchResults = if (excludes.isEmpty()) it.total_results else hits.size
-            }
+            val response = fetchPage(query, selectedGuild, selectedChannel, 0)
+            if (response != null) appendPage(response)
             isSearchLoading = false
         }
+    }
+
+    fun loadMoreResults(selectedGuild: Guild?, selectedChannel: Channel?) {
+        if (isSearchLoading || isLoadingMore || !hasMoreResults) return
+        isLoadingMore = true
+        val query = activeQuery
+        scope.launch {
+            val response = fetchPage(query, selectedGuild, selectedChannel, searchOffset)
+            if (response != null) appendPage(response)
+            isLoadingMore = false
+        }
+    }
+
+    private suspend fun fetchPage(
+        query: String,
+        selectedGuild: Guild?,
+        selectedChannel: Channel?,
+        offset: Int
+    ): SearchResponse? {
+        val parsed = parseSearchQuery(query)
+        val authorIds = parsed.values("from").map { resolveUserValue(it, selectedGuild, selectedChannel) }
+        val mentionIds = parsed.values("mentions").map { resolveUserValue(it, selectedGuild, selectedChannel) }
+        val channelIds = parsed.values("in").map { resolveChannelValue(it) }
+        val has = parsed.values("has") + parsed.values("exclude").map { "-$it" }
+        val authorTypes = parsed.values("authortype")
+        val sortOrder = parsed.values("sort").firstOrNull()?.let { if (it.equals("old", ignoreCase = true)) "asc" else "desc" }
+        val content = parsed.text.takeIf { it.isNotBlank() }
+
+        var minId: String? = null
+        var maxId: String? = null
+        parsed.tokens.filter { it.key == "before" || it.key == "after" || it.key == "during" }.forEach { token ->
+            val bounds = searchDateBounds(token.key, token.value) ?: return@forEach
+            bounds.first?.let { minId = it }
+            bounds.second?.let { maxId = it }
+        }
+
+        return if (selectedGuild != null) {
+            messageApi.searchGuildMessages(
+                guildId = selectedGuild.id,
+                content = content,
+                authorIds = authorIds,
+                mentions = mentionIds,
+                has = has,
+                channelIds = channelIds,
+                minId = minId,
+                maxId = maxId,
+                sortOrder = sortOrder,
+                authorTypes = authorTypes,
+                offset = offset
+            )
+        } else if (selectedChannel != null) {
+            messageApi.searchChannelMessages(
+                channelId = selectedChannel.id,
+                content = content,
+                authorIds = authorIds,
+                mentions = mentionIds,
+                has = has,
+                minId = minId,
+                maxId = maxId,
+                sortOrder = sortOrder,
+                authorTypes = authorTypes,
+                offset = offset
+            )
+        } else null
+    }
+
+    private fun appendPage(response: SearchResponse) {
+        if (response.messages.isEmpty()) {
+            apiTotal = searchOffset
+            lastPageFull = false
+            return
+        }
+        val hits = response.messages.flatMap { group -> group.filter { it.hit } }
+        searchResults.addAll(hits)
+        searchOffset += 25
+        apiTotal = response.total_results
+        lastPageFull = response.messages.size >= 25
+        totalSearchResults = response.total_results
     }
 
     private fun resolveUserValue(value: String, selectedGuild: Guild?, selectedChannel: Channel?): String {
@@ -143,5 +186,8 @@ class SearchStore(
         searchResults.clear()
         searchQuery = ""
         isSearchVisible = false
+        searchOffset = 0
+        apiTotal = 0
+        lastPageFull = false
     }
 }

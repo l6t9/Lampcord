@@ -11,6 +11,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -91,7 +92,34 @@ private fun SearchScreenContent(
             navigationStore.selectedChannel?.takeIf { navigationStore.selectedGuild != null }?.name
         )
         searchStore.searchQuery = scoped
-        SearchInputState(autocompleteStore, navigationStore) { searchStore.searchQuery = it }.apply { setQuery(scoped) }
+        SearchInputState(
+            autocompleteStore,
+            navigationStore,
+            onQueryChange = { searchStore.searchQuery = it },
+            onFilterCommitted = {
+                if (searchStore.searchQuery.isBlank()) searchStore.searchResults.clear()
+                else searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel)
+            }
+        ).apply { setQuery(scoped) }
+    }
+
+    val resultsListState = rememberLazyListState()
+
+    LaunchedEffect(Unit) {
+        if (searchStore.searchQuery.isNotBlank() && searchStore.searchResults.isEmpty()) {
+            searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel)
+        }
+    }
+
+    LaunchedEffect(resultsListState) {
+        snapshotFlow {
+            val lastVisible = resultsListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+            lastVisible to searchStore.searchResults.size
+        }.collect { (lastVisible, size) ->
+            if (size > 0 && lastVisible >= size - 5) {
+                searchStore.loadMoreResults(navigationStore.selectedGuild, navigationStore.selectedChannel)
+            }
+        }
     }
 
     PlatformBackHandler(enabled = autocompleteStore.searchAutocompleteType != null || searchStore.searchResults.isNotEmpty() || searchStore.searchQuery.isNotEmpty()) {
@@ -240,6 +268,7 @@ private fun SearchScreenContent(
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
                         LazyColumn(
+                            state = resultsListState,
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(
                                 bottom = 80.dp + WindowInsets.ime.union(WindowInsets.navigationBars).asPaddingValues().calculateBottomPadding()

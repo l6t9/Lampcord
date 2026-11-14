@@ -142,8 +142,14 @@ fun MemberHeader(
         if (isDesktop) {
             val focusManager = LocalFocusManager.current
             val searchInput = remember {
-                SearchInputState(autocompleteStore, navigationStore) { searchStore.searchQuery = it }
-                    .apply { setQuery(searchStore.searchQuery) }
+                SearchInputState(
+                    autocompleteStore,
+                    navigationStore,
+                    onQueryChange = { searchStore.searchQuery = it },
+                    onFilterCommitted = {
+                        searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel)
+                    }
+                ).apply { setQuery(searchStore.searchQuery) }
             }
             Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
                 SearchInputBar(
