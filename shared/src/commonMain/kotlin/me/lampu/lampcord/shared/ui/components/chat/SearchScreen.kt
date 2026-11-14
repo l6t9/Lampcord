@@ -342,7 +342,5 @@ private fun SearchScreenContent(
             }
             }
         }
-
-        }
     }
 }

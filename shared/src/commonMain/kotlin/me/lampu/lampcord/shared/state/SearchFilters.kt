@@ -1,6 +1,7 @@
 package me.lampu.lampcord.shared.state
 
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import me.lampu.lampcord.shared.model.Message
