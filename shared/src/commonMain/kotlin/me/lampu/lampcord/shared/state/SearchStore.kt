@@ -4,9 +4,11 @@ import androidx.compose.runtime.*
 import kotlinx.coroutines.*
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import me.lampu.lampcord.shared.api.GuildApi
 import me.lampu.lampcord.shared.api.MessageApi
 import me.lampu.lampcord.shared.model.Channel
 import me.lampu.lampcord.shared.model.Guild
+import me.lampu.lampcord.shared.model.Member
 import me.lampu.lampcord.shared.model.Message
 import me.lampu.lampcord.shared.model.SearchResponse
 import me.lampu.lampcord.shared.model.User
@@ -14,6 +16,7 @@ import me.lampu.lampcord.shared.settings.Settings
 
 class SearchStore(
     private val messageApi: MessageApi,
+    private val guildApi: GuildApi,
     private val memberListStore: MemberListStore,
     private val guildStore: GuildStore,
     private val userStore: UserStore,
@@ -25,6 +28,8 @@ class SearchStore(
     val searchResults = mutableStateListOf<Message>()
     var isSearchLoading by mutableStateOf(false)
     var isLoadingMore by mutableStateOf(false)
+    var searchFailed by mutableStateOf(false)
+    var unresolvedUser by mutableStateOf<String?>(null)
     var activeTab by mutableStateOf("messages")
     var totalSearchResults by mutableStateOf(0)
     val searchHistory = mutableStateListOf<String>()
@@ -58,19 +63,29 @@ class SearchStore(
             Settings.shared.searchHistoryJson = json.encodeToString(searchHistory.toList())
         }
 
-        val search = resolveSearch(query, selectedGuild, selectedChannel)
-        activeSearch = search
         searchOffset = 0
         apiTotal = 0
         lastPageFull = false
         isSearchLoading = true
         searchResults.clear()
+        searchFailed = false
+        unresolvedUser = null
         val gen = ++generation
 
         scope.launch {
+            val search = resolveSearch(query, selectedGuild, selectedChannel)
+            if (gen != generation) return@launch
+            val unresolved = search.unresolvedUser
+            if (unresolved != null) {
+                unresolvedUser = unresolved
+                isSearchLoading = false
+                return@launch
+            }
+            activeSearch = search
             val responses = fetchBatch(search, selectedGuild, selectedChannel, 0)
             if (gen == generation) {
                 appendBatch(responses)
+                searchFailed = responses.firstOrNull() == null
                 isSearchLoading = false
             }
         }
@@ -106,9 +121,25 @@ class SearchStore(
         val sortOrder: String?,
         val minId: String?,
         val maxId: String?,
-    )
+        val unresolvedUser: String? = null,
+    ) {
+        companion object {
+            fun unresolved(name: String) = ResolvedSearch(
+                content = null,
+                authorIds = emptyList(),
+                mentionIds = emptyList(),
+                has = emptyList(),
+                channelIds = emptyList(),
+                authorTypes = emptyList(),
+                sortOrder = null,
+                minId = null,
+                maxId = null,
+                unresolvedUser = name,
+            )
+        }
+    }
 
-    private fun resolveSearch(query: String, selectedGuild: Guild?, selectedChannel: Channel?): ResolvedSearch {
+    private suspend fun resolveSearch(query: String, selectedGuild: Guild?, selectedChannel: Channel?): ResolvedSearch {
         val parsed = parseSearchQuery(query)
         var minId: String? = null
         var maxId: String? = null
@@ -117,10 +148,18 @@ class SearchStore(
             bounds.first?.let { minId = it }
             bounds.second?.let { maxId = it }
         }
+        val authorIds = mutableListOf<String>()
+        for (name in parsed.values("from")) {
+            authorIds += resolveUserValue(name, selectedGuild, selectedChannel) ?: return ResolvedSearch.unresolved(name)
+        }
+        val mentionIds = mutableListOf<String>()
+        for (name in parsed.values("mentions")) {
+            mentionIds += resolveUserValue(name, selectedGuild, selectedChannel) ?: return ResolvedSearch.unresolved(name)
+        }
         return ResolvedSearch(
             content = parsed.text.takeIf { it.isNotBlank() },
-            authorIds = parsed.values("from").map { resolveUserValue(it, selectedGuild, selectedChannel) },
-            mentionIds = parsed.values("mentions").map { resolveUserValue(it, selectedGuild, selectedChannel) },
+            authorIds = authorIds,
+            mentionIds = mentionIds,
             has = parsed.values("has") + parsed.values("exclude").map { "-$it" } + tabHasFilters(),
             channelIds = parsed.values("in").map { resolveChannelValue(it) },
             authorTypes = parsed.values("authortype"),
@@ -203,15 +242,16 @@ class SearchStore(
         totalSearchResults = response.total_results
     }
 
-    private fun resolveUserValue(value: String, selectedGuild: Guild?, selectedChannel: Channel?): String {
+    private fun matchesName(member: Member, name: String): Boolean =
+        member.user?.username?.equals(name, ignoreCase = true) == true ||
+            member.nick?.equals(name, ignoreCase = true) == true ||
+            member.user?.global_name?.equals(name, ignoreCase = true) == true
+
+    private suspend fun resolveUserValue(value: String, selectedGuild: Guild?, selectedChannel: Channel?): String? {
         if (value.toLongOrNull() != null) return value
         val username = value.removePrefix("@")
-        val member = if (selectedGuild != null) {
-            memberListStore.memberListItems.filterNotNull().mapNotNull { it.member }.find {
-                it.user?.username?.equals(username, ignoreCase = true) == true ||
-                        it.nick?.equals(username, ignoreCase = true) == true ||
-                        it.user?.global_name?.equals(username, ignoreCase = true) == true
-            }
+        val cached = if (selectedGuild != null) {
+            memberListStore.memberListItems.filterNotNull().mapNotNull { it.member }.find { matchesName(it, username) }
         } else if (selectedChannel != null && selectedChannel.guild_id == null) {
             val dmUsers = mutableListOf<User>()
             selectedChannel.recipients?.let { dmUsers.addAll(it) }
@@ -221,13 +261,13 @@ class SearchStore(
                 }
             }
             userStore.currentUser.value?.let { dmUsers.add(it) }
-            dmUsers.distinctBy { it.id }.map { me.lampu.lampcord.shared.model.Member(user = it) }.find {
-                it.user?.username?.equals(username, ignoreCase = true) == true ||
-                        it.user?.global_name?.equals(username, ignoreCase = true) == true
-            }
+            dmUsers.distinctBy { it.id }.map { Member(user = it) }.find { matchesName(it, username) }
         } else null
 
-        return member?.user?.id ?: value
+        cached?.user?.id?.let { return it }
+        if (selectedGuild == null) return null
+        return guildApi.searchGuildMembers(selectedGuild.id, username, limit = 10)
+            .firstOrNull { matchesName(it, username) }?.user?.id
     }
 
     private fun resolveChannelValue(value: String): String {
@@ -239,6 +279,7 @@ class SearchStore(
 
     fun clear() {
         generation++
+        unresolvedUser = null
         searchResults.clear()
         searchQuery = ""
         isSearchVisible = false

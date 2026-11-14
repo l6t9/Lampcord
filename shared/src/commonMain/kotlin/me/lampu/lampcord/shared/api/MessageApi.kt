@@ -341,16 +341,16 @@ class MessageApi(private val rest: RestClient) {
     }
 
     private suspend fun requestSearch(url: String, configure: HttpRequestBuilder.() -> Unit): SearchResponse? {
-        for (attempt in 0 until 3) {
+        for (attempt in 0 until 8) {
             val response = rest.httpClient.get(url) {
                 standardHeaders(rest)
                 configure()
             }
             if (response.status.value == 202) {
-                if (attempt == 2) return null
+                if (attempt == 7) return null
                 val body = response.bodyAsText()
                 val retryAfter = RETRY_AFTER_REGEX.find(body)?.groupValues?.get(1)?.toDoubleOrNull() ?: 1.0
-                delay((retryAfter * 1000).toLong().coerceAtLeast(500L))
+                delay((retryAfter * 1000).toLong().coerceIn(500L, 3000L))
                 continue
             }
             if (!response.status.isSuccess()) return null

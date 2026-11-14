@@ -3512,4 +3512,6 @@
     <string name="search_panel_options">Search options</string>
     <string name="search_panel_history">History</string>
     <string name="search_panel_no_results">No results found</string>
+    <string name="search_panel_failed">Couldn\'t load results. Tap to retry.</string>
+    <string name="search_panel_no_user">No user named %1$s</string>
 </resources>

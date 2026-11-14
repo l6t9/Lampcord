@@ -12,6 +12,8 @@ import me.lampu.lampcord.shared.generated.resources.search_panel_files
 import me.lampu.lampcord.shared.generated.resources.search_panel_options
 import me.lampu.lampcord.shared.generated.resources.search_panel_history
 import me.lampu.lampcord.shared.generated.resources.search_panel_no_results
+import me.lampu.lampcord.shared.generated.resources.search_panel_failed
+import me.lampu.lampcord.shared.generated.resources.search_panel_no_user
 import me.lampu.lampcord.shared.generated.resources.messages
 import org.jetbrains.compose.resources.stringResource
 
@@ -324,8 +326,19 @@ private fun SearchScreenContent(
                             }
                         } else {
                             item {
-                                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                    Text(stringResource(Res.string.search_panel_no_results), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Box(
+                                    modifier = Modifier.fillMaxSize().clickableCursor {
+                                        if (searchStore.searchFailed) {
+                                            searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel)
+                                        }
+                                    },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = searchStore.unresolvedUser?.let { stringResource(Res.string.search_panel_no_user, it) }
+                                            ?: if (searchStore.searchFailed) stringResource(Res.string.search_panel_failed) else stringResource(Res.string.search_panel_no_results),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                 }
                             }
                         }
