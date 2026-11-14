@@ -170,6 +170,7 @@ kotlin {
         getByName("desktopTest") {
             dependencies {
                 implementation(kotlin("test-junit"))
+                implementation(libs.ktor.client.mock)
             }
         }
 

@@ -103,7 +103,7 @@ class AutocompleteStore(
                         .take(MentionMemberLimit)
                         .toMutableList()
 
-                    if (local.size < 5) {
+                    if (isSearch || local.size < 5) {
                         memberSearchJob = scope.launch {
                             val remote = if (query.isEmpty()) {
                                 guildApi.getGuildMembers(guildId, limit = 100)
@@ -123,7 +123,7 @@ class AutocompleteStore(
                                         user.id == query
                                 }
                                 .take(MentionMemberLimit)
-                            if (merged.size != local.size) {
+                            if (isSearch || merged.size != local.size) {
                                 updateAutocompleteResults(type, query, selectedGuild, isSearch, merged)
                             }
                         }

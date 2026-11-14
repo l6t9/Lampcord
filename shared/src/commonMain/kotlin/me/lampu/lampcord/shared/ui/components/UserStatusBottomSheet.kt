@@ -239,7 +239,7 @@ fun UserStatusBottomSheet(
 }
 
 @Composable
-private fun AccountSwitcherItem(
+internal fun AccountSwitcherItem(
     account: SavedAccount,
     isSelected: Boolean,
     onClick: () -> Unit

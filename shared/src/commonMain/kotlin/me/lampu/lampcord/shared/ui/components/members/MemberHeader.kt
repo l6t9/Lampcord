@@ -1,50 +1,34 @@
 package me.lampu.lampcord.shared.ui.components.members
 
 import me.lampu.lampcord.shared.generated.resources.Res
+import me.lampu.lampcord.shared.generated.resources.search
 import me.lampu.lampcord.shared.generated.resources.close_dm
 import me.lampu.lampcord.shared.generated.resources.copy_id
-import me.lampu.lampcord.shared.generated.resources.lampcord_settings_clear
 import me.lampu.lampcord.shared.generated.resources.pinned_messages
 import org.jetbrains.compose.resources.stringResource
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import me.lampu.lampcord.shared.model.AutocompleteType
 import me.lampu.lampcord.shared.model.Channel
-import me.lampu.lampcord.shared.model.Emoji
 import me.lampu.lampcord.shared.state.AutocompleteStore
-import me.lampu.lampcord.shared.state.GuildStore
 import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.state.SearchStore
 import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.state.UserStore
-import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.CleanUtils
 import me.lampu.lampcord.shared.utils.Permission
@@ -135,155 +119,29 @@ fun MemberHeader(
         }
 
         if (isDesktop) {
-            val focusManager = LocalFocusManager.current
-            var isFocused by remember { mutableStateOf(false) }
-            var textFieldValue by remember {
-                mutableStateOf<TextFieldValue>(TextFieldValue(searchStore.searchQuery, TextRange(searchStore.searchQuery.length)))
-            }
-
-            LaunchedEffect(searchStore.searchQuery) {
-                if (searchStore.searchQuery != textFieldValue.text) {
-                    textFieldValue = TextFieldValue(searchStore.searchQuery, TextRange(searchStore.searchQuery.length))
-                }
-            }
-
-            Box(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
                     .height(40.dp)
                     .clip(RoundedCornerShape(20.dp))
-                    .background(
-                        if (isFocused) MaterialTheme.colorScheme.surfaceContainerHigh
-                        else MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.65f)
-                    )
-                    .border(
-                        1.dp,
-                        if (isFocused) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                        else Color.Transparent,
-                        RoundedCornerShape(20.dp)
-                    )
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                    .clickable { navigationStore.isSearchVisible = true }
+                    .padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                BasicTextField(
-                    value = textFieldValue,
-                    onValueChange = { value ->
-                        textFieldValue = value
-                        searchStore.searchQuery = value.text
-                        if (value.text.isNotBlank()) {
-                            val lastPart = value.text.split(" ").last()
-                            val (type, query) = when {
-                                lastPart.startsWith("from:", ignoreCase = true) -> AutocompleteType.USER to lastPart.substring(5)
-                                lastPart.startsWith("mentions:", ignoreCase = true) -> AutocompleteType.USER to lastPart.substring(9)
-                                lastPart.startsWith("in:", ignoreCase = true) -> AutocompleteType.CHANNEL to lastPart.substring(3)
-                                lastPart.startsWith("@") -> AutocompleteType.MENTION to lastPart.substring(1)
-                                lastPart.startsWith("#") -> AutocompleteType.CHANNEL to lastPart.substring(1)
-                                else -> null to ""
-                            }
-                            autocompleteStore.updateAutocomplete(type, query, navigationStore.selectedGuild, channel, isSearch = true)
-                        } else {
-                            autocompleteStore.clear(isSearch = true)
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .align(Alignment.CenterStart)
-                        .onFocusChanged { isFocused = it.isFocused },
-                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
-                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(onSearch = {
-                        if (searchStore.searchQuery.isNotBlank()) {
-                            searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel)
-                            navigationStore.isSearchVisible = true
-                            focusManager.clearFocus()
-                        }
-                    }),
-                    decorationBox = { innerTextField: @Composable () -> Unit ->
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Search,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
-                                tint = if (isFocused) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(Modifier.width(10.dp))
-                            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-                                if (searchStore.searchQuery.isEmpty()) {
-                                    Text(
-                                        "Search in ${channel.name ?: "channel"}",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                    )
-                                }
-                                innerTextField()
-                            }
-                            if (searchStore.searchQuery.isNotEmpty()) {
-                                IconButton(
-                                    onClick = {
-                                        searchStore.searchQuery = ""
-                                        autocompleteStore.clear(isSearch = true)
-                                    },
-                                    modifier = Modifier.size(24.dp)
-                                ) {
-                                    Icon(
-                                        Icons.Filled.Close,
-                                        contentDescription = stringResource(Res.string.lampcord_settings_clear),
-                                        modifier = Modifier.size(16.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
-                    }
+                Icon(
+                    imageVector = Icons.Filled.Search,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-
-                DropdownMenu(
-                    expanded = isFocused && autocompleteStore.searchAutocompleteType != null && autocompleteStore.searchAutocompleteItems.isNotEmpty(),
-                    onDismissRequest = {  },
-                    properties = androidx.compose.ui.window.PopupProperties(focusable = false),
-                    modifier = Modifier.width(300.dp).background(MaterialTheme.colorScheme.surfaceContainerHigh),
-                    offset = DpOffset(16.dp, 4.dp)
-                ) {
-                    autocompleteStore.searchAutocompleteItems.forEach { item ->
-                        DropdownMenuItem(
-                            modifier = Modifier.handCursor(),
-                            text = {
-                                Text(
-                                    item.title,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            },
-                            leadingIcon = item.icon?.let { icon ->
-                                {
-                                    AsyncImage(
-                                        model = icon,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(24.dp).clip(CircleShape)
-                                    )
-                                }
-                            },
-                            onClick = {
-                                val currentQuery = textFieldValue.text
-                                val parts = currentQuery.split(" ").toMutableList()
-                                if (parts.isNotEmpty()) {
-                                    val lastPart = parts.last()
-                                    val prefix = if (lastPart.contains(":")) lastPart.substringBefore(":") + ":" else ""
-                                    val replacement = item.searchReplacement ?: item.replacement
-                                    parts[parts.lastIndex] = prefix + replacement
-                                    val newText = parts.joinToString(" ") + " "
-                                    textFieldValue = TextFieldValue(newText, TextRange(newText.length))
-                                    searchStore.searchQuery = newText
-                                }
-                                autocompleteStore.clear(isSearch = true)
-                            }
-                        )
-                    }
-                }
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    text = stringResource(Res.string.search),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         } else {
             Row(

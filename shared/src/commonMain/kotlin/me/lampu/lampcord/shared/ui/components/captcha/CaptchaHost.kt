@@ -50,6 +50,8 @@ import kotlinx.coroutines.delay
 import kotlinx.serialization.json.JsonPrimitive
 import kotlin.math.roundToInt
 import me.lampu.lampcord.shared.api.CaptchaChallenge
+import me.lampu.lampcord.shared.api.CaptchaService
+import me.lampu.lampcord.shared.api.RECAPTCHA_ENTERPRISE_ACTION
 import me.lampu.lampcord.shared.captcha.CaptchaCoordinator
 import me.lampu.lampcord.shared.generated.resources.Res
 import me.lampu.lampcord.shared.generated.resources.cancel
@@ -69,7 +71,6 @@ private const val CAPTCHA_PAGE_URL = "https://discord.com/login"
 private const val HIDDEN_CARD_ALPHA = 0.02f
 private const val HIDDEN_CARD_OFFSET_PX = 20_000
 private const val PAGE_SETTLE_MS = 600L
-private const val REVEAL_AFTER_MS = 5_000L
 
 @Composable
 fun CaptchaHost(coordinator: CaptchaCoordinator = koinInject()) {
@@ -103,12 +104,7 @@ private fun CaptchaDialogContent(
     val colors = MaterialTheme.colorScheme
     val webViewAvailable = remember { isEmbeddedWebViewAvailable() }
     var expanded by remember { mutableStateOf(false) }
-    var revealed by remember { mutableStateOf(!webViewAvailable) }
-    LaunchedEffect(Unit) {
-        delay(REVEAL_AFTER_MS)
-        revealed = true
-        expanded = webViewAvailable
-    }
+    var revealed by remember { mutableStateOf(!webViewAvailable || !challenge.isInvisible) }
     val cardAlpha by animateFloatAsState(
         targetValue = if (revealed) 1f else HIDDEN_CARD_ALPHA,
         label = "captchaCardAlpha",
@@ -181,13 +177,18 @@ private fun CaptchaDialogContent(
         }
 
         if (!revealed) {
-            Box(
+            Column(
                 modifier = Modifier
                     .matchParentSize()
                     .pointerInput(Unit) { detectTapGestures { } },
-                contentAlignment = Alignment.Center,
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
             ) {
                 ContainedLoadingIndicator(indicatorColor = colors.primary)
+                Spacer(Modifier.height(16.dp))
+                TextButton(onClick = onCancel) {
+                    Text(stringResource(Res.string.cancel), color = colors.primary)
+                }
             }
         }
     }
@@ -251,6 +252,7 @@ private fun CaptchaFrame(
                 onExpandedChange(true)
             }
             if (event == "close") onExpandedChange(false)
+            if (isFailureEvent(event)) onReveal()
         } else if (title != null && title.startsWith(CAPTCHA_TITLE_PREFIX) && title != initialTitle) {
             widgetReady = true
             val token = title.removePrefix(CAPTCHA_TITLE_PREFIX)
@@ -297,7 +299,21 @@ internal fun captchaInjectionScript(
     val eventPrefix = jsString(CAPTCHA_EVENT_PREFIX)
     val bg = jsString(background)
     val themeLiteral = jsString(theme)
-    return """
+    val invisibleLiteral = if (challenge.isInvisible) "true" else "false"
+    val actionLiteral = jsString(RECAPTCHA_ENTERPRISE_ACTION)
+    val scriptSrc = jsString(
+        when (challenge.service) {
+            CaptchaService.HCAPTCHA -> "https://js.hcaptcha.com/1/api.js?render=explicit&onload=lampcordReady"
+            CaptchaService.RECAPTCHA -> "https://www.google.com/recaptcha/api.js?render=explicit&onload=lampcordReady"
+            CaptchaService.RECAPTCHA_ENTERPRISE -> "https://www.google.com/recaptcha/enterprise.js?render=${challenge.sitekey}"
+        },
+    )
+    val serviceBlock = when (challenge.service) {
+        CaptchaService.HCAPTCHA -> HCAPTCHA_SERVICE_JS
+        CaptchaService.RECAPTCHA -> RECAPTCHA_SERVICE_JS
+        CaptchaService.RECAPTCHA_ENTERPRISE -> RECAPTCHA_ENTERPRISE_SERVICE_JS
+    }
+    val head = """
 (function () {
   if (window.__lampcordTimer) { clearInterval(window.__lampcordTimer); }
   var stale = document.getElementById('lampcord-captcha');
@@ -322,12 +338,18 @@ internal fun captchaInjectionScript(
   }
   viewport.content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no';
 
+  var SITEKEY = $sitekey;
+  var RQDATA = $rqdata;
+  var INVISIBLE = $invisibleLiteral;
+  var THEME = $themeLiteral;
+  var ACTION = $actionLiteral;
+  var READY = $ready;
+
   var rendered = false;
   var widgetId = null;
   var executed = false;
   var executeTries = 0;
   var solved = false;
-  var rq = $rqdata;
 
   var status = '';
   doc.title = status;
@@ -353,43 +375,7 @@ internal fun captchaInjectionScript(
     status = $prefix + token;
     doc.title = status;
   };
-
-  function render() {
-    if (rendered || !window.hcaptcha) { return; }
-    rendered = true;
-    var opts = {
-      sitekey: $sitekey,
-      theme: $themeLiteral,
-      callback: window.lampcordDone,
-      'open-callback': function () { report('open'); },
-      'close-callback': function () { report('close'); },
-      'error-callback': function (code) { report('error:' + code); },
-      'expired-callback': function () { report('expired'); },
-      'chalexpired-callback': function () { report('challenge-expired'); }
-    };
-    if (rq) { opts.rqdata = rq; }
-    try {
-      widgetId = hcaptcha.render(box, opts);
-      setStatus($ready);
-    } catch (e) {
-      report('render-exception:' + e);
-    }
-  }
-  window.lampcordReady = render;
-
-  function runExecute() {
-    if (!rq || widgetId === null || executed || executeTries >= 5) { return; }
-    executeTries++;
-    try {
-      var pending = hcaptcha.execute(widgetId, { rqdata: rq });
-      executed = true;
-      if (pending && typeof pending.catch === 'function') {
-        pending.catch(function (e) { report('execute-error:' + e); });
-      }
-    } catch (e) {
-      report('execute-failed:' + executeTries + ':' + e);
-    }
-  }
+  window.lampcordReady = function () { serviceRender(); };
 
   function fit() {
     var natural = box.scrollWidth;
@@ -401,23 +387,134 @@ internal fun captchaInjectionScript(
       box.style.transform = '';
     }
   }
-
+"""
+    val tail = """
   window.__lampcordTimer = setInterval(function () {
     if (!overlay.isConnected) { doc.documentElement.appendChild(overlay); }
     if (doc.title !== status) { doc.title = status; }
     if (window.scrollX !== 0 || window.scrollY !== 0) { window.scrollTo(0, 0); }
-    render();
-    runExecute();
+    serviceRender();
+    serviceExecute();
     fit();
   }, 500);
 
   var s = doc.createElement('script');
-  s.src = 'https://js.hcaptcha.com/1/api.js?render=explicit&onload=lampcordReady';
+  s.src = $scriptSrc;
   s.onerror = function () { report('script-load-error'); };
   doc.documentElement.appendChild(s);
 })();
 """
+    return head + serviceBlock + tail
 }
+
+private val FAILURE_EVENT_PREFIXES = listOf(
+    "error",
+    "expired",
+    "challenge-expired",
+    "execute",
+    "render-exception",
+    "script-load-error",
+)
+
+private fun isFailureEvent(event: String): Boolean =
+    FAILURE_EVENT_PREFIXES.any { event.startsWith(it) }
+
+private const val HCAPTCHA_SERVICE_JS = """
+  function serviceRender() {
+    if (rendered || !window.hcaptcha) { return; }
+    rendered = true;
+    var opts = {
+      sitekey: SITEKEY,
+      theme: THEME,
+      callback: window.lampcordDone,
+      'open-callback': function () { report('open'); },
+      'close-callback': function () { report('close'); },
+      'error-callback': function (code) { report('error:' + code); },
+      'expired-callback': function () { report('expired'); },
+      'chalexpired-callback': function () { report('challenge-expired'); }
+    };
+    if (INVISIBLE) { opts.size = 'invisible'; }
+    if (RQDATA) { opts.rqdata = RQDATA; }
+    try {
+      widgetId = hcaptcha.render(box, opts);
+      setStatus(READY);
+    } catch (e) {
+      report('render-exception:' + e);
+    }
+  }
+
+  function serviceExecute() {
+    if (!(INVISIBLE || RQDATA) || widgetId === null || executed || executeTries >= 5) { return; }
+    executeTries++;
+    try {
+      var pending = RQDATA ? hcaptcha.execute(widgetId, { rqdata: RQDATA }) : hcaptcha.execute(widgetId);
+      executed = true;
+      if (pending && typeof pending.catch === 'function') {
+        pending.catch(function (e) { report('execute-error:' + e); });
+      }
+    } catch (e) {
+      report('execute-failed:' + executeTries + ':' + e);
+    }
+  }
+"""
+
+private const val RECAPTCHA_SERVICE_JS = """
+  function serviceRender() {
+    if (rendered || !window.grecaptcha || typeof grecaptcha.render !== 'function') { return; }
+    rendered = true;
+    var opts = {
+      sitekey: SITEKEY,
+      theme: THEME,
+      callback: window.lampcordDone,
+      'expired-callback': function () { report('expired'); },
+      'error-callback': function () { report('error:recaptcha'); }
+    };
+    if (INVISIBLE) { opts.size = 'invisible'; }
+    try {
+      widgetId = grecaptcha.render(box, opts);
+      setStatus(READY);
+    } catch (e) {
+      report('render-exception:' + e);
+    }
+  }
+
+  function serviceExecute() {
+    if (!INVISIBLE || widgetId === null || executed || executeTries >= 5) { return; }
+    executeTries++;
+    try {
+      executed = true;
+      grecaptcha.execute(widgetId);
+    } catch (e) {
+      report('execute-failed:' + executeTries + ':' + e);
+    }
+  }
+"""
+
+private const val RECAPTCHA_ENTERPRISE_SERVICE_JS = """
+  var enterpriseReady = false;
+
+  function serviceRender() {
+    if (rendered || !window.grecaptcha || !grecaptcha.enterprise) { return; }
+    rendered = true;
+    grecaptcha.enterprise.ready(function () {
+      enterpriseReady = true;
+      setStatus(READY);
+    });
+  }
+
+  function serviceExecute() {
+    if (!enterpriseReady || executed || executeTries >= 5) { return; }
+    executeTries++;
+    executed = true;
+    try {
+      grecaptcha.enterprise.execute(SITEKEY, { action: ACTION })
+        .then(function (token) { window.lampcordDone(token); })
+        .catch(function (e) { report('execute-error:' + e); });
+    } catch (e) {
+      report('execute-failed:' + executeTries + ':' + e);
+    }
+  }
+"""
 
 private fun jsString(value: String): String = JsonPrimitive(value).toString()
 

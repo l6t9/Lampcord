@@ -1,7 +1,6 @@
 package me.lampu.lampcord.shared.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -87,8 +86,8 @@ fun DiscordBottomSheet(
                 .then(
                     when {
                         fullBleed -> Modifier.fillMaxSize()
-                        fillHeight -> Modifier.fillMaxHeight(0.9f)
-                        else -> Modifier
+                        fillHeight -> Modifier.fillMaxHeight(0.9f).navigationBarsPadding()
+                        else -> Modifier.navigationBarsPadding()
                     }
                 )
         ) {

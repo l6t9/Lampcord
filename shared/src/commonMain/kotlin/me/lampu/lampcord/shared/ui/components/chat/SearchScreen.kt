@@ -2,40 +2,53 @@ package me.lampu.lampcord.shared.ui.components.chat
 
 import me.lampu.lampcord.shared.generated.resources.Res
 import me.lampu.lampcord.shared.generated.resources.back
-import me.lampu.lampcord.shared.generated.resources.lampcord_settings_clear
 import me.lampu.lampcord.shared.generated.resources.search
+import me.lampu.lampcord.shared.generated.resources.members
+import me.lampu.lampcord.shared.generated.resources.search_panel_in
+import me.lampu.lampcord.shared.generated.resources.search_panel_fallback
+import me.lampu.lampcord.shared.generated.resources.search_panel_media
+import me.lampu.lampcord.shared.generated.resources.search_panel_links
+import me.lampu.lampcord.shared.generated.resources.search_panel_files
+import me.lampu.lampcord.shared.generated.resources.search_panel_options
+import me.lampu.lampcord.shared.generated.resources.search_panel_history
+import me.lampu.lampcord.shared.generated.resources.search_panel_no_results
+import me.lampu.lampcord.shared.generated.resources.search_panel_failed
+import me.lampu.lampcord.shared.generated.resources.search_panel_no_user
+import me.lampu.lampcord.shared.generated.resources.messages
 import org.jetbrains.compose.resources.stringResource
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import me.lampu.lampcord.shared.gateway.GatewayManager
 import me.lampu.lampcord.shared.state.*
-import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
-import me.lampu.lampcord.shared.utils.getPlatformName
-import me.lampu.lampcord.shared.model.AutocompleteType
-import me.lampu.lampcord.shared.ui.components.AutocompletePicker
-import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.TextRange
 import me.lampu.lampcord.shared.ui.components.PlatformBackHandler
+import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.utils.getPlatformName
 import org.koin.compose.koinInject
+import me.lampu.lampcord.shared.api.GuildApi
+import me.lampu.lampcord.shared.model.Member
+import kotlinx.coroutines.delay
+import me.lampu.lampcord.shared.ui.components.members.MemberItem
+import me.lampu.lampcord.shared.ui.components.members.MemberRowEnv
+import me.lampu.lampcord.shared.ui.LocalCurrentUser
+import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -44,7 +57,6 @@ fun SearchScreen(
     onDismiss: () -> Unit
 ) {
     val isMobile = getPlatformName() == "android" || getPlatformName() == "ios"
-
     if (isMobile) {
         Surface(
             modifier = Modifier.fillMaxSize(),
@@ -95,152 +107,165 @@ private fun SearchScreenContent(
     gatewayManager: GatewayManager = koinInject(),
     messageStore: MessageStore = koinInject()
 ) {
-    var textFieldValue by remember {
-        mutableStateOf(TextFieldValue(searchStore.searchQuery, TextRange(searchStore.searchQuery.length)))
+    val searchInput = remember {
+        val scoped = withChannelScope(
+            searchStore.searchQuery,
+            navigationStore.selectedChannel?.takeIf { navigationStore.selectedGuild != null }?.name
+        )
+        SearchInputState(
+            autocompleteStore,
+            navigationStore,
+            onQueryChange = { searchStore.searchQuery = it },
+            onFilterCommitted = {
+                if (searchStore.searchQuery.isBlank() && searchStore.activeTab == "messages") searchStore.searchResults.clear()
+                else searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel)
+            }
+        ).apply { setQuery(scoped) }
     }
 
-    LaunchedEffect(searchStore.searchQuery) {
-        if (searchStore.searchQuery != textFieldValue.text) {
-            textFieldValue = TextFieldValue(searchStore.searchQuery, TextRange(searchStore.searchQuery.length))
+    LaunchedEffect(Unit) {
+        if (searchInput.toQuery() != searchStore.searchQuery) searchStore.searchQuery = searchInput.toQuery()
+    }
+
+    val resultsListState = rememberLazyListState()
+
+    LaunchedEffect(Unit) {
+        if (searchStore.searchQuery.isNotBlank() && searchStore.searchResults.isEmpty()) {
+            searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel)
         }
     }
-    val searchOptions = remember {
-        listOf(
-            SearchOption("from", Icons.Filled.Person, "user"),
-            SearchOption("mentions", Icons.Rounded.AlternateEmail, "user"),
-            SearchOption("has", Icons.Filled.Link, "link, embed or file"),
-            SearchOption("in", Icons.Filled.Tag, "channel"),
-            SearchOption("sort", Icons.AutoMirrored.Filled.List, "old"),
-            SearchOption("authorType", Icons.Filled.Person, "user, bot or webhook"),
-            SearchOption("exclude", Icons.Filled.Remove, "link, embed or file"),
-            SearchOption("before", Icons.Filled.History, "specific date"),
-            SearchOption("during", Icons.Filled.History, "specific date"),
-            SearchOption("after", Icons.Filled.History, "specific date")
-        )
+
+    LaunchedEffect(resultsListState) {
+        snapshotFlow {
+            val lastVisible = resultsListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+            lastVisible to searchStore.searchResults.size
+        }.collect { (lastVisible, size) ->
+            if (size > 0 && lastVisible >= size - 5) {
+                searchStore.loadMoreResults(navigationStore.selectedGuild, navigationStore.selectedChannel)
+            }
+        }
     }
 
-    PlatformBackHandler(enabled = autocompleteStore.searchAutocompleteType != null || searchStore.searchResults.isNotEmpty() || searchStore.searchQuery.isNotEmpty()) {
-        if (autocompleteStore.searchAutocompleteType != null) {
-            autocompleteStore.clear(isSearch = true)
-        } else if (searchStore.searchResults.isNotEmpty() || searchStore.searchQuery.isNotEmpty()) {
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    DisposableEffect(Unit) {
+        onDispose {
             searchStore.searchQuery = ""
             searchStore.searchResults.clear()
+            searchStore.activeTab = "messages"
             autocompleteStore.clear(isSearch = true)
+        }
+    }
+
+    PlatformBackHandler(enabled = true) {
+        if (searchInput.fieldFocused) {
+            focusManager.clearFocus()
+            keyboardController?.hide()
         } else {
             onDismiss()
         }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize().imePadding()) {
             TopAppBar(
-                title = {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(40.dp)
-                            .background(
-                                MaterialTheme.colorScheme.surfaceContainerHigh,
-                                RoundedCornerShape(20.dp)
-                            )
-                            .padding(horizontal = 12.dp),
-                        contentAlignment = Alignment.CenterStart
-                    ) {
-                        if (textFieldValue.text.isEmpty()) {
-                            val targetName = navigationStore.selectedGuild?.name ?: navigationStore.selectedChannel?.name ?: "Discord"
-                            Text(
-                                "Search in $targetName",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                            )
-                        }
-                        BasicTextField(
-                            value = textFieldValue,
-                            onValueChange = {
-                                textFieldValue = it
-                                searchStore.searchQuery = it.text
-                                if (it.text.isNotBlank()) {
-                                    val lastPart = it.text.split(" ").last()
-                                    val (type, query) = when {
-                                        lastPart.startsWith("from:", ignoreCase = true) -> AutocompleteType.USER to lastPart.substring(5)
-                                        lastPart.startsWith("mentions:", ignoreCase = true) -> AutocompleteType.USER to lastPart.substring(9)
-                                        lastPart.startsWith("in:", ignoreCase = true) -> AutocompleteType.CHANNEL to lastPart.substring(3)
-                                        lastPart.startsWith("@") -> AutocompleteType.MENTION to lastPart.substring(1)
-                                        lastPart.startsWith("#") -> AutocompleteType.CHANNEL to lastPart.substring(1)
-                                        else -> null to ""
-                                    }
-                                    autocompleteStore.updateAutocomplete(type, query, navigationStore.selectedGuild, navigationStore.selectedChannel, isSearch = true)
-                                } else {
-                                    autocompleteStore.clear(isSearch = true)
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
-                            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                            keyboardActions = KeyboardActions(onSearch = {
-                                searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel)
-                            })
-                        )
-                    }
-                },
+                title = { Text(stringResource(Res.string.search)) },
                 navigationIcon = {
                     IconButton(onClick = onDismiss) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.back))
                     }
                 },
-                actions = {
-                    if (textFieldValue.text.isNotEmpty()) {
-                        IconButton(onClick = {
-                            searchStore.searchQuery = ""
-                            searchStore.searchResults.clear()
-                            autocompleteStore.clear(isSearch = true)
-                        }) {
-                            Icon(Icons.Filled.Close, contentDescription = stringResource(Res.string.lampcord_settings_clear))
-                        }
-                    }
-                }
             )
 
+            SearchInputBar(
+                state = searchInput,
+                externalQuery = searchStore.searchQuery,
+                placeholder = "${stringResource(Res.string.search_panel_in)} ${navigationStore.selectedGuild?.name ?: navigationStore.selectedChannel?.name ?: stringResource(Res.string.search_panel_fallback)}",
+                onSearch = {
+                    searchStore.searchQuery = searchInput.finalQuery()
+                    searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel)
+                },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                trailing = { SearchFilterActions(searchInput) }
+            )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                listOf(
+                    "messages" to stringResource(Res.string.messages),
+                    "members" to stringResource(Res.string.members),
+                    "media" to stringResource(Res.string.search_panel_media),
+                    "links" to stringResource(Res.string.search_panel_links),
+                    "files" to stringResource(Res.string.search_panel_files)
+                ).forEach { (id, label) ->
+                    val selected = searchStore.activeTab == id
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
+                            .clickableCursor {
+                                searchStore.activeTab = id
+                                if (id == "messages" && searchStore.searchQuery.isBlank()) {
+                                    searchStore.searchResults.clear()
+                                } else if (id != "members") {
+                                    searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel)
+                                }
+                            }
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                    )
+                }
+            }
+
+            val suggestions = searchInput.suggestions()
+            if (suggestions.isNotEmpty()) {
+                SearchSuggestionList(suggestions = suggestions, modifier = Modifier.weight(1f))
+            } else {
             Box(modifier = Modifier.weight(1f)) {
-                if (searchStore.isSearchLoading) {
+                if (searchStore.activeTab == "members") {
+                    SearchMemberList(
+                        query = parseSearchQuery(searchStore.searchQuery).text,
+                        onPick = { username ->
+                            searchStore.searchQuery = "from:$username"
+                            searchStore.activeTab = "messages"
+                            searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel)
+                        }
+                    )
+                } else if (searchStore.isSearchLoading) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         ContainedLoadingIndicator()
                     }
                 } else if (searchStore.searchResults.isEmpty()) {
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        if (searchStore.searchQuery.isEmpty()) {
+                        if (searchStore.searchQuery.isEmpty() && searchStore.activeTab == "messages") {
                             item {
                                 Text(
-                                    "Search Options",
+                                    stringResource(Res.string.search_panel_options),
                                     style = MaterialTheme.typography.titleSmall,
                                     modifier = Modifier.padding(16.dp),
                                     color = MaterialTheme.colorScheme.primary
                                 )
                             }
-                            items(searchOptions) { option ->
+                            items(SEARCH_FILTER_DEFS) { def ->
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                    .clickableCursor {
-                                            val prefix = "${option.key}:"
-                                            val newText = if (textFieldValue.text.isEmpty()) prefix else "${textFieldValue.text} $prefix"
-                                            textFieldValue = TextFieldValue(newText, TextRange(newText.length))
-                                            searchStore.searchQuery = newText
-                                            
-                                            val type = when (option.key) {
-                                                "from", "mentions" -> AutocompleteType.USER
-                                                "in" -> AutocompleteType.CHANNEL
-                                                else -> null
-                                            }
-                                            autocompleteStore.updateAutocomplete(type, "", navigationStore.selectedGuild, navigationStore.selectedChannel, isSearch = true)
+                                        .clickableCursor {
+                                            searchInput.startFilter(def.key)
                                         }
                                         .padding(horizontal = 16.dp, vertical = 12.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(
-                                        imageVector = option.icon,
+                                        imageVector = searchFilterIcon(def.key),
                                         contentDescription = null,
                                         modifier = Modifier.size(24.dp),
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -248,12 +273,13 @@ private fun SearchScreenContent(
                                     Spacer(Modifier.width(24.dp))
                                     Column {
                                         Text(
-                                            text = buildString {
-                                                append(option.key)
-                                                append(": ")
-                                                append(option.valueHint)
-                                            },
+                                            text = "${def.key}:",
                                             style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+                                        )
+                                        Text(
+                                            text = def.label,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
                                 }
@@ -267,7 +293,7 @@ private fun SearchScreenContent(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text(
-                                            "History",
+                                            stringResource(Res.string.search_panel_history),
                                             style = MaterialTheme.typography.titleSmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -303,8 +329,19 @@ private fun SearchScreenContent(
                             }
                         } else {
                             item {
-                                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                    Text("No results found", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Box(
+                                    modifier = Modifier.fillMaxSize().clickableCursor {
+                                        if (searchStore.searchFailed) {
+                                            searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel)
+                                        }
+                                    },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = searchStore.unresolvedUser?.let { stringResource(Res.string.search_panel_no_user, it) }
+                                            ?: if (searchStore.searchFailed) stringResource(Res.string.search_panel_failed) else stringResource(Res.string.search_panel_no_results),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                 }
                             }
                         }
@@ -320,6 +357,7 @@ private fun SearchScreenContent(
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
                         LazyColumn(
+                            state = resultsListState,
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(
                                 bottom = 80.dp + WindowInsets.ime.union(WindowInsets.navigationBars).asPaddingValues().calculateBottomPadding()
@@ -380,51 +418,61 @@ private fun SearchScreenContent(
                     }
                 }
 
-                if (autocompleteStore.searchAutocompleteType != null) {
-                    AutocompletePicker(
-                        type = autocompleteStore.searchAutocompleteType!!,
-                        query = autocompleteStore.searchAutocompleteQuery,
-                        selectedIndex = autocompleteStore.searchAutocompleteSelectedIndex,
-                        isSearch = true,
-                        modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(horizontal = 8.dp),
-                        onItemSelected = { item ->
-                            val currentQuery = textFieldValue.text
-                            val parts = currentQuery.split(" ").toMutableList()
-                            if (parts.isNotEmpty()) {
-                                val lastPart = parts.last()
-                                val prefix = if (lastPart.contains(":")) lastPart.substringBefore(":") + ":" else ""
-                                val replacement = item.searchReplacement ?: item.replacement
-                                parts[parts.lastIndex] = prefix + replacement
-                                val newText = parts.joinToString(" ") + " "
-                                textFieldValue = TextFieldValue(newText, TextRange(newText.length))
-                                searchStore.searchQuery = newText
-                            }
-                            autocompleteStore.clear(isSearch = true)
-                        }
-                    )
-                }
             }
-        }
-
-        if (getPlatformName() == "android" && searchStore.searchQuery.isNotBlank() && !searchStore.isSearchLoading) {
-            ExtendedFloatingActionButton(
-                onClick = { searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel) },
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(16.dp)
-                    .navigationBarsPadding()
-                    .imePadding(),
-                icon = { Icon(Icons.Filled.Search, null) },
-                text = { Text(stringResource(Res.string.search)) },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            )
+            }
         }
     }
 }
 
-data class SearchOption(
-    val key: String,
-    val icon: ImageVector,
-    val valueHint: String
-)
+@Composable
+private fun SearchMemberList(query: String, onPick: (String) -> Unit) {
+    val memberListStore: MemberListStore = koinInject()
+    val presenceStore: PresenceStore = koinInject()
+    val relationshipStore: RelationshipStore = koinInject()
+    val settingsStore: SettingsStore = koinInject()
+    val navigationStore: NavigationStore = koinInject()
+    val relationshipTypes = relationshipStore.relationshipTypes.collectAsState()
+    val currentUser = LocalCurrentUser.current
+    val userSettings = settingsStore.userSettings
+    val isTouch = remember { getPlatformName().let { it == "android" || it == "ios" } }
+    val reduceMotion = Settings.shared.reduceMotion
+    val env = remember(navigationStore.selectedGuild, currentUser?.id, userSettings?.status, userSettings?.developer_mode, reduceMotion) {
+        MemberRowEnv(
+            guild = navigationStore.selectedGuild,
+            currentUserId = currentUser?.id,
+            currentUserStatus = userSettings?.status,
+            developerMode = userSettings?.developer_mode == true,
+            presenceStore = presenceStore,
+            relationshipTypes = relationshipTypes,
+            animate = !isTouch && !reduceMotion,
+            isTouch = isTouch,
+            loadImages = true
+        )
+    }
+    val guildApi: GuildApi = koinInject()
+    val guildId = navigationStore.selectedGuild?.id
+    var serverMembers by remember { mutableStateOf<List<Member>>(emptyList()) }
+    LaunchedEffect(guildId, query) {
+        if (guildId == null) return@LaunchedEffect
+        delay(250)
+        serverMembers = guildApi.searchGuildMembers(guildId, query, limit = 100)
+    }
+    val filtered by remember(query) {
+        derivedStateOf {
+            val cached = memberListStore.memberListItems.mapNotNull { it?.member }.filter { matchesMemberQuery(it, query) }
+            (serverMembers + cached).distinctBy { it.user?.id }
+        }
+    }
+    LazyColumn(modifier = Modifier.fillMaxSize()) {
+        items(filtered) { member ->
+            MemberItem(member, env)
+        }
+    }
+}
+
+private fun matchesMemberQuery(member: Member, query: String): Boolean {
+    if (query.isBlank()) return true
+    val username = member.user?.username.orEmpty()
+    val display = member.nick ?: member.user?.global_name ?: username
+    return display.contains(query, ignoreCase = true) || username.contains(query, ignoreCase = true)
+}

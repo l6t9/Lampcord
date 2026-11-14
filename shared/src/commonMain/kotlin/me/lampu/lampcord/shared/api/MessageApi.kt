@@ -3,6 +3,7 @@ package me.lampu.lampcord.shared.api
 import io.ktor.client.call.body
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
+import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.parameter
 import io.ktor.client.request.patch
 import io.ktor.client.request.post
@@ -18,6 +19,7 @@ import io.ktor.http.contentType
 import io.ktor.http.encodeURLQueryComponent
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 import kotlinx.serialization.Serializable
 import me.lampu.lampcord.shared.model.AllowedMentions
 import me.lampu.lampcord.shared.model.Message
@@ -46,6 +48,8 @@ data class AttachmentRequest(
     val filename: String,
     val description: String? = null
 )
+
+private val RETRY_AFTER_REGEX = Regex("\"retry_after\"\\s*:\\s*([0-9.]+)")
 
 class MessageApi(private val rest: RestClient) {
 
@@ -310,32 +314,67 @@ class MessageApi(private val rest: RestClient) {
         }
     }
 
+    private fun HttpRequestBuilder.applySearchParams(
+        content: String?,
+        authorIds: List<String>,
+        mentions: List<String>,
+        has: List<String>,
+        minId: String?,
+        maxId: String?,
+        sortOrder: String?,
+        authorTypes: List<String>,
+        offset: Int,
+        channelIds: List<String>
+    ) {
+        parameter("limit", 25)
+        if (offset > 0) parameter("offset", offset)
+        content?.let { parameter("content", it) }
+        authorIds.forEach { parameter("author_id", it) }
+        mentions.forEach { parameter("mentions", it) }
+        has.forEach { parameter("has", it) }
+        authorTypes.forEach { parameter("author_type", it) }
+        channelIds.forEach { parameter("channel_id", it) }
+        minId?.let { parameter("min_id", it) }
+        maxId?.let { parameter("max_id", it) }
+        parameter("sort_by", "timestamp")
+        parameter("sort_order", sortOrder ?: "desc")
+    }
+
+    private suspend fun requestSearch(url: String, configure: HttpRequestBuilder.() -> Unit): SearchResponse? {
+        for (attempt in 0 until 8) {
+            val response = rest.httpClient.get(url) {
+                standardHeaders(rest)
+                configure()
+            }
+            if (response.status.value == 202) {
+                if (attempt == 7) return null
+                val body = response.bodyAsText()
+                val retryAfter = RETRY_AFTER_REGEX.find(body)?.groupValues?.get(1)?.toDoubleOrNull() ?: 1.0
+                delay((retryAfter * 1000).toLong().coerceIn(500L, 3000L))
+                continue
+            }
+            if (!response.status.isSuccess()) return null
+            return response.body()
+        }
+        return null
+    }
+
     suspend fun searchChannelMessages(
         channelId: String,
         content: String? = null,
-        authorId: String? = null,
-        mentions: String? = null,
-        has: String? = null,
-        before: String? = null,
-        after: String? = null,
-        during: String? = null,
-        sort: String? = null,
-        authorType: String? = null
+        authorIds: List<String> = emptyList(),
+        mentions: List<String> = emptyList(),
+        has: List<String> = emptyList(),
+        minId: String? = null,
+        maxId: String? = null,
+        sortOrder: String? = null,
+        authorTypes: List<String> = emptyList(),
+        offset: Int = 0
     ): SearchResponse? {
         return try {
-            val response = rest.httpClient.get("${rest.apiBase}/channels/$channelId/messages/search") {
-                standardHeaders(rest)
-                content?.let { parameter("content", it) }
-                authorId?.let { parameter("author_id", it) }
-                mentions?.let { parameter("mentions", it) }
-                has?.let { parameter("has", it) }
-                before?.let { parameter("before", it) }
-                after?.let { parameter("after", it) }
-                during?.let { parameter("during", it) }
-                sort?.let { parameter("sort_by", it) }
-                authorType?.let { parameter("author_type", it) }
+            requestSearch("${rest.apiBase}/channels/$channelId/messages/search") {
+                applySearchParams(content, authorIds, mentions, has, minId, maxId, sortOrder, authorTypes, offset, emptyList())
             }
-            if (response.status.isSuccess()) response.body() else null
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             Logging.e("Messages", "Error searching channel messages: ${e.message}")
@@ -346,31 +385,20 @@ class MessageApi(private val rest: RestClient) {
     suspend fun searchGuildMessages(
         guildId: String,
         content: String? = null,
-        authorId: String? = null,
-        mentions: String? = null,
-        has: String? = null,
-        channelId: String? = null,
-        before: String? = null,
-        after: String? = null,
-        during: String? = null,
-        sort: String? = null,
-        authorType: String? = null
+        authorIds: List<String> = emptyList(),
+        mentions: List<String> = emptyList(),
+        has: List<String> = emptyList(),
+        channelIds: List<String> = emptyList(),
+        minId: String? = null,
+        maxId: String? = null,
+        sortOrder: String? = null,
+        authorTypes: List<String> = emptyList(),
+        offset: Int = 0
     ): SearchResponse? {
         return try {
-            val response = rest.httpClient.get("${rest.apiBase}/guilds/$guildId/messages/search") {
-                standardHeaders(rest)
-                content?.let { parameter("content", it) }
-                authorId?.let { parameter("author_id", it) }
-                mentions?.let { parameter("mentions", it) }
-                has?.let { parameter("has", it) }
-                channelId?.let { parameter("channel_id", it) }
-                before?.let { parameter("before", it) }
-                after?.let { parameter("after", it) }
-                during?.let { parameter("during", it) }
-                sort?.let { parameter("sort_by", it) }
-                authorType?.let { parameter("author_type", it) }
+            requestSearch("${rest.apiBase}/guilds/$guildId/messages/search") {
+                applySearchParams(content, authorIds, mentions, has, minId, maxId, sortOrder, authorTypes, offset, channelIds)
             }
-            if (response.status.isSuccess()) response.body() else null
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             Logging.e("Messages", "Error searching guild messages: ${e.message}")

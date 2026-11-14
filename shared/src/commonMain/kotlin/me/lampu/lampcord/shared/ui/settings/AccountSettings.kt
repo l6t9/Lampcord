@@ -6,7 +6,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
@@ -15,7 +14,6 @@ import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.api.CdnUrls
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.settings.*
-import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.generated.resources.Res
 import me.lampu.lampcord.shared.generated.resources.account
 import me.lampu.lampcord.shared.generated.resources.change_password
@@ -51,7 +49,10 @@ fun AccountSettings(
 
 @Composable
 fun AccountSettingsContent(userVal: me.lampu.lampcord.shared.model.User) {
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
         Material3SettingsGroup(
             title = stringResource(Res.string.form_label_account_information),
             items = listOf(

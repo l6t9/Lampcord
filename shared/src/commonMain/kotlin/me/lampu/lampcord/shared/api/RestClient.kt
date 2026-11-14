@@ -20,6 +20,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import me.lampu.lampcord.shared.captcha.CaptchaCoordinator
 import me.lampu.lampcord.shared.utils.getCurrentTimeMillis
 import me.lampu.lampcord.shared.utils.getDeviceName
 import me.lampu.lampcord.shared.utils.getOsVersion
@@ -148,8 +149,11 @@ fun HttpRequestBuilder.loginHeaders(rest: RestClient, fingerprint: String? = nul
     header("Referer", "https://discord.com/login")
 }
 
-fun createHttpClient() = HttpClient(httpClientEngine()) {
+fun createHttpClient(captcha: CaptchaCoordinator) = HttpClient(httpClientEngine()) {
     install(HttpCookies)
+    install(LampcordCaptchaPlugin) {
+        coordinator = captcha
+    }
     install(HttpTimeout) {
         requestTimeoutMillis = 15000
         connectTimeoutMillis = 10000
