@@ -111,7 +111,7 @@ class AutocompleteStore(
                                 guildApi.searchGuildMembers(guildId, query, limit = 100)
                             }
                             if (remote.isEmpty()) return@launch
-                            val merged = (local + remote)
+                            val merged = (remote + local)
                                 .filter { it.user != null }
                                 .distinctBy { it.user?.id ?: it.userId() }
                                 .filter { member ->
@@ -122,7 +122,7 @@ class AutocompleteStore(
                                         user.global_name?.contains(query, ignoreCase = true) == true ||
                                         user.id == query
                                 }
-                                .take(MentionMemberLimit)
+                                .take(if (isSearch) 100 else MentionMemberLimit)
                             if (isSearch || merged.size != local.size) {
                                 updateAutocompleteResults(type, query, selectedGuild, isSearch, merged)
                             }
