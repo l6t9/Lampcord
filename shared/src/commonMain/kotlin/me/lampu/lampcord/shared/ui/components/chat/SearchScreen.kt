@@ -17,9 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.gateway.GatewayManager
 import me.lampu.lampcord.shared.state.*
@@ -87,27 +85,13 @@ private fun SearchScreenContent(
     gatewayManager: GatewayManager = koinInject(),
     messageStore: MessageStore = koinInject()
 ) {
-    remember {
-        val scopedChannelName = navigationStore.selectedChannel?.takeIf { navigationStore.selectedGuild != null }?.name
-        searchStore.searchQuery = withChannelScope(searchStore.searchQuery, scopedChannelName)
-        Unit
-    }
-
-    var textFieldValue by remember {
-        mutableStateOf(TextFieldValue(searchStore.searchQuery, TextRange(searchStore.searchQuery.length)))
-    }
-    var showFilterMenu by remember { mutableStateOf(false) }
-
-    LaunchedEffect(searchStore.searchQuery) {
-        if (searchStore.searchQuery != textFieldValue.text) {
-            textFieldValue = TextFieldValue(searchStore.searchQuery, TextRange(searchStore.searchQuery.length))
-        }
-    }
-
-    fun setQuery(value: TextFieldValue) {
-        textFieldValue = value
-        searchStore.searchQuery = value.text
-        updateSearchAutocomplete(value, autocompleteStore, navigationStore)
+    val searchInput = remember {
+        val scoped = withChannelScope(
+            searchStore.searchQuery,
+            navigationStore.selectedChannel?.takeIf { navigationStore.selectedGuild != null }?.name
+        )
+        searchStore.searchQuery = scoped
+        SearchInputState(autocompleteStore, navigationStore) { searchStore.searchQuery = it }.apply { setQuery(scoped) }
     }
 
     PlatformBackHandler(enabled = autocompleteStore.searchAutocompleteType != null || searchStore.searchResults.isNotEmpty() || searchStore.searchQuery.isNotEmpty()) {
@@ -123,67 +107,31 @@ private fun SearchScreenContent(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize().imePadding()) {
             TopAppBar(
-                title = {
-                    val targetName = navigationStore.selectedGuild?.name ?: navigationStore.selectedChannel?.name ?: "Discord"
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(40.dp)
-                            .background(
-                                MaterialTheme.colorScheme.surfaceContainerHigh,
-                                RoundedCornerShape(20.dp)
-                            )
-                            .padding(horizontal = 12.dp),
-                        contentAlignment = Alignment.CenterStart
-                    ) {
-                        SearchFilterField(
-                            value = textFieldValue,
-                            onValueChange = { value ->
-                                textFieldValue = value
-                                searchStore.searchQuery = value.text
-                            },
-                            placeholder = "Search in $targetName",
-                            onSearch = {
-                                searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel)
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                },
+                title = { Text(stringResource(Res.string.search)) },
                 navigationIcon = {
                     IconButton(onClick = onDismiss) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.back))
                     }
                 },
-                actions = {
-                    Box {
-                        IconButton(onClick = { showFilterMenu = true }) {
-                            Icon(
-                                imageVector = Icons.Rounded.Tune,
-                                contentDescription = stringResource(Res.string.search_filter_menu_title)
-                            )
-                        }
-                        SearchFilterMenu(
-                            expanded = showFilterMenu,
-                            onDismiss = { showFilterMenu = false },
-                            onPick = { def -> setQuery(appendSearchFilter(textFieldValue, def.key)) }
-                        )
-                    }
-                    if (textFieldValue.text.isNotEmpty()) {
-                        IconButton(onClick = {
-                            searchStore.searchQuery = ""
-                            searchStore.searchResults.clear()
-                            autocompleteStore.clear(isSearch = true)
-                            textFieldValue = TextFieldValue("")
-                        }) {
-                            Icon(Icons.Filled.Close, contentDescription = stringResource(Res.string.lampcord_settings_clear))
-                        }
-                    }
-                }
             )
 
+            SearchInputBar(
+                state = searchInput,
+                externalQuery = searchStore.searchQuery,
+                placeholder = "Search in ${navigationStore.selectedGuild?.name ?: navigationStore.selectedChannel?.name ?: "Discord"}",
+                onSearch = {
+                    searchStore.searchQuery = searchInput.finalQuery()
+                    searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel)
+                },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                trailing = { SearchFilterActions(searchInput) }
+            )
+
+            if (searchInput.suggestions().isNotEmpty()) {
+                SearchSuggestionList(state = searchInput, modifier = Modifier.weight(1f))
+            } else {
             Box(modifier = Modifier.weight(1f)) {
                 if (searchStore.isSearchLoading) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -205,7 +153,7 @@ private fun SearchScreenContent(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clickableCursor {
-                                            setQuery(appendSearchFilter(textFieldValue, def.key))
+                                            searchInput.startFilter(def.key)
                                         }
                                         .padding(horizontal = 16.dp, vertical = 12.dp),
                                     verticalAlignment = Alignment.CenterVertically
@@ -352,6 +300,7 @@ private fun SearchScreenContent(
                     }
                 }
 
+            }
             }
         }
 

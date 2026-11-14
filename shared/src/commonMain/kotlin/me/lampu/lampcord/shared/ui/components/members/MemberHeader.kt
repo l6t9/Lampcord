@@ -40,10 +40,10 @@ import me.lampu.lampcord.shared.model.Channel
 import me.lampu.lampcord.shared.model.Emoji
 import me.lampu.lampcord.shared.state.AutocompleteStore
 import me.lampu.lampcord.shared.state.withChannelScope
-import me.lampu.lampcord.shared.ui.components.chat.SearchFilterField
-import me.lampu.lampcord.shared.ui.components.chat.SearchFilterMenu
-import me.lampu.lampcord.shared.ui.components.chat.appendSearchFilter
-import me.lampu.lampcord.shared.ui.components.chat.updateSearchAutocomplete
+import me.lampu.lampcord.shared.ui.components.chat.SearchFilterActions
+import me.lampu.lampcord.shared.ui.components.chat.SearchInputBar
+import me.lampu.lampcord.shared.ui.components.chat.SearchInputState
+import me.lampu.lampcord.shared.ui.components.chat.SearchSuggestionMenu
 import me.lampu.lampcord.shared.state.GuildStore
 import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.state.SearchStore
@@ -141,98 +141,28 @@ fun MemberHeader(
 
         if (isDesktop) {
             val focusManager = LocalFocusManager.current
-            var isFocused by remember { mutableStateOf(false) }
-            var showFilterMenu by remember { mutableStateOf(false) }
-            var textFieldValue by remember {
-                mutableStateOf<TextFieldValue>(TextFieldValue(searchStore.searchQuery, TextRange(searchStore.searchQuery.length)))
+            val searchInput = remember {
+                SearchInputState(autocompleteStore, navigationStore) { searchStore.searchQuery = it }
+                    .apply { setQuery(searchStore.searchQuery) }
             }
-
-            LaunchedEffect(searchStore.searchQuery) {
-                if (searchStore.searchQuery != textFieldValue.text) {
-                    textFieldValue = TextFieldValue(searchStore.searchQuery, TextRange(searchStore.searchQuery.length))
-                }
-            }
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .height(40.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(
-                        if (isFocused) MaterialTheme.colorScheme.surfaceContainerHigh
-                        else MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.65f)
-                    )
-                    .border(
-                        1.dp,
-                        if (isFocused) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                        else Color.Transparent,
-                        RoundedCornerShape(20.dp)
-                    )
-                    .padding(start = 12.dp, end = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Search,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                    tint = if (isFocused) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.width(10.dp))
-                SearchFilterField(
-                    value = textFieldValue,
-                    onValueChange = { value ->
-                        textFieldValue = value
-                        searchStore.searchQuery = value.text
-                    },
+            Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                SearchInputBar(
+                    state = searchInput,
+                    externalQuery = searchStore.searchQuery,
                     placeholder = "Search in ${channel.name ?: "channel"}",
                     onSearch = {
-                        if (searchStore.searchQuery.isNotBlank()) {
-                            searchStore.searchQuery = withChannelScope(
-                                searchStore.searchQuery,
-                                channel.name.takeIf { channel.guild_id != null }
-                            )
-                            searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel)
-                            navigationStore.isSearchVisible = true
-                            focusManager.clearFocus()
-                        }
+                        searchStore.searchQuery = withChannelScope(
+                            searchInput.finalQuery(),
+                            channel.name.takeIf { channel.guild_id != null }
+                        )
+                        searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel)
+                        navigationStore.isSearchVisible = true
+                        focusManager.clearFocus()
                     },
-                    modifier = Modifier.weight(1f),
-                    onFocusChange = { isFocused = it }
+                    modifier = Modifier.fillMaxWidth(),
+                    trailing = { SearchFilterActions(searchInput) }
                 )
-                Box {
-                    IconButton(onClick = { showFilterMenu = true }) {
-                        Icon(
-                            imageVector = Icons.Rounded.Tune,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    SearchFilterMenu(
-                        expanded = showFilterMenu,
-                        onDismiss = { showFilterMenu = false },
-                        onPick = { def ->
-                            val updated = appendSearchFilter(textFieldValue, def.key)
-                            textFieldValue = updated
-                            searchStore.searchQuery = updated.text
-                            updateSearchAutocomplete(updated, autocompleteStore, navigationStore)
-                        }
-                    )
-                }
-                if (searchStore.searchQuery.isNotEmpty()) {
-                    IconButton(onClick = {
-                        searchStore.searchQuery = ""
-                        autocompleteStore.clear(isSearch = true)
-                    }) {
-                        Icon(
-                            Icons.Filled.Close,
-                            contentDescription = stringResource(Res.string.lampcord_settings_clear),
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
+                SearchSuggestionMenu(state = searchInput)
             }
         } else {
             Row(
