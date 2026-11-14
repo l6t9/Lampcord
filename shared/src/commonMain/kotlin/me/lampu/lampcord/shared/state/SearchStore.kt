@@ -89,6 +89,13 @@ class SearchStore(
         }
     }
 
+    private fun tabHasFilters(): List<String> = when (activeTab) {
+        "media" -> listOf("image")
+        "links" -> listOf("link")
+        "files" -> listOf("file")
+        else -> emptyList()
+    }
+
     private class ResolvedSearch(
         val content: String?,
         val authorIds: List<String>,
