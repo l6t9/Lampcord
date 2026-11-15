@@ -9,6 +9,7 @@ import kotlin.reflect.KProperty
 class Settings(private val settings: KmpSettings) {
 
     var discordToken by preference("discord_token", "")
+    var installationId by preference("installation_id", "")
     var savedAccountsJson by preference("saved_accounts", "[]")
     var language by preference("language", me.lampu.lampcord.shared.i18n.LANGUAGE_SYSTEM)
     var pureBlack by preferenceBoolean("pure_black", false)

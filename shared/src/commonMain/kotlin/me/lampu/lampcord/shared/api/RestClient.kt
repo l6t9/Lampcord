@@ -1,5 +1,8 @@
 package me.lampu.lampcord.shared.api
 
+import kotlinx.datetime.TimeZone
+import kotlin.random.Random
+import me.lampu.lampcord.shared.settings.Settings
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.logging.LogLevel
@@ -144,9 +147,29 @@ fun HttpRequestBuilder.loginHeaders(rest: RestClient, fingerprint: String? = nul
     header("User-Agent", userAgent)
     header("Accept-Language", "en-US,en;q=0.9")
     header("X-Super-Properties", rest.getSuperProperties())
+    header("X-Discord-Locale", "en-US")
+    header("X-Discord-Timezone", TimeZone.currentSystemDefault().id)
+    header("X-Installation-Id", installationId())
     fingerprint?.let { header("X-Fingerprint", it) }
     header("Origin", "https://discord.com")
     header("Referer", "https://discord.com/login")
+}
+
+private var cachedInstallationId: String? = null
+
+private fun installationId(): String {
+    cachedInstallationId?.let { return it }
+    val saved = Settings.shared.installationId
+    val id = if (saved.isNotBlank()) {
+        saved
+    } else {
+        val hex = (1..32).joinToString("") { Random.nextInt(16).toString(16) }
+        val created = "${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20)}"
+        Settings.shared.installationId = created
+        created
+    }
+    cachedInstallationId = id
+    return id
 }
 
 fun createHttpClient(captcha: CaptchaCoordinator) = HttpClient(httpClientEngine()) {
