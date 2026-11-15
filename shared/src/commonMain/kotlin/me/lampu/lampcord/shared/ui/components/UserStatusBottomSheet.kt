@@ -26,7 +26,6 @@ import me.lampu.lampcord.shared.model.UserSettings
 import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.icons.Icons
 import org.koin.compose.koinInject
-import kotlinx.coroutines.launch
 import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -44,7 +43,6 @@ fun UserStatusBottomSheet(
 ) {
     val currentUser by userStore.currentUser.collectAsState()
     val accounts = tokenStore.getAccounts()
-    val scope = rememberCoroutineScope()
     
     var showAccountSwitcher by remember { mutableStateOf(false) }
 

@@ -555,9 +555,17 @@ class SettingsStore(
     }
 
     fun updateUserSettings(partial: UserSettings.Partial) {
+        val previous = userSettings
+        // Optimistically apply for immediate UI feedback (e.g. status changes).
+        userSettings = previous?.merge(partial) ?: userSettings
         scope.launch {
-            if (userApi.updateUserSettings(partial)) {
-                userSettings = userSettings?.merge(partial)
+            val ok = try {
+                userApi.updateUserSettings(partial)
+            } catch (e: Exception) {
+                false
+            }
+            if (!ok) {
+                userSettings = previous
             }
         }
     }
