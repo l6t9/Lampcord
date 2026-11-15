@@ -1348,7 +1348,7 @@ fun MobileBaseplate(
                 modifier = Modifier.fillMaxSize(),
                 color = MaterialTheme.colorScheme.surface
             ) {
-                me.lampu.lampcord.shared.ui.LoginScreen(onLoginSuccess = { showAddAccountDialog = false })
+                me.lampu.lampcord.shared.ui.LoginScreen(onBack = { showAddAccountDialog = false }, onLoginSuccess = { showAddAccountDialog = false })
             }
         }
     }

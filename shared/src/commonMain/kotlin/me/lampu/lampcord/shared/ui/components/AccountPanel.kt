@@ -384,7 +384,7 @@ fun AccountPanel(
                         modifier = Modifier.fillMaxSize(),
                         color = MaterialTheme.colorScheme.background
                     ) {
-                        me.lampu.lampcord.shared.ui.LoginScreen(onLoginSuccess = { showAddAccountDialog = false })
+                        me.lampu.lampcord.shared.ui.LoginScreen(onBack = { showAddAccountDialog = false }, onLoginSuccess = { showAddAccountDialog = false })
                     }
                 }
             }
