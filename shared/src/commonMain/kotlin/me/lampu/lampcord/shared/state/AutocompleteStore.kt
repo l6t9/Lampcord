@@ -184,7 +184,7 @@ class AutocompleteStore(
             AutocompleteType.CHANNEL -> {
                 val channels = guildStore.allGuildChannels.value.values.filter { channel ->
                     channel.guild_id == selectedGuild?.id &&
-                    channel.type in listOf(0, 2, 4, 5, 13, 15, 16) &&
+                    channel.type in listOf(0, 2, 5, 13, 15, 16) &&
                     (query.isEmpty() || channel.name?.contains(query, ignoreCase = true) == true)
                 }.sortedWith(compareBy(
                     { !(it.name?.equals(query, ignoreCase = true) == true) },
@@ -201,14 +201,13 @@ class AutocompleteStore(
                         title = channel.name ?: "unnamed",
                         subtitle = categoryName,
                         iconType = when (channel.type) {
-                            4 -> Icons.Filled.Folder
                             15 -> Icons.Rounded.Forum
                             2, 13 -> Icons.AutoMirrored.Filled.VolumeUp
                             5 -> Icons.Filled.Campaign
                             else -> Icons.Filled.Tag
                         },
-                        replacement = if (isSearch) channel.id else if (channel.type == 4) channel.name ?: "" else "<#${channel.id}>",
-                        searchReplacement = channel.name ?: "unnamed",
+                        replacement = if (isSearch) channel.id else "<#${channel.id}>",
+                        searchReplacement = channel.id,
                         inputText = if (isSearch) channel.id else "#${channel.name ?: ""}"
                     )
                 })

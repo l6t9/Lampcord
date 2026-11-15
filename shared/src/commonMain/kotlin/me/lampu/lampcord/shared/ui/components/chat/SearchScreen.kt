@@ -2,46 +2,80 @@ package me.lampu.lampcord.shared.ui.components.chat
 
 import me.lampu.lampcord.shared.generated.resources.Res
 import me.lampu.lampcord.shared.generated.resources.back
+import me.lampu.lampcord.shared.generated.resources.messages
 import me.lampu.lampcord.shared.generated.resources.search
-import me.lampu.lampcord.shared.generated.resources.search_panel_in
 import me.lampu.lampcord.shared.generated.resources.search_panel_fallback
-import me.lampu.lampcord.shared.generated.resources.search_panel_options
+import me.lampu.lampcord.shared.generated.resources.search_panel_files
 import me.lampu.lampcord.shared.generated.resources.search_panel_history
+import me.lampu.lampcord.shared.generated.resources.search_panel_in
+import me.lampu.lampcord.shared.generated.resources.search_panel_links
+import me.lampu.lampcord.shared.generated.resources.search_panel_media
 import me.lampu.lampcord.shared.generated.resources.search_panel_no_results
 import me.lampu.lampcord.shared.generated.resources.search_panel_failed
 import me.lampu.lampcord.shared.generated.resources.search_panel_no_user
+import me.lampu.lampcord.shared.generated.resources.search_panel_options
 import org.jetbrains.compose.resources.stringResource
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import me.lampu.lampcord.shared.gateway.GatewayManager
+import me.lampu.lampcord.shared.api.GuildApi
+import me.lampu.lampcord.shared.model.Channel
+import me.lampu.lampcord.shared.model.Member
 import me.lampu.lampcord.shared.state.*
+import me.lampu.lampcord.shared.ui.LocalCurrentUser
 import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
 import me.lampu.lampcord.shared.ui.components.PlatformBackHandler
-import me.lampu.lampcord.shared.ui.icons.Icons
-import me.lampu.lampcord.shared.utils.getPlatformName
-import org.koin.compose.koinInject
-import me.lampu.lampcord.shared.api.GuildApi
-import me.lampu.lampcord.shared.model.Member
-import kotlinx.coroutines.delay
 import me.lampu.lampcord.shared.ui.components.members.MemberItem
 import me.lampu.lampcord.shared.ui.components.members.MemberRowEnv
-import me.lampu.lampcord.shared.ui.LocalCurrentUser
-import me.lampu.lampcord.shared.settings.Settings
+import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.kit.clickableCursor
+import me.lampu.lampcord.shared.utils.CleanUtils
+import me.lampu.lampcord.shared.utils.PermissionHelper
+import me.lampu.lampcord.shared.utils.getPlatformName
+import org.koin.compose.koinInject
+import kotlinx.coroutines.delay
+import me.lampu.lampcord.shared.settings.Settings
+import me.lampu.lampcord.shared.generated.resources.pins
+
+private data class SearchTab(val id: String, val label: String)
+
+private val SEARCH_TABS = listOf(
+    SearchTab("messages", "Messages"),
+    SearchTab("media", "Media"),
+    SearchTab("pins", "Pins"),
+    SearchTab("links", "Links"),
+    SearchTab("files", "Files"),
+)
+
+@Composable
+private fun searchTabLabel(tab: SearchTab): String = when (tab.id) {
+    "messages" -> stringResource(Res.string.messages)
+    "media" -> stringResource(Res.string.search_panel_media)
+    "pins" -> stringResource(Res.string.pins)
+    "links" -> stringResource(Res.string.search_panel_links)
+    "files" -> stringResource(Res.string.search_panel_files)
+    else -> tab.label
+}
 
 private fun dmSearchLabel(channel: me.lampu.lampcord.shared.model.Channel?, userStore: UserStore): String? {
     if (channel == null) return null
@@ -114,12 +148,13 @@ private fun SearchScreenContent(
     guildStore: GuildStore = koinInject(),
     gatewayManager: GatewayManager = koinInject(),
     messageStore: MessageStore = koinInject(),
-    userStore: UserStore = koinInject()
+    userStore: UserStore = koinInject(),
+    memberListStore: MemberListStore = koinInject(),
 ) {
     val searchInput = remember {
         val scoped = withChannelScope(
             searchStore.searchQuery,
-            navigationStore.selectedChannel?.takeIf { navigationStore.selectedGuild != null }?.name
+            navigationStore.selectedChannel?.takeIf { navigationStore.selectedGuild != null }?.id
         )
         SearchInputState(
             autocompleteStore,
@@ -127,8 +162,15 @@ private fun SearchScreenContent(
             onQueryChange = { searchStore.searchQuery = it },
             onFilterCommitted = {
                 val q = searchStore.searchQuery
-                if (q.isBlank()) searchStore.searchResults.clear()
+                if (q.isBlank() && searchStore.activeTab == "messages") searchStore.searchResults.clear()
                 else searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel)
+            },
+            chipDisplay = { key, value ->
+                if (key == "in") {
+                    val ch = guildStore.allGuildChannels.value[value]
+                        ?: guildStore.privateChannels.value.find { it.id == value }
+                    ch?.name?.let { CleanUtils.cleanChannelName(it) } ?: value
+                } else value
             }
         ).apply { setQuery(scoped) }
     }
@@ -136,9 +178,10 @@ private fun SearchScreenContent(
     val resultsListState = rememberLazyListState()
 
     LaunchedEffect(Unit) {
+        if (searchStore.activeTab !in SEARCH_TABS.map { it.id }) searchStore.activeTab = "messages"
         val q = searchInput.toQuery()
         if (q != searchStore.searchQuery) searchStore.searchQuery = q
-        if (searchStore.searchQuery.isNotBlank() && searchStore.searchResults.isEmpty()) {
+        if ((searchStore.searchQuery.isNotBlank() || searchStore.activeTab != "messages") && searchStore.searchResults.isEmpty()) {
             searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel)
         }
     }
@@ -177,276 +220,282 @@ private fun SearchScreenContent(
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize().imePadding()) {
-            TopAppBar(
-                title = { Text(stringResource(Res.string.search)) },
-                navigationIcon = {
-                    IconButton(onClick = onDismiss) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.back))
-                    }
-                },
-            )
-
             val searchContextLabel = when {
-                navigationStore.selectedGuild != null -> navigationStore.selectedGuild?.name ?: navigationStore.selectedChannel?.name
+                navigationStore.selectedGuild != null -> {
+                    navigationStore.selectedChannel
+                        ?.takeIf { it.guild_id != null }
+                        ?.name
+                        ?.let { CleanUtils.cleanChannelName(it) }
+                        ?: navigationStore.selectedGuild?.name
+                }
                 navigationStore.selectedChannel != null -> dmSearchLabel(navigationStore.selectedChannel, userStore)
                 else -> null
             } ?: stringResource(Res.string.search_panel_fallback)
-            SearchInputBar(
-                state = searchInput,
-                externalQuery = searchStore.searchQuery,
-                placeholder = "${stringResource(Res.string.search_panel_in)} $searchContextLabel",
-                onSearch = {
-                    searchStore.searchQuery = searchInput.finalQuery()
-                    searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel)
-                },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-                trailing = { SearchFilterActions(searchInput) }
-            )
 
-            LaunchedEffect(Unit) { if (searchStore.activeTab != "messages") searchStore.activeTab = "messages" }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 4.dp, end = 8.dp, top = 8.dp, bottom = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onDismiss) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.back))
+                }
+                SearchInputBar(
+                    state = searchInput,
+                    externalQuery = searchStore.searchQuery,
+                    placeholder = "${stringResource(Res.string.search_panel_in)} $searchContextLabel",
+                    onSearch = {
+                        searchStore.searchQuery = searchInput.finalQuery()
+                        searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel)
+                    },
+                    modifier = Modifier.weight(1f),
+                    trailing = { SearchClearButton(searchInput) }
+                )
+                Spacer(Modifier.width(4.dp))
+                SearchFilterButton(searchInput)
+            }
 
             val suggestions = searchInput.suggestions()
             if (suggestions.isNotEmpty()) {
                 SearchSuggestionList(suggestions = suggestions, modifier = Modifier.weight(1f))
             } else {
-            Box(modifier = Modifier.weight(1f)) {
-                if (searchStore.isSearchLoading) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        ContainedLoadingIndicator()
+                val hasQuery = searchStore.searchQuery.isNotBlank() || searchStore.activeTab != "messages"
+                if (hasQuery) {
+                    val selectedTabIndex = SEARCH_TABS.indexOfFirst { it.id == searchStore.activeTab }.coerceAtLeast(0)
+                    PrimaryScrollableTabRow(
+                        selectedTabIndex = selectedTabIndex,
+                        edgePadding = 12.dp,
+                        divider = {}
+                    ) {
+                        SEARCH_TABS.forEachIndexed { index, tab ->
+                            Tab(
+                                selected = index == selectedTabIndex,
+                                onClick = {
+                                    if (searchStore.activeTab != tab.id) {
+                                        searchStore.activeTab = tab.id
+                                        searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel)
+                                    }
+                                },
+                                text = { Text(searchTabLabel(tab), maxLines = 1) }
+                            )
+                        }
                     }
-                } else if (searchStore.searchResults.isEmpty()) {
-                    LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        if (searchStore.searchQuery.isEmpty()) {
-                            item {
-                                Text(
-                                    stringResource(Res.string.search_panel_options),
-                                    style = MaterialTheme.typography.titleSmall,
-                                    modifier = Modifier.padding(16.dp),
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                            items(SEARCH_FILTER_DEFS) { def ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickableCursor {
-                                            searchInput.startFilter(def.key)
-                                        }
-                                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = searchFilterIcon(def.key),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(24.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Spacer(Modifier.width(24.dp))
-                                    Column {
-                                        Text(
-                                            text = "${def.key}:",
-                                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
-                                        )
-                                        Text(
-                                            text = def.label,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
-                            }
+                }
 
-                            if (searchStore.searchHistory.isNotEmpty()) {
+                Box(modifier = Modifier.weight(1f)) {
+                    if (searchStore.isSearchLoading) {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            ContainedLoadingIndicator()
+                        }
+                    } else if (searchStore.searchResults.isEmpty()) {
+                        LazyColumn(modifier = Modifier.fillMaxSize()) {
+                            if (!hasQuery) {
                                 item {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            stringResource(Res.string.search_panel_history),
-                                            style = MaterialTheme.typography.titleSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                        IconButton(onClick = {
-                                            searchStore.searchHistory.clear()
-                                            me.lampu.lampcord.shared.settings.Settings.shared.searchHistoryJson = "[]"
-                                        }) {
-                                            Icon(Icons.Filled.Delete, null, modifier = Modifier.size(18.dp))
-                                        }
-                                    }
+                                    Text(
+                                        stringResource(Res.string.search_panel_options),
+                                        style = MaterialTheme.typography.titleSmall,
+                                        modifier = Modifier.padding(16.dp),
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
                                 }
-                                items(searchStore.searchHistory) { query ->
+                                items(SEARCH_FILTER_DEFS) { def ->
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .clickableCursor {
-                                                searchStore.searchQuery = query
-                                                searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel)
-                                            }
+                                            .clickableCursor { searchInput.startFilter(def.key) }
                                             .padding(horizontal = 16.dp, vertical = 12.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Filled.History,
+                                            imageVector = searchFilterIcon(def.key),
                                             contentDescription = null,
-                                            modifier = Modifier.size(20.dp),
+                                            modifier = Modifier.size(24.dp),
                                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                         Spacer(Modifier.width(24.dp))
-                                        Text(query, style = MaterialTheme.typography.bodyMedium)
-                                    }
-                                }
-                            }
-                        } else {
-                            item {
-                                Box(
-                                    modifier = Modifier.fillMaxSize().clickableCursor {
-                                        if (searchStore.searchFailed) {
-                                            searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel)
+                                        Column {
+                                            Text(
+                                                text = "${def.key}:",
+                                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+                                            )
+                                            Text(
+                                                text = def.label,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
                                         }
-                                    },
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = searchStore.unresolvedUser?.let { stringResource(Res.string.search_panel_no_user, it) }
-                                            ?: if (searchStore.searchFailed) stringResource(Res.string.search_panel_failed) else stringResource(Res.string.search_panel_no_results),
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    Column {
-                        Text(
-                            "${searchStore.totalSearchResults} Results",
-                            modifier = Modifier.padding(16.dp),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-
-                        LazyColumn(
-                            state = resultsListState,
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(
-                                bottom = 80.dp + WindowInsets.ime.union(WindowInsets.navigationBars).asPaddingValues().calculateBottomPadding()
-                            )
-                        ) {
-                            items(searchStore.searchResults) { message ->
-                                val channel = guildStore.allGuildChannels.value[message.channel_id] ?: guildStore.privateChannels.value.find { it.id == message.channel_id }
-                                val guild = guildStore.guilds.value.firstOrNull { it.id == message.guild_id }
-                                val isDmSearch = navigationStore.selectedGuild == null
-
-                                val onClick = {
-                                    if (guild != null) {
-                                        navigationStore.selectGuild(guild) { gatewayManager.sendSubscription(it) }
                                     }
-                                    navigationStore.selectChannelById(message.channel_id, explicitlySelected = true)
-                                    messageStore.jumpToMessage(message.channel_id, message.id)
-                                    onDismiss()
                                 }
 
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 4.dp)
-                                        .clickableCursor(onClick = onClick)
-                                ) {
-                                    if (!isDmSearch) {
+                                if (searchStore.searchHistory.isNotEmpty()) {
+                                    item {
                                         Row(
-                                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             Text(
-                                                text = channel?.name ?: "unknown-channel",
-                                                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                                                color = MaterialTheme.colorScheme.onSurface
+                                                stringResource(Res.string.search_panel_history),
+                                                style = MaterialTheme.typography.titleSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
-                                            if (guild != null) {
-                                                Spacer(Modifier.width(8.dp))
-                                                Text(
-                                                    text = guild.name ?: "unknown-server",
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                                )
+                                            IconButton(onClick = {
+                                                searchStore.searchHistory.clear()
+                                                Settings.shared.searchHistoryJson = "[]"
+                                            }) {
+                                                Icon(Icons.Filled.Delete, null, modifier = Modifier.size(18.dp))
                                             }
                                         }
                                     }
-
-                                    Surface(
-                                        modifier = Modifier.padding(horizontal = 8.dp),
-                                        shape = RoundedCornerShape(12.dp),
-                                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
-                                        onClick = onClick
+                                    items(searchStore.searchHistory) { query ->
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clickableCursor {
+                                                    searchStore.searchQuery = query
+                                                    searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel)
+                                                }
+                                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Filled.History,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(20.dp),
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                            Spacer(Modifier.width(24.dp))
+                                            Text(query, style = MaterialTheme.typography.bodyMedium)
+                                        }
+                                    }
+                                }
+                            } else {
+                                item {
+                                    Box(
+                                        modifier = Modifier.fillMaxSize().clickableCursor {
+                                            if (searchStore.searchFailed) {
+                                                searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel)
+                                            }
+                                        },
+                                        contentAlignment = Alignment.Center
                                     ) {
-                                        MessageItem(
-                                            message = message,
-                                            isPreview = true
+                                        Text(
+                                            text = searchStore.unresolvedUser?.let { stringResource(Res.string.search_panel_no_user, it) }
+                                                ?: if (searchStore.searchFailed) stringResource(Res.string.search_panel_failed) else stringResource(Res.string.search_panel_no_results),
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        Column {
+                            Text(
+                                "${searchStore.totalSearchResults} Results",
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+
+                            LazyColumn(
+                                state = resultsListState,
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(
+                                    bottom = 80.dp + WindowInsets.ime.union(WindowInsets.navigationBars).asPaddingValues().calculateBottomPadding()
+                                )
+                            ) {
+                                items(searchStore.searchResults) { message ->
+                                    val channel = guildStore.allGuildChannels.value[message.channel_id] ?: guildStore.privateChannels.value.find { it.id == message.channel_id }
+                                    val guild = guildStore.guilds.value.firstOrNull { it.id == message.guild_id }
+                                    val isDmSearch = navigationStore.selectedGuild == null
+                                    val channelIcon = searchResultChannelIcon(
+                                        channel = channel,
+                                        guild = guild,
+                                        memberListStore = memberListStore,
+                                        currentUserId = userStore.currentUser.value?.id
+                                    )
+
+                                    val onClick = {
+                                        if (guild != null) {
+                                            navigationStore.selectGuild(guild) { gatewayManager.sendSubscription(it) }
+                                        }
+                                        navigationStore.selectChannelById(message.channel_id, explicitlySelected = true)
+                                        messageStore.jumpToMessage(message.channel_id, message.id)
+                                        onDismiss()
+                                    }
+
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 4.dp)
+                                            .clickableCursor(onClick = onClick)
+                                    ) {
+                                        if (!isDmSearch) {
+                                            Row(
+                                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Icon(
+                                                    imageVector = channelIcon,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(16.dp),
+                                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                                Spacer(Modifier.width(6.dp))
+                                                Text(
+                                                    text = channel?.name?.let { CleanUtils.cleanChannelName(it) } ?: "unknown-channel",
+                                                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                                                    color = MaterialTheme.colorScheme.onSurface
+                                                )
+                                                if (guild != null) {
+                                                    Spacer(Modifier.width(8.dp))
+                                                    Text(
+                                                        text = guild.name ?: "unknown-server",
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                                    )
+                                                }
+                                            }
+                                        }
+
+                                        Surface(
+                                            modifier = Modifier.padding(horizontal = 8.dp),
+                                            shape = RoundedCornerShape(12.dp),
+                                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
+                                            onClick = onClick
+                                        ) {
+                                            MessageItem(
+                                                message = message,
+                                                isPreview = true
+                                            )
+                                        }
                                     }
                                 }
                             }
                         }
                     }
                 }
-
-            }
             }
         }
     }
 }
 
-@Composable
-private fun SearchMemberList(query: String, onPick: (String) -> Unit) {
-    val memberListStore: MemberListStore = koinInject()
-    val presenceStore: PresenceStore = koinInject()
-    val relationshipStore: RelationshipStore = koinInject()
-    val settingsStore: SettingsStore = koinInject()
-    val navigationStore: NavigationStore = koinInject()
-    val relationshipTypes = relationshipStore.relationshipTypes.collectAsState()
-    val currentUser = LocalCurrentUser.current
-    val userSettings = settingsStore.userSettings
-    val isTouch = remember { getPlatformName().let { it == "android" || it == "ios" } }
-    val reduceMotion = Settings.shared.reduceMotion
-    val env = remember(navigationStore.selectedGuild, currentUser?.id, userSettings?.status, userSettings?.developer_mode, reduceMotion) {
-        MemberRowEnv(
-            guild = navigationStore.selectedGuild,
-            currentUserId = currentUser?.id,
-            currentUserStatus = userSettings?.status,
-            developerMode = userSettings?.developer_mode == true,
-            presenceStore = presenceStore,
-            relationshipTypes = relationshipTypes,
-            animate = !isTouch && !reduceMotion,
-            isTouch = isTouch,
-            loadImages = true
-        )
+private fun searchResultChannelIcon(
+    channel: Channel?,
+    guild: me.lampu.lampcord.shared.model.Guild?,
+    memberListStore: MemberListStore,
+    currentUserId: String?,
+): ImageVector {
+    if (channel == null) return Icons.Filled.Tag
+    val locked = if (guild != null && currentUserId != null) {
+        val me = memberListStore.memberListItems.mapNotNull { it?.member }.firstOrNull { it.user?.id == currentUserId }
+        if (me != null) !PermissionHelper.canViewChannel(me, guild, channel, currentUserId) else false
+    } else false
+    return when (channel.type) {
+        2, 13 -> if (locked) Icons.Filled.Lock else Icons.AutoMirrored.Filled.VolumeUp
+        5 -> if (locked) Icons.Filled.Lock else Icons.Filled.Campaign
+        15 -> if (locked) Icons.Filled.Lock else Icons.Rounded.Forum
+        else -> if (locked) Icons.Filled.Lock else Icons.Filled.Tag
     }
-    val guildApi: GuildApi = koinInject()
-    val guildId = navigationStore.selectedGuild?.id
-    var serverMembers by remember { mutableStateOf<List<Member>>(emptyList()) }
-    LaunchedEffect(guildId, query) {
-        if (guildId == null) return@LaunchedEffect
-        delay(250)
-        serverMembers = guildApi.searchGuildMembers(guildId, query, limit = 100)
-    }
-    val filtered by remember(query) {
-        derivedStateOf {
-            val cached = memberListStore.memberListItems.mapNotNull { it?.member }.filter { matchesMemberQuery(it, query) }
-            (serverMembers + cached).distinctBy { it.user?.id }
-        }
-    }
-    LazyColumn(modifier = Modifier.fillMaxSize()) {
-        items(filtered) { member ->
-            MemberItem(member, env)
-        }
-    }
-}
-
-private fun matchesMemberQuery(member: Member, query: String): Boolean {
-    if (query.isBlank()) return true
-    val username = member.user?.username.orEmpty()
-    val display = member.nick ?: member.user?.global_name ?: username
-    return display.contains(query, ignoreCase = true) || username.contains(query, ignoreCase = true)
 }

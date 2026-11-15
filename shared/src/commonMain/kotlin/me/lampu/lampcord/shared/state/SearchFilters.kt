@@ -70,10 +70,10 @@ fun parseSearchQuery(query: String): ParsedSearchQuery {
     return ParsedSearchQuery(tokens, text.joinToString(" "))
 }
 
-fun withChannelScope(query: String, channelName: String?): String {
-    if (channelName.isNullOrBlank()) return query
+fun withChannelScope(query: String, channelId: String?): String {
+    if (channelId.isNullOrBlank()) return query
     if (parseSearchQuery(query).values("in").isNotEmpty()) return query
-    return if (query.isBlank()) "in:$channelName " else "in:$channelName $query"
+    return if (query.isBlank()) "in:$channelId " else "in:$channelId $query"
 }
 
 private const val DISCORD_EPOCH_MILLIS = 1_420_070_400_000L

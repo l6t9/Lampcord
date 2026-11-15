@@ -60,7 +60,7 @@ fun ChannelHeader(
                         if (isDm) {
                             if (channel.type == 3) {
                                 if (!channel.name.isNullOrBlank()) {
-                                    channel.name
+                                    CleanUtils.cleanChannelName(channel.name)
                                 } else {
                                     val recipients = channel.recipients?.mapNotNull { allUsers[it.id] ?: it }
                                         ?: channel.recipient_ids?.mapNotNull { allUsers[it] }

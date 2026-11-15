@@ -109,6 +109,36 @@ fun AdditionalSettingsContent(
         )
 
         Material3SettingsGroup(
+            title = "Clean Channels",
+            items = listOf(
+                switchSettingsItem(
+                    title = "Remove Emojis",
+                    description = "Remove emojis from channel names.",
+                    checked = Settings.shared.cleanChannelsRemoveEmojis,
+                    onCheckedChange = { Settings.shared.cleanChannelsRemoveEmojis = it }
+                ),
+                switchSettingsItem(
+                    title = "Hide Symbols",
+                    description = "Restrict channel names to letters, digits, spaces, dashes, underscores, and #.",
+                    checked = Settings.shared.cleanChannelsHideSymbols,
+                    onCheckedChange = { Settings.shared.cleanChannelsHideSymbols = it }
+                ),
+                switchSettingsItem(
+                    title = "Normalize Letters",
+                    description = "Convert accented and special letters to standard letters.",
+                    checked = Settings.shared.cleanChannelsNormalizeLetters,
+                    onCheckedChange = { Settings.shared.cleanChannelsNormalizeLetters = it }
+                ),
+                switchSettingsItem(
+                    title = "Capitalize Categories",
+                    description = "Uniformly capitalize category names.",
+                    checked = Settings.shared.cleanChannelsCapitalizeCategories,
+                    onCheckedChange = { Settings.shared.cleanChannelsCapitalizeCategories = it }
+                )
+            )
+        )
+
+        Material3SettingsGroup(
             title = "Chatbox",
             items = listOf(
                 switchSettingsItem(
