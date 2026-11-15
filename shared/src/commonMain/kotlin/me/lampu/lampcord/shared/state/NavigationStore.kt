@@ -498,7 +498,10 @@ class NavigationStore(
         val sameThread = selectedThread?.id == channel.id
         val hasMessages = messageStore.hasMessages(channel.id)
 
-        if (sameThread && hasMessages) return
+        if (sameThread && hasMessages) {
+            if (explicitlySelected) triggerFocusChat()
+            return
+        }
 
         isChannelsAndRolesVisible = false
         isServerSettingsVisible = false
@@ -522,6 +525,10 @@ class NavigationStore(
             messageStore.addMessages(channel.id, channelMessages)
             channelMessages.firstOrNull()?.let { readStateStore.ackMessage(channel.id, it.id) }
         }
+    }
+
+    fun closeThread() {
+        selectedThread = null
     }
 
     fun selectChannelById(channelId: String, explicitlySelected: Boolean = false) {

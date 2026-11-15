@@ -6,6 +6,8 @@ import kotlinx.coroutines.launch
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import me.lampu.lampcord.shared.api.GuildApi
 import me.lampu.lampcord.shared.model.*
 import me.lampu.lampcord.shared.utils.Logging
@@ -52,7 +54,38 @@ class GuildStore(
 
     val allGuildChannels = entityStore.channels
 
+    private val _joinedThreadIds = MutableStateFlow<Set<String>>(emptySet())
+    val joinedThreadIds: StateFlow<Set<String>> = _joinedThreadIds.asStateFlow()
+
     fun channelsForGuild(guildId: String): StateFlow<List<Channel>> = entityStore.channelsForGuild(guildId)
+
+    fun setJoinedThreads(threadIds: Collection<String>) {
+        if (threadIds.isEmpty()) return
+        _joinedThreadIds.update { it + threadIds }
+    }
+
+    fun removeJoinedThreads(threadIds: Collection<String>) {
+        if (threadIds.isEmpty()) return
+        _joinedThreadIds.update { it - threadIds.toSet() }
+    }
+
+    fun replaceJoinedThreadsForChannels(channelIds: Collection<String>?, joinedThreadIds: Collection<String>) {
+        val channels = entityStore.channels.value
+        val newJoined = joinedThreadIds.toSet()
+        _joinedThreadIds.update { current ->
+            val scoped = if (channelIds.isNullOrEmpty()) {
+                // full guild sync scope passed by caller context is hard to know here; keep additive fallback minimal
+                current
+            } else {
+                val channelIdSet = channelIds.toSet()
+                current.filterNot { id ->
+                    val t = channels[id]
+                    t?.parent_id in channelIdSet
+                }.toSet()
+            }
+            scoped + newJoined
+        }
+    }
 
     private val guildActivity = combine(
         entityStore.channels,

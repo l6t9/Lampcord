@@ -265,6 +265,19 @@ class AuthApi(
         }
     }
 
+    suspend fun getCurrentUser(token: String): me.lampu.lampcord.shared.model.User? {
+        return try {
+            val response = rest.httpClient.get("${rest.apiBase}/users/@me") {
+                loginHeaders(rest)
+                header(io.ktor.http.HttpHeaders.Authorization, token)
+            }
+            if (response.status.isSuccess()) response.body() else null
+        } catch (e: Exception) {
+            Logging.e("Auth", "Error fetching current user: ${e.message}")
+            null
+        }
+    }
+
     suspend fun exchangeRemoteAuthTicket(ticket: String): String? {
         return try {
             val response = rest.httpClient.post("${rest.apiBase}/users/@me/remote-auth/login") {

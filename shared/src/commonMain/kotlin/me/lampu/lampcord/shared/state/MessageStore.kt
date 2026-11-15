@@ -58,6 +58,7 @@ class MessageStore(
     private companion object {
         const val CACHE_MAX_CHANNELS = 50
         const val CACHE_MAX_MESSAGES_PER_CHANNEL = 300
+        const val CACHE_MAX_MESSAGES_ACTIVE_CHANNEL = 800
         const val TYPING_EMISSION_INTERVAL_MS = 10_000L
     }
 
@@ -173,7 +174,10 @@ class MessageStore(
 
     init {
         scope.launch {
+            var previousChannelId: String? = null
             selectionStore.activeChannelIdFlow.collect { channelId ->
+                previousChannelId?.let { trimChannelMessages(it) }
+                previousChannelId = channelId
                 _activeMessages.value =
                     if (channelId == null) emptyList() else messageCache[channelId] ?: emptyList()
             }
@@ -255,14 +259,15 @@ class MessageStore(
     }
 
     private fun trimChannelMessages(channelId: String) {
-        if (selectionStore.activeChannelIdFlow.value == channelId) return
+        val active = selectionStore.activeChannelIdFlow.value == channelId
+        val limit = if (active) CACHE_MAX_MESSAGES_ACTIVE_CHANNEL else CACHE_MAX_MESSAGES_PER_CHANNEL
 
         val current = messageCache[channelId] ?: return
-        if (current.size <= CACHE_MAX_MESSAGES_PER_CHANNEL) return
+        if (current.size <= limit) return
         val pending = current.filter { it.isPending }
-        val keep = CACHE_MAX_MESSAGES_PER_CHANNEL - pending.size
-        if (keep <= 0) return
+        val keep = (limit - pending.size).coerceAtLeast(1)
         val nonPending = current.filterNot { it.isPending }
+        if (nonPending.size <= keep) return
         val kept = nonPending.take(keep) + pending
         messageCache[channelId] = kept.sortedByDescending { it.id.toLongOrNull() ?: 0L }
         if (nonPending.size > keep) {

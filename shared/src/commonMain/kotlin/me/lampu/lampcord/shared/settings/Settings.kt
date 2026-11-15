@@ -118,6 +118,8 @@ class Settings(private val settings: KmpSettings) {
     var secretTabEnabled by preferenceBoolean("secret_tab_enabled", false)
     var textReplaceJson by preference("text_replace_v1", "[]")
 
+    var onboardingCompleted by preferenceBoolean("onboarding_completed", false)
+
     var noiseCancellation by preferenceBoolean("noise_cancellation", true)
     var voiceInputDevice by preference("voice_input_device", "")
     var voiceOutputDevice by preference("voice_output_device", "")

@@ -113,7 +113,16 @@ fun ChannelHeader(
             }
         },
         navigationIcon = {
-            Box(Modifier.padding(start = 16.dp)) {
+            val inThread = navigationStore.selectedThread != null
+            if (isDesktop && inThread) {
+                IconButton(onClick = { navigationStore.closeThread() }) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            } else Box(Modifier.padding(start = 16.dp)) {
                 if (isChannelsAndRoles) {
                     Icon(
                         imageVector = Icons.Filled.Flag,

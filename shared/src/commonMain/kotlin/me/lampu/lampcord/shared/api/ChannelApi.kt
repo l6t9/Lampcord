@@ -144,15 +144,44 @@ class ChannelApi(private val rest: RestClient) {
         return try {
             val response = rest.httpClient.patch("${rest.apiBase}/channels/$channelId") {
                 standardHeaders(rest)
-                val body = mutableMapOf<String, Any?>()
-                if (name != null) body["name"] = name
-                if (topic != null) body["topic"] = topic
-                if (nsfw != null) body["nsfw"] = nsfw
-                setBody(body)
+                contentType(ContentType.Application.Json)
+                setBody(buildJsonObject {
+                    if (name != null) put("name", name)
+                    if (topic != null) put("topic", topic)
+                    if (nsfw != null) put("nsfw", nsfw)
+                })
             }
             response.status.isSuccess()
         } catch (e: Exception) {
             false
+        }
+    }
+
+    suspend fun updateThread(
+        threadId: String,
+        name: String? = null,
+        archived: Boolean? = null,
+        locked: Boolean? = null,
+        appliedTags: List<String>? = null
+    ): Channel? {
+        return try {
+            val response = rest.httpClient.patch("${rest.apiBase}/channels/$threadId") {
+                standardHeaders(rest)
+                contentType(ContentType.Application.Json)
+                setBody(buildJsonObject {
+                    if (name != null) put("name", name)
+                    if (archived != null) put("archived", archived)
+                    if (locked != null) put("locked", locked)
+                    if (appliedTags != null) {
+                        put("applied_tags", buildJsonArray { appliedTags.forEach { add(it) } })
+                    }
+                })
+            }
+            if (response.status.isSuccess()) response.body() else null
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            Logging.e("Thread", "Error updating thread: ${e.message}")
+            null
         }
     }
 

@@ -181,7 +181,9 @@ fun LoginScreen(
     sessionManager: SessionManager = koinInject(),
     remoteAuthClient: RemoteAuthClient = koinInject(),
     settingsStore: SettingsStore = koinInject(),
+    tokenStore: me.lampu.lampcord.shared.state.TokenStore = koinInject(),
     onBack: (() -> Unit)? = null,
+    connectOnSuccess: Boolean = true,
     onLoginSuccess: () -> Unit
 ) {
     val isMobile = remember {
@@ -228,6 +230,24 @@ fun LoginScreen(
     val verificationEmptyError = stringResource(Res.string.lampcord_login_verify_empty)
     val forgotEmptyError = stringResource(Res.string.lampcord_login_forgot_empty)
     val phoneUnsupportedError = stringResource(Res.string.lampcord_login_forgot_phone_unsupported)
+
+    suspend fun completeAuth(tokenValue: String): Boolean {
+        return if (connectOnSuccess) {
+            sessionManager.connect(tokenValue)
+            onLoginSuccess()
+            true
+        } else {
+            val user = sessionManager.authApi.getCurrentUser(tokenValue)
+            if (user != null) {
+                tokenStore.addAccount(tokenValue, user)
+                onLoginSuccess()
+                true
+            } else {
+                errorMessage = loginFailedError
+                false
+            }
+        }
+    }
 
     val passwordError = step == LoginStep.Credentials && failure == LoginFailure.INVALID_CREDENTIALS
     val canRestoreAccount = step == LoginStep.Credentials &&
@@ -328,7 +348,7 @@ fun LoginScreen(
         )
         if (res?.token != null) {
             password = ""
-            onLoginSuccess()
+            completeAuth(res.token)
         } else {
             errorMessage = res?.message ?: invalidMfaError
             mfaCode = ""
@@ -342,8 +362,7 @@ fun LoginScreen(
             response.captchaCancelled -> errorMessage = captchaCancelledError
             response.token != null -> {
                 password = ""
-                sessionManager.connect(response.token)
-                onLoginSuccess()
+                completeAuth(response.token)
             }
             response.mfa == true && response.ticket != null -> startMfa(response)
             response.failure == LoginFailure.VERIFICATION_REQUIRED -> {
@@ -417,9 +436,9 @@ fun LoginScreen(
                 if (authToken.isBlank()) {
                     errorMessage = enterTokenError
                 } else {
-                    sessionManager.connect(authToken)
-                    token = ""
-                    onLoginSuccess()
+                    if (completeAuth(authToken)) {
+                        token = ""
+                    }
                 }
             }
             LoginStep.Qr -> Unit
@@ -457,8 +476,7 @@ fun LoginScreen(
     LaunchedEffect(remoteAuthState) {
         val state = remoteAuthState
         if (state is RemoteAuthState.Finished && state != staleRemoteAuth) {
-            sessionManager.connect(state.token)
-            onLoginSuccess()
+            completeAuth(state.token)
         }
     }
 
@@ -555,23 +573,12 @@ fun LoginScreen(
                     },
                     label = "login-step"
                 ) { current ->
-                    Surface(
+                    Column(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = MaterialTheme.shapes.extraLarge,
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        tonalElevation = AlertDialogDefaults.TonalElevation
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Column(
-                            modifier = Modifier.fillMaxWidth().padding(24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
                             when (current) {
                                 LoginStep.Credentials -> {
-                                    StepHeading(
-                                        title = stringResource(Res.string.lampcord_login_title),
-                                        subtitle = stringResource(Res.string.lampcord_login_subtitle)
-                                    )
-                                    Spacer(modifier = Modifier.height(20.dp))
                                     OutlinedTextField(
                                         value = login,
                                         onValueChange = { login = it; clearError() },
@@ -923,7 +930,6 @@ fun LoginScreen(
                             }
                         }
                     }
-                }
             }
         }
     }

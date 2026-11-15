@@ -194,10 +194,6 @@ class SessionManager(
     ): LoginResponse? {
         val fingerprint = loginFlowFingerprint()
         val request = MFALoginRequest(code = code, ticket = ticket, login_instance_id = loginInstanceId)
-        val res = authApi.loginMFA(request, fingerprint, type)
-        if (res?.token != null) {
-            connect(res.token)
-        }
-        return res
+        return authApi.loginMFA(request, fingerprint, type)
     }
 }
