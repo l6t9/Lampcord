@@ -175,7 +175,7 @@ fun SettingsScreen(
     val uriHandler = LocalUriHandler.current
     val scope = rememberCoroutineScope()
 
-    PlatformBackHandler(enabled = selectedCategory != null || searchQuery.isNotEmpty() || showThemer || editingThemeJson != null || showDebugLogs) {
+    PlatformBackHandler(enabled = true) {
         if (showDebugLogs) {
             showDebugLogs = false
         } else if (editingThemeJson != null) {
@@ -184,8 +184,10 @@ fun SettingsScreen(
             showThemer = false
         } else if (searchQuery.isNotEmpty()) {
             searchQuery = ""
-        } else {
+        } else if (selectedCategory != null) {
             selectedCategory = null
+        } else {
+            onDismiss()
         }
     }
 

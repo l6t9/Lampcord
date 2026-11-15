@@ -6,6 +6,8 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -18,6 +20,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -32,8 +35,12 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -392,21 +399,29 @@ fun ProfileCard(
                         )
 
                         if (showBoardTab && boardHasContent) {
-                            PrimaryTabRow(
-                                selectedTabIndex = bodyTab,
-                                containerColor = Color.Transparent,
-                                contentColor = theme.contentColor,
-                                divider = {}
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp, bottom = 12.dp)
+                                    .clip(RoundedCornerShape(40.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                                    .height(48.dp),
+                                horizontalArrangement = Arrangement.Start,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Tab(
+                                SiteStyleTab(
                                     selected = bodyTab == 0,
                                     onClick = { bodyTab = 0 },
-                                    text = { Text("Main") }
+                                    icon = Icons.Rounded.Person,
+                                    label = "Main",
+                                    modifier = Modifier.weight(1f).fillMaxHeight()
                                 )
-                                Tab(
+                                SiteStyleTab(
                                     selected = bodyTab == 1,
                                     onClick = { bodyTab = 1 },
-                                    text = { Text("Board") }
+                                    icon = Icons.Rounded.SpaceDashboard,
+                                    label = "Board",
+                                    modifier = Modifier.weight(1f).fillMaxHeight()
                                 )
                             }
                         }
@@ -457,6 +472,65 @@ fun ProfileCard(
                 modifier = Modifier.matchParentSize(),
                 railTop = railTop,
                 showBottom = showBottomFrame
+            )
+        }
+    }
+}
+
+
+
+
+@Composable
+private fun SiteStyleTab(
+    selected: Boolean,
+    onClick: () -> Unit,
+    icon: ImageVector,
+    label: String,
+    modifier: Modifier = Modifier
+) {
+    val progress by animateFloatAsState(
+        targetValue = if (selected) 1f else 0f,
+        animationSpec = if (Settings.shared.reduceMotion) snap() else tween(durationMillis = 200),
+        label = "ProfileTabIndicator"
+    )
+    val contentColor = if (selected) {
+        MaterialTheme.colorScheme.onSecondaryContainer
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(40.dp))
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .graphicsLayer {
+                    alpha = progress
+                    scaleX = 0.32f + 0.68f * progress
+                }
+                .background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(40.dp))
+        )
+        Row(
+            modifier = Modifier.padding(horizontal = 24.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(24.dp),
+                tint = contentColor
+            )
+            Text(
+                text = label,
+                color = contentColor,
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }

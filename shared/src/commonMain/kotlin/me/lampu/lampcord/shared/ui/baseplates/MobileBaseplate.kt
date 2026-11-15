@@ -141,6 +141,7 @@ fun MobileBaseplate(
         topLevelRoutes = topLevelRoutes
     )
     val navigator = remember { Navigator(navigationState) }
+    var settingsReturnRoute by remember { mutableStateOf<Screen>(Screen.You) }
 
     val panelState = rememberDiscordPanelsState()
     var lastPanelValue by remember { mutableStateOf(DiscordPanelValue.Center) }
@@ -169,8 +170,13 @@ fun MobileBaseplate(
     val quickEffectsSpec = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
 
     LaunchedEffect(navigationStore.isSettingsVisible) {
-        if (navigationStore.isSettingsVisible) navigator.navigate(Screen.Settings)
-        else if (navigationState.topLevelRoute == Screen.Settings) navigator.goBack()
+        if (navigationStore.isSettingsVisible) {
+            if (navigationState.topLevelRoute != Screen.Settings) {
+                navigator.navigate(Screen.Settings)
+            }
+        } else if (navigationState.topLevelRoute == Screen.Settings) {
+            navigator.navigate(settingsReturnRoute)
+        }
     }
     LaunchedEffect(navigationStore.isServerSettingsVisible) {
         if (navigationStore.isServerSettingsVisible) navigator.navigate(Screen.ServerSettings)
@@ -211,17 +217,6 @@ fun MobileBaseplate(
         }
     }
 
-    LaunchedEffect(navigationStore.isThreadPanelVisible) {
-        if (navigationStore.isThreadPanelVisible) {
-            val channel = navigationStore.selectedChannel
-            if (channel != null) {
-                navigator.navigate(Screen.Threads(channel.id))
-            }
-        } else if (navigationState.topLevelRoute is Screen.Threads) {
-            navigator.goBack()
-        }
-    }
-
     LaunchedEffect(navigationState.topLevelRoute) {
         val route = navigationState.topLevelRoute
 
@@ -236,7 +231,6 @@ fun MobileBaseplate(
         if (route !is Screen.ChannelSettings && navigationStore.channelSettingsChannel != null) navigationStore.closeChannelSettings()
         if (route !is Screen.Search && navigationStore.isSearchVisible) navigationStore.isSearchVisible = false
         if (route !is Screen.Pins && navigationStore.isPinsVisible) navigationStore.isPinsVisible = false
-        if (route !is Screen.Threads && navigationStore.isThreadPanelVisible) navigationStore.isThreadPanelVisible = false
         if (route !is Screen.ChannelsAndRoles && navigationStore.isChannelsAndRolesVisible) navigationStore.isChannelsAndRolesVisible = false
         if (route !is Screen.NotificationsSettings && navigationStore.isNotificationsSettingsVisible) navigationStore.isNotificationsSettingsVisible = false
 
@@ -411,7 +405,10 @@ fun MobileBaseplate(
                             Text(stringResource(Res.string.profile))
                         }
                         Spacer(Modifier.width(8.dp))
-                        FilledTonalButton(onClick = { navigator.navigate(Screen.Settings) }) {
+                        FilledTonalButton(onClick = {
+                            settingsReturnRoute = Screen.You
+                            navigationStore.isSettingsVisible = true
+                        }) {
                             Icon(Icons.Rounded.Settings, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
                             Text(stringResource(Res.string.settings))
@@ -464,7 +461,10 @@ fun MobileBaseplate(
                         onNavigateToUpdates = { navigator.navigate(Screen.UpdatesSettings) },
                         onNavigateToTheming = { navigator.navigate(Screen.Theming) },
                         onNavigateToNavigation = { navigator.navigate(Screen.NavigationSettings) },
-                        onDismiss = { navigationStore.isSettingsVisible = false }
+                        onDismiss = {
+                            navigationStore.isSettingsVisible = false
+                            navigator.navigate(settingsReturnRoute)
+                        }
                     )
                 }
             }
@@ -556,12 +556,7 @@ fun MobileBaseplate(
                     PinnedMessagesScreen(onDismiss = { navigationStore.isPinsVisible = false })
                 }
             }
-            entry<Screen.Threads> {
-                val currentBottomPadding = (navBarHeight * navBarVisibleAmount).coerceAtLeast(0.dp)
-                Box(Modifier.fillMaxSize().padding(bottom = currentBottomPadding)) {
-                    ThreadPanel(onDismiss = { navigationStore.isThreadPanelVisible = false })
-                }
-            }
+
             entry<Screen.ChannelsAndRoles> {
                 val currentBottomPadding = (navBarHeight * navBarVisibleAmount).coerceAtLeast(0.dp)
                 val guild = navigationStore.selectedGuild
@@ -1186,7 +1181,21 @@ fun MobileBaseplate(
             panelState.close()
         }
 
-        PlatformBackHandler(enabled = panelState.currentValue == DiscordPanelValue.Center && !navigationStore.isSettingsVisible && !navigationStore.isServerSettingsVisible && navigationStore.channelSettingsChannel == null && !navigationStore.isSearchVisible && !navigationStore.isPinsVisible) {
+        PlatformBackHandler(
+            enabled = navigationStore.isThreadPanelVisible
+        ) {
+            navigationStore.isThreadPanelVisible = false
+        }
+
+        PlatformBackHandler(
+            enabled = !navigationStore.isThreadPanelVisible &&
+                panelState.currentValue == DiscordPanelValue.Center &&
+                !navigationStore.isSettingsVisible &&
+                !navigationStore.isServerSettingsVisible &&
+                navigationStore.channelSettingsChannel == null &&
+                !navigationStore.isSearchVisible &&
+                !navigationStore.isPinsVisible
+        ) {
             if (navigationStore.selectedThread != null) {
                 navigationStore.selectedThread = null
             } else if (navigationStore.isChannelsAndRolesVisible) {
@@ -1196,6 +1205,18 @@ fun MobileBaseplate(
             } else if (navigationState.topLevelRoute != navigationState.startRoute) {
                 navigator.goBack()
             }
+        }
+    }
+
+    if (navigationStore.isThreadPanelVisible) {
+        Surface(
+            modifier = Modifier
+                .fillMaxSize()
+                .zIndex(10f)
+                .statusBarsPadding(),
+            color = MaterialTheme.colorScheme.surface
+        ) {
+            ThreadPanel(onDismiss = { navigationStore.isThreadPanelVisible = false })
         }
     }
 
