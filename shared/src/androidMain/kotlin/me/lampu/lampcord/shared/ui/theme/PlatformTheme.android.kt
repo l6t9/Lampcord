@@ -15,6 +15,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontFamily
 import androidx.core.view.WindowCompat
 import com.materialkolor.PaletteStyle
+import com.materialkolor.dynamiccolor.ColorSpec
 import com.materialkolor.rememberDynamicColorScheme
 import me.lampu.lampcord.shared.settings.FontOption
 import me.lampu.lampcord.shared.utils.appFontFamily
@@ -52,7 +53,8 @@ actual fun rememberPlatformColorScheme(
     val scheme = rememberDynamicColorScheme(
         seedColor = seedColor,
         isDark = isDark,
-        style = paletteStyle
+        style = paletteStyle,
+        specVersion = ColorSpec.SpecVersion.SPEC_2025
     )
 
     val view = LocalView.current

@@ -3,18 +3,13 @@ package me.lampu.lampcord.shared.ui.components.chat
 import me.lampu.lampcord.shared.generated.resources.Res
 import me.lampu.lampcord.shared.generated.resources.back
 import me.lampu.lampcord.shared.generated.resources.search
-import me.lampu.lampcord.shared.generated.resources.members
 import me.lampu.lampcord.shared.generated.resources.search_panel_in
 import me.lampu.lampcord.shared.generated.resources.search_panel_fallback
-import me.lampu.lampcord.shared.generated.resources.search_panel_media
-import me.lampu.lampcord.shared.generated.resources.search_panel_links
-import me.lampu.lampcord.shared.generated.resources.search_panel_files
 import me.lampu.lampcord.shared.generated.resources.search_panel_options
 import me.lampu.lampcord.shared.generated.resources.search_panel_history
 import me.lampu.lampcord.shared.generated.resources.search_panel_no_results
 import me.lampu.lampcord.shared.generated.resources.search_panel_failed
 import me.lampu.lampcord.shared.generated.resources.search_panel_no_user
-import me.lampu.lampcord.shared.generated.resources.messages
 import org.jetbrains.compose.resources.stringResource
 
 import androidx.compose.foundation.background
@@ -30,9 +25,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.graphics.Color
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import me.lampu.lampcord.shared.gateway.GatewayManager
@@ -135,7 +127,7 @@ private fun SearchScreenContent(
             onQueryChange = { searchStore.searchQuery = it },
             onFilterCommitted = {
                 val q = searchStore.searchQuery
-                if (q.isBlank() && searchStore.activeTab == "messages") searchStore.searchResults.clear()
+                if (q.isBlank()) searchStore.searchResults.clear()
                 else searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel)
             }
         ).apply { setQuery(scoped) }
@@ -146,7 +138,7 @@ private fun SearchScreenContent(
     LaunchedEffect(Unit) {
         val q = searchInput.toQuery()
         if (q != searchStore.searchQuery) searchStore.searchQuery = q
-        if (searchStore.searchQuery.isNotBlank() && searchStore.searchResults.isEmpty() && searchStore.activeTab != "members") {
+        if (searchStore.searchQuery.isNotBlank() && searchStore.searchResults.isEmpty()) {
             searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel)
         }
     }
@@ -211,62 +203,20 @@ private fun SearchScreenContent(
                 trailing = { SearchFilterActions(searchInput) }
             )
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                listOf(
-                    "messages" to stringResource(Res.string.messages),
-                    "members" to stringResource(Res.string.members),
-                    "media" to stringResource(Res.string.search_panel_media),
-                    "links" to stringResource(Res.string.search_panel_links),
-                    "files" to stringResource(Res.string.search_panel_files)
-                ).forEach { (id, label) ->
-                    val selected = searchStore.activeTab == id
-                    Text(
-                        text = label,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
-                            .clickableCursor {
-                                searchStore.activeTab = id
-                                if (id == "messages" && searchStore.searchQuery.isBlank()) {
-                                    searchStore.searchResults.clear()
-                                } else if (id != "members") {
-                                    searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel)
-                                }
-                            }
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
-                    )
-                }
-            }
+            LaunchedEffect(Unit) { if (searchStore.activeTab != "messages") searchStore.activeTab = "messages" }
 
             val suggestions = searchInput.suggestions()
             if (suggestions.isNotEmpty()) {
                 SearchSuggestionList(suggestions = suggestions, modifier = Modifier.weight(1f))
             } else {
             Box(modifier = Modifier.weight(1f)) {
-                if (searchStore.activeTab == "members") {
-                    SearchMemberList(
-                        query = parseSearchQuery(searchStore.searchQuery).text,
-                        onPick = { username ->
-                            searchStore.searchQuery = "from:$username"
-                            searchStore.activeTab = "messages"
-                            searchStore.performSearch(navigationStore.selectedGuild, navigationStore.selectedChannel)
-                        }
-                    )
-                } else if (searchStore.isSearchLoading) {
+                if (searchStore.isSearchLoading) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         ContainedLoadingIndicator()
                     }
                 } else if (searchStore.searchResults.isEmpty()) {
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        if (searchStore.searchQuery.isEmpty() && searchStore.activeTab == "messages") {
+                        if (searchStore.searchQuery.isEmpty()) {
                             item {
                                 Text(
                                     stringResource(Res.string.search_panel_options),

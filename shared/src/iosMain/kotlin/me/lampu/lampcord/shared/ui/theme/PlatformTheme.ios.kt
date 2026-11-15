@@ -6,6 +6,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import com.materialkolor.PaletteStyle
+import com.materialkolor.dynamiccolor.ColorSpec
 import com.materialkolor.rememberDynamicColorScheme
 import me.lampu.lampcord.shared.settings.FontOption
 import me.lampu.lampcord.shared.utils.appFontFamily
@@ -27,6 +28,7 @@ actual fun rememberPlatformColorScheme(
     return rememberDynamicColorScheme(
         seedColor = seedColor,
         isDark = isDark,
-        style = paletteStyle
+        style = paletteStyle,
+        specVersion = ColorSpec.SpecVersion.SPEC_2025
     )
 }

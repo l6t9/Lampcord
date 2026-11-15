@@ -10,6 +10,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import com.materialkolor.PaletteStyle
+import com.materialkolor.dynamiccolor.ColorSpec
 import com.materialkolor.quantize.QuantizerCelebi
 import com.materialkolor.rememberDynamicColorScheme
 import com.materialkolor.score.Score
@@ -445,6 +446,7 @@ actual fun rememberPlatformColorScheme(
     return rememberDynamicColorScheme(
         seedColor = seedColor,
         isDark = isDark,
-        style = paletteStyle
+        style = paletteStyle,
+        specVersion = ColorSpec.SpecVersion.SPEC_2025
     )
 }

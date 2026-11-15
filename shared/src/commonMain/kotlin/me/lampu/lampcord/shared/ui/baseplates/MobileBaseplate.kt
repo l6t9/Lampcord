@@ -604,7 +604,7 @@ fun MobileBaseplate(
 
     val lightPanelColor = MaterialTheme.colorScheme.surfaceContainer
     val darkPanelColor = MaterialTheme.colorScheme.surfaceContainerLowest
-    val chatBackground = MaterialTheme.colorScheme.background
+    val chatBackground = MaterialTheme.colorScheme.surface
     val memberHeaderColor = MaterialTheme.colorScheme.surface
 
     val settingsContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
@@ -806,7 +806,7 @@ fun MobileBaseplate(
                             )
                         },
                     shape = MaterialTheme.shapes.extraLarge,
-                    color = MaterialTheme.colorScheme.surfaceContainer,
+                    color = MaterialTheme.colorScheme.surface,
                     tonalElevation = 3.dp,
                     shadowElevation = 2.dp
                 ) {
@@ -1325,7 +1325,7 @@ fun MobileBaseplate(
         ) {
             Surface(
                 modifier = Modifier.fillMaxSize(),
-                color = MaterialTheme.colorScheme.background
+                color = MaterialTheme.colorScheme.surface
             ) {
                 me.lampu.lampcord.shared.ui.LoginScreen(onLoginSuccess = { showAddAccountDialog = false })
             }
@@ -1372,7 +1372,7 @@ private fun MainBaseplateContent(
     key(navigationStore.selectedGuild?.id ?: "home") {
         Surface(
             modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background,
+            color = MaterialTheme.colorScheme.surface,
             tonalElevation = 0.dp
         ) {
             Scaffold(
@@ -1638,7 +1638,7 @@ private fun MainBaseplateContent(
                     modifier = Modifier
                         .padding(top = padding.calculateTopPadding(), bottom = 0.dp)
                         .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.background),
+                        .background(MaterialTheme.colorScheme.surface),
                     label = "MainContentTransition"
                 ) { target ->
                     Box(Modifier.fillMaxSize()) {
