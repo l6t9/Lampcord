@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-
 <full-backup-content>
-
+    <!-- EncryptedSharedPreferences is backed by Android Keystore keys that are not restored
+         reliably across installs/restores, which can corrupt login/settings state. -->
+    <exclude domain="sharedpref" path="lampcord_encrypted_settings.xml" />
 </full-backup-content>

@@ -21,8 +21,26 @@ class PresenceStore(private val userApi: UserApi) {
 
     private val userStates = mutableMapOf<String, MutableState<PresenceUpdate?>>()
 
+    private companion object {
+        const val MAX_OBSERVED_PRESENCE_STATES = 4000
+    }
+
+    private fun trimObservedStates() {
+        val overflow = userStates.size - MAX_OBSERVED_PRESENCE_STATES
+        if (overflow <= 0) return
+        val iterator = userStates.keys.iterator()
+        var removed = 0
+        while (iterator.hasNext() && removed < overflow) {
+            val key = iterator.next()
+            userStates[key]?.value = null
+            iterator.remove()
+            removed++
+        }
+    }
+
     fun presenceState(userId: String): State<PresenceUpdate?> =
         userStates.getOrPut(userId) { mutableStateOf(flattenedPresences.value[userId]) }
+            .also { trimObservedStates() }
 
     private fun flattenOne(presences: Collection<PresenceUpdate>): PresenceUpdate =
         presences.find { it.status == "online" }

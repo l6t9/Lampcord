@@ -29,10 +29,33 @@ fun MainScreen(
     profileStore: ProfileStore = koinInject(),
     voiceStore: VoiceStore = koinInject(),
     userStore: UserStore = koinInject(),
-    guildStore: GuildStore = koinInject()
+    guildStore: GuildStore = koinInject(),
+    tokenStore: TokenStore = koinInject()
 ) {
     val currentUser by userStore.currentUser.collectAsState()
     val guilds by guildStore.guilds.collectAsState()
+
+    var showOnboarding by remember {
+        mutableStateOf(
+            if (Settings.shared.onboardingCompleted) {
+                false
+            } else if (Settings.shared.discordToken.isNotBlank() || tokenStore.getAccounts().isNotEmpty()) {
+                // Existing user/install migration: don't show onboarding
+                Settings.shared.onboardingCompleted = true
+                false
+            } else {
+                true
+            }
+        )
+    }
+
+    if (showOnboarding) {
+        OnboardingScreen(
+            onCompleted = { showOnboarding = false }
+        )
+        return
+    }
+
     CompositionLocalProvider(
         LocalCurrentUser provides currentUser,
         LocalGuilds provides guilds
@@ -72,7 +95,7 @@ fun MainScreen(
                             voiceStore = voiceStore
                         )
                     }
-                    isConnecting || me.lampu.lampcord.shared.settings.Settings.shared.discordToken.isNotBlank() -> {
+                    isConnecting || Settings.shared.discordToken.isNotBlank() -> {
                         Box(
                             modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface),
                             contentAlignment = Alignment.Center

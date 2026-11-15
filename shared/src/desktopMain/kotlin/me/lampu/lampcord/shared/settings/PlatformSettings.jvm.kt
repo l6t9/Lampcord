@@ -6,12 +6,15 @@ import java.util.prefs.Preferences
 import java.util.Base64
 import java.util.Properties
 import java.io.File
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import javax.crypto.Cipher
 import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
 import java.security.MessageDigest
 import com.sun.jna.Platform
 import com.sun.jna.platform.win32.Crypt32Util
+import me.lampu.lampcord.shared.utils.Logging
 import me.lampu.lampcord.shared.utils.XdgUtils
 
 @OptIn(ExperimentalSettingsImplementation::class)
@@ -47,7 +50,7 @@ private class FileSettings(private val file: File) : Settings {
             try {
                 file.inputStream().use { properties.load(it) }
             } catch (e: Exception) {
-                e.printStackTrace()
+                Logging.e("Settings", "Failed to load desktop settings from ${file.absolutePath}: ${e.message}")
             }
         }
     }
@@ -55,9 +58,23 @@ private class FileSettings(private val file: File) : Settings {
     private fun save() {
         try {
             file.parentFile?.mkdirs()
-            file.outputStream().use { properties.store(it, "Lampcord Settings") }
+            val tempFile = File(file.parentFile ?: File("."), "${file.name}.tmp")
+            java.io.FileOutputStream(tempFile).use { output ->
+                properties.store(output, "Lampcord Settings")
+                output.fd.sync()
+            }
+            try {
+                Files.move(
+                    tempFile.toPath(),
+                    file.toPath(),
+                    StandardCopyOption.REPLACE_EXISTING,
+                    StandardCopyOption.ATOMIC_MOVE
+                )
+            } catch (_: Exception) {
+                Files.move(tempFile.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            }
         } catch (e: Exception) {
-            e.printStackTrace()
+            Logging.e("Settings", "Failed to save desktop settings to ${file.absolutePath}: ${e.message}")
         }
     }
 

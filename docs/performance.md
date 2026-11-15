@@ -16,6 +16,7 @@ the REST request and the local preference write.
 - Blocked authors are a `Set<String>`, built once per relationship change.
 - Rows do not use `zIndex`, per-row `graphicsLayer`, or `animateItem()`.
 - Message body scans are remembered by content and embed data.
+- Per-channel message cache is bounded (inactive channels trimmed to 300 messages, active channel to 800) and the previous active channel is trimmed down when switching away, to prevent unbounded history growth while paging/jumping.
 
 ## Images
 
@@ -30,6 +31,7 @@ the REST request and the local preference write.
 
 - `UserStore` exposes `memberState(guildId, userId)` and `userState(userId)` for per-row member and user observation.
 - `PresenceStore` exposes `presenceState(userId)` for per-row presence observation.
+- Per-row observation `MutableState` holders in `UserStore` and `PresenceStore` are capped to avoid unbounded growth over long sessions.
 - `GuildStore` exposes per-guild unread and mention state plus a private-DM mention total.
 - `EntityStore` exposes `channelsForGuild(guildId)`; the sidebar observes only the selected guild's channels.
 - Channel updates that only change the last message id do not re-emit the sidebar list.
@@ -49,6 +51,10 @@ Remaining: transactional batch inserts, offline message cache, and a storage set
 The window backend is Nucleus 3.0 with system decorations. Hyprland uses `undecorated = true`.
 Window size and placement are persisted. Remaining: native window cache trimming and a bundled
 JDK 25 runtime so Nucleus can generate and ship a Project Leyden AOT cache for faster startup.
+
+## Profiling
+
+See [profiling.md](profiling.md) for repeatable desktop memory/CPU benchmarking (heap, RSS/smaps, NMT, JFR, profilers) and a scenario checklist. Run with `./gradlew :desktopApp:run -Plampcord.nmt=true` to enable JVM Native Memory Tracking.
 
 ## Next
 

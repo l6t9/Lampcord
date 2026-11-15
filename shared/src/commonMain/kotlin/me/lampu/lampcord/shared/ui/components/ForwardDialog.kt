@@ -89,7 +89,9 @@ fun ForwardDialog(
     val resultsState by finderStore.results.collectAsState()
     val query by finderStore.searchQueryFlow.collectAsState()
     val results = remember(query, resultsState) {
-        resultsState.filter { it !is FinderResult.Guild && it.targetChannelId() != null }
+        resultsState
+            .filter { it !is FinderResult.Guild && it.targetChannelId() != null }
+            .distinctBy { it.targetChannelId() }
     }
 
     val isMobile = getPlatformName() == "android" || getPlatformName() == "ios"

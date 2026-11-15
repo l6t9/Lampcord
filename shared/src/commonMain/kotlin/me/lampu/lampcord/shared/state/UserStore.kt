@@ -24,17 +24,35 @@ class UserStore {
     private val memberStates = mutableMapOf<String, MutableState<Member?>>()
     private val userStates = mutableMapOf<String, MutableState<User?>>()
 
+    private companion object {
+        const val MAX_OBSERVED_USER_STATES = 4000
+        const val MAX_OBSERVED_MEMBER_STATES = 4000
+    }
+
     private fun memberKey(guildId: String, userId: String): String = "$guildId\u0000$userId"
+
+    private fun <T> trimObservedStates(states: MutableMap<String, MutableState<T?>>, max: Int) {
+        if (states.size <= max) return
+        val overflow = states.size - max
+        val iterator = states.keys.iterator()
+        var removed = 0
+        while (iterator.hasNext() && removed < overflow) {
+            val key = iterator.next()
+            states[key]?.value = null
+            iterator.remove()
+            removed++
+        }
+    }
 
     fun memberState(guildId: String, userId: String): State<Member?> =
         memberStates.getOrPut(memberKey(guildId, userId)) {
             mutableStateOf(_members.value[guildId]?.get(userId))
-        }
+        }.also { trimObservedStates(memberStates, MAX_OBSERVED_MEMBER_STATES) }
 
     fun userState(userId: String): State<User?> =
         userStates.getOrPut(userId) {
             mutableStateOf(_users.value[userId])
-        }
+        }.also { trimObservedStates(userStates, MAX_OBSERVED_USER_STATES) }
 
     fun setCurrentUser(user: User?, raw: JsonObject? = null) {
         Logging.i("UserStore", "Setting current user: ${user?.username} (${user?.id})")

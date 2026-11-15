@@ -463,7 +463,6 @@ fun MobileBaseplate(
                         onNavigateToNavigation = { navigator.navigate(Screen.NavigationSettings) },
                         onDismiss = {
                             navigationStore.isSettingsVisible = false
-                            navigator.navigate(settingsReturnRoute)
                         }
                     )
                 }
