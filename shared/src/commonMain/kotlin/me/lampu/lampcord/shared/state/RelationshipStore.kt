@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import me.lampu.lampcord.shared.api.FriendRequestResult
 import me.lampu.lampcord.shared.api.UserApi
 import me.lampu.lampcord.shared.model.Relationship
 
@@ -68,39 +69,28 @@ class RelationshipStore(
 
     fun addFriend(userId: String) {
         scope.launch {
-            userApi.addRelationship(userId, 1)
+            if (userApi.addRelationship(userId)) fetchRelationships()
         }
     }
 
-    fun sendFriendRequest(input: String, onResult: (Boolean) -> Unit = {}) {
-        val trimmed = input.trim().removePrefix("@")
+    fun sendFriendRequest(input: String, onResult: (FriendRequestResult) -> Unit = {}) {
+        val trimmed = input.trim().removePrefix("@").trim()
         if (trimmed.isBlank()) {
-            onResult(false)
+            onResult(FriendRequestResult.Failed("Enter a username."))
             return
         }
 
-        // Accept both the modern username and the legacy username#discriminator form.
         val hashIndex = trimmed.lastIndexOf('#')
-        val username: String
-        val discriminator: String?
-        if (hashIndex > 0) {
-            val suffix = trimmed.substring(hashIndex + 1)
-            if (suffix.isNotEmpty() && suffix.all { it.isDigit() }) {
-                username = trimmed.substring(0, hashIndex)
-                discriminator = suffix
-            } else {
-                username = trimmed
-                discriminator = null
-            }
-        } else {
-            username = trimmed
-            discriminator = null
-        }
+        val tag = if (hashIndex > 0) trimmed.substring(hashIndex + 1) else ""
+        val hasTag = tag.isNotEmpty() && tag.all { it.isDigit() }
+        val username = if (hasTag) trimmed.substring(0, hashIndex) else trimmed
+        val discriminator = tag.takeIf { hasTag && it != "0" }
+        val lookupName = if (discriminator == null) username.lowercase() else username
 
         scope.launch {
-            val success = userApi.addRelationshipByUsername(username, discriminator)
-            if (success) fetchRelationships()
-            onResult(success)
+            val result = userApi.addRelationshipByUsername(lookupName, discriminator)
+            if (result is FriendRequestResult.Sent) fetchRelationships()
+            onResult(result)
         }
     }
 

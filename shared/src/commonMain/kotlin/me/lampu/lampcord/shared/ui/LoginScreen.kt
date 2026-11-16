@@ -476,7 +476,7 @@ fun LoginScreen(
     LaunchedEffect(remoteAuthState) {
         val state = remoteAuthState
         if (state is RemoteAuthState.Finished && state != staleRemoteAuth) {
-            completeAuth(state.token)
+            if (!completeAuth(state.token)) remoteAuthClient.reportFailure(loginFailedError)
         }
     }
 

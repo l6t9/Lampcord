@@ -1,6 +1,7 @@
 package me.lampu.lampcord.shared.api
 
 import io.ktor.client.call.body
+import io.ktor.client.plugins.timeout
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.patch
@@ -24,6 +25,13 @@ import me.lampu.lampcord.shared.model.UserProfile
 import me.lampu.lampcord.shared.model.UserSettings
 import me.lampu.lampcord.shared.model.decodeFavoriteGifs
 import me.lampu.lampcord.shared.utils.Logging
+
+private const val RELATIONSHIP_WRITE_TIMEOUT_MS = 180_000L
+
+sealed class FriendRequestResult {
+    data object Sent : FriendRequestResult()
+    data class Failed(val message: String) : FriendRequestResult()
+}
 
 class UserApi(private val rest: RestClient) {
 
@@ -183,15 +191,20 @@ class UserApi(private val rest: RestClient) {
         }
     }
 
-    suspend fun addRelationship(userId: String, type: Int): Boolean {
+    suspend fun addRelationship(userId: String, type: Int? = null): Boolean {
         return try {
             val response = rest.httpClient.put("${rest.apiBase}/users/@me/relationships/$userId") {
                 standardHeaders(rest)
+                timeout { requestTimeoutMillis = RELATIONSHIP_WRITE_TIMEOUT_MS }
                 contentType(ContentType.Application.Json)
-                setBody(buildJsonObject { put("type", type) })
+                setBody(buildJsonObject { type?.let { put("type", it) } })
+            }
+            if (!response.status.isSuccess()) {
+                Logging.e("Relationship", "Create relationship $userId failed: ${response.status} ${response.bodyAsText()}")
             }
             response.status.isSuccess()
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Logging.e("Relationship", "Error adding relationship: ${e.message}")
             false
         }
@@ -201,10 +214,11 @@ class UserApi(private val rest: RestClient) {
         username: String,
         discriminator: String? = null,
         note: String? = null
-    ): Boolean {
+    ): FriendRequestResult {
         return try {
             val response = rest.httpClient.post("${rest.apiBase}/users/@me/relationships") {
                 standardHeaders(rest)
+                timeout { requestTimeoutMillis = RELATIONSHIP_WRITE_TIMEOUT_MS }
                 contentType(ContentType.Application.Json)
                 setBody(buildJsonObject {
                     put("username", username)
@@ -213,17 +227,29 @@ class UserApi(private val rest: RestClient) {
                     note?.take(120)?.let { put("note", it) }
                 })
             }
-            if (!response.status.isSuccess()) {
-                Logging.e(
-                    "Relationship",
-                    "Friend request to $username failed: ${response.status} ${response.bodyAsText()}"
-                )
+            if (response.status.isSuccess()) {
+                FriendRequestResult.Sent
+            } else {
+                val body = response.bodyAsText()
+                Logging.e("Relationship", "Friend request to $username failed: ${response.status} $body")
+                FriendRequestResult.Failed(friendRequestFailureMessage(response.status.value, body))
             }
-            response.status.isSuccess()
+        } catch (e: CaptchaCancelledException) {
+            FriendRequestResult.Failed("Captcha was cancelled, so the friend request was not sent.")
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             Logging.e("Relationship", "Error sending friend request by username: ${e.message}")
-            false
+            FriendRequestResult.Failed("Could not reach Discord. Check your connection and try again.")
+        }
+    }
+
+    private fun friendRequestFailureMessage(status: Int, body: String): String {
+        val discordMessage = rest.discordError(body)?.message?.takeIf { it.isNotBlank() }
+        return when {
+            status == 429 -> "Discord is rate limiting friend requests. Wait a moment and try again."
+            status in 500..599 -> "Discord is having trouble right now (HTTP $status). Try again in a moment."
+            discordMessage != null -> discordMessage
+            else -> "Couldn't find that user."
         }
     }
 
