@@ -13,12 +13,12 @@ class RelationshipEventHandler(
     private val json: Json,
     private val relationshipStore: RelationshipStore
 ) : GatewayEventHandler {
-    override val supportedEvents = setOf("RELATIONSHIP_ADD", "RELATIONSHIP_REMOVE")
+    override val supportedEvents = setOf("RELATIONSHIP_ADD", "RELATIONSHIP_UPDATE", "RELATIONSHIP_REMOVE")
 
     override fun handleEvent(type: String, data: JsonElement?) {
         if (data == null) return
         when (type) {
-            "RELATIONSHIP_ADD" -> handleRelationshipAdd(data)
+            "RELATIONSHIP_ADD", "RELATIONSHIP_UPDATE" -> handleRelationshipAdd(data)
             "RELATIONSHIP_REMOVE" -> handleRelationshipRemove(data)
         }
     }

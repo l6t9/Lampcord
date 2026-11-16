@@ -1,5 +1,6 @@
 package me.lampu.lampcord.shared.ui.components
 
+import me.lampu.lampcord.shared.api.FriendRequestResult
 import me.lampu.lampcord.shared.generated.resources.Res
 import me.lampu.lampcord.shared.generated.resources.add_friend
 import me.lampu.lampcord.shared.generated.resources.add_friend_add_manually
@@ -330,6 +331,7 @@ private fun AddFriendPage(onBack: () -> Unit) {
 fun AddFriendUI(relationshipStore: RelationshipStore = koinInject()) {
     var query by remember { mutableStateOf("") }
     var statusText by remember { mutableStateOf<String?>(null) }
+    var statusIsError by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -359,8 +361,17 @@ fun AddFriendUI(relationshipStore: RelationshipStore = koinInject()) {
                     onClick = {
                         val name = query.trim()
                         if (name.isBlank()) return@Button
-                        relationshipStore.sendFriendRequest(name) { success ->
-                            statusText = if (success) "Friend request sent!" else "Couldn't find that user."
+                        relationshipStore.sendFriendRequest(name) { result ->
+                            when (result) {
+                                is FriendRequestResult.Sent -> {
+                                    statusIsError = false
+                                    statusText = "Friend request sent!"
+                                }
+                                is FriendRequestResult.Failed -> {
+                                    statusIsError = true
+                                    statusText = result.message
+                                }
+                            }
                         }
                     },
                     enabled = query.isNotBlank(),
@@ -377,7 +388,7 @@ fun AddFriendUI(relationshipStore: RelationshipStore = koinInject()) {
             Text(
                 text = it,
                 style = MaterialTheme.typography.bodyMedium,
-                color = if (it == "Friend request sent!") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                color = if (statusIsError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
             )
         }
     }
