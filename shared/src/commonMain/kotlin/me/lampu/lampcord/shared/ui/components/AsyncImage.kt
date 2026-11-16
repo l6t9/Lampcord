@@ -62,17 +62,26 @@ sealed interface ImageLoadState {
 }
 
 private const val MAX_ANIMATED_DECODE = 512
+private const val MAX_TWEMOJI_CACHE_ENTRIES = 512
 
-private val twemojiBytes = mutableMapOf<String, ByteArray?>()
+private val twemojiBytes = LinkedHashMap<String, ByteArray?>()
+
+private fun cachedTwemojiBytes(name: String): ByteArray? {
+    if (twemojiBytes.containsKey(name)) return twemojiBytes[name]
+    val bytes = ResourceLoader.readBytes("twemoji/72x72/$name")
+    if (twemojiBytes.size >= MAX_TWEMOJI_CACHE_ENTRIES) {
+        twemojiBytes.keys.firstOrNull()?.let { twemojiBytes.remove(it) }
+    }
+    twemojiBytes[name] = bytes
+    return bytes
+}
 
 private fun Any?.toCoilData(): Any? = when (this) {
     is ByteArray -> this
     is String -> {
         if (startsWith("$TWEMOJI_CDN_BASE_URL/")) {
             val name = substringAfterLast('/')
-            if (twemojiBytes.containsKey(name)) twemojiBytes[name] else {
-                ResourceLoader.readBytes("twemoji/72x72/$name").also { twemojiBytes[name] = it }
-            } ?: this
+            cachedTwemojiBytes(name) ?: this
         } else {
             this
         }

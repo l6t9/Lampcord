@@ -652,6 +652,9 @@ private class DesktopVideoPlayer(
     @Volatile
     private var loadJobId = 0L
 
+    @Volatile
+    private var runId = 0L
+
     private val lifecycleLock = Any()
 
     @Volatile
@@ -815,6 +818,7 @@ private class DesktopVideoPlayer(
     fun play(startPaused: Boolean = false) {
         if (decodeThread?.isAlive == true) return
         val g = grabber ?: return
+        val currentRun = ++runId
         closeRequested = false
         isRunning = true
         isPaused = startPaused
@@ -846,7 +850,7 @@ private class DesktopVideoPlayer(
                         lastVideoTimestampMs = -1L
                         videoTimestampOffsetMs = null
                     }
-                    while (isRunning) {
+                    while (isRunning && runId == currentRun) {
                         val seekTarget = pendingSeekMs
                         if (seekTarget != null) {
                             pendingSeekMs = null
@@ -870,8 +874,9 @@ private class DesktopVideoPlayer(
                             continue
                         }
                         val frame = g.grabFrame(true, true, true, false, false)
+                        if (runId != currentRun) break
                         if (frame == null) {
-                            if (repeat && isRunning) {
+                            if (repeat && isRunning && runId == currentRun) {
                                 g.setTimestamp(0, true)
                                 videoClockStartMs = 0L
                                 videoClockStartNanos = System.nanoTime()
@@ -901,12 +906,14 @@ private class DesktopVideoPlayer(
                     println("[VideoPlayer] Interrupted: ${e.message}")
                 } catch (e: Exception) {
                     println("[VideoPlayer] Exception in decode loop: ${e.stackTraceToString()}")
-                    if (!closeRequested) {
+                    if (runId == currentRun && !closeRequested) {
                         onError("Unable to play this video")
                     }
                 } finally {
-                    isRunning = false
-                    if (!closeRequested) onEnded()
+                    if (runId == currentRun) {
+                        isRunning = false
+                        if (!closeRequested) onEnded()
+                    }
                 }
             }.apply {
                 priority = Thread.NORM_PRIORITY
@@ -972,14 +979,13 @@ private class DesktopVideoPlayer(
 
     fun close() {
         closeRequested = true
+        runId++
         isRunning = false
         isPaused = false
-        decodeThread?.interrupt()
-        try {
-            decodeThread?.join(300)
-        } catch (e: InterruptedException) {
-        }
+        val thread = decodeThread
         decodeThread = null
+        thread?.interrupt()
+
         val renderer: AudioRenderer?
         val g: FFmpegFrameGrabber?
         synchronized(lifecycleLock) {
@@ -989,8 +995,23 @@ private class DesktopVideoPlayer(
             g = grabber
             grabber = null
         }
-        runCatching { renderer?.close() }
-        runCatching { g?.release() }
+
+        if (thread?.isAlive == true) {
+            // The decode thread may still be blocked inside a native read. Release the
+            // native handles only after it has exited so we never free memory it is using.
+            Thread({
+                runCatching { thread?.join() }
+                runCatching { renderer?.close() }
+                runCatching { g?.release() }
+            }, "VideoRelease-Thread").apply {
+                isDaemon = true
+                start()
+            }
+        } else {
+            runCatching { renderer?.close() }
+            runCatching { g?.release() }
+        }
+
         pendingSeekMs = null
         videoClockStartNanos = 0L
         videoClockStartMs = 0L
@@ -1000,6 +1021,8 @@ private class DesktopVideoPlayer(
         videoTimestampOffsetMs = null
         pixelBuffer = null
         srcBuffer = null
+        audioScratch = null
+        releaseRetainedFrames()
     }
 
     private fun writeAudio(frame: Frame) {
@@ -1014,13 +1037,23 @@ private class DesktopVideoPlayer(
         val renderer = audioRenderer ?: return
         when (val buffer = samples[0]) {
             is ShortBuffer -> {
-                val byteArray = ByteArray(buffer.remaining() * 2)
+                val size = buffer.remaining() * 2
+                var byteArray = audioScratch
+                if (byteArray == null || byteArray.size != size) {
+                    byteArray = ByteArray(size)
+                    audioScratch = byteArray
+                }
                 ByteBuffer.wrap(byteArray).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().put(buffer)
                 renderer.writePcmData(byteArray)
             }
 
             is ByteBuffer -> {
-                val byteArray = ByteArray(buffer.remaining())
+                val size = buffer.remaining()
+                var byteArray = audioScratch
+                if (byteArray == null || byteArray.size != size) {
+                    byteArray = ByteArray(size)
+                    audioScratch = byteArray
+                }
                 buffer.get(byteArray)
                 renderer.writePcmData(byteArray)
             }
@@ -1030,6 +1063,7 @@ private class DesktopVideoPlayer(
     }
 
     private fun renderVideo(frame: Frame, forceRender: Boolean = false, isInitialFrame: Boolean = false): Boolean {
+        if (closeRequested) return false
 
         val frameMs = normalizedVideoTimestamp(frame)
         if (isInitialFrame && videoClockStartNanos != 0L) {
@@ -1086,6 +1120,7 @@ private class DesktopVideoPlayer(
 
     private var srcBuffer: ByteArray? = null
     private var pixelBuffer: ByteArray? = null
+    private var audioScratch: ByteArray? = null
 
     private fun toBitmap(frame: Frame): ImageBitmap? {
         val buffer = frame.image?.get(0) as? ByteBuffer ?: return null
@@ -1095,17 +1130,13 @@ private class DesktopVideoPlayer(
         if (width <= 0 || height <= 0 || stride <= 0) return null
 
         val requiredPixelSize = width * height * 4
-        if (pixelBuffer?.size != requiredPixelSize) {
-            pixelBuffer = ByteArray(requiredPixelSize)
-        }
-        val pixels = pixelBuffer!!
+        val pixels = pixelBuffer?.takeIf { it.size == requiredPixelSize }
+            ?: ByteArray(requiredPixelSize).also { pixelBuffer = it }
 
         buffer.clear()
         val requiredSrcSize = buffer.remaining()
-        if (srcBuffer == null || srcBuffer!!.size < requiredSrcSize) {
-            srcBuffer = ByteArray(requiredSrcSize)
-        }
-        val srcBytes = srcBuffer!!
+        val srcBytes = srcBuffer?.takeIf { it.size >= requiredSrcSize }
+            ?: ByteArray(requiredSrcSize).also { srcBuffer = it }
         buffer.get(srcBytes, 0, requiredSrcSize)
 
         var dst = 0
@@ -1147,6 +1178,12 @@ private class DesktopVideoPlayer(
                 val old = recentFrames.removeFirst()
                 SwingUtilities.invokeLater { old.close() }
             }
+        }
+    }
+
+    private fun releaseRetainedFrames() {
+        synchronized(recentFrames) {
+            recentFrames.clear()
         }
     }
 

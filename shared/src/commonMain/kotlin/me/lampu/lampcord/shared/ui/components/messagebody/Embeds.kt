@@ -63,7 +63,8 @@ private val youtubeClipRe =
 fun GifvView(
     video: EmbedVideo,
     modifier: Modifier = Modifier,
-    onFullscreenClick: (() -> Unit)? = null
+    onFullscreenClick: (() -> Unit)? = null,
+    poster: EmbedImage? = null
 ) {
     val visibility = rememberWindowVisibility()
     Box(modifier = modifier.clip(RoundedCornerShape(8.dp)).background(Color.Black).then(visibility.modifier)) {
@@ -78,6 +79,17 @@ fun GifvView(
                 onFullscreenClick = null,
                 modifier = Modifier.fillMaxSize()
             )
+        } else {
+            val posterUrl = poster?.proxy_url ?: poster?.url
+            if (posterUrl != null) {
+                AsyncImage(
+                    model = posterUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                    placeholderHash = poster?.placeholder
+                )
+            }
         }
     }
 }
@@ -207,6 +219,7 @@ fun EmbedView(
     if (embed.type == "gifv" && embed.video != null) {
         GifvView(
             video = embed.video,
+            poster = embed.thumbnail ?: embed.image,
             onFullscreenClick = {
                 navigationStore.openAttachmentViewer(listOf(embed.video), 0)
             },
@@ -288,7 +301,7 @@ fun EmbedView(
                         embed.title?.let { title ->
                             val titleText = buildAnnotatedString { withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)) { append(title) } }
                             if (embed.url != null) {
-    val openLink = rememberLinkOpener()
+                                val openLink = rememberLinkOpener()
                                 Text(text = titleText, style = MaterialTheme.typography.titleMedium, modifier = Modifier.clickableCursor { openLink(embed.url) })
                             } else {
                                 Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)

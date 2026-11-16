@@ -199,7 +199,6 @@ kotlin {
             dependencies {
                 implementation(compose.desktop.currentOs)
                 implementation(libs.tianscar.imageio.apng)
-                implementation(libs.vlcj)
                 implementation("dev.nucleusframework:nucleus.system-color:${libs.versions.nucleus.get()}")
 
                 implementation("io.ktor:ktor-server-core:${libs.versions.ktor.get()}")
