@@ -20,6 +20,7 @@ import me.lampu.lampcord.shared.model.*
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.AudioPlayer
 import me.lampu.lampcord.shared.ui.components.VideoPlayer
+import me.lampu.lampcord.shared.ui.components.rememberWindowVisibility
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.downloadToDownloads
 import me.lampu.lampcord.shared.utils.getPlatformName
@@ -84,23 +85,51 @@ fun AttachmentImage(
         val maxHeight = 300.dp
         val finalWidth = (media.width?.dp ?: maxWidth).coerceAtMost(maxWidth)
         val finalHeight = (media.height?.dp ?: maxHeight).coerceAtMost(maxHeight)
+        val playerModifier = modifier
+            .sizeIn(maxWidth = finalWidth, maxHeight = finalHeight)
+            .aspectRatio(media.aspectRatio ?: (16f / 9f))
+            .clip(RoundedCornerShape(8.dp))
 
-        VideoPlayer(
-            url = url,
-            loop = isGifv,
-
-            showControls = !isGifv,
-            showSeekBar = !isGifv,
-            title = title ?: (media as? Attachment)?.filename,
-            subtitle = subtitle ?: (media as? Attachment)?.content_type,
-            compact = true,
-            autoPlay = !isGifv || !reduceMotion,
-            onFullscreenClick = inlineFullscreenClick,
-            modifier = modifier
-                .sizeIn(maxWidth = finalWidth, maxHeight = finalHeight)
-                .aspectRatio(media.aspectRatio ?: (16f / 9f))
-                .clip(RoundedCornerShape(8.dp))
-        )
+        if (isGifv) {
+            val visibility = rememberWindowVisibility()
+            Box(modifier = playerModifier.then(visibility.modifier)) {
+                if (visibility.isVisible) {
+                    VideoPlayer(
+                        url = url,
+                        loop = true,
+                        showControls = false,
+                        showSeekBar = false,
+                        title = title ?: (media as? Attachment)?.filename,
+                        subtitle = subtitle ?: (media as? Attachment)?.content_type,
+                        compact = true,
+                        autoPlay = !reduceMotion,
+                        onFullscreenClick = inlineFullscreenClick,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    AsyncImage(
+                        model = displayUrl,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                        placeholderHash = media.placeholder
+                    )
+                }
+            }
+        } else {
+            VideoPlayer(
+                url = url,
+                loop = false,
+                showControls = true,
+                showSeekBar = true,
+                title = title ?: (media as? Attachment)?.filename,
+                subtitle = subtitle ?: (media as? Attachment)?.content_type,
+                compact = true,
+                autoPlay = true,
+                onFullscreenClick = inlineFullscreenClick,
+                modifier = playerModifier
+            )
+        }
     } else if (isMosaic) {
         Box(modifier = modifier.fillMaxSize().then(clickModifier), contentAlignment = Alignment.Center) {
             AsyncImage(

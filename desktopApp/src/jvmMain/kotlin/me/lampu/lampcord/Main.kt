@@ -68,7 +68,6 @@ fun main() {
     NotificationManager.initialize()
 
     val rpcServer = DesktopRPCServer(get().get())
-    rpcServer.start()
 
     val isLinux = getPlatformName() == "linux"
     val isHyprland = isLinux && (
@@ -77,6 +76,10 @@ fun main() {
         )
 
     nucleusApplication {
+        LaunchedEffect(Unit) {
+            rpcServer.start()
+        }
+
         val reloadKey by reloadTrigger.collectAsState()
 
         LaunchedEffect(reloadKey) {
