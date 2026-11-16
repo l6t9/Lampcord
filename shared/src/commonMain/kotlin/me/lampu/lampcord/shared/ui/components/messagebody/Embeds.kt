@@ -5,15 +5,21 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
 import me.lampu.lampcord.shared.ui.rememberLinkOpener
 import androidx.compose.ui.text.SpanStyle
@@ -28,6 +34,8 @@ import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.DiscordMarkdownText
 import me.lampu.lampcord.shared.ui.components.VideoPlayer
+import me.lampu.lampcord.shared.ui.components.rememberWindowVisibility
+import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.settings.Settings
 import androidx.compose.runtime.LaunchedEffect
 import me.lampu.lampcord.shared.utils.getPlatformName
@@ -57,26 +65,33 @@ fun GifvView(
     modifier: Modifier = Modifier,
     onFullscreenClick: (() -> Unit)? = null
 ) {
-    Box(modifier = modifier.clip(RoundedCornerShape(8.dp)).background(Color.Black)) {
-
-        VideoPlayer(
-            url = video.url ?: "",
-            loop = true,
-            showControls = false,
-            showSeekBar = false,
-            compact = true,
-            autoPlay = !Settings.shared.reduceMotion,
-            onFullscreenClick = null,
-            modifier = Modifier.fillMaxSize()
-        )
+    val visibility = rememberWindowVisibility()
+    Box(modifier = modifier.clip(RoundedCornerShape(8.dp)).background(Color.Black).then(visibility.modifier)) {
+        if (visibility.isVisible) {
+            VideoPlayer(
+                url = video.url ?: "",
+                loop = true,
+                showControls = false,
+                showSeekBar = false,
+                compact = true,
+                autoPlay = !Settings.shared.reduceMotion,
+                onFullscreenClick = null,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
     }
+}
+
+private object ActivePlayableEmbed {
+    var activeToken by mutableStateOf<Any?>(null)
 }
 
 @Composable
 fun PlayableEmbedView(
     url: String,
     provider: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    poster: EmbedImage? = null
 ) {
     if (!remember { isEmbeddedWebViewAvailable() }) {
         val openLink = rememberLinkOpener()
@@ -110,30 +125,77 @@ fun PlayableEmbedView(
         return
     }
 
-    val navigator = rememberWebViewNavigator()
-    val webViewState = rememberWebViewState(url)
+    val token = remember { Any() }
+    var isActivated by remember { mutableStateOf(false) }
+    val isActive = isActivated && ActivePlayableEmbed.activeToken === token
 
-    LaunchedEffect(webViewState) {
-        val platform = getPlatformName()
-        val isMobile = platform == "android" || platform == "ios"
-        webViewState.webSettings.apply {
-            isJavaScriptEnabled = true
-            customUserAgentString = if (isMobile) {
-                "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36"
-            } else {
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
+    DisposableEffect(token) {
+        onDispose {
+            if (ActivePlayableEmbed.activeToken === token) {
+                ActivePlayableEmbed.activeToken = null
             }
         }
-
-        navigator.loadUrl(url, mapOf("Referer" to "https://discord.com"))
     }
 
     Box(modifier = modifier.clip(RoundedCornerShape(8.dp)).background(Color.Black)) {
-        WebView(
-            state = webViewState,
-            navigator = navigator,
-            modifier = Modifier.fillMaxSize()
-        )
+        if (isActive) {
+            val navigator = rememberWebViewNavigator()
+            val webViewState = rememberWebViewState(url)
+
+            LaunchedEffect(webViewState) {
+                val platform = getPlatformName()
+                val isMobile = platform == "android" || platform == "ios"
+                webViewState.webSettings.apply {
+                    isJavaScriptEnabled = true
+                    customUserAgentString = if (isMobile) {
+                        "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36"
+                    } else {
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
+                    }
+                }
+
+                navigator.loadUrl(url, mapOf("Referer" to "https://discord.com"))
+            }
+
+            WebView(
+                state = webViewState,
+                navigator = navigator,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            val posterUrl = poster?.proxy_url ?: poster?.url
+            if (posterUrl != null) {
+                AsyncImage(
+                    model = posterUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                    placeholderHash = poster?.placeholder
+                )
+            }
+            Box(
+                modifier = Modifier.fillMaxSize().clickableCursor {
+                    ActivePlayableEmbed.activeToken = token
+                    isActivated = true
+                },
+                contentAlignment = Alignment.Center
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = Color.Black.copy(alpha = 0.55f),
+                    modifier = Modifier.size(64.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Filled.PlayArrow,
+                            contentDescription = "Play ${provider.ifBlank { "embed" }}",
+                            tint = Color.White,
+                            modifier = Modifier.size(36.dp)
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -271,6 +333,7 @@ fun EmbedView(
                     PlayableEmbedView(
                         url = playableUrl,
                         provider = embed.provider?.name ?: "",
+                        poster = embed.thumbnail ?: embed.image,
                         modifier = Modifier
                             .padding(vertical = 4.dp)
                             .fillMaxWidth()
