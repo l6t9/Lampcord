@@ -119,25 +119,21 @@ object DateTimeUtils {
 
         val timeFormat = Settings.shared.timeFormat
 
-        return when {
+        val textTime = when {
             localDateTime.day == localRightNow.day -> {
-                formatTime(localDateTime.time, timeFormat).fold(
-                    onSuccess = { f -> f },
-                    onFailure = { "Error when applying time" } // todo: logcat
-                )
+                formatTime(localDateTime.time, timeFormat)
             }
             localDateTime.day == localRightNow.day - 1 -> {
-                formatTime(localDateTime.time, timeFormat).fold(
-                    onSuccess = { f -> "Yesterday at $f" },
-                    onFailure = { "Error when applying time" } // todo: logcat
-                )
+                formatTime(localDateTime.time, timeFormat).map { f -> "Yesterday at $f" }
             }
             else -> {
-                formatDateTime(localDateTime, Settings.shared.dateTimeFormat).fold(
-                    onSuccess = { f -> f },
-                    onFailure = { "Error when applying date time" } // todo: logcat
-                )
+                formatDateTime(localDateTime, Settings.shared.dateTimeFormat)
             }
+        }
+
+        return textTime.getOrElse { v ->
+            Logging.e("Timestamps", "Error converting time $isoString", v)
+            "Error with time $isoString"
         }
     }
 
