@@ -30,6 +30,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import me.lampu.lampcord.shared.ui.kit.handCursor
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -187,7 +188,14 @@ private fun CallStageHeader(
             }
         } else {
             if (isJoined && voiceStore.connection.phase == VoicePhase.SECURE) {
-                Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.secondaryContainer) {
+                var showVerification by remember { mutableStateOf(false) }
+                if (showVerification) DaveVerificationDialog(voiceStore) { showVerification = false }
+                Surface(
+                    onClick = { showVerification = true },
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    modifier = Modifier.handCursor()
+                ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,

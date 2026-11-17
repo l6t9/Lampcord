@@ -71,9 +71,11 @@ fun MainScreen(
             } else ""
         }
 
-        val hasVoice = voiceStore.activeChannel != null
-        Column(Modifier.fillMaxSize().then(if (hasVoice) Modifier.statusBarsPadding() else Modifier)) {
-            if (hasVoice) VoiceConnectionPanel(voiceStore)
+        // Desktop layouts show the call in the sidebar instead
+        val hasVoiceBar = voiceStore.activeChannel != null &&
+            !me.lampu.lampcord.shared.ui.baseplates.usesDesktopBaseplate(maxWidth)
+        Column(Modifier.fillMaxSize().then(if (hasVoiceBar) Modifier.statusBarsPadding() else Modifier)) {
+            if (hasVoiceBar) VoiceConnectionPanel(voiceStore)
             AnimatedContent(
                 modifier = Modifier.weight(1f),
                 targetState = navigationStore.isConnected to navigationStore.isConnecting,

@@ -39,23 +39,23 @@ fun MainAdaptiveScaffold(
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val widthBreakpoint = calculateWidthBreakpoint(maxWidth)
-        val platform = getPlatformName()
-        val isDesktop = platform == "desktop" || platform == "macos" || platform == "windows" || platform == "linux"
 
-        when (widthBreakpoint) {
-            WindowWidthBreakpoint.COMPACT -> {
-                MobileBaseplate(navigationStore, profileStore, userStore, voiceStore)
-            }
-            WindowWidthBreakpoint.MEDIUM -> {
-                if (isDesktop) {
-                    DesktopBaseplate(navigationStore, profileStore, voiceStore, widthBreakpoint)
-                } else {
-                    MobileBaseplate(navigationStore, profileStore, userStore, voiceStore)
-                }
-            }
-            WindowWidthBreakpoint.EXPANDED, WindowWidthBreakpoint.LARGE, WindowWidthBreakpoint.EXTRA_LARGE -> {
-                DesktopBaseplate(navigationStore, profileStore, voiceStore, widthBreakpoint)
-            }
+        if (usesDesktopBaseplate(maxWidth)) {
+            DesktopBaseplate(navigationStore, profileStore, voiceStore, widthBreakpoint)
+        } else {
+            MobileBaseplate(navigationStore, profileStore, userStore, voiceStore)
         }
+    }
+}
+
+/** Whether a window this wide uses the multi-column desktop layout. */
+@Composable
+fun usesDesktopBaseplate(width: androidx.compose.ui.unit.Dp): Boolean {
+    val platform = getPlatformName()
+    val isDesktop = platform == "desktop" || platform == "macos" || platform == "windows" || platform == "linux"
+    return when (calculateWidthBreakpoint(width)) {
+        WindowWidthBreakpoint.COMPACT -> false
+        WindowWidthBreakpoint.MEDIUM -> isDesktop
+        WindowWidthBreakpoint.EXPANDED, WindowWidthBreakpoint.LARGE, WindowWidthBreakpoint.EXTRA_LARGE -> true
     }
 }

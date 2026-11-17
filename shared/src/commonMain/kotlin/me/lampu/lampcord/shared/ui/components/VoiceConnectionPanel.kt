@@ -57,18 +57,7 @@ fun VoiceConnectionPanel(voiceStore: VoiceStore = koinInject(), userStore: UserS
             }
         }
     }
-    if (showVerification) AlertDialog(
-        onDismissRequest = { showVerification = false },
-        title = { Text("DAVE encryption") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Compare this MLS epoch authenticator with the other participants over a trusted channel. It changes when the encryption group changes.")
-                SelectionContainer { Text(voiceStore.connection.verificationCode.ifEmpty { "Waiting for a new encrypted epoch" }, style = MaterialTheme.typography.bodySmall) }
-                Text("Keys are ephemeral for this call. Matching codes verify the group; they do not establish someone's real-world identity.", style = MaterialTheme.typography.bodySmall)
-            }
-        },
-        confirmButton = { TextButton(onClick = { showVerification = false }) { Text(stringResource(Res.string.close)) } }
-    )
+    if (showVerification) DaveVerificationDialog(voiceStore) { showVerification = false }
     if (showScreenshareDialog) AlertDialog(
         onDismissRequest = { showScreenshareDialog = false },
         title = { Text("Screensharing & Viewing") },
@@ -86,8 +75,8 @@ fun VoiceConnectionPanel(voiceStore: VoiceStore = koinInject(), userStore: UserS
 fun VoiceCallButton(channel: Channel, voiceStore: VoiceStore = koinInject()) {
     val join = rememberVoiceJoin(voiceStore)
     LaunchedEffect(channel.id) { voiceStore.requestCall(channel) }
-    if (channel.type == 1 || channel.type == 3) {
-        IconButton(onClick = { join(channel, channel.id !in voiceStore.calls) }, enabled = voiceStore.activeChannel?.id != channel.id) {
+    if ((channel.type == 1 || channel.type == 3) && voiceStore.activeChannel?.id != channel.id) {
+        IconButton(onClick = { join(channel, channel.id !in voiceStore.calls) }) {
             Icon(Icons.Filled.Call, if (channel.id in voiceStore.calls) "Join call" else "Start voice call")
         }
     }
@@ -114,6 +103,22 @@ fun VoiceCallDialogs(voiceStore: VoiceStore = koinInject(), guildStore: GuildSto
             confirmButton = { TextButton(onClick = { voiceStore.error = null }) { Text(stringResource(Res.string.close)) } }
         )
     }
+}
+
+@Composable
+internal fun DaveVerificationDialog(voiceStore: VoiceStore, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("DAVE encryption") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Compare this MLS epoch authenticator with the other participants over a trusted channel. It changes when the encryption group changes.")
+                SelectionContainer { Text(voiceStore.connection.verificationCode.ifEmpty { "Waiting for a new encrypted epoch" }, style = MaterialTheme.typography.bodySmall) }
+                Text("Keys are ephemeral for this call. Matching codes verify the group; they do not establish someone's real-world identity.", style = MaterialTheme.typography.bodySmall)
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(Res.string.close)) } }
+    )
 }
 
 internal fun voiceStatusText(voiceStore: VoiceStore): String {
