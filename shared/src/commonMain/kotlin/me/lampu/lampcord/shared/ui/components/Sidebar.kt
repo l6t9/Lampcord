@@ -66,7 +66,7 @@ fun Sidebar(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight(),
-                shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+                shape = RoundedCornerShape(16.dp),
                 color = MaterialTheme.colorScheme.surface,
                 tonalElevation = 0.dp
             ) {
@@ -85,7 +85,7 @@ fun Sidebar(
         }
 
         if (showAccountPanel) {
-            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)) {
+            Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
                 androidx.compose.animation.AnimatedVisibility(
                     visible = voiceStore.activeChannel != null,
                     enter = androidx.compose.animation.expandVertically(expandFrom = androidx.compose.ui.Alignment.Top) + androidx.compose.animation.fadeIn(),
@@ -93,14 +93,7 @@ fun Sidebar(
                 ) {
                     SidebarVoicePanel(voiceStore, userStore)
                 }
-                Box(
-                    modifier = Modifier
-                        .padding(start = 0.dp, top = 4.dp, end = 0.dp, bottom = 0.dp)
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                ) {
-                    AccountPanel()
-                }
+                AccountPanel(joinedAbove = voiceStore.activeChannel != null)
             }
         }
     }
@@ -124,9 +117,9 @@ fun SidebarVoicePanel(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(bottom = 4.dp),
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh
+            .padding(bottom = 2.dp),
+        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 4.dp, bottomEnd = 4.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHighest
     ) {
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(
@@ -148,24 +141,30 @@ fun SidebarVoicePanel(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                IconButton(
+                Surface(
                     onClick = { voiceStore.disconnectFromVoice() },
-                    modifier = Modifier.size(36.dp)
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError,
+                    modifier = Modifier.size(40.dp)
                 ) {
-                    Icon(Icons.Filled.CallEnd, "Disconnect", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(Icons.Filled.CallEnd, "Disconnect", modifier = Modifier.size(20.dp))
+                    }
                 }
             }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                horizontalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 // Sending camera and screen video is not implemented yet; only receiving is.
-                VoicePanelButton(Icons.Filled.Videocam, "Turn on camera", enabled = false) {}
-                VoicePanelButton(Icons.Filled.ScreenShare, "Share your screen", enabled = false) {}
+                VoicePanelButton(Icons.Filled.Videocam, "Turn on camera", position = GroupPosition.First, enabled = false) {}
+                VoicePanelButton(Icons.Filled.ScreenShare, "Share your screen", position = GroupPosition.Middle, enabled = false) {}
                 VoicePanelButton(
                     Icons.Filled.GraphicEq,
                     if (settingsStore.noiseCancellation) "Turn off noise suppression" else "Turn on noise suppression",
+                    position = GroupPosition.Last,
                     checked = settingsStore.noiseCancellation
                 ) { settingsStore.noiseCancellation = !settingsStore.noiseCancellation }
             }
@@ -173,21 +172,31 @@ fun SidebarVoicePanel(
     }
 }
 
+private enum class GroupPosition { First, Middle, Last }
+
 @Composable
 private fun RowScope.VoicePanelButton(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     contentDescription: String,
+    position: GroupPosition,
     enabled: Boolean = true,
     checked: Boolean = false,
     onClick: () -> Unit
 ) {
+    val outer = 18.dp
+    val inner = if (checked) outer else 8.dp
+    val shape = when (position) {
+        GroupPosition.First -> RoundedCornerShape(topStart = outer, bottomStart = outer, topEnd = inner, bottomEnd = inner)
+        GroupPosition.Middle -> RoundedCornerShape(inner)
+        GroupPosition.Last -> RoundedCornerShape(topStart = inner, bottomStart = inner, topEnd = outer, bottomEnd = outer)
+    }
     Surface(
         onClick = onClick,
         enabled = enabled,
         modifier = Modifier.weight(1f).height(36.dp),
-        shape = CircleShape,
-        color = if (checked) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
-        contentColor = if (checked) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface
+        shape = shape,
+        color = if (checked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = if (checked) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer
     ) {
         Box(contentAlignment = Alignment.Center) {
             Icon(

@@ -75,9 +75,15 @@ import me.lampu.lampcord.shared.utils.getPlatformName
 import org.koin.compose.koinInject
 import me.lampu.lampcord.shared.ui.kit.handCursor
 import me.lampu.lampcord.shared.ui.kit.clickableCursor
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun AccountPanel(
+    joinedAbove: Boolean = false,
     userStore: UserStore = koinInject(),
     settingsStore: SettingsStore = koinInject(),
     voiceStore: VoiceStore = koinInject(),
@@ -114,21 +120,31 @@ fun AccountPanel(
         )
     }
 
+    val topCorner by animateDpAsState(
+        targetValue = if (joinedAbove) 4.dp else 20.dp,
+        animationSpec = if (Settings.shared.reduceMotion) snap() else MaterialTheme.motionScheme.fastSpatialSpec(),
+        label = "accountPanelTopCorner"
+    )
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .height(60.dp)
-            .handCursor()
             .onGloballyPositioned { panelPosition = it.positionInRoot() },
-        color = MaterialTheme.colorScheme.surfaceContainerHigh
+        shape = RoundedCornerShape(
+            topStart = topCorner,
+            topEnd = topCorner,
+            bottomStart = 20.dp,
+            bottomEnd = 20.dp
+        ),
+        color = MaterialTheme.colorScheme.surfaceContainerHighest
     ) {
         val member = navigationStore.selectedGuild?.let { userStore.getMember(it.id, user.id) }
         val nameplate = member?.collectibles?.nameplate ?: user.collectibles?.nameplate
         var isHovered by remember { mutableStateOf(false) }
-        
+
         Box(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
                 .pointerInput(Unit) {
                     awaitPointerEventScope {
                         while (true) {
@@ -146,111 +162,124 @@ fun AccountPanel(
                 AsyncImage(
                     model = decoUrl,
                     contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.matchParentSize(),
                     contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                     alpha = 0.4f,
                     allowAnimation = isHovered
                 )
             }
 
+            val status = userSettings?.status ?: "online"
+            val statusLabel = when (status) {
+                "idle" -> stringResource(Res.string.status_idle)
+                "dnd" -> stringResource(Res.string.status_dnd)
+                "invisible" -> stringResource(Res.string.status_invisible)
+                else -> stringResource(Res.string.status_online)
+            }
+
+            val muteLabel = if (isMuted) "Unmute" else stringResource(Res.string.mute)
+            val deafenLabel = if (isDeafened) "Undeafen" else stringResource(Res.string.deafen)
+            val muteIcon = if (isMuted) Icons.Filled.MicOff else Icons.Rounded.Mic
+            val deafenIcon = if (isDeafened) Icons.Filled.HeadsetOff else Icons.Rounded.Headphones
+            val settingsLabel = stringResource(Res.string.settings)
+
             Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clickableCursor { showStatusMenu = true }
-                    .padding(horizontal = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier.fillMaxWidth().height(64.dp).padding(horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                val avatarUrl = member?.avatar?.let {
-                    "https://cdn.discordapp.com/guilds/${navigationStore.selectedGuild?.id}/users/${user.id}/avatars/$it.png?size=160"
-                } ?: CdnUrls.getUserAvatarUrl(user.id, user.avatar, 160)
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(MaterialTheme.shapes.large)
+                        .clickableCursor { showStatusMenu = true }
+                        .padding(end = 8.dp, top = 4.dp, bottom = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val avatarUrl = member?.avatar?.let {
+                        "https://cdn.discordapp.com/guilds/${navigationStore.selectedGuild?.id}/users/${user.id}/avatars/$it.png?size=160"
+                    } ?: CdnUrls.getUserAvatarUrl(user.id, user.avatar, 160)
 
-                Box(modifier = Modifier.size(32.dp)) {
-                    val status = userSettings?.status ?: "online"
-                    AvatarWithDecoration(
-                        avatarUrl = avatarUrl,
-                        decorationData = member?.avatar_decoration_data ?: user.avatar_decoration_data ?: member?.collectibles?.avatar_decoration ?: user.collectibles?.avatar_decoration,
-                        size = 32.dp,
-                        status = status,
-                        forceAnimate = true
-                    )
-                }
-                
-                Spacer(modifier = Modifier.width(10.dp))
-                
-                val roleData = remember(member, navigationStore.selectedGuild) {
-                    val m = member ?: return@remember null
-                    val g = navigationStore.selectedGuild ?: return@remember null
-                    val colorRole = m.getRoleColorRole(g)
-                    if (colorRole != null) {
-                        val primaryInt = colorRole.colors?.primary_color ?: colorRole.color
-                        val gradient = if (colorRole.colors?.secondary_color != null) {
-                            listOfNotNull(
-                                Color(primaryInt or 0xFF000000.toInt()),
-                                Color(colorRole.colors.secondary_color or 0xFF000000.toInt()),
-                                colorRole.colors.tertiary_color?.let { Color(it or 0xFF000000.toInt()) }
-                            )
-                        } else null
-                        val color = if (primaryInt != 0) Color(primaryInt or 0xFF000000.toInt()) else Color.Unspecified
-                        color to gradient
-                    } else null
-                }
-                val roleColor = roleData?.first ?: Color.Unspecified
-                val roleGradient = roleData?.second
-
-                Column(modifier = Modifier.weight(1f)) {
-                    UsernameView(
-                        name = member?.nick ?: user.global_name ?: user.username ?: "Unknown",
-                        style = member?.display_name_styles ?: user.display_name_styles,
-                        baseStyle = MaterialTheme.typography.labelLarge,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                        color = if (roleColor != Color.Unspecified) roleColor else MaterialTheme.colorScheme.onSurface,
-                        roleGradient = roleGradient,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        marquee = true
-                    )
-                    
-                    val presences by presenceStore.presences.collectAsState()
-                    val presence = presences[user.id]
-                    val activity = presence?.activities?.firstOrNull()
-
-                    if (activity != null) {
-                        UserActivity(
-                            activity = activity,
-                            compact = true
+                    Box(modifier = Modifier.size(40.dp)) {
+                        AvatarWithDecoration(
+                            avatarUrl = avatarUrl,
+                            decorationData = member?.avatar_decoration_data ?: user.avatar_decoration_data ?: member?.collectibles?.avatar_decoration ?: user.collectibles?.avatar_decoration,
+                            size = 40.dp,
+                            status = status,
+                            forceAnimate = true
                         )
-                    } else {
-                        Text(
-                            text = user.username ?: "",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    }
+
+                    Spacer(modifier = Modifier.width(10.dp))
+
+                    val roleData = remember(member, navigationStore.selectedGuild) {
+                        val m = member ?: return@remember null
+                        val g = navigationStore.selectedGuild ?: return@remember null
+                        val colorRole = m.getRoleColorRole(g)
+                        if (colorRole != null) {
+                            val primaryInt = colorRole.colors?.primary_color ?: colorRole.color
+                            val gradient = if (colorRole.colors?.secondary_color != null) {
+                                listOfNotNull(
+                                    Color(primaryInt or 0xFF000000.toInt()),
+                                    Color(colorRole.colors.secondary_color or 0xFF000000.toInt()),
+                                    colorRole.colors.tertiary_color?.let { Color(it or 0xFF000000.toInt()) }
+                                )
+                            } else null
+                            val color = if (primaryInt != 0) Color(primaryInt or 0xFF000000.toInt()) else Color.Unspecified
+                            color to gradient
+                        } else null
+                    }
+                    val roleColor = roleData?.first ?: Color.Unspecified
+                    val roleGradient = roleData?.second
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        UsernameView(
+                            name = member?.nick ?: user.global_name ?: user.username ?: "Unknown",
+                            style = member?.display_name_styles ?: user.display_name_styles,
+                            baseStyle = MaterialTheme.typography.titleSmall,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                            color = if (roleColor != Color.Unspecified) roleColor else MaterialTheme.colorScheme.onSurface,
+                            roleGradient = roleGradient,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = if (!Settings.shared.marqueeEnabled) Modifier else Modifier.basicMarquee(
-                                iterations = if (getPlatformName() == "windows") 1 else Int.MAX_VALUE,
-                                initialDelayMillis = 3000,
-                                velocity = 30.dp
-                            )
+                            marquee = true
                         )
+                    
+                        val presences by presenceStore.presences.collectAsState()
+                        val presence = presences[user.id]
+                        val activity = presence?.activities?.firstOrNull()
+
+                        if (activity != null) {
+                            UserActivity(
+                                activity = activity,
+                                compact = true
+                            )
+                        } else {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = if (isHovered) user.username ?: statusLabel else statusLabel,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f, fill = false)
+                                )
+                                Icon(
+                                    Icons.Rounded.ExpandMore,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
                     }
                 }
-                
                 Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                    AccountPanelButton(
-                        if (isMuted) Icons.Filled.MicOff else Icons.Rounded.Mic,
-                        if (isMuted) "Unmute" else stringResource(Res.string.mute),
-                        active = isMuted,
-                        onClick = voiceStore::toggleVoiceMute
-                    )
-                    AccountPanelButton(
-                        if (isDeafened) Icons.Filled.HeadsetOff else Icons.Rounded.Headphones,
-                        if (isDeafened) "Undeafen" else stringResource(Res.string.deafen),
-                        active = isDeafened,
-                        onClick = voiceStore::toggleVoiceDeaf
-                    )
-                    AccountPanelButton(Icons.Rounded.Settings, stringResource(Res.string.settings)) {
-                        navigationStore.isSettingsVisible = true
-                    }
+                    AccountVoiceToggle(muteIcon, muteLabel, active = isMuted, leading = true, onClick = voiceStore::toggleVoiceMute)
+                    AccountVoiceToggle(deafenIcon, deafenLabel, active = isDeafened, leading = false, onClick = voiceStore::toggleVoiceDeaf)
+                }
+                AccountPanelButton(Icons.Rounded.Settings, settingsLabel) {
+                    navigationStore.isSettingsVisible = true
                 }
             }
 
@@ -494,10 +523,43 @@ private fun AccountPanelButton(
         shape = CircleShape,
         color = if (active) MaterialTheme.colorScheme.errorContainer else Color.Transparent,
         contentColor = if (active) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.size(36.dp).handCursor()
+        modifier = Modifier.size(40.dp).handCursor()
     ) {
         Box(contentAlignment = Alignment.Center) {
             Icon(icon, contentDescription, modifier = Modifier.size(20.dp))
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun AccountVoiceToggle(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    active: Boolean,
+    leading: Boolean,
+    onClick: () -> Unit
+) {
+    val outer = 20.dp
+    val inner by animateDpAsState(
+        targetValue = if (active) outer else 8.dp,
+        animationSpec = if (Settings.shared.reduceMotion) snap() else MaterialTheme.motionScheme.fastSpatialSpec(),
+        label = "voiceToggleCorner"
+    )
+    val shape = if (leading) {
+        RoundedCornerShape(topStart = outer, bottomStart = outer, topEnd = inner, bottomEnd = inner)
+    } else {
+        RoundedCornerShape(topStart = inner, bottomStart = inner, topEnd = outer, bottomEnd = outer)
+    }
+    Surface(
+        onClick = onClick,
+        shape = shape,
+        color = if (active) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = if (active) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSecondaryContainer,
+        modifier = Modifier.size(width = 44.dp, height = 40.dp).handCursor()
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(icon, label, modifier = Modifier.size(20.dp))
         }
     }
 }
