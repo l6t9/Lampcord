@@ -234,7 +234,9 @@ class SearchStore(
             lastPageFull = false
             return
         }
+        val seen = searchResults.mapTo(HashSet()) { it.id }
         val hits = response.messages.flatMap { group -> group.filter { it.hit } }
+            .filter { seen.add(it.id) }
         searchResults.addAll(hits)
         searchOffset += 25
         apiTotal = response.total_results

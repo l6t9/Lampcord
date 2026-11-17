@@ -32,7 +32,8 @@ class MentionsStore(
             if (newMentions.isEmpty()) {
                 hasMore = false
             } else {
-                mentions.addAll(newMentions)
+                val seen = mentions.mapTo(HashSet()) { it.id }
+                mentions.addAll(newMentions.filter { seen.add(it.id) })
             }
             isLoading = false
         }
