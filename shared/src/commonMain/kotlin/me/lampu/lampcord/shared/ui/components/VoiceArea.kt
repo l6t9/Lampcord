@@ -113,8 +113,13 @@ fun ColumnScope.DmCallStage(channel: Channel, voiceStore: VoiceStore = koinInjec
     if (!joined && !ongoing) return
     var collapsed by remember(channel.id) { mutableStateOf(false) }
     var expanded by remember(channel.id) { mutableStateOf(false) }
+    val stageShape = RoundedCornerShape(16.dp)
     if (collapsed) {
-        Surface(color = MaterialTheme.colorScheme.surfaceContainerHigh, modifier = Modifier.fillMaxWidth()) {
+        Surface(
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            shape = stageShape,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+        ) {
             Row(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -130,13 +135,31 @@ fun ColumnScope.DmCallStage(channel: Channel, voiceStore: VoiceStore = koinInjec
             }
         }
     } else {
-        VoiceArea(
-            channel,
-            modifier = Modifier.fillMaxHeight(if (expanded) 0.85f else 0.55f),
-            expanded = expanded,
-            onToggleExpand = { expanded = !expanded },
-            onCollapse = { collapsed = true }
-        )
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val maxStageHeight = maxHeight * (if (expanded) 0.85f else 0.55f)
+            val participants = voiceStore.voiceStates["@me"]?.values?.filter { it.channel_id == channel.id }.orEmpty()
+            val tileCount = participants.sumOf { if (it.self_stream == true) 2 else 1 }
+            val stageHeight = if (tileCount == 0 || (joined && voiceStore.watchedStream != null)) {
+                maxStageHeight
+            } else {
+                // Header, call controls and the tile grid's padding around the 16:9 tiles
+                val chrome = 52.dp + 64.dp + 16.dp
+                val gap = 12.dp
+                val (columns, width) = fitTiles(tileCount, maxWidth - 16.dp - 32.dp, maxStageHeight - chrome, gap)
+                val rows = ceil(tileCount / columns.toFloat()).toInt()
+                minOf(chrome + width * (9f / 16f) * rows + gap * (rows - 1), maxStageHeight)
+            }
+            VoiceArea(
+                channel,
+                modifier = Modifier
+                    .height(stageHeight)
+                    .padding(horizontal = 8.dp)
+                    .clip(stageShape),
+                expanded = expanded,
+                onToggleExpand = { expanded = !expanded },
+                onCollapse = { collapsed = true }
+            )
+        }
     }
 }
 
@@ -472,6 +495,7 @@ private fun participantName(userStore: UserStore, guildId: String?, userId: Stri
     return member?.nick ?: user?.global_name ?: user?.username ?: "Unknown User"
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun CallControls(
     voiceStore: VoiceStore,
@@ -479,7 +503,7 @@ private fun CallControls(
     onToggleExpand: (() -> Unit)?,
     onCollapse: (() -> Unit)?
 ) {
-    BoxWithConstraints(Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
+    BoxWithConstraints(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
         val narrow = maxWidth < 480.dp
         if (onCollapse != null) {
             IconButton(onClick = onCollapse, modifier = Modifier.align(Alignment.CenterStart).padding(start = 8.dp)) {
@@ -489,37 +513,40 @@ private fun CallControls(
         Row(
             modifier = Modifier.align(Alignment.Center),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Surface(shape = RoundedCornerShape(28.dp), color = MaterialTheme.colorScheme.surfaceContainerHighest) {
-                Row(Modifier.padding(8.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    ControlButton(
-                        if (voiceStore.selfMuted) Icons.Filled.MicOff else Icons.Filled.Mic,
-                        if (voiceStore.selfMuted) "Unmute" else "Mute",
-                        active = voiceStore.selfMuted,
-                        onClick = voiceStore::toggleVoiceMute
-                    )
-                    ControlButton(
-                        if (voiceStore.selfDeafened) Icons.Filled.HeadsetOff else Icons.Filled.Headphones,
-                        if (voiceStore.selfDeafened) "Undeafen" else "Deafen",
-                        active = voiceStore.selfDeafened,
-                        onClick = voiceStore::toggleVoiceDeaf
-                    )
-                    if (!narrow) {
-                        // Sending camera and screen video is not implemented yet; only receiving is.
-                        ControlButton(Icons.Filled.Videocam, "Turn on camera", enabled = false) {}
-                        ControlButton(Icons.Filled.ScreenShare, "Share your screen", enabled = false) {}
-                    }
+            HorizontalFloatingToolbar(
+                expanded = true,
+                modifier = Modifier.height(48.dp),
+                colors = FloatingToolbarDefaults.standardFloatingToolbarColors(),
+                contentPadding = PaddingValues(horizontal = 4.dp)
+            ) {
+                ControlButton(
+                    if (voiceStore.selfMuted) Icons.Filled.MicOff else Icons.Filled.Mic,
+                    if (voiceStore.selfMuted) "Unmute" else "Mute",
+                    active = voiceStore.selfMuted,
+                    onClick = voiceStore::toggleVoiceMute
+                )
+                ControlButton(
+                    if (voiceStore.selfDeafened) Icons.Filled.HeadsetOff else Icons.Filled.Headphones,
+                    if (voiceStore.selfDeafened) "Undeafen" else "Deafen",
+                    active = voiceStore.selfDeafened,
+                    onClick = voiceStore::toggleVoiceDeaf
+                )
+                if (!narrow) {
+                    // Sending camera and screen video is not implemented yet; only receiving is.
+                    ControlButton(Icons.Filled.Videocam, "Turn on camera", enabled = false) {}
+                    ControlButton(Icons.Filled.ScreenShare, "Share your screen", enabled = false) {}
                 }
             }
-            Surface(
+            FloatingToolbarDefaults.StandardFloatingActionButton(
                 onClick = { voiceStore.disconnectFromVoice() },
-                shape = RoundedCornerShape(28.dp),
-                color = MaterialTheme.colorScheme.error,
-                contentColor = MaterialTheme.colorScheme.onError,
-                modifier = Modifier.size(width = 72.dp, height = 56.dp)
+                modifier = Modifier.size(48.dp),
+                shape = RoundedCornerShape(14.dp),
+                containerColor = MaterialTheme.colorScheme.errorContainer,
+                contentColor = MaterialTheme.colorScheme.onErrorContainer
             ) {
-                Box(contentAlignment = Alignment.Center) { Icon(Icons.Filled.CallEnd, "Disconnect") }
+                Icon(Icons.Filled.CallEnd, "Disconnect", modifier = Modifier.size(20.dp))
             }
         }
         if (onToggleExpand != null) {
@@ -542,22 +569,17 @@ private fun ControlButton(
     enabled: Boolean = true,
     onClick: () -> Unit
 ) {
-    Surface(
-        onClick = onClick,
+    IconToggleButton(
+        checked = active,
+        onCheckedChange = { onClick() },
         enabled = enabled,
-        shape = if (active) RoundedCornerShape(16.dp) else CircleShape,
-        color = if (active) MaterialTheme.colorScheme.errorContainer else Color.Transparent,
-        contentColor = if (active) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier.size(48.dp)
+        colors = IconButtonDefaults.iconToggleButtonColors(
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            checkedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+            checkedContentColor = MaterialTheme.colorScheme.onSecondaryContainer
+        )
     ) {
-        Box(contentAlignment = Alignment.Center) {
-            Icon(
-                icon,
-                contentDescription,
-                modifier = Modifier.size(22.dp),
-                tint = if (enabled) LocalContentColor.current else LocalContentColor.current.copy(alpha = 0.38f)
-            )
-        }
+        Icon(icon, contentDescription, modifier = Modifier.size(20.dp))
     }
 }
 
