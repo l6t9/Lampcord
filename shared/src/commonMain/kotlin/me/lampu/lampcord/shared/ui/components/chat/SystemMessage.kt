@@ -49,7 +49,7 @@ fun SystemMessage(
                     }
                 } else Modifier
             )
-            .padding(vertical = 4.dp, horizontal = 16.dp),
+            .padding(start = 8.dp, end = 16.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         val (icon, iconTint, text) = when (message.type) {
@@ -68,7 +68,7 @@ fun SystemMessage(
         }
 
         if (message.type == 7) {
-            Box(modifier = Modifier.width(44.dp), contentAlignment = Alignment.Center) {
+            Box(modifier = Modifier.width(40.dp), contentAlignment = Alignment.Center) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
@@ -77,7 +77,7 @@ fun SystemMessage(
                 )
             }
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(8.dp))
 
             val (prefix, suffix) = remember(message.id) {
                 val templates = listOf(
@@ -134,7 +134,7 @@ fun SystemMessage(
 
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
-                    .weight(1f)
+                    .weight(1f, fill = false)
                     .onGloballyPositioned { profilePosition = it.positionInRoot() }
             )
 
@@ -155,11 +155,11 @@ fun SystemMessage(
                 )
             }
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(8.dp))
 
             Text(
                 text = text,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f, fill = false),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
