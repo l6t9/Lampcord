@@ -67,7 +67,7 @@ fun CommandPicker(
                 contentPadding = PaddingValues(4.dp),
                 verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
-                items(filteredCommands) { command ->
+                items(filteredCommands, key = { it.id }) { command ->
                     val app = commandStore.availableApplications.find { it.id == command.application_id }
                     
                     Surface(

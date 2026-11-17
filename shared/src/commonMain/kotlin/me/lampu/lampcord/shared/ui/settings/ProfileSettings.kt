@@ -186,7 +186,7 @@ fun ProfileSettingsContent(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(recentAvatars) { avatar ->
+                        items(recentAvatars, key = { it.id }) { avatar ->
                             val url = "https://cdn.discordapp.com/avatars/${userVal.id}/${avatar.storage_hash}.png?size=160"
                             AsyncImage(
                                 model = url,
@@ -338,7 +338,7 @@ fun ProfileSettingsContent(
                             leadingContent = { Icon(Icons.Rounded.Public, null) }
                         )
                     }
-                    items(guilds) { guild ->
+                    items(guilds, key = { it.id }) { guild ->
                         ListItem(
                             headlineContent = { Text(guild.name ?: "Unknown") },
                             modifier = Modifier.clickableCursor {

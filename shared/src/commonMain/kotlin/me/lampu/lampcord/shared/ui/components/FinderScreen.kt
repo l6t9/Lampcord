@@ -51,7 +51,7 @@ fun FinderScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(results) { result ->
+            items(results, key = { it.key }) { result ->
                 FinderResultRow(result, onClick = {
                     when (result) {
                         is FinderResult.Guild -> navigationStore.selectGuild(result.guild) { gatewayManager.sendSubscription(it) }

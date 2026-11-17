@@ -35,6 +35,8 @@ object NonceSerializer : KSerializer<String?> {
     }
 }
 
+private val MessageMergeJson = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+
 @Serializable
 data class Message(
     val id: String,
@@ -86,7 +88,7 @@ data class Message(
             else components.orEmpty().flatMap { it.collectFallbackText() }.joinToString("\n").trim()
         }
 
-    fun merge(data: kotlinx.serialization.json.JsonObject, json: kotlinx.serialization.json.Json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }): Message {
+    fun merge(data: kotlinx.serialization.json.JsonObject, json: kotlinx.serialization.json.Json = MessageMergeJson): Message {
         return this.copy(
             content = data["content"]?.jsonPrimitive?.content ?: content,
             pinned = data["pinned"]?.jsonPrimitive?.boolean ?: pinned,

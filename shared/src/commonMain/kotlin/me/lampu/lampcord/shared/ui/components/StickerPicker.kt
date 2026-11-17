@@ -339,7 +339,7 @@ private fun StickerServerBar(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            itemsIndexed(groups) { index, group ->
+            itemsIndexed(groups, key = { _, group -> group.id }) { index, group ->
                 val selected = selectedIndex == index
                 val guild = guilds.find { it.id == group.id }
                 val iconUrl = if (guild != null) {

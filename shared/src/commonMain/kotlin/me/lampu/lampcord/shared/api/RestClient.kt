@@ -69,8 +69,12 @@ class RestClient(
         this.token = token
     }
 
+    private val cachedSuperProperties: String by lazy { buildSuperProperties() }
+
+    fun getSuperProperties(): String = cachedSuperProperties
+
     @OptIn(ExperimentalEncodingApi::class)
-    fun getSuperProperties(): String {
+    private fun buildSuperProperties(): String {
         val platform = getPlatformName()
         val isMobile = platform == "android" || platform == "ios"
 

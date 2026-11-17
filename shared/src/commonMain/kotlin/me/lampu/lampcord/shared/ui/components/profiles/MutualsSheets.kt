@@ -178,7 +178,7 @@ fun MutualFriendsBottomSheet(
                     }
                 } else {
                     LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
-                        items(friends) { friend ->
+                        items(friends, key = { it.id }) { friend ->
                             MutualFriendRow(
                                 friend = friend,
                                 onClick = {
@@ -221,7 +221,7 @@ fun MutualServersBottomSheet(
                 }
             } else {
                 LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
-                    items(mutualGuilds) { mutual ->
+                    items(mutualGuilds, key = { it.id }) { mutual ->
                         val guild = allGuilds.find { it.id == mutual.id }
                         MutualServerRow(
                             mutual = mutual,

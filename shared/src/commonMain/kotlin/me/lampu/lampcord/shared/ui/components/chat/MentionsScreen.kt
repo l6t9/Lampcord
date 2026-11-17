@@ -78,7 +78,7 @@ fun MentionsScreen(
                 modifier = Modifier.fillMaxSize().padding(padding),
                 contentPadding = PaddingValues(bottom = 80.dp)
             ) {
-                items(mentionsStore.mentions) { message ->
+                items(mentionsStore.mentions, key = { it.id }) { message ->
                     val chan = allChannels[message.channel_id] ?: privateChannels.find { it.id == message.channel_id }
                     val guild = guilds.firstOrNull { it.id == message.guild_id }
 

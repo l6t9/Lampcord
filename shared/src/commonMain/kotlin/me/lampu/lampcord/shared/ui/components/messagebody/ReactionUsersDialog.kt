@@ -202,7 +202,7 @@ private fun ReactionUserList(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(users) { user ->
+                items(users, key = { it.id }) { user ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()

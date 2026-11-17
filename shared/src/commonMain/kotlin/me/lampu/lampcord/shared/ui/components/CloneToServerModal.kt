@@ -40,7 +40,7 @@ fun CloneToServerModal(
             OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Emoji name") }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 8.dp))
             Text("Choose target server:", style = MaterialTheme.typography.labelMedium)
             LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp)) {
-                items(guilds) { guild ->
+                items(guilds, key = { it.id }) { guild ->
                     ListItem(
                         headlineContent = { Text(guild.name ?: "Unknown") },
                         supportingContent = { Text(guild.id) },

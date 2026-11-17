@@ -493,7 +493,7 @@ private fun MediaPickerContent(
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
-                        items(pollAnswers.size) { index ->
+                        items(pollAnswers.size, key = { it }) { index ->
                             val answer = pollAnswers[index]
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,

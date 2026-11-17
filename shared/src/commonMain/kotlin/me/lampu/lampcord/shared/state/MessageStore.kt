@@ -236,6 +236,14 @@ class MessageStore(
         }
     }
 
+    private fun sortNewestFirst(messages: List<Message>): List<Message> {
+        if (messages.size < 2) return messages.toList()
+        return messages
+            .map { it to (it.id.toLongOrNull() ?: 0L) }
+            .sortedByDescending { it.second }
+            .map { it.first }
+    }
+
     private fun publishMessages(channelId: String) {
         if (selectionStore.activeChannelIdFlow.value == channelId) {
             _activeMessages.value = messageCache[channelId] ?: emptyList()
@@ -269,7 +277,7 @@ class MessageStore(
         val nonPending = current.filterNot { it.isPending }
         if (nonPending.size <= keep) return
         val kept = nonPending.take(keep) + pending
-        messageCache[channelId] = kept.sortedByDescending { it.id.toLongOrNull() ?: 0L }
+        messageCache[channelId] = sortNewestFirst(kept)
         if (nonPending.size > keep) {
             _hasMoreHistory.update { it + (channelId to true) }
         }
@@ -289,8 +297,7 @@ class MessageStore(
         }
 
         if (incoming.isNotEmpty()) {
-            incoming.sortByDescending { it.id.toLongOrNull() ?: 0L }
-            messageCache[channelId] = mergeDescending(channelMessages, incoming)
+            messageCache[channelId] = mergeDescending(channelMessages, sortNewestFirst(incoming))
             recordAccess(channelId)
             publishMessages(channelId)
         }
@@ -335,7 +342,7 @@ class MessageStore(
             }
         }
         if (changed) {
-            val sorted = channelMessages.sortedByDescending { it.id.toLongOrNull() ?: 0L }
+            val sorted = sortNewestFirst(channelMessages)
             messageCache[channelId] = sorted
             recordAccess(channelId)
             publishMessages(channelId)
@@ -884,7 +891,7 @@ class MessageStore(
                         val current = messageCache[channelId]?.toMutableList() ?: mutableListOf()
                         if (!current.any { it.id == id }) {
                             current.add(restored)
-                            messageCache[channelId] = current.sortedByDescending { it.id.toLongOrNull() ?: 0L }
+                            messageCache[channelId] = sortNewestFirst(current)
                             publishMessages(channelId)
                         }
                     }
@@ -895,7 +902,7 @@ class MessageStore(
                     val current = messageCache[channelId]?.toMutableList() ?: mutableListOf()
                     if (!current.any { it.id == id }) {
                         current.add(restored)
-                        messageCache[channelId] = current.sortedByDescending { it.id.toLongOrNull() ?: 0L }
+                        messageCache[channelId] = sortNewestFirst(current)
                         publishMessages(channelId)
                     }
                 }

@@ -67,7 +67,7 @@ fun NotificationList(
             }
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize()) {
-                items(unreadChannels) { (channel, count) ->
+                items(unreadChannels, key = { it.first.id }) { (channel, count) ->
                     val guild = guilds.firstOrNull { it.id == channel.guild_id }
                     Surface(
                         onClick = { navigationStore.selectChannel(channel) },

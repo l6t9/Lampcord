@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -299,7 +300,7 @@ private fun SearchScreenContent(
                                         color = MaterialTheme.colorScheme.primary
                                     )
                                 }
-                                items(SEARCH_FILTER_DEFS) { def ->
+                                items(SEARCH_FILTER_DEFS, key = { it.key }) { def ->
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
@@ -348,7 +349,7 @@ private fun SearchScreenContent(
                                             }
                                         }
                                     }
-                                    items(searchStore.searchHistory) { query ->
+                                    itemsIndexed(searchStore.searchHistory, key = { index, query -> "$index|$query" }) { _, query ->
                                         Row(
                                             modifier = Modifier
                                                 .fillMaxWidth()
@@ -405,7 +406,7 @@ private fun SearchScreenContent(
                                     bottom = 80.dp + WindowInsets.ime.union(WindowInsets.navigationBars).asPaddingValues().calculateBottomPadding()
                                 )
                             ) {
-                                items(searchStore.searchResults) { message ->
+                                items(searchStore.searchResults, key = { it.id }) { message ->
                                     val channel = guildStore.allGuildChannels.value[message.channel_id] ?: guildStore.privateChannels.value.find { it.id == message.channel_id }
                                     val guild = guildStore.guilds.value.firstOrNull { it.id == message.guild_id }
                                     val isDmSearch = navigationStore.selectedGuild == null
