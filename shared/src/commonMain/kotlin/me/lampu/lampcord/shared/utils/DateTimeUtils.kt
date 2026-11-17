@@ -1,42 +1,143 @@
 package me.lampu.lampcord.shared.utils
 
 import kotlinx.datetime.*
+import kotlinx.datetime.format.DateTimeComponents
+import kotlinx.datetime.format.DateTimeFormat
+import kotlinx.datetime.format.DayOfWeekNames
+import kotlinx.datetime.format.FormatStringsInDatetimeFormats
+import kotlinx.datetime.format.MonthNames
+import kotlinx.datetime.format.Padding
+import kotlinx.datetime.format.byUnicodePattern
 import kotlinx.datetime.number
+import me.lampu.lampcord.shared.settings.Settings
 import kotlin.time.Clock
 import kotlin.time.Instant
 
 object DateTimeUtils {
-    fun formatTimestamp(isoString: String): String {
-        return try {
-            val instant = Instant.parse(isoString)
-            val now = Clock.System.now()
-            val timeZone = TimeZone.currentSystemDefault()
-            val localDateTime = instant.toLocalDateTime(timeZone)
-            val nowDate = now.toLocalDateTime(timeZone).date
-            
-            val hour = localDateTime.hour
-            val minute = localDateTime.minute.toString().padStart(2, '0')
-            val amPm = if (hour >= 12) "PM" else "AM"
-            val displayHour = when {
-                hour == 0 -> 12
-                hour > 12 -> hour - 12
-                else -> hour
-            }
-            val timeString = "$displayHour:$minute $amPm"
-            
-            val date = localDateTime.date
-            when {
-                date == nowDate -> timeString
-                date.dayOfYear == nowDate.dayOfYear - 1 && date.year == nowDate.year -> "Yesterday at $timeString"
-                else -> {
-                    val month = date.month.number
-                    val day = date.day
-                    val year = date.year.toString().takeLast(2)
-                    "$month/$day/$year, $timeString"
+//    fun formatTimestamp(isoString: String): String {
+//        return try {
+//            val instant = Instant.parse(isoString)
+//            val now = Clock.System.now()
+//            val timeZone = TimeZone.currentSystemDefault()
+//            val localDateTime = instant.toLocalDateTime(timeZone)
+//            val nowDate = now.toLocalDateTime(timeZone).date
+//
+//            val hour = localDateTime.hour
+//            val minute = localDateTime.minute.toString().padStart(2, '0')
+//            val amPm = if (hour >= 12) "PM" else "AM"
+//            val displayHour = when {
+//                hour == 0 -> 12
+//                hour > 12 -> hour - 12
+//                else -> hour
+//            }
+//            val timeString = "$displayHour:$minute $amPm"
+//
+//            val date = localDateTime.date
+//            when {
+//                date == nowDate -> timeString
+//                date.dayOfYear == nowDate.dayOfYear - 1 && date.year == nowDate.year -> "Yesterday at $timeString"
+//                else -> {
+//                    val month = date.month.number
+//                    val day = date.day
+//                    val year = date.year.toString().takeLast(2)
+//                    "$month/$day/$year, $timeString"
+//                }
+//            }
+//        } catch (e: Exception) {
+//            isoString.take(10)
+//        }
+//    }
+
+    @OptIn(FormatStringsInDatetimeFormats::class)
+    @Throws
+    fun formatTimePattern(pattern: String): DateTimeFormat<LocalTime> {
+        require(pattern.isNotBlank())
+
+        val regex = Regex("('[^']*'|hh|h|a|[^'ha]+)")
+
+        return LocalTime.Format {
+            regex.findAll(pattern).forEach { match ->
+                when (val token = match.value) {
+                    "hh" -> amPmHour(Padding.ZERO)
+                    "h"  -> amPmHour(Padding.NONE)
+                    "a"  -> amPmMarker("AM", "PM")
+                    else -> byUnicodePattern(token)
                 }
             }
-        } catch (e: Exception) {
-            isoString.take(10)
+        }
+    }
+
+    @OptIn(FormatStringsInDatetimeFormats::class)
+    @Throws
+    fun formatDateTimePattern(
+        pattern: String,
+        monthNamesFull: MonthNames = MonthNames.ENGLISH_FULL,
+        monthNamesAbbreviated: MonthNames = MonthNames.ENGLISH_ABBREVIATED,
+        dayWeekFull: DayOfWeekNames = DayOfWeekNames.ENGLISH_FULL,
+        dayWeekAbbreviated: DayOfWeekNames = DayOfWeekNames.ENGLISH_ABBREVIATED,
+    ): DateTimeFormat<LocalDateTime> {
+        require(pattern.isNotBlank())
+
+        val regex = Regex("""'[^']*'|MMMM|MMM|EEEE|EEE|hh|h|a|(?:(?!'|MMMM|MMM|EEEE|EEE|hh|h|a).)+""")
+
+        return LocalDateTime.Format {
+            regex.findAll(pattern).forEach { match ->
+                when (val token = match.value) {
+                    "MMMM" -> monthName(monthNamesFull)
+                    "MMM"  -> monthName(monthNamesAbbreviated)
+                    "EEEE" -> dayOfWeek(dayWeekFull)
+                    "EEE"  -> dayOfWeek(dayWeekAbbreviated)
+                    "hh" -> amPmHour(Padding.ZERO)
+                    "h"  -> amPmHour(Padding.NONE)
+                    "a"  -> amPmMarker("AM", "PM")
+                    else -> byUnicodePattern(token)
+                }
+            }
+        }
+    }
+
+    fun formatTime(time: LocalTime, pattern: String): Result<String> {
+        val format = runCatching {formatTimePattern(pattern)}
+
+        return format.mapCatching {format -> time.format(format)}
+    }
+
+    fun formatDateTime(dateTime: LocalDateTime, pattern: String): Result<String> {
+        val format = runCatching {formatDateTimePattern(pattern)}
+
+        return format.mapCatching {f -> dateTime.format(f)}
+    }
+
+    fun formatTimestamp(isoString: String): String {
+        val instant = Instant.parse(isoString)
+        val rightNow = Clock.System.now()
+
+        val timezone = TimeZone.currentSystemDefault()
+        val localDateTime = instant.toLocalDateTime(timezone)
+
+        val localRightNow = rightNow.toLocalDateTime(timezone)
+
+        val timeFormat = Settings.shared.timeFormat
+
+        return when {
+            localDateTime.day == localRightNow.day -> {
+                formatTime(localDateTime.time, timeFormat).fold(
+                    onSuccess = { f -> f },
+                    onFailure = { "Error when applying time" } // todo: logcat
+                )
+            }
+            localDateTime.day == localRightNow.day - 1 -> {
+                formatTime(localDateTime.time, timeFormat).fold(
+                    onSuccess = { f -> "Yesterday at $f" },
+                    onFailure = { "Error when applying time" } // todo: logcat
+                )
+            }
+            else -> {
+                formatDateTime(localDateTime, Settings.shared.dateTimeFormat).fold(
+                    onSuccess = { f -> f },
+                    onFailure = { "Error when applying date time" } // todo: logcat
+                )
+            }
         }
     }
 
