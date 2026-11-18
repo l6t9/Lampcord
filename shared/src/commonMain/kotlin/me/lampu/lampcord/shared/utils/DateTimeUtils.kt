@@ -109,7 +109,10 @@ object DateTimeUtils {
     }
 
     fun formatTimestamp(isoString: String): String {
-        val instant = Instant.parse(isoString)
+        val instant = runCatching { Instant.parse(isoString) }.getOrElse { v ->
+            Logging.e("Timestamps", "Error parsing to instant $isoString for timestamp", v)
+            return "Error with time $isoString"
+        }
         val rightNow = Clock.System.now()
 
         val timezone = TimeZone.currentSystemDefault()
@@ -120,47 +123,36 @@ object DateTimeUtils {
         val timeFormat = Settings.shared.timeFormat
 
         val textTime = when {
-            localDateTime.day == localRightNow.day -> {
-                formatTime(localDateTime.time, timeFormat)
-            }
+            localDateTime.day == localRightNow.day -> formatTime(localDateTime.time, timeFormat)
             localDateTime.day == localRightNow.day - 1 -> {
                 formatTime(localDateTime.time, timeFormat).map { f -> "Yesterday at $f" }
             }
-            else -> {
-                formatDateTime(localDateTime, Settings.shared.dateTimeFormat)
-            }
+            else -> formatDateTime(localDateTime, Settings.shared.dateTimeFormat)
         }
 
-        return textTime.getOrElse { v ->
-            Logging.e("Timestamps", "Error converting time $isoString", v)
+        return textTime.getOrElse { t ->
+            Logging.e("Timestamps", "Error converting time $isoString for timestamp", t)
             "Error with time $isoString"
         }
     }
 
     fun formatFullDate(isoString: String): String {
-        return try {
-            val instant = Instant.parse(isoString)
-            val timeZone = TimeZone.currentSystemDefault()
-            val localDateTime = instant.toLocalDateTime(timeZone)
-            
-            val dayOfWeek = localDateTime.dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }
-            val month = localDateTime.month.name.lowercase().replaceFirstChar { it.uppercase() }
-            val day = localDateTime.day
-            val year = localDateTime.year
-            
-            val hour = localDateTime.hour
-            val minute = localDateTime.minute.toString().padStart(2, '0')
-            val amPm = if (hour >= 12) "PM" else "AM"
-            val displayHour = when {
-                hour == 0 -> 12
-                hour > 12 -> hour - 12
-                else -> hour
-            }
-            
-            "$dayOfWeek, $month $day, $year at $displayHour:$minute $amPm"
-        } catch (e: Exception) {
-            isoString
+        val instant = runCatching { Instant.parse(isoString) }.getOrElse { v ->
+            Logging.e("Timestamps", "Error parsing to instant $isoString for full date", v)
+            return "Error with time $isoString"
         }
+        val timeZone = TimeZone.currentSystemDefault()
+        val localDateTime = instant.toLocalDateTime(timeZone)
+
+        val dateFormat = formatDateTime(localDateTime, "EEEE, MMMM d, yyyy")
+        val timeFormat = formatTime(localDateTime.time, Settings.shared.timeFormat)
+
+        return runCatching { Pair(dateFormat.getOrThrow(), timeFormat.getOrThrow()) }
+            .map { p -> "${p.first} at ${p.second}" }
+            .getOrElse { t ->
+                Logging.e("Timestamps", "Error converting time $isoString for full date", t)
+                return "Error with time $isoString"
+            }
     }
 
     fun formatDiscordTimestamp(epochSeconds: Long, format: String): String {
