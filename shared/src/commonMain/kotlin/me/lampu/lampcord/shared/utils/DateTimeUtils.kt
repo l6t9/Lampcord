@@ -160,61 +160,53 @@ object DateTimeUtils {
         val timeZone = TimeZone.currentSystemDefault()
         val localDateTime = instant.toLocalDateTime(timeZone)
         val now = Clock.System.now()
-        
-        val hour = localDateTime.hour
-        val minute = localDateTime.minute.toString().padStart(2, '0')
-        val second = localDateTime.second.toString().padStart(2, '0')
-        val amPm = if (hour >= 12) "PM" else "AM"
-        val displayHour = when {
-            hour == 0 -> 12
-            hour > 12 -> hour - 12
-            else -> hour
-        }
-        val timeShort = "$displayHour:$minute $amPm"
-        val timeLong = "$displayHour:$minute:$second $amPm"
-        
-        val month = localDateTime.month.name.lowercase().replaceFirstChar { it.uppercase() }
-        val monthNum = localDateTime.month.number
-        val day = localDateTime.day
-        val year = localDateTime.year
-        val dayOfWeek = localDateTime.dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }
+
+        // assumes that the user prefers 24h based if he inputs the 24h option
+        val prefers24H = Settings.shared.timeFormat.contains("H")
+                || Settings.shared.dateTimeFormat.contains("H")
+
+        val timeShortFormat = if(prefers24H) "HH:mm" else "hh:mm a"
 
         return when (format) {
-            "t" -> timeShort
-            "T" -> timeLong
-            "d" -> "$monthNum/$day/$year"
-            "D" -> "$month $day, $year"
-            "f" -> "$month $day, $year $timeShort"
-            "F" -> "$dayOfWeek, $month $day, $year $timeShort"
-            "R" -> {
-                val duration = now - instant
-                val seconds = duration.inWholeSeconds
+            "t" -> formatTime(localDateTime.time, timeShortFormat).getOrThrow()
+            "T" -> formatTime(
+                localDateTime.time,
+                if(prefers24H) "HH:mm:ss" else "hh:mm:ss a"
+            ).getOrThrow()
+            "d" -> formatDateTime(localDateTime, "MM/dd/yyyy").getOrThrow() // it is like this no matter what you like
+            "D" -> formatDateTime(localDateTime, "MMMM d, yyyy").getOrThrow()
+            "F" -> formatDateTime(localDateTime, "EEEE, MMM d, yyyy 'at' $timeShortFormat").getOrThrow()
+            "R" -> formatRelativeTimestamp(instant, now)
+            else /* f */ -> formatDateTime(localDateTime, "MMMM d, yyyy 'at' $timeShortFormat").getOrThrow()
+        }
+    }
+
+    fun formatRelativeTimestamp(time: Instant, reference: Instant = Clock.System.now()): String {
+        val duration = reference - time
+        val seconds = duration.inWholeSeconds
+        return when {
+            seconds < 5 && seconds > -5 -> "just now"
+            seconds >= 0 -> {
                 when {
-                    seconds < 5 && seconds > -5 -> "just now"
-                    seconds >= 0 -> {
-                        when {
-                            seconds < 60 -> "$seconds seconds ago"
-                            seconds < 3600 -> "${seconds / 60} minutes ago"
-                            seconds < 86400 -> "${seconds / 3600} hours ago"
-                            seconds < 2592000 -> "${seconds / 86400} days ago"
-                            seconds < 31536000 -> "${seconds / 2592000} months ago"
-                            else -> "${seconds / 31536000} years ago"
-                        }
-                    }
-                    else -> {
-                        val absSeconds = -seconds
-                        when {
-                            absSeconds < 60 -> "in $absSeconds seconds"
-                            absSeconds < 3600 -> "in ${absSeconds / 60} minutes"
-                            absSeconds < 86400 -> "in ${absSeconds / 3600} hours"
-                            absSeconds < 2592000 -> "in ${absSeconds / 86400} days"
-                            absSeconds < 31536000 -> "in ${absSeconds / 2592000} months"
-                            else -> "in ${absSeconds / 31536000} years"
-                        }
-                    }
+                    seconds < 60 -> "$seconds seconds ago"
+                    seconds < 3600 -> "${seconds / 60} minutes ago"
+                    seconds < 86400 -> "${seconds / 3600} hours ago"
+                    seconds < 2592000 -> "${seconds / 86400} days ago"
+                    seconds < 31536000 -> "${seconds / 2592000} months ago"
+                    else -> "${seconds / 31536000} years ago"
                 }
             }
-            else -> "$month $day, $year $timeShort"
+            else -> {
+                val absSeconds = -seconds
+                when {
+                    absSeconds < 60 -> "in $absSeconds seconds"
+                    absSeconds < 3600 -> "in ${absSeconds / 60} minutes"
+                    absSeconds < 86400 -> "in ${absSeconds / 3600} hours"
+                    absSeconds < 2592000 -> "in ${absSeconds / 86400} days"
+                    absSeconds < 31536000 -> "in ${absSeconds / 2592000} months"
+                    else -> "in ${absSeconds / 31536000} years"
+                }
+            }
         }
     }
 

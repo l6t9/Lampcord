@@ -32,7 +32,7 @@ class Settings(private val settings: KmpSettings) {
 
     var chatGestures by preferenceEnum("chat_gestures", ChatGestures.SWIPE_TO_MEMBERS)
 
-    // todo: add option to set default for system
+    // todo: add option to set default depending of intl or system settings
     var timeFormat by preference("time_format", "HH:mm")
     var dateTimeFormat by preference("date_time_format", "yyyy/MM/dd HH:mm")
 

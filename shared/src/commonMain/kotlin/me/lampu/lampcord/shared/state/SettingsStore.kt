@@ -335,6 +335,7 @@ class SettingsStore(
             _timeFormat = value
             me.lampu.lampcord.shared.settings.Settings.shared.timeFormat = value
         }
+
     private var _dateTimeFormat by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.dateTimeFormat)
     var dateTimeFormat: String
         get() = _dateTimeFormat
