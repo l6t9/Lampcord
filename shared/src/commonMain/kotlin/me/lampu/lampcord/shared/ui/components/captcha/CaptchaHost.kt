@@ -376,6 +376,11 @@ internal fun captchaInjectionScript(
     doc.title = status;
   }
   function report(message) { setStatus($eventPrefix + message); }
+  function errorText(e) {
+    if (!e) { return 'null'; }
+    if (typeof e === 'string') { return e; }
+    try { return JSON.stringify(e); } catch (_) { return String(e); }
+  }
 
   window.lampcordDone = function (token) {
     solved = true;
@@ -436,31 +441,50 @@ private const val HCAPTCHA_SERVICE_JS = """
       callback: window.lampcordDone,
       'open-callback': function () { report('open'); },
       'close-callback': function () { report('close'); },
-      'error-callback': function (code) { report('error:' + code); },
+      'error-callback': function (code) { report('error:' + errorText(code)); },
       'expired-callback': function () { report('expired'); },
       'chalexpired-callback': function () { report('challenge-expired'); }
     };
     if (INVISIBLE) { opts.size = 'invisible'; }
-    if (RQDATA) { opts.rqdata = RQDATA; }
     try {
       widgetId = hcaptcha.render(box, opts);
-      setStatus(READY);
     } catch (e) {
-      report('render-exception:' + e);
+      report('render-exception:' + errorText(e));
+      return;
     }
+    if (RQDATA && widgetId !== null) {
+      try { hcaptcha.setData(widgetId, { rqdata: RQDATA }); }
+      catch (e) { report('set-data-error:' + errorText(e)); }
+    }
+    setStatus(READY);
+  }
+
+  function fallbackToVisible() {
+    if (!INVISIBLE) { return; }
+    INVISIBLE = false;
+    executed = true;
+    rendered = false;
+    widgetId = null;
+    try { box.innerHTML = ''; } catch (_) {}
+    serviceRender();
+    report('execute-fallback-visible');
   }
 
   function serviceExecute() {
-    if (!(INVISIBLE || RQDATA) || widgetId === null || executed || executeTries >= 5) { return; }
+    if (!INVISIBLE || widgetId === null || executed || executeTries >= 5) { return; }
     executeTries++;
     try {
-      var pending = RQDATA ? hcaptcha.execute(widgetId, { rqdata: RQDATA }) : hcaptcha.execute(widgetId);
+      var pending = hcaptcha.execute(widgetId);
       executed = true;
       if (pending && typeof pending.catch === 'function') {
-        pending.catch(function (e) { report('execute-error:' + e); });
+        pending.catch(function (e) {
+          report('execute-error:' + errorText(e));
+          fallbackToVisible();
+        });
       }
     } catch (e) {
-      report('execute-failed:' + executeTries + ':' + e);
+      report('execute-failed:' + executeTries + ':' + errorText(e));
+      fallbackToVisible();
     }
   }
 """

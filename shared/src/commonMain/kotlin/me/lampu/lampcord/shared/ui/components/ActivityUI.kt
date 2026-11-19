@@ -134,27 +134,20 @@ private fun ActivityButtons(activity: Activity, modifier: Modifier = Modifier) {
     if (buttons.isEmpty()) return
 
     val openLink = rememberLinkOpener()
-    Row(
+    Column(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         buttons.forEach { button ->
             FilledTonalButton(
                 onClick = { openLink(button.url) },
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
                     text = button.label,
                     style = MaterialTheme.typography.labelLarge,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false)
-                )
-                Spacer(Modifier.width(4.dp))
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                    contentDescription = null,
-                    modifier = Modifier.size(14.dp)
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }

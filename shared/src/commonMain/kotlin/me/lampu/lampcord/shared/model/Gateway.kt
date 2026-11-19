@@ -13,6 +13,9 @@ data class GatewayPayload(
 ) {
     @Transient
     var decoded: Any? = null
+
+    @Transient
+    var authToken: String? = null
 }
 
 @Serializable

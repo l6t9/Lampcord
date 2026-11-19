@@ -44,16 +44,16 @@ class RestClient(
         httpClient.close()
     }
 
-    val unauthorizedEvents = MutableSharedFlow<Unit>()
+    val unauthorizedEvents = MutableSharedFlow<String>()
 
     init {
         httpClient.receivePipeline.intercept(HttpReceivePipeline.Before) { response ->
             // Only an authenticated request that was rejected means this session is dead.
             // A 401 from a login/MFA request must not log out the account already in use.
-            if (response.status == HttpStatusCode.Unauthorized &&
-                response.call.request.headers[HttpHeaders.Authorization] != null
-            ) {
-                unauthorizedEvents.emit(Unit)
+            // Emit the rejected token so a stale request cannot log out a newer session.
+            val authHeader = response.call.request.headers[HttpHeaders.Authorization]
+            if (response.status == HttpStatusCode.Unauthorized && authHeader != null) {
+                unauthorizedEvents.emit(authHeader)
             }
             proceedWith(response)
         }
