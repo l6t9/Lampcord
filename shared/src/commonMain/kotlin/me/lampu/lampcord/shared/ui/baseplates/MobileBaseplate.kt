@@ -145,6 +145,7 @@ fun MobileBaseplate(
     var settingsReturnRoute by remember { mutableStateOf<Screen>(Screen.You) }
 
     fun closeSettings() {
+        navigationStore.backInterceptor.clear()
         navigationState.backStacks[Screen.Settings]?.let { stack ->
             while (stack.size > 1) {
                 stack.removeLastOrNull()
@@ -1185,35 +1186,65 @@ fun MobileBaseplate(
             }
         }
 
-        // Settings, Search and ServerSettings own their internal back state via
-        // handlers inside their screens. Everything else is decided here so back
-        // can never be swallowed by a no-op root handler.
-        val screenOwnsBack =
-            currentRoute == Screen.Settings ||
-                currentRoute == Screen.Search ||
-                currentRoute == Screen.ServerSettings ||
-                navigationStore.isAddFriendVisible
-
-        val dialogOwnsBack =
-            navigationStore.isQuickSwitcherVisible ||
-                navigationStore.isMediaPickerVisible ||
-                navigationStore.isAttachmentViewerVisible ||
-                navigationStore.isServerMenuVisible ||
-                navigationStore.isMemberListModalVisible ||
-                navigationStore.isEmojiPickerVisible ||
-                navigationStore.forwardingMessage != null ||
-                navigationStore.pendingInvite != null ||
-                navigationStore.selectedGuildOnboarding != null ||
-                profileStore.isProfileLoading ||
-                profileStore.selectedProfile != null ||
-                showUserStatusSheet ||
-                showCustomStatusDialog ||
-                showAddAccountDialog
-
+        // One always-enabled root handler owns every back decision. Screens that
+        // have their own transient back state register an interceptor so that
+        // back is never routed to a stale handler during a screen transition.
         PlatformRootBackHandler(
-            enabled = !screenOwnsBack && !dialogOwnsBack,
+            enabled = true,
             onBack = {
                 when {
+                    navigationStore.backInterceptor.handleBack() -> true
+
+                    navigationStore.isQuickSwitcherVisible -> {
+                        navigationStore.isQuickSwitcherVisible = false
+                        true
+                    }
+                    navigationStore.forwardingMessage != null -> {
+                        navigationStore.forwardingMessage = null
+                        true
+                    }
+                    navigationStore.isMediaPickerVisible -> {
+                        navigationStore.isMediaPickerVisible = false
+                        true
+                    }
+                    navigationStore.isAttachmentViewerVisible -> {
+                        navigationStore.closeAttachmentViewer()
+                        true
+                    }
+                    navigationStore.isMemberListModalVisible -> {
+                        navigationStore.isMemberListModalVisible = false
+                        true
+                    }
+                    navigationStore.isEmojiPickerVisible -> {
+                        navigationStore.isEmojiPickerVisible = false
+                        true
+                    }
+                    navigationStore.pendingInvite != null -> {
+                        navigationStore.pendingInvite = null
+                        true
+                    }
+                    navigationStore.selectedGuildOnboarding != null -> {
+                        navigationStore.selectedGuildOnboarding = null
+                        true
+                    }
+                    profileStore.isProfileLoading || profileStore.selectedProfile != null -> {
+                        profileStore.selectedProfile = null
+                        profileStore.isProfileExpanded = false
+                        profileStore.isProfileLoading = false
+                        true
+                    }
+                    showUserStatusSheet -> {
+                        showUserStatusSheet = false
+                        true
+                    }
+                    showCustomStatusDialog -> {
+                        showCustomStatusDialog = false
+                        true
+                    }
+                    showAddAccountDialog -> {
+                        showAddAccountDialog = false
+                        true
+                    }
                     navigationStore.isNotificationsSettingsVisible -> {
                         navigationStore.isNotificationsSettingsVisible = false
                         true
@@ -1242,12 +1273,32 @@ fun MobileBaseplate(
                         navigationStore.isServerSettingsVisible = false
                         true
                     }
-                    panelState.currentValue != DiscordPanelValue.Center -> {
+                    navigationStore.isServerMenuVisible -> {
+                        navigationStore.isServerMenuVisible = false
+                        true
+                    }
+                    navigationStore.isAddFriendVisible -> {
+                        navigationStore.isAddFriendVisible = false
+                        true
+                    }
+                    navigationStore.isSearchVisible -> {
+                        navigationStore.isSearchVisible = false
+                        true
+                    }
+                    navigationStore.isSettingsVisible -> {
+                        closeSettings()
+                        true
+                    }
+                    panelState.currentValue == DiscordPanelValue.End -> {
                         panelState.close()
                         true
                     }
-                    navigator.canGoBackInStack -> {
+                    navigator.canGoBack -> {
                         navigator.goBack()
+                        true
+                    }
+                    isChat && panelState.currentValue == DiscordPanelValue.Center -> {
+                        panelState.openStart()
                         true
                     }
                     else -> false

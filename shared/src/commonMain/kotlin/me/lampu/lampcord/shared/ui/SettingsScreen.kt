@@ -56,6 +56,7 @@ import androidx.compose.material3.WideNavigationRailValue
 import androidx.compose.material3.rememberWideNavigationRailState
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -87,7 +88,6 @@ import me.lampu.lampcord.shared.ui.components.settings.SettingsSearchEntry
 import me.lampu.lampcord.shared.ui.components.settings.SettingsOverlayFrame
 import me.lampu.lampcord.shared.ui.components.settings.SettingsSearchField
 import me.lampu.lampcord.shared.ui.components.settings.SettingsSearchResults
-import me.lampu.lampcord.shared.ui.components.PlatformBackHandler
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.settings.AccessibilitySettingsContent
 import me.lampu.lampcord.shared.ui.settings.AccountSettingsContent
@@ -184,20 +184,19 @@ fun SettingsScreen(
         onDismiss()
     }
 
-    PlatformBackHandler(enabled = true) {
-        if (showDebugLogs) {
-            showDebugLogs = false
-        } else if (editingThemeJson != null) {
-            editingThemeJson = null
-        } else if (showThemer) {
-            showThemer = false
-        } else if (searchQuery.isNotEmpty()) {
-            searchQuery = ""
-        } else if (selectedCategory != null) {
-            selectedCategory = null
-        } else {
-            dismissSettings()
+    DisposableEffect(navigationStore) {
+        val unregister = navigationStore.backInterceptor.register {
+            when {
+                showDebugLogs -> showDebugLogs = false
+                editingThemeJson != null -> editingThemeJson = null
+                showThemer -> showThemer = false
+                searchQuery.isNotEmpty() -> searchQuery = ""
+                selectedCategory != null -> selectedCategory = null
+                else -> dismissSettings()
+            }
+            true
         }
+        onDispose { unregister() }
     }
 
     if (showLogoutConfirmation) {

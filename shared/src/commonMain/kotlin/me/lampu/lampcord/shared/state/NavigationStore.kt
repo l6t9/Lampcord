@@ -22,6 +22,7 @@ import me.lampu.lampcord.shared.model.Invite
 import me.lampu.lampcord.shared.model.Onboarding
 import me.lampu.lampcord.shared.model.memberListId
 import me.lampu.lampcord.shared.notifications.MessageNotifier
+import me.lampu.lampcord.shared.ui.navigation.BackInterceptor
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.utils.Logging
 
@@ -43,6 +44,8 @@ class NavigationStore(
     private val scope: CoroutineScope,
     val onChannelSelected: () -> Unit = {}
 ) {
+    val backInterceptor = BackInterceptor()
+
     private val _focusChatRequest = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val focusChatRequest = _focusChatRequest.asSharedFlow()
 
