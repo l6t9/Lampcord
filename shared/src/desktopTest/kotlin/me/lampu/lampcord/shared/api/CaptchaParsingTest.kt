@@ -64,6 +64,18 @@ class CaptchaParsingTest {
         assertTrue(script.contains("hcaptcha.execute(widgetId"))
     }
 
+    @Test
+    fun rqdataIsAppliedWithSetDataInsteadOfExecuteOptions() {
+        val challenge = assertNotNullChallenge(
+            """{"captcha_key":["x"],"captcha_sitekey":"k","captcha_service":"hcaptcha","captcha_rqdata":"rq-data","should_serve_invisible":true}""",
+        )
+        val script = captchaInjectionScript(challenge, "#000000", "dark")
+        assertTrue(script.contains("hcaptcha.setData(widgetId, { rqdata: RQDATA })"))
+        assertTrue(script.contains("hcaptcha.execute(widgetId);"))
+        assertFalse(script.contains("hcaptcha.execute(widgetId, { rqdata: RQDATA })"))
+        assertTrue(script.contains("if (!INVISIBLE || widgetId === null"))
+    }
+
     private fun assertNotNullChallenge(body: String): CaptchaChallenge =
         parseCaptchaChallenge(body) ?: error("Expected a captcha challenge for: $body")
 }

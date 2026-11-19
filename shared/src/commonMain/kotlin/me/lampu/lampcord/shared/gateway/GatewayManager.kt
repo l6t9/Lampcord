@@ -109,6 +109,7 @@ class GatewayManager(
     private var lastSequence: Int? = null
     var sessionId: String? = null
     private var resumeGatewayUrl: String? = null
+    private var connectionToken: String? = null
     private var clientHeartbeatSessionId = randomUUID()
     private val clientLaunchId = randomUUID()
     private val launchSignature = (getCurrentTimeMillis() * 1_000_000L).toString()
@@ -145,6 +146,12 @@ class GatewayManager(
     }
 
     fun connect(token: String) {
+        if (connectionToken != token) {
+            sessionId = null
+            lastSequence = null
+            resumeGatewayUrl = null
+            connectionToken = token
+        }
         destroy()
         Logging.i("Gateway", "Connecting to Discord Gateway...")
         connectionJob = scope.launch {
@@ -212,7 +219,11 @@ class GatewayManager(
                             val reason = withTimeoutOrNull(2.seconds) { closeReason.await() }
                             when (reason?.code?.toInt()) {
                                 4003, 4004 -> {
-                                    _events.emit(GatewayPayload(op = -1, t = "AUTH_FAILED"))
+                                    _events.emit(
+                                        GatewayPayload(op = -1, t = "AUTH_FAILED").also {
+                                            it.authToken = token
+                                        }
+                                    )
                                     disconnect("auth failed ${reason.code}")
                                 }
                             }
@@ -285,6 +296,10 @@ class GatewayManager(
     /** Called only on a real logout / account switch. */
     fun clearSubscriptions() {
         guildSubscriptions.clear()
+        sessionId = null
+        lastSequence = null
+        resumeGatewayUrl = null
+        connectionToken = null
     }
 
     /** Re-send every tracked subscription after RESUMED. */
