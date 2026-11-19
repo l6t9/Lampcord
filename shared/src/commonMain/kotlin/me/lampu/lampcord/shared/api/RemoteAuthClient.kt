@@ -75,17 +75,21 @@ class RemoteAuthClient(
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var sessionJob: Job? = null
+    private var exchangeJob: Job? = null
     private var session: DefaultClientWebSocketSession? = null
     private var heartbeatJob: Job? = null
     private var keyPair: RSAKeyPair? = null
 
     private var generation = 0
 
+    // Identifies the exchange that owns `exchanging` and may write state. Bumped on every
+    // new pending_login and on teardown so a stale exchange cannot overwrite a fresh session.
+    private var exchangeId = 0
+
     private var exchanging = false
 
     fun start() {
         teardown()
-        exchanging = false
         keyPair = CryptoUtils.generateRSAKeyPair()
         _state.value = RemoteAuthState.Connecting
         val gen = generation
@@ -112,7 +116,7 @@ class RemoteAuthClient(
                     if (frame is Frame.Text) {
                         val text = frame.readText()
                         try {
-                            handlePayload(json.decodeFromString<RemoteAuthPayload>(text))
+                            handlePayload(json.decodeFromString<RemoteAuthPayload>(text), gen)
                         } catch (e: CancellationException) {
                             throw e
                         } catch (e: Exception) {
@@ -146,7 +150,8 @@ class RemoteAuthClient(
         _state.value = RemoteAuthState.Error("This QR code expired or could not connect. Try again.")
     }
 
-    private suspend fun handlePayload(payload: RemoteAuthPayload) {
+    private suspend fun handlePayload(payload: RemoteAuthPayload, gen: Int) {
+        if (gen != generation) return
         when (payload.op) {
             "hello" -> {
                 payload.heartbeat_interval?.let { startHeartbeat(it) }
@@ -179,12 +184,18 @@ class RemoteAuthClient(
             }
             "pending_login" -> {
                 val ticket = payload.ticket ?: return
+                val id = ++exchangeId
+                exchangeJob?.cancel()
                 exchanging = true
-                scope.launch {
+                exchangeJob = scope.launch {
                     try {
-                        exchangeTicket(ticket)
+                        exchangeTicket(ticket, id)
                     } finally {
-                        exchanging = false
+                        // A stale exchange must not clear the flag for the newer one.
+                        if (id == exchangeId) {
+                            exchanging = false
+                            exchangeJob = null
+                        }
                     }
                 }
             }
@@ -198,29 +209,35 @@ class RemoteAuthClient(
                 }
             }
             "cancel" -> {
+                exchangeId++
+                exchangeJob?.cancel()
+                exchangeJob = null
+                exchanging = false
                 heartbeatJob?.cancel()
                 _state.value = RemoteAuthState.Error("Canceled by user")
             }
         }
     }
 
-    private suspend fun exchangeTicket(ticket: String) {
+    private suspend fun exchangeTicket(ticket: String, id: Int) {
         val encryptedToken = authApi.exchangeRemoteAuthTicket(ticket)
+        if (id != exchangeId) return
         if (encryptedToken == null) {
             Logging.e("RemoteAuth", "Ticket exchange returned no token")
             _state.value = RemoteAuthState.Error("Failed to exchange ticket")
             return
         }
         val token = decryptToken(encryptedToken)
-        if (token == null) {
-            _state.value = RemoteAuthState.Error("Failed to decrypt token")
-            return
+        if (id != exchangeId) return
+        _state.value = if (token == null) {
+            RemoteAuthState.Error("Failed to decrypt token")
+        } else {
+            RemoteAuthState.Finished(token)
         }
-        _state.value = RemoteAuthState.Finished(token)
     }
 
     private fun decryptToken(encryptedTokenB64: String): String? = try {
-        keyPair?.decrypt(Base64.decode(encryptedTokenB64))?.decodeToString()
+        keyPair?.decrypt(Base64.decode(encryptedTokenB64))?.decodeToString()?.takeIf { it.isNotBlank() }
     } catch (e: Exception) {
         Logging.e("RemoteAuth", "Token decrypt failed: ${e.message}")
         null
@@ -243,13 +260,17 @@ class RemoteAuthClient(
 
     fun stop() {
         teardown()
-        if (!exchanging && _state.value !is RemoteAuthState.Finished && _state.value !is RemoteAuthState.Error) {
+        if (_state.value !is RemoteAuthState.Finished && _state.value !is RemoteAuthState.Error) {
             _state.value = RemoteAuthState.Idle
         }
     }
 
     private fun teardown() {
         generation++
+        exchangeId++
+        exchangeJob?.cancel()
+        exchangeJob = null
+        exchanging = false
         sessionJob?.cancel()
         sessionJob = null
         heartbeatJob?.cancel()

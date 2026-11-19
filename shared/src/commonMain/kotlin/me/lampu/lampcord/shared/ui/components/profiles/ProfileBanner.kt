@@ -11,8 +11,14 @@ import me.lampu.lampcord.shared.generated.resources.user_settings_profile_banner
 import org.jetbrains.compose.resources.stringResource
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -36,6 +42,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.UserProfile
 import me.lampu.lampcord.shared.model.EmbedImage
+import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.icons.Icons
@@ -97,6 +104,7 @@ fun ProfileBanner(
     val isBlocked = relationship?.type == 2
 
     val platform = remember { me.lampu.lampcord.shared.utils.getPlatformName() }
+    val reduceMotion = Settings.shared.reduceMotion
     BoxWithConstraints {
     val bannerHeight = remember(maxWidth, bannerHeightRatio, bannerHeightOverride, isExpanded) {
         profileBannerHeight(maxWidth, isExpanded, bannerHeightOverride, bannerHeightRatio)
@@ -161,9 +169,21 @@ fun ProfileBanner(
                 )
             }
 
-            if (onEdit != null && isHovered) {
+            AnimatedVisibility(
+                visible = onEdit != null && isHovered,
+                modifier = Modifier.align(Alignment.Center),
+                enter = if (reduceMotion) {
+                    EnterTransition.None
+                } else {
+                    fadeIn(tween(160)) + slideInVertically(tween(180, easing = FastOutSlowInEasing)) { it / 4 }
+                },
+                exit = if (reduceMotion) {
+                    ExitTransition.None
+                } else {
+                    fadeOut(tween(120)) + slideOutVertically(tween(140, easing = FastOutSlowInEasing)) { it / 4 }
+                }
+            ) {
                 Surface(
-                    modifier = Modifier.align(Alignment.Center),
                     color = Color.Black.copy(alpha = 0.4f),
                     shape = CircleShape
                 ) {

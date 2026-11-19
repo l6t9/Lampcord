@@ -225,6 +225,7 @@ fun FullProfileDialog(
                     ) {
                         FullProfileDetails(
                             profile = profile,
+                            theme = resolved.theme,
                             topShape = RoundedCornerShape(PANEL_CORNER),
                             onOpenProfile = { userId -> profileStore.showProfile(userId) },
                             onOpenGuild = { guildId ->

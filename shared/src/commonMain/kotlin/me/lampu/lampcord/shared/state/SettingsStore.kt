@@ -4,8 +4,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import me.lampu.lampcord.shared.api.UserApi
+import me.lampu.lampcord.shared.model.ProtoReader2
 import me.lampu.lampcord.shared.model.UserSettings
 import me.lampu.lampcord.shared.model.TextReplaceRule
+import me.lampu.lampcord.shared.settings.ThemeMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -13,6 +15,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.time.Duration.Companion.milliseconds
 
 class SettingsStore(
@@ -103,7 +107,18 @@ class SettingsStore(
         set(value) {
             _syncAppearance = value
             me.lampu.lampcord.shared.settings.Settings.shared.syncAppearance = value
+            // Turning sync on should adopt Discord's current theme immediately,
+            // not wait for the next USER_SETTINGS_UPDATE.
+            if (value) applyDiscordAppearance(userSettings?.theme)
         }
+
+    /** Applies Discord's theme to the local appearance settings when syncing is enabled. */
+    fun applyDiscordAppearance(theme: String?) {
+        mapDiscordAppearance(theme, syncAppearance)?.let { appearance ->
+            themeMode = appearance.themeMode
+            pureBlack = appearance.pureBlack
+        }
+    }
 
     private var _panelAnimation by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.panelAnimation)
     var panelAnimation: me.lampu.lampcord.shared.settings.PanelAnimation
@@ -417,14 +432,19 @@ class SettingsStore(
         set(value) {
             _messageSpacingMode = value
             me.lampu.lampcord.shared.settings.Settings.shared.messageSpacingMode = value
-            val protoPayload = when (value) {
-                me.lampu.lampcord.shared.settings.MessageSpacingMode.COMPACT -> "agQQAWAB"
-                me.lampu.lampcord.shared.settings.MessageSpacingMode.DEFAULT -> "agQQAWAE"
-                me.lampu.lampcord.shared.settings.MessageSpacingMode.SPACIOUS -> "agQQAWAC"
+            // The legacy hardcoded payload reset the rest of the appearance proto
+            // (including Discord's theme). Patch only ui_density in a fresh copy.
+            val density = when (value) {
+                me.lampu.lampcord.shared.settings.MessageSpacingMode.COMPACT -> 1
+                me.lampu.lampcord.shared.settings.MessageSpacingMode.DEFAULT -> 4
+                me.lampu.lampcord.shared.settings.MessageSpacingMode.SPACIOUS -> 2
             }
 
-            scope.launch {
-                userApi.updateUserSettingsProto(protoPayload)
+            spacingUpdateJob?.cancel()
+            spacingUpdateJob = scope.launch {
+                val current = userApi.getUserSettingsProto(type = 1) ?: return@launch
+                val payload = UserSettingsProtoEditor.withUiDensity(current, density) ?: return@launch
+                userApi.updateUserSettingsProto(payload, type = 1)
             }
         }
 
@@ -488,6 +508,7 @@ class SettingsStore(
     
     private val scope = CoroutineScope(Dispatchers.Main)
     private var pendingUpdateJob: Job? = null
+    private var spacingUpdateJob: Job? = null
     private var hasPendingChanges = false
     
     enum class UpdateType {
@@ -509,6 +530,7 @@ class SettingsStore(
             inline_attachment_media = newSettings.inline_attachment_media ?: userSettings?.inline_attachment_media,
             inline_embed_media = newSettings.inline_embed_media ?: userSettings?.inline_embed_media,
             render_embeds = newSettings.render_embeds ?: userSettings?.render_embeds,
+            render_reactions = newSettings.render_reactions ?: userSettings?.render_reactions,
             animate_emoji = newSettings.animate_emoji ?: userSettings?.animate_emoji,
             animate_stickers = newSettings.animate_stickers ?: userSettings?.animate_stickers,
             explicit_content_filter = newSettings.explicit_content_filter ?: userSettings?.explicit_content_filter,
@@ -520,6 +542,9 @@ class SettingsStore(
             blocked_message_bar = newSettings.blocked_message_bar ?: userSettings?.blocked_message_bar,
             message_display_compact = newSettings.message_display_compact ?: userSettings?.message_display_compact
         ) ?: newSettings
+
+        // Discord remains the source of truth for the theme only while sync is on.
+        applyDiscordAppearance(newSettings.theme)
 
         newSettings.message_display_compact?.let { compact ->
             compactMode = compact
@@ -554,7 +579,10 @@ class SettingsStore(
         }
     }
 
+    private val settingsUpdateGuard = SettingsUpdateGuard()
+
     fun updateUserSettings(partial: UserSettings.Partial) {
+        val revision = settingsUpdateGuard.begin()
         val previous = userSettings
         // Optimistically apply for immediate UI feedback (e.g. status changes).
         userSettings = previous?.merge(partial) ?: userSettings
@@ -564,7 +592,8 @@ class SettingsStore(
             } catch (e: Exception) {
                 false
             }
-            if (!ok) {
+            // A failed older request must not roll back a newer update.
+            if (!ok && settingsUpdateGuard.isLatest(revision)) {
                 userSettings = previous
             }
         }
@@ -586,6 +615,7 @@ class SettingsStore(
                     theme = settings.theme,
                     developer_mode = settings.developer_mode,
                     render_embeds = settings.render_embeds,
+                    render_reactions = settings.render_reactions,
                     inline_embed_media = settings.inline_embed_media,
                     inline_attachment_media = settings.inline_attachment_media,
                     locale = settings.locale,
@@ -604,5 +634,130 @@ class SettingsStore(
                 println("Failed to update user settings: ${e.message}")
             }
         }
+    }
+
+    companion object {
+        const val DISCORD_THEME_DARK = "dark"
+        const val DISCORD_THEME_LIGHT = "light"
+        const val DISCORD_THEME_DARKER = "darker"
+        /** Discord's Onyx/Midnight client theme, which is Lampcord's Pure Black look. */
+        const val DISCORD_THEME_PURE_BLACK = "midnight"
+
+        /** Pure mapper: no global state, so both gateway paths and tests can use it. */
+        internal fun mapDiscordAppearance(theme: String?, syncAppearance: Boolean): DiscordAppearance? {
+            if (!syncAppearance) return null
+            return when (theme?.trim()?.lowercase()) {
+                DISCORD_THEME_DARK -> DiscordAppearance(ThemeMode.DARK, false)
+                DISCORD_THEME_LIGHT -> DiscordAppearance(ThemeMode.LIGHT, false)
+                DISCORD_THEME_DARKER, DISCORD_THEME_PURE_BLACK -> DiscordAppearance(ThemeMode.DARK, true)
+                else -> null
+            }
+        }
+
+        /** Raw value sent to Discord when appearance sync is enabled. */
+        fun discordThemeRawValue(themeMode: ThemeMode, pureBlack: Boolean): String = when {
+            pureBlack -> DISCORD_THEME_PURE_BLACK
+            themeMode == ThemeMode.LIGHT -> DISCORD_THEME_LIGHT
+            else -> DISCORD_THEME_DARK
+        }
+    }
+}
+
+/** Discord theme mapped into Lampcord's local appearance model. */
+internal data class DiscordAppearance(val themeMode: ThemeMode, val pureBlack: Boolean)
+
+/**
+ * Edits a settings-proto payload in place at the wire level so every unknown field
+ * (including required_data_version and the rest of appearance) survives the patch.
+ * Returns null when the payload cannot be parsed, in which case no patch is sent.
+ */
+internal object UserSettingsProtoEditor {
+    private const val APPEARANCE_FIELD = 13
+    private const val UI_DENSITY_FIELD = 12
+
+    @OptIn(ExperimentalEncodingApi::class)
+    fun withUiDensity(base64: String, density: Int): String? = try {
+        val bytes = Base64.Default.decode(base64)
+        val out = mutableListOf<Byte>()
+        val reader = ProtoReader2(bytes)
+        var foundAppearance = false
+
+        while (reader.hasRemaining()) {
+            val tagStart = reader.position
+            val tag = reader.readTag() ?: return null
+            reader.position = tagStart
+            if (tag.fieldNumber == APPEARANCE_FIELD && tag.wireType == 2) {
+                foundAppearance = true
+                reader.readTag()
+                val appearance = reader.readBytes()
+                val updated = replaceDensity(appearance, density) ?: return null
+                out += wrapBytesField(APPEARANCE_FIELD, updated).toList()
+            } else {
+                // position was reset to tagStart above: consume the tag before skipping its payload.
+                reader.readTag()
+                reader.skip(tag.wireType)
+                out += bytes.copyOfRange(tagStart, reader.position).toList()
+            }
+        }
+
+        if (!foundAppearance) {
+            out += wrapBytesField(APPEARANCE_FIELD, replaceDensity(ByteArray(0), density) ?: return null).toList()
+        }
+        Base64.Default.encode(out.toByteArray())
+    } catch (e: Exception) {
+        null
+    }
+
+    private fun replaceDensity(appearance: ByteArray, density: Int): ByteArray? = try {
+        val out = mutableListOf<Byte>()
+        val reader = ProtoReader2(appearance)
+        var foundDensity = false
+
+        while (reader.hasRemaining()) {
+            val tagStart = reader.position
+            val tag = reader.readTag() ?: return null
+            reader.position = tagStart
+            if (tag.fieldNumber == UI_DENSITY_FIELD) {
+                if (tag.wireType != 0) return null
+                foundDensity = true
+                reader.readTag()
+                reader.readVarint()
+                writeTag(out, UI_DENSITY_FIELD, 0)
+                writeVarint(out, density.toLong())
+            } else {
+                reader.readTag()
+                reader.skip(tag.wireType)
+                out += appearance.copyOfRange(tagStart, reader.position).toList()
+            }
+        }
+
+        if (!foundDensity) {
+            writeTag(out, UI_DENSITY_FIELD, 0)
+            writeVarint(out, density.toLong())
+        }
+        out.toByteArray()
+    } catch (e: Exception) {
+        null
+    }
+
+    private fun wrapBytesField(field: Int, payload: ByteArray): ByteArray {
+        val out = mutableListOf<Byte>()
+        writeTag(out, field, 2)
+        writeVarint(out, payload.size.toLong())
+        out += payload.toList()
+        return out.toByteArray()
+    }
+
+    private fun writeTag(out: MutableList<Byte>, field: Int, wireType: Int) {
+        writeVarint(out, ((field shl 3) or wireType).toLong())
+    }
+
+    private fun writeVarint(out: MutableList<Byte>, value: Long) {
+        var remaining = value
+        while (remaining and 0x7FL.inv() != 0L) {
+            out += ((remaining and 0x7F) or 0x80).toByte()
+            remaining = remaining ushr 7
+        }
+        out += remaining.toByte()
     }
 }

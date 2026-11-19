@@ -102,6 +102,9 @@ class EntityStore(
             current.filterValues { it.guild_id != guildId }
         }
         guildChannelFlows.value[guildId]?.value = emptyList()
+        // Drop the per-guild flow as well; leaving the key alive forever leaks
+        // one StateFlow per guild the user ever joined and left.
+        guildChannelFlows.update { it - guildId }
     }
 
     fun updateChannel(channel: Channel) {

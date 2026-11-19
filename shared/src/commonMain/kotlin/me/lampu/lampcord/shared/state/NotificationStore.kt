@@ -25,6 +25,9 @@ class NotificationStore(
 
     fun show(data: IncomingNotificationData) {
         val id = data.message.id
+        // Push payloads have no timestamp; a late push must not replace a richer gateway notification.
+        val existing = _toasts.value.firstOrNull { it.id == id }
+        if (existing != null && existing.data.message.timestamp.isNotBlank() && data.message.timestamp.isBlank()) return
         _toasts.update { current ->
             current.filterNot { it.id == id } + InAppNotification(id, data)
         }

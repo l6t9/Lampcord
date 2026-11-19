@@ -34,6 +34,10 @@ class NotificationActionReceiver : BroadcastReceiver() {
                     try {
                         val sent = messageApi.sendMessage(channelId, text)
                         if (sent == null) return@launch
+                        val currentLastId = NotificationMessageCache.getMeta(channelId)?.lastMessageId
+                        if (currentLastId == null || sent.id > currentLastId) {
+                            NotificationMessageCache.updateLastMessageId(channelId, sent.id)
+                        }
                         val self = koin.get<UserStore>().currentUser.value
                         NotificationMessageCache.addMessage(
                             channelId,

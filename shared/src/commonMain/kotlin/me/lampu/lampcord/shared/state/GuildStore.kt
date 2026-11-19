@@ -192,6 +192,8 @@ class GuildStore(
     fun handleGuildDelete(guildId: String) {
         Logging.i("GuildStore", "Handling GUILD_DELETE: $guildId")
         _guildIds.value -= guildId
+        guildUnreadStates.remove(guildId)
+        guildMentionStates.remove(guildId)
         entityStore.removeGuild(guildId)
     }
 
@@ -496,5 +498,7 @@ class GuildStore(
     fun clear() {
         _guildIds.value = emptyList()
         _privateChannelIds.value = emptySet()
+        guildUnreadStates.clear()
+        guildMentionStates.clear()
     }
 }

@@ -7,12 +7,13 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.boolean
-import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.decodeFromJsonElement
 
 object NonceSerializer : KSerializer<String?> {
@@ -34,8 +35,6 @@ object NonceSerializer : KSerializer<String?> {
         }
     }
 }
-
-private val MessageMergeJson = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
 
 @Serializable
 data class Message(
@@ -78,6 +77,8 @@ data class Message(
 ) {
 
     val isComponentsV2: Boolean get() = ((flags ?: 0) and COMPONENTS_V2_FLAG) != 0
+    val isEphemeral: Boolean get() = ((flags ?: 0) and EPHEMERAL_FLAG) != 0
+    val suppressNotifications: Boolean get() = ((flags ?: 0) and SUPPRESS_NOTIFICATIONS_FLAG) != 0
 
     val previewText: String
         get() = if (content.isNotBlank()) {
@@ -88,21 +89,53 @@ data class Message(
             else components.orEmpty().flatMap { it.collectFallbackText() }.joinToString("\n").trim()
         }
 
-    fun merge(data: kotlinx.serialization.json.JsonObject, json: kotlinx.serialization.json.Json = MessageMergeJson): Message {
+    fun merge(data: JsonObject, json: Json = Json { ignoreUnknownKeys = true }): Message {
         return this.copy(
-            content = data["content"]?.jsonPrimitive?.content ?: content,
-            pinned = data["pinned"]?.jsonPrimitive?.boolean ?: pinned,
-            edited_timestamp = data["edited_timestamp"]?.jsonPrimitive?.contentOrNull ?: edited_timestamp,
-            embeds = data["embeds"]?.jsonArray?.map { json.decodeFromJsonElement<Embed>(it) } ?: embeds,
-            attachments = data["attachments"]?.jsonArray?.map { json.decodeFromJsonElement<Attachment>(it) } ?: attachments,
-            components = data["components"]?.jsonArray?.map { json.decodeFromJsonElement<MessageComponent>(it) } ?: components,
-            flags = data["flags"]?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: flags,
-            poll = data["poll"]?.let { json.decodeFromJsonElement<Poll>(it) } ?: poll
+            content = data.stringField("content") ?: content,
+            tts = data.boolField("tts") ?: tts,
+            mention_everyone = data.boolField("mention_everyone") ?: mention_everyone,
+            mentions = data.decodeField<List<User>>("mentions", json) ?: mentions,
+            mention_roles = data.decodeField<List<String>>("mention_roles", json) ?: mention_roles,
+            edited_timestamp = data.stringField("edited_timestamp") ?: edited_timestamp,
+            embeds = data.decodeField<List<Embed>>("embeds", json) ?: embeds,
+            attachments = data.decodeField<List<Attachment>>("attachments", json) ?: attachments,
+            reactions = if ("reactions" in data) data.decodeField<List<MessageReaction>>("reactions", json) else reactions,
+            components = if ("components" in data) data.decodeField<List<MessageComponent>>("components", json) else components,
+            flags = data.intField("flags") ?: flags,
+            pinned = data.boolField("pinned") ?: pinned,
+            type = data.intField("type") ?: type,
+            poll = if ("poll" in data) data.decodeField<Poll>("poll", json) else poll,
+            thread = if ("thread" in data) data.decodeField<Channel>("thread", json) else thread,
+            interaction = if ("interaction" in data) data.decodeField<MessageInteraction>("interaction", json) else interaction,
+            interaction_metadata = if ("interaction_metadata" in data) data.decodeField<MessageInteractionMetadata>("interaction_metadata", json) else interaction_metadata,
+            sticker_items = if ("sticker_items" in data) data.decodeField<List<StickerItem>>("sticker_items", json) else sticker_items,
+            stickers = if ("stickers" in data) data.decodeField<List<Sticker>>("stickers", json) else stickers,
+            message_snapshots = if ("message_snapshots" in data) data.decodeField<List<MessageSnapshot>>("message_snapshots", json) else message_snapshots,
+            referenced_message = if ("referenced_message" in data) data.decodeField<Message>("referenced_message", json) else referenced_message,
+            message_reference = if ("message_reference" in data) data.decodeField<MessageReference>("message_reference", json) else message_reference,
+            member = if ("member" in data) data.decodeField<Member>("member", json) else member,
+            author = if ("author" in data) data.decodeField<User>("author", json) else author
         )
     }
 }
 
+private inline fun <reified T> JsonObject.decodeField(key: String, json: Json): T? =
+    this[key]?.takeIf { it !is JsonNull }?.let { element ->
+        runCatching { json.decodeFromJsonElement<T>(element) }.getOrNull()
+    }
+
+private fun JsonObject.stringField(key: String): String? =
+    (this[key] as? JsonPrimitive)?.contentOrNull
+
+private fun JsonObject.boolField(key: String): Boolean? =
+    (this[key] as? JsonPrimitive)?.boolean
+
+private fun JsonObject.intField(key: String): Int? =
+    (this[key] as? JsonPrimitive)?.contentOrNull?.toIntOrNull()
+
 private const val COMPONENTS_V2_FLAG = 1 shl 15
+private const val EPHEMERAL_FLAG = 1 shl 6
+private const val SUPPRESS_NOTIFICATIONS_FLAG = 1 shl 12
 
 fun MessageComponent.collectText(): List<String> = buildList {    content?.takeIf { it.isNotBlank() }?.let { add(it) }
     components?.forEach { addAll(it.collectText()) }
@@ -285,7 +318,8 @@ data class MessageInteraction(
     val id: String,
     val type: Int,
     val name: String,
-    val user: User? = null
+    val user: User? = null,
+    val ephemerality_reason: Int? = null
 )
 
 @Serializable
@@ -296,7 +330,8 @@ data class MessageInteractionMetadata(
     val authorizing_integration_owners: Map<String, String>? = null,
     val original_response_message_id: String? = null,
     val target_user: User? = null,
-    val target_message_id: String? = null
+    val target_message_id: String? = null,
+    val ephemerality_reason: Int? = null
 )
 
 @Serializable
@@ -324,7 +359,8 @@ data class MessageReactionAdd(
     val guild_id: String? = null,
     val member: Member? = null,
     val emoji: Emoji,
-    val burst: Boolean = false
+    val burst: Boolean = false,
+    val type: Int? = null
 )
 
 @Serializable
@@ -334,7 +370,8 @@ data class MessageReactionRemove(
     val message_id: String,
     val guild_id: String? = null,
     val emoji: Emoji,
-    val burst: Boolean = false
+    val burst: Boolean = false,
+    val type: Int? = null
 )
 
 @Serializable

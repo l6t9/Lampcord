@@ -1000,7 +1000,7 @@ private class DesktopVideoPlayer(
             // The decode thread may still be blocked inside a native read. Release the
             // native handles only after it has exited so we never free memory it is using.
             Thread({
-                runCatching { thread?.join() }
+                runCatching { thread.join() }
                 runCatching { renderer?.close() }
                 runCatching { g?.release() }
             }, "VideoRelease-Thread").apply {

@@ -53,6 +53,8 @@ class NotificationEventHandler(
             return
         }
 
+        if (message.isEphemeral || message.suppressNotifications) return
+
         val author = message.author ?: return
         val currentUser = userStore.currentUser.value ?: return
 

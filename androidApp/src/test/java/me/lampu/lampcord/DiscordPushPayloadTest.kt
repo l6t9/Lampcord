@@ -1,6 +1,7 @@
 package me.lampu.lampcord
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -40,13 +41,14 @@ class DiscordPushPayloadTest {
             .toIncomingNotificationData())
         assertNull(mapOf("type" to "CALL_CREATE", "channel_id" to "1", "message_id" to "1")
             .toIncomingNotificationData())
+        assertNull(mapOf("type" to "RELATIONSHIP_ADD", "channel_id" to "1", "message_id" to "1")
+            .toIncomingNotificationData())
     }
 
     @Test
-    fun recognisesCallRings() {
+    fun recognisesCallRingsWithoutAMessageId() {
         val notification = mapOf(
             "type" to "CALL_RING",
-            "message_id" to "9",
             "channel_id" to "456",
             "channel_type" to "2",
             "guild_id" to "789",
@@ -55,6 +57,9 @@ class DiscordPushPayloadTest {
         ).toIncomingNotificationData()
 
         assertEquals(NotificationPushType.CALL_RING, notification?.pushType)
+        assertEquals("call:456", notification?.message?.id)
+        assertEquals("456", notification?.message?.channel_id)
+        assertEquals("Nyx", notification?.authorDisplayName)
     }
 
     @Test
@@ -74,9 +79,35 @@ class DiscordPushPayloadTest {
     }
 
     @Test
-    fun readsTheAckedChannelList() {
-        val acks = mapOf("channel_ids" to "100,200,-1,300").ackChannelIds()
+    fun readsTheAckedChannelListFromJson() {
+        val acks = mapOf("channel_ids" to "[\"100\",\"200\",\"-1\",\"300\"]").ackChannelIds()
         assertEquals(listOf("100", "200", "300"), acks)
         assertTrue(emptyMap<String, String>().ackChannelIds().isEmpty())
+    }
+
+    @Test
+    fun ignoresAckedChannelListsThatAreNotJsonArrays() {
+        assertTrue(mapOf("channel_ids" to "100,200,-1,300").ackChannelIds().isEmpty())
+        assertTrue(mapOf("channel_ids" to "not-json").ackChannelIds().isEmpty())
+    }
+
+    @Test
+    fun detectsCallRingEnd() {
+        assertTrue(mapOf("type" to "CALL_RING_END", "channel_ids" to "[\"1\"]").isCallRingEnd())
+        assertFalse(mapOf("type" to "MESSAGE_CREATE").isCallRingEnd())
+    }
+
+    @Test
+    fun prefersGlobalNameOverUsername() {
+        val notification = mapOf(
+            "type" to "MESSAGE_CREATE",
+            "message_id" to "1",
+            "channel_id" to "2",
+            "user_id" to "3",
+            "user_username" to "nyx",
+            "user_global_name" to "Nyx"
+        ).toIncomingNotificationData()
+
+        assertEquals("Nyx", notification?.authorDisplayName)
     }
 }

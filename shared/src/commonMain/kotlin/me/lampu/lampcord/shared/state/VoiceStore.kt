@@ -253,7 +253,7 @@ class VoiceStore(
                 } else connectGateway()
             }
             "CALL_CREATE", "CALL_UPDATE" -> {
-                val id = value.getValue("channel_id").jsonPrimitive.content
+                val id = value["channel_id"]?.jsonPrimitive?.contentOrNull ?: return
                 val ringing = value["ringing"]?.jsonArray?.map { it.jsonPrimitive.content } ?: calls[id].orEmpty()
                 calls[id] = ringing
                 value["voice_states"]?.jsonArray?.forEach { stateUpdate(json.decodeFromJsonElement(it), snapshot = true) }
@@ -262,7 +262,7 @@ class VoiceStore(
                 else if (incomingChannelId == id) incomingChannelId = null
             }
             "CALL_DELETE" -> {
-                val id = value.getValue("channel_id").jsonPrimitive.content
+                val id = value["channel_id"]?.jsonPrimitive?.contentOrNull ?: return
                 calls.remove(id)
                 if (incomingChannelId == id) incomingChannelId = null
                 voiceStates["@me"]?.entries?.filter { it.value.channel_id == id }?.forEach { voiceStates["@me"]?.remove(it.key) }
@@ -277,7 +277,7 @@ class VoiceStore(
             "STREAM_SERVER_UPDATE" -> {
                 if (value["stream_key"]?.jsonPrimitive?.content != watchedStream) return
                 val endpoint = value["endpoint"]?.jsonPrimitive?.contentOrNull ?: return
-                streamServer = endpoint to value.getValue("token").jsonPrimitive.content
+                streamServer = endpoint to (value["token"]?.jsonPrimitive?.contentOrNull ?: return)
                 connectStream()
             }
             "STREAM_DELETE" -> {
@@ -289,7 +289,7 @@ class VoiceStore(
             "READY_SUPPLEMENTAL" -> seedGuilds(value)
             "GUILD_CREATE" -> seedGuild(value)
             "GUILD_DELETE" -> {
-                val id = value.getValue("id").jsonPrimitive.content
+                val id = value["id"]?.jsonPrimitive?.contentOrNull ?: return
                 voiceStates.remove(id)
                 if (activeChannel?.guild_id == id) disconnectFromVoice()
             }
@@ -330,8 +330,8 @@ class VoiceStore(
             return
         }
         if (state.channel_id != desired.id) {
-            if (previous == null) return
-
+            // A move can arrive before the first self state was captured (e.g. when
+            // the READY snapshot omitted self); still follow it instead of dropping it.
             val moved = guildStore.allGuildChannels.value[state.channel_id] ?: Channel(state.channel_id, 2, state.guild_id)
             activeChannel = moved
             stopStreamLocal()

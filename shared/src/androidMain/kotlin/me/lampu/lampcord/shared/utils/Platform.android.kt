@@ -2,6 +2,8 @@ package me.lampu.lampcord.shared.utils
 
 import android.content.ContentUris
 import android.os.Build
+import android.webkit.CookieManager
+import android.webkit.WebView
 import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -482,3 +484,19 @@ actual fun openDownloadsFolderAndSelect(filename: String) {
 }
 
 actual fun isEmbeddedWebViewAvailable(): Boolean = true
+
+actual fun configureCaptchaWebView(native: Any) {
+    val webView = native as? WebView ?: return
+    // The WebView library applies its own settings after onCreated, so defer ours.
+    webView.post {
+        webView.settings.apply {
+            domStorageEnabled = true
+            useWideViewPort = true
+            loadWithOverviewMode = true
+        }
+        CookieManager.getInstance().apply {
+            setAcceptCookie(true)
+            setAcceptThirdPartyCookies(webView, true)
+        }
+    }
+}

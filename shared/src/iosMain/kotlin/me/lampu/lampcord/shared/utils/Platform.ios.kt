@@ -160,3 +160,5 @@ private const val SEEK_END = 2
 private const val SEEK_SET = 0
 
 actual fun isEmbeddedWebViewAvailable(): Boolean = true
+
+actual fun configureCaptchaWebView(native: Any) = Unit

@@ -31,13 +31,13 @@ import me.lampu.lampcord.shared.model.MessageReactionRemoveEmoji
 import me.lampu.lampcord.shared.model.MessageReaction
 import me.lampu.lampcord.shared.model.PendingFile
 import me.lampu.lampcord.shared.model.Poll
-import me.lampu.lampcord.shared.model.ReactionCountDetails
 import me.lampu.lampcord.shared.model.TextReplaceRule
 import me.lampu.lampcord.shared.model.User
 import me.lampu.lampcord.shared.utils.Logging
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.utils.Backoff
 import me.lampu.lampcord.shared.utils.ResourceLoader
+import me.lampu.lampcord.shared.utils.Snowflake
 import me.lampu.lampcord.shared.utils.getCurrentTimeMillis
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.milliseconds
@@ -90,11 +90,12 @@ class MessageStore(
     var scrollToMessageId by mutableStateOf<String?>(null)
     var highlightedMessageId by mutableStateOf<String?>(null)
 
-    private val queues = mutableMapOf<String, MessageQueue>()
+    private val queues = mutableMapOf<String, PendingSendQueue>()
     private val queuesMutex = Mutex()
     private var historyLoadingJobs = mutableMapOf<String, Job>()
 
     private val messageNonceIds = mutableMapOf<String, String>()
+    private val messageTasks = mutableMapOf<String, MessageTask>()
 
     private class CompiledReplaceRules(
         val source: List<TextReplaceRule>,
@@ -220,11 +221,19 @@ class MessageStore(
         messageCache.clear()
         channelAccessOrder.clear()
         _activeMessages.value = emptyList()
-        messageNonceIds.clear()
         _hasMoreHistory.value = emptyMap()
         _loadingHistoryChannels.value = emptySet()
         historyLoadingJobs.values.forEach { it.cancel() }
         historyLoadingJobs.clear()
+        // Pending sends belong to the account being logged out; cancelling and
+        // removing them here prevents them from being drained under the next account.
+        // Clear the nonce/task maps in the same place and order as the pending
+        // queues so a logout cannot leave stale send state behind.
+        scope.launch {
+            clearPendingQueues(queues, queuesMutex)
+            messageNonceIds.clear()
+            messageTasks.clear()
+        }
     }
 
     fun loadLoggedMessages(channelId: String) {
@@ -234,14 +243,6 @@ class MessageStore(
                 addMessages(channelId, logged)
             }
         }
-    }
-
-    private fun sortNewestFirst(messages: List<Message>): List<Message> {
-        if (messages.size < 2) return messages.toList()
-        return messages
-            .map { it to (it.id.toLongOrNull() ?: 0L) }
-            .sortedByDescending { it.second }
-            .map { it.first }
     }
 
     private fun publishMessages(channelId: String) {
@@ -277,7 +278,7 @@ class MessageStore(
         val nonPending = current.filterNot { it.isPending }
         if (nonPending.size <= keep) return
         val kept = nonPending.take(keep) + pending
-        messageCache[channelId] = sortNewestFirst(kept)
+        messageCache[channelId] = kept.sortedByDescending { it.id.toLongOrNull() ?: 0L }
         if (nonPending.size > keep) {
             _hasMoreHistory.update { it + (channelId to true) }
         }
@@ -285,22 +286,40 @@ class MessageStore(
 
     fun addMessages(channelId: String, newMessages: List<Message>) {
         val channelMessages = messageCache[channelId] ?: emptyList()
-        val existingIds = channelMessages.mapTo(HashSet(channelMessages.size)) { it.id }
+        val existingById = HashMap<String, Message>().apply { channelMessages.forEach { put(it.id, it) } }
 
         val incoming = ArrayList<Message>(newMessages.size)
+        val replacedIds = HashSet<String>()
         newMessages.forEach { msg ->
-            if (existingIds.add(msg.id)) {
-                val preprocessed = preprocess(msg)
+            val preprocessed = preprocess(msg)
+            val existing = existingById[msg.id]
+            if (existing == null || hasNewerData(existing, preprocessed)) {
                 incoming.add(preprocessed)
+                existingById[msg.id] = preprocessed
+                if (existing != null) replacedIds.add(msg.id)
                 messageLogger.logMessage(preprocessed)
             }
         }
 
         if (incoming.isNotEmpty()) {
-            messageCache[channelId] = mergeDescending(channelMessages, sortNewestFirst(incoming))
+            incoming.sortByDescending { it.id.toLongOrNull() ?: 0L }
+            val base = if (replacedIds.isEmpty()) channelMessages else channelMessages.filterNot { it.id in replacedIds }
+            messageCache[channelId] = mergeDescending(base, incoming)
             recordAccess(channelId)
             publishMessages(channelId)
         }
+    }
+
+    private fun hasNewerData(existing: Message, incoming: Message): Boolean {
+        if (incoming.edited_timestamp != null && incoming.edited_timestamp != existing.edited_timestamp) return true
+        if (existing.edited_timestamp != null && incoming.edited_timestamp == null) return false
+        if (incoming.content != existing.content) return true
+        if (incoming.embeds != existing.embeds) return true
+        if (incoming.attachments != existing.attachments) return true
+        if (incoming.reactions != existing.reactions) return true
+        if (incoming.pinned != existing.pinned) return true
+        if (incoming.flags != existing.flags) return true
+        return false
     }
 
     private fun mergeDescending(existing: List<Message>, incoming: List<Message>): List<Message> {
@@ -342,7 +361,7 @@ class MessageStore(
             }
         }
         if (changed) {
-            val sorted = sortNewestFirst(channelMessages)
+            val sorted = channelMessages.sortedByDescending { it.id.toLongOrNull() ?: 0L }
             messageCache[channelId] = sorted
             recordAccess(channelId)
             publishMessages(channelId)
@@ -380,8 +399,17 @@ class MessageStore(
             val existingIdx = channelMessages.indexOfFirst { it.id == preprocessed.id }
             if (existingIdx != -1) {
                 channelMessages[existingIdx] = preprocessed
-            } else {
+            } else if (preprocessed.isPending) {
+                // Optimistic messages have no snowflake id yet; keep them above
+                // the loaded history until the nonce is replaced by the real one.
                 channelMessages.add(0, preprocessed)
+            } else {
+                // Out-of-order MESSAGE_CREATE events must not reverse the list.
+                val newId = preprocessed.id.toLongOrNull() ?: 0L
+                val insertAt = channelMessages.indexOfFirst { existing ->
+                    !existing.isPending && (existing.id.toLongOrNull() ?: 0L) < newId
+                }
+                if (insertAt == -1) channelMessages.add(preprocessed) else channelMessages.add(insertAt, preprocessed)
             }
         }
 
@@ -393,13 +421,14 @@ class MessageStore(
     fun handleMessageUpdate(message: Message, dataObj: JsonObject) {
         Logging.d("MessageStore", "Handling MESSAGE_UPDATE: ${message.id}")
         val channelId = message.channel_id
-        val channelMessages = messageCache[channelId]?.toMutableList() ?: return
+        val channelMessages = messageCache[channelId]?.toMutableList() ?: mutableListOf()
         val index = channelMessages.indexOfFirst { it.id == message.id }
+        val base = if (index != -1) channelMessages[index] else message
+        val merged = base.merge(dataObj)
+        val preprocessed = preprocess(merged)
+        // Log edits even for channels that are not in the in-memory cache.
+        messageLogger.logUpdate(preprocessed)
         if (index != -1) {
-            val existing = channelMessages[index]
-            val merged = existing.merge(dataObj)
-            val preprocessed = preprocess(merged)
-            messageLogger.logUpdate(preprocessed)
             channelMessages[index] = preprocessed
             messageCache[channelId] = channelMessages
             publishMessages(channelId)
@@ -438,8 +467,18 @@ class MessageStore(
         }
     }
 
+    /** Removes an ephemeral interaction response locally; there is no server message to delete. */
+    suspend fun dismissEphemeral(message: Message) {
+        val channelId = message.channel_id
+        val channelMessages = messageCache[channelId] ?: return
+        messageCache[channelId] = channelMessages.filterNot { it.id == message.id }
+        publishMessages(channelId)
+        messageLogger.logDelete(message.id)
+    }
+
     fun handleReactionAdd(update: MessageReactionAdd) {
         val channelId = update.channel_id
+        val isBurst = update.burst || update.type == 1
         val channelMessages = messageCache[channelId]?.toMutableList() ?: return
         var msgChanged = false
         val newList = channelMessages.map { msg ->
@@ -453,37 +492,15 @@ class MessageStore(
                 val isMe = update.user_id == currentUserId
                 val existing = if (index != -1) reactions[index] else null
 
-                if (existing != null && !update.burst && isMe && existing.me) {
+                if (existing != null && !isBurst && isMe && existing.me) {
                     return@map msg
                 }
 
                 msgChanged = true
                 if (index != -1) {
-                    val reaction = reactions[index]
-                    reactions[index] = reaction.copy(
-                        count = if (update.burst) reaction.count else reaction.count + 1,
-                        count_details = if (update.burst) {
-                            reaction.count_details.copy(burst = reaction.count_details.burst + 1)
-                        } else {
-                            reaction.count_details.copy(normal = reaction.count_details.normal + 1)
-                        },
-                        me = if (!update.burst) reaction.me || isMe else reaction.me,
-                        me_burst = if (update.burst) reaction.me_burst || isMe else reaction.me_burst,
-                        burst_count = if (update.burst) (reaction.burst_count ?: 0) + 1 else reaction.burst_count
-                    )
+                    reactions[index] = ReactionCountMath.afterAdd(reactions[index], isBurst, isMe)
                 } else {
-                    reactions.add(MessageReaction(
-                        emoji = update.emoji,
-                        count = if (update.burst) 0 else 1,
-                        count_details = if (update.burst) {
-                            ReactionCountDetails(burst = 1, normal = 0)
-                        } else {
-                            ReactionCountDetails(burst = 0, normal = 1)
-                        },
-                        me = if (!update.burst) isMe else false,
-                        me_burst = if (update.burst) isMe else false,
-                        burst_count = if (update.burst) 1 else 0
-                    ))
+                    reactions.add(ReactionCountMath.initial(update.emoji, isBurst, isMe))
                 }
                 msg.copy(reactions = reactions)
             } else msg
@@ -496,6 +513,7 @@ class MessageStore(
 
     fun handleReactionRemove(update: MessageReactionRemove) {
         val channelId = update.channel_id
+        val isBurst = update.burst || update.type == 1
         val channelMessages = messageCache[channelId]?.toMutableList() ?: return
         var msgChanged = false
         val newList = channelMessages.map { msg ->
@@ -510,25 +528,17 @@ class MessageStore(
                     val currentUserId = userStore.currentUser.value?.id
                     val isMe = update.user_id == currentUserId
 
-                    if (!update.burst && isMe && !reaction.me) {
+                    if (!isBurst && isMe && !reaction.me) {
                         return@map msg
                     }
 
                     msgChanged = true
 
-                    val newNormalCount = if (!update.burst) (reaction.count_details.normal - 1).coerceAtLeast(0) else reaction.count_details.normal
-                    val newBurstCount = if (update.burst) (reaction.count_details.burst - 1).coerceAtLeast(0) else reaction.count_details.burst
-
-                    if (newNormalCount == 0 && newBurstCount == 0) {
+                    val removed = ReactionCountMath.afterRemove(reaction, isBurst, isMe)
+                    if (removed.count_details.normal == 0 && removed.count_details.burst == 0) {
                         reactions.removeAt(index)
                     } else {
-                        reactions[index] = reaction.copy(
-                            count = newNormalCount,
-                            count_details = ReactionCountDetails(burst = newBurstCount, normal = newNormalCount),
-                            me = if (!update.burst && isMe) false else reaction.me,
-                            me_burst = if (update.burst && isMe) false else reaction.me_burst,
-                            burst_count = newBurstCount
-                        )
+                        reactions[index] = removed
                     }
                 }
                 msg.copy(reactions = reactions)
@@ -675,7 +685,7 @@ class MessageStore(
         allowedMentions: AllowedMentions? = null,
         poll: Poll? = null
     ) {
-        val nonce = me.lampu.lampcord.shared.utils.Snowflake.nextId()
+        val nonce = Snowflake.nextId()
         val tempMessage = Message(
             id = nonce,
             channel_id = channelId,
@@ -691,6 +701,10 @@ class MessageStore(
         handleMessageCreate(tempMessage)
 
         val task = MessageTask(nonce, channelId, content, replyTo, files, forwardFrom, stickerIds, allowedMentions, poll)
+        messageTasks[nonce] = task
+        if (messageTasks.size > CACHE_MAX_MESSAGES_ACTIVE_CHANNEL) {
+            messageTasks.keys.firstOrNull()?.let { messageTasks.remove(it) }
+        }
 
         scope.launch {
             queuesMutex.withLock {
@@ -700,32 +714,32 @@ class MessageStore(
         }
     }
 
-    private inner class MessageQueue(val channelId: String) {
+    private inner class MessageQueue(val channelId: String) : PendingSendQueue {
         private val queue = mutableListOf<MessageTask>()
         private var isProcessing = false
+        private var processingJob: Job? = null
         private val backoff = Backoff()
 
-        fun enqueue(task: MessageTask) {
+        override fun enqueue(task: MessageTask) {
             queue.add(task)
             if (!isProcessing) {
                 process()
             }
         }
 
-        fun process() {
+        override fun process() {
             if (isProcessing || queue.isEmpty()) return
             isProcessing = true
 
-            scope.launch {
-
-                            try {
-                            while (true) {
-                                val task = if (queue.isNotEmpty()) queue[0] else null
-                                if (task == null) break
-
-                                try {
-                                    val contentToSend = transformOutgoingContent(task.content)
-                                    Logging.d("MessageStore", "Sending message: nonce=${task.nonce} channel=${task.channelId}")
+            processingJob = scope.launch {
+                try {
+                    while (true) {
+                        val task = queue.firstOrNull() ?: break
+                        var succeeded = false
+                        var failureDelayMs = 0L
+                        try {
+                            val contentToSend = transformOutgoingContent(task.content)
+                            Logging.d("MessageStore", "Sending message: nonce=${task.nonce} channel=${task.channelId}")
 
                             val message = withTimeoutOrNull(60000.milliseconds) {
                                 messageApi.sendMessage(
@@ -743,22 +757,26 @@ class MessageStore(
 
                             if (message != null) {
                                 handleMessageCreate(message)
-                                if (queue.isNotEmpty() && queue[0].nonce == task.nonce) queue.removeAt(0)
+                                messageTasks.remove(task.nonce)
+                                succeeded = true
                                 backoff.succeed()
                             } else {
                                 handleFailure(task, "Failed to send")
-                                if (queue.isNotEmpty() && queue[0].nonce == task.nonce) queue.removeAt(0)
+                                failureDelayMs = backoff.fail()
                             }
                         } catch (e: Exception) {
                             handleFailure(task, e.message ?: "Error")
-                            if (queue.isNotEmpty() && queue[0].nonce == task.nonce) queue.removeAt(0)
+                            failureDelayMs = backoff.fail()
                         }
 
-                        val delayMs = backoff.nextDelay()
-                        delay(delayMs)
+                        if (queue.isNotEmpty() && queue[0].nonce == task.nonce) queue.removeAt(0)
+                        // Backoff is for failures only; successful sends must not
+                        // be throttled by a random delay before the next message.
+                        if (!succeeded) delay(failureDelayMs)
                     }
                 } finally {
                     isProcessing = false
+                    processingJob = null
                 }
             }
         }
@@ -774,14 +792,21 @@ class MessageStore(
             errorStore.pushError("Message failed: $error")
         }
 
-        fun cancel(nonce: String) {
+        override fun cancel(nonce: String) {
             queue.removeAll { it.nonce == nonce }
         }
 
-        fun retry(task: MessageTask) {
+        override fun retry(task: MessageTask) {
             if (!queue.any { it.nonce == task.nonce }) {
                 enqueue(task)
             }
+        }
+
+        override fun cancelAll() {
+            processingJob?.cancel()
+            processingJob = null
+            isProcessing = false
+            queue.clear()
         }
     }
 
@@ -792,7 +817,7 @@ class MessageStore(
         scope.launch {
             queuesMutex.withLock {
                 val queue = queues[channelId] ?: return@launch
-                val task = MessageTask(nonce, channelId, message.content, null, emptyList(), null)
+                val task = messageTasks[nonce] ?: MessageTask(nonce, channelId, message.content, null, emptyList(), null)
 
                 val channelMessages = messageCache[channelId]?.toMutableList() ?: return@launch
                 val index = channelMessages.indexOfFirst { it.nonce == nonce }
@@ -813,6 +838,8 @@ class MessageStore(
         val channelMessages = messageCache[channelId] ?: return
         val newList = channelMessages.filter { msg -> msg.nonce != nonce }
         messageCache[channelId] = newList
+        messageNonceIds.remove(nonce)
+        messageTasks.remove(nonce)
         publishMessages(channelId)
         scope.launch {
             queuesMutex.withLock {
@@ -887,27 +914,24 @@ class MessageStore(
         scope.launch {
             try {
                 if (!messageApi.deleteMessage(channelId, id)) {
-                    cached?.find { it.id == id }?.let { restored ->
-                        val current = messageCache[channelId]?.toMutableList() ?: mutableListOf()
-                        if (!current.any { it.id == id }) {
-                            current.add(restored)
-                            messageCache[channelId] = sortNewestFirst(current)
-                            publishMessages(channelId)
-                        }
-                    }
+                    cached?.find { it.id == id }?.let { restoreAfterFailedDelete(channelId, it) }
                     errorStore.pushError("Failed to delete message")
                 }
             } catch (e: Exception) {
-                cached?.find { it.id == id }?.let { restored ->
-                    val current = messageCache[channelId]?.toMutableList() ?: mutableListOf()
-                    if (!current.any { it.id == id }) {
-                        current.add(restored)
-                        messageCache[channelId] = sortNewestFirst(current)
-                        publishMessages(channelId)
-                    }
-                }
+                cached?.find { it.id == id }?.let { restoreAfterFailedDelete(channelId, it) }
             }
         }
+    }
+
+    private fun restoreAfterFailedDelete(channelId: String, restored: Message) {
+        val current = messageCache[channelId]?.toMutableList() ?: mutableListOf()
+        val index = current.indexOfFirst { it.id == restored.id }
+        // With logging enabled the delete only marks the cached message as
+        // deleted, so replace it unconditionally and clear that flag.
+        val original = restored.copy(isDeleted = false)
+        if (index != -1) current[index] = original else current.add(original)
+        messageCache[channelId] = current.sortedByDescending { it.id.toLongOrNull() ?: 0L }
+        publishMessages(channelId)
     }
 
     fun pinMessage(message: Message) {
@@ -1040,7 +1064,26 @@ class MessageStore(
     }
 }
 
-private data class MessageTask(
+internal interface PendingSendQueue {
+    fun enqueue(task: MessageTask)
+    fun process()
+    fun cancel(nonce: String)
+    fun retry(task: MessageTask)
+    fun cancelAll()
+}
+
+/** Cancels and removes every pending outgoing queue, used on logout/account switch. */
+internal suspend fun clearPendingQueues(
+    queues: MutableMap<String, PendingSendQueue>,
+    mutex: Mutex
+) {
+    mutex.withLock {
+        queues.values.forEach { it.cancelAll() }
+        queues.clear()
+    }
+}
+
+internal data class MessageTask(
     val nonce: String,
     val channelId: String,
     val content: String,

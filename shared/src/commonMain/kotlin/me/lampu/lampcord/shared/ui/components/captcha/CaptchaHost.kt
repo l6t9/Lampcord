@@ -59,6 +59,7 @@ import me.lampu.lampcord.shared.generated.resources.lampcord_captcha_description
 import me.lampu.lampcord.shared.generated.resources.lampcord_captcha_title
 import me.lampu.lampcord.shared.generated.resources.lampcord_captcha_webview_missing
 import me.lampu.lampcord.shared.utils.Logging
+import me.lampu.lampcord.shared.utils.configureCaptchaWebView
 import me.lampu.lampcord.shared.utils.isEmbeddedWebViewAvailable
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
@@ -67,6 +68,8 @@ internal const val CAPTCHA_TITLE_PREFIX = "LAMPCORD_CAPTCHA:"
 internal const val CAPTCHA_READY_TITLE = "LAMPCORD_READY"
 internal const val CAPTCHA_EVENT_PREFIX = "LAMPCORD_EVENT:"
 private const val CAPTCHA_PAGE_URL = "https://discord.com/login"
+private const val CAPTCHA_USER_AGENT =
+    "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36"
 
 private const val HIDDEN_CARD_ALPHA = 0.02f
 private const val HIDDEN_CARD_OFFSET_PX = 20_000
@@ -206,7 +209,13 @@ private fun CaptchaFrame(
 ) {
     val colors = MaterialTheme.colorScheme
     val navigator = rememberWebViewNavigator()
-    val webViewState = rememberWebViewState(CAPTCHA_PAGE_URL)
+    val webViewState = rememberWebViewState(CAPTCHA_PAGE_URL) {
+        customUserAgentString = CAPTCHA_USER_AGENT
+        androidWebSettings.apply {
+            useWideViewPort = true
+            domStorageEnabled = true
+        }
+    }
 
     val isDark = background.luminance() < 0.5f
     val script = remember(challenge, background) {
@@ -217,21 +226,18 @@ private fun CaptchaFrame(
         )
     }
 
-    var injected by remember(script) { mutableStateOf(false) }
     var widgetReady by remember(script) { mutableStateOf(false) }
     var lastEvent by remember { mutableStateOf<String?>(null) }
     val pageLoaded = webViewState.loadingState is LoadingState.Finished
 
     LaunchedEffect(webViewState) {
         webViewState.webSettings.isJavaScriptEnabled = true
-        navigator.loadUrl(CAPTCHA_PAGE_URL, emptyMap())
     }
 
     LaunchedEffect(pageLoaded, script) {
         if (pageLoaded) {
             delay(PAGE_SETTLE_MS)
             navigator.evaluateJavaScript(script)
-            injected = true
         }
     }
 
@@ -280,6 +286,7 @@ private fun CaptchaFrame(
             state = webViewState,
             navigator = navigator,
             modifier = Modifier.fillMaxSize(),
+            onCreated = { native -> configureCaptchaWebView(native) },
         )
         if (!widgetReady) {
             ContainedLoadingIndicator(indicatorColor = colors.primary)

@@ -57,8 +57,4 @@ class TokenStore(private val json: Json) {
         accounts.removeAll { it.token == token }
         save()
     }
-
-    fun switchAccount(token: String) {
-        Settings.shared.discordToken = token
-    }
 }

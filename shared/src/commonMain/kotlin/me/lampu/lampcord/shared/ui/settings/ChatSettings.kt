@@ -224,6 +224,12 @@ fun ChatSettingsContent(
                     description = "Previews for website links pasted into chat.",
                     checked = userSettings?.render_embeds ?: true,
                     onCheckedChange = { settingsStore.updateUserSettings(UserSettings.Partial(render_embeds = it)) }
+                ),
+                switchSettingsItem(
+                    title = "Show reactions",
+                    description = "Display reactions on messages.",
+                    checked = userSettings?.render_reactions ?: true,
+                    onCheckedChange = { settingsStore.updateUserSettings(UserSettings.Partial(render_reactions = it)) }
                 )
             )
         )

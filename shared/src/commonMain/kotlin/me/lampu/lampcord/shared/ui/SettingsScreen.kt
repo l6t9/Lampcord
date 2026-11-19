@@ -56,6 +56,7 @@ import androidx.compose.material3.WideNavigationRailValue
 import androidx.compose.material3.rememberWideNavigationRailState
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -87,7 +88,6 @@ import me.lampu.lampcord.shared.ui.components.settings.SettingsSearchEntry
 import me.lampu.lampcord.shared.ui.components.settings.SettingsOverlayFrame
 import me.lampu.lampcord.shared.ui.components.settings.SettingsSearchField
 import me.lampu.lampcord.shared.ui.components.settings.SettingsSearchResults
-import me.lampu.lampcord.shared.ui.components.PlatformBackHandler
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.settings.AccessibilitySettingsContent
 import me.lampu.lampcord.shared.ui.settings.AccountSettingsContent
@@ -175,20 +175,28 @@ fun SettingsScreen(
     val uriHandler = LocalUriHandler.current
     val scope = rememberCoroutineScope()
 
-    PlatformBackHandler(enabled = true) {
-        if (showDebugLogs) {
-            showDebugLogs = false
-        } else if (editingThemeJson != null) {
-            editingThemeJson = null
-        } else if (showThemer) {
-            showThemer = false
-        } else if (searchQuery.isNotEmpty()) {
-            searchQuery = ""
-        } else if (selectedCategory != null) {
-            selectedCategory = null
-        } else {
-            onDismiss()
+    val dismissSettings = {
+        searchQuery = ""
+        selectedCategory = null
+        showDebugLogs = false
+        showThemer = false
+        editingThemeJson = null
+        onDismiss()
+    }
+
+    DisposableEffect(navigationStore) {
+        val unregister = navigationStore.backInterceptor.register {
+            when {
+                showDebugLogs -> showDebugLogs = false
+                editingThemeJson != null -> editingThemeJson = null
+                showThemer -> showThemer = false
+                searchQuery.isNotEmpty() -> searchQuery = ""
+                selectedCategory != null -> selectedCategory = null
+                else -> dismissSettings()
+            }
+            true
         }
+        onDispose { unregister() }
     }
 
     if (showLogoutConfirmation) {
@@ -224,8 +232,8 @@ fun SettingsScreen(
                 Button(
                     onClick = {
                         showLogoutConfirmation = false
-                        sessionManager.signOut()
-                        onDismiss()
+                        sessionManager.disconnect()
+                        dismissSettings()
                     },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
@@ -305,12 +313,28 @@ fun SettingsScreen(
         }
 
         fun openSearchEntry(entry: SettingsSearchEntry) {
-            if (entry.destination == SettingsSearchDestination.Theming) {
-                finalOnNavigateToTheming()
-            } else {
-                selectedCategory = SettingsSection.entries.find { it.title == entry.screen }
-            }
             searchQuery = ""
+            if (!isCompact) {
+                selectedCategory = SettingsSection.entries.find { it.title == entry.screen }
+                return
+            }
+
+            // On phones the compact layout has no category panel. Navigating directly
+            // keeps the visible screen and back state in sync.
+            when (entry.destination) {
+                SettingsSearchDestination.Account -> onNavigateToAccount()
+                SettingsSearchDestination.Profiles -> onNavigateToProfiles()
+                SettingsSearchDestination.Connections -> onNavigateToConnections()
+                SettingsSearchDestination.Devices -> onNavigateToDevices()
+                SettingsSearchDestination.Appearance -> onNavigateToAppearance()
+                SettingsSearchDestination.Accessibility -> onNavigateToAccessibility()
+                SettingsSearchDestination.Language -> onNavigateToLanguage()
+                SettingsSearchDestination.VoiceVideo -> onNavigateToVoice()
+                SettingsSearchDestination.Notifications -> onNavigateToNotifications()
+                SettingsSearchDestination.Advanced -> onNavigateToAdvanced()
+                SettingsSearchDestination.Theming -> finalOnNavigateToTheming()
+                SettingsSearchDestination.Logout -> showLogoutConfirmation = true
+            }
         }
 
         if (isCompact) {
@@ -347,7 +371,7 @@ fun SettingsScreen(
                             LargeTopAppBar(
                                 title = { Text(stringResource(Res.string.settings)) },
                                 navigationIcon = {
-                                    IconButton(onClick = onDismiss) {
+                                    IconButton(onClick = dismissSettings) {
                                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(Res.string.back))
                                     }
                                 },

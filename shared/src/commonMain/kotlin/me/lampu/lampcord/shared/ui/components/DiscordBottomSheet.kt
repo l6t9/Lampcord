@@ -1,10 +1,13 @@
 package me.lampu.lampcord.shared.ui.components
 
+import androidx.compose.animation.core.FiniteAnimationSpec
+import androidx.compose.animation.core.snap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
+import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.SheetValue
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,6 +27,15 @@ val DiscordSheetCornerRadius = 24.dp
 val DiscordSheetTopInset = 56.dp
 
 val DiscordSheetScrimColor = Color.Black.copy(alpha = 0.6f)
+
+private object InstantSheetMotionScheme : MotionScheme {
+    override fun <T> defaultSpatialSpec(): FiniteAnimationSpec<T> = snap()
+    override fun <T> fastSpatialSpec(): FiniteAnimationSpec<T> = snap()
+    override fun <T> slowSpatialSpec(): FiniteAnimationSpec<T> = snap()
+    override fun <T> defaultEffectsSpec(): FiniteAnimationSpec<T> = snap()
+    override fun <T> fastEffectsSpec(): FiniteAnimationSpec<T> = snap()
+    override fun <T> slowEffectsSpec(): FiniteAnimationSpec<T> = snap()
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,56 +69,65 @@ fun DiscordBottomSheet(
     fullBleed: Boolean = false,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    val reduceMotion = Settings.shared.reduceMotion
+    val appMotionScheme = MaterialTheme.motionScheme
+    // Material 3 drives sheet show/hide and scrim motion from MaterialTheme.motionScheme.
+    // Snapping every token makes reduced motion instant without changing the app-wide theme.
+    val sheetMotionScheme = remember(reduceMotion, appMotionScheme) {
+        if (reduceMotion) InstantSheetMotionScheme else appMotionScheme
+    }
     val sheetShape = if (fullBleed) RectangleShape else shape
-    ModalBottomSheet(
-        onDismissRequest = onDismissRequest,
-        modifier = modifier
-            .padding(top = if (fullBleed) 0.dp else DiscordSheetTopInset)
-            .shadow(
-                elevation = 8.dp,
-                shape = sheetShape,
-                clip = false,
-                ambientColor = Color.Black,
-                spotColor = Color.Black
-            ),
-        sheetState = sheetState,
-        sheetMaxWidth = if (fullBleed) Dp.Unspecified else sheetMaxWidth,
-        shape = sheetShape,
-        containerColor = if (fullBleed) Color.Transparent else containerColor,
-        contentColor = contentColor,
-        tonalElevation = 0.dp,
-        scrimColor = scrimColor,
-        dragHandle = if (fullBleed) ({}) else dragHandle,
-        contentWindowInsets = contentWindowInsets,
-        properties = ModalBottomSheetDefaults.properties
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .then(
-                    when {
-                        fullBleed -> Modifier.fillMaxSize()
-                        fillHeight -> Modifier.fillMaxHeight(0.9f).navigationBarsPadding()
-                        else -> Modifier.navigationBarsPadding()
-                    }
-                )
+    MaterialTheme(motionScheme = sheetMotionScheme) {
+        ModalBottomSheet(
+            onDismissRequest = onDismissRequest,
+            modifier = modifier
+                .padding(top = if (fullBleed) 0.dp else DiscordSheetTopInset)
+                .shadow(
+                    elevation = 8.dp,
+                    shape = sheetShape,
+                    clip = false,
+                    ambientColor = Color.Black,
+                    spotColor = Color.Black
+                ),
+            sheetState = sheetState,
+            sheetMaxWidth = if (fullBleed) Dp.Unspecified else sheetMaxWidth,
+            shape = sheetShape,
+            containerColor = if (fullBleed) Color.Transparent else containerColor,
+            contentColor = contentColor,
+            tonalElevation = 0.dp,
+            scrimColor = scrimColor,
+            dragHandle = if (fullBleed) ({}) else dragHandle,
+            contentWindowInsets = contentWindowInsets,
+            properties = ModalBottomSheetDefaults.properties
         ) {
-            if (dragHandle == null && !Settings.shared.reduceMotion) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 10.dp, bottom = 6.dp),
-                    contentAlignment = Alignment.Center
-                ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(
+                        when {
+                            fullBleed -> Modifier.fillMaxSize()
+                            fillHeight -> Modifier.fillMaxHeight(0.9f).navigationBarsPadding()
+                            else -> Modifier.navigationBarsPadding()
+                        }
+                    )
+            ) {
+                if (dragHandle == null && !reduceMotion) {
                     Box(
                         modifier = Modifier
-                            .size(width = 36.dp, height = 4.dp)
-                            .clip(RoundedCornerShape(2.dp))
-                            .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
-                    )
+                            .fillMaxWidth()
+                            .padding(top = 10.dp, bottom = 6.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(width = 36.dp, height = 4.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
+                        )
+                    }
                 }
+                content()
             }
-            content()
         }
     }
 }

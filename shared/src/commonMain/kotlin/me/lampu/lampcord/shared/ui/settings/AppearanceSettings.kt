@@ -465,11 +465,15 @@ private fun ThemeControls(settingsStore: SettingsStore, updateTheme: (String) ->
                 if (mode == null) {
                     settingsStore.themeMode = ThemeMode.DARK
                     settingsStore.pureBlack = true
-                    if (settingsStore.syncAppearance) updateTheme("dark")
                 } else {
                     settingsStore.themeMode = mode
                     settingsStore.pureBlack = false
-                    if (settingsStore.syncAppearance) updateTheme("dark")
+                }
+                // Pure Black maps to Discord's Onyx/Midnight client theme.
+                if (settingsStore.syncAppearance) {
+                    updateTheme(
+                        SettingsStore.discordThemeRawValue(settingsStore.themeMode, settingsStore.pureBlack)
+                    )
                 }
             },
             iconProvider = { mode, isSelected ->
@@ -488,7 +492,9 @@ private fun ThemeControls(settingsStore: SettingsStore, updateTheme: (String) ->
             onOptionSelected = { mode: ThemeMode ->
                 settingsStore.themeMode = mode
                 settingsStore.pureBlack = false
-                if (settingsStore.syncAppearance) updateTheme(if (mode == ThemeMode.LIGHT) "light" else "dark")
+                if (settingsStore.syncAppearance) {
+                    updateTheme(SettingsStore.discordThemeRawValue(mode, pureBlack = false))
+                }
             },
             iconProvider = { mode: ThemeMode, isSelected -> 
                 when (mode) {

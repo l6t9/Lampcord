@@ -2,6 +2,7 @@ package me.lampu.lampcord.shared.ui
 
 import me.lampu.lampcord.shared.ui.components.captcha.CaptchaHost
 import me.lampu.lampcord.shared.ui.components.guilds.PendingInviteHost
+import me.lampu.lampcord.shared.ui.components.oauth.OAuthConsentHost
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
@@ -13,6 +14,7 @@ import coil3.disk.DiskCache
 import coil3.memory.MemoryCache as CoilMemoryCache
 import coil3.network.ktor3.KtorNetworkFetcherFactory
 import coil3.request.crossfade as coilCrossfade
+import coil3.svg.SvgDecoder
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.defaultRequest
@@ -32,7 +34,7 @@ import org.koin.compose.koinInject
 
 @OptIn(ExperimentalResourceApi::class)
 @Composable
-fun App() {
+fun App(onExitApp: () -> Unit = {}) {
     val settingsStore: SettingsStore = koinInject()
 
     val useDarkTheme = when (settingsStore.themeMode) {
@@ -70,10 +72,11 @@ fun App() {
     ) {
         me.lampu.lampcord.shared.i18n.ProvideAppLocale(languageTag) {
             ProvideClipboard()
-            MainScreen()
+            MainScreen(onExitApp = onExitApp)
             UpdatePrompt()
             PendingInviteHost()
             CaptchaHost()
+            OAuthConsentHost()
         }
     }
 }
@@ -105,6 +108,7 @@ fun newCoilImageLoader(context: CoilPlatformContext): ImageLoader {
     return ImageLoader.Builder(context)
         .components {
             add(KtorNetworkFetcherFactory(imageHttpClient))
+            add(SvgDecoder.Factory())
 
             platformImageDecoders().forEach { add(it) }
         }

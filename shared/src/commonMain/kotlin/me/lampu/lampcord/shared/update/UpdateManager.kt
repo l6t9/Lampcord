@@ -29,7 +29,7 @@ sealed interface UpdateState {
         val version: String,
         val changelog: String,
     ) : UpdateState
-    data class Downloading(val version: String, val progress: Int) : UpdateState
+    data class Downloading(val version: String) : UpdateState
     data class ReadyToInstall(
         val release: GitHubRelease,
         val version: String,
@@ -66,6 +66,11 @@ class UpdateManager(
 
     suspend fun check(channel: UpdateChannel, force: Boolean = false): UpdateState = mutex.withLock {
         val target = target ?: return@withLock UpdateState.UpToDate(now()).also { mutableState.value = it }
+        // A download that is running or already finished is visible to the user. Re-entering
+        // the settings screen must not replace it just because it is not an UpToDate state.
+        if (mutableState.value is UpdateState.Downloading ||
+            mutableState.value is UpdateState.ReadyToInstall
+        ) return@withLock mutableState.value
         val lastCheck = (mutableState.value as? UpdateState.UpToDate)?.checkedAt
         if (!force && lastCheck != null && now() - lastCheck < CHECK_INTERVAL_MILLIS) {
             return@withLock mutableState.value
@@ -111,7 +116,7 @@ class UpdateManager(
         }
 
         return@withLock try {
-            mutableState.value = UpdateState.Downloading(release.version, 0)
+            mutableState.value = UpdateState.Downloading(release.version)
             val channel = downloadClient.get(asset.downloadUrl) {
                 header("User-Agent", "Lampcord/${currentVersion()}")
             }.bodyAsChannel()

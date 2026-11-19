@@ -40,7 +40,7 @@ class EmojiTest {
     fun displayUrlPrefersGifOnlyWhenAnimated() {
         assertEquals(
             "https://cdn.discordapp.com/emojis/123.gif?size=64&quality=lossless",
-            Emoji(id = "123", name = "party").getDisplayUrl()
+            Emoji(id = "123", name = "party", animated = true).getDisplayUrl()
         )
         assertEquals(
             "https://cdn.discordapp.com/emojis/123.webp?size=64&quality=lossless",

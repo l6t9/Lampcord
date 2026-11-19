@@ -48,10 +48,12 @@ class RestClient(
 
     init {
         httpClient.receivePipeline.intercept(HttpReceivePipeline.Before) { response ->
-            if (response.status == HttpStatusCode.Unauthorized) {
-                if (token != null) {
-                    unauthorizedEvents.emit(Unit)
-                }
+            // Only an authenticated request that was rejected means this session is dead.
+            // A 401 from a login/MFA request must not log out the account already in use.
+            if (response.status == HttpStatusCode.Unauthorized &&
+                response.call.request.headers[HttpHeaders.Authorization] != null
+            ) {
+                unauthorizedEvents.emit(Unit)
             }
             proceedWith(response)
         }

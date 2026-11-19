@@ -16,7 +16,9 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
@@ -57,6 +59,7 @@ import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.theme.rememberPlatformColorScheme
 import me.lampu.lampcord.shared.utils.Logging
+import me.lampu.lampcord.shared.utils.getPlatformName
 
 import me.lampu.lampcord.shared.api.ProfileBoard
 import me.lampu.lampcord.shared.api.ProfileBoardApi
@@ -170,7 +173,6 @@ fun ProfileCardSkeleton(
                     }
                 }
             }
-            Spacer(Modifier.height(16.dp))
         }
     }
 }
@@ -328,6 +330,13 @@ fun ProfileCard(
     val theme = resolved.theme
     val customProfile = resolved.customProfile
 
+    val cardInteractionSource = remember { MutableInteractionSource() }
+    val isCardHovered by cardInteractionSource.collectIsHoveredAsState()
+    val isDesktop = remember { getPlatformName() !in setOf("android", "ios") }
+    // Touch devices have no hover, so profile media animates continuously there. Reduced motion
+    // stays authoritative and turns animation off in every case.
+    val animateProfileMedia = !Settings.shared.reduceMotion && (!isDesktop || isCardHovered)
+
     val fallbackScrollState = rememberScrollState()
 
     val outerShape = RoundedCornerShape(16.dp)
@@ -337,6 +346,7 @@ fun ProfileCard(
 
     BoxWithConstraints(
         modifier = modifier
+            .hoverable(cardInteractionSource)
             .then(if (showBorder) Modifier.background(theme.outerBorderBrush, outerShape).padding(4.dp) else Modifier)
     ) {
         val railTop = profileBannerHeight(maxWidth, isExpanded, bannerHeightOverride, bannerHeightRatio)
@@ -392,6 +402,7 @@ fun ProfileCard(
                             theme = theme,
                             isExpanded = isExpanded,
                             avatarScale = avatarScale,
+                            animateDecorations = animateProfileMedia,
                             onExpand = onExpand,
                             onDismiss = onDismiss,
                             onEditAvatar = onEditAvatar,
@@ -404,7 +415,7 @@ fun ProfileCard(
                                     .fillMaxWidth()
                                     .padding(top = 8.dp, bottom = 12.dp)
                                     .clip(RoundedCornerShape(40.dp))
-                                    .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                                    .background(MaterialTheme.colorScheme.surfaceContainerLow, RoundedCornerShape(40.dp))
                                     .height(48.dp),
                                 horizontalArrangement = Arrangement.Start,
                                 verticalAlignment = Alignment.CenterVertically
@@ -414,6 +425,7 @@ fun ProfileCard(
                                     onClick = { bodyTab = 0 },
                                     icon = Icons.Rounded.Person,
                                     label = "Main",
+                                    theme = theme,
                                     modifier = Modifier.weight(1f).fillMaxHeight()
                                 )
                                 SiteStyleTab(
@@ -421,6 +433,7 @@ fun ProfileCard(
                                     onClick = { bodyTab = 1 },
                                     icon = Icons.Rounded.SpaceDashboard,
                                     label = "Board",
+                                    theme = theme,
                                     modifier = Modifier.weight(1f).fillMaxHeight()
                                 )
                             }
@@ -452,17 +465,13 @@ fun ProfileCard(
                     }
                 }
             }
-
-            if (!fillAvailableHeight) {
-                Spacer(Modifier.height(16.dp))
-            }
         }
 
         if (showFrameOverlay && effectProduct != null) {
             ProfileEffectOverlay(
                 product = effectProduct,
                 modifier = Modifier.matchParentSize(),
-                animate = !Settings.shared.reduceMotion
+                animate = animateProfileMedia
             )
         }
 
@@ -486,6 +495,7 @@ private fun SiteStyleTab(
     onClick: () -> Unit,
     icon: ImageVector,
     label: String,
+    theme: ProfileTheme,
     modifier: Modifier = Modifier
 ) {
     val progress by animateFloatAsState(
@@ -493,10 +503,12 @@ private fun SiteStyleTab(
         animationSpec = if (Settings.shared.reduceMotion) snap() else tween(durationMillis = 200),
         label = "ProfileTabIndicator"
     )
+    val selectedIndicator = theme.buttonColor
+    val baseContentColor = theme.customTextColor ?: theme.contentColor
     val contentColor = if (selected) {
-        MaterialTheme.colorScheme.onSecondaryContainer
+        theme.buttonTextColor
     } else {
-        MaterialTheme.colorScheme.onSurfaceVariant
+        baseContentColor.copy(alpha = 0.82f)
     }
 
     Box(
@@ -512,7 +524,7 @@ private fun SiteStyleTab(
                     alpha = progress
                     scaleX = 0.32f + 0.68f * progress
                 }
-                .background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(40.dp))
+                .background(selectedIndicator, RoundedCornerShape(40.dp))
         )
         Row(
             modifier = Modifier.padding(horizontal = 24.dp),

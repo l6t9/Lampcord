@@ -2,6 +2,7 @@ package me.lampu.lampcord.shared.ui.components.settings
 
 import me.lampu.lampcord.shared.generated.resources.Res
 import me.lampu.lampcord.shared.generated.resources.back
+import me.lampu.lampcord.shared.ui.components.PlatformBackHandler
 import org.jetbrains.compose.resources.stringResource
 
 import androidx.compose.animation.AnimatedVisibility
@@ -247,8 +248,10 @@ fun SettingsSubScreen(
     contentScrollable: Boolean = true,
     content: @Composable () -> Unit,
 ) {
-val platform = remember { me.lampu.lampcord.shared.utils.getPlatformName() }
+    val platform = remember { me.lampu.lampcord.shared.utils.getPlatformName() }
     val isMobile = platform == "android" || platform == "ios"
+
+    PlatformBackHandler(onBack = onNavigateBack)
 
     if (!isMobile) {
         Column(modifier = modifier.fillMaxSize()) {

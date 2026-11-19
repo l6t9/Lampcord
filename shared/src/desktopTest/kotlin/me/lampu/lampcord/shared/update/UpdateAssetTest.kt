@@ -250,4 +250,53 @@ class UpdateAssetTest {
             )
         )
     }
+
+    @Test
+    fun `linux picks the AppImage from mixed assets regardless of order or other versions`() {
+        val appImage = asset("lampcord-desktop-linux-x64-1.0.8.AppImage")
+        val deb = asset("lampcord-desktop-linux-x64-1.0.9.deb")
+        val jar = asset("lampcord-desktop-linux-x64-1.0.10.jar")
+        val rpm = asset("lampcord-desktop-linux-x64-1.1.0.rpm")
+
+        listOf(
+            listOf(deb, appImage, jar, rpm),
+            listOf(rpm, jar, deb, appImage),
+            listOf(appImage, rpm, jar, deb),
+        ).forEach { assets ->
+            val release = GitHubRelease(tagName = "v1.0.8", assets = assets)
+            assertEquals(appImage.name, release.bestAsset(UpdateTarget.LINUX)?.name, "assets=$assets")
+        }
+    }
+
+    @Test
+    fun `a nightly with only non-AppImage Linux assets is not offered to Linux`() {
+        val debOnly = GitHubRelease(
+            tagName = "v1.0.9-nightly.1",
+            prerelease = true,
+            assets = listOf(asset("lampcord-desktop-linux-x64-1.0.9.deb")),
+        )
+        val withAppImage = GitHubRelease(
+            tagName = "v1.0.8-nightly.2",
+            prerelease = true,
+            assets = listOf(asset("lampcord-desktop-linux-x64-1.0.8.AppImage")),
+        )
+
+        assertEquals(withAppImage, listOf(debOnly, withAppImage).latestNightlyFor(UpdateTarget.LINUX))
+    }
+
+    @Test
+    fun `windows still prefers the NSIS setup exe over the portable zip`() {
+        val release = GitHubRelease(
+            tagName = "v1.0.8",
+            assets = listOf(
+                asset("lampcord-desktop-windows-x64-1.0.8.zip"),
+                asset("lampcord-desktop-windows-x64-1.0.8-setup.exe"),
+            ),
+        )
+
+        assertEquals(
+            "lampcord-desktop-windows-x64-1.0.8-setup.exe",
+            release.bestAsset(UpdateTarget.WINDOWS)?.name,
+        )
+    }
 }

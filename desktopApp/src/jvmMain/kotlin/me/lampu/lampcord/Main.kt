@@ -27,10 +27,9 @@ import dev.nucleusframework.composenativetray.tray.api.Tray
 import dev.nucleusframework.energymanager.EnergyManager
 import dev.nucleusframework.notification.common.NotificationManager
 import dev.nucleusframework.systemcolor.systemAccentColor
-import dev.nucleusframework.updater.NucleusUpdater
-import dev.nucleusframework.updater.UpdateResult
-import dev.nucleusframework.updater.provider.GitHubProvider
 import me.lampu.lampcord.shared.di.appModule
+import me.lampu.lampcord.shared.gateway.GatewayManager
+import me.lampu.lampcord.shared.oauth.OAuthAuthorizationHandler
 import me.lampu.lampcord.shared.rpc.DesktopRPCServer
 import me.lampu.lampcord.shared.state.AppVisibilityStore
 import me.lampu.lampcord.shared.state.SessionManager
@@ -67,7 +66,11 @@ fun main() {
 
     NotificationManager.initialize()
 
-    val rpcServer = DesktopRPCServer(get().get())
+    val koin = get()
+    val rpcServer = DesktopRPCServer(
+        gatewayManager = koin.get<GatewayManager>(),
+        oauthAuthorizationHandler = koin.get<OAuthAuthorizationHandler>(),
+    )
 
     val isLinux = getPlatformName() == "linux"
     val isHyprland = isLinux && (
@@ -179,24 +182,6 @@ fun main() {
                 Item("Open") { scope.launch { windowState.isMinimized = false } }
                 Divider()
                 Item("Quit") { exitApplication() }
-            }
-
-            val updater = remember {
-                NucleusUpdater {
-                    provider = GitHubProvider("l6t9", "Lampcord")
-                    differentialDownload = true
-                }
-            }
-
-            LaunchedEffect(updater) {
-                when (val result = updater.checkForUpdates()) {
-                    is UpdateResult.Available ->
-                        Logging.i("Lampcord", "Update available: ${result.info.version}")
-                    is UpdateResult.Error ->
-                        Logging.i("Lampcord", "Update check failed: ${result.exception.message}")
-                    is UpdateResult.NotAvailable ->
-                        Logging.i("Lampcord", "Lampcord is up to date (${updater.currentVersion})")
-                }
             }
 
             Window(

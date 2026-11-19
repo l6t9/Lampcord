@@ -49,6 +49,7 @@ fun AvatarWithDecoration(
     }
     var avatarCandidateIndex by remember(avatarCandidates) { mutableStateOf(0) }
 
+    val shouldAnimate = !Settings.shared.reduceMotion && animated && (isHovered || forceAnimate)
     val sizePx = with(LocalDensity.current) { size.roundToPx() }
 
     Box(modifier = modifier.size(size)) {
@@ -66,7 +67,7 @@ fun AvatarWithDecoration(
                     contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                     filterQuality = androidx.compose.ui.graphics.FilterQuality.High,
                     size = sizePx,
-                    allowAnimation = animated && (isHovered || forceAnimate),
+                    allowAnimation = shouldAnimate,
                     onState = { state ->
                         if (state is ImageLoadState.Error && avatarCandidateIndex < avatarCandidates.lastIndex) {
                             avatarCandidateIndex++
@@ -77,7 +78,6 @@ fun AvatarWithDecoration(
         }
 
         if (decorationData != null) {
-            val shouldAnimate = animated && (isHovered || forceAnimate)
             val decorationPx = (sizePx * DECORATION_SCALE).toInt()
             val cdnSize = DECORATION_CDN_SIZES.firstOrNull { it >= decorationPx }
                 ?: DECORATION_CDN_SIZES.last()

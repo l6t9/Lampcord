@@ -101,6 +101,8 @@ class SessionManager(
     }
 
     fun disconnect() {
+        // Must run before the session token is cleared so the DELETE carries valid auth.
+        pushTokenRegistrar?.unregister()
         notifier?.dismissAllNotifications()
         voiceStore.disconnectFromVoice()
         gatewayManager.disconnect()
@@ -158,6 +160,7 @@ class SessionManager(
     }
 
     private fun clearAllStores() {
+        gatewayManager.clearSubscriptions()
         navigationStore.clear()
         entityStore.clear()
         readStateStore.clear()

@@ -20,19 +20,27 @@ class MusicPresenceService : NotificationListenerService(), KoinComponent {
     private lateinit var mediaSessionManager: MediaSessionManager
 
     private val controllerCallbacks = mutableMapOf<MediaController, MediaController.Callback>()
+    private var activeSessionsListener: MediaSessionManager.OnActiveSessionsChangedListener? = null
 
     override fun onListenerConnected() {
         super.onListenerConnected()
         mediaSessionManager = getSystemService(MediaSessionManager::class.java)
-        mediaSessionManager.addOnActiveSessionsChangedListener(
-            { controllers -> updateControllers(controllers) },
-            ComponentName(this, MusicPresenceService::class.java)
-        )
-        updateControllers(mediaSessionManager.getActiveSessions(ComponentName(this, MusicPresenceService::class.java)))
+        activeSessionsListener?.let { mediaSessionManager.removeOnActiveSessionsChangedListener(it) }
+        val listener = MediaSessionManager.OnActiveSessionsChangedListener { controllers ->
+            updateControllers(controllers)
+        }
+        val component = ComponentName(this, MusicPresenceService::class.java)
+        mediaSessionManager.addOnActiveSessionsChangedListener(listener, component)
+        activeSessionsListener = listener
+        updateControllers(mediaSessionManager.getActiveSessions(component))
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        if (::mediaSessionManager.isInitialized) {
+            activeSessionsListener?.let { mediaSessionManager.removeOnActiveSessionsChangedListener(it) }
+        }
+        activeSessionsListener = null
         controllerCallbacks.forEach { (controller, callback) ->
             controller.unregisterCallback(callback)
         }

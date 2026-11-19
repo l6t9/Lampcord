@@ -23,7 +23,7 @@ class AppErrorStore {
         errors.add(error)
     }
 
-    fun pushError(message: String, severity: ErrorSeverity = ErrorSeverity.ERROR) {
+    fun pushError(message: String) {
         errors.add(AppError.GenericError(message))
     }
 

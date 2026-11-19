@@ -51,6 +51,9 @@ expect fun restartApp()
 
 expect fun isEmbeddedWebViewAvailable(): Boolean
 
+/** Platform-specific WebView hardening needed before the CAPTCHA page is loaded. */
+expect fun configureCaptchaWebView(native: Any)
+
 @Composable
 expect fun RequestMediaPermissions(onResult: (Boolean) -> Unit)
 

@@ -47,6 +47,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -66,7 +67,6 @@ import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.ui.components.AsyncImage
-import me.lampu.lampcord.shared.ui.components.PlatformBackHandler
 import me.lampu.lampcord.shared.ui.components.guilds.settings.RoleEditor
 import me.lampu.lampcord.shared.ui.components.guilds.settings.RoleEditorSubScreen
 import me.lampu.lampcord.shared.ui.components.guilds.settings.ServerAuditLog
@@ -149,12 +149,19 @@ fun ServerSettings(
     var selectedCategory by remember { mutableStateOf<ServerSettingsSection?>(null) }
     var selectedRole by remember { mutableStateOf<DiscordRole?>(null) }
 
-    PlatformBackHandler(enabled = selectedRole != null || selectedCategory != null) {
-        if (selectedRole != null) {
-            selectedRole = null
-        } else {
-            selectedCategory = null
+    DisposableEffect(navigationStore) {
+        val unregister = navigationStore.backInterceptor.register {
+            if (selectedRole != null) {
+                selectedRole = null
+                true
+            } else if (selectedCategory != null) {
+                selectedCategory = null
+                true
+            } else {
+                false
+            }
         }
+        onDispose { unregister() }
     }
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
