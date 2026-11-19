@@ -95,6 +95,37 @@ class ActivityParsingTest {
     }
 
     @Test
+    fun `received gateway labels gain buttons after metadata fetch`() {
+        val activity =
+            strictJson.decodeFromString<Activity>(
+                """
+                {
+                  "id": "activity-1",
+                  "name": "Game",
+                  "type": 0,
+                  "session_id": "session-1",
+                  "application_id": "123456789",
+                  "buttons": ["Invite", "Store"]
+                }
+                """.trimIndent()
+            )
+
+        assertEquals(emptyList<ActivityButton>(), activity.resolvedButtons)
+
+        val enriched =
+            activity.copy(
+                metadata = ActivityMetadata(button_urls = listOf("https://example.com/invite", "https://example.com/store"))
+            )
+        assertEquals(
+            listOf(
+                ActivityButton("Invite", "https://example.com/invite"),
+                ActivityButton("Store", "https://example.com/store"),
+            ),
+            enriched.resolvedButtons,
+        )
+    }
+
+    @Test
     fun `outbound presence normalizes buttons and drops receive only fields`() {
         val json =
             Json {

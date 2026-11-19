@@ -38,6 +38,7 @@ import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.DiscordMarkdownText
+import me.lampu.lampcord.shared.ui.components.rememberActivitiesWithButtonUrls
 import me.lampu.lampcord.shared.ui.components.UserActivity
 import me.lampu.lampcord.shared.ui.components.settings.Material3SettingsGroup
 import me.lampu.lampcord.shared.ui.components.settings.Material3SettingsItem
@@ -92,7 +93,11 @@ fun ProfileSections(
 
     val presences by presenceStore.presences.collectAsState()
     val presence = profile.guild_member?.presence ?: profile.presence ?: presences[user.id]
-    val activities = (profile.activities.ifEmpty { presence?.activities ?: emptyList() }).filter { it.type != 4 }
+    val activities = rememberActivitiesWithButtonUrls(
+        activities = (profile.activities.ifEmpty { presence?.activities ?: emptyList() })
+            .filter { it.type != 4 },
+        userId = user.id
+    )
 
     val roles = profile.guild_member?.roles
     val me = currentUser

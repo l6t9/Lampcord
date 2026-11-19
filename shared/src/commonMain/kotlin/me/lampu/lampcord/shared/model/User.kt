@@ -120,7 +120,8 @@ data class ConnectedAccount(
 data class ProfileBadge(
     val id: String,
     val icon: String,
-    val description: String
+    val description: String,
+    val link: String? = null
 )
 
 @Serializable

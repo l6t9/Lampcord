@@ -15,6 +15,7 @@ import me.lampu.lampcord.shared.ui.icons.IconsBrand
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.ExpressiveTooltip
+import me.lampu.lampcord.shared.ui.rememberLinkOpener
 import me.lampu.lampcord.shared.ui.components.tooltipText
 import me.lampu.lampcord.shared.utils.showToast
 import kotlin.math.abs
@@ -39,26 +40,50 @@ data class ProfileTheme(
     val themeColors: List<Color> = emptyList()
 )
 
+private const val DISCORD_CDN = "https://cdn.discordapp.com"
+private val HEX_64 = Regex("^[0-9a-fA-F]{64}$")
+
+internal fun profileBadgeIconUrl(icon: String): String {
+    val raw = icon.trim().trimStart('/')
+    if (raw.startsWith("http://") || raw.startsWith("https://")) return raw
+    if (raw.startsWith("cdn.discordapp.com/")) return "https://$raw"
+    if (raw.startsWith("assets/content/") || raw.startsWith("badge-icons/")) return "$DISCORD_CDN/$raw"
+
+    val hash = raw.substringBefore('?').substringAfterLast('/').substringBeforeLast('.')
+    return if (HEX_64.matches(hash)) {
+        "$DISCORD_CDN/assets/content/$hash.svg"
+    } else {
+        "$DISCORD_CDN/badge-icons/$hash.png?size=64"
+    }
+}
+
+private fun badgeLabel(badge: ProfileBadge): String =
+    badge.description.takeIf { it.isNotBlank() }
+        ?: badge.id.replace('_', ' ').replaceFirstChar { it.uppercaseChar() }
+
 @Composable
 fun UserBadges(userId: String, badges: List<ProfileBadge>, roleIds: Collection<String> = emptyList()) {
+    val openLink = rememberLinkOpener()
     Row(
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.padding(vertical = 4.dp)
     ) {
         badges.forEach { badge ->
-            val iconUrl = "https://cdn.discordapp.com/badge-icons/${badge.icon}.png?size=64"
+            val label = badgeLabel(badge)
             ExpressiveTooltip(
                 anchorPosition = TooltipAnchorPosition.Above,
                 maxWidth = 150,
-                content = tooltipText(badge.description),
+                content = tooltipText(label),
                 anchor = {
                     AsyncImage(
-                        model = iconUrl,
-                        contentDescription = badge.description,
+                        model = profileBadgeIconUrl(badge.icon),
+                        contentDescription = label,
                         modifier = Modifier
                             .size(22.dp)
-                            .clickableCursor { showToast(badge.description) }
+                            .clickableCursor {
+                                badge.link?.let(openLink) ?: showToast(label)
+                            }
                     )
                 }
             )

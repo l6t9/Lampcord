@@ -37,8 +37,8 @@ import me.lampu.lampcord.shared.utils.Logging
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.utils.Backoff
 import me.lampu.lampcord.shared.utils.ResourceLoader
+import me.lampu.lampcord.shared.utils.Snowflake
 import me.lampu.lampcord.shared.utils.getCurrentTimeMillis
-import me.lampu.lampcord.shared.utils.randomUUID
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.sync.Mutex
@@ -685,7 +685,7 @@ class MessageStore(
         allowedMentions: AllowedMentions? = null,
         poll: Poll? = null
     ) {
-        val nonce = randomUUID()
+        val nonce = Snowflake.nextId()
         val tempMessage = Message(
             id = nonce,
             channel_id = channelId,

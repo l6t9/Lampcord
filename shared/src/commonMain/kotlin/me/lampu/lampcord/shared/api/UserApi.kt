@@ -16,6 +16,7 @@ import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.*
+import me.lampu.lampcord.shared.model.ActivityMetadata
 import me.lampu.lampcord.shared.model.ConnectedAccount
 import me.lampu.lampcord.shared.model.Gif
 import me.lampu.lampcord.shared.model.GuildFolder
@@ -76,6 +77,31 @@ class UserApi(private val rest: RestClient) {
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             Logging.e("Profile", "Error fetching user profile: ${e.message}")
+            null
+        }
+    }
+
+    suspend fun getActivityMetadata(
+        userId: String,
+        sessionId: String,
+        applicationId: String
+    ): ActivityMetadata? {
+        if (userId.isBlank() || sessionId.isBlank() || applicationId.isBlank()) return null
+        return try {
+            val response = rest.httpClient.get(
+                "${rest.apiBase}/users/$userId/sessions/$sessionId/activities/$applicationId/metadata"
+            ) {
+                standardHeaders(rest)
+            }
+            if (response.status.isSuccess() && response.status.value != 204) {
+                response.body<ActivityMetadata>()
+            } else {
+                null
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Logging.e("Activity", "Error fetching activity metadata: ${e.message}")
             null
         }
     }

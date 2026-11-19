@@ -247,6 +247,7 @@ fun MobileBaseplate(
         if (route !is Screen.Pins && navigationStore.isPinsVisible) navigationStore.isPinsVisible = false
         if (route !is Screen.ChannelsAndRoles && navigationStore.isChannelsAndRolesVisible) navigationStore.isChannelsAndRolesVisible = false
         if (route !is Screen.NotificationsSettings && navigationStore.isNotificationsSettingsVisible) navigationStore.isNotificationsSettingsVisible = false
+        if (route != Screen.Chat && navigationStore.selectedThread != null) navigationStore.selectedThread = null
 
         when (route) {
             is Screen.Friends -> {
@@ -1245,11 +1246,7 @@ fun MobileBaseplate(
                         panelState.close()
                         true
                     }
-                    isChat -> {
-                        panelState.openStart()
-                        true
-                    }
-                    navigator.canGoBack -> {
+                    navigator.canGoBackInStack -> {
                         navigator.goBack()
                         true
                     }

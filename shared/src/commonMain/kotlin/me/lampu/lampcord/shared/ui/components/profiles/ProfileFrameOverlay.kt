@@ -13,18 +13,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.model.ANCHOR_BOTTOM
 import me.lampu.lampcord.shared.model.ProfileCollectibles
 import me.lampu.lampcord.shared.model.ProfileFrameProduct
-import me.lampu.lampcord.shared.model.frameLayerAspectRatio
-import me.lampu.lampcord.shared.model.frameLayerHeight
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.ImageLoadState
 
+private const val DEFAULT_HEIGHT_RATIO = 0.75f
 internal const val FRAME_ART_SCALE = 1.0f
 
 @Composable
@@ -68,17 +66,17 @@ private fun BoxScope.FrameLayers(
     for (layer in product.layers.sortedBy { it.front }) {
         val isBottom = layer.anchor == ANCHOR_BOTTOM
         if (isBottom && !showBottom) continue
-        var aspectRatio by remember(product.sku, layer.id) { mutableFloatStateOf(0f) }
+        var heightRatio by remember(product.sku, layer.id) { mutableFloatStateOf(DEFAULT_HEIGHT_RATIO) }
         val y = when {
             isBottom -> bottomOverflow
             layer.rail -> railTop
             else -> -topOverflow
         }
-        val measuredHeight = frameLayerHeight(declaredWidth.value, aspectRatio)
-        val layerHeight = if (measuredHeight.isFinite() && measuredHeight > 0f) {
-            measuredHeight.dp.coerceIn(1.dp, 2000.dp)
+        val rawLayerHeight = declaredWidth * heightRatio
+        val layerHeight = if (rawLayerHeight.value.isFinite() && rawLayerHeight.value > 0f) {
+            rawLayerHeight.coerceIn(1.dp, 2000.dp)
         } else {
-            0.dp
+            declaredWidth
         }
         AsyncImage(
             model = ProfileCollectibles.frameAssetUrl(product.sku, layer.id),
@@ -86,7 +84,6 @@ private fun BoxScope.FrameLayers(
             modifier = Modifier
                 .requiredWidth(declaredWidth)
                 .requiredHeight(layerHeight)
-                .alpha(if (aspectRatio > 0f) 1f else 0f)
                 .align(if (isBottom) Alignment.BottomCenter else Alignment.TopCenter)
                 .offset(y = y),
             contentScale = ContentScale.Fit,
@@ -97,7 +94,9 @@ private fun BoxScope.FrameLayers(
                 }
             },
             onSize = { width, height ->
-                frameLayerAspectRatio(width, height)?.let { aspectRatio = it }
+                if (width > 0 && height > 0) {
+                    heightRatio = height.toFloat() / width
+                }
             }
         )
     }

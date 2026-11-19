@@ -8,16 +8,27 @@ import io.ktor.server.routing.*
 import io.ktor.server.websocket.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.*
 import me.lampu.lampcord.shared.gateway.GatewayManager
 import me.lampu.lampcord.shared.model.Activity
+import me.lampu.lampcord.shared.oauth.OAuthAuthorizationHandler
+import me.lampu.lampcord.shared.oauth.OAuthRequestSource
+import me.lampu.lampcord.shared.oauth.OAuthResult
+import me.lampu.lampcord.shared.oauth.OAuthUrlParser
 import me.lampu.lampcord.shared.utils.Logging
 import java.net.URI
+import java.net.URLEncoder
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 private const val MAX_RPC_FRAME_BYTES = 1024 * 1024
+private val AUTHORIZE_TIMEOUT = 5.minutes
 
-class DesktopRPCServer(private val gatewayManager: GatewayManager) {
+class DesktopRPCServer(
+    private val gatewayManager: GatewayManager,
+    private val oauthAuthorizationHandler: OAuthAuthorizationHandler,
+) {
     private var server: EmbeddedServer<*, *>? = null
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val json = Json { ignoreUnknownKeys = true }
@@ -108,6 +119,7 @@ class DesktopRPCServer(private val gatewayManager: GatewayManager) {
                                 put("nonce", nonce)
                             }.toString())
                         }
+                        "AUTHORIZE" -> handleAuthorize(payload, nonce)
                         "SUBSCRIBE" -> {
                         }
                     }
@@ -118,6 +130,89 @@ class DesktopRPCServer(private val gatewayManager: GatewayManager) {
         } finally {
             Logging.d("RPC", "RPC connection closed")
         }
+    }
+
+    private suspend fun DefaultWebSocketServerSession.handleAuthorize(
+        payload: JsonObject,
+        nonce: String?,
+    ) {
+        val request = requestFromRpcArgs(payload["args"]?.jsonObject)
+        if (request == null) {
+            sendAuthorizeError(nonce, "invalid_request")
+            return
+        }
+
+        val reply = launch {
+            val result = withTimeoutOrNull(AUTHORIZE_TIMEOUT) {
+                oauthAuthorizationHandler.results.first { it.requestId == request.id }
+            }
+            if (result == null) {
+                sendAuthorizeError(nonce, "authorization_timeout")
+                return@launch
+            }
+            send(buildJsonObject {
+                put("cmd", "AUTHORIZE")
+                put("evt", JsonNull)
+                put("nonce", nonce)
+                put("data", buildJsonObject {
+                    when (result) {
+                        is OAuthResult.Success -> {
+                            put("code", result.code)
+                            put("redirect_uri", result.redirectUrl)
+                        }
+                        is OAuthResult.Denied -> {
+                            put("error", result.error)
+                            result.redirectUrl?.let { put("redirect_uri", it) }
+                        }
+                        is OAuthResult.Failed -> {
+                            put("error", result.error)
+                            result.message?.let { put("error_description", it) }
+                        }
+                    }
+                })
+            }.toString())
+        }
+
+        if (!oauthAuthorizationHandler.beginAuthorization(request)) {
+            reply.cancel()
+            sendAuthorizeError(nonce, "expired_request")
+        }
+    }
+
+    private fun requestFromRpcArgs(args: JsonObject?) = runCatching {
+        if (args == null) return@runCatching null
+        val params = LinkedHashMap<String, String>()
+        args["client_id"]?.jsonPrimitive?.contentOrNull?.let { params["client_id"] = it }
+        val scopeElement = args["scopes"] ?: args["scope"]
+        val scope = when (scopeElement) {
+            is JsonArray -> scopeElement.mapNotNull { it.jsonPrimitive.contentOrNull }.joinToString(" ")
+            is JsonPrimitive -> scopeElement.contentOrNull
+            else -> null
+        }
+        scope?.let { params["scope"] = it }
+        params["response_type"] = args["response_type"]?.jsonPrimitive?.contentOrNull ?: "code"
+        args["redirect_uri"]?.jsonPrimitive?.contentOrNull?.let { params["redirect_uri"] = it }
+        args["state"]?.jsonPrimitive?.contentOrNull?.let { params["state"] = it }
+        args["nonce"]?.jsonPrimitive?.contentOrNull?.let { params["nonce"] = it }
+        args["code_challenge"]?.jsonPrimitive?.contentOrNull?.let { params["code_challenge"] = it }
+        args["code_challenge_method"]?.jsonPrimitive?.contentOrNull?.let { params["code_challenge_method"] = it }
+        args["prompt"]?.jsonPrimitive?.contentOrNull?.let { params["prompt"] = it }
+        args["integration_type"]?.jsonPrimitive?.contentOrNull?.let { params["integration_type"] = it }
+        val query = params.entries.joinToString("&") { (key, value) ->
+            "${encodeParam(key)}=${encodeParam(value)}"
+        }
+        OAuthUrlParser.parse("https://discord.com/oauth2/authorize?$query", OAuthRequestSource.DESKTOP_RPC)
+    }.getOrNull()
+
+    private fun encodeParam(value: String): String = URLEncoder.encode(value, "UTF-8")
+
+    private suspend fun DefaultWebSocketServerSession.sendAuthorizeError(nonce: String?, error: String) {
+        send(buildJsonObject {
+            put("cmd", "AUTHORIZE")
+            put("evt", JsonNull)
+            put("nonce", nonce)
+            put("data", buildJsonObject { put("error", error) })
+        }.toString())
     }
 
     private fun isLocalOrigin(origin: String): Boolean = runCatching {

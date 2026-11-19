@@ -415,7 +415,7 @@ fun ProfileCard(
                                     .fillMaxWidth()
                                     .padding(top = 8.dp, bottom = 12.dp)
                                     .clip(RoundedCornerShape(40.dp))
-                                    .background(theme.cardColor.copy(alpha = 0.25f), RoundedCornerShape(40.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceContainerLow, RoundedCornerShape(40.dp))
                                     .height(48.dp),
                                 horizontalArrangement = Arrangement.Start,
                                 verticalAlignment = Alignment.CenterVertically
@@ -504,7 +504,6 @@ private fun SiteStyleTab(
         label = "ProfileTabIndicator"
     )
     val selectedIndicator = theme.buttonColor
-    val unselectedIndicator = theme.cardColor.copy(alpha = 0.35f)
     val baseContentColor = theme.customTextColor ?: theme.contentColor
     val contentColor = if (selected) {
         theme.buttonTextColor
@@ -515,7 +514,6 @@ private fun SiteStyleTab(
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(40.dp))
-            .background(unselectedIndicator, RoundedCornerShape(40.dp))
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {

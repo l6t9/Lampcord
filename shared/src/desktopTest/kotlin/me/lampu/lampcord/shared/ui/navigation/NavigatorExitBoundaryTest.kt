@@ -44,4 +44,20 @@ class NavigatorExitBoundaryTest {
         assertTrue(navigator.goBack())
         assertEquals(Screen.Chat, state.topLevelRoute)
     }
+
+    @Test
+    fun `root tabs have no in-stack back even when canGoBack is true`() {
+        val state = newState()
+        val navigator = Navigator(state)
+
+        navigator.navigate(Screen.Friends)
+        assertTrue(navigator.canGoBack)
+        assertFalse(navigator.canGoBackInStack)
+
+        navigator.navigate(Screen.AccountSettings)
+        assertTrue(navigator.canGoBackInStack)
+        assertTrue(navigator.goBack())
+        assertEquals(Screen.Friends, state.topLevelRoute)
+        assertFalse(navigator.canGoBackInStack)
+    }
 }

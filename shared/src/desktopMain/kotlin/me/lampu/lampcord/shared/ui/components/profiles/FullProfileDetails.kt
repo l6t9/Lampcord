@@ -57,6 +57,7 @@ import me.lampu.lampcord.shared.state.PresenceStore
 import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.ui.components.UserActivity
 import me.lampu.lampcord.shared.ui.components.VerticalScrollbar
+import me.lampu.lampcord.shared.ui.components.rememberActivitiesWithButtonUrls
 import org.koin.compose.koinInject
 
 private val TAB_ACTIVITY = 0
@@ -95,9 +96,10 @@ fun FullProfileDetails(
     val presences by presenceStore.presences.collectAsState()
     val currentUser by userStore.currentUser.collectAsState()
     val presence = profile.guild_member?.presence ?: profile.presence ?: presences[user.id]
-    val activities = remember(profile, presence) {
+    val rawActivities = remember(profile, presence) {
         (profile.activities.ifEmpty { presence?.activities ?: emptyList() }).filter { it.type != 4 }
     }
+    val activities = rememberActivitiesWithButtonUrls(rawActivities, user.id)
     val isOwnProfile = user.id == currentUser?.id
     val reduceMotion = Settings.shared.reduceMotion
     val textColor = theme.customTextColor ?: theme.contentColor

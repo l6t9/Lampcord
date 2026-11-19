@@ -3,6 +3,7 @@ package me.lampu.lampcord.shared.ui.components
 import android.os.SystemClock
 import android.widget.Toast
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -19,11 +20,15 @@ actual fun PlatformRootBackHandler(
     onBack: () -> Boolean,
     onExit: () -> Unit,
 ) {
-    val confirmation = remember(enabled) { BackExitConfirmation() }
+    val confirmation = remember { BackExitConfirmation() }
     val context = LocalContext.current
     val message = stringResource(Res.string.back_again_to_exit)
     val toast = remember(context, message, confirmation) {
         Toast.makeText(context, message, Toast.LENGTH_SHORT)
+    }
+
+    LaunchedEffect(enabled) {
+        if (!enabled) confirmation.reset()
     }
 
     LifecycleResumeEffect(confirmation, toast) {

@@ -57,7 +57,8 @@ fun ProfileHeader(
     settingsStore: SettingsStore = koinInject(),
     relationshipStore: RelationshipStore = koinInject(),
     navigationStore: NavigationStore = koinInject(),
-    profileStore: ProfileStore = koinInject()
+    profileStore: ProfileStore = koinInject(),
+    badgeStore: BadgeStore = koinInject()
 ) {
     val isDesktop = remember { getPlatformName() != "android" && getPlatformName() != "ios" }
     val user = profile.user
@@ -278,12 +279,20 @@ fun ProfileHeader(
                 )
             }
         }
-        Spacer(Modifier.height(8.dp))
-        UserBadges(
-            userId = user.id,
-            badges = profile.badges + profile.guild_badges,
-            roleIds = profile.guild_member?.roles.orEmpty()
-        )
+        val roles = profile.guild_member?.roles.orEmpty()
+        val discordBadges = profile.badges + profile.guild_badges
+        val lampcordBadges by badgeStore.lampcordBadges.collectAsState()
+        val hasCustomBadges = remember(user.id, roles, lampcordBadges) {
+            badgeStore.getUserBadges(user.id, roles).isNotEmpty()
+        }
+        if (discordBadges.isNotEmpty() || hasCustomBadges) {
+            Spacer(Modifier.height(8.dp))
+            UserBadges(
+                userId = user.id,
+                badges = discordBadges,
+                roleIds = roles
+            )
+        }
 
         if (user.id == currentUser?.id && onEditAvatar == null) {
             Spacer(Modifier.height(4.dp))
@@ -428,5 +437,6 @@ fun ProfileHeader(
                 }
             }
         }
+        Spacer(Modifier.height(12.dp))
     }
 }

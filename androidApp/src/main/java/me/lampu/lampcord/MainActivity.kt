@@ -12,6 +12,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import me.lampu.lampcord.shared.oauth.OAuthAuthorizationHandler
+import me.lampu.lampcord.shared.oauth.OAuthRequestSource
 import me.lampu.lampcord.shared.state.ChannelNavigator
 import me.lampu.lampcord.shared.state.DiscordLinkHandler
 import me.lampu.lampcord.shared.state.NavigationStore
@@ -77,7 +79,14 @@ open class MainActivity : ComponentActivity() {
     private fun handleDeepLink(intent: Intent?) {
         if (intent?.action != Intent.ACTION_VIEW) return
         val data = intent.data ?: return
-        if (GlobalContext.get().get<DiscordLinkHandler>().open(data.toString())) {
+        val koin = GlobalContext.get()
+        if (koin.get<OAuthAuthorizationHandler>()
+                .handleIncomingUrl(data.toString(), OAuthRequestSource.ANDROID_DEEPLINK)
+        ) {
+            intent.data = null
+            return
+        }
+        if (koin.get<DiscordLinkHandler>().open(data.toString())) {
             intent.data = null
         }
     }
