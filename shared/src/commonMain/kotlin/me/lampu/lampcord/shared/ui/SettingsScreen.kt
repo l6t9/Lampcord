@@ -141,7 +141,6 @@ enum class SettingsSection(val title: String, val icon: ImageVector, val selecte
 @Composable
 fun SettingsScreen(
     sessionManager: SessionManager = koinInject(),
-    subPageOpen: Boolean = false,
     onNavigateToAccount: () -> Unit = {},
     onNavigateToProfiles: () -> Unit = {},
     onNavigateToPrivacy: () -> Unit = {},
@@ -176,7 +175,7 @@ fun SettingsScreen(
     val uriHandler = LocalUriHandler.current
     val scope = rememberCoroutineScope()
 
-    PlatformBackHandler(enabled = !subPageOpen) {
+    PlatformBackHandler(enabled = true) {
         if (showDebugLogs) {
             showDebugLogs = false
         } else if (editingThemeJson != null) {
