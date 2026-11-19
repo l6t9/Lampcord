@@ -33,6 +33,10 @@ impl GatewaySession {
         self.last_sequence = Some(sequence);
     }
 
+    pub fn last_sequence(&self) -> Option<u32> {
+        self.last_sequence
+    }
+
     pub fn record_resume_url(&mut self, url: impl Into<String>) {
         self.resume_gateway_url = Some(url.into());
     }

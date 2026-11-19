@@ -52,10 +52,18 @@ impl ReadStateStore {
         let state = self.states.entry(channel_id).or_default();
         state.last_message_id = max_option(state.last_message_id, Some(message_id));
         state.mention_count = mention_count;
+        self.record_message(channel_id, message_id, 0);
+    }
+
+    pub fn record_message(&mut self, channel_id: u64, message_id: u64, mention_count: u32) {
         self.recent
             .entry(channel_id)
             .and_modify(|recent| *recent = (*recent).max(message_id))
             .or_insert(message_id);
+        if mention_count > 0 {
+            let state = self.states.entry(channel_id).or_default();
+            state.mention_count = state.mention_count.saturating_add(mention_count);
+        }
     }
 
     pub fn ack(&mut self, channel_id: u64, message_id: u64) {
@@ -104,6 +112,13 @@ impl ReadStateStore {
                 .get(&channel_id)
                 .and_then(|state| state.last_message_id),
         )
+    }
+
+    pub fn mention_count(&self, channel_id: u64) -> u32 {
+        self.states
+            .get(&channel_id)
+            .map(|state| state.mention_count)
+            .unwrap_or_default()
     }
 
     pub fn clear(&mut self) {
@@ -165,6 +180,15 @@ mod tests {
         assert!(store.is_unread(1, Some(11), None));
         store.ack(1, 12);
         assert!(!store.is_unread(1, Some(11), None));
+    }
+
+    #[test]
+    fn record_message_tracks_recent_without_acking() {
+        let mut store = ReadStateStore::new();
+        store.record_message(1, 10, 1);
+        assert_eq!(store.most_recent_message_id(1), Some(10));
+        assert_eq!(store.mention_count(1), 1);
+        assert!(store.is_unread(1, Some(10), None));
     }
 
     #[test]

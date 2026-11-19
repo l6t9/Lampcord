@@ -1,10 +1,14 @@
 pub mod auth;
 pub mod captcha;
 pub mod event_dispatch;
+pub mod gateway_client;
 pub mod gateway_plan;
 pub mod gateway_queue;
 pub mod gateway_session;
 pub mod read_state;
 pub mod rest;
+pub mod rest_client;
 pub mod session;
+pub mod state_cache;
 pub mod token_store;
+pub mod traits;

@@ -3,6 +3,7 @@ resolver = "3"
 members = [
     "crates/lampcord-model",
     "crates/lampcord-core",
+    "crates/lampcord-transport",
     "apps/lampcord-gpui",
 ]
 
@@ -14,9 +15,22 @@ rust-version = "1.100"
 
 [workspace.dependencies]
 lampcord-model = { path = "crates/lampcord-model" }
+lampcord-core = { path = "crates/lampcord-core" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-gpui = { version = "0.2.2", default-features = false, features = ["x11"] }
+async-trait = "0.1"
+tokio = { version = "1", features = ["macros", "net", "rt", "sync", "time"] }
+tokio-tungstenite = { version = "0.30", default-features = false, features = [
+    "connect",
+    "handshake",
+    "rustls-tls-webpki-roots",
+] }
+reqwest = { version = "0.13", default-features = false, features = ["rustls"] }
+futures-util = "0.3"
+gpui = { version = "0.2.2", default-features = false, features = [
+    "wayland",
+    "x11",
+] }
 
 [patch.crates-io]
 xattr = { path = "vendor/xattr" }
