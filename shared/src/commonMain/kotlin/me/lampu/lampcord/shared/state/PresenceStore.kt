@@ -132,16 +132,22 @@ class PresenceStore(private val userApi: UserApi) {
     fun handleSessions(userId: String, sessions: List<Session>) {
         val activeSession = sessions.find { it.active } ?: sessions.firstOrNull() ?: return
         val existing = _presences.value[userId]?.get("global")
+        // Discord's "all" session carries the aggregate activity set across devices;
+        // prefer it over a single active session when it is present.
+        val activitySession = sessions.find { it.session_id == "all" } ?: activeSession
 
         val clientStatus = me.lampu.lampcord.shared.model.ClientStatus(
             desktop = sessions.find { it.client_info?.client == "desktop" }?.status,
             mobile = sessions.find { it.client_info?.client == "mobile" }?.status,
-            web = sessions.find { it.client_info?.client == "web" }?.status
+            web = sessions.find { it.client_info?.client == "web" }?.status,
+            embedded = sessions.find { it.client_info?.client == "embedded" }?.status,
+            vr = sessions.find { it.client_info?.client == "vr" }?.status
         )
 
         val newPresence = (existing ?: PresenceUpdate(user_id = userId)).copy(
             status = activeSession.status ?: existing?.status ?: "online",
-            activities = activeSession.activities,
+            activities = activitySession.activities,
+            hidden_activities = activitySession.hidden_activities,
             client_status = clientStatus
         )
         _presences.update { current ->

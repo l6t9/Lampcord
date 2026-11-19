@@ -1,5 +1,6 @@
 package me.lampu.lampcord
 
+import kotlinx.serialization.json.Json
 import me.lampu.lampcord.shared.model.Channel
 import me.lampu.lampcord.shared.model.Guild
 import me.lampu.lampcord.shared.model.Message
@@ -22,6 +23,7 @@ private object PushKeys {
     const val GUILD_ICON = "guild_icon"
     const val USER_ID = "user_id"
     const val USER_USERNAME = "user_username"
+    const val USER_GLOBAL_NAME = "user_global_name"
     const val USER_DISCRIMINATOR = "user_discriminator"
     const val USER_AVATAR = "user_avatar"
     const val TITLE = "title"
@@ -31,28 +33,40 @@ private const val UNSET = "-1"
 
 private const val GROUP_DM = 3
 
+private const val CALL_RING_END = "CALL_RING_END"
+
+private val pushJson = Json { ignoreUnknownKeys = true }
+
 private fun Map<String, String>.longOrNull(key: String): String? =
     this[key]?.takeUnless { it.isBlank() || it == UNSET }
 
 internal fun Map<String, String>.ackChannelIds(): List<String> =
-    this[PushKeys.CHANNEL_IDS]
-        .orEmpty()
-        .split(',')
-        .mapNotNull { it.trim().toLongOrNull()?.takeIf { id -> id != -1L }?.toString() }
+    runCatching { pushJson.decodeFromString<List<String>>(this[PushKeys.CHANNEL_IDS].orEmpty()) }
+        .getOrElse { emptyList() }
+        .mapNotNull { id -> id.trim().toLongOrNull()?.takeIf { it != -1L }?.toString() }
+
+internal fun Map<String, String>.isCallRingEnd(): Boolean = this[PushKeys.TYPE] == CALL_RING_END
 
 internal fun Map<String, String>.toIncomingNotificationData(): IncomingNotificationData? {
     val pushType = when (this[PushKeys.TYPE]) {
         "MESSAGE_CREATE" -> NotificationPushType.MESSAGE_CREATE
         "CALL_RING" -> NotificationPushType.CALL_RING
-        "RELATIONSHIP_ADD" -> NotificationPushType.RELATIONSHIP_ADD
         else -> return null
     }
 
     val channelId = longOrNull(PushKeys.CHANNEL_ID) ?: return null
-    val messageId = this[PushKeys.MESSAGE_ID]?.takeUnless { it.isBlank() } ?: return null
+    // Call ring payloads carry no message_id; use a stable id so the shared display path can run.
+    val messageId = if (pushType == NotificationPushType.CALL_RING) {
+        "call:$channelId"
+    } else {
+        this[PushKeys.MESSAGE_ID]?.takeUnless { it.isBlank() } ?: return null
+    }
     val userId = longOrNull(PushKeys.USER_ID) ?: UNSET
     val guildId = longOrNull(PushKeys.GUILD_ID)
-    val username = this[PushKeys.USER_USERNAME] ?: this[PushKeys.TITLE] ?: "Unknown"
+    val username = this[PushKeys.USER_GLOBAL_NAME]?.takeUnless { it.isBlank() }
+        ?: this[PushKeys.USER_USERNAME]?.takeUnless { it.isBlank() }
+        ?: this[PushKeys.TITLE]?.takeUnless { it.isBlank() }
+        ?: "Unknown"
     val avatar = this[PushKeys.USER_AVATAR]?.takeUnless { it.isBlank() }
     val channelName = this[PushKeys.CHANNEL_NAME]?.takeUnless { it.isBlank() }
     val channelType = this[PushKeys.CHANNEL_TYPE]?.toIntOrNull() ?: -1

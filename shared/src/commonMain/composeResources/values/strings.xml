@@ -154,6 +154,7 @@
     <string name="avatar_convert_failure_mobile">Unable to convert avatar to data URL. {avatarUrl}</string>
     <string name="avatar_upload_edit_media">Edit Image</string>
     <string name="back">Back</string>
+    <string name="back_again_to_exit">Press back again to exit</string>
     <string name="back_to_login">Back to Login</string>
     <string name="backup_codes_dash">%1$s-%2$s</string>
     <string name="ban">Ban</string>

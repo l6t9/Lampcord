@@ -11,7 +11,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -20,8 +19,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import me.lampu.lampcord.shared.model.EFFECT_CANVAS_WIDTH
-import me.lampu.lampcord.shared.model.ProfileEffectLayer
 import me.lampu.lampcord.shared.model.ProfileEffectProduct
+import me.lampu.lampcord.shared.model.isEffectLayerActive
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.ImageLoadState
 
@@ -43,7 +42,6 @@ fun ProfileEffectOverlay(
             (bottom * scale).dp.coerceIn(1.dp, maxHeight.coerceAtLeast(1.dp))
         }
         var elapsed by remember(product.sku, animate) { mutableLongStateOf(0L) }
-        var preloaded by remember(product.sku) { mutableStateOf(0) }
 
         LaunchedEffect(product.sku, animate) {
             if (!animate) {
@@ -62,18 +60,23 @@ fun ProfileEffectOverlay(
                 .height(surfaceHeight)
                 .align(Alignment.TopStart)
         ) {
-            if (product.source != null && preloaded < product.layers.size) {
-                AsyncImage(
-                    model = product.source,
-                    contentDescription = null,
-                    modifier = Modifier.width(canvasWidth),
-                    contentScale = ContentScale.Fit,
-                    showPlaceholder = false
-                )
+            // The static fallback is only for reduced motion / cancelled animations; drawing it
+            // underneath live layers causes a visible cross-fade and layout jump on first load.
+            if (!animate || product.layers.isEmpty()) {
+                val fallbackSource = product.source ?: product.layers.firstOrNull()?.source
+                fallbackSource?.let { source ->
+                    AsyncImage(
+                        model = source,
+                        contentDescription = null,
+                        modifier = Modifier.width(canvasWidth),
+                        contentScale = ContentScale.Fit,
+                        showPlaceholder = false
+                    )
+                }
             }
 
             for (layer in product.layers) {
-                if (!isLayerActive(layer, elapsed)) continue
+                if (!isEffectLayerActive(layer, elapsed)) continue
                 val layerWidth = (canvasWidth * (layer.width / EFFECT_CANVAS_WIDTH).toFloat())
                     .coerceIn(1.dp, 2000.dp)
                 val layerHeight = (canvasWidth * (layer.height / EFFECT_CANVAS_WIDTH).toFloat())
@@ -92,9 +95,7 @@ fun ProfileEffectOverlay(
                     allowAnimation = animate,
                     showPlaceholder = false,
                     onState = { state ->
-                        if (state is ImageLoadState.Success) {
-                            preloaded++
-                        } else if (state is ImageLoadState.Error) {
+                        if (state is ImageLoadState.Error) {
                             println("[Effect] layer ${layer.source} failed: ${state.message}")
                         }
                     }
@@ -102,9 +103,4 @@ fun ProfileEffectOverlay(
             }
         }
     }
-}
-
-private fun isLayerActive(layer: ProfileEffectLayer, elapsed: Long): Boolean {
-    val end = if (layer.duration > 0) layer.start + layer.duration else Long.MAX_VALUE
-    return elapsed >= layer.start && elapsed < end
 }

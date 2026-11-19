@@ -32,7 +32,7 @@ import org.koin.compose.koinInject
 
 @OptIn(ExperimentalResourceApi::class)
 @Composable
-fun App() {
+fun App(onExitApp: () -> Unit = {}) {
     val settingsStore: SettingsStore = koinInject()
 
     val useDarkTheme = when (settingsStore.themeMode) {
@@ -70,7 +70,7 @@ fun App() {
     ) {
         me.lampu.lampcord.shared.i18n.ProvideAppLocale(languageTag) {
             ProvideClipboard()
-            MainScreen()
+            MainScreen(onExitApp = onExitApp)
             UpdatePrompt()
             PendingInviteHost()
             CaptchaHost()

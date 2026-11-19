@@ -5,6 +5,7 @@ import kotlinx.serialization.json.*
 import me.lampu.lampcord.shared.gateway.GatewayManager
 import me.lampu.lampcord.shared.model.*
 import me.lampu.lampcord.shared.settings.Settings
+import me.lampu.lampcord.shared.utils.Logging
 
 class GatewayHandler(
     private val json: Json,
@@ -32,6 +33,9 @@ class GatewayHandler(
                 navigationStore.isConnected = true
                 navigationStore.isConnecting = false
                 messageStore.handleConnected()
+                // destroy() no longer wipes subscriptions on reconnect, but replay
+                // them so Discord re-delivers events for all tracked channels/threads.
+                gatewayManager.replaySubscriptions()
                 memberListStore.resubscribe()
             }
             else -> dispatcher.dispatch(payload)
@@ -52,12 +56,21 @@ class GatewayHandler(
                 }
             }
 
+            // Mark the session usable before decoding optional READY fields. If any
+            // optional field fails to decode, the client must not stay stuck in the
+            // "connecting" state with an undrained outgoing message queue.
+            navigationStore.isConnected = true
+            navigationStore.isConnecting = false
+            messageStore.handleConnected()
+
             try {
                 val ready = json.decodeFromJsonElement<ReadyPayload>(data)
                 
                 if (ready.user_settings != null && ready.user_settings is JsonObject) {
                     val settings = json.decodeFromJsonElement<UserSettings>(ready.user_settings)
                     settingsStore.userSettings = settings
+                    // READY is an ingestion path too; do not bypass appearance sync.
+                    settingsStore.applyDiscordAppearance(settings.theme)
                 }
                 
                 userGuildSettingsStore.handleReady(ready)
@@ -102,17 +115,15 @@ class GatewayHandler(
                 ready.relationships?.let { relationshipStore.handleReady(it) }
 
                 voiceStore.handleReady(data.jsonObject)
-                
-                navigationStore.isConnected = true
-                navigationStore.isConnecting = false
-                messageStore.handleConnected()
 
                 if (navigationStore.selectedGuild == null && navigationStore.selectedChannel == null && !navigationStore.isFriendsSelected) {
                     navigationStore.restoreLastState { gatewayManager.sendSubscription(it) }
                 }
 
                 memberListStore.resubscribe()
-            } catch (e: Exception) { }
+            } catch (e: Exception) {
+                Logging.e("GatewayHandler", "Error processing READY payload", e)
+            }
         }
     }
 }

@@ -108,6 +108,7 @@ class NavigationStore(
     var isNotificationsSettingsVisible by mutableStateOf(false)
     var isMediaPickerVisible by mutableStateOf(false)
     var isEmojiPickerVisible by mutableStateOf(false)
+    var isAddFriendVisible by mutableStateOf(false)
     var isPinsVisible by mutableStateOf(false)
     var isThreadPanelVisible by mutableStateOf(false)
     var isProfilePanelVisible by mutableStateOf(true)
@@ -565,12 +566,25 @@ class NavigationStore(
         isConnected = false
         isConnecting = false
         isSettingsVisible = false
+        settingsCategory = null
         isQuickSwitcherVisible = false
         isSearchVisible = false
         isServerSettingsVisible = false
+        channelSettingsChannel = null
         isChannelsAndRolesVisible = false
+        isNotificationsSettingsVisible = false
+        isEmojiPickerVisible = false
+        isAddFriendVisible = false
+        isThreadPanelVisible = false
+        isProfilePanelVisible = true
+        isMemberListModalVisible = false
+        isServerMenuVisible = false
         isMediaPickerVisible = false
         isPinsVisible = false
+        isAttachmentViewerVisible = false
+        attachmentViewerItems = emptyList()
+        attachmentViewerIndex = 0
+        forwardingMessage = null
         isForumLoading = false
         guildLoadingJob?.cancel()
         channelLoadingJob?.cancel()

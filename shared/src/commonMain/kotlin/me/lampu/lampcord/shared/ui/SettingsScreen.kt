@@ -175,6 +175,15 @@ fun SettingsScreen(
     val uriHandler = LocalUriHandler.current
     val scope = rememberCoroutineScope()
 
+    val dismissSettings = {
+        searchQuery = ""
+        selectedCategory = null
+        showDebugLogs = false
+        showThemer = false
+        editingThemeJson = null
+        onDismiss()
+    }
+
     PlatformBackHandler(enabled = true) {
         if (showDebugLogs) {
             showDebugLogs = false
@@ -187,7 +196,7 @@ fun SettingsScreen(
         } else if (selectedCategory != null) {
             selectedCategory = null
         } else {
-            onDismiss()
+            dismissSettings()
         }
     }
 
@@ -225,7 +234,7 @@ fun SettingsScreen(
                     onClick = {
                         showLogoutConfirmation = false
                         sessionManager.disconnect()
-                        onDismiss()
+                        dismissSettings()
                     },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
@@ -305,12 +314,28 @@ fun SettingsScreen(
         }
 
         fun openSearchEntry(entry: SettingsSearchEntry) {
-            if (entry.destination == SettingsSearchDestination.Theming) {
-                finalOnNavigateToTheming()
-            } else {
-                selectedCategory = SettingsSection.entries.find { it.title == entry.screen }
-            }
             searchQuery = ""
+            if (!isCompact) {
+                selectedCategory = SettingsSection.entries.find { it.title == entry.screen }
+                return
+            }
+
+            // On phones the compact layout has no category panel. Navigating directly
+            // keeps the visible screen and back state in sync.
+            when (entry.destination) {
+                SettingsSearchDestination.Account -> onNavigateToAccount()
+                SettingsSearchDestination.Profiles -> onNavigateToProfiles()
+                SettingsSearchDestination.Connections -> onNavigateToConnections()
+                SettingsSearchDestination.Devices -> onNavigateToDevices()
+                SettingsSearchDestination.Appearance -> onNavigateToAppearance()
+                SettingsSearchDestination.Accessibility -> onNavigateToAccessibility()
+                SettingsSearchDestination.Language -> onNavigateToLanguage()
+                SettingsSearchDestination.VoiceVideo -> onNavigateToVoice()
+                SettingsSearchDestination.Notifications -> onNavigateToNotifications()
+                SettingsSearchDestination.Advanced -> onNavigateToAdvanced()
+                SettingsSearchDestination.Theming -> finalOnNavigateToTheming()
+                SettingsSearchDestination.Logout -> showLogoutConfirmation = true
+            }
         }
 
         if (isCompact) {
@@ -347,7 +372,7 @@ fun SettingsScreen(
                             LargeTopAppBar(
                                 title = { Text(stringResource(Res.string.settings)) },
                                 navigationIcon = {
-                                    IconButton(onClick = onDismiss) {
+                                    IconButton(onClick = dismissSettings) {
                                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(Res.string.back))
                                     }
                                 },

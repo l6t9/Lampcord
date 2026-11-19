@@ -2,8 +2,6 @@ package me.lampu.lampcord.shared.update
 
 actual object UpdateStorage {
     actual fun open(version: String, target: UpdateTarget): UpdateSink = DiscardingUpdateSink
-
-    actual fun clear() = Unit
 }
 
 private object DiscardingUpdateSink : UpdateSink {

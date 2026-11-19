@@ -1,6 +1,9 @@
 package me.lampu.lampcord.shared.ui.components.profiles
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.AnimationSpec
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -48,6 +51,7 @@ import me.lampu.lampcord.shared.api.UserApi
 import me.lampu.lampcord.shared.model.Activity
 import me.lampu.lampcord.shared.model.User
 import me.lampu.lampcord.shared.model.UserProfile
+import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.state.GuildStore
 import me.lampu.lampcord.shared.state.PresenceStore
 import me.lampu.lampcord.shared.state.UserStore
@@ -63,6 +67,7 @@ private val TAB_MUTUAL_SERVERS = 3
 @Composable
 fun FullProfileDetails(
     profile: UserProfile,
+    theme: ProfileTheme,
     onOpenProfile: (String) -> Unit,
     onOpenGuild: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -94,7 +99,8 @@ fun FullProfileDetails(
         (profile.activities.ifEmpty { presence?.activities ?: emptyList() }).filter { it.type != 4 }
     }
     val isOwnProfile = user.id == currentUser?.id
-    val textColor = MaterialTheme.colorScheme.onSurface
+    val reduceMotion = Settings.shared.reduceMotion
+    val textColor = theme.customTextColor ?: theme.contentColor
     val listState = remember(selectedTab) { LazyListState() }
 
     val visibleTabs = buildList {
@@ -109,7 +115,7 @@ fun FullProfileDetails(
     Column(
         modifier = modifier
             .clip(topShape)
-            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .background(theme.cardColor.copy(alpha = 0.25f))
     ) {
         CompositionLocalProvider(LocalContentColor provides textColor) {
             ProfileTabBar(
@@ -117,7 +123,8 @@ fun FullProfileDetails(
                 selectedTab = selectedTab,
                 friendsCount = friendsCount,
                 serversCount = serversCount,
-                textColor = textColor,
+                theme = theme,
+                reduceMotion = reduceMotion,
                 onSelected = { selectedTab = it }
             )
 
@@ -156,7 +163,7 @@ fun FullProfileDetails(
                     isVisible = listState.firstVisibleItemIndex > 0 || listState.canScrollForward
                 )
             }
-            }
+        }
     }
 }
 
@@ -166,9 +173,15 @@ private fun ProfileTabBar(
     selectedTab: Int,
     friendsCount: Int,
     serversCount: Int,
-    textColor: Color,
+    theme: ProfileTheme,
+    reduceMotion: Boolean,
     onSelected: (Int) -> Unit
 ) {
+    val tabColorSpec: AnimationSpec<Color> = if (reduceMotion) {
+        snap()
+    } else {
+        spring(dampingRatio = 0.8f, stiffness = 500f)
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -178,22 +191,24 @@ private fun ProfileTabBar(
         tabs.forEachIndexed { index, tab ->
             val selected = selectedTab == tab
             val container by animateColorAsState(
-                targetValue = if (selected) {
-                    MaterialTheme.colorScheme.secondaryContainer
-                } else {
-                    MaterialTheme.colorScheme.surfaceContainerHigh
-                },
+                targetValue = if (selected) theme.buttonColor else theme.cardColor.copy(alpha = 0.5f),
+                animationSpec = tabColorSpec,
                 label = "profileTabContainer"
+            )
+            val content by animateColorAsState(
+                targetValue = if (selected) {
+                    theme.buttonTextColor
+                } else {
+                    (theme.customTextColor ?: theme.contentColor).copy(alpha = 0.82f)
+                },
+                animationSpec = tabColorSpec,
+                label = "profileTabContent"
             )
             Surface(
                 onClick = { onSelected(tab) },
                 shape = connectedProfileTabShape(index == 0, index == tabs.lastIndex),
                 color = container,
-                contentColor = if (selected) {
-                    MaterialTheme.colorScheme.onSecondaryContainer
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                },
+                contentColor = content,
                 modifier = Modifier
                     .weight(1f)
                     .height(64.dp)

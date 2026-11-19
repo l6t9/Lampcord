@@ -36,7 +36,7 @@ open class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         requestNotificationsPermissionIfNeeded()
         setContent {
-            App()
+            App(onExitApp = ::finish)
         }
         handleNotificationIntent(intent)
         handleDeepLink(intent)

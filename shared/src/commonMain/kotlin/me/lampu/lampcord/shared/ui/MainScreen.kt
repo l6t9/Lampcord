@@ -30,7 +30,8 @@ fun MainScreen(
     voiceStore: VoiceStore = koinInject(),
     userStore: UserStore = koinInject(),
     guildStore: GuildStore = koinInject(),
-    tokenStore: TokenStore = koinInject()
+    tokenStore: TokenStore = koinInject(),
+    onExitApp: () -> Unit = {}
 ) {
     val currentUser by userStore.currentUser.collectAsState()
     val guilds by guildStore.guilds.collectAsState()
@@ -94,7 +95,8 @@ fun MainScreen(
                             navigationStore = navigationStore,
                             profileStore = profileStore,
                             userStore = userStore,
-                            voiceStore = voiceStore
+                            voiceStore = voiceStore,
+                            onExitApp = onExitApp
                         )
                     }
                     isConnecting || Settings.shared.discordToken.isNotBlank() -> {

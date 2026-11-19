@@ -6,8 +6,7 @@ import me.lampu.lampcord.shared.model.Message
 
 enum class NotificationPushType {
     MESSAGE_CREATE,
-    CALL_RING,
-    RELATIONSHIP_ADD
+    CALL_RING
 }
 
 data class IncomingNotificationData(

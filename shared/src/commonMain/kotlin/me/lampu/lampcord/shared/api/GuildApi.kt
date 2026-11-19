@@ -15,9 +15,8 @@ import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.client.request.forms.MultiPartFormDataContent
+import io.ktor.client.request.forms.append
 import io.ktor.client.request.forms.formData
-import io.ktor.http.Headers
-import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
@@ -250,7 +249,7 @@ class GuildApi(
             name.endsWith(".webp", true) -> ContentType.parse("image/webp")
             name.endsWith(".mp4", true) -> ContentType.Video.MP4
             name.endsWith(".mov", true) -> ContentType.Video.QuickTime
-            name.endsWith(".webm", true) -> ContentType.Video.Any
+            name.endsWith(".webm", true) -> ContentType.parse("video/webm")
             else -> ContentType.Application.OctetStream
         }
     }
@@ -265,10 +264,9 @@ class GuildApi(
                         append("name", name)
                         if (!description.isNullOrBlank()) append("description", description)
                         if (!tags.isNullOrBlank()) append("tags", tags)
-                        append("file", bytes, Headers.build {
-                            append(HttpHeaders.ContentType, getContentTypeForFile(filename).toString())
-                            append(HttpHeaders.ContentDisposition, "form-data; name=\"file\"; filename=\"$filename\"")
-                        })
+                        append("file", filename, getContentTypeForFile(filename), bytes.size.toLong()) {
+                            write(bytes, 0, bytes.size)
+                        }
                     }
                 ))
             }

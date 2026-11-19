@@ -101,7 +101,8 @@ fun MobileBaseplate(
     navigationStore: NavigationStore = koinInject(),
     profileStore: ProfileStore = koinInject(),
     userStore: UserStore = koinInject(),
-    voiceStore: VoiceStore = koinInject()
+    voiceStore: VoiceStore = koinInject(),
+    onExitApp: () -> Unit = {}
 ) {
     val presenceStore: PresenceStore = koinInject()
     val settingsStore: SettingsStore = koinInject()
@@ -143,6 +144,16 @@ fun MobileBaseplate(
     val navigator = remember { Navigator(navigationState) }
     var settingsReturnRoute by remember { mutableStateOf<Screen>(Screen.You) }
 
+    fun closeSettings() {
+        navigationState.backStacks[Screen.Settings]?.let { stack ->
+            while (stack.size > 1) {
+                stack.removeLastOrNull()
+            }
+        }
+        navigationStore.isSettingsVisible = false
+        navigator.navigate(settingsReturnRoute)
+    }
+
     val panelState = rememberDiscordPanelsState()
     var lastPanelValue by remember { mutableStateOf(DiscordPanelValue.Center) }
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -172,10 +183,13 @@ fun MobileBaseplate(
     LaunchedEffect(navigationStore.isSettingsVisible) {
         if (navigationStore.isSettingsVisible) {
             if (navigationState.topLevelRoute != Screen.Settings) {
+                if (navigationState.topLevelRoute in topLevelRoutes) {
+                    settingsReturnRoute = navigationState.topLevelRoute
+                }
                 navigator.navigate(Screen.Settings)
             }
         } else if (navigationState.topLevelRoute == Screen.Settings) {
-            navigator.navigate(settingsReturnRoute)
+            closeSettings()
         }
     }
     LaunchedEffect(navigationStore.isServerSettingsVisible) {
@@ -461,9 +475,7 @@ fun MobileBaseplate(
                         onNavigateToUpdates = { navigator.navigate(Screen.UpdatesSettings) },
                         onNavigateToTheming = { navigator.navigate(Screen.Theming) },
                         onNavigateToNavigation = { navigator.navigate(Screen.NavigationSettings) },
-                        onDismiss = {
-                            navigationStore.isSettingsVisible = false
-                        }
+                        onDismiss = ::closeSettings
                     )
                 }
             }
@@ -1172,39 +1184,80 @@ fun MobileBaseplate(
             }
         }
 
-        PlatformBackHandler(enabled = navigationStore.isNotificationsSettingsVisible) {
-            navigationStore.isNotificationsSettingsVisible = false
-        }
+        // Settings, Search and ServerSettings own their internal back state via
+        // handlers inside their screens. Everything else is decided here so back
+        // can never be swallowed by a no-op root handler.
+        val screenOwnsBack =
+            currentRoute == Screen.Settings ||
+                currentRoute == Screen.Search ||
+                currentRoute == Screen.ServerSettings ||
+                navigationStore.isAddFriendVisible
 
-        PlatformBackHandler(enabled = panelState.currentValue == DiscordPanelValue.End) {
-            panelState.close()
-        }
+        val dialogOwnsBack =
+            navigationStore.isQuickSwitcherVisible ||
+                navigationStore.isMediaPickerVisible ||
+                navigationStore.isAttachmentViewerVisible ||
+                navigationStore.isServerMenuVisible ||
+                navigationStore.isMemberListModalVisible ||
+                navigationStore.isEmojiPickerVisible ||
+                navigationStore.forwardingMessage != null ||
+                navigationStore.pendingInvite != null ||
+                navigationStore.selectedGuildOnboarding != null ||
+                profileStore.isProfileLoading ||
+                profileStore.selectedProfile != null ||
+                showUserStatusSheet ||
+                showCustomStatusDialog ||
+                showAddAccountDialog
 
-        PlatformBackHandler(
-            enabled = navigationStore.isThreadPanelVisible
-        ) {
-            navigationStore.isThreadPanelVisible = false
-        }
-
-        PlatformBackHandler(
-            enabled = !navigationStore.isThreadPanelVisible &&
-                panelState.currentValue == DiscordPanelValue.Center &&
-                !navigationStore.isSettingsVisible &&
-                !navigationStore.isServerSettingsVisible &&
-                navigationStore.channelSettingsChannel == null &&
-                !navigationStore.isSearchVisible &&
-                !navigationStore.isPinsVisible
-        ) {
-            if (navigationStore.selectedThread != null) {
-                navigationStore.selectedThread = null
-            } else if (navigationStore.isChannelsAndRolesVisible) {
-                navigationStore.isChannelsAndRolesVisible = false
-            } else if (isChat) {
-                panelState.openStart()
-            } else if (navigationState.topLevelRoute != navigationState.startRoute) {
-                navigator.goBack()
-            }
-        }
+        PlatformRootBackHandler(
+            enabled = !screenOwnsBack && !dialogOwnsBack,
+            onBack = {
+                when {
+                    navigationStore.isNotificationsSettingsVisible -> {
+                        navigationStore.isNotificationsSettingsVisible = false
+                        true
+                    }
+                    navigationStore.isThreadPanelVisible -> {
+                        navigationStore.isThreadPanelVisible = false
+                        true
+                    }
+                    navigationStore.selectedThread != null -> {
+                        navigationStore.selectedThread = null
+                        true
+                    }
+                    navigationStore.isChannelsAndRolesVisible -> {
+                        navigationStore.isChannelsAndRolesVisible = false
+                        true
+                    }
+                    navigationStore.channelSettingsChannel != null -> {
+                        navigationStore.closeChannelSettings()
+                        true
+                    }
+                    navigationStore.isPinsVisible -> {
+                        navigationStore.isPinsVisible = false
+                        true
+                    }
+                    navigationStore.isServerSettingsVisible -> {
+                        navigationStore.isServerSettingsVisible = false
+                        true
+                    }
+                    panelState.currentValue != DiscordPanelValue.Center -> {
+                        panelState.close()
+                        true
+                    }
+                    isChat -> {
+                        panelState.openStart()
+                        true
+                    }
+                    navigator.canGoBack -> {
+                        navigator.goBack()
+                        true
+                    }
+                    else -> false
+                }
+            },
+            onExit = onExitApp,
+        )
     }
 
     if (navigationStore.isThreadPanelVisible) {

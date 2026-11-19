@@ -101,7 +101,7 @@ fun UpdatePrompt(
             },
             onSecondary = { dismissed = true },
         )
-    } else if (state is UpdateState.Downloading) {
+    } else if (state is UpdateState.Downloading && !dismissed) {
         UpdateSheet(
             title = "Downloading update",
             version = "",
@@ -112,7 +112,7 @@ fun UpdatePrompt(
             progress = 0f,
             footnote = null,
             onPrimary = {},
-            onSecondary = {},
+            onSecondary = { dismissed = true },
         )
     }
 }
@@ -132,7 +132,7 @@ private fun UpdateSheet(
     onSecondary: () -> Unit,
 ) {
     DiscordBottomSheet(
-        onDismissRequest = if (progress != null) ({}) else onSecondary,
+        onDismissRequest = onSecondary,
         sheetState = rememberDiscordSheetState(),
     ) {
         Column(

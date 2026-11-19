@@ -12,7 +12,10 @@ import kotlinx.serialization.json.*
 import me.lampu.lampcord.shared.gateway.GatewayManager
 import me.lampu.lampcord.shared.model.Activity
 import me.lampu.lampcord.shared.utils.Logging
+import java.net.URI
 import kotlin.time.Duration.Companion.seconds
+
+private const val MAX_RPC_FRAME_BYTES = 1024 * 1024
 
 class DesktopRPCServer(private val gatewayManager: GatewayManager) {
     private var server: EmbeddedServer<*, *>? = null
@@ -25,16 +28,26 @@ class DesktopRPCServer(private val gatewayManager: GatewayManager) {
         scope.launch {
             for (port in 6463..6472) {
                 try {
-                    Logging.i("RPC", "Attempting to start RPC server on port $port")
-                    val engine = embeddedServer(Netty, port = port) {
+                    Logging.i("RPC", "Attempting to start RPC server on loopback port $port")
+                    // Bind loopback only: this socket can change the user's Discord presence,
+                    // so it must not be reachable from another machine on the network.
+                    // The Origin check below also stops remote browser pages from driving it;
+                    // native RPC clients send no Origin and are allowed through.
+                    val engine = embeddedServer(Netty, host = "127.0.0.1", port = port) {
                         install(WebSockets) {
                             pingPeriod = 15.seconds
                             timeout = 15.seconds
-                            maxFrameSize = Long.MAX_VALUE
+                            maxFrameSize = MAX_RPC_FRAME_BYTES.toLong()
                             masking = false
                         }
                         routing {
                             webSocket("/") {
+                                val origin = call.request.headers["Origin"]
+                                if (origin != null && !isLocalOrigin(origin)) {
+                                    Logging.w("RPC", "Rejected RPC connection with non-local Origin: $origin")
+                                    close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "Non-local origin"))
+                                    return@webSocket
+                                }
                                 handleConnection()
                             }
                         }
@@ -106,6 +119,13 @@ class DesktopRPCServer(private val gatewayManager: GatewayManager) {
             Logging.d("RPC", "RPC connection closed")
         }
     }
+
+    private fun isLocalOrigin(origin: String): Boolean = runCatching {
+        when (URI(origin).host?.lowercase()) {
+            "localhost", "127.0.0.1", "::1", "[::1]" -> true
+            else -> false
+        }
+    }.getOrDefault(false)
 
     fun stop() {
         server?.stop(1000, 2000)

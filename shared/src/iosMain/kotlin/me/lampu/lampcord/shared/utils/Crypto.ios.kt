@@ -49,14 +49,16 @@ actual class RSAKeyPair internal constructor(
     }
 
     actual fun decrypt(encryptedData: ByteArray): ByteArray {
-        val key = privateKey ?: return byteArrayOf()
-        if (encryptedData.isEmpty()) return byteArrayOf()
+        // Match the JVM implementations: a failure throws, it never returns empty bytes.
+        // Returning empty bytes made callers treat a failed decrypt as an empty (valid) token.
+        val key = privateKey ?: error("RSA private key is unavailable")
+        if (encryptedData.isEmpty()) error("Cannot decrypt empty data")
 
         val cipher = memScoped {
             encryptedData.usePinned { pinned ->
                 CFDataCreate(null, pinned.addressOf(0).reinterpret(), encryptedData.size.toLong())
             }
-        } ?: return byteArrayOf()
+        } ?: error("Failed to allocate CFData for RSA decryption")
 
         val decrypted = SecKeyCreateDecryptedData(
             key,
@@ -65,11 +67,11 @@ actual class RSAKeyPair internal constructor(
             null
         )
         CFRelease(cipher)
-        if (decrypted == null) return byteArrayOf()
+        if (decrypted == null) error("RSA decryption failed")
 
-        val out = decrypted.copyToByteArray() ?: byteArrayOf()
+        val out = decrypted.copyToByteArray()
         CFRelease(decrypted)
-        return out
+        return out ?: error("Failed to copy decrypted RSA data")
     }
 }
 

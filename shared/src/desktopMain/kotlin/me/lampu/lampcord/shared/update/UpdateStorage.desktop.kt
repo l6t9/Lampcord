@@ -12,10 +12,6 @@ actual object UpdateStorage {
 
     actual fun open(version: String, target: UpdateTarget): UpdateSink =
         FileUpdateSink(File(directory, fileNameFor(version, target)))
-
-    actual fun clear() {
-        directory.listFiles()?.forEach { it.delete() }
-    }
 }
 
 private class FileUpdateSink(private val file: File) : UpdateSink {

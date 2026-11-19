@@ -11,6 +11,7 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.InputStream
 import java.nio.file.Files
+import java.util.Base64
 import javax.imageio.ImageIO
 
 private const val TAG = "Clipboard"
@@ -35,20 +36,33 @@ actual fun setClipboardText(text: String) {
 }
 
 actual fun getClipboardFiles(): List<Pair<String, ByteArray>> {
-    val clipboard = systemClipboard() ?: return emptyList()
-    val transferable = try {
-        clipboard.getContents(null)
-    } catch (e: Exception) {
-        Logging.e(TAG, "Could not read the clipboard", e)
+    val isWindows = System.getProperty("os.name").lowercase().contains("win")
+    val clipboard = systemClipboard()
+    val transferable = if (clipboard != null) {
+        try {
+            clipboard.getContents(null)
+        } catch (e: Exception) {
+            Logging.e(TAG, "Could not read the clipboard", e)
+            null
+        }
+    } else {
         null
-    } ?: return emptyList()
-
-    if (transferable.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
-        return readPastedFiles(transferable)
     }
-    val image = readPastedImage(transferable)
-    if (image != null) return listOf(image)
-    return readClipboardImageFromCommand() ?: emptyList()
+
+    if (transferable != null) {
+        if (transferable.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
+            val files = readPastedFiles(transferable)
+            if (files.isNotEmpty() || !isWindows) return files
+        } else {
+            val image = readPastedImage(transferable)
+            if (image != null) return listOf(image)
+        }
+    }
+    return if (isWindows) {
+        readClipboardFromPowerShell() ?: emptyList()
+    } else {
+        readClipboardImageFromCommand() ?: emptyList()
+    }
 }
 
 private fun readPastedFiles(transferable: Transferable): List<Pair<String, ByteArray>> {
@@ -108,6 +122,75 @@ private fun readClipboardImageFromCommand(): List<Pair<String, ByteArray>>? {
         }
     }
     return null
+}
+
+private fun readClipboardFromPowerShell(): List<Pair<String, ByteArray>>? {
+    val script = """
+        Add-Type -AssemblyName System.Windows.Forms
+        Add-Type -AssemblyName System.Drawing
+        ${'$'}clip = [System.Windows.Forms.Clipboard]
+        if (${'$'}clip.ContainsFileDropList()) {
+            foreach (${'$'}path in ${'$'}clip.GetFileDropList()) {
+                ${'$'}bytes = [System.Text.Encoding]::UTF8.GetBytes(${'$'}path)
+                Write-Output ('FILE:' + [System.Convert]::ToBase64String(${'$'}bytes))
+            }
+        } elseif (${'$'}clip.ContainsImage()) {
+            ${'$'}image = ${'$'}clip.GetImage()
+            ${'$'}path = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), 'lampcord-paste-' + [guid]::NewGuid().ToString('N') + '.png')
+            ${'$'}image.Save(${'$'}path, [System.Drawing.Imaging.ImageFormat]::Png)
+            ${'$'}image.Dispose()
+            ${'$'}bytes = [System.Text.Encoding]::UTF8.GetBytes(${'$'}path)
+            Write-Output ('IMAGE:' + [System.Convert]::ToBase64String(${'$'}bytes))
+        }
+    """.trimIndent()
+    return try {
+        val process = ProcessBuilder("powershell.exe", "-NoProfile", "-NonInteractive", "-STA", "-Command", script)
+            // Merge stderr so a chatty failure cannot fill the pipe while stdout is being read.
+            .redirectErrorStream(true)
+            .start()
+        val output = process.inputStream.bufferedReader().use { it.readLines() }
+        if (process.waitFor() != 0) {
+            Logging.e(TAG, "PowerShell clipboard fallback failed: ${output.joinToString("\n").trim()}")
+            return null
+        }
+        val files = mutableListOf<Pair<String, ByteArray>>()
+        var imagePath: String? = null
+        for (line in output) {
+            when {
+                line.startsWith("FILE:") -> {
+                    val path = decodePowerShellPath(line.removePrefix("FILE:")) ?: continue
+                    try {
+                        val file = File(path)
+                        files += file.name to Files.readAllBytes(file.toPath())
+                    } catch (e: Exception) {
+                        Logging.e(TAG, "Could not read the pasted file $path", e)
+                    }
+                }
+                line.startsWith("IMAGE:") -> imagePath = decodePowerShellPath(line.removePrefix("IMAGE:"))
+            }
+        }
+        imagePath?.let { path ->
+            val file = File(path)
+            try {
+                files += IMAGE_NAME to Files.readAllBytes(file.toPath())
+            } catch (e: Exception) {
+                Logging.e(TAG, "Could not read the pasted image", e)
+            } finally {
+                file.delete()
+            }
+        }
+        files.ifEmpty { null }
+    } catch (e: Exception) {
+        Logging.e(TAG, "Could not read the clipboard with PowerShell", e)
+        null
+    }
+}
+
+private fun decodePowerShellPath(value: String): String? = try {
+    String(Base64.getDecoder().decode(value), Charsets.UTF_8)
+} catch (e: IllegalArgumentException) {
+    Logging.e(TAG, "Could not decode a clipboard path", e)
+    null
 }
 
 private fun systemClipboard() = try {

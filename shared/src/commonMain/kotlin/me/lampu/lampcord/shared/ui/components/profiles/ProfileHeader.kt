@@ -47,6 +47,7 @@ fun ProfileHeader(
     theme: ProfileTheme,
     isExpanded: Boolean,
     avatarScale: Float = 1f,
+    animateDecorations: Boolean = false,
     onExpand: (() -> Unit)? = null,
     onDismiss: (() -> Unit)? = null,
     onEditAvatar: (() -> Unit)? = null,
@@ -154,7 +155,7 @@ fun ProfileHeader(
                         ?: user.collectibles?.avatar_decoration,
                     size = 82.dp * avatarScale,
                     status = status,
-                    forceAnimate = true
+                    isHovered = animateDecorations
                 )
 
                 if (onEditAvatar != null && isAvatarHovered) {

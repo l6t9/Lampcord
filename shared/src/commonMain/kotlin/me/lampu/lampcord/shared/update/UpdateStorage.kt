@@ -25,7 +25,6 @@ interface UpdateSink {
 
 expect object UpdateStorage {
     fun open(version: String, target: UpdateTarget): UpdateSink
-    fun clear()
 }
 
 internal fun fileNameFor(version: String, target: UpdateTarget): String =

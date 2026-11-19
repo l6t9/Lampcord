@@ -123,6 +123,8 @@ actual fun isEmbeddedWebViewAvailable(): Boolean = when (getPlatformName()) {
     else -> true
 }
 
+actual fun configureCaptchaWebView(native: Any) = Unit
+
 @Composable
 actual fun RequestMediaPermissions(onResult: (Boolean) -> Unit) {
     LaunchedEffect(Unit) {

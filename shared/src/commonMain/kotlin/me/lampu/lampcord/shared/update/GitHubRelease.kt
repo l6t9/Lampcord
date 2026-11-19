@@ -29,7 +29,7 @@ data class GitHubRelease(
 internal fun List<GitHubRelease>.latestNightlyFor(target: UpdateTarget): GitHubRelease? =
     asSequence()
         .filter { !it.draft && it.prerelease }
-        .filter { release -> release.assets.any { target.matchesName(it) } }
+        .filter { release -> release.assets.any { target.matches(it) } }
         .mapNotNull { release ->
             SemanticVersion.parse(release.version)?.let { version -> release to version }
         }
@@ -37,7 +37,7 @@ internal fun List<GitHubRelease>.latestNightlyFor(target: UpdateTarget): GitHubR
         ?.first
 
 fun GitHubRelease.bestAsset(target: UpdateTarget): GitHubAsset? {
-    val candidates = assets.filter { target.matchesName(it) }
+    val candidates = assets.filter { target.matches(it) }
     if (candidates.isEmpty()) return null
     val installers = target.installerExtension
         ?.let { suffix -> candidates.filter { it.name.endsWith(suffix, ignoreCase = true) } }
@@ -110,10 +110,10 @@ enum class UpdateTarget(val assetInfix: String?, val extension: String, val inst
     }
 
     fun matchesExtension(asset: GitHubAsset): Boolean {
-        val infix = assetInfix ?: return false
+        if (assetInfix == null) return false
         if (BLOCKED_MARKERS.any { asset.name.contains(it, ignoreCase = true) }) return false
         return asset.name.endsWith(extension, ignoreCase = true) ||
-            asset.name.contains(infix, ignoreCase = true)
+            installerExtension?.let { asset.name.endsWith(it, ignoreCase = true) } == true
     }
 
     private companion object {

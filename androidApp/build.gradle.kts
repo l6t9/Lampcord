@@ -109,6 +109,7 @@ android {
 
 dependencies {
     implementation(project(":shared"))
+    implementation(libs.kotlinx.serialization.json)
     implementation(libs.koin.android)
     implementation(libs.firebase.messaging)
     implementation(libs.material)

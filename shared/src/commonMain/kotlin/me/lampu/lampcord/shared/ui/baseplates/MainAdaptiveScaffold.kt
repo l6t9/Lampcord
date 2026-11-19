@@ -35,7 +35,8 @@ fun MainAdaptiveScaffold(
     navigationStore: NavigationStore = koinInject(),
     profileStore: ProfileStore = koinInject(),
     userStore: UserStore = koinInject(),
-    voiceStore: VoiceStore = koinInject()
+    voiceStore: VoiceStore = koinInject(),
+    onExitApp: () -> Unit = {}
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val widthBreakpoint = calculateWidthBreakpoint(maxWidth)
@@ -43,7 +44,13 @@ fun MainAdaptiveScaffold(
         if (usesDesktopBaseplate(maxWidth)) {
             DesktopBaseplate(navigationStore, profileStore, voiceStore, widthBreakpoint)
         } else {
-            MobileBaseplate(navigationStore, profileStore, userStore, voiceStore)
+            MobileBaseplate(
+                navigationStore = navigationStore,
+                profileStore = profileStore,
+                userStore = userStore,
+                voiceStore = voiceStore,
+                onExitApp = onExitApp
+            )
         }
     }
 }

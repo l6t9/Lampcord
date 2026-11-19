@@ -68,6 +68,7 @@ data class Session(
     val session_id: String,
     val status: String? = null,
     val activities: List<Activity> = emptyList(),
+    val hidden_activities: List<Activity> = emptyList(),
     val active: Boolean = false,
     val client_info: SessionClientInfo? = null
 )

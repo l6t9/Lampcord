@@ -155,6 +155,7 @@ kotlin {
             implementation(libs.multiplatform.settings.no.arg)
 
             api(libs.androidx.navigation3.runtime)
+            api(libs.androidx.navigationevent.compose)
 
             implementation(libs.room.runtime)
             implementation(libs.sqlite.bundled)

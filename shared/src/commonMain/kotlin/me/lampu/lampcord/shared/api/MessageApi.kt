@@ -9,6 +9,7 @@ import io.ktor.client.request.patch
 import io.ktor.client.request.post
 import io.ktor.client.request.put
 import io.ktor.client.request.forms.MultiPartFormDataContent
+import io.ktor.client.request.forms.append
 import io.ktor.client.request.forms.formData
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
@@ -140,10 +141,9 @@ class MessageApi(private val rest: RestClient) {
                                 append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                             })
                             remainingFiles.forEachIndexed { index, (name, bytes) ->
-                                append("files[$index]", bytes, Headers.build {
-                                    append(HttpHeaders.ContentType, getContentTypeForFile(name).toString())
-                                    append(HttpHeaders.ContentDisposition, "form-data; name=\"files[$index]\"; filename=\"$name\"")
-                                })
+                                append("files[$index]", name, getContentTypeForFile(name), bytes.size.toLong()) {
+                                    write(bytes, 0, bytes.size)
+                                }
                             }
                         }
                     ))
@@ -163,10 +163,9 @@ class MessageApi(private val rest: RestClient) {
                 setBody(MultiPartFormDataContent(
                     formData {
                         append("reqtype", "fileupload")
-                        append("fileToUpload", bytes, Headers.build {
-                            append(HttpHeaders.ContentType, getContentTypeForFile(name).toString())
-                            append(HttpHeaders.ContentDisposition, "form-data; name=\"fileToUpload\"; filename=\"$name\"")
-                        })
+                        append("fileToUpload", name, getContentTypeForFile(name), bytes.size.toLong()) {
+                            write(bytes, 0, bytes.size)
+                        }
                     }
                 ))
             }
@@ -186,7 +185,7 @@ class MessageApi(private val rest: RestClient) {
             name.endsWith(".webp", true) -> ContentType.parse("image/webp")
             name.endsWith(".mp4", true) -> ContentType.Video.MP4
             name.endsWith(".mov", true) -> ContentType.Video.QuickTime
-            name.endsWith(".webm", true) -> ContentType.Video.Any
+            name.endsWith(".webm", true) -> ContentType.parse("video/webm")
             name.endsWith(".m4a", true) -> ContentType.parse("audio/mp4")
             name.endsWith(".aac", true) -> ContentType.parse("audio/aac")
             name.endsWith(".mp3", true) -> ContentType.parse("audio/mpeg")

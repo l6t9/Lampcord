@@ -27,7 +27,7 @@ object DateTimeUtils {
             val date = localDateTime.date
             when {
                 date == nowDate -> timeString
-                date.dayOfYear == nowDate.dayOfYear - 1 && date.year == nowDate.year -> "Yesterday at $timeString"
+                date == nowDate - DatePeriod(days = 1) -> "Yesterday at $timeString"
                 else -> {
                     val month = date.month.number
                     val day = date.day
