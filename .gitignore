@@ -27,6 +27,9 @@ build/
 /dist/
 /tools/
 
+# Rust rewrite build outputs
+/rust/target/
+
 **/__pycache__
 
 # Xcode / iOS build products
