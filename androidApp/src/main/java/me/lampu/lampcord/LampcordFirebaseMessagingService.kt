@@ -2,8 +2,10 @@ package me.lampu.lampcord
 
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import me.lampu.lampcord.shared.notifications.IncomingCallNotifier
 import me.lampu.lampcord.shared.notifications.MessageNotifier
 import me.lampu.lampcord.shared.notifications.PushTokenRegistrar
+import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.utils.Logging
 import org.koin.core.context.GlobalContext
 
@@ -11,11 +13,17 @@ import org.koin.core.context.GlobalContext
 class LampcordFirebaseMessagingService : FirebaseMessagingService() {
 
     override fun onNewToken(token: String) {
+        // A token refresh is registered on the next login; do not attach it to an old account.
+        if (Settings.shared.discordToken.isBlank()) return
         runCatching { GlobalContext.get().get<PushTokenRegistrar>().register(token) }
             .onFailure { Logging.e(TAG, "Unable to register a new push token", it) }
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
+        if (Settings.shared.discordToken.isBlank()) return
+        if (message.data.isCallRingEnd()) {
+            IncomingCallNotifier.notifyIncomingCall(this, null)
+        }
         val notifier = runCatching { GlobalContext.get().get<MessageNotifier>() }
             .onFailure { Logging.e(TAG, "Push received before the app finished starting", it) }
             .getOrNull() ?: return

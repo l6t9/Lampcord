@@ -25,6 +25,8 @@ import me.lampu.lampcord.shared.gateway.GatewayManager
 import me.lampu.lampcord.shared.gateway.VoiceGatewayManager
 import me.lampu.lampcord.shared.notifications.MessageNotifier
 import me.lampu.lampcord.shared.notifications.PushTokenRegistrar
+import me.lampu.lampcord.shared.oauth.OAuthApi
+import me.lampu.lampcord.shared.oauth.OAuthAuthorizationHandler
 import me.lampu.lampcord.shared.update.updateModule
 import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.state.handlers.*
@@ -66,6 +68,7 @@ val apiModule = module {
     single { ApplicationApi(get()) }
     single { ProfileBoardApi(get()) }
     single { SessionApi(get()) }
+    single { OAuthApi(get()) }
 }
 
 val databaseModule = module {
@@ -146,6 +149,7 @@ val storeModule = module {
         )
     }
     single { NotificationStore(scope = get()) }
+    single { OAuthAuthorizationHandler(get(), get(), get()) }
     single {
         ChannelNavigator(
             navigationStore = get(), entityStore = get(), gatewayManager = get(), scope = get()

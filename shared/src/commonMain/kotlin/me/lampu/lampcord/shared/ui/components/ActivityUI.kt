@@ -29,34 +29,41 @@ import kotlin.time.Duration.Companion.milliseconds
 
 import me.lampu.lampcord.shared.model.customEmojiCdnUrl
 import me.lampu.lampcord.shared.model.getDisplayUrl
+import me.lampu.lampcord.shared.model.resolvedButtons
 import me.lampu.lampcord.shared.model.toTwemojiUrl
 import me.lampu.lampcord.shared.ui.kit.clickableCursor
+import me.lampu.lampcord.shared.ui.rememberLinkOpener
+
+private fun String?.safeActivityLink(): String? =
+    this?.takeIf { it.startsWith("http://", ignoreCase = true) || it.startsWith("https://", ignoreCase = true) }
 
 private fun getAssetUrl(applicationId: String?, assetId: String?): String? {
-    if (assetId == null) return null
-    if (assetId.startsWith("http")) return assetId
-    
-    if (assetId.contains(":")) {
-        val parts = assetId.split(":", limit = 2)
+    val asset = assetId ?: return null
+    val safeAsset = asset.safeActivityLink()
+    if (safeAsset != null) return safeAsset
+
+    if (asset.contains(":")) {
+        val parts = asset.split(":", limit = 2)
         val platform = parts[0].lowercase()
         val id = parts[1]
-        
+
         return when (platform) {
             "spotify" -> "https://i.scdn.co/image/$id"
             "mp" -> "https://media.discordapp.net/${if (id.startsWith("external/")) id else "external/$id"}"
             "youtube" -> "https://i.ytimg.com/vi/$id/hqdefault.jpg"
+            "twitch" -> "https://static-cdn.jtvnw.net/previews-ttv/live_user_$id-320x180.jpg"
             else -> null
         }
     }
-    
-    if (assetId.startsWith("external/")) {
-        return "https://media.discordapp.net/$assetId"
+
+    if (asset.startsWith("external/")) {
+        return "https://media.discordapp.net/$asset"
     }
 
     if (applicationId != null) {
-        return "https://cdn.discordapp.com/app-assets/$applicationId/$assetId.jpg?size=512"
+        return "https://cdn.discordapp.com/app-assets/$applicationId/$asset.webp?size=512"
     }
-    
+
     return null
 }
 
@@ -114,9 +121,67 @@ fun UserActivity(activity: Activity, modifier: Modifier = Modifier, compact: Boo
 @Composable
 private fun ActivityInnerContent(activity: Activity, modifier: Modifier = Modifier, compact: Boolean = false) {
     when (activity.type) {
-        4 -> CustomStatus(activity, modifier, compact)
-        2 -> MusicActivity(activity, modifier, compact)
+        Activity.TYPE_CUSTOM_STATUS -> CustomStatus(activity, modifier, compact)
+        Activity.TYPE_LISTENING -> MusicActivity(activity, modifier, compact)
+        Activity.TYPE_HANG -> HangActivity(activity, modifier, compact)
         else -> DefaultActivity(activity, modifier, compact)
+    }
+}
+
+@Composable
+private fun ActivityButtons(activity: Activity, modifier: Modifier = Modifier) {
+    val buttons = remember(activity) { activity.resolvedButtons }
+    if (buttons.isEmpty()) return
+
+    val openLink = rememberLinkOpener()
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        buttons.forEach { button ->
+            FilledTonalButton(
+                onClick = { openLink(button.url) },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = button.label,
+                    style = MaterialTheme.typography.labelLarge,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun HangActivity(activity: Activity, modifier: Modifier = Modifier, compact: Boolean = false) {
+    val contentColor = LocalContentColor.current
+    val description = listOfNotNull(
+        activity.state.takeUnless { it.isNullOrBlank() },
+        activity.details.takeUnless { it.isNullOrBlank() }
+    ).joinToString(" – ").ifBlank { activity.name }
+
+    Row(
+        modifier = modifier
+            .hoverable(remember { MutableInteractionSource() })
+            .fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Filled.Groups,
+            contentDescription = null,
+            modifier = Modifier.size(if (compact) 14.dp else 20.dp),
+            tint = contentColor.copy(alpha = 0.7f)
+        )
+        Text(
+            text = if (compact) description else "Hanging out in $description",
+            style = if (compact) MaterialTheme.typography.labelSmall else MaterialTheme.typography.bodyMedium,
+            color = contentColor,
+            maxLines = if (compact) 2 else Int.MAX_VALUE,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
@@ -175,6 +240,10 @@ fun MusicActivity(activity: Activity, modifier: Modifier = Modifier, compact: Bo
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
     val isExpanded = isHovered || isToggled
+    val openLink = rememberLinkOpener()
+    val primaryLink = activity.details_url.safeActivityLink()
+        ?: activity.state_url.safeActivityLink()
+        ?: activity.url.safeActivityLink()
 
     if (compact) {
         Row(
@@ -204,19 +273,24 @@ fun MusicActivity(activity: Activity, modifier: Modifier = Modifier, compact: Bo
                 text = "Listening to ${activity.name}",
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
-                color = contentColor.copy(alpha = 0.7f)
+                color = contentColor.copy(alpha = 0.7f),
+                modifier = if (primaryLink != null) Modifier.clickable { openLink(primaryLink) } else Modifier
             )
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                val imageUrl = getAssetUrl(activity.application_id, activity.assets?.large_image)
-                val smallImageUrl = getAssetUrl(activity.application_id, activity.assets?.small_image)
+                val imageLink = activity.assets?.large_url.safeActivityLink()
+                val imageUrl = getAssetUrl(activity.application_id, activity.assets?.large_url ?: activity.assets?.large_image)
+                val smallImageUrl = getAssetUrl(activity.application_id, activity.assets?.small_url ?: activity.assets?.small_image)
 
                 Box(modifier = Modifier.size(64.dp)) {
                     if (imageUrl != null) {
                         AsyncImage(
                             model = imageUrl,
                             contentDescription = activity.assets?.large_text,
-                            modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(8.dp)),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(8.dp))
+                                .then(if (imageLink != null) Modifier.clickable { openLink(imageLink) } else Modifier),
                             contentScale = ContentScale.Crop
                         )
                     } else {
@@ -301,6 +375,8 @@ fun MusicActivity(activity: Activity, modifier: Modifier = Modifier, compact: Bo
                     )
                 }
             }
+
+            ActivityButtons(activity, Modifier.padding(top = 8.dp))
         }
     }
 }
@@ -362,13 +438,25 @@ fun DefaultActivity(activity: Activity, modifier: Modifier = Modifier, compact: 
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
     val isExpanded = isHovered || isToggled
+    val openLink = rememberLinkOpener()
+    val primaryLink = activity.details_url.safeActivityLink()
+        ?: activity.state_url.safeActivityLink()
+        ?: activity.url.safeActivityLink()
+    val primaryText = when (activity.status_display_type) {
+        1 -> activity.state?.takeUnless { it.isNullOrBlank() } ?: activity.name
+        2 -> activity.details?.takeUnless { it.isNullOrBlank() } ?: activity.name
+        else -> activity.name
+    }
+    val partySize = activity.party?.size
+    val partyLabel = if (partySize != null && partySize.size >= 2) " (${partySize[0]} of ${partySize[1]})" else ""
     
     val verb = when (activity.type) {
-        0 -> "Playing"
-        1 -> "Streaming"
-        2 -> "Listening to"
-        3 -> "Watching"
-        5 -> "Competing in"
+        Activity.TYPE_PLAYING -> "Playing"
+        Activity.TYPE_STREAMING -> "Streaming"
+        Activity.TYPE_LISTENING -> "Listening to"
+        Activity.TYPE_WATCHING -> "Watching"
+        Activity.TYPE_COMPETING -> "Competing in"
+        Activity.TYPE_HANG -> "Hanging out in"
         else -> "Playing"
     }
 
@@ -385,6 +473,7 @@ fun DefaultActivity(activity: Activity, modifier: Modifier = Modifier, compact: 
                     1 -> Icons.Filled.Videocam
                     3 -> Icons.Filled.PlayArrow
                     5 -> Icons.Filled.Star
+                    Activity.TYPE_HANG -> Icons.Filled.Groups
                     else -> Icons.Filled.SportsEsports
                 },
                 contentDescription = null,
@@ -392,7 +481,7 @@ fun DefaultActivity(activity: Activity, modifier: Modifier = Modifier, compact: 
                 tint = contentColor.copy(alpha = 0.7f)
             )
             Text(
-                text = "$verb ${activity.name}",
+                text = "$verb $primaryText$partyLabel",
                 style = MaterialTheme.typography.labelSmall,
                 color = contentColor.copy(alpha = 0.7f),
                 maxLines = if (isExpanded) Int.MAX_VALUE else 2,
@@ -409,9 +498,11 @@ fun DefaultActivity(activity: Activity, modifier: Modifier = Modifier, compact: 
             )
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                val imageUrl = remember(activity.application_id, activity.assets?.large_image) {
-                    getAssetUrl(activity.application_id, activity.assets?.large_image)
+                val largeAsset = activity.assets?.large_url ?: activity.assets?.large_image
+                val imageUrl = remember(activity.application_id, largeAsset) {
+                    getAssetUrl(activity.application_id, largeAsset)
                 }
+                val imageLink = activity.assets?.large_url.safeActivityLink()
                 
                 val appIconUrl = if (imageUrl == null && activity.application_id != null) {
                     val app = applicationStore.getApplication(activity.application_id)
@@ -422,14 +513,17 @@ fun DefaultActivity(activity: Activity, modifier: Modifier = Modifier, compact: 
 
                 val finalImageUrl = imageUrl ?: appIconUrl
 
-                val smallImageUrl = getAssetUrl(activity.application_id, activity.assets?.small_image)
+                val smallImageUrl = getAssetUrl(activity.application_id, activity.assets?.small_url ?: activity.assets?.small_image)
 
                 Box(modifier = Modifier.size(64.dp)) {
                     if (finalImageUrl != null) {
                         AsyncImage(
                             model = finalImageUrl,
                             contentDescription = activity.assets?.large_text,
-                            modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(8.dp)),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(8.dp))
+                                .then(if (imageLink != null) Modifier.clickable { openLink(imageLink) } else Modifier),
                             contentScale = ContentScale.Crop
                         )
                     } else {
@@ -444,6 +538,7 @@ fun DefaultActivity(activity: Activity, modifier: Modifier = Modifier, compact: 
                                     1 -> Icons.Filled.Radio
                                     3 -> Icons.Filled.PlayArrow
                                     5 -> Icons.Filled.Star
+                                    Activity.TYPE_HANG -> Icons.Filled.Groups
                                     else -> Icons.Filled.SportsEsports
                                 },
                                 contentDescription = null,
@@ -479,12 +574,13 @@ fun DefaultActivity(activity: Activity, modifier: Modifier = Modifier, compact: 
                         .clickableCursor(interactionSource = interactionSource, indication = null) { isToggled = !isToggled }
                 ) {
                     Text(
-                        text = activity.name,
+                        text = "$primaryText$partyLabel",
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Bold,
                         color = contentColor,
                         maxLines = if (isExpanded) Int.MAX_VALUE else 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = if (primaryLink != null) Modifier.clickable { openLink(primaryLink) } else Modifier
                     )
                     if (!activity.details.isNullOrBlank()) {
                         Text(
@@ -492,7 +588,10 @@ fun DefaultActivity(activity: Activity, modifier: Modifier = Modifier, compact: 
                             style = MaterialTheme.typography.bodyMedium,
                             color = contentColor.copy(alpha = 0.7f),
                             maxLines = if (isExpanded) Int.MAX_VALUE else 1,
-                            overflow = TextOverflow.Ellipsis
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = activity.details_url.safeActivityLink()?.let { url ->
+                                Modifier.clickable { openLink(url) }
+                            } ?: Modifier
                         )
                     }
                     if (!activity.state.isNullOrBlank()) {
@@ -501,7 +600,10 @@ fun DefaultActivity(activity: Activity, modifier: Modifier = Modifier, compact: 
                             style = MaterialTheme.typography.bodySmall,
                             color = contentColor.copy(alpha = 0.5f),
                             maxLines = if (isExpanded) Int.MAX_VALUE else 1,
-                            overflow = TextOverflow.Ellipsis
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = activity.state_url.safeActivityLink()?.let { url ->
+                                Modifier.clickable { openLink(url) }
+                            } ?: Modifier
                         )
                     }
                     
@@ -525,6 +627,8 @@ fun DefaultActivity(activity: Activity, modifier: Modifier = Modifier, compact: 
                     )
                 }
             }
+
+            ActivityButtons(activity, Modifier.padding(top = 8.dp))
         }
     }
 }

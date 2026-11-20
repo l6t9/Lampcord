@@ -22,6 +22,7 @@ import me.lampu.lampcord.shared.model.Invite
 import me.lampu.lampcord.shared.model.Onboarding
 import me.lampu.lampcord.shared.model.memberListId
 import me.lampu.lampcord.shared.notifications.MessageNotifier
+import me.lampu.lampcord.shared.ui.navigation.BackInterceptor
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.utils.Logging
 
@@ -43,6 +44,8 @@ class NavigationStore(
     private val scope: CoroutineScope,
     val onChannelSelected: () -> Unit = {}
 ) {
+    val backInterceptor = BackInterceptor()
+
     private val _focusChatRequest = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val focusChatRequest = _focusChatRequest.asSharedFlow()
 
@@ -108,6 +111,7 @@ class NavigationStore(
     var isNotificationsSettingsVisible by mutableStateOf(false)
     var isMediaPickerVisible by mutableStateOf(false)
     var isEmojiPickerVisible by mutableStateOf(false)
+    var isAddFriendVisible by mutableStateOf(false)
     var isPinsVisible by mutableStateOf(false)
     var isThreadPanelVisible by mutableStateOf(false)
     var isProfilePanelVisible by mutableStateOf(true)
@@ -565,12 +569,25 @@ class NavigationStore(
         isConnected = false
         isConnecting = false
         isSettingsVisible = false
+        settingsCategory = null
         isQuickSwitcherVisible = false
         isSearchVisible = false
         isServerSettingsVisible = false
+        channelSettingsChannel = null
         isChannelsAndRolesVisible = false
+        isNotificationsSettingsVisible = false
+        isEmojiPickerVisible = false
+        isAddFriendVisible = false
+        isThreadPanelVisible = false
+        isProfilePanelVisible = true
+        isMemberListModalVisible = false
+        isServerMenuVisible = false
         isMediaPickerVisible = false
         isPinsVisible = false
+        isAttachmentViewerVisible = false
+        attachmentViewerItems = emptyList()
+        attachmentViewerIndex = 0
+        forwardingMessage = null
         isForumLoading = false
         guildLoadingJob?.cancel()
         channelLoadingJob?.cancel()

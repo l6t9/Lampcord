@@ -63,7 +63,10 @@ class SessionManager(
             gatewayManager.events.collect { payload ->
                 try {
                     if (payload.op == -1 && payload.t == "AUTH_FAILED") {
-                        logout(Settings.shared.discordToken)
+                        val currentToken = Settings.shared.discordToken.trim()
+                        if (payload.authToken == null || payload.authToken == currentToken) {
+                            logout(currentToken)
+                        }
                     } else {
                         withContext(Dispatchers.Default) {
                             gatewayHandler.handleGatewayEvent(payload)
@@ -82,8 +85,10 @@ class SessionManager(
         }
 
         scope.launch {
-            authApi.rest.unauthorizedEvents.collect {
-                logout(Settings.shared.discordToken)
+            authApi.rest.unauthorizedEvents.collect { failedToken ->
+                if (failedToken.isNotBlank() && failedToken == Settings.shared.discordToken.trim()) {
+                    logout(failedToken)
+                }
             }
         }
 
@@ -101,6 +106,8 @@ class SessionManager(
     }
 
     fun disconnect() {
+        // Must run before the session token is cleared so the DELETE carries valid auth.
+        pushTokenRegistrar?.unregister()
         notifier?.dismissAllNotifications()
         voiceStore.disconnectFromVoice()
         gatewayManager.disconnect()
@@ -144,6 +151,7 @@ class SessionManager(
     }
 
     private fun clearAllStores() {
+        gatewayManager.clearSubscriptions()
         navigationStore.clear()
         entityStore.clear()
         readStateStore.clear()

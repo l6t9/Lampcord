@@ -175,14 +175,16 @@ private class SecureJvmSettings(private val delegate: Settings) : Settings by de
     }
 
     override fun putString(key: String, value: String) {
-        if (key in secureKeys) {
-            delegate.putString(key, encrypt(value))
+        // An empty value is the "clear" signal (for example on sign out) and is not a secret.
+        if (key in secureKeys && value.isNotEmpty()) {
+            val encrypted = encrypt(value) ?: return
+            delegate.putString(key, encrypted)
         } else {
             delegate.putString(key, value)
         }
     }
 
-    private fun encrypt(value: String): String {
+    private fun encrypt(value: String): String? {
         return try {
             if (Platform.isWindows()) {
                 val encrypted = Crypt32Util.cryptProtectData(value.toByteArray())
@@ -191,7 +193,8 @@ private class SecureJvmSettings(private val delegate: Settings) : Settings by de
                 encryptAes(value)
             }
         } catch (e: Exception) {
-            value
+            Logging.e("Settings", "Failed to encrypt a stored secret; it was not saved: ${e.message}")
+            null
         }
     }
 

@@ -64,6 +64,35 @@ const val ANCHOR_TOP = 0
 const val ANCHOR_BOTTOM = 1
 const val ANCHOR_CENTER = 2
 
+/** Delay between animation cycles for a looping layer, or null when the layer does not loop. */
+internal fun effectLayerCycleMs(layer: ProfileEffectLayer): Long? {
+    if (!layer.loop || layer.duration <= 0) return null
+    val delay = layer.loopDelay.coerceAtLeast(0L)
+    return if (Long.MAX_VALUE - layer.duration < delay) Long.MAX_VALUE else layer.duration + delay
+}
+
+/** Pure timeline check shared by the effect overlay and its tests. */
+internal fun isEffectLayerActive(layer: ProfileEffectLayer, elapsedMs: Long): Boolean {
+    if (elapsedMs < layer.start) return false
+    val elapsedSinceStart = elapsedMs - layer.start
+    val cycle = effectLayerCycleMs(layer) ?: return layer.duration <= 0 || elapsedSinceStart < layer.duration
+    return elapsedSinceStart % cycle < layer.duration
+}
+
+/** Measured asset aspect ratio (height / width), or null until a valid size is known. */
+internal fun frameLayerAspectRatio(imageWidth: Int, imageHeight: Int): Float? {
+    if (imageWidth <= 0 || imageHeight <= 0) return null
+    val ratio = imageHeight.toFloat() / imageWidth.toFloat()
+    return ratio.takeIf { it.isFinite() && it > 0f }
+}
+
+/** Height for a frame layer; zero keeps the layer hidden until its aspect ratio is measured. */
+internal fun frameLayerHeight(declaredWidth: Float, aspectRatio: Float?): Float {
+    if (declaredWidth <= 0f || !declaredWidth.isFinite()) return 0f
+    if (aspectRatio == null || aspectRatio <= 0f || !aspectRatio.isFinite()) return 0f
+    return declaredWidth * aspectRatio
+}
+
 private const val CDN = "https://cdn.discordapp.com"
 
 object ProfileCollectibles {
@@ -100,7 +129,11 @@ object ProfileCollectibles {
                             start = effect.long("start") ?: 0,
                             duration = effect.long("duration") ?: 0,
                             loop = effect.bool("loop"),
-                            loopDelay = effect.long("loopDelay") ?: effect.long("loop_delay") ?: 0,
+                            loopDelay = effect.long("loopDelay")
+                                ?: effect.long("loop_delay")
+                                ?: effect.long("loopDelayMs")
+                                ?: effect.long("loop_delay_ms")
+                                ?: 0,
                             x = position?.long("x") ?: 0,
                             y = position?.long("y") ?: 0,
                             width = effect.long("width") ?: EFFECT_CANVAS_WIDTH,
@@ -178,7 +211,7 @@ object ProfileCollectibles {
     private fun JsonObject.int(key: String): Int? = long(key)?.toInt()
 
     private fun JsonObject.bool(key: String): Boolean =
-        (this[key] as? JsonPrimitive)?.content.equals("true", ignoreCase = true)
+        (this[key] as? JsonPrimitive)?.content?.let { it.equals("true", ignoreCase = true) || it == "1" } ?: false
 
     private fun JsonObject.enum(key: String): String? = str(key)?.lowercase()
 

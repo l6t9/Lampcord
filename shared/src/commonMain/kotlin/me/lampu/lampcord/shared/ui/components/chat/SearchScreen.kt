@@ -44,7 +44,6 @@ import me.lampu.lampcord.shared.model.Member
 import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.LocalCurrentUser
 import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
-import me.lampu.lampcord.shared.ui.components.PlatformBackHandler
 import me.lampu.lampcord.shared.ui.components.members.MemberItem
 import me.lampu.lampcord.shared.ui.components.members.MemberRowEnv
 import me.lampu.lampcord.shared.ui.icons.Icons
@@ -209,13 +208,17 @@ private fun SearchScreenContent(
         }
     }
 
-    PlatformBackHandler(enabled = true) {
-        if (searchInput.fieldFocused) {
-            focusManager.clearFocus()
-            keyboardController?.hide()
-        } else {
-            onDismiss()
+    DisposableEffect(navigationStore) {
+        val unregister = navigationStore.backInterceptor.register {
+            if (searchInput.fieldFocused) {
+                focusManager.clearFocus()
+                keyboardController?.hide()
+            } else {
+                onDismiss()
+            }
+            true
         }
+        onDispose { unregister() }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {

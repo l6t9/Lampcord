@@ -17,7 +17,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ClosedReceiveChannelException
@@ -50,6 +49,7 @@ import kotlinx.serialization.json.put
 import me.lampu.lampcord.shared.api.AuthApi
 import me.lampu.lampcord.shared.api.RestClient
 import me.lampu.lampcord.shared.model.Activity
+import me.lampu.lampcord.shared.model.buildUpdatePresencePayload
 import me.lampu.lampcord.shared.model.GatewayPayload
 import me.lampu.lampcord.shared.model.Identify
 import me.lampu.lampcord.shared.model.IdentifyClientState
@@ -85,9 +85,13 @@ class GatewayManager(
 ) {
     private var session: DefaultClientWebSocketSession? = null
     private var connectionJob: Job? = null
+    // Lossless instead of DROP_OLDEST: dropping a dispatch event makes
+    // lastSequence skip it permanently on resume. A suspending emit is not safe
+    // here because frames are read in this same coroutine, so a full buffer
+    // would also block HELLO/heartbeat-ACK/reconnect control frames. An
+    // effectively unbounded buffer avoids both loss and control-frame blocking.
     private val _events = MutableSharedFlow<GatewayPayload>(
-        extraBufferCapacity = 4096,
-        onBufferOverflow = BufferOverflow.DROP_OLDEST
+        extraBufferCapacity = Int.MAX_VALUE
     )
     val events: SharedFlow<GatewayPayload> = _events.asSharedFlow()
 
@@ -105,6 +109,7 @@ class GatewayManager(
     private var lastSequence: Int? = null
     var sessionId: String? = null
     private var resumeGatewayUrl: String? = null
+    private var connectionToken: String? = null
     private var clientHeartbeatSessionId = randomUUID()
     private val clientLaunchId = randomUUID()
     private val launchSignature = (getCurrentTimeMillis() * 1_000_000L).toString()
@@ -141,9 +146,18 @@ class GatewayManager(
     }
 
     fun connect(token: String) {
+        if (connectionToken != token) {
+            sessionId = null
+            lastSequence = null
+            resumeGatewayUrl = null
+            connectionToken = token
+        }
         destroy()
         Logging.i("Gateway", "Connecting to Discord Gateway...")
         connectionJob = scope.launch {
+            // Clear stale payloads inside the connection coroutine, before any
+            // socket or sender is created, so fresh payloads cannot be erased.
+            clearQueues()
             try {
                 val gatewayUrl = authApi.getGatewayUrl() ?: "wss://gateway.discord.gg"
                 val url = (resumeGatewayUrl ?: gatewayUrl).removeSuffix("/") + "/?v=9&encoding=json"
@@ -205,7 +219,11 @@ class GatewayManager(
                             val reason = withTimeoutOrNull(2.seconds) { closeReason.await() }
                             when (reason?.code?.toInt()) {
                                 4003, 4004 -> {
-                                    _events.tryEmit(GatewayPayload(op = -1, t = "AUTH_FAILED"))
+                                    _events.emit(
+                                        GatewayPayload(op = -1, t = "AUTH_FAILED").also {
+                                            it.authToken = token
+                                        }
+                                    )
                                     disconnect("auth failed ${reason.code}")
                                 }
                             }
@@ -232,7 +250,6 @@ class GatewayManager(
                 stopHeartbeat()
                 stopTimeSpentUpdates()
                 stopHelloTimeout()
-                withContext(NonCancellable) { queueLock.withLock { lazyQueue.clear() } }
 
                 if (isActive) {
                     reconnectAttempt++
@@ -252,6 +269,8 @@ class GatewayManager(
 
     fun disconnect(reason: String = "requested") {
         Logging.i("Gateway", "Disconnecting: $reason")
+        // Queues are cleared at the start of the next connect(), which also
+        // covers op 7/9 reconnects without racing the replacement connection.
         destroy()
     }
 
@@ -263,17 +282,34 @@ class GatewayManager(
         stopHeartbeat()
         stopTimeSpentUpdates()
         stopHelloTimeout()
-        guildSubscriptions.clear()
-        scope.launch {
-            queueLock.withLock {
-                lazyQueue.clear()
-                queue.clear()
-            }
+        // Guild subscriptions describe user intent and must survive ordinary
+        // reconnects; only clearSubscriptions() (logout) discards them.
+    }
+
+    private suspend fun clearQueues() {
+        queueLock.withLock {
+            lazyQueue.clear()
+            queue.clear()
         }
+    }
+
+    /** Called only on a real logout / account switch. */
+    fun clearSubscriptions() {
+        guildSubscriptions.clear()
+        sessionId = null
+        lastSequence = null
+        resumeGatewayUrl = null
+        connectionToken = null
+    }
+
+    /** Re-send every tracked subscription after RESUMED. */
+    fun replaySubscriptions() {
+        guildSubscriptions.keys.toList().forEach { sendSubscription(it) }
     }
 
     fun close() {
         destroy()
+        clearSubscriptions()
         scope.cancel()
     }
 
@@ -580,22 +616,21 @@ class GatewayManager(
     }
 
     private suspend fun sendNow(payload: GatewayPayload) {
-        session?.send(json.encodeToString(payload))
+        val socket = session
+        if (socket != null) {
+            socket.send(json.encodeToString(payload))
+            return
+        }
+        // Session is only null during teardown. Heartbeats are safe to defer to
+        // the next connection; identify/resume are regenerated on the next HELLO.
+        Logging.w("Gateway", "No active session for op ${payload.op}; scheduling retry")
+        enqueue(payload)
     }
 
     fun updatePresence(status: String?, activities: List<Activity>?) {
         val payload = GatewayPayload(
             op = 3,
-            d = buildJsonObject {
-                put("status", status?.let { JsonPrimitive(it) } ?: JsonNull)
-                put("activities", buildJsonArray {
-                    activities?.forEach { activity ->
-                        add(json.encodeToJsonElement<Activity>(activity))
-                    }
-                })
-                put("afk", JsonPrimitive(false))
-                put("since", JsonPrimitive(0))
-            }
+            d = buildUpdatePresencePayload(status, activities, json)
         )
         enqueue(payload)
     }

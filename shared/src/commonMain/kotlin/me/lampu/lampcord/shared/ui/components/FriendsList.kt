@@ -32,6 +32,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -70,6 +71,11 @@ fun FriendsList(
 
     val tabs = listOf("Online", "All", "Pending", "Blocked")
     var showAddFriend by remember { mutableStateOf(false) }
+
+    DisposableEffect(showAddFriend) {
+        navigationStore.isAddFriendVisible = showAddFriend
+        onDispose { navigationStore.isAddFriendVisible = false }
+    }
 
     if (showAddFriend) {
         AddFriendPage(onBack = { showAddFriend = false })

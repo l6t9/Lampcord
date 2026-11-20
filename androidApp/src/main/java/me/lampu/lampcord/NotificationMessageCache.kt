@@ -22,8 +22,11 @@ data class ChannelNotificationMeta(
 object NotificationMessageCache {
     private const val MAX_MESSAGES_PER_CHANNEL = 12
     private const val MAX_SEEN_MESSAGES = 100
+    private const val MAX_CHANNELS = 100
 
-    private val messagesByChannel = LinkedHashMap<String, MutableList<NotificationMessage>>()
+    // Access order so the least recently used channel is evicted first.
+    private val messagesByChannel =
+        object : LinkedHashMap<String, MutableList<NotificationMessage>>(16, 0.75f, true) {}
     private val seenMessageIds = LinkedHashSet<String>()
     private val metaByChannel = mutableMapOf<String, ChannelNotificationMeta>()
     private val avatarCache = LruCache<String, Bitmap>(24)
@@ -37,9 +40,15 @@ object NotificationMessageCache {
 
     @Synchronized
     fun addMessage(channelId: String, message: NotificationMessage) {
+        val isNewChannel = !messagesByChannel.containsKey(channelId)
         val list = messagesByChannel.getOrPut(channelId) { mutableListOf() }
         list.add(message)
         while (list.size > MAX_MESSAGES_PER_CHANNEL) list.removeAt(0)
+        if (isNewChannel && messagesByChannel.size > MAX_CHANNELS) {
+            val oldest = messagesByChannel.keys.first()
+            messagesByChannel.remove(oldest)
+            metaByChannel.remove(oldest)
+        }
     }
 
     @Synchronized

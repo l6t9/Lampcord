@@ -38,6 +38,7 @@ import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.DiscordMarkdownText
+import me.lampu.lampcord.shared.ui.components.rememberActivitiesWithButtonUrls
 import me.lampu.lampcord.shared.ui.components.UserActivity
 import me.lampu.lampcord.shared.ui.components.settings.Material3SettingsGroup
 import me.lampu.lampcord.shared.ui.components.settings.Material3SettingsItem
@@ -86,6 +87,45 @@ fun ProfileSections(
     val profileTextColor = theme.customTextColor ?: MaterialTheme.colorScheme.onSurface
     val profileSecondaryTextColor = theme.customTextColor ?: MaterialTheme.colorScheme.onSurfaceVariant
 
+    val bio = (guildMeta?.bio?.takeIf { it.isNotBlank() }
+        ?: userMeta?.bio?.takeIf { it.isNotBlank() }
+        ?: user.bio?.takeIf { it.isNotBlank() })?.let { Profile3y3.strip(it) }
+
+    val presences by presenceStore.presences.collectAsState()
+    val presence = profile.guild_member?.presence ?: profile.presence ?: presences[user.id]
+    val activities = rememberActivitiesWithButtonUrls(
+        activities = (profile.activities.ifEmpty { presence?.activities ?: emptyList() })
+            .filter { it.type != 4 },
+        userId = user.id
+    )
+
+    val roles = profile.guild_member?.roles
+    val me = currentUser
+    val myMember = remember(isExpanded, guild?.id, me?.id) {
+        if (isExpanded) guild?.let { g -> me?.id?.let { userStore.getMember(g.id, it) } } else null
+    }
+    val manageRolesGuild = guild?.takeIf { g ->
+        isExpanded && profile.guild_member != null && me != null && profile.user.id != me.id &&
+            PermissionHelper.hasPermission(
+                myMember ?: Member(user = me),
+                g,
+                null,
+                Permission.MANAGE_ROLES,
+                me.id
+            )
+    }
+    val canManageRoles = manageRolesGuild != null
+    val isOwnProfile = user.id == me?.id
+    val mutualFriendsCount = profile.mutual_friends_count ?: profile.mutual_friends?.size ?: 0
+    val hasMutuals = !isOwnProfile && (mutualFriendsCount > 0 || !profile.mutual_guilds.isNullOrEmpty())
+    val hasAnySection = !bio.isNullOrBlank() ||
+        (isExpanded || showMemberSince) ||
+        activities.isNotEmpty() ||
+        (isExpanded && !roles.isNullOrEmpty() && guild != null) ||
+        canManageRoles ||
+        (isExpanded && (profile.connected_accounts.isNotEmpty() || hasMutuals)) ||
+        (isExpanded && onOpenFriends != null)
+
     var showMutualFriends by remember { mutableStateOf(false) }
     var showMutualServers by remember { mutableStateOf(false) }
 
@@ -107,11 +147,10 @@ fun ProfileSections(
         )
     }
 
-    Column(modifier = Modifier.padding(bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        val bio = (guildMeta?.bio?.takeIf { it.isNotBlank() }
-            ?: userMeta?.bio?.takeIf { it.isNotBlank() }
-            ?: user.bio?.takeIf { it.isNotBlank() })?.let { Profile3y3.strip(it) }
-
+    Column(
+        modifier = if (hasAnySection) Modifier.padding(bottom = 12.dp) else Modifier,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
         if (!bio.isNullOrBlank()) {
             Column {
                 ProfileSectionHeader("About Me", color = profileTextColor)
@@ -146,10 +185,6 @@ fun ProfileSections(
             }
         }
 
-        val presences by presenceStore.presences.collectAsState()
-        val presence = profile.guild_member?.presence ?: profile.presence ?: presences[user.id]
-        val activities = (profile.activities.ifEmpty { presence?.activities ?: emptyList() }).filter { it.type != 4 }
-
         if (activities.isNotEmpty()) {
             Column {
                 ProfileSectionHeader("Activity", profileTextColor)
@@ -165,7 +200,6 @@ fun ProfileSections(
         }
 
         if (isExpanded) {
-            val roles = profile.guild_member?.roles
             if (!roles.isNullOrEmpty() && guild != null) {
                 Column {
                     ProfileSectionHeader("Roles", profileTextColor)
@@ -182,41 +216,24 @@ fun ProfileSections(
                 }
             }
 
-            if (guild != null && profile.guild_member != null && profile.user.id != currentUser?.id) {
-                val me = currentUser
-                val myMember = remember(guild.id, me) {
-                    me?.id?.let { userStore.getMember(guild.id, it) }
+            if (manageRolesGuild != null) {
+                var showManageRoles by remember(profile.user.id, manageRolesGuild.id) { mutableStateOf(false) }
+                Button(
+                    onClick = { showManageRoles = true },
+                    modifier = Modifier.fillMaxWidth().height(40.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = theme.buttonColor,
+                        contentColor = theme.buttonTextColor
+                    ),
+                    shape = CircleShape,
+                    contentPadding = PaddingValues(horizontal = 12.dp)
+                ) {
+                    Text(stringResource(Res.string.manage_user), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Medium)
                 }
-                val canManage = me != null && PermissionHelper.hasPermission(
-                    myMember ?: Member(user = me),
-                    guild,
-                    null,
-                    Permission.MANAGE_ROLES,
-                    me.id
-                )
-                if (canManage) {
-                    var showManageRoles by remember(profile.user.id, guild.id) { mutableStateOf(false) }
-                    Button(
-                        onClick = { showManageRoles = true },
-                        modifier = Modifier.fillMaxWidth().height(40.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = theme.buttonColor,
-                            contentColor = theme.buttonTextColor
-                        ),
-                        shape = CircleShape,
-                        contentPadding = PaddingValues(horizontal = 12.dp)
-                    ) {
-                        Text(stringResource(Res.string.manage_user), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Medium)
-                    }
-                    if (showManageRoles) {
-                        ManageRolesSheet(profile = profile, guild = guild, onDismiss = { showManageRoles = false })
-                    }
+                if (showManageRoles) {
+                    ManageRolesSheet(profile = profile, guild = manageRolesGuild, onDismiss = { showManageRoles = false })
                 }
             }
-
-            val isOwnProfile = user.id == currentUser?.id
-            val mutualFriendsCount = profile.mutual_friends_count ?: profile.mutual_friends?.size ?: 0
-            val hasMutuals = !isOwnProfile && (mutualFriendsCount > 0 || !profile.mutual_guilds.isNullOrEmpty())
 
             if (profile.connected_accounts.isNotEmpty() || hasMutuals) {
                 Column {

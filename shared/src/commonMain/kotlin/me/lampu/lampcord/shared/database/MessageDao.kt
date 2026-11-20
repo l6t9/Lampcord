@@ -1,7 +1,6 @@
 package me.lampu.lampcord.shared.database
 
 import androidx.room.*
-import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface MessageDao {
@@ -10,6 +9,30 @@ interface MessageDao {
 
     @Update
     suspend fun update(message: MessageEntity)
+
+    @Transaction
+    suspend fun upsertLoggedMessage(message: MessageEntity) {
+        val existing = getMessageById(message.id) ?: run {
+            insert(message)
+            return
+        }
+        if (existing.content == message.content &&
+            existing.jsonPayload == message.jsonPayload &&
+            existing.isDeleted == message.isDeleted
+        ) return
+        update(
+            existing.copy(
+                channelId = message.channelId,
+                authorId = message.authorId,
+                authorName = message.authorName,
+                content = message.content,
+                oldContent = if (message.content != existing.content) existing.content else existing.oldContent,
+                timestamp = message.timestamp,
+                isDeleted = message.isDeleted,
+                jsonPayload = message.jsonPayload
+            )
+        )
+    }
 
     @Query("SELECT * FROM logged_messages WHERE channelId = :channelId ORDER BY timestamp DESC LIMIT 500")
     suspend fun getMessagesForChannel(channelId: String): List<MessageEntity>

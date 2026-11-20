@@ -129,9 +129,20 @@ fun ChannelItem(
         else PermissionHelper.isChannelPrivate(guild, channel)
     }
 
-    val contextMenuItems = remember(channel, userSettings, isMuted, isFavorite, favoritesEnabled, canView, canManageChannel) {
+    val contextMenuItems = remember(channel, userSettings, isMuted, isFavorite, favoritesEnabled, canView, canManageChannel, isMobile) {
         val items = mutableListOf<ContextMenuItem>()
         if (canView) {
+            if (isMobile && (channel.type == 2 || channel.type == 13)) {
+                items.add(ContextMenuItem("Open Chat", Icons.Filled.Chat, onClick = {
+                    if (navigationStore.isFavoritesSelected && guild != null) {
+                        navigationStore.selectFavoriteChannel(channel) { gatewayManager.sendSubscription(it) }
+                    } else {
+                        navigationStore.selectChannel(channel, explicitlySelected = true)
+                    }
+                    voiceStore.isVoiceChatTextVisible = true
+                }, group = "Primary"))
+            }
+
             if (isDmChannel) {
                 val recipientId = channel.recipients?.firstOrNull()?.id ?: channel.recipient_ids?.firstOrNull()
                 if (recipientId != null) {
@@ -444,7 +455,15 @@ fun ChannelItem(
     if (showVoiceJoinSheet) {
         VoiceJoinSheet(
             channel = channel,
-            onDismiss = { showVoiceJoinSheet = false }
+            onDismiss = { showVoiceJoinSheet = false },
+            onOpenChat = {
+                if (navigationStore.isFavoritesSelected && guild != null) {
+                    navigationStore.selectFavoriteChannel(channel) { gatewayManager.sendSubscription(it) }
+                } else {
+                    navigationStore.selectChannel(channel, explicitlySelected = true)
+                }
+                voiceStore.isVoiceChatTextVisible = true
+            }
         )
     }
 }
@@ -454,6 +473,7 @@ fun ChannelItem(
 fun VoiceJoinSheet(
     channel: Channel,
     onDismiss: () -> Unit,
+    onOpenChat: () -> Unit,
     voiceStore: VoiceStore = koinInject()
 ) {
     val join = rememberVoiceJoin(voiceStore)
@@ -491,7 +511,21 @@ fun VoiceJoinSheet(
             }
             
             Spacer(Modifier.height(8.dp))
-            
+
+            OutlinedButton(
+                onClick = {
+                    onOpenChat()
+                    onDismiss()
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Filled.Chat, null)
+                Spacer(Modifier.width(8.dp))
+                Text("Open Chat")
+            }
+
+            Spacer(Modifier.height(8.dp))
+
             TextButton(
                 onClick = onDismiss,
                 modifier = Modifier.fillMaxWidth()

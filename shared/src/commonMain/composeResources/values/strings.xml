@@ -154,6 +154,7 @@
     <string name="avatar_convert_failure_mobile">Unable to convert avatar to data URL. {avatarUrl}</string>
     <string name="avatar_upload_edit_media">Edit Image</string>
     <string name="back">Back</string>
+    <string name="back_again_to_exit">Press back again to exit</string>
     <string name="back_to_login">Back to Login</string>
     <string name="backup_codes_dash">%1$s-%2$s</string>
     <string name="ban">Ban</string>
@@ -2241,6 +2242,15 @@
     <string name="oauth2_request_missing_param">Invalid request. Missing param **{param}**</string>
     <string name="oauth2_requests_account_access">wants to access your Discord account</string>
     <string name="oauth2_scopes_label">This will allow the developer of !!{application}!! to:</string>
+    <string name="oauth_consent_title">App authorization</string>
+    <string name="oauth_consent_deny">Deny</string>
+    <string name="oauth_consent_redirect">Redirect to {url}</string>
+    <string name="oauth_consent_error">Authorization failed: {error}</string>
+    <string name="oauth_scope_openid">Verify your Discord identity</string>
+    <string name="oauth_scope_identify">See your Discord username and avatar</string>
+    <string name="oauth_scope_sdk_social_layer_presence">Access your friends list and presence</string>
+    <string name="oauth_scope_sdk_social_layer">Use Discord social features in games</string>
+    <string name="oauth_scope_unknown">Access additional Discord data</string>
     <string name="okay">Okay</string>
     <string name="one_user_typing">**!!{a}!!** is typing…</string>
     <string name="ongoing_call">Ongoing Call</string>

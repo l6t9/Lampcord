@@ -59,7 +59,6 @@ kotlin {
                 implementation("dev.nucleusframework:nucleus.notification-macos:${libs.versions.nucleus.get()}")
                 implementation("dev.nucleusframework:nucleus.notification-windows:${libs.versions.nucleus.get()}")
                 implementation("dev.nucleusframework:composenativetray:2.1.6")
-                implementation("dev.nucleusframework:nucleus.updater-runtime:${libs.versions.nucleus.get()}")
                 implementation("dev.nucleusframework:nucleus.system-color:${libs.versions.nucleus.get()}")
                 implementation("dev.nucleusframework:nucleus.native-http-ktor:${libs.versions.nucleus.get()}")
                 implementation("dev.nucleusframework:nucleus.energy-manager:${libs.versions.nucleus.get()}")

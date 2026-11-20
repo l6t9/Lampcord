@@ -4,7 +4,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import me.lampu.lampcord.shared.model.Message
@@ -36,6 +38,7 @@ class MessageEventHandler(
         "MESSAGE_CREATE", 
         "MESSAGE_UPDATE", 
         "MESSAGE_DELETE", 
+        "MESSAGE_DELETE_BULK",
         "MESSAGE_ACK",
         "MESSAGE_REACTION_ADD",
         "MESSAGE_REACTION_REMOVE",
@@ -49,6 +52,7 @@ class MessageEventHandler(
             "MESSAGE_CREATE" -> handleMessageCreate(data)
             "MESSAGE_UPDATE" -> handleMessageUpdate(data)
             "MESSAGE_DELETE" -> handleMessageDelete(data)
+            "MESSAGE_DELETE_BULK" -> handleMessageDeleteBulk(data)
             "MESSAGE_ACK" -> handleMessageAck(data)
             "MESSAGE_REACTION_ADD" -> handleReactionAdd(data)
             "MESSAGE_REACTION_REMOVE" -> handleReactionRemove(data)
@@ -64,8 +68,10 @@ class MessageEventHandler(
             me.lampu.lampcord.shared.utils.Logging.e("MessageHandler", "Failed to parse MESSAGE_CREATE", e)
             return
         }
-        messageLogger.logMessage(message)
-        
+        if (!message.isEphemeral) {
+            messageLogger.logMessage(message)
+        }
+
         message.author?.let { userStore.handleUserUpdate(it) }
         message.author?.let {
             typingStore.handleUserSentMessage(message.channel_id, it.id)
@@ -79,48 +85,52 @@ class MessageEventHandler(
         
         finderStore.addRecent(message.channel_id)
 
-        val currentChannel = entityStore.channels.value[message.channel_id]
-        val currentUser = userStore.currentUser.value
-        val author = message.author
-        val recipientUser = if (author != null && author.id != currentUser?.id) author else null
-        val recipientList = recipientUser?.let { listOf(it) }
-        val recipientIdList = recipientUser?.let { listOf(it.id) }
+        // Ephemeral messages omit guild_id but belong to the guild channel: they
+        // must not advance last_message_id or fabricate/hydrate a DM channel.
+        if (!message.isEphemeral) {
+            val currentChannel = entityStore.channels.value[message.channel_id]
+            val currentUser = userStore.currentUser.value
+            val author = message.author
+            val recipientUser = if (author != null && author.id != currentUser?.id) author else null
+            val recipientList = recipientUser?.let { listOf(it) }
+            val recipientIdList = recipientUser?.let { listOf(it.id) }
 
-        if (currentChannel != null) {
-            val updatedRecipients = if (!currentChannel.recipients.isNullOrEmpty()) {
-                currentChannel.recipients
-            } else {
-                recipientList
-            }
-            val updatedRecipientIds = if (!currentChannel.recipient_ids.isNullOrEmpty()) {
-                currentChannel.recipient_ids
-            } else {
-                recipientIdList
-            }
-            val updated = currentChannel.copy(
-                last_message_id = kotlinx.serialization.json.JsonPrimitive(message.id),
-                recipients = updatedRecipients,
-                recipient_ids = updatedRecipientIds
-            )
-            if (updated.guild_id == null && (updated.type == 1 || updated.type == 3)) {
-                guildStore.handleChannelCreateOrUpdate(updated)
-                if (updated.recipients.isNullOrEmpty()) {
+            if (currentChannel != null) {
+                val updatedRecipients = if (!currentChannel.recipients.isNullOrEmpty()) {
+                    currentChannel.recipients
+                } else {
+                    recipientList
+                }
+                val updatedRecipientIds = if (!currentChannel.recipient_ids.isNullOrEmpty()) {
+                    currentChannel.recipient_ids
+                } else {
+                    recipientIdList
+                }
+                val updated = currentChannel.copy(
+                    last_message_id = kotlinx.serialization.json.JsonPrimitive(message.id),
+                    recipients = updatedRecipients,
+                    recipient_ids = updatedRecipientIds
+                )
+                if (updated.guild_id == null && (updated.type == 1 || updated.type == 3)) {
+                    guildStore.handleChannelCreateOrUpdate(updated)
+                    if (updated.recipients.isNullOrEmpty()) {
+                        hydrateDmChannel(message.channel_id, message.id)
+                    }
+                } else {
+                    entityStore.updateChannel(updated)
+                }
+            } else if (message.guild_id == null) {
+                val dummyChannel = me.lampu.lampcord.shared.model.Channel(
+                    id = message.channel_id,
+                    type = 1,
+                    last_message_id = kotlinx.serialization.json.JsonPrimitive(message.id),
+                    recipients = recipientList,
+                    recipient_ids = recipientIdList
+                )
+                guildStore.handleChannelCreateOrUpdate(dummyChannel)
+                if (dummyChannel.recipients.isNullOrEmpty()) {
                     hydrateDmChannel(message.channel_id, message.id)
                 }
-            } else {
-                entityStore.updateChannel(updated)
-            }
-        } else if (message.guild_id == null) {
-            val dummyChannel = me.lampu.lampcord.shared.model.Channel(
-                id = message.channel_id,
-                type = 1,
-                last_message_id = kotlinx.serialization.json.JsonPrimitive(message.id),
-                recipients = recipientList,
-                recipient_ids = recipientIdList
-            )
-            guildStore.handleChannelCreateOrUpdate(dummyChannel)
-            if (dummyChannel.recipients.isNullOrEmpty()) {
-                hydrateDmChannel(message.channel_id, message.id)
             }
         }
 
@@ -130,19 +140,26 @@ class MessageEventHandler(
 
         messageStore.handleMessageCreate(message)
         
-        if (navigationStore.shouldAutoAcknowledge(message.channel_id)) {
-            scope.launch {
-                readStateStore.ackMessage(message.channel_id, message.id)
+        if (!message.isEphemeral) {
+            if (navigationStore.shouldAutoAcknowledge(message.channel_id)) {
+                scope.launch {
+                    readStateStore.ackMessage(message.channel_id, message.id)
+                }
+            } else {
+                val currentUserId = userStore.currentUser.value?.id
+                val myRoles = message.guild_id?.let { userStore.getMember(it, currentUserId ?: "")?.roles } ?: emptyList()
+                readStateStore.handleMessageCreate(message, currentUserId, myRoles)
             }
-        } else {
-            val currentUserId = userStore.currentUser.value?.id
-            val myRoles = message.guild_id?.let { userStore.getMember(it, currentUserId ?: "")?.roles } ?: emptyList()
-            readStateStore.handleMessageCreate(message, currentUserId, myRoles)
         }
     }
 
     private fun handleMessageUpdate(data: JsonElement) {
-        val message = json.decodeFromJsonElement<Message>(data)
+        val message = try {
+            json.decodeFromJsonElement<Message>(data)
+        } catch (e: Exception) {
+            Logging.e("MessageHandler", "Failed to parse MESSAGE_UPDATE", e)
+            return
+        }
         val jsonObject = data as? kotlinx.serialization.json.JsonObject ?: return
         messageStore.handleMessageUpdate(message, jsonObject)
     }
@@ -151,9 +168,20 @@ class MessageEventHandler(
         val obj = data as? kotlinx.serialization.json.JsonObject ?: return
         val id = obj["id"]?.jsonPrimitive?.content ?: return
         val channelId = obj["channel_id"]?.jsonPrimitive?.content ?: return
-        messageLogger.logDelete(channelId, id)
+        messageLogger.logDelete(id)
         messageStore.handleMessageDelete(id, channelId)
         readStateStore.handleMessageDelete(channelId, id)
+    }
+
+    private fun handleMessageDeleteBulk(data: JsonElement) {
+        val obj = data as? kotlinx.serialization.json.JsonObject ?: return
+        val ids = obj["ids"]?.jsonArray?.mapNotNull { (it as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull } ?: return
+        val channelId = obj["channel_id"]?.jsonPrimitive?.content ?: return
+        ids.forEach { id ->
+            messageLogger.logDelete(id)
+            messageStore.handleMessageDelete(id, channelId)
+            readStateStore.handleMessageDelete(channelId, id)
+        }
     }
 
     private fun handleMessageAck(data: JsonElement) {

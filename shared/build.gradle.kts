@@ -155,6 +155,7 @@ kotlin {
             implementation(libs.multiplatform.settings.no.arg)
 
             api(libs.androidx.navigation3.runtime)
+            api(libs.androidx.navigationevent.compose)
 
             implementation(libs.room.runtime)
             implementation(libs.sqlite.bundled)
@@ -164,6 +165,7 @@ kotlin {
 
             implementation(libs.coil.compose)
             implementation(libs.coil.network.ktor3)
+            implementation(libs.coil.svg)
             implementation(libs.composeWebview)
         }
 

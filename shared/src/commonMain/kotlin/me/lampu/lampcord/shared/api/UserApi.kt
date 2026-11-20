@@ -3,6 +3,7 @@ package me.lampu.lampcord.shared.api
 import io.ktor.client.call.body
 import io.ktor.client.plugins.timeout
 import io.ktor.client.request.delete
+import io.ktor.client.request.header
 import io.ktor.client.request.get
 import io.ktor.client.request.patch
 import io.ktor.client.request.post
@@ -10,10 +11,12 @@ import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.*
+import me.lampu.lampcord.shared.model.ActivityMetadata
 import me.lampu.lampcord.shared.model.ConnectedAccount
 import me.lampu.lampcord.shared.model.Gif
 import me.lampu.lampcord.shared.model.GuildFolder
@@ -74,6 +77,31 @@ class UserApi(private val rest: RestClient) {
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             Logging.e("Profile", "Error fetching user profile: ${e.message}")
+            null
+        }
+    }
+
+    suspend fun getActivityMetadata(
+        userId: String,
+        sessionId: String,
+        applicationId: String
+    ): ActivityMetadata? {
+        if (userId.isBlank() || sessionId.isBlank() || applicationId.isBlank()) return null
+        return try {
+            val response = rest.httpClient.get(
+                "${rest.apiBase}/users/$userId/sessions/$sessionId/activities/$applicationId/metadata"
+            ) {
+                standardHeaders(rest)
+            }
+            if (response.status.isSuccess() && response.status.value != 204) {
+                response.body<ActivityMetadata>()
+            } else {
+                null
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Logging.e("Activity", "Error fetching activity metadata: ${e.message}")
             null
         }
     }
@@ -394,6 +422,30 @@ class UserApi(private val rest: RestClient) {
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             Logging.e("FCM", "Error registering push token: ${e.message}")
+            false
+        }
+    }
+
+    suspend fun unregisterPushToken(token: String, authToken: String): Boolean {
+        if (authToken.isBlank() || token.isBlank()) return false
+        return try {
+            val response = rest.httpClient.delete("${rest.apiBase}/users/@me/devices") {
+                standardHeaders(rest)
+                // The session may already be cleared by the time this request runs.
+                header(HttpHeaders.Authorization, authToken)
+                contentType(ContentType.Application.Json)
+                setBody(buildJsonObject {
+                    put("provider", "gcm")
+                    put("token", token)
+                })
+            }
+            response.status.isSuccess().also { success ->
+                if (success) Logging.i("FCM", "Push token unregistered")
+                else Logging.e("FCM", "Discord rejected push unregistration: ${response.status}")
+            }
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            Logging.e("FCM", "Error unregistering push token: ${e.message}")
             false
         }
     }

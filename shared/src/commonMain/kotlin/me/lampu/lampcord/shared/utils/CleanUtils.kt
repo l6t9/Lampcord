@@ -87,7 +87,7 @@ object CleanUtils {
 
             val keep = when {
                 emoji -> !removeEmojis
-                dash -> true
+                dash -> !isCategory || !hideSymbols
                 hideSymbols -> isLetterOrDigitCp(codePoint) || ch == ' ' || ch == '_' || ch == '#'
                 else -> true
             }

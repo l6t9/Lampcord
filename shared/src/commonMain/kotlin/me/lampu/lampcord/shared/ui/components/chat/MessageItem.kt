@@ -78,6 +78,7 @@ import me.lampu.lampcord.shared.api.GuildApi
 import me.lampu.lampcord.shared.api.MessageApi
 import me.lampu.lampcord.shared.model.Emoji
 import me.lampu.lampcord.shared.model.Message
+import me.lampu.lampcord.shared.model.MessageInteraction
 import me.lampu.lampcord.shared.model.getDisplayUrl
 import me.lampu.lampcord.shared.model.previewText
 import me.lampu.lampcord.shared.state.ChannelNavigator
@@ -214,6 +215,12 @@ fun MessageItem(
             else PermissionHelper.hasPermission(currentMember, guild, channel, Permission.MANAGE_THREADS, currentUser?.id)
 
         val items = mutableListOf<ContextMenuItem>()
+
+        if (message.isEphemeral) {
+            items.add(ContextMenuItem("Dismiss", Icons.Default.Delete, onClick = {
+                scope.launch { messageStore.dismissEphemeral(message) }
+            }, group = "Destructive"))
+        }
 
         if (isMe) {
             items.add(ContextMenuItem("Edit Message", Icons.Filled.Edit, onClick = { messageStore.editingMessage = message }, group = "Primary"))
@@ -730,6 +737,28 @@ fun MessageItem(
                         }
                     }
 
+                    if (message.isEphemeral) {
+                        Row(
+                            modifier = Modifier.padding(top = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = "Only you can see this",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = "Dismiss",
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.clickableCursor {
+                                    scope.launch { messageStore.dismissEphemeral(message) }
+                                }
+                            )
+                        }
+                    }
+
                     MessageBody(message)
 
                     message.message_snapshots?.firstOrNull()?.let {
@@ -740,7 +769,9 @@ fun MessageItem(
                         ThreadStarterBar(message.thread)
                     }
 
-                    ReactionsView(message)
+                    if (userSettings?.render_reactions != false) {
+                        ReactionsView(message)
+                    }
                 }
 
                 Column(modifier = Modifier.fillMaxWidth()) {
@@ -748,8 +779,23 @@ fun MessageItem(
                         ReplyBar(message.referenced_message)
                     }
 
-                    if (message.interaction != null) {
-                        InteractionHeader(message.interaction, guildId = guildId)
+                    val headerInteraction = message.interaction ?: message.interaction_metadata?.let { metadata ->
+                        // Ephemeral responses carry interaction_metadata instead of
+                        // interaction; metadata has no command name, so use a
+                        // type-based label and reuse the existing header UI.
+                        MessageInteraction(
+                            id = metadata.id,
+                            type = metadata.type,
+                            name = when (metadata.type) {
+                                3 -> "component"
+                                5 -> "modal"
+                                else -> "command"
+                            },
+                            user = metadata.user
+                        )
+                    }
+                    if (headerInteraction != null) {
+                        InteractionHeader(headerInteraction, guildId = guildId)
                     }
 
                     if (isCompact) {
@@ -869,6 +915,28 @@ fun MessageItem(
                                     }
                                 }
 
+                                if (message.isEphemeral) {
+                                    Row(
+                                        modifier = Modifier.padding(top = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Text(
+                                            text = "Only you can see this",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Text(
+                                            text = "Dismiss",
+                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                            color = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.clickableCursor {
+                                                scope.launch { messageStore.dismissEphemeral(message) }
+                                            }
+                                        )
+                                    }
+                                }
+
                                 MessageBody(message)
 
                                 message.message_snapshots?.firstOrNull()?.let {
@@ -879,7 +947,9 @@ fun MessageItem(
                                     ThreadStarterBar(message.thread)
                                 }
 
-                                ReactionsView(message)
+                                if (userSettings?.render_reactions != false) {
+                                    ReactionsView(message)
+                                }
                             }
                         }
                     } else if (useBubbles) {

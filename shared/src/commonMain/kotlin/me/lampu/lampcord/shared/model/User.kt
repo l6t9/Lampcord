@@ -120,7 +120,8 @@ data class ConnectedAccount(
 data class ProfileBadge(
     val id: String,
     val icon: String,
-    val description: String
+    val description: String,
+    val link: String? = null
 )
 
 @Serializable
@@ -166,6 +167,8 @@ data class UserSettings(
     val inline_attachment_media: Boolean? = null,
     val inline_embed_media: Boolean? = null,
     val render_embeds: Boolean? = null,
+    /** Discord's "Show reactions" setting; null means the account default. */
+    val render_reactions: Boolean? = null,
     val animate_emoji: Boolean? = null,
     val animate_stickers: Int? = null,
     val explicit_content_filter: Int? = null,
@@ -183,6 +186,7 @@ data class UserSettings(
             theme = partial.theme ?: theme,
             developer_mode = partial.developer_mode ?: developer_mode,
             render_embeds = partial.render_embeds ?: render_embeds,
+            render_reactions = partial.render_reactions ?: render_reactions,
             inline_embed_media = partial.inline_embed_media ?: inline_embed_media,
             inline_attachment_media = partial.inline_attachment_media ?: inline_attachment_media,
             blocked_message_bar = partial.blocked_message_bar ?: blocked_message_bar,
@@ -209,6 +213,8 @@ data class UserSettings(
         val theme: String? = null,
         val developer_mode: Boolean? = null,
         val render_embeds: Boolean? = null,
+        /** Discord's "Show reactions" setting; null leaves the stored value unchanged. */
+        val render_reactions: Boolean? = null,
         val inline_embed_media: Boolean? = null,
         val inline_attachment_media: Boolean? = null,
         val blocked_message_bar: Boolean? = null,
@@ -239,7 +245,13 @@ data class FriendSourceFlags(
 )
 
 @Serializable
-data class CustomStatus(val text: String? = null, val emoji_id: String? = null, val emoji_name: String? = null)
+data class CustomStatus(
+    val text: String? = null,
+    val emoji_id: String? = null,
+    val emoji_name: String? = null,
+    /** ISO-8601 timestamp at which Discord expires this custom status. */
+    val expires_at: String? = null
+)
 
 @Serializable
 data class UserNoteUpdate(
