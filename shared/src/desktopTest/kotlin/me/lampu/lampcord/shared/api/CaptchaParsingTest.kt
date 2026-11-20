@@ -1,6 +1,7 @@
 package me.lampu.lampcord.shared.api
 
-import me.lampu.lampcord.shared.ui.components.captcha.captchaInjectionScript
+import me.lampu.lampcord.shared.ui.components.captcha.captchaPageHtml
+import me.lampu.lampcord.shared.ui.components.captcha.parseCaptchaBridgeEvent
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -49,9 +50,9 @@ class CaptchaParsingTest {
         val challenge = assertNotNullChallenge(
             """{"captcha_key":["x"],"captcha_service":"recaptcha_enterprise"}""",
         )
-        val script = captchaInjectionScript(challenge, "#000000", "dark")
-        assertTrue(script.contains("recaptcha/enterprise.js?render=6LeYqFcqAAAAAD6iZesmNgVulsO4PkpBdr6NVG6M"))
-        assertTrue(script.contains("grecaptcha.enterprise.execute(SITEKEY"))
+        val html = captchaPageHtml(challenge, "#000000", "dark")
+        assertTrue(html.contains("recaptcha/enterprise.js?render=6LeYqFcqAAAAAD6iZesmNgVulsO4PkpBdr6NVG6M"))
+        assertTrue(html.contains("grecaptcha.enterprise.execute(SITEKEY"))
     }
 
     @Test
@@ -59,9 +60,10 @@ class CaptchaParsingTest {
         val challenge = assertNotNullChallenge(
             """{"captcha_key":["x"],"captcha_sitekey":"k","captcha_service":"hcaptcha","should_serve_invisible":true}""",
         )
-        val script = captchaInjectionScript(challenge, "#000000", "dark")
-        assertTrue(script.contains("opts.size = 'invisible'"))
-        assertTrue(script.contains("hcaptcha.execute(widgetId"))
+        val html = captchaPageHtml(challenge, "#000000", "dark")
+        assertTrue(html.contains("opts.size = 'invisible'"))
+        assertTrue(html.contains("hcaptcha.execute(widgetId"))
+        assertTrue(html.contains("hcaptcha.render('captcha', opts)"))
     }
 
     @Test
@@ -69,11 +71,45 @@ class CaptchaParsingTest {
         val challenge = assertNotNullChallenge(
             """{"captcha_key":["x"],"captcha_sitekey":"k","captcha_service":"hcaptcha","captcha_rqdata":"rq-data","should_serve_invisible":true}""",
         )
-        val script = captchaInjectionScript(challenge, "#000000", "dark")
-        assertTrue(script.contains("hcaptcha.setData(widgetId, { rqdata: RQDATA })"))
-        assertTrue(script.contains("hcaptcha.execute(widgetId);"))
-        assertFalse(script.contains("hcaptcha.execute(widgetId, { rqdata: RQDATA })"))
-        assertTrue(script.contains("if (!INVISIBLE || widgetId === null"))
+        val html = captchaPageHtml(challenge, "#000000", "dark")
+        assertTrue(html.contains("hcaptcha.setData(widgetId, { rqdata: RQDATA })"))
+        assertTrue(html.contains("hcaptcha.execute(widgetId);"))
+        assertFalse(html.contains("hcaptcha.execute(widgetId, { rqdata: RQDATA })"))
+        assertTrue(html.contains("if (!INVISIBLE || widgetId === null"))
+    }
+
+    @Test
+    fun pageHasRealContainerAndNoTitleMessaging() {
+        val challenge = assertNotNullChallenge(
+            """{"captcha_key":["x"],"captcha_sitekey":"k","captcha_service":"hcaptcha"}""",
+        )
+        val html = captchaPageHtml(challenge, "#000000", "dark")
+        assertTrue(html.contains("""<div id="captcha"></div>"""))
+        assertTrue(html.contains("min-height: 78px"))
+        assertTrue(html.contains("callNative('lampcord.captcha'"))
+        assertFalse(html.contains("doc.title"))
+        assertFalse(html.contains("overlay"))
+    }
+
+    @Test
+    fun bridgeEventParsesKindSeqAndValue() {
+        val event = parseCaptchaBridgeEvent("""{"seq":4,"kind":"token","value":"abc"}""")
+        assertEquals(4L, event?.seq)
+        assertEquals("token", event?.kind)
+        assertEquals("abc", event?.value)
+    }
+
+    @Test
+    fun bridgeEventAllowsNullValue() {
+        val event = parseCaptchaBridgeEvent("""{"seq":1,"kind":"ready","value":null}""")
+        assertEquals("ready", event?.kind)
+        assertNull(event?.value)
+    }
+
+    @Test
+    fun malformedBridgeEventIsIgnored() {
+        assertNull(parseCaptchaBridgeEvent("not json"))
+        assertNull(parseCaptchaBridgeEvent("""{"kind":"ready"}"""))
     }
 
     private fun assertNotNullChallenge(body: String): CaptchaChallenge =

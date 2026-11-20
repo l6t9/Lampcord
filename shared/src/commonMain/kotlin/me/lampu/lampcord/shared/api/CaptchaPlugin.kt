@@ -9,9 +9,12 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.OutgoingContent
 import me.lampu.lampcord.shared.captcha.CaptchaCoordinator
+import me.lampu.lampcord.shared.captcha.CaptchaOutcome
 import me.lampu.lampcord.shared.utils.Logging
 
-class CaptchaCancelledException : Exception("Captcha was cancelled")
+open class CaptchaCancelledException(message: String = "Captcha was cancelled") : Exception(message)
+
+class CaptchaTimeoutException : CaptchaCancelledException("Captcha timed out")
 
 private const val MAX_CAPTCHA_ATTEMPTS = 3
 
@@ -29,10 +32,18 @@ val LampcordCaptchaPlugin = createClientPlugin("LampcordCaptcha", ::CaptchaPlugi
             call = call.save()
             val challenge = parseCaptchaChallenge(call.response.bodyAsText()) ?: break
             if (attempts >= MAX_CAPTCHA_ATTEMPTS) break
-            if (builder.body is OutgoingContent.ReadChannelContent) break
+            if (builder.body is OutgoingContent.ReadChannelContent ||
+                builder.body is OutgoingContent.WriteChannelContent
+            ) {
+                break
+            }
             attempts++
             Logging.i("Captcha", "Solving ${challenge.service.wireName} challenge, attempt $attempts")
-            val token = coordinator.solve(challenge) ?: throw CaptchaCancelledException()
+            val token = when (val outcome = coordinator.solve(challenge)) {
+                is CaptchaOutcome.Solved -> outcome.token
+                CaptchaOutcome.Cancelled -> throw CaptchaCancelledException()
+                CaptchaOutcome.TimedOut -> throw CaptchaTimeoutException()
+            }
             applyCaptchaHeaders(builder, token, challenge.rqtoken, challenge.sessionId)
             call = execute(builder)
         }
