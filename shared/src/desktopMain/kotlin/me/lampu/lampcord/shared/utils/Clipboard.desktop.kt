@@ -10,9 +10,12 @@ import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.InputStream
+import java.net.URI
 import java.nio.file.Files
 import java.util.Base64
 import javax.imageio.ImageIO
+import java.nio.file.Path
+import kotlin.io.path.name
 
 private const val TAG = "Clipboard"
 private const val IMAGE_NAME = "pasted_image.png"
@@ -61,7 +64,7 @@ actual fun getClipboardFiles(): List<Pair<String, ByteArray>> {
     return if (isWindows) {
         readClipboardFromPowerShell() ?: emptyList()
     } else {
-        readClipboardImageFromCommand() ?: emptyList()
+        readClipboardFilePathsFromCommand() ?: readClipboardImageFromCommand() ?: emptyList()
     }
 }
 
@@ -99,6 +102,37 @@ private fun readPastedImage(transferable: Transferable): Pair<String, ByteArray>
         }
     }
     return null
+}
+
+private fun readClipboardFilePathsFromCommand(): List<Pair<String, ByteArray>>? {
+    val commands = listOf(
+        listOf("wl-paste", "--type", "text/uri-list"),
+        listOf("xclip", "-selection", "clipboard", "-t", "text/uri-list", "-o"), // not tested on x11
+    )
+    val pathUriStringList = commands.firstNotNullOfOrNull { command ->
+        try {
+            val process = ProcessBuilder(command).start()
+            val text = process.inputStream.bufferedReader().use { it.readText() }
+            val exit = process.waitFor()
+            if (exit == 0 && text.isNotEmpty()) text.trim().split("\n")
+            else null
+        } catch (e: Exception) {
+            Logging.d(TAG, "Clipboard command unavailable: ${command.joinToString(" ")}")
+            null
+        }
+    } ?: emptyList()
+    if(pathUriStringList.isEmpty()) return null
+
+    return pathUriStringList.mapNotNull { pathUriString ->
+        try {
+            val path = Path.of(URI(pathUriString.trim().trimEnd('\u0000')))
+            val file = path.toFile()
+            path.name to file.readBytes()
+        } catch (e: Exception) {
+            Logging.e(TAG, "Received an invalid file path from clipboard: $pathUriString", e)
+            null
+        }
+    }
 }
 
 private fun readClipboardImageFromCommand(): List<Pair<String, ByteArray>>? {
