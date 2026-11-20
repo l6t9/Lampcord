@@ -14,40 +14,6 @@ import kotlin.time.Clock
 import kotlin.time.Instant
 
 object DateTimeUtils {
-//    fun formatTimestamp(isoString: String): String {
-//        return try {
-//            val instant = Instant.parse(isoString)
-//            val now = Clock.System.now()
-//            val timeZone = TimeZone.currentSystemDefault()
-//            val localDateTime = instant.toLocalDateTime(timeZone)
-//            val nowDate = now.toLocalDateTime(timeZone).date
-//
-//            val hour = localDateTime.hour
-//            val minute = localDateTime.minute.toString().padStart(2, '0')
-//            val amPm = if (hour >= 12) "PM" else "AM"
-//            val displayHour = when {
-//                hour == 0 -> 12
-//                hour > 12 -> hour - 12
-//                else -> hour
-//            }
-//            val timeString = "$displayHour:$minute $amPm"
-//
-//            val date = localDateTime.date
-//            when {
-//                date == nowDate -> timeString
-//                date.dayOfYear == nowDate.dayOfYear - 1 && date.year == nowDate.year -> "Yesterday at $timeString"
-//                else -> {
-//                    val month = date.month.number
-//                    val day = date.day
-//                    val year = date.year.toString().takeLast(2)
-//                    "$month/$day/$year, $timeString"
-//                }
-//            }
-//        } catch (e: Exception) {
-//            isoString.take(10)
-//        }
-//    }
-
     @OptIn(FormatStringsInDatetimeFormats::class)
     @Throws
     fun formatTimePattern(pattern: String): DateTimeFormat<LocalTime> {
@@ -209,36 +175,6 @@ object DateTimeUtils {
             }
         }
     }
-
-    fun getCurrentTime(): String {
-        val now = Clock.System.now()
-        val timeZone = TimeZone.currentSystemDefault()
-        val localDateTime = now.toLocalDateTime(timeZone)
-        val nowDate = now.toLocalDateTime(timeZone).date
-
-        val hour = localDateTime.hour
-        val minute = localDateTime.minute.toString().padStart(2, '0')
-        val amPm = if (hour >= 12) "PM" else "AM"
-        val displayHour = when {
-            hour == 0 -> 12
-            hour > 12 -> hour - 12
-            else -> hour
-        }
-        return ("$displayHour:$minute $amPm")
-    }
-
-    fun getCurrentTime24H(): String {
-        val now = Clock.System.now()
-        val timeZone = TimeZone.currentSystemDefault()
-        val localDateTime = now.toLocalDateTime(timeZone)
-        val nowDate = now.toLocalDateTime(timeZone).date
-
-        val hour = localDateTime.hour
-        val minute = localDateTime.minute.toString().padStart(2, '0')
-        return ("$hour:$minute")
-    }
-
-    fun now(): Long = Clock.System.now().toEpochMilliseconds()
 
     fun formatLogTimestamp(timestamp: Long): String {
         val instant = Instant.fromEpochMilliseconds(timestamp)

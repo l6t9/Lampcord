@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlin.concurrent.Volatile
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.milliseconds
 
 object Logging {
@@ -34,7 +35,7 @@ object Logging {
     var debugEnabled: Boolean = false
 
     data class LogEntry(
-        val timestamp: Long = DateTimeUtils.now(),
+        val timestamp: Long = Clock.System.now().toEpochMilliseconds(),
         val level: String,
         val tag: String,
         val message: String,
