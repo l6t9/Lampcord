@@ -2,6 +2,8 @@
 <resources>
     <string name="lampcord_captcha_description">Discord needs a quick check before this account can continue.</string>
     <string name="lampcord_captcha_title">Verify you're human</string>
+    <string name="lampcord_captcha_retry">Retry</string>
+    <string name="lampcord_captcha_failed">The captcha didn't load. Try again.</string>
     <string name="lampcord_captcha_webview_missing">Solving this captcha needs the Microsoft Edge WebView2 Runtime, which was not found. Install it, or complete this step in the official Discord app.</string>
     <string name="lampcord_guild_profile_invite_required">Invite Required</string>
     <string name="lampcord_guild_profile_joining">Joining…</string>
