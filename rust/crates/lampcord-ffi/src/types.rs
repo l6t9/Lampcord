@@ -69,8 +69,6 @@ pub enum ClientCommand {
 pub enum ClientEvent {
     SnapshotUpdated,
     ConnectionChanged(ConnectionState),
-    Error {
-        message: String,
-    },
+    Error { message: String },
     LoggedOut,
 }
