@@ -726,6 +726,16 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
+
+
+
+
+
+
+
+
 // A JNA Library to expose the extern-C FFI definitions.
 // This is an implementation detail which will be called internally by the public API.
 
@@ -755,7 +765,17 @@ internal interface UniffiLib : Library {
     ): Byte
     fun uniffi_lampcord_ffi_fn_method_lampcordclient_drain_events(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_lampcord_ffi_fn_method_lampcordclient_fetch_messages(`ptr`: Pointer,`channelId`: Long,`before`: RustBuffer.ByValue,`limit`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Byte
+    fun uniffi_lampcord_ffi_fn_method_lampcordclient_logout(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Byte
+    fun uniffi_lampcord_ffi_fn_method_lampcordclient_select_channel(`ptr`: Pointer,`channelId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Byte
+    fun uniffi_lampcord_ffi_fn_method_lampcordclient_select_guild(`ptr`: Pointer,`guildId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Byte
     fun uniffi_lampcord_ffi_fn_method_lampcordclient_send(`ptr`: Pointer,`command`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Byte
+    fun uniffi_lampcord_ffi_fn_method_lampcordclient_send_message(`ptr`: Pointer,`channelId`: Long,`content`: RustBuffer.ByValue,`replyToMessageId`: RustBuffer.ByValue,`replyToGuildId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Byte
     fun uniffi_lampcord_ffi_fn_method_lampcordclient_shutdown(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): Byte
@@ -877,7 +897,17 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_lampcord_ffi_checksum_method_lampcordclient_drain_events(
     ): Short
+    fun uniffi_lampcord_ffi_checksum_method_lampcordclient_fetch_messages(
+    ): Short
+    fun uniffi_lampcord_ffi_checksum_method_lampcordclient_logout(
+    ): Short
+    fun uniffi_lampcord_ffi_checksum_method_lampcordclient_select_channel(
+    ): Short
+    fun uniffi_lampcord_ffi_checksum_method_lampcordclient_select_guild(
+    ): Short
     fun uniffi_lampcord_ffi_checksum_method_lampcordclient_send(
+    ): Short
+    fun uniffi_lampcord_ffi_checksum_method_lampcordclient_send_message(
     ): Short
     fun uniffi_lampcord_ffi_checksum_method_lampcordclient_shutdown(
     ): Short
@@ -908,7 +938,22 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_drain_events() != 60917.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_fetch_messages() != 5089.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_logout() != 37370.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_select_channel() != 44661.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_select_guild() != 635.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_send() != 53716.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_send_message() != 20855.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_shutdown() != 26762.toShort()) {
@@ -1297,11 +1342,21 @@ public interface LampcordClientInterface {
      */
     fun `drainEvents`(): List<ClientEvent>
     
+    fun `fetchMessages`(`channelId`: kotlin.ULong, `before`: kotlin.ULong?, `limit`: kotlin.UByte?): kotlin.Boolean
+    
+    fun `logout`(): kotlin.Boolean
+    
+    fun `selectChannel`(`channelId`: kotlin.ULong?): kotlin.Boolean
+    
+    fun `selectGuild`(`guildId`: kotlin.ULong?): kotlin.Boolean
+    
     /**
      * Sends a command to the background worker.
      * Returns `false` if the worker is no longer running.
      */
     fun `send`(`command`: ClientCommand): kotlin.Boolean
+    
+    fun `sendMessage`(`channelId`: kotlin.ULong, `content`: kotlin.String, `replyToMessageId`: kotlin.ULong?, `replyToGuildId`: kotlin.ULong?): kotlin.Boolean
     
     /**
      * Convenience: request shutdown.
@@ -1434,6 +1489,54 @@ open class LampcordClient: Disposable, AutoCloseable, LampcordClientInterface {
     }
     
 
+    override fun `fetchMessages`(`channelId`: kotlin.ULong, `before`: kotlin.ULong?, `limit`: kotlin.UByte?): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_lampcord_ffi_fn_method_lampcordclient_fetch_messages(
+        it, FfiConverterULong.lower(`channelId`),FfiConverterOptionalULong.lower(`before`),FfiConverterOptionalUByte.lower(`limit`),_status)
+}
+    }
+    )
+    }
+    
+
+    override fun `logout`(): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_lampcord_ffi_fn_method_lampcordclient_logout(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    override fun `selectChannel`(`channelId`: kotlin.ULong?): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_lampcord_ffi_fn_method_lampcordclient_select_channel(
+        it, FfiConverterOptionalULong.lower(`channelId`),_status)
+}
+    }
+    )
+    }
+    
+
+    override fun `selectGuild`(`guildId`: kotlin.ULong?): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_lampcord_ffi_fn_method_lampcordclient_select_guild(
+        it, FfiConverterOptionalULong.lower(`guildId`),_status)
+}
+    }
+    )
+    }
+    
+
     
     /**
      * Sends a command to the background worker.
@@ -1444,6 +1547,18 @@ open class LampcordClient: Disposable, AutoCloseable, LampcordClientInterface {
     uniffiRustCall() { _status ->
     UniffiLib.INSTANCE.uniffi_lampcord_ffi_fn_method_lampcordclient_send(
         it, FfiConverterTypeClientCommand.lower(`command`),_status)
+}
+    }
+    )
+    }
+    
+
+    override fun `sendMessage`(`channelId`: kotlin.ULong, `content`: kotlin.String, `replyToMessageId`: kotlin.ULong?, `replyToGuildId`: kotlin.ULong?): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_lampcord_ffi_fn_method_lampcordclient_send_message(
+        it, FfiConverterULong.lower(`channelId`),FfiConverterString.lower(`content`),FfiConverterOptionalULong.lower(`replyToMessageId`),FfiConverterOptionalULong.lower(`replyToGuildId`),_status)
 }
     }
     )

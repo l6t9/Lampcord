@@ -64,6 +64,13 @@ class RustCoreBridge(
     fun drainEvents(): List<ClientEvent> = client.drainEvents()
     fun send(command: ClientCommand): Boolean = client.send(command)
     fun connectToken(token: String): Boolean = client.connectToken(token)
+    fun selectGuild(guildId: ULong?): Boolean = client.selectGuild(guildId)
+    fun selectChannel(channelId: ULong?): Boolean = client.selectChannel(channelId)
+    fun fetchMessages(channelId: ULong, before: ULong? = null, limit: UByte? = null): Boolean =
+        client.fetchMessages(channelId, before, limit)
+    fun sendMessage(channelId: ULong, content: String, replyToMessageId: ULong? = null, replyToGuildId: ULong? = null): Boolean =
+        client.sendMessage(channelId, content, replyToMessageId, replyToGuildId)
+    fun logout(): Boolean = client.logout()
 
     fun shutdown(): Boolean {
         pollJob?.cancel()

@@ -59,6 +59,46 @@ impl LampcordClient {
         self.send(ClientCommand::ConnectToken { token })
     }
 
+    pub fn select_guild(&self, guild_id: Option<u64>) -> bool {
+        self.send(ClientCommand::SelectGuild { guild_id })
+    }
+
+    pub fn select_channel(&self, channel_id: Option<u64>) -> bool {
+        self.send(ClientCommand::SelectChannel { channel_id })
+    }
+
+    pub fn fetch_messages(
+        &self,
+        channel_id: u64,
+        before: Option<u64>,
+        limit: Option<u8>,
+    ) -> bool {
+        self.send(ClientCommand::FetchMessages {
+            channel_id,
+            before,
+            limit,
+        })
+    }
+
+    pub fn send_message(
+        &self,
+        channel_id: u64,
+        content: String,
+        reply_to_message_id: Option<u64>,
+        reply_to_guild_id: Option<u64>,
+    ) -> bool {
+        self.send(ClientCommand::SendMessage {
+            channel_id,
+            content,
+            reply_to_message_id,
+            reply_to_guild_id,
+        })
+    }
+
+    pub fn logout(&self) -> bool {
+        self.send(ClientCommand::Logout)
+    }
+
     /// Convenience: request shutdown.
     pub fn shutdown(&self) -> bool {
         self.send(ClientCommand::Shutdown)
