@@ -9,8 +9,10 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import me.lampu.lampcord.shared.state.EntityStore
 import me.lampu.lampcord.shared.state.MessageStore
+import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.utils.Logging
 import uniffi.lampcord_ffi.ClientSnapshot
+import uniffi.lampcord_ffi.ConnectionState
 
 /**
  * Read-only parity slice: injects Rust core snapshots into existing Kotlin stores
@@ -20,6 +22,7 @@ class RustCoreIntegration(
     private val bridge: RustCoreBridge,
     private val entityStore: EntityStore,
     private val messageStore: MessageStore,
+    private val navigationStore: NavigationStore,
 ) : AutoCloseable {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var job: Job? = null
@@ -39,6 +42,20 @@ class RustCoreIntegration(
     }
 
     private fun inject(snap: ClientSnapshot) {
+        when (snap.connection) {
+            is ConnectionState.Ready, is ConnectionState.Connected -> {
+                navigationStore.isConnected = true
+                navigationStore.isConnecting = false
+            }
+            is ConnectionState.Connecting, is ConnectionState.Resuming -> {
+                navigationStore.isConnecting = true
+            }
+            is ConnectionState.Disconnected, is ConnectionState.Error -> {
+                navigationStore.isConnected = false
+                navigationStore.isConnecting = false
+            }
+        }
+
         val guilds = RustSnapshotMapper.mapGuilds(snap)
         val channels = RustSnapshotMapper.mapChannels(snap)
         val messages = RustSnapshotMapper.mapMessages(snap)

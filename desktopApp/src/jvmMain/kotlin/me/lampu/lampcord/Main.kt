@@ -36,6 +36,7 @@ import me.lampu.lampcord.shared.rpc.DesktopRPCServer
 import me.lampu.lampcord.shared.state.AppVisibilityStore
 import me.lampu.lampcord.shared.state.EntityStore
 import me.lampu.lampcord.shared.state.MessageStore
+import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.state.SessionManager
 import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.settings.Settings
@@ -60,6 +61,8 @@ import org.koin.core.context.stopKoin
 @OptIn(FlowPreview::class)
 fun main() {
     Logging.debugEnabled = Settings.shared.verboseLogging
+    me.lampu.lampcord.shared.state.RustCoreMode.enabled =
+        System.getProperty("lampcord.rustCore") == "true"
 
     fun initApp() {
         runCatching { getOrNull()?.getOrNull<SessionManager>()?.shutdown() }
@@ -209,6 +212,7 @@ fun main() {
                     val sessionManager: SessionManager = koinInject()
                     val entityStore: EntityStore = koinInject()
                     val messageStore: MessageStore = koinInject()
+                    val navigationStore: NavigationStore = koinInject()
                     DisposableEffect(sessionManager) {
                         val bridge = runCatching { RustCoreBridge() }.getOrNull()
                         if (bridge == null) {
@@ -217,7 +221,7 @@ fun main() {
                         } else {
                             rustBridge = bridge
                             Logging.i("RustCore", "RustCoreBridge PoC started")
-                            val integration = RustCoreIntegration(bridge, entityStore, messageStore)
+                            val integration = RustCoreIntegration(bridge, entityStore, messageStore, navigationStore)
                             integration.start()
                             val token = Settings.shared.discordToken.trim().takeIf { it.isNotBlank() }
                             if (token != null) {

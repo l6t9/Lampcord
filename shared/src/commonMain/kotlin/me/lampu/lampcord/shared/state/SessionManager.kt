@@ -9,6 +9,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.lampu.lampcord.shared.api.AuthApi
 import me.lampu.lampcord.shared.gateway.GatewayManager
+import me.lampu.lampcord.shared.utils.Logging
 import me.lampu.lampcord.shared.gateway.VoiceGatewayManager
 import me.lampu.lampcord.shared.api.ForgotPasswordResult
 import me.lampu.lampcord.shared.model.LoginRequest
@@ -100,6 +101,11 @@ class SessionManager(
         authApi.setToken(token)
         Settings.shared.discordToken = token
         loginFingerprint = null
+        if (RustCoreMode.enabled) {
+            Logging.i("SessionManager", "RustCoreMode enabled; skipping Kotlin gateway connect")
+            navigationStore.isConnecting = false
+            return
+        }
         navigationStore.isConnecting = true
         gatewayManager.connect(token)
         pushTokenRegistrar?.register()
