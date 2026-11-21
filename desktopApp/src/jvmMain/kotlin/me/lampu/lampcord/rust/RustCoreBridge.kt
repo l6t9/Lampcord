@@ -71,6 +71,10 @@ class RustCoreBridge(
         runCatching { client.fetchMessages(channelId, before, limit) }.isSuccess
     fun sendMessage(channelId: ULong, content: String, replyToMessageId: ULong? = null, replyToGuildId: ULong? = null): Boolean =
         runCatching { client.sendMessage(channelId, content, replyToMessageId, replyToGuildId) }.isSuccess
+    fun editMessage(channelId: ULong, messageId: ULong, content: String): Boolean =
+        runCatching { client.editMessage(channelId, messageId, content) }.isSuccess
+    fun deleteMessage(channelId: ULong, messageId: ULong): Boolean =
+        runCatching { client.deleteMessage(channelId, messageId) }.isSuccess
     fun sendTyping(channelId: ULong): Boolean = runCatching { client.sendTyping(channelId) }.isSuccess
     fun ackMessage(channelId: ULong, messageId: ULong): Boolean = runCatching { client.ackMessage(channelId, messageId) }.isSuccess
     fun logout(): Boolean = runCatching { client.logout() }.isSuccess

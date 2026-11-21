@@ -742,6 +742,10 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
+
+
 // A JNA Library to expose the extern-C FFI definitions.
 // This is an implementation detail which will be called internally by the public API.
 
@@ -773,8 +777,12 @@ internal interface UniffiLib : Library {
     ): Unit
     fun uniffi_lampcord_ffi_fn_method_lampcordclient_connect_token(`ptr`: Pointer,`token`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
+    fun uniffi_lampcord_ffi_fn_method_lampcordclient_delete_message(`ptr`: Pointer,`channelId`: Long,`messageId`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
     fun uniffi_lampcord_ffi_fn_method_lampcordclient_drain_events(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_lampcord_ffi_fn_method_lampcordclient_edit_message(`ptr`: Pointer,`channelId`: Long,`messageId`: Long,`content`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
     fun uniffi_lampcord_ffi_fn_method_lampcordclient_fetch_messages(`ptr`: Pointer,`channelId`: Long,`before`: RustBuffer.ByValue,`limit`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
     fun uniffi_lampcord_ffi_fn_method_lampcordclient_logout(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
@@ -911,7 +919,11 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_lampcord_ffi_checksum_method_lampcordclient_connect_token(
     ): Short
+    fun uniffi_lampcord_ffi_checksum_method_lampcordclient_delete_message(
+    ): Short
     fun uniffi_lampcord_ffi_checksum_method_lampcordclient_drain_events(
+    ): Short
+    fun uniffi_lampcord_ffi_checksum_method_lampcordclient_edit_message(
     ): Short
     fun uniffi_lampcord_ffi_checksum_method_lampcordclient_fetch_messages(
     ): Short
@@ -959,7 +971,13 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_connect_token() != 51841.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_delete_message() != 28675.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_drain_events() != 60917.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_edit_message() != 39766.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_fetch_messages() != 39570.toShort()) {
@@ -1371,10 +1389,14 @@ public interface LampcordClientInterface {
      */
     fun `connectToken`(`token`: kotlin.String)
     
+    fun `deleteMessage`(`channelId`: kotlin.ULong, `messageId`: kotlin.ULong)
+    
     /**
      * Drains pending events since the last call.
      */
     fun `drainEvents`(): List<ClientEvent>
+    
+    fun `editMessage`(`channelId`: kotlin.ULong, `messageId`: kotlin.ULong, `content`: kotlin.String)
     
     fun `fetchMessages`(`channelId`: kotlin.ULong, `before`: kotlin.ULong?, `limit`: kotlin.UByte?)
     
@@ -1537,6 +1559,18 @@ open class LampcordClient: Disposable, AutoCloseable, LampcordClientInterface {
     
 
     
+    @Throws(FfiClientException::class)override fun `deleteMessage`(`channelId`: kotlin.ULong, `messageId`: kotlin.ULong)
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(FfiClientException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lampcord_ffi_fn_method_lampcordclient_delete_message(
+        it, FfiConverterULong.lower(`channelId`),FfiConverterULong.lower(`messageId`),_status)
+}
+    }
+    
+    
+
+    
     /**
      * Drains pending events since the last call.
      */override fun `drainEvents`(): List<ClientEvent> {
@@ -1549,6 +1583,18 @@ open class LampcordClient: Disposable, AutoCloseable, LampcordClientInterface {
     }
     )
     }
+    
+
+    
+    @Throws(FfiClientException::class)override fun `editMessage`(`channelId`: kotlin.ULong, `messageId`: kotlin.ULong, `content`: kotlin.String)
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(FfiClientException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lampcord_ffi_fn_method_lampcordclient_edit_message(
+        it, FfiConverterULong.lower(`channelId`),FfiConverterULong.lower(`messageId`),FfiConverterString.lower(`content`),_status)
+}
+    }
+    
     
 
     
@@ -2034,6 +2080,19 @@ sealed class ClientCommand {
         companion object
     }
     
+    data class EditMessage(
+        val `channelId`: kotlin.ULong, 
+        val `messageId`: kotlin.ULong, 
+        val `content`: kotlin.String) : ClientCommand() {
+        companion object
+    }
+    
+    data class DeleteMessage(
+        val `channelId`: kotlin.ULong, 
+        val `messageId`: kotlin.ULong) : ClientCommand() {
+        companion object
+    }
+    
     data class SendTyping(
         val `channelId`: kotlin.ULong) : ClientCommand() {
         companion object
@@ -2083,15 +2142,24 @@ public object FfiConverterTypeClientCommand : FfiConverterRustBuffer<ClientComma
                 FfiConverterOptionalULong.read(buf),
                 FfiConverterOptionalULong.read(buf),
                 )
-            7 -> ClientCommand.SendTyping(
+            7 -> ClientCommand.EditMessage(
+                FfiConverterULong.read(buf),
+                FfiConverterULong.read(buf),
+                FfiConverterString.read(buf),
+                )
+            8 -> ClientCommand.DeleteMessage(
+                FfiConverterULong.read(buf),
                 FfiConverterULong.read(buf),
                 )
-            8 -> ClientCommand.AckMessage(
+            9 -> ClientCommand.SendTyping(
+                FfiConverterULong.read(buf),
+                )
+            10 -> ClientCommand.AckMessage(
                 FfiConverterULong.read(buf),
                 FfiConverterULong.read(buf),
                 )
-            9 -> ClientCommand.Logout
-            10 -> ClientCommand.Shutdown
+            11 -> ClientCommand.Logout
+            12 -> ClientCommand.Shutdown
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
         }
     }
@@ -2141,6 +2209,23 @@ public object FfiConverterTypeClientCommand : FfiConverterRustBuffer<ClientComma
                 + FfiConverterString.allocationSize(value.`content`)
                 + FfiConverterOptionalULong.allocationSize(value.`replyToMessageId`)
                 + FfiConverterOptionalULong.allocationSize(value.`replyToGuildId`)
+            )
+        }
+        is ClientCommand.EditMessage -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterULong.allocationSize(value.`channelId`)
+                + FfiConverterULong.allocationSize(value.`messageId`)
+                + FfiConverterString.allocationSize(value.`content`)
+            )
+        }
+        is ClientCommand.DeleteMessage -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterULong.allocationSize(value.`channelId`)
+                + FfiConverterULong.allocationSize(value.`messageId`)
             )
         }
         is ClientCommand.SendTyping -> {
@@ -2208,23 +2293,36 @@ public object FfiConverterTypeClientCommand : FfiConverterRustBuffer<ClientComma
                 FfiConverterOptionalULong.write(value.`replyToGuildId`, buf)
                 Unit
             }
-            is ClientCommand.SendTyping -> {
+            is ClientCommand.EditMessage -> {
                 buf.putInt(7)
                 FfiConverterULong.write(value.`channelId`, buf)
+                FfiConverterULong.write(value.`messageId`, buf)
+                FfiConverterString.write(value.`content`, buf)
                 Unit
             }
-            is ClientCommand.AckMessage -> {
+            is ClientCommand.DeleteMessage -> {
                 buf.putInt(8)
                 FfiConverterULong.write(value.`channelId`, buf)
                 FfiConverterULong.write(value.`messageId`, buf)
                 Unit
             }
-            is ClientCommand.Logout -> {
+            is ClientCommand.SendTyping -> {
                 buf.putInt(9)
+                FfiConverterULong.write(value.`channelId`, buf)
+                Unit
+            }
+            is ClientCommand.AckMessage -> {
+                buf.putInt(10)
+                FfiConverterULong.write(value.`channelId`, buf)
+                FfiConverterULong.write(value.`messageId`, buf)
+                Unit
+            }
+            is ClientCommand.Logout -> {
+                buf.putInt(11)
                 Unit
             }
             is ClientCommand.Shutdown -> {
-                buf.putInt(10)
+                buf.putInt(12)
                 Unit
             }
         }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }

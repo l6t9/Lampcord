@@ -561,6 +561,50 @@ async fn run(
                         }
                         publish(&connection, active_token.is_some(), &cache, selected_guild_id, selected_channel_id, &fetched_messages, &error, &snapshot, &events, &seq);
                     }
+                    ClientCommand::EditMessage { channel_id, message_id, content } => {
+                        let cid = Snowflake::from(channel_id);
+                        let mid = Snowflake::from(message_id);
+                        if let Some(rest_client) = rest.clone() {
+                            let config = default_rest_config(&api_base, active_token.clone());
+                            match api::message::edit_message(&*rest_client, &config, channel_id, message_id, &content).await {
+                                Ok(msg) => {
+                                    let entry = fetched_messages.entry(cid).or_default();
+                                    if let Some(existing) = entry.iter_mut().find(|m| m.id == mid) {
+                                        *existing = msg;
+                                    } else {
+                                        entry.push(msg);
+                                        entry.sort_by(|a, b| a.id.cmp(&b.id));
+                                    }
+                                    error = None;
+                                }
+                                Err(e) => {
+                                    error = Some(format!("Failed to edit message: {e}"));
+                                    push_event(&events, ClientEvent::Error { message: error.clone().unwrap_or_default() });
+                                }
+                            }
+                        }
+                        publish(&connection, active_token.is_some(), &cache, selected_guild_id, selected_channel_id, &fetched_messages, &error, &snapshot, &events, &seq);
+                    }
+                    ClientCommand::DeleteMessage { channel_id, message_id } => {
+                        let cid = Snowflake::from(channel_id);
+                        let mid = Snowflake::from(message_id);
+                        if let Some(rest_client) = rest.clone() {
+                            let config = default_rest_config(&api_base, active_token.clone());
+                            match api::message::delete_message(&*rest_client, &config, channel_id, message_id).await {
+                                Ok(()) => {
+                                    if let Some(entry) = fetched_messages.get_mut(&cid) {
+                                        entry.retain(|m| m.id != mid);
+                                    }
+                                    error = None;
+                                }
+                                Err(e) => {
+                                    error = Some(format!("Failed to delete message: {e}"));
+                                    push_event(&events, ClientEvent::Error { message: error.clone().unwrap_or_default() });
+                                }
+                            }
+                        }
+                        publish(&connection, active_token.is_some(), &cache, selected_guild_id, selected_channel_id, &fetched_messages, &error, &snapshot, &events, &seq);
+                    }
                     ClientCommand::SendTyping { channel_id } => {
                         if let Some(rest_client) = rest.clone() {
                             let config = default_rest_config(&api_base, active_token.clone());

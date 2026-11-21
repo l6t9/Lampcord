@@ -103,6 +103,26 @@ impl LampcordClient {
         })
     }
 
+    pub fn edit_message(
+        &self,
+        channel_id: u64,
+        message_id: u64,
+        content: String,
+    ) -> Result<(), FfiClientError> {
+        self.send(ClientCommand::EditMessage {
+            channel_id,
+            message_id,
+            content,
+        })
+    }
+
+    pub fn delete_message(&self, channel_id: u64, message_id: u64) -> Result<(), FfiClientError> {
+        self.send(ClientCommand::DeleteMessage {
+            channel_id,
+            message_id,
+        })
+    }
+
     pub fn send_typing(&self, channel_id: u64) -> Result<(), FfiClientError> {
         self.send(ClientCommand::SendTyping { channel_id })
     }

@@ -60,6 +60,15 @@ pub enum ClientCommand {
         reply_to_message_id: Option<u64>,
         reply_to_guild_id: Option<u64>,
     },
+    EditMessage {
+        channel_id: u64,
+        message_id: u64,
+        content: String,
+    },
+    DeleteMessage {
+        channel_id: u64,
+        message_id: u64,
+    },
     SendTyping {
         channel_id: u64,
     },
