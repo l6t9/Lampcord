@@ -217,11 +217,18 @@ fun main() {
                                 bridge.connectToken(token)
                             }
                             val job = rustScope.launch(Dispatchers.Default) {
-                                bridge.snapshots.collect { snap ->
-                                    Logging.i(
-                                        "RustCore",
-                                        "seq=${snap.seq} conn=${snap.connection} user=${snap.currentUser} guilds=${snap.guilds.size} channels=${snap.channels.size} msgs=${snap.messages.size}"
-                                    )
+                                launch {
+                                    bridge.snapshots.collect { snap ->
+                                        Logging.i(
+                                            "RustCore",
+                                            "seq=${snap.seq} conn=${snap.connection} user=${snap.currentUser} guilds=${snap.guilds.size} channels=${snap.channels.size} msgs=${snap.messages.size}"
+                                        )
+                                    }
+                                }
+                                launch {
+                                    bridge.events.collect { event ->
+                                        Logging.i("RustCore", "event=$event")
+                                    }
                                 }
                             }
                             onDispose {
