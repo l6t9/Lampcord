@@ -36,14 +36,14 @@ fun StatusIndicator(
         else -> "Offline"
     }
 
-    val effectiveBorderWidth = borderWidth ?: size * 0.18f
-    val isMobile = status == "mobile"
-    val shape = if (isMobile) RoundedCornerShape(size * 0.2f) else CircleShape
-    val boxHeight = if (isMobile) size * (12f / 8f) else size
+    val effectiveBorderWidth = borderWidth ?: (size * 0.18f)
+    val shape = if (status == "mobile") RoundedCornerShape(size * 0.2f) else CircleShape
+    val boxHeight = if (status == "mobile") size * (12f / 8f) else size
+    val boxWidth = if (status == "vr") size * 1.5f else size
 
     Box(
         modifier = modifier
-            .size(width = size, height = boxHeight)
+            .size(width = boxWidth, height = boxHeight)
             .clip(shape)
             .background(borderColor)
             .padding(effectiveBorderWidth)
