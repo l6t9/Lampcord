@@ -37,16 +37,20 @@ impl CaptchaSolver for NoopCaptchaSolver {
 
 struct StaticGatewayUrl {
     rest: Arc<RestClient<ReqwestRestTransport, NoopCaptchaSolver>>,
+    override_url: Option<String>,
 }
 
 #[async_trait]
 impl GatewayUrlProvider for StaticGatewayUrl {
     async fn gateway_url(&self) -> Option<String> {
+        if let Some(url) = &self.override_url {
+            return Some(url.clone());
+        }
         self.rest.gateway_url().await
     }
 }
 
-fn default_rest_config(token: Option<String>) -> RestConfig {
+fn default_rest_config(api_base: &str, token: Option<String>) -> RestConfig {
     let super_properties = serde_json::json!({
         "os": "Linux",
         "browser": "Discord Client",
@@ -69,6 +73,7 @@ fn default_rest_config(token: Option<String>) -> RestConfig {
         "lampcord-ffi-installation".to_owned(),
         "UTC".to_owned(),
     )
+    .with_api_base(api_base.to_owned())
 }
 
 #[derive(Clone)]
@@ -128,8 +133,10 @@ fn push_event(events: &Arc<Mutex<Vec<ClientEvent>>>, event: ClientEvent) {
 fn set_snapshot(
     snapshot: &Arc<Mutex<ClientSnapshot>>,
     events: &Arc<Mutex<Vec<ClientEvent>>>,
-    next: ClientSnapshot,
+    seq: &Arc<std::sync::atomic::AtomicU64>,
+    mut next: ClientSnapshot,
 ) {
+    next.seq = seq.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
     *snapshot.lock().expect("snapshot lock") = next;
     push_event(events, ClientEvent::SnapshotUpdated);
 }
@@ -232,6 +239,7 @@ fn build_snapshot(
     }
 
     ClientSnapshot {
+        seq: 0,
         connection,
         has_token: true,
         current_user_id,
@@ -264,7 +272,9 @@ async fn run(
     let mut should_reconnect = false;
     let mut _reconnect_attempt: u32 = 0;
     let _token_store = TokenStore::new();
+    let api_base = config.api_base.clone();
     let _config = config;
+    let seq = Arc::new(std::sync::atomic::AtomicU64::new(0));
 
     let publish = |connection: &ConnectionState,
                    has_token: bool,
@@ -274,7 +284,8 @@ async fn run(
                    fetched_messages: &HashMap<Snowflake, Vec<Message>>,
                    error: &Option<String>,
                    snapshot: &Arc<Mutex<ClientSnapshot>>,
-                   events: &Arc<Mutex<Vec<ClientEvent>>>| {
+                   events: &Arc<Mutex<Vec<ClientEvent>>>,
+                   seq: &Arc<std::sync::atomic::AtomicU64>| {
         let next = build_snapshot(
             connection.clone(),
             has_token,
@@ -284,7 +295,7 @@ async fn run(
             fetched_messages,
             error.clone(),
         );
-        set_snapshot(snapshot, events, next);
+        set_snapshot(snapshot, events, seq, next);
     };
 
     publish(
@@ -297,6 +308,7 @@ async fn run(
         &error,
         &snapshot,
         &events,
+        &seq,
     );
 
     loop {
@@ -322,7 +334,7 @@ async fn run(
                         error = None;
                         connection = ConnectionState::Disconnected;
                         push_event(&events, ClientEvent::LoggedOut);
-                        publish(&connection, active_token.is_some(), &cache, selected_guild_id, selected_channel_id, &fetched_messages, &error, &snapshot, &events);
+                        publish(&connection, active_token.is_some(), &cache, selected_guild_id, selected_channel_id, &fetched_messages, &error, &snapshot, &events, &seq);
                     }
                     ClientCommand::ConnectToken { token } => {
                         if let Some(task) = gateway_task.take() { task.abort(); }
@@ -340,13 +352,16 @@ async fn run(
                                 connection = ConnectionState::Error { message: e.to_string() };
                                 error = Some(format!("REST transport init failed: {e}"));
                                 should_reconnect = false;
-                                publish(&connection, active_token.is_some(), &cache, selected_guild_id, selected_channel_id, &fetched_messages, &error, &snapshot, &events);
+                                publish(&connection, active_token.is_some(), &cache, selected_guild_id, selected_channel_id, &fetched_messages, &error, &snapshot, &events, &seq);
                                 continue;
                             }
                         };
-                        let rest_client = Arc::new(RestClient::new(default_rest_config(Some(token.clone())), transport, NoopCaptchaSolver));
+                        let rest_client = Arc::new(RestClient::new(default_rest_config(&api_base, Some(token.clone())), transport, NoopCaptchaSolver));
                         let gw_transport = TungsteniteGatewayTransport::default();
-                        let url_provider = StaticGatewayUrl { rest: rest_client.clone() };
+                        let url_provider = StaticGatewayUrl {
+                            rest: rest_client.clone(),
+                            override_url: _config.gateway_url.clone(),
+                        };
                         let mut client = GatewayClient::new(gw_transport, url_provider);
                         let client_cache = client.cache().clone();
                         cache = Some(client_cache);
@@ -377,30 +392,30 @@ async fn run(
                             }
                         }));
                         push_event(&events, ClientEvent::ConnectionChanged(connection.clone()));
-                        publish(&connection, active_token.is_some(), &cache, selected_guild_id, selected_channel_id, &fetched_messages, &error, &snapshot, &events);
+                        publish(&connection, active_token.is_some(), &cache, selected_guild_id, selected_channel_id, &fetched_messages, &error, &snapshot, &events, &seq);
                     }
                     ClientCommand::SelectGuild { guild_id } => {
                         selected_guild_id = guild_id.map(Snowflake::from);
                         selected_channel_id = None;
-                        publish(&connection, active_token.is_some(), &cache, selected_guild_id, selected_channel_id, &fetched_messages, &error, &snapshot, &events);
+                        publish(&connection, active_token.is_some(), &cache, selected_guild_id, selected_channel_id, &fetched_messages, &error, &snapshot, &events, &seq);
                     }
                     ClientCommand::SelectChannel { channel_id } => {
                         selected_channel_id = channel_id.map(Snowflake::from);
                         if let Some(cid) = selected_channel_id {
                             if let Some(rest_client) = rest.clone() {
-                                let config = default_rest_config(active_token.clone());
+                                let config = default_rest_config(&api_base, active_token.clone());
                                 if let Ok(mut msgs) = api::fetch_channel_messages(&*rest_client, &config, cid, 50, None).await {
                                     msgs.sort_by(|a, b| a.id.cmp(&b.id));
                                     fetched_messages.insert(cid, msgs);
                                 }
                             }
                         }
-                        publish(&connection, active_token.is_some(), &cache, selected_guild_id, selected_channel_id, &fetched_messages, &error, &snapshot, &events);
+                        publish(&connection, active_token.is_some(), &cache, selected_guild_id, selected_channel_id, &fetched_messages, &error, &snapshot, &events, &seq);
                     }
                     ClientCommand::FetchMessages { channel_id, before, limit } => {
                         let cid = Snowflake::from(channel_id);
                         if let Some(rest_client) = rest.clone() {
-                            let config = default_rest_config(active_token.clone());
+                            let config = default_rest_config(&api_base, active_token.clone());
                             let limit = limit.unwrap_or(50).clamp(1, 100);
                             match api::fetch_channel_messages(&*rest_client, &config, cid, limit, before.map(Snowflake::from)).await {
                                 Ok(mut msgs) => {
@@ -423,12 +438,12 @@ async fn run(
                                 }
                             }
                         }
-                        publish(&connection, active_token.is_some(), &cache, selected_guild_id, selected_channel_id, &fetched_messages, &error, &snapshot, &events);
+                        publish(&connection, active_token.is_some(), &cache, selected_guild_id, selected_channel_id, &fetched_messages, &error, &snapshot, &events, &seq);
                     }
                     ClientCommand::SendMessage { channel_id, content, reply_to_message_id, reply_to_guild_id } => {
                         let cid = Snowflake::from(channel_id);
                         if let Some(rest_client) = rest.clone() {
-                            let config = default_rest_config(active_token.clone());
+                            let config = default_rest_config(&api_base, active_token.clone());
                             match api::send_channel_message_with_reply(&*rest_client, &config, cid, &content, reply_to_message_id, reply_to_guild_id).await {
                                 Ok(msg) => {
                                     let entry = fetched_messages.entry(cid).or_default();
@@ -444,7 +459,7 @@ async fn run(
                                 }
                             }
                         }
-                        publish(&connection, active_token.is_some(), &cache, selected_guild_id, selected_channel_id, &fetched_messages, &error, &snapshot, &events);
+                        publish(&connection, active_token.is_some(), &cache, selected_guild_id, selected_channel_id, &fetched_messages, &error, &snapshot, &events, &seq);
                     }
                 }
             }
@@ -483,7 +498,7 @@ async fn run(
                     GatewayEvent::Dispatch { .. } | GatewayEvent::HandlerErrors { .. } | GatewayEvent::HeartbeatSent | GatewayEvent::HeartbeatAck => {}
                 }
                 push_event(&events, ClientEvent::ConnectionChanged(connection.clone()));
-                publish(&connection, active_token.is_some(), &cache, selected_guild_id, selected_channel_id, &fetched_messages, &error, &snapshot, &events);
+                publish(&connection, active_token.is_some(), &cache, selected_guild_id, selected_channel_id, &fetched_messages, &error, &snapshot, &events, &seq);
             }
         }
     }

@@ -4,6 +4,9 @@
 //! It exposes simple, ownership-friendly types that can be adapted to
 //! UniFFI/cbindgen bindings.
 
+#[cfg(feature = "uniffi")]
+uniffi::setup_scaffolding!();
+
 pub mod error;
 pub mod runtime;
 pub mod snapshot;

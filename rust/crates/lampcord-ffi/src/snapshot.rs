@@ -4,6 +4,8 @@ use crate::types::ConnectionState;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct ClientSnapshot {
+    /// Monotonic snapshot sequence, incremented on each published snapshot.
+    pub seq: u64,
     pub connection: ConnectionState,
     pub has_token: bool,
     pub current_user_id: Option<u64>,
