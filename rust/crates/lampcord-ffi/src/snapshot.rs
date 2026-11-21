@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::types::ConnectionState;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
 pub struct ClientSnapshot {
     /// Monotonic snapshot sequence, incremented on each published snapshot.
     pub seq: u64,
@@ -19,6 +20,7 @@ pub struct ClientSnapshot {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
 pub struct GuildSnapshot {
     pub id: u64,
     pub name: String,
@@ -26,6 +28,7 @@ pub struct GuildSnapshot {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
 pub struct ChannelSnapshot {
     pub id: u64,
     pub guild_id: Option<u64>,
@@ -36,6 +39,7 @@ pub struct ChannelSnapshot {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
 pub struct MessageSnapshot {
     pub id: u64,
     pub channel_id: u64,

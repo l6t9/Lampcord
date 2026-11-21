@@ -23,12 +23,15 @@ pub use types::{ClientCommand, ClientConfig, ClientEvent, ConnectionState};
 /// The API is intentionally poll/snapshot based so it can be wrapped as
 /// Kotlin Flow / Swift AsyncSequence later.
 #[derive(Clone)]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Object))]
 pub struct LampcordClient {
     runtime: RuntimeHandle,
 }
 
+#[cfg_attr(feature = "uniffi", uniffi::export)]
 impl LampcordClient {
     /// Starts the background runtime worker.
+    #[cfg_attr(feature = "uniffi", uniffi::constructor)]
     pub fn start(config: ClientConfig) -> Self {
         Self {
             runtime: runtime::start(config),
@@ -52,10 +55,8 @@ impl LampcordClient {
     }
 
     /// Convenience: connect with a token.
-    pub fn connect_token(&self, token: impl Into<String>) -> bool {
-        self.send(ClientCommand::ConnectToken {
-            token: token.into(),
-        })
+    pub fn connect_token(&self, token: String) -> bool {
+        self.send(ClientCommand::ConnectToken { token })
     }
 
     /// Convenience: request shutdown.

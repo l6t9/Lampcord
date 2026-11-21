@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
 pub struct ClientConfig {
     pub api_base: String,
     pub gateway_url: Option<String>,
@@ -21,6 +22,7 @@ impl Default for ClientConfig {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(tag = "type", content = "value")]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Enum))]
 pub enum ConnectionState {
     #[default]
     Disconnected,
@@ -35,6 +37,7 @@ pub enum ConnectionState {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", content = "value")]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Enum))]
 pub enum ClientCommand {
     ConnectToken {
         token: String,
@@ -62,9 +65,12 @@ pub enum ClientCommand {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", content = "value")]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Enum))]
 pub enum ClientEvent {
     SnapshotUpdated,
     ConnectionChanged(ConnectionState),
-    Error { message: String },
+    Error {
+        message: String,
+    },
     LoggedOut,
 }
