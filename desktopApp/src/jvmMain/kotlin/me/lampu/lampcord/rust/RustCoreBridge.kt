@@ -71,6 +71,7 @@ class RustCoreBridge(
         runCatching { client.fetchMessages(channelId, before, limit) }.isSuccess
     fun sendMessage(channelId: ULong, content: String, replyToMessageId: ULong? = null, replyToGuildId: ULong? = null): Boolean =
         runCatching { client.sendMessage(channelId, content, replyToMessageId, replyToGuildId) }.isSuccess
+    fun sendTyping(channelId: ULong): Boolean = runCatching { client.sendTyping(channelId) }.isSuccess
     fun logout(): Boolean = runCatching { client.logout() }.isSuccess
 
     fun shutdown(): Boolean {

@@ -60,6 +60,9 @@ pub enum ClientCommand {
         reply_to_message_id: Option<u64>,
         reply_to_guild_id: Option<u64>,
     },
+    SendTyping {
+        channel_id: u64,
+    },
     Logout,
     Shutdown,
 }

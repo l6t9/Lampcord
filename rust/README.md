@@ -14,7 +14,7 @@ The GPUI desktop experiment is preserved on `archive/rust-gpui-desktop`.
 ## FFI surface (current)
 
 - **Config**: API base, gateway URL override, user agent, storage path.
-- **Commands**: `ConnectToken`, `ConnectStoredToken`, `SelectGuild/Channel`, `FetchMessages`, `SendMessage`, `Logout`, `Shutdown`.
+- **Commands**: `ConnectToken`, `ConnectStoredToken`, `SelectGuild/Channel`, `FetchMessages`, `SendMessage`, `SendTyping`, `Logout`, `Shutdown`.
 - **State**: pollable `ClientSnapshot` (seq, connection, token, user, guilds/channels/messages, error) + drained `ClientEvent`s.
 - **Errors**: `FfiClientError` (UniFFI flat error) for command failures.
 - **Persistence**: simple token-store file persistence via `storage_path`.

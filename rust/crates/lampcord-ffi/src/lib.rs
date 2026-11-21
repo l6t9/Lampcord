@@ -103,6 +103,10 @@ impl LampcordClient {
         })
     }
 
+    pub fn send_typing(&self, channel_id: u64) -> Result<(), FfiClientError> {
+        self.send(ClientCommand::SendTyping { channel_id })
+    }
+
     pub fn logout(&self) -> Result<(), FfiClientError> {
         self.send(ClientCommand::Logout)
     }

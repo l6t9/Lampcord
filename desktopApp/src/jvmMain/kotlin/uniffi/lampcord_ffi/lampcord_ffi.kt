@@ -738,6 +738,8 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
 // A JNA Library to expose the extern-C FFI definitions.
 // This is an implementation detail which will be called internally by the public API.
 
@@ -780,6 +782,8 @@ internal interface UniffiLib : Library {
     fun uniffi_lampcord_ffi_fn_method_lampcordclient_send(`ptr`: Pointer,`command`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
     fun uniffi_lampcord_ffi_fn_method_lampcordclient_send_message(`ptr`: Pointer,`channelId`: Long,`content`: RustBuffer.ByValue,`replyToMessageId`: RustBuffer.ByValue,`replyToGuildId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_lampcord_ffi_fn_method_lampcordclient_send_typing(`ptr`: Pointer,`channelId`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
     fun uniffi_lampcord_ffi_fn_method_lampcordclient_shutdown(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
@@ -915,6 +919,8 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_lampcord_ffi_checksum_method_lampcordclient_send_message(
     ): Short
+    fun uniffi_lampcord_ffi_checksum_method_lampcordclient_send_typing(
+    ): Short
     fun uniffi_lampcord_ffi_checksum_method_lampcordclient_shutdown(
     ): Short
     fun uniffi_lampcord_ffi_checksum_method_lampcordclient_snapshot(
@@ -963,6 +969,9 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_send_message() != 8527.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_send_typing() != 50922.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_shutdown() != 60528.toShort()) {
@@ -1371,6 +1380,8 @@ public interface LampcordClientInterface {
     
     fun `sendMessage`(`channelId`: kotlin.ULong, `content`: kotlin.String, `replyToMessageId`: kotlin.ULong?, `replyToGuildId`: kotlin.ULong?)
     
+    fun `sendTyping`(`channelId`: kotlin.ULong)
+    
     /**
      * Convenience: request shutdown.
      */
@@ -1587,6 +1598,18 @@ open class LampcordClient: Disposable, AutoCloseable, LampcordClientInterface {
     uniffiRustCallWithError(FfiClientException) { _status ->
     UniffiLib.INSTANCE.uniffi_lampcord_ffi_fn_method_lampcordclient_send_message(
         it, FfiConverterULong.lower(`channelId`),FfiConverterString.lower(`content`),FfiConverterOptionalULong.lower(`replyToMessageId`),FfiConverterOptionalULong.lower(`replyToGuildId`),_status)
+}
+    }
+    
+    
+
+    
+    @Throws(FfiClientException::class)override fun `sendTyping`(`channelId`: kotlin.ULong)
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(FfiClientException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lampcord_ffi_fn_method_lampcordclient_send_typing(
+        it, FfiConverterULong.lower(`channelId`),_status)
 }
     }
     
@@ -1988,6 +2011,11 @@ sealed class ClientCommand {
         companion object
     }
     
+    data class SendTyping(
+        val `channelId`: kotlin.ULong) : ClientCommand() {
+        companion object
+    }
+    
     object Logout : ClientCommand()
     
     
@@ -2026,8 +2054,11 @@ public object FfiConverterTypeClientCommand : FfiConverterRustBuffer<ClientComma
                 FfiConverterOptionalULong.read(buf),
                 FfiConverterOptionalULong.read(buf),
                 )
-            7 -> ClientCommand.Logout
-            8 -> ClientCommand.Shutdown
+            7 -> ClientCommand.SendTyping(
+                FfiConverterULong.read(buf),
+                )
+            8 -> ClientCommand.Logout
+            9 -> ClientCommand.Shutdown
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
         }
     }
@@ -2077,6 +2108,13 @@ public object FfiConverterTypeClientCommand : FfiConverterRustBuffer<ClientComma
                 + FfiConverterString.allocationSize(value.`content`)
                 + FfiConverterOptionalULong.allocationSize(value.`replyToMessageId`)
                 + FfiConverterOptionalULong.allocationSize(value.`replyToGuildId`)
+            )
+        }
+        is ClientCommand.SendTyping -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterULong.allocationSize(value.`channelId`)
             )
         }
         is ClientCommand.Logout -> {
@@ -2129,12 +2167,17 @@ public object FfiConverterTypeClientCommand : FfiConverterRustBuffer<ClientComma
                 FfiConverterOptionalULong.write(value.`replyToGuildId`, buf)
                 Unit
             }
-            is ClientCommand.Logout -> {
+            is ClientCommand.SendTyping -> {
                 buf.putInt(7)
+                FfiConverterULong.write(value.`channelId`, buf)
+                Unit
+            }
+            is ClientCommand.Logout -> {
+                buf.putInt(8)
                 Unit
             }
             is ClientCommand.Shutdown -> {
-                buf.putInt(8)
+                buf.putInt(9)
                 Unit
             }
         }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }

@@ -561,6 +561,16 @@ async fn run(
                         }
                         publish(&connection, active_token.is_some(), &cache, selected_guild_id, selected_channel_id, &fetched_messages, &error, &snapshot, &events, &seq);
                     }
+                    ClientCommand::SendTyping { channel_id } => {
+                        if let Some(rest_client) = rest.clone() {
+                            let config = default_rest_config(&api_base, active_token.clone());
+                            if let Err(e) = api::channel::trigger_typing(&*rest_client, &config, channel_id).await {
+                                error = Some(format!("Failed to send typing: {e}"));
+                                push_event(&events, ClientEvent::Error { message: error.clone().unwrap_or_default() });
+                            }
+                        }
+                        publish(&connection, active_token.is_some(), &cache, selected_guild_id, selected_channel_id, &fetched_messages, &error, &snapshot, &events, &seq);
+                    }
                 }
             }
             maybe_gw = async {
