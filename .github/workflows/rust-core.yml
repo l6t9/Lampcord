@@ -52,7 +52,7 @@ jobs:
         run: cargo build -p lampcord-ffi --features uniffi
         working-directory: rust
       - name: Generate Kotlin bindings
-        run: cargo run -p lampcord-ffi --features bindgen -- generate --library target/debug/liblampcord_ffi.so --language kotlin --out-dir ../desktopApp/src/jvmMain/kotlin
+        run: cargo run -p lampcord-ffi --features bindgen -- generate --library target/debug/liblampcord_ffi.so --language kotlin --out-dir ../shared/src/desktopMain/kotlin
         working-directory: rust
       - name: JVM smoke test
         run: ./gradlew :desktopApp:smokeRustFfi --console=plain

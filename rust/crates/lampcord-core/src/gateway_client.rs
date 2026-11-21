@@ -40,6 +40,7 @@ pub enum GatewayEvent {
     Resumed,
     Dispatch {
         event_type: String,
+        data: Option<serde_json::Value>,
     },
     InvalidSession {
         resumable: bool,
@@ -511,6 +512,7 @@ impl<T: GatewayTransport, U: GatewayUrlProvider> GatewayClient<T, U> {
                                         _ => {
                                             let _ = tx.send(GatewayEvent::Dispatch {
                                                 event_type: event_type.to_owned(),
+                                                data: payload.get("d").cloned(),
                                             });
                                         }
                                     }

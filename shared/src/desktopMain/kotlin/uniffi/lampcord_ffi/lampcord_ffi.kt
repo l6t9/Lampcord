@@ -654,6 +654,70 @@ internal open class UniffiForeignFutureStructVoid(
 internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
     fun callback(`callbackData`: Long,`result`: UniffiForeignFutureStructVoid.UniffiByValue,)
 }
+internal interface UniffiCallbackInterfacePlatformSecretStoreMethod0 : com.sun.jna.Callback {
+    fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
+}
+internal interface UniffiCallbackInterfacePlatformSecretStoreMethod1 : com.sun.jna.Callback {
+    fun callback(`uniffiHandle`: Long,`value`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
+}
+internal interface UniffiCallbackInterfacePlatformSecretStoreMethod2 : com.sun.jna.Callback {
+    fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
+}
+@Structure.FieldOrder("load", "save", "clear", "uniffiFree")
+internal open class UniffiVTableCallbackInterfacePlatformSecretStore(
+    @JvmField internal var `load`: UniffiCallbackInterfacePlatformSecretStoreMethod0? = null,
+    @JvmField internal var `save`: UniffiCallbackInterfacePlatformSecretStoreMethod1? = null,
+    @JvmField internal var `clear`: UniffiCallbackInterfacePlatformSecretStoreMethod2? = null,
+    @JvmField internal var `uniffiFree`: UniffiCallbackInterfaceFree? = null,
+) : Structure() {
+    class UniffiByValue(
+        `load`: UniffiCallbackInterfacePlatformSecretStoreMethod0? = null,
+        `save`: UniffiCallbackInterfacePlatformSecretStoreMethod1? = null,
+        `clear`: UniffiCallbackInterfacePlatformSecretStoreMethod2? = null,
+        `uniffiFree`: UniffiCallbackInterfaceFree? = null,
+    ): UniffiVTableCallbackInterfacePlatformSecretStore(`load`,`save`,`clear`,`uniffiFree`,), Structure.ByValue
+
+   internal fun uniffiSetValue(other: UniffiVTableCallbackInterfacePlatformSecretStore) {
+        `load` = other.`load`
+        `save` = other.`save`
+        `clear` = other.`clear`
+        `uniffiFree` = other.`uniffiFree`
+    }
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -756,6 +820,7 @@ internal interface UniffiLib : Library {
             .also { lib: UniffiLib ->
                 uniffiCheckContractApiVersion(lib)
                 uniffiCheckApiChecksums(lib)
+                uniffiCallbackInterfacePlatformSecretStore.register(lib)
                 }
         }
         
@@ -771,7 +836,13 @@ internal interface UniffiLib : Library {
     ): Unit
     fun uniffi_lampcord_ffi_fn_constructor_lampcordclient_start(`config`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Pointer
+    fun uniffi_lampcord_ffi_fn_constructor_lampcordclient_start_with_store(`config`: RustBuffer.ByValue,`store`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
     fun uniffi_lampcord_ffi_fn_method_lampcordclient_ack_message(`ptr`: Pointer,`channelId`: Long,`messageId`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_lampcord_ffi_fn_method_lampcordclient_add_reaction(`ptr`: Pointer,`channelId`: Long,`messageId`: Long,`emoji`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_lampcord_ffi_fn_method_lampcordclient_cancel_remote_auth(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
     fun uniffi_lampcord_ffi_fn_method_lampcordclient_connect_stored_token(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
@@ -783,9 +854,17 @@ internal interface UniffiLib : Library {
     ): RustBuffer.ByValue
     fun uniffi_lampcord_ffi_fn_method_lampcordclient_edit_message(`ptr`: Pointer,`channelId`: Long,`messageId`: Long,`content`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
+    fun uniffi_lampcord_ffi_fn_method_lampcordclient_fetch_mentions(`ptr`: Pointer,`limit`: RustBuffer.ByValue,`before`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
     fun uniffi_lampcord_ffi_fn_method_lampcordclient_fetch_messages(`ptr`: Pointer,`channelId`: Long,`before`: RustBuffer.ByValue,`limit`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
+    fun uniffi_lampcord_ffi_fn_method_lampcordclient_forgot_password(`ptr`: Pointer,`login`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_lampcord_ffi_fn_method_lampcordclient_login_password(`ptr`: Pointer,`login`: RustBuffer.ByValue,`password`: RustBuffer.ByValue,`captchaKey`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
     fun uniffi_lampcord_ffi_fn_method_lampcordclient_logout(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_lampcord_ffi_fn_method_lampcordclient_remove_reaction(`ptr`: Pointer,`channelId`: Long,`messageId`: Long,`emoji`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
     fun uniffi_lampcord_ffi_fn_method_lampcordclient_select_channel(`ptr`: Pointer,`channelId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
@@ -795,12 +874,34 @@ internal interface UniffiLib : Library {
     ): Unit
     fun uniffi_lampcord_ffi_fn_method_lampcordclient_send_message(`ptr`: Pointer,`channelId`: Long,`content`: RustBuffer.ByValue,`replyToMessageId`: RustBuffer.ByValue,`replyToGuildId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
+    fun uniffi_lampcord_ffi_fn_method_lampcordclient_send_mfa_sms(`ptr`: Pointer,`ticket`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
     fun uniffi_lampcord_ffi_fn_method_lampcordclient_send_typing(`ptr`: Pointer,`channelId`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_lampcord_ffi_fn_method_lampcordclient_set_status(`ptr`: Pointer,`status`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
     fun uniffi_lampcord_ffi_fn_method_lampcordclient_shutdown(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
     fun uniffi_lampcord_ffi_fn_method_lampcordclient_snapshot(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_lampcord_ffi_fn_method_lampcordclient_start_remote_auth(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_lampcord_ffi_fn_method_lampcordclient_submit_mfa(`ptr`: Pointer,`code`: RustBuffer.ByValue,`ticket`: RustBuffer.ByValue,`method`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_lampcord_ffi_fn_clone_platformsecretstore(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_lampcord_ffi_fn_free_platformsecretstore(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_lampcord_ffi_fn_init_callback_vtable_platformsecretstore(`vtable`: UniffiVTableCallbackInterfacePlatformSecretStore,
+    ): Unit
+    fun uniffi_lampcord_ffi_fn_method_platformsecretstore_load(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_lampcord_ffi_fn_method_platformsecretstore_save(`ptr`: Pointer,`value`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_lampcord_ffi_fn_method_platformsecretstore_clear(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_lampcord_ffi_fn_func_snapshot_schema_version(uniffi_out_err: UniffiRustCallStatus, 
+    ): Int
     fun ffi_lampcord_ffi_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun ffi_lampcord_ffi_rustbuffer_from_bytes(`bytes`: ForeignBytes.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -913,7 +1014,13 @@ internal interface UniffiLib : Library {
     ): Unit
     fun ffi_lampcord_ffi_rust_future_complete_void(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
+    fun uniffi_lampcord_ffi_checksum_func_snapshot_schema_version(
+    ): Short
     fun uniffi_lampcord_ffi_checksum_method_lampcordclient_ack_message(
+    ): Short
+    fun uniffi_lampcord_ffi_checksum_method_lampcordclient_add_reaction(
+    ): Short
+    fun uniffi_lampcord_ffi_checksum_method_lampcordclient_cancel_remote_auth(
     ): Short
     fun uniffi_lampcord_ffi_checksum_method_lampcordclient_connect_stored_token(
     ): Short
@@ -925,9 +1032,17 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_lampcord_ffi_checksum_method_lampcordclient_edit_message(
     ): Short
+    fun uniffi_lampcord_ffi_checksum_method_lampcordclient_fetch_mentions(
+    ): Short
     fun uniffi_lampcord_ffi_checksum_method_lampcordclient_fetch_messages(
     ): Short
+    fun uniffi_lampcord_ffi_checksum_method_lampcordclient_forgot_password(
+    ): Short
+    fun uniffi_lampcord_ffi_checksum_method_lampcordclient_login_password(
+    ): Short
     fun uniffi_lampcord_ffi_checksum_method_lampcordclient_logout(
+    ): Short
+    fun uniffi_lampcord_ffi_checksum_method_lampcordclient_remove_reaction(
     ): Short
     fun uniffi_lampcord_ffi_checksum_method_lampcordclient_select_channel(
     ): Short
@@ -937,13 +1052,29 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_lampcord_ffi_checksum_method_lampcordclient_send_message(
     ): Short
+    fun uniffi_lampcord_ffi_checksum_method_lampcordclient_send_mfa_sms(
+    ): Short
     fun uniffi_lampcord_ffi_checksum_method_lampcordclient_send_typing(
+    ): Short
+    fun uniffi_lampcord_ffi_checksum_method_lampcordclient_set_status(
     ): Short
     fun uniffi_lampcord_ffi_checksum_method_lampcordclient_shutdown(
     ): Short
     fun uniffi_lampcord_ffi_checksum_method_lampcordclient_snapshot(
     ): Short
+    fun uniffi_lampcord_ffi_checksum_method_lampcordclient_start_remote_auth(
+    ): Short
+    fun uniffi_lampcord_ffi_checksum_method_lampcordclient_submit_mfa(
+    ): Short
+    fun uniffi_lampcord_ffi_checksum_method_platformsecretstore_load(
+    ): Short
+    fun uniffi_lampcord_ffi_checksum_method_platformsecretstore_save(
+    ): Short
+    fun uniffi_lampcord_ffi_checksum_method_platformsecretstore_clear(
+    ): Short
     fun uniffi_lampcord_ffi_checksum_constructor_lampcordclient_start(
+    ): Short
+    fun uniffi_lampcord_ffi_checksum_constructor_lampcordclient_start_with_store(
     ): Short
     fun ffi_lampcord_ffi_uniffi_contract_version(
     ): Int
@@ -962,28 +1093,49 @@ private fun uniffiCheckContractApiVersion(lib: UniffiLib) {
 
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: UniffiLib) {
+    if (lib.uniffi_lampcord_ffi_checksum_func_snapshot_schema_version() != 32216.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_ack_message() != 776.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_connect_stored_token() != 46670.toShort()) {
+    if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_add_reaction() != 7002.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_connect_token() != 51841.toShort()) {
+    if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_cancel_remote_auth() != 7695.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_connect_stored_token() != 34084.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_connect_token() != 16742.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_delete_message() != 28675.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_drain_events() != 60917.toShort()) {
+    if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_drain_events() != 46419.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_edit_message() != 39766.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_fetch_mentions() != 968.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_fetch_messages() != 39570.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_forgot_password() != 18647.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_login_password() != 28611.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_logout() != 22595.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_remove_reaction() != 5872.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_select_channel() != 29773.toShort()) {
@@ -992,22 +1144,46 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_select_guild() != 46582.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_send() != 27164.toShort()) {
+    if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_send() != 20879.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_send_message() != 8527.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_send_mfa_sms() != 52554.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_send_typing() != 50922.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_shutdown() != 60528.toShort()) {
+    if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_set_status() != 34354.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_snapshot() != 15221.toShort()) {
+    if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_shutdown() != 13755.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_lampcord_ffi_checksum_constructor_lampcordclient_start() != 24385.toShort()) {
+    if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_snapshot() != 7279.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_start_remote_auth() != 38958.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_submit_mfa() != 7978.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lampcord_ffi_checksum_method_platformsecretstore_load() != 492.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lampcord_ffi_checksum_method_platformsecretstore_save() != 46114.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lampcord_ffi_checksum_method_platformsecretstore_clear() != 52737.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lampcord_ffi_checksum_constructor_lampcordclient_start() != 973.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lampcord_ffi_checksum_constructor_lampcordclient_start_with_store() != 61870.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
 }
@@ -1077,6 +1253,29 @@ public object FfiConverterUByte: FfiConverter<UByte, Byte> {
 
     override fun write(value: UByte, buf: ByteBuffer) {
         buf.put(value.toByte())
+    }
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterUInt: FfiConverter<UInt, Int> {
+    override fun lift(value: Int): UInt {
+        return value.toUInt()
+    }
+
+    override fun read(buf: ByteBuffer): UInt {
+        return lift(buf.getInt())
+    }
+
+    override fun lower(value: UInt): Int {
+        return value.toInt()
+    }
+
+    override fun allocationSize(value: UInt) = 4UL
+
+    override fun write(value: UInt, buf: ByteBuffer) {
+        buf.putInt(value.toInt())
     }
 }
 
@@ -1368,73 +1567,61 @@ private class JavaLangRefCleanable(
 ) : UniffiCleaner.Cleanable {
     override fun clean() = cleanable.clean()
 }
-/**
- * High-level client handle for Kotlin/Swift/desktop frontends.
- *
- * Internally this owns a background Tokio runtime and a command-driven worker.
- * The API is intentionally poll/snapshot based so it can be wrapped as
- * Kotlin Flow / Swift AsyncSequence later.
- */
 public interface LampcordClientInterface {
     
     fun `ackMessage`(`channelId`: kotlin.ULong, `messageId`: kotlin.ULong)
     
-    /**
-     * Connect using the first stored token from storage_path, if available.
-     */
+    fun `addReaction`(`channelId`: kotlin.ULong, `messageId`: kotlin.ULong, `emoji`: kotlin.String)
+    
+    fun `cancelRemoteAuth`()
+    
     fun `connectStoredToken`()
     
-    /**
-     * Convenience: connect with a token.
-     */
     fun `connectToken`(`token`: kotlin.String)
     
     fun `deleteMessage`(`channelId`: kotlin.ULong, `messageId`: kotlin.ULong)
     
-    /**
-     * Drains pending events since the last call.
-     */
-    fun `drainEvents`(): List<ClientEvent>
+    fun `drainEvents`(): List<ClientEventEnvelope>
     
     fun `editMessage`(`channelId`: kotlin.ULong, `messageId`: kotlin.ULong, `content`: kotlin.String)
     
+    fun `fetchMentions`(`limit`: kotlin.UByte?, `before`: kotlin.ULong?)
+    
     fun `fetchMessages`(`channelId`: kotlin.ULong, `before`: kotlin.ULong?, `limit`: kotlin.UByte?)
     
+    fun `forgotPassword`(`login`: kotlin.String)
+    
+    fun `loginPassword`(`login`: kotlin.String, `password`: kotlin.String, `captchaKey`: kotlin.String?)
+    
     fun `logout`()
+    
+    fun `removeReaction`(`channelId`: kotlin.ULong, `messageId`: kotlin.ULong, `emoji`: kotlin.String)
     
     fun `selectChannel`(`channelId`: kotlin.ULong?)
     
     fun `selectGuild`(`guildId`: kotlin.ULong?)
     
-    /**
-     * Sends a command to the background worker.
-     */
     fun `send`(`command`: ClientCommand)
     
     fun `sendMessage`(`channelId`: kotlin.ULong, `content`: kotlin.String, `replyToMessageId`: kotlin.ULong?, `replyToGuildId`: kotlin.ULong?)
     
+    fun `sendMfaSms`(`ticket`: kotlin.String)
+    
     fun `sendTyping`(`channelId`: kotlin.ULong)
     
-    /**
-     * Convenience: request shutdown.
-     */
+    fun `setStatus`(`status`: kotlin.String)
+    
     fun `shutdown`()
     
-    /**
-     * Returns the latest snapshot.
-     */
     fun `snapshot`(): ClientSnapshot
+    
+    fun `startRemoteAuth`()
+    
+    fun `submitMfa`(`code`: kotlin.String, `ticket`: kotlin.String, `method`: kotlin.String)
     
     companion object
 }
 
-/**
- * High-level client handle for Kotlin/Swift/desktop frontends.
- *
- * Internally this owns a background Tokio runtime and a command-driven worker.
- * The API is intentionally poll/snapshot based so it can be wrapped as
- * Kotlin Flow / Swift AsyncSequence later.
- */
 open class LampcordClient: Disposable, AutoCloseable, LampcordClientInterface {
 
     constructor(pointer: Pointer) {
@@ -1529,9 +1716,30 @@ open class LampcordClient: Disposable, AutoCloseable, LampcordClientInterface {
     
 
     
-    /**
-     * Connect using the first stored token from storage_path, if available.
-     */
+    @Throws(FfiClientException::class)override fun `addReaction`(`channelId`: kotlin.ULong, `messageId`: kotlin.ULong, `emoji`: kotlin.String)
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(FfiClientException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lampcord_ffi_fn_method_lampcordclient_add_reaction(
+        it, FfiConverterULong.lower(`channelId`),FfiConverterULong.lower(`messageId`),FfiConverterString.lower(`emoji`),_status)
+}
+    }
+    
+    
+
+    
+    @Throws(FfiClientException::class)override fun `cancelRemoteAuth`()
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(FfiClientException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lampcord_ffi_fn_method_lampcordclient_cancel_remote_auth(
+        it, _status)
+}
+    }
+    
+    
+
+    
     @Throws(FfiClientException::class)override fun `connectStoredToken`()
         = 
     callWithPointer {
@@ -1544,9 +1752,6 @@ open class LampcordClient: Disposable, AutoCloseable, LampcordClientInterface {
     
 
     
-    /**
-     * Convenience: connect with a token.
-     */
     @Throws(FfiClientException::class)override fun `connectToken`(`token`: kotlin.String)
         = 
     callWithPointer {
@@ -1570,11 +1775,8 @@ open class LampcordClient: Disposable, AutoCloseable, LampcordClientInterface {
     
     
 
-    
-    /**
-     * Drains pending events since the last call.
-     */override fun `drainEvents`(): List<ClientEvent> {
-            return FfiConverterSequenceTypeClientEvent.lift(
+    override fun `drainEvents`(): List<ClientEventEnvelope> {
+            return FfiConverterSequenceTypeClientEventEnvelope.lift(
     callWithPointer {
     uniffiRustCall() { _status ->
     UniffiLib.INSTANCE.uniffi_lampcord_ffi_fn_method_lampcordclient_drain_events(
@@ -1598,6 +1800,18 @@ open class LampcordClient: Disposable, AutoCloseable, LampcordClientInterface {
     
 
     
+    @Throws(FfiClientException::class)override fun `fetchMentions`(`limit`: kotlin.UByte?, `before`: kotlin.ULong?)
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(FfiClientException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lampcord_ffi_fn_method_lampcordclient_fetch_mentions(
+        it, FfiConverterOptionalUByte.lower(`limit`),FfiConverterOptionalULong.lower(`before`),_status)
+}
+    }
+    
+    
+
+    
     @Throws(FfiClientException::class)override fun `fetchMessages`(`channelId`: kotlin.ULong, `before`: kotlin.ULong?, `limit`: kotlin.UByte?)
         = 
     callWithPointer {
@@ -1610,12 +1824,48 @@ open class LampcordClient: Disposable, AutoCloseable, LampcordClientInterface {
     
 
     
+    @Throws(FfiClientException::class)override fun `forgotPassword`(`login`: kotlin.String)
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(FfiClientException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lampcord_ffi_fn_method_lampcordclient_forgot_password(
+        it, FfiConverterString.lower(`login`),_status)
+}
+    }
+    
+    
+
+    
+    @Throws(FfiClientException::class)override fun `loginPassword`(`login`: kotlin.String, `password`: kotlin.String, `captchaKey`: kotlin.String?)
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(FfiClientException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lampcord_ffi_fn_method_lampcordclient_login_password(
+        it, FfiConverterString.lower(`login`),FfiConverterString.lower(`password`),FfiConverterOptionalString.lower(`captchaKey`),_status)
+}
+    }
+    
+    
+
+    
     @Throws(FfiClientException::class)override fun `logout`()
         = 
     callWithPointer {
     uniffiRustCallWithError(FfiClientException) { _status ->
     UniffiLib.INSTANCE.uniffi_lampcord_ffi_fn_method_lampcordclient_logout(
         it, _status)
+}
+    }
+    
+    
+
+    
+    @Throws(FfiClientException::class)override fun `removeReaction`(`channelId`: kotlin.ULong, `messageId`: kotlin.ULong, `emoji`: kotlin.String)
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(FfiClientException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lampcord_ffi_fn_method_lampcordclient_remove_reaction(
+        it, FfiConverterULong.lower(`channelId`),FfiConverterULong.lower(`messageId`),FfiConverterString.lower(`emoji`),_status)
 }
     }
     
@@ -1646,9 +1896,6 @@ open class LampcordClient: Disposable, AutoCloseable, LampcordClientInterface {
     
 
     
-    /**
-     * Sends a command to the background worker.
-     */
     @Throws(FfiClientException::class)override fun `send`(`command`: ClientCommand)
         = 
     callWithPointer {
@@ -1673,6 +1920,18 @@ open class LampcordClient: Disposable, AutoCloseable, LampcordClientInterface {
     
 
     
+    @Throws(FfiClientException::class)override fun `sendMfaSms`(`ticket`: kotlin.String)
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(FfiClientException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lampcord_ffi_fn_method_lampcordclient_send_mfa_sms(
+        it, FfiConverterString.lower(`ticket`),_status)
+}
+    }
+    
+    
+
+    
     @Throws(FfiClientException::class)override fun `sendTyping`(`channelId`: kotlin.ULong)
         = 
     callWithPointer {
@@ -1685,9 +1944,18 @@ open class LampcordClient: Disposable, AutoCloseable, LampcordClientInterface {
     
 
     
-    /**
-     * Convenience: request shutdown.
-     */
+    @Throws(FfiClientException::class)override fun `setStatus`(`status`: kotlin.String)
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(FfiClientException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lampcord_ffi_fn_method_lampcordclient_set_status(
+        it, FfiConverterString.lower(`status`),_status)
+}
+    }
+    
+    
+
+    
     @Throws(FfiClientException::class)override fun `shutdown`()
         = 
     callWithPointer {
@@ -1699,10 +1967,7 @@ open class LampcordClient: Disposable, AutoCloseable, LampcordClientInterface {
     
     
 
-    
-    /**
-     * Returns the latest snapshot.
-     */override fun `snapshot`(): ClientSnapshot {
+    override fun `snapshot`(): ClientSnapshot {
             return FfiConverterTypeClientSnapshot.lift(
     callWithPointer {
     uniffiRustCall() { _status ->
@@ -1715,17 +1980,48 @@ open class LampcordClient: Disposable, AutoCloseable, LampcordClientInterface {
     
 
     
+    @Throws(FfiClientException::class)override fun `startRemoteAuth`()
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(FfiClientException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lampcord_ffi_fn_method_lampcordclient_start_remote_auth(
+        it, _status)
+}
+    }
+    
+    
+
+    
+    @Throws(FfiClientException::class)override fun `submitMfa`(`code`: kotlin.String, `ticket`: kotlin.String, `method`: kotlin.String)
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(FfiClientException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lampcord_ffi_fn_method_lampcordclient_submit_mfa(
+        it, FfiConverterString.lower(`code`),FfiConverterString.lower(`ticket`),FfiConverterString.lower(`method`),_status)
+}
+    }
+    
+    
+
+    
 
     
     companion object {
-        
-    /**
-     * Starts the background runtime worker.
-     */ fun `start`(`config`: ClientConfig): LampcordClient {
+         fun `start`(`config`: ClientConfig): LampcordClient {
             return FfiConverterTypeLampcordClient.lift(
     uniffiRustCall() { _status ->
     UniffiLib.INSTANCE.uniffi_lampcord_ffi_fn_constructor_lampcordclient_start(
         FfiConverterTypeClientConfig.lower(`config`),_status)
+}
+    )
+    }
+    
+
+         fun `startWithStore`(`config`: ClientConfig, `store`: PlatformSecretStore): LampcordClient {
+            return FfiConverterTypeLampcordClient.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_lampcord_ffi_fn_constructor_lampcordclient_start_with_store(
+        FfiConverterTypeClientConfig.lower(`config`),FfiConverterTypePlatformSecretStore.lower(`store`),_status)
 }
     )
     }
@@ -1761,6 +2057,389 @@ public object FfiConverterTypeLampcordClient: FfiConverter<LampcordClient, Point
         // The Rust code always expects pointers written as 8 bytes,
         // and will fail to compile if they don't fit.
         buf.putLong(Pointer.nativeValue(lower(value)))
+    }
+}
+
+
+// This template implements a class for working with a Rust struct via a Pointer/Arc<T>
+// to the live Rust struct on the other side of the FFI.
+//
+// Each instance implements core operations for working with the Rust `Arc<T>` and the
+// Kotlin Pointer to work with the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque pointer to the underlying Rust struct.
+//     Method calls need to read this pointer from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its pointer should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the pointer, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the pointer, but is interrupted
+//      before it can pass the pointer over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read pointer value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+public interface PlatformSecretStore {
+    
+    fun `load`(): kotlin.String?
+    
+    fun `save`(`value`: kotlin.String)
+    
+    fun `clear`()
+    
+    companion object
+}
+
+open class PlatformSecretStoreImpl: Disposable, AutoCloseable, PlatformSecretStore {
+
+    constructor(pointer: Pointer) {
+        this.pointer = pointer
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+
+    /**
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noPointer: NoPointer) {
+        this.pointer = null
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+
+    protected val pointer: Pointer?
+    protected val cleanable: UniffiCleaner.Cleanable
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithPointer(block: (ptr: Pointer) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the pointer being freed concurrently.
+        try {
+            return block(this.uniffiClonePointer())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val pointer: Pointer?) : Runnable {
+        override fun run() {
+            pointer?.let { ptr ->
+                uniffiRustCall { status ->
+                    UniffiLib.INSTANCE.uniffi_lampcord_ffi_fn_free_platformsecretstore(ptr, status)
+                }
+            }
+        }
+    }
+
+    fun uniffiClonePointer(): Pointer {
+        return uniffiRustCall() { status ->
+            UniffiLib.INSTANCE.uniffi_lampcord_ffi_fn_clone_platformsecretstore(pointer!!, status)
+        }
+    }
+
+    override fun `load`(): kotlin.String? {
+            return FfiConverterOptionalString.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_lampcord_ffi_fn_method_platformsecretstore_load(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    override fun `save`(`value`: kotlin.String)
+        = 
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_lampcord_ffi_fn_method_platformsecretstore_save(
+        it, FfiConverterString.lower(`value`),_status)
+}
+    }
+    
+    
+
+    override fun `clear`()
+        = 
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_lampcord_ffi_fn_method_platformsecretstore_clear(
+        it, _status)
+}
+    }
+    
+    
+
+    
+
+    
+    
+    companion object
+    
+}
+// Magic number for the Rust proxy to call using the same mechanism as every other method,
+// to free the callback once it's dropped by Rust.
+internal const val IDX_CALLBACK_FREE = 0
+// Callback return codes
+internal const val UNIFFI_CALLBACK_SUCCESS = 0
+internal const val UNIFFI_CALLBACK_ERROR = 1
+internal const val UNIFFI_CALLBACK_UNEXPECTED_ERROR = 2
+
+/**
+ * @suppress
+ */
+public abstract class FfiConverterCallbackInterface<CallbackInterface: Any>: FfiConverter<CallbackInterface, Long> {
+    internal val handleMap = UniffiHandleMap<CallbackInterface>()
+
+    internal fun drop(handle: Long) {
+        handleMap.remove(handle)
+    }
+
+    override fun lift(value: Long): CallbackInterface {
+        return handleMap.get(value)
+    }
+
+    override fun read(buf: ByteBuffer) = lift(buf.getLong())
+
+    override fun lower(value: CallbackInterface) = handleMap.insert(value)
+
+    override fun allocationSize(value: CallbackInterface) = 8UL
+
+    override fun write(value: CallbackInterface, buf: ByteBuffer) {
+        buf.putLong(lower(value))
+    }
+}
+
+// Put the implementation in an object so we don't pollute the top-level namespace
+internal object uniffiCallbackInterfacePlatformSecretStore {
+    internal object `load`: UniffiCallbackInterfacePlatformSecretStoreMethod0 {
+        override fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,) {
+            val uniffiObj = FfiConverterTypePlatformSecretStore.handleMap.get(uniffiHandle)
+            val makeCall = { ->
+                uniffiObj.`load`(
+                )
+            }
+            val writeReturn = { value: kotlin.String? -> uniffiOutReturn.setValue(FfiConverterOptionalString.lower(value)) }
+            uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
+        }
+    }
+    internal object `save`: UniffiCallbackInterfacePlatformSecretStoreMethod1 {
+        override fun callback(`uniffiHandle`: Long,`value`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,) {
+            val uniffiObj = FfiConverterTypePlatformSecretStore.handleMap.get(uniffiHandle)
+            val makeCall = { ->
+                uniffiObj.`save`(
+                    FfiConverterString.lift(`value`),
+                )
+            }
+            val writeReturn = { _: Unit -> Unit }
+            uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
+        }
+    }
+    internal object `clear`: UniffiCallbackInterfacePlatformSecretStoreMethod2 {
+        override fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,) {
+            val uniffiObj = FfiConverterTypePlatformSecretStore.handleMap.get(uniffiHandle)
+            val makeCall = { ->
+                uniffiObj.`clear`(
+                )
+            }
+            val writeReturn = { _: Unit -> Unit }
+            uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
+        }
+    }
+
+    internal object uniffiFree: UniffiCallbackInterfaceFree {
+        override fun callback(handle: Long) {
+            FfiConverterTypePlatformSecretStore.handleMap.remove(handle)
+        }
+    }
+
+    internal var vtable = UniffiVTableCallbackInterfacePlatformSecretStore.UniffiByValue(
+        `load`,
+        `save`,
+        `clear`,
+        uniffiFree,
+    )
+
+    // Registers the foreign callback with the Rust side.
+    // This method is generated for each callback interface.
+    internal fun register(lib: UniffiLib) {
+        lib.uniffi_lampcord_ffi_fn_init_callback_vtable_platformsecretstore(vtable)
+    }
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePlatformSecretStore: FfiConverter<PlatformSecretStore, Pointer> {
+    internal val handleMap = UniffiHandleMap<PlatformSecretStore>()
+
+    override fun lower(value: PlatformSecretStore): Pointer {
+        return Pointer(handleMap.insert(value))
+    }
+
+    override fun lift(value: Pointer): PlatformSecretStore {
+        return PlatformSecretStoreImpl(value)
+    }
+
+    override fun read(buf: ByteBuffer): PlatformSecretStore {
+        // The Rust code always writes pointers as 8 bytes, and will
+        // fail to compile if they don't fit.
+        return lift(Pointer(buf.getLong()))
+    }
+
+    override fun allocationSize(value: PlatformSecretStore) = 8UL
+
+    override fun write(value: PlatformSecretStore, buf: ByteBuffer) {
+        // The Rust code always expects pointers written as 8 bytes,
+        // and will fail to compile if they don't fit.
+        buf.putLong(Pointer.nativeValue(lower(value)))
+    }
+}
+
+
+
+data class AuthStateSnapshot (
+    var `challenge`: AuthChallenge?, 
+    var `remote`: RemoteAuthState
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAuthStateSnapshot: FfiConverterRustBuffer<AuthStateSnapshot> {
+    override fun read(buf: ByteBuffer): AuthStateSnapshot {
+        return AuthStateSnapshot(
+            FfiConverterOptionalTypeAuthChallenge.read(buf),
+            FfiConverterTypeRemoteAuthState.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: AuthStateSnapshot) = (
+            FfiConverterOptionalTypeAuthChallenge.allocationSize(value.`challenge`) +
+            FfiConverterTypeRemoteAuthState.allocationSize(value.`remote`)
+    )
+
+    override fun write(value: AuthStateSnapshot, buf: ByteBuffer) {
+            FfiConverterOptionalTypeAuthChallenge.write(value.`challenge`, buf)
+            FfiConverterTypeRemoteAuthState.write(value.`remote`, buf)
     }
 }
 
@@ -1854,10 +2533,44 @@ public object FfiConverterTypeClientConfig: FfiConverterRustBuffer<ClientConfig>
 
 
 
+data class ClientEventEnvelope (
+    var `sequence`: kotlin.ULong, 
+    var `emittedAtMs`: kotlin.ULong, 
+    var `event`: ClientEvent
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeClientEventEnvelope: FfiConverterRustBuffer<ClientEventEnvelope> {
+    override fun read(buf: ByteBuffer): ClientEventEnvelope {
+        return ClientEventEnvelope(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterTypeClientEvent.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ClientEventEnvelope) = (
+            FfiConverterULong.allocationSize(value.`sequence`) +
+            FfiConverterULong.allocationSize(value.`emittedAtMs`) +
+            FfiConverterTypeClientEvent.allocationSize(value.`event`)
+    )
+
+    override fun write(value: ClientEventEnvelope, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`sequence`, buf)
+            FfiConverterULong.write(value.`emittedAtMs`, buf)
+            FfiConverterTypeClientEvent.write(value.`event`, buf)
+    }
+}
+
+
+
 data class ClientSnapshot (
-    /**
-     * Monotonic snapshot sequence, incremented on each published snapshot.
-     */
+    var `schemaVersion`: kotlin.UInt, 
     var `seq`: kotlin.ULong, 
     var `connection`: ConnectionState, 
     var `hasToken`: kotlin.Boolean, 
@@ -1868,6 +2581,10 @@ data class ClientSnapshot (
     var `guilds`: List<GuildSnapshot>, 
     var `channels`: List<ChannelSnapshot>, 
     var `messages`: List<MessageSnapshot>, 
+    var `members`: List<MemberSnapshot>, 
+    var `presences`: List<PresenceSnapshot>, 
+    var `readStates`: List<ReadStateSnapshot>, 
+    var `auth`: AuthStateSnapshot, 
     var `error`: kotlin.String?
 ) {
     
@@ -1880,6 +2597,7 @@ data class ClientSnapshot (
 public object FfiConverterTypeClientSnapshot: FfiConverterRustBuffer<ClientSnapshot> {
     override fun read(buf: ByteBuffer): ClientSnapshot {
         return ClientSnapshot(
+            FfiConverterUInt.read(buf),
             FfiConverterULong.read(buf),
             FfiConverterTypeConnectionState.read(buf),
             FfiConverterBoolean.read(buf),
@@ -1890,11 +2608,16 @@ public object FfiConverterTypeClientSnapshot: FfiConverterRustBuffer<ClientSnaps
             FfiConverterSequenceTypeGuildSnapshot.read(buf),
             FfiConverterSequenceTypeChannelSnapshot.read(buf),
             FfiConverterSequenceTypeMessageSnapshot.read(buf),
+            FfiConverterSequenceTypeMemberSnapshot.read(buf),
+            FfiConverterSequenceTypePresenceSnapshot.read(buf),
+            FfiConverterSequenceTypeReadStateSnapshot.read(buf),
+            FfiConverterTypeAuthStateSnapshot.read(buf),
             FfiConverterOptionalString.read(buf),
         )
     }
 
     override fun allocationSize(value: ClientSnapshot) = (
+            FfiConverterUInt.allocationSize(value.`schemaVersion`) +
             FfiConverterULong.allocationSize(value.`seq`) +
             FfiConverterTypeConnectionState.allocationSize(value.`connection`) +
             FfiConverterBoolean.allocationSize(value.`hasToken`) +
@@ -1905,10 +2628,15 @@ public object FfiConverterTypeClientSnapshot: FfiConverterRustBuffer<ClientSnaps
             FfiConverterSequenceTypeGuildSnapshot.allocationSize(value.`guilds`) +
             FfiConverterSequenceTypeChannelSnapshot.allocationSize(value.`channels`) +
             FfiConverterSequenceTypeMessageSnapshot.allocationSize(value.`messages`) +
+            FfiConverterSequenceTypeMemberSnapshot.allocationSize(value.`members`) +
+            FfiConverterSequenceTypePresenceSnapshot.allocationSize(value.`presences`) +
+            FfiConverterSequenceTypeReadStateSnapshot.allocationSize(value.`readStates`) +
+            FfiConverterTypeAuthStateSnapshot.allocationSize(value.`auth`) +
             FfiConverterOptionalString.allocationSize(value.`error`)
     )
 
     override fun write(value: ClientSnapshot, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`schemaVersion`, buf)
             FfiConverterULong.write(value.`seq`, buf)
             FfiConverterTypeConnectionState.write(value.`connection`, buf)
             FfiConverterBoolean.write(value.`hasToken`, buf)
@@ -1919,6 +2647,10 @@ public object FfiConverterTypeClientSnapshot: FfiConverterRustBuffer<ClientSnaps
             FfiConverterSequenceTypeGuildSnapshot.write(value.`guilds`, buf)
             FfiConverterSequenceTypeChannelSnapshot.write(value.`channels`, buf)
             FfiConverterSequenceTypeMessageSnapshot.write(value.`messages`, buf)
+            FfiConverterSequenceTypeMemberSnapshot.write(value.`members`, buf)
+            FfiConverterSequenceTypePresenceSnapshot.write(value.`presences`, buf)
+            FfiConverterSequenceTypeReadStateSnapshot.write(value.`readStates`, buf)
+            FfiConverterTypeAuthStateSnapshot.write(value.`auth`, buf)
             FfiConverterOptionalString.write(value.`error`, buf)
     }
 }
@@ -1993,6 +2725,58 @@ public object FfiConverterTypeGuildSnapshot: FfiConverterRustBuffer<GuildSnapsho
 
 
 
+data class MemberSnapshot (
+    var `guildId`: kotlin.ULong, 
+    var `userId`: kotlin.ULong, 
+    var `username`: kotlin.String, 
+    var `avatar`: kotlin.String?, 
+    var `nickname`: kotlin.String?, 
+    var `roles`: List<kotlin.ULong>, 
+    var `status`: kotlin.String?
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeMemberSnapshot: FfiConverterRustBuffer<MemberSnapshot> {
+    override fun read(buf: ByteBuffer): MemberSnapshot {
+        return MemberSnapshot(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterSequenceULong.read(buf),
+            FfiConverterOptionalString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: MemberSnapshot) = (
+            FfiConverterULong.allocationSize(value.`guildId`) +
+            FfiConverterULong.allocationSize(value.`userId`) +
+            FfiConverterString.allocationSize(value.`username`) +
+            FfiConverterOptionalString.allocationSize(value.`avatar`) +
+            FfiConverterOptionalString.allocationSize(value.`nickname`) +
+            FfiConverterSequenceULong.allocationSize(value.`roles`) +
+            FfiConverterOptionalString.allocationSize(value.`status`)
+    )
+
+    override fun write(value: MemberSnapshot, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`guildId`, buf)
+            FfiConverterULong.write(value.`userId`, buf)
+            FfiConverterString.write(value.`username`, buf)
+            FfiConverterOptionalString.write(value.`avatar`, buf)
+            FfiConverterOptionalString.write(value.`nickname`, buf)
+            FfiConverterSequenceULong.write(value.`roles`, buf)
+            FfiConverterOptionalString.write(value.`status`, buf)
+    }
+}
+
+
+
 data class MessageSnapshot (
     var `id`: kotlin.ULong, 
     var `channelId`: kotlin.ULong, 
@@ -2045,6 +2829,314 @@ public object FfiConverterTypeMessageSnapshot: FfiConverterRustBuffer<MessageSna
 
 
 
+data class PresenceSnapshot (
+    var `userId`: kotlin.ULong, 
+    var `status`: kotlin.String, 
+    var `activities`: List<kotlin.String>
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePresenceSnapshot: FfiConverterRustBuffer<PresenceSnapshot> {
+    override fun read(buf: ByteBuffer): PresenceSnapshot {
+        return PresenceSnapshot(
+            FfiConverterULong.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterSequenceString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: PresenceSnapshot) = (
+            FfiConverterULong.allocationSize(value.`userId`) +
+            FfiConverterString.allocationSize(value.`status`) +
+            FfiConverterSequenceString.allocationSize(value.`activities`)
+    )
+
+    override fun write(value: PresenceSnapshot, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`userId`, buf)
+            FfiConverterString.write(value.`status`, buf)
+            FfiConverterSequenceString.write(value.`activities`, buf)
+    }
+}
+
+
+
+data class ReadStateSnapshot (
+    var `channelId`: kotlin.ULong, 
+    var `lastMessageId`: kotlin.ULong?, 
+    var `lastReadMessageId`: kotlin.ULong?, 
+    var `mentionCount`: kotlin.UInt, 
+    var `unread`: kotlin.Boolean
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeReadStateSnapshot: FfiConverterRustBuffer<ReadStateSnapshot> {
+    override fun read(buf: ByteBuffer): ReadStateSnapshot {
+        return ReadStateSnapshot(
+            FfiConverterULong.read(buf),
+            FfiConverterOptionalULong.read(buf),
+            FfiConverterOptionalULong.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ReadStateSnapshot) = (
+            FfiConverterULong.allocationSize(value.`channelId`) +
+            FfiConverterOptionalULong.allocationSize(value.`lastMessageId`) +
+            FfiConverterOptionalULong.allocationSize(value.`lastReadMessageId`) +
+            FfiConverterUInt.allocationSize(value.`mentionCount`) +
+            FfiConverterBoolean.allocationSize(value.`unread`)
+    )
+
+    override fun write(value: ReadStateSnapshot, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`channelId`, buf)
+            FfiConverterOptionalULong.write(value.`lastMessageId`, buf)
+            FfiConverterOptionalULong.write(value.`lastReadMessageId`, buf)
+            FfiConverterUInt.write(value.`mentionCount`, buf)
+            FfiConverterBoolean.write(value.`unread`, buf)
+    }
+}
+
+
+
+sealed class AuthChallenge {
+    
+    data class Success(
+        val `token`: kotlin.String) : AuthChallenge() {
+        companion object
+    }
+    
+    data class MfaRequired(
+        val `ticket`: kotlin.String, 
+        val `methods`: List<kotlin.String>) : AuthChallenge() {
+        companion object
+    }
+    
+    data class CaptchaRequired(
+        val `sitekey`: kotlin.String, 
+        val `service`: kotlin.String, 
+        val `rqdata`: kotlin.String?, 
+        val `sessionId`: kotlin.String?, 
+        val `invisible`: kotlin.Boolean) : AuthChallenge() {
+        companion object
+    }
+    
+    object PasswordUpdateRequired : AuthChallenge()
+    
+    
+    data class SmsSent(
+        val `phone`: kotlin.String) : AuthChallenge() {
+        companion object
+    }
+    
+    data class ResetSent(
+        val `phoneVerificationRequired`: kotlin.Boolean) : AuthChallenge() {
+        companion object
+    }
+    
+    data class Failed(
+        val `kind`: AuthFailureKind, 
+        val `message`: kotlin.String) : AuthChallenge() {
+        companion object
+    }
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAuthChallenge : FfiConverterRustBuffer<AuthChallenge>{
+    override fun read(buf: ByteBuffer): AuthChallenge {
+        return when(buf.getInt()) {
+            1 -> AuthChallenge.Success(
+                FfiConverterString.read(buf),
+                )
+            2 -> AuthChallenge.MfaRequired(
+                FfiConverterString.read(buf),
+                FfiConverterSequenceString.read(buf),
+                )
+            3 -> AuthChallenge.CaptchaRequired(
+                FfiConverterString.read(buf),
+                FfiConverterString.read(buf),
+                FfiConverterOptionalString.read(buf),
+                FfiConverterOptionalString.read(buf),
+                FfiConverterBoolean.read(buf),
+                )
+            4 -> AuthChallenge.PasswordUpdateRequired
+            5 -> AuthChallenge.SmsSent(
+                FfiConverterString.read(buf),
+                )
+            6 -> AuthChallenge.ResetSent(
+                FfiConverterBoolean.read(buf),
+                )
+            7 -> AuthChallenge.Failed(
+                FfiConverterTypeAuthFailureKind.read(buf),
+                FfiConverterString.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: AuthChallenge) = when(value) {
+        is AuthChallenge.Success -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`token`)
+            )
+        }
+        is AuthChallenge.MfaRequired -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`ticket`)
+                + FfiConverterSequenceString.allocationSize(value.`methods`)
+            )
+        }
+        is AuthChallenge.CaptchaRequired -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`sitekey`)
+                + FfiConverterString.allocationSize(value.`service`)
+                + FfiConverterOptionalString.allocationSize(value.`rqdata`)
+                + FfiConverterOptionalString.allocationSize(value.`sessionId`)
+                + FfiConverterBoolean.allocationSize(value.`invisible`)
+            )
+        }
+        is AuthChallenge.PasswordUpdateRequired -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is AuthChallenge.SmsSent -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`phone`)
+            )
+        }
+        is AuthChallenge.ResetSent -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterBoolean.allocationSize(value.`phoneVerificationRequired`)
+            )
+        }
+        is AuthChallenge.Failed -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeAuthFailureKind.allocationSize(value.`kind`)
+                + FfiConverterString.allocationSize(value.`message`)
+            )
+        }
+    }
+
+    override fun write(value: AuthChallenge, buf: ByteBuffer) {
+        when(value) {
+            is AuthChallenge.Success -> {
+                buf.putInt(1)
+                FfiConverterString.write(value.`token`, buf)
+                Unit
+            }
+            is AuthChallenge.MfaRequired -> {
+                buf.putInt(2)
+                FfiConverterString.write(value.`ticket`, buf)
+                FfiConverterSequenceString.write(value.`methods`, buf)
+                Unit
+            }
+            is AuthChallenge.CaptchaRequired -> {
+                buf.putInt(3)
+                FfiConverterString.write(value.`sitekey`, buf)
+                FfiConverterString.write(value.`service`, buf)
+                FfiConverterOptionalString.write(value.`rqdata`, buf)
+                FfiConverterOptionalString.write(value.`sessionId`, buf)
+                FfiConverterBoolean.write(value.`invisible`, buf)
+                Unit
+            }
+            is AuthChallenge.PasswordUpdateRequired -> {
+                buf.putInt(4)
+                Unit
+            }
+            is AuthChallenge.SmsSent -> {
+                buf.putInt(5)
+                FfiConverterString.write(value.`phone`, buf)
+                Unit
+            }
+            is AuthChallenge.ResetSent -> {
+                buf.putInt(6)
+                FfiConverterBoolean.write(value.`phoneVerificationRequired`, buf)
+                Unit
+            }
+            is AuthChallenge.Failed -> {
+                buf.putInt(7)
+                FfiConverterTypeAuthFailureKind.write(value.`kind`, buf)
+                FfiConverterString.write(value.`message`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+
+enum class AuthFailureKind {
+    
+    INVALID_CREDENTIALS,
+    SUSPENDED,
+    RATE_LIMITED,
+    SERVER_ERROR,
+    VERIFICATION_REQUIRED,
+    ACCOUNT_DISABLED,
+    SCHEDULED_FOR_DELETION,
+    CAPTCHA_REJECTED,
+    CAPTCHA_CANCELLED,
+    PASSWORD_UPDATE_REQUIRED,
+    NETWORK,
+    UNKNOWN;
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAuthFailureKind: FfiConverterRustBuffer<AuthFailureKind> {
+    override fun read(buf: ByteBuffer) = try {
+        AuthFailureKind.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: AuthFailureKind) = 4UL
+
+    override fun write(value: AuthFailureKind, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
 sealed class ClientCommand {
     
     data class ConnectToken(
@@ -2053,6 +3145,36 @@ sealed class ClientCommand {
     }
     
     object ConnectStoredToken : ClientCommand()
+    
+    
+    data class LoginPassword(
+        val `login`: kotlin.String, 
+        val `password`: kotlin.String, 
+        val `captchaKey`: kotlin.String?) : ClientCommand() {
+        companion object
+    }
+    
+    data class SubmitMfa(
+        val `code`: kotlin.String, 
+        val `ticket`: kotlin.String, 
+        val `method`: kotlin.String) : ClientCommand() {
+        companion object
+    }
+    
+    data class SendMfaSms(
+        val `ticket`: kotlin.String) : ClientCommand() {
+        companion object
+    }
+    
+    data class ForgotPassword(
+        val `login`: kotlin.String) : ClientCommand() {
+        companion object
+    }
+    
+    object StartRemoteAuth : ClientCommand()
+    
+    
+    object CancelRemoteAuth : ClientCommand()
     
     
     data class SelectGuild(
@@ -2069,6 +3191,12 @@ sealed class ClientCommand {
         val `channelId`: kotlin.ULong, 
         val `before`: kotlin.ULong?, 
         val `limit`: kotlin.UByte?) : ClientCommand() {
+        companion object
+    }
+    
+    data class FetchMentions(
+        val `limit`: kotlin.UByte?, 
+        val `before`: kotlin.ULong?) : ClientCommand() {
         companion object
     }
     
@@ -2093,8 +3221,27 @@ sealed class ClientCommand {
         companion object
     }
     
+    data class AddReaction(
+        val `channelId`: kotlin.ULong, 
+        val `messageId`: kotlin.ULong, 
+        val `emoji`: kotlin.String) : ClientCommand() {
+        companion object
+    }
+    
+    data class RemoveReaction(
+        val `channelId`: kotlin.ULong, 
+        val `messageId`: kotlin.ULong, 
+        val `emoji`: kotlin.String) : ClientCommand() {
+        companion object
+    }
+    
     data class SendTyping(
         val `channelId`: kotlin.ULong) : ClientCommand() {
+        companion object
+    }
+    
+    data class SetStatus(
+        val `status`: kotlin.String) : ClientCommand() {
         companion object
     }
     
@@ -2125,41 +3272,76 @@ public object FfiConverterTypeClientCommand : FfiConverterRustBuffer<ClientComma
                 FfiConverterString.read(buf),
                 )
             2 -> ClientCommand.ConnectStoredToken
-            3 -> ClientCommand.SelectGuild(
+            3 -> ClientCommand.LoginPassword(
+                FfiConverterString.read(buf),
+                FfiConverterString.read(buf),
+                FfiConverterOptionalString.read(buf),
+                )
+            4 -> ClientCommand.SubmitMfa(
+                FfiConverterString.read(buf),
+                FfiConverterString.read(buf),
+                FfiConverterString.read(buf),
+                )
+            5 -> ClientCommand.SendMfaSms(
+                FfiConverterString.read(buf),
+                )
+            6 -> ClientCommand.ForgotPassword(
+                FfiConverterString.read(buf),
+                )
+            7 -> ClientCommand.StartRemoteAuth
+            8 -> ClientCommand.CancelRemoteAuth
+            9 -> ClientCommand.SelectGuild(
                 FfiConverterOptionalULong.read(buf),
                 )
-            4 -> ClientCommand.SelectChannel(
+            10 -> ClientCommand.SelectChannel(
                 FfiConverterOptionalULong.read(buf),
                 )
-            5 -> ClientCommand.FetchMessages(
+            11 -> ClientCommand.FetchMessages(
                 FfiConverterULong.read(buf),
                 FfiConverterOptionalULong.read(buf),
                 FfiConverterOptionalUByte.read(buf),
                 )
-            6 -> ClientCommand.SendMessage(
+            12 -> ClientCommand.FetchMentions(
+                FfiConverterOptionalUByte.read(buf),
+                FfiConverterOptionalULong.read(buf),
+                )
+            13 -> ClientCommand.SendMessage(
                 FfiConverterULong.read(buf),
                 FfiConverterString.read(buf),
                 FfiConverterOptionalULong.read(buf),
                 FfiConverterOptionalULong.read(buf),
                 )
-            7 -> ClientCommand.EditMessage(
+            14 -> ClientCommand.EditMessage(
                 FfiConverterULong.read(buf),
                 FfiConverterULong.read(buf),
                 FfiConverterString.read(buf),
                 )
-            8 -> ClientCommand.DeleteMessage(
+            15 -> ClientCommand.DeleteMessage(
                 FfiConverterULong.read(buf),
                 FfiConverterULong.read(buf),
                 )
-            9 -> ClientCommand.SendTyping(
+            16 -> ClientCommand.AddReaction(
+                FfiConverterULong.read(buf),
+                FfiConverterULong.read(buf),
+                FfiConverterString.read(buf),
+                )
+            17 -> ClientCommand.RemoveReaction(
+                FfiConverterULong.read(buf),
+                FfiConverterULong.read(buf),
+                FfiConverterString.read(buf),
+                )
+            18 -> ClientCommand.SendTyping(
                 FfiConverterULong.read(buf),
                 )
-            10 -> ClientCommand.AckMessage(
+            19 -> ClientCommand.SetStatus(
+                FfiConverterString.read(buf),
+                )
+            20 -> ClientCommand.AckMessage(
                 FfiConverterULong.read(buf),
                 FfiConverterULong.read(buf),
                 )
-            11 -> ClientCommand.Logout
-            12 -> ClientCommand.Shutdown
+            21 -> ClientCommand.Logout
+            22 -> ClientCommand.Shutdown
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
         }
     }
@@ -2173,6 +3355,50 @@ public object FfiConverterTypeClientCommand : FfiConverterRustBuffer<ClientComma
             )
         }
         is ClientCommand.ConnectStoredToken -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ClientCommand.LoginPassword -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`login`)
+                + FfiConverterString.allocationSize(value.`password`)
+                + FfiConverterOptionalString.allocationSize(value.`captchaKey`)
+            )
+        }
+        is ClientCommand.SubmitMfa -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`code`)
+                + FfiConverterString.allocationSize(value.`ticket`)
+                + FfiConverterString.allocationSize(value.`method`)
+            )
+        }
+        is ClientCommand.SendMfaSms -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`ticket`)
+            )
+        }
+        is ClientCommand.ForgotPassword -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`login`)
+            )
+        }
+        is ClientCommand.StartRemoteAuth -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ClientCommand.CancelRemoteAuth -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
@@ -2199,6 +3425,14 @@ public object FfiConverterTypeClientCommand : FfiConverterRustBuffer<ClientComma
                 + FfiConverterULong.allocationSize(value.`channelId`)
                 + FfiConverterOptionalULong.allocationSize(value.`before`)
                 + FfiConverterOptionalUByte.allocationSize(value.`limit`)
+            )
+        }
+        is ClientCommand.FetchMentions -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterOptionalUByte.allocationSize(value.`limit`)
+                + FfiConverterOptionalULong.allocationSize(value.`before`)
             )
         }
         is ClientCommand.SendMessage -> {
@@ -2228,11 +3462,36 @@ public object FfiConverterTypeClientCommand : FfiConverterRustBuffer<ClientComma
                 + FfiConverterULong.allocationSize(value.`messageId`)
             )
         }
+        is ClientCommand.AddReaction -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterULong.allocationSize(value.`channelId`)
+                + FfiConverterULong.allocationSize(value.`messageId`)
+                + FfiConverterString.allocationSize(value.`emoji`)
+            )
+        }
+        is ClientCommand.RemoveReaction -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterULong.allocationSize(value.`channelId`)
+                + FfiConverterULong.allocationSize(value.`messageId`)
+                + FfiConverterString.allocationSize(value.`emoji`)
+            )
+        }
         is ClientCommand.SendTyping -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
                 + FfiConverterULong.allocationSize(value.`channelId`)
+            )
+        }
+        is ClientCommand.SetStatus -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`status`)
             )
         }
         is ClientCommand.AckMessage -> {
@@ -2268,25 +3527,63 @@ public object FfiConverterTypeClientCommand : FfiConverterRustBuffer<ClientComma
                 buf.putInt(2)
                 Unit
             }
-            is ClientCommand.SelectGuild -> {
+            is ClientCommand.LoginPassword -> {
                 buf.putInt(3)
+                FfiConverterString.write(value.`login`, buf)
+                FfiConverterString.write(value.`password`, buf)
+                FfiConverterOptionalString.write(value.`captchaKey`, buf)
+                Unit
+            }
+            is ClientCommand.SubmitMfa -> {
+                buf.putInt(4)
+                FfiConverterString.write(value.`code`, buf)
+                FfiConverterString.write(value.`ticket`, buf)
+                FfiConverterString.write(value.`method`, buf)
+                Unit
+            }
+            is ClientCommand.SendMfaSms -> {
+                buf.putInt(5)
+                FfiConverterString.write(value.`ticket`, buf)
+                Unit
+            }
+            is ClientCommand.ForgotPassword -> {
+                buf.putInt(6)
+                FfiConverterString.write(value.`login`, buf)
+                Unit
+            }
+            is ClientCommand.StartRemoteAuth -> {
+                buf.putInt(7)
+                Unit
+            }
+            is ClientCommand.CancelRemoteAuth -> {
+                buf.putInt(8)
+                Unit
+            }
+            is ClientCommand.SelectGuild -> {
+                buf.putInt(9)
                 FfiConverterOptionalULong.write(value.`guildId`, buf)
                 Unit
             }
             is ClientCommand.SelectChannel -> {
-                buf.putInt(4)
+                buf.putInt(10)
                 FfiConverterOptionalULong.write(value.`channelId`, buf)
                 Unit
             }
             is ClientCommand.FetchMessages -> {
-                buf.putInt(5)
+                buf.putInt(11)
                 FfiConverterULong.write(value.`channelId`, buf)
                 FfiConverterOptionalULong.write(value.`before`, buf)
                 FfiConverterOptionalUByte.write(value.`limit`, buf)
                 Unit
             }
+            is ClientCommand.FetchMentions -> {
+                buf.putInt(12)
+                FfiConverterOptionalUByte.write(value.`limit`, buf)
+                FfiConverterOptionalULong.write(value.`before`, buf)
+                Unit
+            }
             is ClientCommand.SendMessage -> {
-                buf.putInt(6)
+                buf.putInt(13)
                 FfiConverterULong.write(value.`channelId`, buf)
                 FfiConverterString.write(value.`content`, buf)
                 FfiConverterOptionalULong.write(value.`replyToMessageId`, buf)
@@ -2294,35 +3591,54 @@ public object FfiConverterTypeClientCommand : FfiConverterRustBuffer<ClientComma
                 Unit
             }
             is ClientCommand.EditMessage -> {
-                buf.putInt(7)
+                buf.putInt(14)
                 FfiConverterULong.write(value.`channelId`, buf)
                 FfiConverterULong.write(value.`messageId`, buf)
                 FfiConverterString.write(value.`content`, buf)
                 Unit
             }
             is ClientCommand.DeleteMessage -> {
-                buf.putInt(8)
+                buf.putInt(15)
                 FfiConverterULong.write(value.`channelId`, buf)
                 FfiConverterULong.write(value.`messageId`, buf)
                 Unit
             }
+            is ClientCommand.AddReaction -> {
+                buf.putInt(16)
+                FfiConverterULong.write(value.`channelId`, buf)
+                FfiConverterULong.write(value.`messageId`, buf)
+                FfiConverterString.write(value.`emoji`, buf)
+                Unit
+            }
+            is ClientCommand.RemoveReaction -> {
+                buf.putInt(17)
+                FfiConverterULong.write(value.`channelId`, buf)
+                FfiConverterULong.write(value.`messageId`, buf)
+                FfiConverterString.write(value.`emoji`, buf)
+                Unit
+            }
             is ClientCommand.SendTyping -> {
-                buf.putInt(9)
+                buf.putInt(18)
                 FfiConverterULong.write(value.`channelId`, buf)
                 Unit
             }
+            is ClientCommand.SetStatus -> {
+                buf.putInt(19)
+                FfiConverterString.write(value.`status`, buf)
+                Unit
+            }
             is ClientCommand.AckMessage -> {
-                buf.putInt(10)
+                buf.putInt(20)
                 FfiConverterULong.write(value.`channelId`, buf)
                 FfiConverterULong.write(value.`messageId`, buf)
                 Unit
             }
             is ClientCommand.Logout -> {
-                buf.putInt(11)
+                buf.putInt(21)
                 Unit
             }
             is ClientCommand.Shutdown -> {
-                buf.putInt(12)
+                buf.putInt(22)
                 Unit
             }
         }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
@@ -2340,6 +3656,62 @@ sealed class ClientEvent {
     
     data class ConnectionChanged(
         val v1: ConnectionState) : ClientEvent() {
+        companion object
+    }
+    
+    data class AuthChanged(
+        val v1: AuthChallenge) : ClientEvent() {
+        companion object
+    }
+    
+    data class RemoteAuthChanged(
+        val v1: RemoteAuthState) : ClientEvent() {
+        companion object
+    }
+    
+    data class MessageUpdated(
+        val v1: MessageSnapshot) : ClientEvent() {
+        companion object
+    }
+    
+    data class MessageDeleted(
+        val `channelId`: kotlin.ULong, 
+        val `messageId`: kotlin.ULong) : ClientEvent() {
+        companion object
+    }
+    
+    data class ReactionChanged(
+        val `channelId`: kotlin.ULong, 
+        val `messageId`: kotlin.ULong, 
+        val `emoji`: kotlin.String, 
+        val `added`: kotlin.Boolean) : ClientEvent() {
+        companion object
+    }
+    
+    data class TypingStarted(
+        val `channelId`: kotlin.ULong, 
+        val `userId`: kotlin.ULong) : ClientEvent() {
+        companion object
+    }
+    
+    data class PresenceUpdated(
+        val v1: PresenceSnapshot) : ClientEvent() {
+        companion object
+    }
+    
+    data class NotificationReceived(
+        val v1: MessageSnapshot) : ClientEvent() {
+        companion object
+    }
+    
+    data class MentionsLoaded(
+        val `count`: kotlin.UInt) : ClientEvent() {
+        companion object
+    }
+    
+    data class CommandFailed(
+        val `kind`: FfiErrorKind, 
+        val `message`: kotlin.String) : ClientEvent() {
         companion object
     }
     
@@ -2366,10 +3738,46 @@ public object FfiConverterTypeClientEvent : FfiConverterRustBuffer<ClientEvent>{
             2 -> ClientEvent.ConnectionChanged(
                 FfiConverterTypeConnectionState.read(buf),
                 )
-            3 -> ClientEvent.Error(
+            3 -> ClientEvent.AuthChanged(
+                FfiConverterTypeAuthChallenge.read(buf),
+                )
+            4 -> ClientEvent.RemoteAuthChanged(
+                FfiConverterTypeRemoteAuthState.read(buf),
+                )
+            5 -> ClientEvent.MessageUpdated(
+                FfiConverterTypeMessageSnapshot.read(buf),
+                )
+            6 -> ClientEvent.MessageDeleted(
+                FfiConverterULong.read(buf),
+                FfiConverterULong.read(buf),
+                )
+            7 -> ClientEvent.ReactionChanged(
+                FfiConverterULong.read(buf),
+                FfiConverterULong.read(buf),
+                FfiConverterString.read(buf),
+                FfiConverterBoolean.read(buf),
+                )
+            8 -> ClientEvent.TypingStarted(
+                FfiConverterULong.read(buf),
+                FfiConverterULong.read(buf),
+                )
+            9 -> ClientEvent.PresenceUpdated(
+                FfiConverterTypePresenceSnapshot.read(buf),
+                )
+            10 -> ClientEvent.NotificationReceived(
+                FfiConverterTypeMessageSnapshot.read(buf),
+                )
+            11 -> ClientEvent.MentionsLoaded(
+                FfiConverterUInt.read(buf),
+                )
+            12 -> ClientEvent.CommandFailed(
+                FfiConverterTypeFfiErrorKind.read(buf),
                 FfiConverterString.read(buf),
                 )
-            4 -> ClientEvent.LoggedOut
+            13 -> ClientEvent.Error(
+                FfiConverterString.read(buf),
+                )
+            14 -> ClientEvent.LoggedOut
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
         }
     }
@@ -2386,6 +3794,82 @@ public object FfiConverterTypeClientEvent : FfiConverterRustBuffer<ClientEvent>{
             (
                 4UL
                 + FfiConverterTypeConnectionState.allocationSize(value.v1)
+            )
+        }
+        is ClientEvent.AuthChanged -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeAuthChallenge.allocationSize(value.v1)
+            )
+        }
+        is ClientEvent.RemoteAuthChanged -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeRemoteAuthState.allocationSize(value.v1)
+            )
+        }
+        is ClientEvent.MessageUpdated -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeMessageSnapshot.allocationSize(value.v1)
+            )
+        }
+        is ClientEvent.MessageDeleted -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterULong.allocationSize(value.`channelId`)
+                + FfiConverterULong.allocationSize(value.`messageId`)
+            )
+        }
+        is ClientEvent.ReactionChanged -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterULong.allocationSize(value.`channelId`)
+                + FfiConverterULong.allocationSize(value.`messageId`)
+                + FfiConverterString.allocationSize(value.`emoji`)
+                + FfiConverterBoolean.allocationSize(value.`added`)
+            )
+        }
+        is ClientEvent.TypingStarted -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterULong.allocationSize(value.`channelId`)
+                + FfiConverterULong.allocationSize(value.`userId`)
+            )
+        }
+        is ClientEvent.PresenceUpdated -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypePresenceSnapshot.allocationSize(value.v1)
+            )
+        }
+        is ClientEvent.NotificationReceived -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeMessageSnapshot.allocationSize(value.v1)
+            )
+        }
+        is ClientEvent.MentionsLoaded -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`count`)
+            )
+        }
+        is ClientEvent.CommandFailed -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeFfiErrorKind.allocationSize(value.`kind`)
+                + FfiConverterString.allocationSize(value.`message`)
             )
         }
         is ClientEvent.Error -> {
@@ -2414,13 +3898,69 @@ public object FfiConverterTypeClientEvent : FfiConverterRustBuffer<ClientEvent>{
                 FfiConverterTypeConnectionState.write(value.v1, buf)
                 Unit
             }
-            is ClientEvent.Error -> {
+            is ClientEvent.AuthChanged -> {
                 buf.putInt(3)
+                FfiConverterTypeAuthChallenge.write(value.v1, buf)
+                Unit
+            }
+            is ClientEvent.RemoteAuthChanged -> {
+                buf.putInt(4)
+                FfiConverterTypeRemoteAuthState.write(value.v1, buf)
+                Unit
+            }
+            is ClientEvent.MessageUpdated -> {
+                buf.putInt(5)
+                FfiConverterTypeMessageSnapshot.write(value.v1, buf)
+                Unit
+            }
+            is ClientEvent.MessageDeleted -> {
+                buf.putInt(6)
+                FfiConverterULong.write(value.`channelId`, buf)
+                FfiConverterULong.write(value.`messageId`, buf)
+                Unit
+            }
+            is ClientEvent.ReactionChanged -> {
+                buf.putInt(7)
+                FfiConverterULong.write(value.`channelId`, buf)
+                FfiConverterULong.write(value.`messageId`, buf)
+                FfiConverterString.write(value.`emoji`, buf)
+                FfiConverterBoolean.write(value.`added`, buf)
+                Unit
+            }
+            is ClientEvent.TypingStarted -> {
+                buf.putInt(8)
+                FfiConverterULong.write(value.`channelId`, buf)
+                FfiConverterULong.write(value.`userId`, buf)
+                Unit
+            }
+            is ClientEvent.PresenceUpdated -> {
+                buf.putInt(9)
+                FfiConverterTypePresenceSnapshot.write(value.v1, buf)
+                Unit
+            }
+            is ClientEvent.NotificationReceived -> {
+                buf.putInt(10)
+                FfiConverterTypeMessageSnapshot.write(value.v1, buf)
+                Unit
+            }
+            is ClientEvent.MentionsLoaded -> {
+                buf.putInt(11)
+                FfiConverterUInt.write(value.`count`, buf)
+                Unit
+            }
+            is ClientEvent.CommandFailed -> {
+                buf.putInt(12)
+                FfiConverterTypeFfiErrorKind.write(value.`kind`, buf)
+                FfiConverterString.write(value.`message`, buf)
+                Unit
+            }
+            is ClientEvent.Error -> {
+                buf.putInt(13)
                 FfiConverterString.write(value.`message`, buf)
                 Unit
             }
             is ClientEvent.LoggedOut -> {
-                buf.putInt(4)
+                buf.putInt(14)
                 Unit
             }
         }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
@@ -2601,7 +4141,15 @@ enum class FfiErrorKind {
     
     INVALID_INPUT,
     NOT_CONNECTED,
+    ALREADY_CONNECTED,
     UNAUTHORIZED,
+    FORBIDDEN,
+    NOT_FOUND,
+    RATE_LIMITED,
+    TIMEOUT,
+    CAPTCHA_REQUIRED,
+    MFA_REQUIRED,
+    CANCELLED,
     TRANSPORT,
     PROTOCOL,
     STORAGE,
@@ -2625,6 +4173,148 @@ public object FfiConverterTypeFfiErrorKind: FfiConverterRustBuffer<FfiErrorKind>
 
     override fun write(value: FfiErrorKind, buf: ByteBuffer) {
         buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+sealed class RemoteAuthState {
+    
+    object Idle : RemoteAuthState()
+    
+    
+    object Connecting : RemoteAuthState()
+    
+    
+    data class QrReady(
+        val `url`: kotlin.String) : RemoteAuthState() {
+        companion object
+    }
+    
+    data class UserScanned(
+        val `userId`: kotlin.String, 
+        val `username`: kotlin.String) : RemoteAuthState() {
+        companion object
+    }
+    
+    data class Finished(
+        val `token`: kotlin.String) : RemoteAuthState() {
+        companion object
+    }
+    
+    data class Error(
+        val `message`: kotlin.String) : RemoteAuthState() {
+        companion object
+    }
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeRemoteAuthState : FfiConverterRustBuffer<RemoteAuthState>{
+    override fun read(buf: ByteBuffer): RemoteAuthState {
+        return when(buf.getInt()) {
+            1 -> RemoteAuthState.Idle
+            2 -> RemoteAuthState.Connecting
+            3 -> RemoteAuthState.QrReady(
+                FfiConverterString.read(buf),
+                )
+            4 -> RemoteAuthState.UserScanned(
+                FfiConverterString.read(buf),
+                FfiConverterString.read(buf),
+                )
+            5 -> RemoteAuthState.Finished(
+                FfiConverterString.read(buf),
+                )
+            6 -> RemoteAuthState.Error(
+                FfiConverterString.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: RemoteAuthState) = when(value) {
+        is RemoteAuthState.Idle -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is RemoteAuthState.Connecting -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is RemoteAuthState.QrReady -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`url`)
+            )
+        }
+        is RemoteAuthState.UserScanned -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`userId`)
+                + FfiConverterString.allocationSize(value.`username`)
+            )
+        }
+        is RemoteAuthState.Finished -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`token`)
+            )
+        }
+        is RemoteAuthState.Error -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`message`)
+            )
+        }
+    }
+
+    override fun write(value: RemoteAuthState, buf: ByteBuffer) {
+        when(value) {
+            is RemoteAuthState.Idle -> {
+                buf.putInt(1)
+                Unit
+            }
+            is RemoteAuthState.Connecting -> {
+                buf.putInt(2)
+                Unit
+            }
+            is RemoteAuthState.QrReady -> {
+                buf.putInt(3)
+                FfiConverterString.write(value.`url`, buf)
+                Unit
+            }
+            is RemoteAuthState.UserScanned -> {
+                buf.putInt(4)
+                FfiConverterString.write(value.`userId`, buf)
+                FfiConverterString.write(value.`username`, buf)
+                Unit
+            }
+            is RemoteAuthState.Finished -> {
+                buf.putInt(5)
+                FfiConverterString.write(value.`token`, buf)
+                Unit
+            }
+            is RemoteAuthState.Error -> {
+                buf.putInt(6)
+                FfiConverterString.write(value.`message`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
     }
 }
 
@@ -2764,6 +4454,94 @@ public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?>
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeAuthChallenge: FfiConverterRustBuffer<AuthChallenge?> {
+    override fun read(buf: ByteBuffer): AuthChallenge? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeAuthChallenge.read(buf)
+    }
+
+    override fun allocationSize(value: AuthChallenge?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeAuthChallenge.allocationSize(value)
+        }
+    }
+
+    override fun write(value: AuthChallenge?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeAuthChallenge.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceULong: FfiConverterRustBuffer<List<kotlin.ULong>> {
+    override fun read(buf: ByteBuffer): List<kotlin.ULong> {
+        val len = buf.getInt()
+        return List<kotlin.ULong>(len) {
+            FfiConverterULong.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<kotlin.ULong>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterULong.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<kotlin.ULong>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterULong.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.String>> {
+    override fun read(buf: ByteBuffer): List<kotlin.String> {
+        val len = buf.getInt()
+        return List<kotlin.String>(len) {
+            FfiConverterString.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<kotlin.String>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterString.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<kotlin.String>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterString.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeChannelSnapshot: FfiConverterRustBuffer<List<ChannelSnapshot>> {
     override fun read(buf: ByteBuffer): List<ChannelSnapshot> {
         val len = buf.getInt()
@@ -2782,6 +4560,34 @@ public object FfiConverterSequenceTypeChannelSnapshot: FfiConverterRustBuffer<Li
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeChannelSnapshot.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeClientEventEnvelope: FfiConverterRustBuffer<List<ClientEventEnvelope>> {
+    override fun read(buf: ByteBuffer): List<ClientEventEnvelope> {
+        val len = buf.getInt()
+        return List<ClientEventEnvelope>(len) {
+            FfiConverterTypeClientEventEnvelope.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<ClientEventEnvelope>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeClientEventEnvelope.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<ClientEventEnvelope>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeClientEventEnvelope.write(it, buf)
         }
     }
 }
@@ -2820,6 +4626,34 @@ public object FfiConverterSequenceTypeGuildSnapshot: FfiConverterRustBuffer<List
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeMemberSnapshot: FfiConverterRustBuffer<List<MemberSnapshot>> {
+    override fun read(buf: ByteBuffer): List<MemberSnapshot> {
+        val len = buf.getInt()
+        return List<MemberSnapshot>(len) {
+            FfiConverterTypeMemberSnapshot.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<MemberSnapshot>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeMemberSnapshot.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<MemberSnapshot>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeMemberSnapshot.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeMessageSnapshot: FfiConverterRustBuffer<List<MessageSnapshot>> {
     override fun read(buf: ByteBuffer): List<MessageSnapshot> {
         val len = buf.getInt()
@@ -2848,25 +4682,62 @@ public object FfiConverterSequenceTypeMessageSnapshot: FfiConverterRustBuffer<Li
 /**
  * @suppress
  */
-public object FfiConverterSequenceTypeClientEvent: FfiConverterRustBuffer<List<ClientEvent>> {
-    override fun read(buf: ByteBuffer): List<ClientEvent> {
+public object FfiConverterSequenceTypePresenceSnapshot: FfiConverterRustBuffer<List<PresenceSnapshot>> {
+    override fun read(buf: ByteBuffer): List<PresenceSnapshot> {
         val len = buf.getInt()
-        return List<ClientEvent>(len) {
-            FfiConverterTypeClientEvent.read(buf)
+        return List<PresenceSnapshot>(len) {
+            FfiConverterTypePresenceSnapshot.read(buf)
         }
     }
 
-    override fun allocationSize(value: List<ClientEvent>): ULong {
+    override fun allocationSize(value: List<PresenceSnapshot>): ULong {
         val sizeForLength = 4UL
-        val sizeForItems = value.map { FfiConverterTypeClientEvent.allocationSize(it) }.sum()
+        val sizeForItems = value.map { FfiConverterTypePresenceSnapshot.allocationSize(it) }.sum()
         return sizeForLength + sizeForItems
     }
 
-    override fun write(value: List<ClientEvent>, buf: ByteBuffer) {
+    override fun write(value: List<PresenceSnapshot>, buf: ByteBuffer) {
         buf.putInt(value.size)
         value.iterator().forEach {
-            FfiConverterTypeClientEvent.write(it, buf)
+            FfiConverterTypePresenceSnapshot.write(it, buf)
         }
     }
 }
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeReadStateSnapshot: FfiConverterRustBuffer<List<ReadStateSnapshot>> {
+    override fun read(buf: ByteBuffer): List<ReadStateSnapshot> {
+        val len = buf.getInt()
+        return List<ReadStateSnapshot>(len) {
+            FfiConverterTypeReadStateSnapshot.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<ReadStateSnapshot>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeReadStateSnapshot.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<ReadStateSnapshot>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeReadStateSnapshot.write(it, buf)
+        }
+    }
+} fun `snapshotSchemaVersion`(): kotlin.UInt {
+            return FfiConverterUInt.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_lampcord_ffi_fn_func_snapshot_schema_version(
+        _status)
+}
+    )
+    }
+    
+
 

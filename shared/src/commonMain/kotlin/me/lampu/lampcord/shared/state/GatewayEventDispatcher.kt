@@ -27,6 +27,10 @@ class GatewayEventDispatcher(
 
     fun dispatch(payload: GatewayPayload) {
         val type = payload.t ?: return
+        if (RustCoreMode.enabled) {
+            Logging.d("GatewayDispatcher", "RustCoreMode enabled; ignoring $type")
+            return
+        }
         handlerMap[type]?.forEach { handler ->
 
             try {

@@ -26,13 +26,13 @@ import me.lampu.lampcord.shared.state.NavigationStore
 
 @Composable
 fun RustCoreDebugOverlay(
-    bridge: RustCoreBridge,
+    engine: RustCoreEngine,
     modifier: Modifier = Modifier,
     entityStore: EntityStore? = null,
     messageStore: MessageStore? = null,
     navigationStore: NavigationStore? = null,
 ) {
-    val snap by bridge.snapshots.collectAsState()
+    val snap by engine.snapshots.collectAsState()
     val mappedGuilds = remember(snap.seq) { RustSnapshotMapper.mapGuilds(snap) }
     val mappedChannels = remember(snap.seq) { RustSnapshotMapper.mapChannels(snap) }
     val mappedMessages = remember(snap.seq) { RustSnapshotMapper.mapMessages(snap) }
@@ -50,28 +50,28 @@ fun RustCoreDebugOverlay(
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Text("Rust Core PoC (read-only parity slice)", style = MaterialTheme.typography.labelLarge)
-        Text("seq: ${snap.seq}", style = MaterialTheme.typography.bodySmall)
-        Text("connection: ${snap.connection}", style = MaterialTheme.typography.bodySmall)
+        Text("Rust Core (shared facade)", style = MaterialTheme.typography.labelLarge)
+        Text("schema=${snap.schemaVersion} seq: ${snap.seq}", style = MaterialTheme.typography.bodySmall)
+        Text("connection: ${snap.connection.state}", style = MaterialTheme.typography.bodySmall)
         Text("user: ${snap.currentUser ?: "-"} (${snap.currentUserId ?: "-"})", style = MaterialTheme.typography.bodySmall)
         Text(
-            "snapshot: guilds=${snap.guilds.size} channels=${snap.channels.size} messages=${snap.messages.size}",
-            style = MaterialTheme.typography.bodySmall
+            "snapshot: guilds=${snap.guilds.size} channels=${snap.channels.size} messages=${snap.messages.size} members=${snap.members.size}",
+            style = MaterialTheme.typography.bodySmall,
         )
         Text(
             "mapped UI models: guilds=${mappedGuilds.size} channels=${mappedChannels.size} messages=${mappedMessages.size}",
-            style = MaterialTheme.typography.bodySmall
+            style = MaterialTheme.typography.bodySmall,
         )
         if (kotlinGuilds != null || kotlinChannels != null || kotlinMessages != null) {
             HorizontalDivider()
             Text("Kotlin stores (parity)", style = MaterialTheme.typography.labelMedium)
             Text(
                 "stores: guilds=${kotlinGuilds?.size ?: "-"} channels=${kotlinChannels?.size ?: "-"} messages=${kotlinMessages?.size ?: "-"}",
-                style = MaterialTheme.typography.bodySmall
+                style = MaterialTheme.typography.bodySmall,
             )
             Text(
                 "nav: guild=${navigationStore?.selectedGuild?.id ?: "-"} channel=${navigationStore?.selectedChannel?.id ?: "-"} connected=${navigationStore?.isConnected ?: "-"}",
-                style = MaterialTheme.typography.bodySmall
+                style = MaterialTheme.typography.bodySmall,
             )
         }
         snap.selectedGuildId?.let { Text("rust selected guild: $it", style = MaterialTheme.typography.bodySmall) }
@@ -79,20 +79,23 @@ fun RustCoreDebugOverlay(
         snap.error?.let {
             Text("error: $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
         }
+        (snap.auth.challenge as? RustAuthChallenge.Failed)?.let {
+            Text("auth: ${it.kind}: ${it.message}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+        }
 
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             Button(onClick = {
-                snap.guilds.firstOrNull()?.let { bridge.selectGuild(it.id) }
+                snap.guilds.firstOrNull()?.let { engine.selectGuild(it.id) }
             }, enabled = snap.guilds.isNotEmpty()) {
                 Text("Guild", style = MaterialTheme.typography.labelSmall)
             }
             Button(onClick = {
-                snap.channels.firstOrNull()?.let { bridge.selectChannel(it.id) }
+                snap.channels.firstOrNull()?.let { engine.selectChannel(it.id) }
             }, enabled = snap.channels.isNotEmpty()) {
                 Text("Channel", style = MaterialTheme.typography.labelSmall)
             }
             Button(onClick = {
-                snap.selectedChannelId?.let { bridge.fetchMessages(it, null, 20.toUByte()) }
+                snap.selectedChannelId?.let { engine.fetchMessages(it, null, 20u) }
             }, enabled = snap.selectedChannelId != null) {
                 Text("Fetch", style = MaterialTheme.typography.labelSmall)
             }

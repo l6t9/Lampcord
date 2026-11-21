@@ -161,7 +161,7 @@ private class FileSettings(private val file: File) : Settings {
 }
 
 private class SecureJvmSettings(private val delegate: Settings) : Settings by delegate {
-    private val secureKeys = setOf("discord_token", "saved_accounts")
+    private val secureKeys = setOf("discord_token", "saved_accounts", "rust_core_secrets")
 
     override fun getString(key: String, defaultValue: String): String {
         val value = delegate.getString(key, "")

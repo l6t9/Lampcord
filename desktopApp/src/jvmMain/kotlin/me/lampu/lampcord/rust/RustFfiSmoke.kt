@@ -1,23 +1,17 @@
 package me.lampu.lampcord.rust
 
-import uniffi.lampcord_ffi.ClientConfig
+import me.lampu.lampcord.shared.state.RustCoreMode
 
-/** Simple JVM smoke test: load UniFFI, start client, snapshot, shutdown. */
 fun main() {
-    val bridge = RustCoreBridge(
-        ClientConfig(
-            apiBase = "https://discord.com/api/v9",
-            gatewayUrl = null,
-            userAgent = null,
-            storagePath = null,
-        )
-    )
+    RustCoreMode.enabled = true
+    val engine = RustCoreEngine(RustClientConfig())
     try {
-        val snap = bridge.snapshot()
+        val snap = engine.snapshot()
+        check(snap.schemaVersion > 0u) { "expected a schema version" }
         check(snap.seq >= 0uL) { "expected seq >= 0" }
-        check(bridge.shutdown()) { "shutdown should succeed" }
-        println("rust-ffi smoke ok: seq=${snap.seq} connection=${snap.connection}")
+        check(engine.shutdown()) { "shutdown should succeed" }
+        println("rust-ffi smoke ok: schema=${snap.schemaVersion} seq=${snap.seq} connection=${snap.connection.state}")
     } finally {
-        bridge.close()
+        engine.close()
     }
 }

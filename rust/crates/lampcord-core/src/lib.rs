@@ -11,6 +11,7 @@ pub mod read_state;
 pub mod remote_auth;
 pub mod rest;
 pub mod rest_client;
+pub mod secret_store;
 pub mod session;
 pub mod state_cache;
 pub mod token_store;

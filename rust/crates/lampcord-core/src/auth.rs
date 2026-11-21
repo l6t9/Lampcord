@@ -101,6 +101,8 @@ pub struct LoginResponse {
     pub message: Option<String>,
     pub failure: Option<LoginFailure>,
     pub captcha_cancelled: bool,
+    #[serde(default, skip_serializing)]
+    pub body: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -243,6 +245,7 @@ pub fn complete_login(response: LoginResponse) -> (LoginResponse, Option<String>
         message: Some(PASSWORD_UPDATE_MESSAGE.to_owned()),
         failure: Some(LoginFailure::PasswordUpdateRequired),
         captcha_cancelled: false,
+        body: response.body,
     };
     (completed, token_to_logout)
 }

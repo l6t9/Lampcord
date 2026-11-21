@@ -9,7 +9,8 @@ import kotlin.experimental.ExperimentalObjCName
 
 internal val secureSettingsKeys = setOf(
     "discord_token",
-    "saved_accounts"
+    "saved_accounts",
+    "rust_core_secrets"
 )
 
 @OptIn(ExperimentalSettingsImplementation::class)

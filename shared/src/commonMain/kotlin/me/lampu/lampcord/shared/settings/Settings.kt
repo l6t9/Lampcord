@@ -11,6 +11,7 @@ class Settings(private val settings: KmpSettings) {
     var discordToken by preference("discord_token", "")
     var installationId by preference("installation_id", "")
     var savedAccountsJson by preference("saved_accounts", "[]")
+    var rustCoreSecrets by preference("rust_core_secrets", "")
     var language by preference("language", me.lampu.lampcord.shared.i18n.LANGUAGE_SYSTEM)
     var pureBlack by preferenceBoolean("pure_black", false)
     var themeMode by preferenceEnum("theme_mode", ThemeMode.AUTO)

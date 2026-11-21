@@ -37,7 +37,10 @@ import me.lampu.lampcord.shared.state.AppVisibilityStore
 import me.lampu.lampcord.shared.state.EntityStore
 import me.lampu.lampcord.shared.state.MessageStore
 import me.lampu.lampcord.shared.state.NavigationStore
+import me.lampu.lampcord.shared.state.PresenceStore
+import me.lampu.lampcord.shared.state.ReadStateStore
 import me.lampu.lampcord.shared.state.SessionManager
+import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.settings.ThemeMode
@@ -50,7 +53,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import me.lampu.lampcord.shared.utils.getPlatformName
 import me.lampu.lampcord.shared.utils.reloadTrigger
-import me.lampu.lampcord.rust.RustCoreBridge
+import me.lampu.lampcord.rust.RustClientConfig
+import me.lampu.lampcord.rust.RustCoreEngine
 import me.lampu.lampcord.rust.RustCoreIntegration
 import org.koin.compose.koinInject
 import org.koin.core.context.GlobalContext.get
@@ -206,48 +210,43 @@ fun main() {
                     nucleusWindow.focusFlow.collect { AppVisibilityStore.setVisible(it) }
                 }
 
-                var rustBridge by remember { mutableStateOf<RustCoreBridge?>(null) }
-                val rustScope = rememberCoroutineScope()
+                var rustEngine by remember { mutableStateOf<RustCoreEngine?>(null) }
                 if (System.getProperty("lampcord.rustCore") == "true") {
                     val sessionManager: SessionManager = koinInject()
                     val entityStore: EntityStore = koinInject()
                     val messageStore: MessageStore = koinInject()
                     val navigationStore: NavigationStore = koinInject()
+                    val userStore: UserStore = koinInject()
+                    val presenceStore: PresenceStore = koinInject()
+                    val readStateStore: ReadStateStore = koinInject()
                     DisposableEffect(sessionManager) {
-                        val bridge = runCatching { RustCoreBridge() }.getOrNull()
-                        if (bridge == null) {
-                            Logging.w("RustCore", "Failed to start RustCoreBridge PoC")
+                        val engine = runCatching { RustCoreEngine(RustClientConfig()) }.getOrNull()
+                        if (engine == null) {
+                            Logging.w("RustCore", "Failed to start RustCoreEngine; falling back to Kotlin gateway")
+                            me.lampu.lampcord.shared.state.RustCoreMode.enabled = false
+                            val token = Settings.shared.discordToken.trim().takeIf { it.isNotBlank() }
+                            if (token != null) sessionManager.connect(token)
                             onDispose {}
                         } else {
-                            rustBridge = bridge
-                            Logging.i("RustCore", "RustCoreBridge PoC started")
-                            val integration = RustCoreIntegration(bridge, entityStore, messageStore, navigationStore)
+                            rustEngine = engine
+                            Logging.i("RustCore", "RustCoreEngine started")
+                            val integration = RustCoreIntegration(
+                                engine,
+                                entityStore,
+                                messageStore,
+                                navigationStore,
+                                userStore,
+                                presenceStore,
+                                readStateStore,
+                            )
                             integration.start()
                             val token = Settings.shared.discordToken.trim().takeIf { it.isNotBlank() }
-                            if (token != null) {
-                                bridge.connectToken(token)
-                            }
-                            val job = rustScope.launch(Dispatchers.Default) {
-                                launch {
-                                    bridge.snapshots.collect { snap ->
-                                        Logging.i(
-                                            "RustCore",
-                                            "seq=${snap.seq} conn=${snap.connection} user=${snap.currentUser} guilds=${snap.guilds.size} channels=${snap.channels.size} msgs=${snap.messages.size}"
-                                        )
-                                    }
-                                }
-                                launch {
-                                    bridge.events.collect { event ->
-                                        Logging.i("RustCore", "event=$event")
-                                    }
-                                }
-                            }
+                            if (token != null) engine.connectToken(token)
                             onDispose {
-                                rustBridge = null
-                                job.cancel()
+                                rustEngine = null
                                 integration.close()
-                                bridge.close()
-                                Logging.i("RustCore", "RustCoreBridge PoC stopped")
+                                engine.close()
+                                Logging.i("RustCore", "RustCoreEngine stopped")
                             }
                         }
                     }
@@ -263,12 +262,12 @@ fun main() {
                     }
                     androidx.compose.foundation.layout.Box {
                         App()
-                        rustBridge?.let { bridge ->
+                        rustEngine?.let { engine ->
                             val entityStore: EntityStore = koinInject()
                             val messageStore: MessageStore = koinInject()
                             val navigationStore: NavigationStore = koinInject()
                             RustCoreDebugOverlay(
-                                bridge = bridge,
+                                engine = engine,
                                 modifier = androidx.compose.ui.Modifier
                                     .align(androidx.compose.ui.Alignment.TopEnd)
                                     .padding(8.dp),

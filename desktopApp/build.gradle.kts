@@ -522,7 +522,7 @@ val smokeRustFfi by tasks.registering(JavaExec::class) {
     dependsOn("compileKotlinJvm", copyRustFfiDesktop)
     mainClass.set("me.lampu.lampcord.rust.RustFfiSmokeKt")
     val jvmMain = kotlin.jvm().compilations.getByName("main")
-    classpath = files(jvmMain.output.allOutputs, jvmMain.runtimeDependencyFiles, rustFfiGeneratedResourcesDir)
+    classpath = files(rustFfiGeneratedResourcesDir, jvmMain.output.allOutputs, jvmMain.runtimeDependencyFiles)
 }
 
 if (providers.gradleProperty("includeRustFfi").orNull == "true") {

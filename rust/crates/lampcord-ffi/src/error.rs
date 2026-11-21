@@ -7,7 +7,15 @@ use serde::{Deserialize, Serialize};
 pub enum FfiErrorKind {
     InvalidInput,
     NotConnected,
+    AlreadyConnected,
     Unauthorized,
+    Forbidden,
+    NotFound,
+    RateLimited,
+    Timeout,
+    CaptchaRequired,
+    MfaRequired,
+    Cancelled,
     Transport,
     Protocol,
     Storage,
@@ -66,8 +74,18 @@ impl FfiClientError {
         }
     }
 
+    pub fn kind(&self) -> FfiErrorKind {
+        match self {
+            Self::Generic { kind, .. } => *kind,
+        }
+    }
+
     pub fn not_connected() -> Self {
         Self::new(FfiErrorKind::NotConnected, "client worker is not running")
+    }
+
+    pub fn invalid_input(message: impl Into<String>) -> Self {
+        Self::new(FfiErrorKind::InvalidInput, message)
     }
 }
 

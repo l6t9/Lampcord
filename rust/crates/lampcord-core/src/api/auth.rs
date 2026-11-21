@@ -79,6 +79,7 @@ where
                 .unwrap_or_else(|| auth::failure_message(failure).to_owned()),
         ),
         failure: Some(failure),
+        body: Some(response.body),
         ..LoginResponse::default()
     })
 }
@@ -120,6 +121,7 @@ where
                 .unwrap_or_else(|| auth::failure_message(failure).to_owned()),
         ),
         failure: Some(failure),
+        body: Some(response.body),
         ..LoginResponse::default()
     })
 }
