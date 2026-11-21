@@ -5,7 +5,7 @@ use std::{
         atomic::{AtomicU64, Ordering},
     },
     thread,
-    time::{SystemTime, UNIX_EPOCH},
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
 use async_trait::async_trait;
@@ -44,6 +44,24 @@ use crate::{
 
 const MAX_EVENT_QUEUE: usize = 512;
 const EVENT_DROP_BATCH: usize = 64;
+const SNAPSHOT_COALESCE: Duration = Duration::from_millis(32);
+const SNAPSHOT_DISPATCH_EVENTS: &[&str] = &[
+    "MESSAGE_CREATE",
+    "MESSAGE_UPDATE",
+    "MESSAGE_DELETE",
+    "GUILD_CREATE",
+    "GUILD_UPDATE",
+    "GUILD_DELETE",
+    "CHANNEL_CREATE",
+    "CHANNEL_UPDATE",
+    "CHANNEL_DELETE",
+    "USER_UPDATE",
+    "GUILD_MEMBER_ADD",
+    "GUILD_MEMBER_UPDATE",
+    "GUILD_MEMBER_REMOVE",
+    "GUILD_MEMBERS_CHUNK",
+    "PRESENCE_UPDATE",
+];
 static EVENT_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
 type EventQueue = Arc<Mutex<Vec<ClientEventEnvelope>>>;
@@ -198,6 +216,15 @@ impl RuntimeHandle {
 
     pub fn snapshot(&self) -> ClientSnapshot {
         self.snapshot.lock().expect("snapshot lock").clone()
+    }
+
+    pub fn snapshot_if_newer(&self, since: u64) -> Option<ClientSnapshot> {
+        let snapshot = self.snapshot.lock().expect("snapshot lock");
+        if snapshot.seq > since {
+            Some(snapshot.clone())
+        } else {
+            None
+        }
     }
 
     pub fn drain_events(&self) -> Vec<ClientEventEnvelope> {
@@ -808,6 +835,10 @@ async fn run(
     let gateway_url_override = config.gateway_url.clone();
     let captcha_solver = ConfigurableCaptchaSolver::default();
     let seq = Arc::new(AtomicU64::new(0));
+    let mut snapshot_dirty = false;
+    let mut last_publish = Instant::now();
+    let mut flush_ticker = tokio::time::interval(SNAPSHOT_COALESCE);
+    flush_ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
 
     let publish = |connection: &ConnectionState,
                    has_token: bool,
@@ -833,7 +864,7 @@ async fn run(
         set_snapshot(snapshot, events, seq, next);
     };
 
-    macro_rules! publish_now {
+    macro_rules! publish_snapshot {
         () => {
             publish(
                 &connection,
@@ -848,6 +879,30 @@ async fn run(
                 &events,
                 &seq,
             )
+        };
+    }
+
+    macro_rules! publish_now {
+        () => {{
+            publish_snapshot!();
+            snapshot_dirty = false;
+            last_publish = Instant::now();
+        }};
+    }
+
+    publish_snapshot!();
+
+    macro_rules! mark_snapshot_dirty {
+        () => {
+            snapshot_dirty = true;
+        };
+    }
+
+    macro_rules! flush_snapshot {
+        ($immediate:expr) => {
+            if snapshot_dirty && ($immediate || last_publish.elapsed() >= SNAPSHOT_COALESCE) {
+                publish_now!();
+            }
         };
     }
 
@@ -891,8 +946,6 @@ async fn run(
         }};
     }
 
-    publish_now!();
-
     loop {
         tokio::select! {
             maybe_cmd = cmd_rx.recv() => {
@@ -926,7 +979,7 @@ async fn run(
                         error = None;
                         connection = ConnectionState::Disconnected;
                         push_event(&events, ClientEvent::LoggedOut);
-                        publish_now!();
+                        mark_snapshot_dirty!();
                     }
                     ClientCommand::ConnectToken { token } => {
                         if let Err(message) = connect_session!(token) {
@@ -934,7 +987,7 @@ async fn run(
                             error = Some(format!("Session init failed: {message}"));
                             should_reconnect = false;
                         }
-                        publish_now!();
+                        mark_snapshot_dirty!();
                     }
                     ClientCommand::ConnectStoredToken => {
                         if let Some(account) = token_store.accounts().first().cloned() {
@@ -950,7 +1003,7 @@ async fn run(
                                 message: error.clone().unwrap_or_default(),
                             });
                         }
-                        publish_now!();
+                        mark_snapshot_dirty!();
                     }
                     ClientCommand::LoginPassword { login, password, captcha_key } => {
                         captcha_solver.set(captcha_key);
@@ -978,7 +1031,7 @@ async fn run(
                                                     kind: AuthFailureKind::Network,
                                                     message,
                                                 });
-                                                publish_now!();
+                                                mark_snapshot_dirty!();
                                                 continue;
                                             }
                                         }
@@ -994,7 +1047,7 @@ async fn run(
                                 }
                             }
                         }
-                        publish_now!();
+                        mark_snapshot_dirty!();
                     }
                     ClientCommand::SubmitMfa { code, ticket, method } => {
                         captcha_solver.set(None);
@@ -1018,7 +1071,7 @@ async fn run(
                                                     kind: AuthFailureKind::Network,
                                                     message,
                                                 });
-                                                publish_now!();
+                                                mark_snapshot_dirty!();
                                                 continue;
                                             }
                                         }
@@ -1034,7 +1087,7 @@ async fn run(
                                 }
                             }
                         }
-                        publish_now!();
+                        mark_snapshot_dirty!();
                     }
                     ClientCommand::SendMfaSms { ticket } => {
                         let config = default_rest_config(&api_base, user_agent.as_deref(), None);
@@ -1048,7 +1101,7 @@ async fn run(
                                 }),
                             }
                         }
-                        publish_now!();
+                        mark_snapshot_dirty!();
                     }
                     ClientCommand::ForgotPassword { login } => {
                         let config = default_rest_config(&api_base, user_agent.as_deref(), None);
@@ -1073,7 +1126,7 @@ async fn run(
                                 }),
                             }
                         }
-                        publish_now!();
+                        mark_snapshot_dirty!();
                     }
                     ClientCommand::StartRemoteAuth => {
                         let config = default_rest_config(&api_base, user_agent.as_deref(), None);
@@ -1112,7 +1165,7 @@ async fn run(
                                 push_event(&events, ClientEvent::RemoteAuthChanged(auth_state.remote.clone()));
                             }
                         }
-                        publish_now!();
+                        mark_snapshot_dirty!();
                     }
                     ClientCommand::CancelRemoteAuth => {
                         if let Some(cancel) = remote_cancel.take() { let _ = cancel.send(()); }
@@ -1120,12 +1173,12 @@ async fn run(
                         remote_events = None;
                         auth_state.remote = RemoteAuthState::Idle;
                         push_event(&events, ClientEvent::RemoteAuthChanged(RemoteAuthState::Idle));
-                        publish_now!();
+                        mark_snapshot_dirty!();
                     }
                     ClientCommand::SelectGuild { guild_id } => {
                         selected_guild_id = guild_id.map(Snowflake::from);
                         selected_channel_id = None;
-                        publish_now!();
+                        mark_snapshot_dirty!();
                     }
                     ClientCommand::SelectChannel { channel_id } => {
                         selected_channel_id = channel_id.map(Snowflake::from);
@@ -1136,7 +1189,7 @@ async fn run(
                                 fetched_messages.insert(channel_id, messages);
                             }
                         }
-                        publish_now!();
+                        mark_snapshot_dirty!();
                     }
                     ClientCommand::FetchMessages { channel_id, before, limit } => {
                         let channel_id = Snowflake::from(channel_id);
@@ -1167,7 +1220,7 @@ async fn run(
                                 }
                             }
                         }
-                        publish_now!();
+                        mark_snapshot_dirty!();
                     }
                     ClientCommand::FetchMentions { limit, before } => {
                         if let Some(rest_client) = rest.clone() {
@@ -1192,7 +1245,7 @@ async fn run(
                                 }
                             }
                         }
-                        publish_now!();
+                        mark_snapshot_dirty!();
                     }
                     ClientCommand::SendMessage { channel_id, content, reply_to_message_id, reply_to_guild_id } => {
                         let channel_id = Snowflake::from(channel_id);
@@ -1216,7 +1269,7 @@ async fn run(
                                 }
                             }
                         }
-                        publish_now!();
+                        mark_snapshot_dirty!();
                     }
                     ClientCommand::EditMessage { channel_id, message_id, content } => {
                         let channel_id = Snowflake::from(channel_id);
@@ -1243,7 +1296,7 @@ async fn run(
                                 }
                             }
                         }
-                        publish_now!();
+                        mark_snapshot_dirty!();
                     }
                     ClientCommand::DeleteMessage { channel_id, message_id } => {
                         let channel_id = Snowflake::from(channel_id);
@@ -1266,7 +1319,7 @@ async fn run(
                                 }
                             }
                         }
-                        publish_now!();
+                        mark_snapshot_dirty!();
                     }
                     ClientCommand::AddReaction { channel_id, message_id, emoji }
                     | ClientCommand::RemoveReaction { channel_id, message_id, emoji } => {
@@ -1295,7 +1348,7 @@ async fn run(
                                 }
                             }
                         }
-                        publish_now!();
+                        mark_snapshot_dirty!();
                     }
                     ClientCommand::SendTyping { channel_id } => {
                         if let Some(rest_client) = rest.clone() {
@@ -1308,7 +1361,7 @@ async fn run(
                                 });
                             }
                         }
-                        publish_now!();
+                        mark_snapshot_dirty!();
                     }
                     ClientCommand::SetStatus { status } => {
                         if let Some(rest_client) = rest.clone() {
@@ -1321,7 +1374,7 @@ async fn run(
                                 });
                             }
                         }
-                        publish_now!();
+                        mark_snapshot_dirty!();
                     }
                     ClientCommand::AckMessage { channel_id, message_id } => {
                         if let Some(cache) = cache.as_ref() {
@@ -1336,9 +1389,10 @@ async fn run(
                                 });
                             }
                         }
-                        publish_now!();
+                        mark_snapshot_dirty!();
                     }
                 }
+                flush_snapshot!(true);
             }
             maybe_remote = async {
                 match remote_events.as_mut() {
@@ -1373,7 +1427,8 @@ async fn run(
                     if let Some(task) = remote_task.take() { task.abort(); }
                     remote_events = None;
                 }
-                publish_now!();
+                mark_snapshot_dirty!();
+                flush_snapshot!(true);
             }
             maybe_gw = async {
                 match gateway_events.as_mut() {
@@ -1383,6 +1438,16 @@ async fn run(
             } => {
                 let Some(event) = maybe_gw else { gateway_events = None; continue; };
                 let prev_connection = connection.clone();
+                let snapshot_changed = match &event {
+                    GatewayEvent::Hello { .. }
+                    | GatewayEvent::HandlerErrors { .. }
+                    | GatewayEvent::HeartbeatSent
+                    | GatewayEvent::HeartbeatAck => false,
+                    GatewayEvent::Dispatch { event_type, .. } => {
+                        SNAPSHOT_DISPATCH_EVENTS.contains(&event_type.as_str())
+                    }
+                    _ => true,
+                };
                 match event {
                     GatewayEvent::Hello { .. } => {
                         connection = ConnectionState::Connecting;
@@ -1419,10 +1484,17 @@ async fn run(
                     }
                     GatewayEvent::HeartbeatSent | GatewayEvent::HeartbeatAck => {}
                 }
-                if connection != prev_connection {
+                let connection_changed = connection != prev_connection;
+                if connection_changed {
                     push_event(&events, ClientEvent::ConnectionChanged(connection.clone()));
                 }
-                publish_now!();
+                if snapshot_changed || connection_changed {
+                    mark_snapshot_dirty!();
+                }
+                flush_snapshot!(false);
+            }
+            _ = flush_ticker.tick() => {
+                flush_snapshot!(false);
             }
         }
     }

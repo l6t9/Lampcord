@@ -194,12 +194,13 @@ class ReadStateStore(
         return _readStates.value[channelId]?.mention_count ?: 0
     }
 
-    private fun rememberAck(channelId: String, messageId: String) {
-        val id = messageId.toLongOrNull() ?: return
+    private fun rememberAck(channelId: String, messageId: String, persist: Boolean = true): Boolean {
+        val id = messageId.toLongOrNull() ?: return false
         val current = localAcks[channelId]?.toLongOrNull() ?: 0L
-        if (id <= current) return
+        if (id <= current) return false
         localAcks[channelId] = messageId
-        persistLocalAcks()
+        if (persist) persistLocalAcks()
+        return true
     }
 
     suspend fun ackMessage(channelId: String, messageId: String) {
@@ -230,7 +231,10 @@ class ReadStateStore(
     fun applyAcknowledgements(readStates: Map<String, String>) {
         val validStates = readStates.filterValues { it.toLongOrNull()?.let { id -> id > 0L } == true }
         if (validStates.isEmpty()) return
-        validStates.forEach { (channelId, messageId) -> rememberAck(channelId, messageId) }
+        val changed = validStates.entries.fold(false) { accumulated, entry ->
+            rememberAck(entry.key, entry.value, persist = false) || accumulated
+        }
+        if (changed) persistLocalAcks()
         _readStates.update { current ->
             current + validStates.mapValues { (channelId, messageId) ->
                 (current[channelId] ?: ReadState(id = channelId)).withAck(messageId, 0)

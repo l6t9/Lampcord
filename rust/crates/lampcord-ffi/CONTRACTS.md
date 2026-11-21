@@ -11,6 +11,8 @@ a frontend to code against while the core evolves.
   fields; unknown fields are additive, known fields are never repurposed.
 * `ClientSnapshot.seq` is monotonic per client process. Frontends can ignore
   snapshots with a sequence they have already applied.
+* `snapshot_if_newer(since)` returns a snapshot only when `ClientSnapshot.seq`
+  has advanced past `since`, so poll-based frontends skip unchanged snapshots.
 * Projections are bounded: messages are capped at 200 per selected channel,
   and members/presences/read states at 200 each. Use paginated commands for
   complete lists.

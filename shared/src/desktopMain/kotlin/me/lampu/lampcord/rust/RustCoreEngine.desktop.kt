@@ -72,8 +72,8 @@ actual class RustCoreEngine actual constructor(config: RustClientConfig) : AutoC
             for (event in runCatching { client.drainEvents() }.getOrDefault(emptyList())) {
                 _events.tryEmit(mapEvent(event))
             }
-            val snapshot = runCatching { client.snapshot() }.getOrNull()
-            if (snapshot != null && snapshot.seq != lastSeq) {
+            val snapshot = runCatching { client.snapshotIfNewer(lastSeq) }.getOrNull()
+            if (snapshot != null) {
                 lastSeq = snapshot.seq
                 _snapshots.value = mapSnapshot(snapshot)
             }

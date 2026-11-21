@@ -485,7 +485,7 @@ fun rustFfiResourcePrefix(): String {
     return "$osPart-$archPart"
 }
 
-val rustFfiProfile = providers.gradleProperty("rustFfiProfile").orElse("debug")
+val rustFfiProfile = providers.gradleProperty("rustFfiProfile").orElse("release")
 val rustFfiTarget = providers.gradleProperty("rustFfiTarget")
 
 val buildRustFfi by tasks.registering(Exec::class) {

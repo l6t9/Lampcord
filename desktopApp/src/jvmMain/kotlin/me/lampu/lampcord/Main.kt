@@ -62,6 +62,8 @@ import org.koin.core.context.GlobalContext.getOrNull
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
 
+private val debugOverlayEnabled = System.getProperty("lampcord.debugOverlay") == "true"
+
 @OptIn(FlowPreview::class)
 fun main() {
     Logging.debugEnabled = Settings.shared.verboseLogging
@@ -263,6 +265,7 @@ fun main() {
                     androidx.compose.foundation.layout.Box {
                         App()
                         rustEngine?.let { engine ->
+                            if (!debugOverlayEnabled) return@let
                             val entityStore: EntityStore = koinInject()
                             val messageStore: MessageStore = koinInject()
                             val navigationStore: NavigationStore = koinInject()

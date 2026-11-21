@@ -810,6 +810,8 @@ internal open class UniffiVTableCallbackInterfacePlatformSecretStore(
 
 
 
+
+
 // A JNA Library to expose the extern-C FFI definitions.
 // This is an implementation detail which will be called internally by the public API.
 
@@ -883,6 +885,8 @@ internal interface UniffiLib : Library {
     fun uniffi_lampcord_ffi_fn_method_lampcordclient_shutdown(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
     fun uniffi_lampcord_ffi_fn_method_lampcordclient_snapshot(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_lampcord_ffi_fn_method_lampcordclient_snapshot_if_newer(`ptr`: Pointer,`since`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_lampcord_ffi_fn_method_lampcordclient_start_remote_auth(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
@@ -1062,6 +1066,8 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_lampcord_ffi_checksum_method_lampcordclient_snapshot(
     ): Short
+    fun uniffi_lampcord_ffi_checksum_method_lampcordclient_snapshot_if_newer(
+    ): Short
     fun uniffi_lampcord_ffi_checksum_method_lampcordclient_start_remote_auth(
     ): Short
     fun uniffi_lampcord_ffi_checksum_method_lampcordclient_submit_mfa(
@@ -1163,6 +1169,9 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_snapshot() != 7279.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_snapshot_if_newer() != 62980.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_start_remote_auth() != 38958.toShort()) {
@@ -1615,6 +1624,8 @@ public interface LampcordClientInterface {
     
     fun `snapshot`(): ClientSnapshot
     
+    fun `snapshotIfNewer`(`since`: kotlin.ULong): ClientSnapshot?
+    
     fun `startRemoteAuth`()
     
     fun `submitMfa`(`code`: kotlin.String, `ticket`: kotlin.String, `method`: kotlin.String)
@@ -1973,6 +1984,18 @@ open class LampcordClient: Disposable, AutoCloseable, LampcordClientInterface {
     uniffiRustCall() { _status ->
     UniffiLib.INSTANCE.uniffi_lampcord_ffi_fn_method_lampcordclient_snapshot(
         it, _status)
+}
+    }
+    )
+    }
+    
+
+    override fun `snapshotIfNewer`(`since`: kotlin.ULong): ClientSnapshot? {
+            return FfiConverterOptionalTypeClientSnapshot.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_lampcord_ffi_fn_method_lampcordclient_snapshot_if_newer(
+        it, FfiConverterULong.lower(`since`),_status)
 }
     }
     )
@@ -4444,6 +4467,38 @@ public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?>
         } else {
             buf.put(1)
             FfiConverterString.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeClientSnapshot: FfiConverterRustBuffer<ClientSnapshot?> {
+    override fun read(buf: ByteBuffer): ClientSnapshot? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeClientSnapshot.read(buf)
+    }
+
+    override fun allocationSize(value: ClientSnapshot?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeClientSnapshot.allocationSize(value)
+        }
+    }
+
+    override fun write(value: ClientSnapshot?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeClientSnapshot.write(value, buf)
         }
     }
 }

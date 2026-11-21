@@ -60,6 +60,10 @@ impl LampcordClient {
         self.runtime.snapshot()
     }
 
+    pub fn snapshot_if_newer(&self, since: u64) -> Option<ClientSnapshot> {
+        self.runtime.snapshot_if_newer(since)
+    }
+
     pub fn drain_events(&self) -> Vec<ClientEventEnvelope> {
         self.runtime.drain_events()
     }
@@ -258,6 +262,22 @@ mod tests {
         assert_eq!(snapshot.connection, ConnectionState::Disconnected);
         assert_eq!(snapshot.schema_version, SNAPSHOT_SCHEMA_VERSION);
         assert!(client.shutdown().is_ok());
+    }
+
+    #[test]
+    fn snapshot_if_newer_returns_only_changed_snapshots() {
+        let client = LampcordClient::start(ClientConfig::default());
+        let initial = client.snapshot();
+        assert!(client.snapshot_if_newer(initial.seq).is_none());
+
+        assert!(client.select_guild(Some(7)).is_ok());
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        let updated = client
+            .snapshot_if_newer(initial.seq)
+            .expect("snapshot after change");
+        assert_eq!(updated.selected_guild_id, Some(7));
+        assert!(client.snapshot_if_newer(updated.seq).is_none());
+        let _ = client.shutdown();
     }
 
     #[test]

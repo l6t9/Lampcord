@@ -76,7 +76,6 @@ class RustCoreIntegration(
                     .collectLatest { channelId ->
                         val id = channelId?.toULongOrNull()
                         engine.selectChannel(id)
-                        if (id != null) engine.fetchMessages(id, null, 50u)
                     }
             }
         }
