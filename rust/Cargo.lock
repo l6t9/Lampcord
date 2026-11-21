@@ -3232,6 +3232,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "lampcord-ffi"
+version = "0.0.0"
+dependencies = [
+ "async-trait",
+ "base64 0.22.1",
+ "lampcord-core",
+ "lampcord-model",
+ "lampcord-transport",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "lampcord-model"
 version = "0.0.0"
 dependencies = [

@@ -4,6 +4,7 @@ members = [
     "crates/lampcord-model",
     "crates/lampcord-core",
     "crates/lampcord-transport",
+    "crates/lampcord-ffi",
     "crates/gpui-material",
     "apps/lampcord",
 ]
