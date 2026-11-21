@@ -62,21 +62,21 @@ class RustCoreBridge(
 
     fun snapshot(): ClientSnapshot = client.snapshot()
     fun drainEvents(): List<ClientEvent> = client.drainEvents()
-    fun send(command: ClientCommand): Boolean = client.send(command)
-    fun connectToken(token: String): Boolean = client.connectToken(token)
-    fun selectGuild(guildId: ULong?): Boolean = client.selectGuild(guildId)
-    fun selectChannel(channelId: ULong?): Boolean = client.selectChannel(channelId)
+    fun send(command: ClientCommand): Boolean = runCatching { client.send(command) }.isSuccess
+    fun connectToken(token: String): Boolean = runCatching { client.connectToken(token) }.isSuccess
+    fun selectGuild(guildId: ULong?): Boolean = runCatching { client.selectGuild(guildId) }.isSuccess
+    fun selectChannel(channelId: ULong?): Boolean = runCatching { client.selectChannel(channelId) }.isSuccess
     fun fetchMessages(channelId: ULong, before: ULong? = null, limit: UByte? = null): Boolean =
-        client.fetchMessages(channelId, before, limit)
+        runCatching { client.fetchMessages(channelId, before, limit) }.isSuccess
     fun sendMessage(channelId: ULong, content: String, replyToMessageId: ULong? = null, replyToGuildId: ULong? = null): Boolean =
-        client.sendMessage(channelId, content, replyToMessageId, replyToGuildId)
-    fun logout(): Boolean = client.logout()
+        runCatching { client.sendMessage(channelId, content, replyToMessageId, replyToGuildId) }.isSuccess
+    fun logout(): Boolean = runCatching { client.logout() }.isSuccess
 
     fun shutdown(): Boolean {
         pollJob?.cancel()
         pollJob = null
         scope.cancel()
-        return runCatching { client.shutdown() }.getOrDefault(false)
+        return runCatching { client.shutdown() }.isSuccess
     }
 
     override fun close() {

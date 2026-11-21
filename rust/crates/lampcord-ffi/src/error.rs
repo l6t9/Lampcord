@@ -48,3 +48,34 @@ impl fmt::Display for FfiError {
 }
 
 impl std::error::Error for FfiError {}
+
+/// UniFFI-friendly flat error for exported API methods.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Error))]
+#[cfg_attr(feature = "uniffi", uniffi(flat_error))]
+pub enum FfiClientError {
+    #[error("{kind:?}: {message}")]
+    Generic { kind: FfiErrorKind, message: String },
+}
+
+impl FfiClientError {
+    pub fn new(kind: FfiErrorKind, message: impl Into<String>) -> Self {
+        Self::Generic {
+            kind,
+            message: message.into(),
+        }
+    }
+
+    pub fn not_connected() -> Self {
+        Self::new(FfiErrorKind::NotConnected, "client worker is not running")
+    }
+}
+
+impl From<FfiError> for FfiClientError {
+    fn from(value: FfiError) -> Self {
+        Self::Generic {
+            kind: value.kind,
+            message: value.message,
+        }
+    }
+}

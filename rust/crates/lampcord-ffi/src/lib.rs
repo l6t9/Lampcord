@@ -12,7 +12,7 @@ pub mod runtime;
 pub mod snapshot;
 pub mod types;
 
-pub use error::{FfiError, FfiResult};
+pub use error::{FfiClientError, FfiError, FfiErrorKind, FfiResult};
 pub use runtime::RuntimeHandle;
 pub use snapshot::{ChannelSnapshot, ClientSnapshot, GuildSnapshot, MessageSnapshot};
 pub use types::{ClientCommand, ClientConfig, ClientEvent, ConnectionState};
@@ -39,9 +39,12 @@ impl LampcordClient {
     }
 
     /// Sends a command to the background worker.
-    /// Returns `false` if the worker is no longer running.
-    pub fn send(&self, command: ClientCommand) -> bool {
-        self.runtime.send(command)
+    pub fn send(&self, command: ClientCommand) -> Result<(), FfiClientError> {
+        if self.runtime.send(command) {
+            Ok(())
+        } else {
+            Err(FfiClientError::not_connected())
+        }
     }
 
     /// Returns the latest snapshot.
@@ -55,15 +58,15 @@ impl LampcordClient {
     }
 
     /// Convenience: connect with a token.
-    pub fn connect_token(&self, token: String) -> bool {
+    pub fn connect_token(&self, token: String) -> Result<(), FfiClientError> {
         self.send(ClientCommand::ConnectToken { token })
     }
 
-    pub fn select_guild(&self, guild_id: Option<u64>) -> bool {
+    pub fn select_guild(&self, guild_id: Option<u64>) -> Result<(), FfiClientError> {
         self.send(ClientCommand::SelectGuild { guild_id })
     }
 
-    pub fn select_channel(&self, channel_id: Option<u64>) -> bool {
+    pub fn select_channel(&self, channel_id: Option<u64>) -> Result<(), FfiClientError> {
         self.send(ClientCommand::SelectChannel { channel_id })
     }
 
@@ -72,7 +75,7 @@ impl LampcordClient {
         channel_id: u64,
         before: Option<u64>,
         limit: Option<u8>,
-    ) -> bool {
+    ) -> Result<(), FfiClientError> {
         self.send(ClientCommand::FetchMessages {
             channel_id,
             before,
@@ -86,7 +89,7 @@ impl LampcordClient {
         content: String,
         reply_to_message_id: Option<u64>,
         reply_to_guild_id: Option<u64>,
-    ) -> bool {
+    ) -> Result<(), FfiClientError> {
         self.send(ClientCommand::SendMessage {
             channel_id,
             content,
@@ -95,12 +98,12 @@ impl LampcordClient {
         })
     }
 
-    pub fn logout(&self) -> bool {
+    pub fn logout(&self) -> Result<(), FfiClientError> {
         self.send(ClientCommand::Logout)
     }
 
     /// Convenience: request shutdown.
-    pub fn shutdown(&self) -> bool {
+    pub fn shutdown(&self) -> Result<(), FfiClientError> {
         self.send(ClientCommand::Shutdown)
     }
 }
@@ -114,16 +117,18 @@ mod tests {
         let client = LampcordClient::start(ClientConfig::default());
         let snap = client.snapshot();
         assert_eq!(snap.connection, ConnectionState::Disconnected);
-        assert!(client.shutdown());
+        assert!(client.shutdown().is_ok());
     }
 
     #[test]
     fn select_channel_updates_snapshot() {
         let client = LampcordClient::start(ClientConfig::default());
-        assert!(client.send(ClientCommand::SelectGuild { guild_id: Some(1) }));
-        assert!(client.send(ClientCommand::SelectChannel {
-            channel_id: Some(2)
-        }));
+        assert!(client
+            .send(ClientCommand::SelectGuild { guild_id: Some(1) })
+            .is_ok());
+        assert!(client
+            .send(ClientCommand::SelectChannel { channel_id: Some(2) })
+            .is_ok());
         // Give the worker a moment to process commands.
         std::thread::sleep(std::time::Duration::from_millis(50));
         let snap = client.snapshot();
