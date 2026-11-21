@@ -42,8 +42,10 @@ import me.lampu.lampcord.shared.utils.Logging
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
 import me.lampu.lampcord.shared.utils.getPlatformName
 import me.lampu.lampcord.shared.utils.reloadTrigger
+import me.lampu.lampcord.rust.RustCoreBridge
 import org.koin.compose.koinInject
 import org.koin.core.context.GlobalContext.get
 import org.koin.core.context.GlobalContext.getOrNull
@@ -194,6 +196,36 @@ fun main() {
                 val nucleusWindow = LocalNucleusWindow.current
                 LaunchedEffect(nucleusWindow) {
                     nucleusWindow.focusFlow.collect { AppVisibilityStore.setVisible(it) }
+                }
+
+                if (System.getProperty("lampcord.rustCore") == "true") {
+                    val sessionManager: SessionManager = koinInject()
+                    DisposableEffect(sessionManager) {
+                        val bridge = runCatching { RustCoreBridge() }.getOrNull()
+                        if (bridge == null) {
+                            Logging.w("RustCore", "Failed to start RustCoreBridge PoC")
+                            onDispose {}
+                        } else {
+                            Logging.i("RustCore", "RustCoreBridge PoC started")
+                            val token = Settings.shared.discordToken.trim().takeIf { it.isNotBlank() }
+                            if (token != null) {
+                                bridge.connectToken(token)
+                            }
+                            val job = scope.launch(Dispatchers.Default) {
+                                bridge.snapshots.collect { snap ->
+                                    Logging.i(
+                                        "RustCore",
+                                        "seq=${snap.seq} conn=${snap.connection} user=${snap.currentUser} guilds=${snap.guilds.size} channels=${snap.channels.size} msgs=${snap.messages.size}"
+                                    )
+                                }
+                            }
+                            onDispose {
+                                job.cancel()
+                                bridge.close()
+                                Logging.i("RustCore", "RustCoreBridge PoC stopped")
+                            }
+                        }
+                    }
                 }
                 MaterialTheme(
                     colorScheme = windowColorScheme,
