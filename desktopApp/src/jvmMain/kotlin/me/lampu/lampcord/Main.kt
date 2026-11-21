@@ -264,11 +264,17 @@ fun main() {
                     androidx.compose.foundation.layout.Box {
                         App()
                         rustBridge?.let { bridge ->
+                            val entityStore: EntityStore = koinInject()
+                            val messageStore: MessageStore = koinInject()
+                            val navigationStore: NavigationStore = koinInject()
                             RustCoreDebugOverlay(
                                 bridge = bridge,
                                 modifier = androidx.compose.ui.Modifier
                                     .align(androidx.compose.ui.Alignment.TopEnd)
-                                    .padding(8.dp)
+                                    .padding(8.dp),
+                                entityStore = entityStore,
+                                messageStore = messageStore,
+                                navigationStore = navigationStore,
                             )
                         }
                     }

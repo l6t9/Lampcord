@@ -20,13 +20,26 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import me.lampu.lampcord.shared.state.EntityStore
+import me.lampu.lampcord.shared.state.MessageStore
+import me.lampu.lampcord.shared.state.NavigationStore
 
 @Composable
-fun RustCoreDebugOverlay(bridge: RustCoreBridge, modifier: Modifier = Modifier) {
+fun RustCoreDebugOverlay(
+    bridge: RustCoreBridge,
+    modifier: Modifier = Modifier,
+    entityStore: EntityStore? = null,
+    messageStore: MessageStore? = null,
+    navigationStore: NavigationStore? = null,
+) {
     val snap by bridge.snapshots.collectAsState()
     val mappedGuilds = remember(snap.seq) { RustSnapshotMapper.mapGuilds(snap) }
     val mappedChannels = remember(snap.seq) { RustSnapshotMapper.mapChannels(snap) }
     val mappedMessages = remember(snap.seq) { RustSnapshotMapper.mapMessages(snap) }
+
+    val kotlinGuilds = entityStore?.guilds?.collectAsState()?.value
+    val kotlinChannels = entityStore?.channels?.collectAsState()?.value
+    val kotlinMessages = messageStore?.messages?.collectAsState()?.value
 
     Column(
         modifier = modifier
@@ -49,8 +62,20 @@ fun RustCoreDebugOverlay(bridge: RustCoreBridge, modifier: Modifier = Modifier) 
             "mapped UI models: guilds=${mappedGuilds.size} channels=${mappedChannels.size} messages=${mappedMessages.size}",
             style = MaterialTheme.typography.bodySmall
         )
-        snap.selectedGuildId?.let { Text("selected guild: $it", style = MaterialTheme.typography.bodySmall) }
-        snap.selectedChannelId?.let { Text("selected channel: $it", style = MaterialTheme.typography.bodySmall) }
+        if (kotlinGuilds != null || kotlinChannels != null || kotlinMessages != null) {
+            HorizontalDivider()
+            Text("Kotlin stores (parity)", style = MaterialTheme.typography.labelMedium)
+            Text(
+                "stores: guilds=${kotlinGuilds?.size ?: "-"} channels=${kotlinChannels?.size ?: "-"} messages=${kotlinMessages?.size ?: "-"}",
+                style = MaterialTheme.typography.bodySmall
+            )
+            Text(
+                "nav: guild=${navigationStore?.selectedGuild?.id ?: "-"} channel=${navigationStore?.selectedChannel?.id ?: "-"} connected=${navigationStore?.isConnected ?: "-"}",
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+        snap.selectedGuildId?.let { Text("rust selected guild: $it", style = MaterialTheme.typography.bodySmall) }
+        snap.selectedChannelId?.let { Text("rust selected channel: $it", style = MaterialTheme.typography.bodySmall) }
         snap.error?.let {
             Text("error: $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
         }
