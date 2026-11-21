@@ -11,7 +11,13 @@ pub struct ReqwestRestTransport {
 
 impl ReqwestRestTransport {
     pub fn new() -> Result<Self, TransportError> {
+        Self::new_with_cookie_store()
+    }
+
+    /// Create a transport with a persistent cookie jar, required for multi-step auth flows.
+    pub fn new_with_cookie_store() -> Result<Self, TransportError> {
         let client = reqwest::Client::builder()
+            .cookie_store(true)
             .build()
             .map_err(|error| TransportError(error.to_string()))?;
         Ok(Self::with_client(client))

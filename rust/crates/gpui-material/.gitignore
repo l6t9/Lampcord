@@ -1,0 +1,7 @@
+/target/
+/references/
+/.github/
+/docs/
+*.log
+*.bak
+.DS_Store

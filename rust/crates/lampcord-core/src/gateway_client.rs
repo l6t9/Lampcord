@@ -1,12 +1,14 @@
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use serde_json::{Value, json};
+use tokio::sync::mpsc::UnboundedSender;
 
 use crate::{
     event_dispatch::Dispatcher,
     gateway_plan::{
-        OP_DISPATCH, OP_HEARTBEAT, OP_IDENTIFY, OP_RESUME, control_action, gateway_url,
-        resume_decision,
+        HELLO_TIMEOUT_MS, OP_DISPATCH, OP_HEARTBEAT, OP_IDENTIFY, OP_RESUME, control_action,
+        gateway_url, resume_decision,
     },
     gateway_session::GatewaySession,
     rest::DESKTOP_USER_AGENT,
@@ -92,33 +94,127 @@ pub struct GatewayIdentity {
     pub capabilities: u64,
     pub large_threshold: u8,
     pub compress: bool,
+    /// Used for op 41 time-spent/session updates (matches identify properties).
+    pub client_heartbeat_session_id: String,
 }
 
 impl Default for GatewayIdentity {
     fn default() -> Self {
+        Self::desktop(None)
+    }
+}
+
+impl GatewayIdentity {
+    /// Build a desktop identify payload matching Lampcord/Kotlin as closely as practical.
+    pub fn desktop(device_vendor_id: Option<String>) -> Self {
+        use rand::RngCore;
+        fn random_uuid() -> String {
+            let mut bytes = [0u8; 16];
+            rand::rngs::OsRng.fill_bytes(&mut bytes);
+            bytes[6] = (bytes[6] & 0x0f) | 0x40;
+            bytes[8] = (bytes[8] & 0x3f) | 0x80;
+            format!(
+                "{:02x}{:02x}{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
+                bytes[0],
+                bytes[1],
+                bytes[2],
+                bytes[3],
+                bytes[4],
+                bytes[5],
+                bytes[6],
+                bytes[7],
+                bytes[8],
+                bytes[9],
+                bytes[10],
+                bytes[11],
+                bytes[12],
+                bytes[13],
+                bytes[14],
+                bytes[15]
+            )
+        }
+
+        let client_launch_id = random_uuid();
+        let client_heartbeat_session_id = random_uuid();
+        let launch_signature = (std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos())
+        .to_string();
+
+        let cpu_cores = std::thread::available_parallelism()
+            .map(|n| n.get() as i64)
+            .unwrap_or(0);
+        let mem_kb = std::fs::read_to_string("/proc/meminfo")
+            .ok()
+            .and_then(|s| {
+                s.lines()
+                    .find(|l| l.starts_with("MemTotal:"))
+                    .and_then(|l| l.split_whitespace().nth(1))
+                    .and_then(|v| v.parse::<i64>().ok())
+            })
+            .unwrap_or(0);
+
+        let os_version = std::process::Command::new("uname")
+            .arg("-r")
+            .output()
+            .ok()
+            .and_then(|o| String::from_utf8(o.stdout).ok())
+            .map(|s| s.trim().to_owned())
+            .filter(|s| !s.is_empty())
+            .or_else(|| {
+                std::fs::read_to_string("/etc/os-release")
+                    .ok()
+                    .and_then(|s| {
+                        s.lines()
+                            .find_map(|line| line.strip_prefix("VERSION_ID="))
+                            .map(|v| v.trim_matches('"').to_owned())
+                    })
+            })
+            .unwrap_or_default();
+
+        let mut properties = json!({
+            "os": "Linux",
+            "browser": "Discord Desktop",
+            "device": "",
+            "system_locale": "en-US",
+            "has_client_mods": false,
+            "client_version": "0.0.309",
+            "release_channel": "stable",
+            "design_id": 0,
+            "browser_user_agent": "",
+            "browser_version": "",
+            "os_version": os_version,
+            "client_build_number": 309000,
+            "client_event_source": Value::Null,
+            "client_launch_id": client_launch_id,
+            "launch_signature": launch_signature,
+            "client_heartbeat_session_id": client_heartbeat_session_id,
+            "client_app_state": "active",
+            "accessibility_features": 0,
+            "accessibility_support_enabled": false,
+            "client_performance_cpu": cpu_cores,
+            "client_performance_memory": mem_kb,
+            "cpu_core_count": cpu_cores,
+        });
+        if let Some(id) = device_vendor_id {
+            if let Some(obj) = properties.as_object_mut() {
+                obj.insert("device_vendor_id".to_owned(), Value::String(id));
+            }
+        }
+
         Self {
-            properties: json!({
-                "os": "Linux",
-                "browser": "Discord Desktop",
-                "device": "Lampcord",
-                "system_locale": "en-US",
-                "has_client_mods": false,
-                "client_version": "0.0.309",
-                "release_channel": "stable",
-                "design_id": 0,
-                "os_version": "",
-                "client_build_number": 309000,
-                "client_event_source": null,
-            }),
+            properties,
             client_state: json!({
                 "guild_hashes": {},
-                "highest_last_message_id": "0",
+                "highest_last_message_id": 0,
                 "read_state_version": 0,
                 "user_guild_settings_version": -1,
             }),
             capabilities: 351,
             large_threshold: 100,
             compress: false,
+            client_heartbeat_session_id,
         }
     }
 }
@@ -154,6 +250,21 @@ pub fn heartbeat_payload(sequence: Option<u32>) -> Value {
     json!({
         "op": OP_HEARTBEAT,
         "d": sequence,
+    })
+}
+
+pub fn time_spent_payload(client_heartbeat_session_id: &str) -> Value {
+    let now_ms = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as u64;
+    json!({
+        "op": 41,
+        "d": {
+            "initialization_timestamp": now_ms,
+            "session_id": client_heartbeat_session_id,
+            "client_launch_id": client_heartbeat_session_id,
+        }
     })
 }
 
@@ -203,7 +314,27 @@ impl<T: GatewayTransport, U: GatewayUrlProvider> GatewayClient<T, U> {
         &self.cache
     }
 
+    /// Runs the gateway connection until it closes and returns all emitted events.
+    /// Suitable for tests and short-lived scripted runs.
     pub async fn run(&mut self, token: &str) -> Result<Vec<GatewayEvent>, GatewayError> {
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+        let run_result = self.run_stream(token, tx).await;
+        let mut events = Vec::new();
+        while let Ok(event) = rx.try_recv() {
+            events.push(event);
+        }
+        run_result?;
+        Ok(events)
+    }
+
+    /// Runs the gateway connection, emitting events incrementally to `tx`.
+    /// Maintains periodic heartbeats once a HELLO interval is known.
+    /// Returns the terminal gateway event when the connection ends normally.
+    pub async fn run_stream(
+        &mut self,
+        token: &str,
+        tx: UnboundedSender<GatewayEvent>,
+    ) -> Result<Option<GatewayEvent>, GatewayError> {
         self.session.switch_token(token);
         {
             let mut cache = self
@@ -226,142 +357,200 @@ impl<T: GatewayTransport, U: GatewayUrlProvider> GatewayClient<T, U> {
         );
         self.transport.connect(&url, &gateway_headers()).await?;
 
-        let mut events = Vec::new();
+        let mut heartbeat_interval_ms: Option<u64> = None;
+        let mut next_heartbeat_at =
+            tokio::time::Instant::now() + Duration::from_millis(HELLO_TIMEOUT_MS);
+
         loop {
-            match self.transport.receive().await? {
-                GatewayMessage::Text(text) => {
-                    let payload: Value = serde_json::from_str(&text)?;
-                    let op = payload
-                        .get("op")
-                        .and_then(Value::as_i64)
-                        .unwrap_or_default();
+            let now = tokio::time::Instant::now();
+            let wait = if heartbeat_interval_ms.is_some() {
+                next_heartbeat_at.saturating_duration_since(now)
+            } else {
+                // Wait for HELLO, but don't block forever in live runs.
+                (next_heartbeat_at.max(now)).saturating_duration_since(now)
+            };
 
-                    if let Some(sequence) = payload.get("s").and_then(Value::as_u64) {
-                        self.session.record_sequence(sequence as u32);
-                    }
+            match tokio::time::timeout(wait, self.transport.receive()).await {
+                Ok(received) => match received? {
+                    GatewayMessage::Text(text) => {
+                        let payload: Value = serde_json::from_str(&text)?;
+                        let op = payload
+                            .get("op")
+                            .and_then(Value::as_i64)
+                            .unwrap_or_default();
 
-                    let action =
-                        control_action(op, payload.get("d"), self.transport.close_code(), token);
+                        if let Some(sequence) = payload.get("s").and_then(Value::as_u64) {
+                            self.session.record_sequence(sequence as u32);
+                        }
 
-                    match action {
-                        crate::gateway_plan::ControlAction::Hello {
-                            heartbeat_interval_ms,
-                        } => {
-                            let mode = match resume_decision(self.session.resume_info()) {
-                                crate::gateway_plan::ResumeDecision::Resume {
-                                    session_id,
-                                    sequence,
-                                } => {
-                                    let payload = GatewayIdentity::resume_payload(
-                                        token, session_id, sequence,
-                                    );
-                                    self.transport.send(&payload.to_string()).await?;
-                                    GatewayIdentityMode::Resume {
-                                        session_id: session_id.to_owned(),
+                        let action = control_action(
+                            op,
+                            payload.get("d"),
+                            self.transport.close_code(),
+                            token,
+                        );
+
+                        match action {
+                            crate::gateway_plan::ControlAction::Hello {
+                                heartbeat_interval_ms: interval,
+                            } => {
+                                heartbeat_interval_ms = Some(interval);
+                                next_heartbeat_at =
+                                    tokio::time::Instant::now() + Duration::from_millis(interval);
+                                let mode = match resume_decision(self.session.resume_info()) {
+                                    crate::gateway_plan::ResumeDecision::Resume {
+                                        session_id,
                                         sequence,
-                                    }
-                                }
-                                crate::gateway_plan::ResumeDecision::Identify => {
-                                    let payload = self.identity.identify_payload(token);
-                                    self.transport.send(&payload.to_string()).await?;
-                                    GatewayIdentityMode::Identify
-                                }
-                            };
-                            events.push(GatewayEvent::Hello {
-                                heartbeat_interval_ms,
-                                mode,
-                            });
-                        }
-                        crate::gateway_plan::ControlAction::Heartbeat => {
-                            let payload = heartbeat_payload(self.session.last_sequence());
-                            self.transport.send(&payload.to_string()).await?;
-                            events.push(GatewayEvent::HeartbeatSent);
-                        }
-                        crate::gateway_plan::ControlAction::HeartbeatAck => {
-                            events.push(GatewayEvent::HeartbeatAck);
-                        }
-                        crate::gateway_plan::ControlAction::InvalidSession { resumable } => {
-                            if !resumable {
-                                self.session.clear_resume();
-                            }
-                            events.push(GatewayEvent::InvalidSession { resumable });
-                        }
-                        crate::gateway_plan::ControlAction::Reconnect => {
-                            self.transport
-                                .close(1000, "server requested reconnect")
-                                .await?;
-                            events.push(GatewayEvent::ReconnectRequested);
-                            break;
-                        }
-                        crate::gateway_plan::ControlAction::AuthFailed { token } => {
-                            events.push(GatewayEvent::AuthFailed { token });
-                            break;
-                        }
-                        crate::gateway_plan::ControlAction::None => {
-                            if op == OP_DISPATCH {
-                                let event_type =
-                                    payload.get("t").and_then(Value::as_str).unwrap_or_default();
-                                let errors =
-                                    self.dispatcher.dispatch(Some(event_type), payload.get("d"));
-                                if !errors.is_empty() {
-                                    events.push(GatewayEvent::HandlerErrors { errors });
-                                }
-                                match event_type {
-                                    "READY" => {
-                                        let data = payload.get("d");
-                                        let session_id = data
-                                            .and_then(|data| data.get("session_id"))
-                                            .and_then(Value::as_str)
-                                            .unwrap_or_default()
-                                            .to_owned();
-                                        let resume_gateway_url = data
-                                            .and_then(|data| data.get("resume_gateway_url"))
-                                            .and_then(Value::as_str)
-                                            .map(str::to_owned);
-                                        let user_id = data
-                                            .and_then(|data| data.get("user"))
-                                            .and_then(|user| user.get("id"))
-                                            .and_then(Value::as_str)
-                                            .map(str::to_owned);
-                                        self.session.record_ready(
-                                            session_id.clone(),
-                                            resume_gateway_url.clone(),
+                                    } => {
+                                        let payload = GatewayIdentity::resume_payload(
+                                            token, session_id, sequence,
                                         );
-                                        events.push(GatewayEvent::Ready {
-                                            session_id,
-                                            resume_gateway_url,
-                                            user_id,
-                                        });
+                                        self.transport.send(&payload.to_string()).await?;
+                                        GatewayIdentityMode::Resume {
+                                            session_id: session_id.to_owned(),
+                                            sequence,
+                                        }
                                     }
-                                    "RESUMED" => events.push(GatewayEvent::Resumed),
-                                    _ => events.push(GatewayEvent::Dispatch {
-                                        event_type: event_type.to_owned(),
-                                    }),
+                                    crate::gateway_plan::ResumeDecision::Identify => {
+                                        let payload = self.identity.identify_payload(token);
+                                        self.transport.send(&payload.to_string()).await?;
+                                        GatewayIdentityMode::Identify
+                                    }
+                                };
+                                let _ = tx.send(GatewayEvent::Hello {
+                                    heartbeat_interval_ms: interval,
+                                    mode,
+                                });
+                            }
+                            crate::gateway_plan::ControlAction::Heartbeat => {
+                                let payload = heartbeat_payload(self.session.last_sequence());
+                                self.transport.send(&payload.to_string()).await?;
+                                let _ = tx.send(GatewayEvent::HeartbeatSent);
+                                if let Some(interval) = heartbeat_interval_ms {
+                                    next_heartbeat_at = tokio::time::Instant::now()
+                                        + Duration::from_millis(interval);
+                                }
+                            }
+                            crate::gateway_plan::ControlAction::HeartbeatAck => {
+                                let _ = tx.send(GatewayEvent::HeartbeatAck);
+                            }
+                            crate::gateway_plan::ControlAction::InvalidSession { resumable } => {
+                                if !resumable {
+                                    self.session.clear_resume();
+                                }
+                                let event = GatewayEvent::InvalidSession { resumable };
+                                let _ = tx.send(event.clone());
+                                // Let supervisor decide whether/how to reconnect.
+                                let _ = self.transport.close(1000, "invalid session").await;
+                                return Ok(Some(event));
+                            }
+                            crate::gateway_plan::ControlAction::Reconnect => {
+                                self.transport
+                                    .close(1000, "server requested reconnect")
+                                    .await?;
+                                let event = GatewayEvent::ReconnectRequested;
+                                let _ = tx.send(event.clone());
+                                return Ok(Some(event));
+                            }
+                            crate::gateway_plan::ControlAction::AuthFailed { token } => {
+                                let event = GatewayEvent::AuthFailed { token };
+                                let _ = tx.send(event.clone());
+                                return Ok(Some(event));
+                            }
+                            crate::gateway_plan::ControlAction::None => {
+                                if op == OP_DISPATCH {
+                                    let event_type = payload
+                                        .get("t")
+                                        .and_then(Value::as_str)
+                                        .unwrap_or_default();
+                                    let errors = self
+                                        .dispatcher
+                                        .dispatch(Some(event_type), payload.get("d"));
+                                    if !errors.is_empty() {
+                                        let _ = tx.send(GatewayEvent::HandlerErrors { errors });
+                                    }
+                                    match event_type {
+                                        "READY" => {
+                                            let data = payload.get("d");
+                                            let session_id = data
+                                                .and_then(|data| data.get("session_id"))
+                                                .and_then(Value::as_str)
+                                                .unwrap_or_default()
+                                                .to_owned();
+                                            let resume_gateway_url = data
+                                                .and_then(|data| data.get("resume_gateway_url"))
+                                                .and_then(Value::as_str)
+                                                .map(str::to_owned);
+                                            let user_id = data
+                                                .and_then(|data| data.get("user"))
+                                                .and_then(|user| user.get("id"))
+                                                .and_then(Value::as_str)
+                                                .map(str::to_owned);
+                                            self.session.record_ready(
+                                                session_id.clone(),
+                                                resume_gateway_url.clone(),
+                                            );
+                                            // Match Lampcord/Kotlin: send time-spent/session update on READY.
+                                            let op41 = time_spent_payload(
+                                                &self.identity.client_heartbeat_session_id,
+                                            );
+                                            let _ = self.transport.send(&op41.to_string()).await;
+                                            let _ = tx.send(GatewayEvent::Ready {
+                                                session_id,
+                                                resume_gateway_url,
+                                                user_id,
+                                            });
+                                        }
+                                        "RESUMED" => {
+                                            let op41 = time_spent_payload(
+                                                &self.identity.client_heartbeat_session_id,
+                                            );
+                                            let _ = self.transport.send(&op41.to_string()).await;
+                                            let _ = tx.send(GatewayEvent::Resumed);
+                                        }
+                                        _ => {
+                                            let _ = tx.send(GatewayEvent::Dispatch {
+                                                event_type: event_type.to_owned(),
+                                            });
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
-                }
-                GatewayMessage::Closed => {
-                    if self
-                        .transport
-                        .close_code()
-                        .is_some_and(crate::gateway_plan::is_auth_failed_close)
-                    {
-                        events.push(GatewayEvent::AuthFailed {
-                            token: token.to_owned(),
-                        });
-                    } else {
-                        events.push(GatewayEvent::Closed {
-                            code: self.transport.close_code(),
-                        });
+                    GatewayMessage::Closed => {
+                        let event = if self
+                            .transport
+                            .close_code()
+                            .is_some_and(crate::gateway_plan::is_auth_failed_close)
+                        {
+                            GatewayEvent::AuthFailed {
+                                token: token.to_owned(),
+                            }
+                        } else {
+                            GatewayEvent::Closed {
+                                code: self.transport.close_code(),
+                            }
+                        };
+                        let _ = tx.send(event.clone());
+                        return Ok(Some(event));
                     }
-                    break;
+                },
+                Err(_elapsed) => {
+                    if let Some(interval) = heartbeat_interval_ms {
+                        let payload = heartbeat_payload(self.session.last_sequence());
+                        self.transport.send(&payload.to_string()).await?;
+                        let _ = tx.send(GatewayEvent::HeartbeatSent);
+                        next_heartbeat_at =
+                            tokio::time::Instant::now() + Duration::from_millis(interval);
+                    } else {
+                        // Still waiting for HELLO; keep waiting.
+                        next_heartbeat_at =
+                            tokio::time::Instant::now() + Duration::from_millis(HELLO_TIMEOUT_MS);
+                    }
                 }
             }
         }
-
-        Ok(events)
     }
 }
 

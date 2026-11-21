@@ -9,11 +9,11 @@ macro_rules! platforms {
             pub use self::$module::*;
 
             #[cfg(any($(target_os = $platform),*))]
-            #[cfg(not(all(any(target_os = "linux", target_os = "android"), target_arch = "aarch64")))]
+            #[cfg(target_os = "macos")]
             pub const ENOATTR: ::libc::c_int = ::libc::ENOATTR;
 
             #[cfg(any($(target_os = $platform),*))]
-            #[cfg(all(any(target_os = "linux", target_os = "android"), target_arch = "aarch64"))]
+            #[cfg(any(target_os = "linux", target_os = "android"))]
             pub const ENOATTR: ::libc::c_int = ::libc::ENODATA;
         )*
 

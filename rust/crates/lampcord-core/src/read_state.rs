@@ -114,6 +114,15 @@ impl ReadStateStore {
         )
     }
 
+    pub fn last_read_message_id(&self, channel_id: u64) -> Option<u64> {
+        max_option(
+            self.local_acks.get(&channel_id).copied(),
+            self.states
+                .get(&channel_id)
+                .and_then(|state| state.last_message_id),
+        )
+    }
+
     pub fn mention_count(&self, channel_id: u64) -> u32 {
         self.states
             .get(&channel_id)

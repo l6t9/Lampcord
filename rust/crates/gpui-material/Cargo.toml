@@ -1,0 +1,48 @@
+[package]
+name = "gpui-material"
+version = "0.1.0"
+edition = "2024"
+description = "Material 3 Expressive components for GPUI Rust"
+license = "MIT"
+repository = "https://github.com/KiteShell/gpui-material"
+keywords = ["gui", "material", "gpui", "m3e"]
+categories = ["gui"]
+
+[dependencies]
+# Pinned upstream snapshot of Zed main on branch wgpu-trial.
+gpui = { workspace = true }
+serde = { version = "1.0", features = ["derive"] }
+material-colors = { workspace = true }
+
+[dev-dependencies]
+# Platform entry point for the gallery example only.
+# Kept out of [dependencies] so library users never pull it.
+gpui_platform = { workspace = true }
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[lints.rust]
+missing_docs = "warn"
+
+[lints.clippy]
+correctness = "deny"
+suspicious = "warn"
+style = "warn"
+complexity = "warn"
+perf = "warn"
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+strip = true
+
+[profile.dev]
+opt-level = 0
+debug = true
+
+[profile.dev.package."*"]
+opt-level = 1

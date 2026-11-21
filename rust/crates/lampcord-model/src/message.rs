@@ -29,6 +29,16 @@ pub struct Attachment {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MessageReference {
+    #[serde(default, with = "crate::snowflake::serde::option")]
+    pub message_id: Option<Snowflake>,
+    #[serde(default, with = "crate::snowflake::serde::option")]
+    pub channel_id: Option<Snowflake>,
+    #[serde(default, with = "crate::snowflake::serde::option")]
+    pub guild_id: Option<Snowflake>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Message {
     #[serde(with = "crate::snowflake::serde")]
     pub id: Snowflake,
@@ -56,6 +66,12 @@ pub struct Message {
     pub embeds: Vec<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub reactions: Vec<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub message_reference: Option<MessageReference>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub referenced_message: Option<Box<Message>>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub sticker_items: Vec<serde_json::Value>,
     #[serde(default)]
     pub pinned: bool,
     #[serde(default, rename = "type")]

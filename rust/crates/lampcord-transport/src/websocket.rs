@@ -8,7 +8,8 @@ use tokio_tungstenite::{
     MaybeTlsStream, WebSocketStream,
     tungstenite::{
         Message,
-        http::{HeaderName, HeaderValue, Request, Uri},
+        client::IntoClientRequest,
+        http::{HeaderName, HeaderValue},
         protocol::CloseFrame,
     },
 };
@@ -28,10 +29,8 @@ impl GatewayTransport for TungsteniteGatewayTransport {
         url: &str,
         headers: &[(String, String)],
     ) -> Result<(), TransportError> {
-        let uri = Uri::from_str(url).map_err(|error| TransportError(error.to_string()))?;
-        let mut request = Request::builder()
-            .uri(uri)
-            .body(())
+        let mut request = url
+            .into_client_request()
             .map_err(|error| TransportError(error.to_string()))?;
 
         for (name, value) in headers {

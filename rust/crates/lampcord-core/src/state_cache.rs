@@ -1,12 +1,12 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, VecDeque},
     sync::{Arc, Mutex},
 };
 
 use lampcord_model::{
     Snowflake,
     channel::{Channel, ChannelType},
-    guild::{Guild, UnavailableGuild},
+    guild::Guild,
     message::Message,
     user::User,
 };
@@ -15,11 +15,15 @@ use serde_json::Value;
 
 use crate::{event_dispatch::GatewayEventHandler, read_state::ReadStateStore};
 
-pub const MAX_MESSAGES_PER_CHANNEL: usize = 300;
+pub const MAX_MESSAGES_PER_CHANNEL: usize = 150;
+const MAX_CACHED_MESSAGE_CHANNELS: usize = 40;
+const MAX_CACHED_USERS: usize = 2000;
 
 const HANDLED_EVENTS: &[&str] = &[
     "READY",
     "MESSAGE_CREATE",
+    "MESSAGE_UPDATE",
+    "MESSAGE_DELETE",
     "GUILD_CREATE",
     "GUILD_UPDATE",
     "GUILD_DELETE",
@@ -62,6 +66,7 @@ pub struct StateCache {
     channels: HashMap<Snowflake, Channel>,
     private_channel_ids: Vec<Snowflake>,
     messages: HashMap<Snowflake, Vec<Message>>,
+    message_channel_order: VecDeque<Snowflake>,
     read_state: ReadStateStore,
 }
 
@@ -118,6 +123,10 @@ impl StateCache {
         self.messages.values().map(Vec::len).sum()
     }
 
+    pub fn channels(&self) -> impl Iterator<Item = &Channel> {
+        self.channels.values()
+    }
+
     pub fn channels_for_guild(&self, guild_id: Snowflake) -> Vec<&Channel> {
         let mut channels: Vec<&Channel> = self
             .channels
@@ -160,6 +169,10 @@ impl StateCache {
         &self.read_state
     }
 
+    pub fn read_state_mut(&mut self) -> &mut ReadStateStore {
+        &mut self.read_state
+    }
+
     pub fn handle_event(
         &mut self,
         event_type: &str,
@@ -168,6 +181,8 @@ impl StateCache {
         match event_type {
             "READY" => self.handle_ready(data),
             "MESSAGE_CREATE" => self.handle_message_create(data),
+            "MESSAGE_UPDATE" => self.handle_message_update(data),
+            "MESSAGE_DELETE" => self.handle_message_delete(data),
             "GUILD_CREATE" => self.handle_guild_create(data),
             "GUILD_UPDATE" => self.handle_guild_update(data),
             "GUILD_DELETE" => self.handle_guild_delete(data),
@@ -190,21 +205,11 @@ impl StateCache {
         let mut guild_order = Vec::new();
         if let Some(guilds) = data.get("guilds").and_then(Value::as_array) {
             for value in guilds {
-                let unavailable: UnavailableGuild = decode(value)?;
-                self.merge_guild(Guild {
-                    id: unavailable.id,
-                    name: None,
-                    icon: None,
-                    splash: None,
-                    banner: None,
-                    owner_id: None,
-                    permissions: None,
-                    member_count: None,
-                    unavailable: Some(unavailable.unavailable),
-                });
-                if !guild_order.contains(&unavailable.id) {
-                    guild_order.push(unavailable.id);
+                let guild: Guild = decode(value)?;
+                if !guild_order.contains(&guild.id) {
+                    guild_order.push(guild.id);
                 }
+                self.merge_guild(guild);
             }
         }
         self.guild_order = guild_order;
@@ -240,10 +245,90 @@ impl StateCache {
         if messages.len() > MAX_MESSAGES_PER_CHANNEL {
             messages.truncate(MAX_MESSAGES_PER_CHANNEL);
         }
+        self.touch_message_channel(channel_id);
 
         let mention_count = self.mention_count(&message);
         self.read_state
             .record_message(channel_id, message.id, mention_count);
+        Ok(())
+    }
+
+    fn handle_message_update(&mut self, data: Option<&Value>) -> Result<(), CacheError> {
+        let data = data.ok_or(CacheError::MissingData("MESSAGE_UPDATE"))?;
+        let channel_id = snowflake(data.get("channel_id"))
+            .ok_or(CacheError::MissingData("MESSAGE_UPDATE.channel_id"))?;
+        let message_id =
+            snowflake(data.get("id")).ok_or(CacheError::MissingData("MESSAGE_UPDATE.id"))?;
+
+        if let Ok(updated) = decode::<Message>(data) {
+            self.cache_user(updated.author.clone());
+            let messages = self.messages.entry(channel_id).or_default();
+            match messages.iter().position(|cached| cached.id == message_id) {
+                Some(index) => messages[index] = updated,
+                None => {
+                    let index = messages.partition_point(|cached| cached.id > updated.id);
+                    messages.insert(index, updated);
+                    if messages.len() > MAX_MESSAGES_PER_CHANNEL {
+                        messages.truncate(MAX_MESSAGES_PER_CHANNEL);
+                    }
+                }
+            }
+            self.touch_message_channel(channel_id);
+            return Ok(());
+        }
+
+        let mut touched = false;
+        if let Some(messages) = self.messages.get_mut(&channel_id) {
+            if let Some(existing) = messages.iter_mut().find(|m| m.id == message_id) {
+                if let Some(content) = data.get("content").and_then(Value::as_str) {
+                    existing.content = content.to_owned();
+                }
+                if data.get("edited_timestamp").is_some() {
+                    existing.edited_timestamp = data
+                        .get("edited_timestamp")
+                        .and_then(Value::as_str)
+                        .map(str::to_owned);
+                }
+                if let Some(attachments) = data.get("attachments") {
+                    if let Ok(v) = serde_json::from_value(attachments.clone()) {
+                        existing.attachments = v;
+                    }
+                }
+                if let Some(embeds) = data.get("embeds").and_then(Value::as_array) {
+                    existing.embeds = embeds.clone();
+                }
+                if let Some(pinned) = data.get("pinned").and_then(Value::as_bool) {
+                    existing.pinned = pinned;
+                }
+                if let Some(mention_everyone) =
+                    data.get("mention_everyone").and_then(Value::as_bool)
+                {
+                    existing.mention_everyone = mention_everyone;
+                }
+                touched = true;
+            }
+        }
+        if touched {
+            self.touch_message_channel(channel_id);
+        }
+        Ok(())
+    }
+
+    fn handle_message_delete(&mut self, data: Option<&Value>) -> Result<(), CacheError> {
+        let data = data.ok_or(CacheError::MissingData("MESSAGE_DELETE"))?;
+        let channel_id = snowflake(data.get("channel_id"))
+            .ok_or(CacheError::MissingData("MESSAGE_DELETE.channel_id"))?;
+        let message_id =
+            snowflake(data.get("id")).ok_or(CacheError::MissingData("MESSAGE_DELETE.id"))?;
+        let mut remove_entry = false;
+        if let Some(messages) = self.messages.get_mut(&channel_id) {
+            messages.retain(|m| m.id != message_id);
+            remove_entry = messages.is_empty();
+        }
+        if remove_entry {
+            self.messages.remove(&channel_id);
+            self.message_channel_order.retain(|id| *id != channel_id);
+        }
         Ok(())
     }
 
@@ -318,6 +403,34 @@ impl StateCache {
 
     fn cache_user(&mut self, user: User) {
         self.users.insert(user.id, user);
+        if self.users.len() > MAX_CACHED_USERS {
+            let current_id = self.current_user.as_ref().map(|u| u.id);
+            let mut to_remove = Vec::new();
+            for (id, _) in self.users.iter() {
+                if self.users.len().saturating_sub(to_remove.len()) <= MAX_CACHED_USERS {
+                    break;
+                }
+                if Some(*id) != current_id {
+                    to_remove.push(*id);
+                }
+            }
+            for id in to_remove {
+                self.users.remove(&id);
+            }
+            // Fallback: if still over limit (e.g. only current user remains but limit tiny), trim arbitrarily.
+            if self.users.len() > MAX_CACHED_USERS {
+                let keys: Vec<Snowflake> = self
+                    .users
+                    .keys()
+                    .copied()
+                    .filter(|id| Some(*id) != current_id)
+                    .take(self.users.len().saturating_sub(MAX_CACHED_USERS))
+                    .collect();
+                for id in keys {
+                    self.users.remove(&id);
+                }
+            }
+        }
     }
 
     fn merge_guild(&mut self, incoming: Guild) {
@@ -358,6 +471,7 @@ impl StateCache {
         self.channels.remove(&channel_id);
         self.private_channel_ids.retain(|id| *id != channel_id);
         self.messages.remove(&channel_id);
+        self.message_channel_order.retain(|id| *id != channel_id);
     }
 
     fn mention_count(&self, message: &Message) -> u32 {
@@ -387,7 +501,25 @@ impl StateCache {
         self.channels.clear();
         self.private_channel_ids.clear();
         self.messages.clear();
+        self.message_channel_order.clear();
         self.read_state.clear();
+    }
+
+    fn touch_message_channel(&mut self, channel_id: Snowflake) {
+        if let Some(pos) = self
+            .message_channel_order
+            .iter()
+            .position(|id| *id == channel_id)
+        {
+            self.message_channel_order.remove(pos);
+        }
+        self.message_channel_order.push_front(channel_id);
+
+        while self.message_channel_order.len() > MAX_CACHED_MESSAGE_CHANNELS {
+            if let Some(oldest) = self.message_channel_order.pop_back() {
+                self.messages.remove(&oldest);
+            }
+        }
     }
 }
 

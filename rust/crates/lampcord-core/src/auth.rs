@@ -88,7 +88,15 @@ pub struct LoginResponse {
     pub ticket: Option<String>,
     pub login_instance_id: Option<String>,
     pub mfa: Option<Value>,
-    pub required_actions: Vec<String>,
+    #[serde(default)]
+    pub totp: Option<bool>,
+    #[serde(default)]
+    pub sms: Option<bool>,
+    #[serde(default)]
+    pub backup: Option<bool>,
+    #[serde(default)]
+    pub webauthn: Option<String>,
+    pub required_actions: Vec<Value>,
     pub code: Option<i32>,
     pub message: Option<String>,
     pub failure: Option<LoginFailure>,
@@ -209,10 +217,10 @@ pub fn captcha_cancelled() -> LoginResponse {
 
 pub fn complete_login(response: LoginResponse) -> (LoginResponse, Option<String>) {
     let requires_password_update = response.token.as_deref().is_some_and(|_| {
-        response
-            .required_actions
-            .iter()
-            .any(|action| action.contains("update_password"))
+        response.required_actions.iter().any(|action| match action {
+            Value::String(s) => s.contains("update_password"),
+            other => other.to_string().contains("update_password"),
+        })
     });
 
     if !requires_password_update {
@@ -226,6 +234,10 @@ pub fn complete_login(response: LoginResponse) -> (LoginResponse, Option<String>
         ticket: None,
         login_instance_id: None,
         mfa: None,
+        totp: None,
+        sms: None,
+        backup: None,
+        webauthn: None,
         required_actions: Vec::new(),
         code: None,
         message: Some(PASSWORD_UPDATE_MESSAGE.to_owned()),

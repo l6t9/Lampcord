@@ -1,0 +1,26 @@
+[package]
+name = "lampcord"
+description = "GPUI desktop shell for the Lampcord rewrite"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+gpui.workspace = true
+gpui_platform.workspace = true
+gpui-material.workspace = true
+material-colors.workspace = true
+lampcord-core = { path = "../../crates/lampcord-core" }
+lampcord-model.workspace = true
+lampcord-transport = { path = "../../crates/lampcord-transport" }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync", "time"] }
+serde_json.workspace = true
+async-trait.workspace = true
+qrcode = "0.14"
+base64.workspace = true
+rand.workspace = true
+futures.workspace = true
+anyhow = "1.0"
+reqwest.workspace = true
+unicode-segmentation = "1.11"

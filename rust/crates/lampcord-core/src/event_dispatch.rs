@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use serde_json::Value;
 
-pub trait GatewayEventHandler {
+pub trait GatewayEventHandler: Send + Sync {
     fn name(&self) -> &str;
     fn supported_events(&self) -> &'static [&'static str];
     fn handle(&self, event_type: &str, data: Option<&Value>) -> Result<(), String>;

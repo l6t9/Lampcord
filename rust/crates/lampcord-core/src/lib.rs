@@ -1,3 +1,4 @@
+pub mod api;
 pub mod auth;
 pub mod captcha;
 pub mod event_dispatch;
@@ -5,7 +6,9 @@ pub mod gateway_client;
 pub mod gateway_plan;
 pub mod gateway_queue;
 pub mod gateway_session;
+pub mod oauth;
 pub mod read_state;
+pub mod remote_auth;
 pub mod rest;
 pub mod rest_client;
 pub mod session;
