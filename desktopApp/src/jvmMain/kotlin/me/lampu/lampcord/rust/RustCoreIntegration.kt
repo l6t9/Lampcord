@@ -1,11 +1,13 @@
 package me.lampu.lampcord.rust
 
+import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import me.lampu.lampcord.shared.state.EntityStore
 import me.lampu.lampcord.shared.state.MessageStore
@@ -30,12 +32,35 @@ class RustCoreIntegration(
     fun start() {
         if (job != null) return
         job = scope.launch {
-            var lastSeq: ULong? = null
-            bridge.snapshots.collectLatest { snap ->
-                if (snap.seq == lastSeq) return@collectLatest
-                lastSeq = snap.seq
-                runCatching { inject(snap) }
-                    .onFailure { Logging.w("RustCore", "snapshot injection failed: ${it.message}", it) }
+            launch {
+                var lastSeq: ULong? = null
+                bridge.snapshots.collectLatest { snap ->
+                    if (snap.seq == lastSeq) return@collectLatest
+                    lastSeq = snap.seq
+                    runCatching { inject(snap) }
+                        .onFailure { Logging.w("RustCore", "snapshot injection failed: ${it.message}", it) }
+                }
+            }
+
+            launch {
+                snapshotFlow { navigationStore.selectedGuild?.id }
+                    .distinctUntilChanged()
+                    .collectLatest { guildId ->
+                        val id = guildId?.toULongOrNull()
+                        bridge.selectGuild(id)
+                    }
+            }
+
+            launch {
+                snapshotFlow { navigationStore.selectedChannel?.id }
+                    .distinctUntilChanged()
+                    .collectLatest { channelId ->
+                        val id = channelId?.toULongOrNull()
+                        bridge.selectChannel(id)
+                        if (id != null) {
+                            bridge.fetchMessages(id, null, 50.toUByte())
+                        }
+                    }
             }
         }
         Logging.i("RustCore", "RustCoreIntegration started (read-only injection)")
