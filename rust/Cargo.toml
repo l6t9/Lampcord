@@ -5,8 +5,6 @@ members = [
     "crates/lampcord-core",
     "crates/lampcord-transport",
     "crates/lampcord-ffi",
-    "crates/gpui-material",
-    "apps/lampcord",
 ]
 
 [workspace.package]
@@ -18,7 +16,6 @@ rust-version = "1.85"
 [workspace.dependencies]
 lampcord-model = { path = "crates/lampcord-model" }
 lampcord-core = { path = "crates/lampcord-core" }
-gpui-material = { path = "crates/gpui-material" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 async-trait = "0.1"
@@ -35,9 +32,6 @@ base64 = "0.22"
 rsa = { version = "0.9", default-features = false, features = ["std", "pem"] }
 sha2 = "0.10"
 rand = "0.8"
-material-colors = { version = "0.4.2", features = ["image", "serde"] }
-gpui = { package = "gpui-pre", version = "=0.3.4" }
-gpui_platform = { package = "gpui-pre-platform", version = "=0.3.4", features = ["wayland"] }
 
 [patch.crates-io]
 xattr = { path = "vendor/xattr" }
