@@ -1,22 +1,22 @@
 package me.lampu.lampcord.shared.ui.settings
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.model.UserSettings
 import me.lampu.lampcord.shared.ui.components.settings.*
-import me.lampu.lampcord.shared.settings.ChatGestures
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.settings.TapTapAction
 import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.utils.DateTimeUtils
 import me.lampu.lampcord.shared.utils.getPlatformName
 import org.koin.compose.koinInject
+import kotlin.time.Clock
 
 @Composable
 fun ChatSettings(
@@ -232,6 +232,55 @@ fun ChatSettingsContent(
                     onCheckedChange = { settingsStore.updateUserSettings(UserSettings.Partial(render_reactions = it)) }
                 )
             )
+        )
+
+        var timeFormat by remember { mutableStateOf(settingsStore.timeFormat) }
+        var dateTimeFormat by remember { mutableStateOf(settingsStore.dateTimeFormat) }
+
+        Material3SettingsGroup(
+            title = "Timestamps",
+            content = {
+                OutlinedTextField(
+                    value = timeFormat,
+                    onValueChange = {
+                        timeFormat = it
+                        settingsStore.timeFormat = it.trim()
+                    },
+                    label = { Text("Time format") },
+                    placeholder = { Text("e.g. HH:mm") },
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                    singleLine = true
+                )
+                Text(
+                    text = DateTimeUtils.formatTime(Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).time, timeFormat).fold(
+                        onSuccess = {dt -> "Result: $dt"},
+                        onFailure = {throwable -> "Error: ${throwable.message}"}
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+                OutlinedTextField(
+                    value = dateTimeFormat,
+                    onValueChange = {
+                        dateTimeFormat = it
+                        settingsStore.dateTimeFormat = it.trim()
+                    },
+                    label = { Text("Date Time format") },
+                    placeholder = { Text("e.g. yyyy/MM/dd HH:mm") },
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                    singleLine = true
+                )
+                Text(
+                    text = DateTimeUtils.formatDateTime(Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()), dateTimeFormat).fold(
+                        onSuccess = {dt -> "Result: $dt"},
+                        onFailure = {throwable -> "Error: ${throwable.message}"}
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+            }
         )
 
         Material3SettingsGroup(

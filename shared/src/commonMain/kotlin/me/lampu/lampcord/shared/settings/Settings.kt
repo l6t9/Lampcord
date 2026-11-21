@@ -31,6 +31,11 @@ class Settings(private val settings: KmpSettings) {
     var tapTapEmoji by preference("taptap_emoji", "")
 
     var chatGestures by preferenceEnum("chat_gestures", ChatGestures.SWIPE_TO_MEMBERS)
+
+    // todo: add option to set default depending of intl or system settings
+    var timeFormat by preference("time_format", "HH:mm")
+    var dateTimeFormat by preference("date_time_format", "yyyy/MM/dd HH:mm")
+
     var swipeToReplyEnabled by preferenceBoolean("swipe_to_reply_enabled", false)
     var animateStickers by preferenceEnum("animate_stickers", StickerAnimation.ALWAYS)
     var panelAnimation by preferenceEnum("panel_animation", PanelAnimation.MINIMAL)

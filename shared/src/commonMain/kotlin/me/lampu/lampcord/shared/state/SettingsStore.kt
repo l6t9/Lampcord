@@ -14,7 +14,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.encodeToString
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.time.Duration.Companion.milliseconds
@@ -342,6 +341,22 @@ class SettingsStore(
         set(value) {
             _chatboxShowAvatar = value
             me.lampu.lampcord.shared.settings.Settings.shared.chatboxShowAvatar = value
+        }
+
+    private var _timeFormat by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.timeFormat)
+    var timeFormat: String
+        get() = _timeFormat
+        set(value) {
+            _timeFormat = value
+            me.lampu.lampcord.shared.settings.Settings.shared.timeFormat = value
+        }
+
+    private var _dateTimeFormat by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.dateTimeFormat)
+    var dateTimeFormat: String
+        get() = _dateTimeFormat
+        set(value) {
+            _dateTimeFormat = value
+            me.lampu.lampcord.shared.settings.Settings.shared.dateTimeFormat = value
         }
 
     private var _silentTyping by mutableStateOf(me.lampu.lampcord.shared.settings.Settings.shared.silentTyping)
