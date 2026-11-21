@@ -524,3 +524,10 @@ val smokeRustFfi by tasks.registering(JavaExec::class) {
     val jvmMain = kotlin.jvm().compilations.getByName("main")
     classpath = files(jvmMain.output.allOutputs, jvmMain.runtimeDependencyFiles, rustFfiGeneratedResourcesDir)
 }
+
+if (providers.gradleProperty("includeRustFfi").orNull == "true") {
+    kotlin.sourceSets.getByName("jvmMain").resources.srcDir(rustFfiGeneratedResourcesDir)
+    tasks.matching { it.name == "jvmProcessResources" }.configureEach {
+        dependsOn(copyRustFfiDesktop)
+    }
+}
