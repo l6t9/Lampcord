@@ -3,9 +3,11 @@ package me.lampu.lampcord
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.runtime.rememberCoroutineScope
+import me.lampu.lampcord.rust.RustCoreDebugOverlay
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -198,6 +200,8 @@ fun main() {
                     nucleusWindow.focusFlow.collect { AppVisibilityStore.setVisible(it) }
                 }
 
+                var rustBridge by remember { mutableStateOf<RustCoreBridge?>(null) }
+                val rustScope = rememberCoroutineScope()
                 if (System.getProperty("lampcord.rustCore") == "true") {
                     val sessionManager: SessionManager = koinInject()
                     DisposableEffect(sessionManager) {
@@ -206,12 +210,13 @@ fun main() {
                             Logging.w("RustCore", "Failed to start RustCoreBridge PoC")
                             onDispose {}
                         } else {
+                            rustBridge = bridge
                             Logging.i("RustCore", "RustCoreBridge PoC started")
                             val token = Settings.shared.discordToken.trim().takeIf { it.isNotBlank() }
                             if (token != null) {
                                 bridge.connectToken(token)
                             }
-                            val job = scope.launch(Dispatchers.Default) {
+                            val job = rustScope.launch(Dispatchers.Default) {
                                 bridge.snapshots.collect { snap ->
                                     Logging.i(
                                         "RustCore",
@@ -220,6 +225,7 @@ fun main() {
                                 }
                             }
                             onDispose {
+                                rustBridge = null
                                 job.cancel()
                                 bridge.close()
                                 Logging.i("RustCore", "RustCoreBridge PoC stopped")
@@ -236,7 +242,17 @@ fun main() {
                         EnergyManager.keepAwake()
                         onDispose { EnergyManager.releaseAwake() }
                     }
-                    App()
+                    androidx.compose.foundation.layout.Box {
+                        App()
+                        rustBridge?.let { bridge ->
+                            RustCoreDebugOverlay(
+                                bridge = bridge,
+                                modifier = androidx.compose.ui.Modifier
+                                    .align(androidx.compose.ui.Alignment.TopEnd)
+                                    .padding(8.dp)
+                            )
+                        }
+                    }
                 }
             }
         }
