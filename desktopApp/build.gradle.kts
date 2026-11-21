@@ -499,9 +499,11 @@ val buildRustFfi by tasks.registering(Exec::class) {
     commandLine(args)
 }
 
+val rustFfiGeneratedResourcesDir = layout.buildDirectory.dir("generated/rustFfi/resources")
+
 val copyRustFfiDesktop by tasks.registering(Copy::class) {
     group = "rust"
-    description = "Copy lampcord-ffi native lib into desktop JVM resources for current OS/arch"
+    description = "Copy lampcord-ffi native lib into generated JVM resources for current OS/arch"
     dependsOn(buildRustFfi)
     val profile = rustFfiProfile.get()
     val target = rustFfiTarget.orNull
@@ -511,5 +513,14 @@ val copyRustFfiDesktop by tasks.registering(Copy::class) {
         rootProject.projectDir.resolve("rust/target/$profile")
     }
     from(libDir.resolve(rustFfiLibName()))
-    into(layout.projectDirectory.dir("src/jvmMain/resources/${rustFfiResourcePrefix()}"))
+    into(rustFfiGeneratedResourcesDir.map { it.dir(rustFfiResourcePrefix()) })
+}
+
+val smokeRustFfi by tasks.registering(JavaExec::class) {
+    group = "rust"
+    description = "Smoke test Rust FFI UniFFI load/start/shutdown"
+    dependsOn("compileKotlinJvm", copyRustFfiDesktop)
+    mainClass.set("me.lampu.lampcord.rust.RustFfiSmokeKt")
+    val jvmMain = kotlin.jvm().compilations.getByName("main")
+    classpath = files(jvmMain.output.allOutputs, jvmMain.runtimeDependencyFiles, rustFfiGeneratedResourcesDir)
 }
