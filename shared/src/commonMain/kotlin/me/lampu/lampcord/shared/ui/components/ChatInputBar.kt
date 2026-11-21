@@ -16,8 +16,13 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.OutputTransformation
+import androidx.compose.foundation.text.input.TextFieldBuffer
+import androidx.compose.foundation.text.input.TextFieldDecorator
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.clearText
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -41,11 +46,6 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.OffsetMapping
-import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.input.TransformedText
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
@@ -74,35 +74,35 @@ import org.koin.compose.koinInject
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
-class DiscordInputVisualTransformation(
+class DiscordInputOutputTransformation(
     val primaryColor: Color,
     val highlightRanges: List<IntRange> = emptyList()
-) : VisualTransformation {
-    override fun filter(text: AnnotatedString): TransformedText {
-        val build = AnnotatedString.Builder()
-        val rawText = text.text
+) : OutputTransformation {
+    override fun TextFieldBuffer.transformOutput() {
+        val rawText = asCharSequence()
+        val textLength = length
         val ranges = highlightRanges
-            .filter { it.first >= 0 && it.last < rawText.length && it.first <= it.last }
+            .filter { it.first >= 0 && it.last < textLength && it.first <= it.last }
             .sortedBy { it.first }
+
+        val style = SpanStyle(
+            color = primaryColor,
+            fontWeight = FontWeight.Bold,
+            background = primaryColor.copy(alpha = 0.12f),
+            textDecoration = TextDecoration.None
+        )
 
         var rangeIndex = 0
         var i = 0
-        while (i < rawText.length) {
+        while (i < textLength) {
             while (rangeIndex < ranges.size && ranges[rangeIndex].last < i) {
                 rangeIndex++
             }
             val activeRange = ranges.getOrNull(rangeIndex)
             if (activeRange != null && i >= activeRange.first) {
                 val end = activeRange.last + 1
-                build.withStyle(
-                    SpanStyle(
-                        color = primaryColor,
-                        fontWeight = FontWeight.Bold,
-                        background = primaryColor.copy(alpha = 0.12f),
-                        textDecoration = TextDecoration.None
-                    )
-                ) {
-                    append(rawText.substring(i, end))
+                if (end > i && end <= textLength) {
+                    addStyle(style, i, end)
                 }
                 i = end
                 rangeIndex++
@@ -111,46 +111,48 @@ class DiscordInputVisualTransformation(
 
             val char = rawText[i]
             if (char == '@' || char == '#' || char == '/' || char == ':') {
-                 if (i == 0 || rawText[i-1].isWhitespace()) {
-                     val isEmoji = char == ':'
-                     var end = i + 1
-                     if (isEmoji) {
-                         var cursor = i + 1
-                         while (cursor < rawText.length && !rawText[cursor].isWhitespace()) {
-                             if (rawText[cursor] == ':') {
-                                 cursor++
-                                 end = cursor
-                                 break
-                             }
-                             cursor++
-                         }
-                         if (end == i + 1) {
-                             end = cursor.coerceAtMost(rawText.length)
-                         }
-                     } else {
-                         while (end < rawText.length && !rawText[end].isWhitespace()) {
-                             end++
-                         }
-                     }
-                     build.withStyle(
-                         SpanStyle(
-                             color = primaryColor,
-                             fontWeight = FontWeight.Bold,
-                             background = primaryColor.copy(alpha = 0.12f),
-                             textDecoration = TextDecoration.None
-                         )
-                     ) {
-                         append(rawText.substring(i, end))
-                     }
-                     i = end
-                     continue
-                 }
+                if (i == 0 || rawText[i - 1].isWhitespace()) {
+                    val isEmoji = char == ':'
+                    var end = i + 1
+                    if (isEmoji) {
+                        var cursor = i + 1
+                        while (cursor < textLength && !rawText[cursor].isWhitespace()) {
+                            if (rawText[cursor] == ':') {
+                                cursor++
+                                end = cursor
+                                break
+                            }
+                            cursor++
+                        }
+                        if (end == i + 1) {
+                            end = cursor.coerceAtMost(textLength)
+                        }
+                    } else {
+                        while (end < textLength && !rawText[end].isWhitespace()) {
+                            end++
+                        }
+                    }
+                    if (end > i && end <= textLength) {
+                        addStyle(style, i, end)
+                    }
+                    i = end
+                    continue
+                }
             }
-            build.append(char)
             i++
         }
+    }
 
-        return TransformedText(build.toAnnotatedString(), OffsetMapping.Identity)
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is DiscordInputOutputTransformation) return false
+        return primaryColor == other.primaryColor && highlightRanges == other.highlightRanges
+    }
+
+    override fun hashCode(): Int {
+        var result = primaryColor.hashCode()
+        result = 31 * result + highlightRanges.hashCode()
+        return result
     }
 }
 
@@ -169,9 +171,17 @@ fun ChatInputBar(
     settingsStore: SettingsStore = koinInject(),
     profileStore: ProfileStore = koinInject()
 ) {
-    var textFieldValue by remember(channel.id) {
+    val textFieldState = remember(channel.id) {
         val draft = messageStore.draftMessages[channel.id] ?: ""
-        mutableStateOf(TextFieldValue(draft, TextRange(draft.length)))
+        TextFieldState(draft, TextRange(draft.length))
+    }
+
+    var lastHandledText by remember(channel.id) {
+        mutableStateOf(messageStore.draftMessages[channel.id] ?: "")
+    }
+    var lastHandledSelection by remember(channel.id) {
+        val len = (messageStore.draftMessages[channel.id] ?: "").length
+        mutableStateOf(TextRange(len))
     }
 
     val haptic = LocalHapticFeedback.current
@@ -238,10 +248,10 @@ fun ChatInputBar(
 
     fun applyAutocomplete(item: AutocompleteItem, startOverride: Int? = null) {
         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-        val text = textFieldValue.text
-        val selection = textFieldValue.selection
-        if (selection.collapsed) {
-            val cursor = selection.start
+        val currentSelection = textFieldState.selection
+        if (currentSelection.collapsed) {
+            val cursor = currentSelection.start
+            val text = textFieldState.text.toString()
             val textBefore = text.take(cursor)
             val lastWordStart = textBefore.lastIndexOfAny(charArrayOf(' ', '\n')) + 1
 
@@ -261,7 +271,6 @@ fun ChatInputBar(
             val inputText = item.inputText ?: item.replacement
             val newText = text.replaceRange(actualStart, cursor, inputText)
             val newCursor = actualStart + inputText.length
-            textFieldValue = TextFieldValue(newText, TextRange(newCursor))
 
             val removedLen = cursor - actualStart
             val delta = inputText.length - removedLen
@@ -270,6 +279,13 @@ fun ChatInputBar(
                 shifted = shifted + (actualStart until newCursor to item.replacement)
             }
             mentionRanges = shifted
+            lastHandledText = newText
+            lastHandledSelection = TextRange(newCursor)
+
+            textFieldState.edit {
+                replace(actualStart, cursor, inputText)
+                selection = TextRange(newCursor)
+            }
 
             autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild, channel)
         }
@@ -296,23 +312,90 @@ fun ChatInputBar(
         mentionRanges = emptyMap()
     }
 
-    LaunchedEffect(textFieldValue.text) {
-        if (textFieldValue.text.isEmpty()) {
-            messageStore.draftMessages.remove(channel.id)
-        } else {
-            messageStore.draftMessages[channel.id] = textFieldValue.text
-        }
+    LaunchedEffect(textFieldState, channel.id) {
+        snapshotFlow { textFieldState.text.toString() }
+            .collect { text ->
+                if (text.isEmpty()) {
+                    messageStore.draftMessages.remove(channel.id)
+                } else {
+                    messageStore.draftMessages[channel.id] = text
+                }
+            }
+    }
+
+    LaunchedEffect(textFieldState, channel.id, canSend) {
+        snapshotFlow { textFieldState.text.toString() to textFieldState.selection }
+            .collect { (currentText, selection) ->
+                val textChanged = currentText != lastHandledText
+                val selectionChanged = selection != lastHandledSelection
+
+                if (!textChanged && !selectionChanged) return@collect
+
+                if (textChanged) {
+                    mentionRanges = shiftMentionRanges(mentionRanges, lastHandledText, currentText)
+                    lastHandledText = currentText
+                }
+                lastHandledSelection = selection
+
+                if (canSend) {
+                    if (selection.collapsed) {
+                        val cursor = selection.start
+                        val textBefore = currentText.take(cursor)
+                        val lastWordStart = textBefore.lastIndexOfAny(charArrayOf(' ', '\n')) + 1
+                        val lastWord = textBefore.substring(lastWordStart)
+
+                        val activeType = autocompleteStore.autocompleteType
+                        val trackedStart = autocompleteStore.autocompleteStart
+                        val mentionStillOpen = activeType == AutocompleteType.MENTION &&
+                            trackedStart in 0..cursor &&
+                            cursor > trackedStart &&
+                            currentText.getOrNull(trackedStart) == '@' &&
+                            !currentText.substring(trackedStart, cursor).contains('\n')
+
+                        val (type, query, start) = when {
+                            currentText.startsWith('/') && !currentText.contains(' ') ->
+                                Triple(AutocompleteType.COMMAND, currentText.substring(1), 0)
+                            mentionStillOpen ->
+                                Triple(
+                                    AutocompleteType.MENTION,
+                                    currentText.substring(trackedStart + 1, cursor),
+                                    trackedStart
+                                )
+                            lastWord.length >= 2 && lastWord.startsWith(':') ->
+                                Triple(AutocompleteType.EMOJI, lastWord.substring(1), lastWordStart)
+                            lastWord.startsWith('@') ->
+                                Triple(AutocompleteType.MENTION, lastWord.substring(1), lastWordStart)
+                            lastWord.startsWith('#') ->
+                                Triple(AutocompleteType.CHANNEL, lastWord.substring(1), lastWordStart)
+                            else -> Triple(null, "", -1)
+                        }
+                        autocompleteStore.updateAutocomplete(
+                            type,
+                            query,
+                            navigationStore.selectedGuild,
+                            channel,
+                            start = start
+                        )
+                    } else {
+                        autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild, channel)
+                    }
+
+                    if (textChanged && currentText.isNotEmpty() && !currentText.startsWith('/')) {
+                        messageStore.sendTyping(channel.id)
+                    }
+                }
+            }
     }
 
     LaunchedEffect(channel.id) {
-        val draft = messageStore.draftMessages[channel.id] ?: ""
-        textFieldValue = TextFieldValue(draft, TextRange(draft.length))
         autocompleteStore.clear()
     }
 
     LaunchedEffect(messageStore.editingMessage) {
         messageStore.editingMessage?.let {
-            textFieldValue = TextFieldValue(it.content, TextRange(it.content.length))
+            lastHandledText = it.content
+            lastHandledSelection = TextRange(it.content.length)
+            textFieldState.setTextAndPlaceCursorAtEnd(it.content)
             clearMentions()
             messageStore.pendingFiles.clear()
             messageStore.replyingTo = null
@@ -353,7 +436,7 @@ fun ChatInputBar(
                     replacement = serverReplacement,
                     inputText = ":${emoji.name}:"
                 ),
-                startOverride = textFieldValue.selection.start
+                startOverride = textFieldState.selection.start
             )
         } else {
 
@@ -364,16 +447,27 @@ fun ChatInputBar(
                 char.removeSurrounding(":").takeIf { it.isNotBlank() }
             }
             val inputText = if (shortcode != null) ":$shortcode:" else char
-            val insertStart = textFieldValue.selection.start
-            val newText = textFieldValue.text.replaceRange(
+            val insertStart = textFieldState.selection.min
+            val insertEnd = textFieldState.selection.max
+            val currentText = textFieldState.text.toString()
+            val newText = currentText.replaceRange(
                 insertStart,
-                textFieldValue.selection.end,
+                insertEnd,
                 inputText
             )
-            textFieldValue = TextFieldValue(newText, TextRange(insertStart + inputText.length))
+            val newCursor = insertStart + inputText.length
+            val delta = inputText.length - (insertEnd - insertStart)
+            var shifted = shiftMentionRanges(mentionRanges, insertStart, insertEnd, delta)
             val unicode = EmojiIndex.getCharForName(shortcode ?: char)
             if (unicode != null && unicode != inputText) {
-                mentionRanges = mentionRanges + (insertStart until insertStart + inputText.length to unicode)
+                shifted = shifted + (insertStart until newCursor to unicode)
+            }
+            mentionRanges = shifted
+            lastHandledText = newText
+            lastHandledSelection = TextRange(newCursor)
+            textFieldState.edit {
+                replace(insertStart, insertEnd, inputText)
+                selection = TextRange(newCursor)
             }
         }
     }
@@ -412,7 +506,9 @@ fun ChatInputBar(
                                 if (item.isCommand && item.commandObj != null) {
                                     commandStore.activeCommand = item.commandObj
                                     commandStore.resetSubCommand()
-                                    textFieldValue = TextFieldValue("")
+                                    lastHandledText = ""
+                                    lastHandledSelection = TextRange.Zero
+                                    textFieldState.clearText()
                                     clearMentions()
                                     autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild, channel)
                                 } else {
@@ -472,7 +568,9 @@ fun ChatInputBar(
                                         onClick = {
                                             if (isEditing) {
                                                 messageStore.editingMessage = null
-                                                textFieldValue = TextFieldValue("")
+                                                lastHandledText = ""
+                                                lastHandledSelection = TextRange.Zero
+                                                textFieldState.clearText()
                                             } else {
                                                 messageStore.replyingTo = null
                                             }
@@ -603,7 +701,7 @@ fun ChatInputBar(
                         ) {
                             val density = LocalDensity.current
                             val isKeyboardVisible = WindowInsets.ime.getBottom(density) > 0
-                            val showCollapsibleItems = textFieldValue.text.isEmpty() && (!isFocused || !isKeyboardVisible)
+                            val showCollapsibleItems = textFieldState.text.isEmpty() && (!isFocused || !isKeyboardVisible)
 
                             val uploadVisible = !settings.chatboxHideUploadButton && messageStore.editingMessage == null && canSend
                             val voiceVisible = !settings.chatboxHideVoiceButton &&
@@ -707,280 +805,273 @@ fun ChatInputBar(
                                 shape = RoundedCornerShape(settings.chatboxBorderRadius.dp),
                                 color = MaterialTheme.colorScheme.surfaceContainerHigh
                             ) {
-                                ContextMenu(
-                                    items = listOf(
-                                        ContextMenuItem(
-                                            label = "Paste image",
-                                            onClick = {
-                                                val pasted = getClipboardFiles()
-                                                if (pasted.isNotEmpty()) {
-                                                    messageStore.pendingFiles.addAll(pasted.map { PendingFile(it.first, it.second) })
-                                                } else {
-                                                    showToast("No image found in clipboard")
-                                                }
-                                            }
-                                        )
-                                    ),
-                                    enabled = isMobileView && canSend,
-                                    respectChildGestures = true
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(min = buttonSize)
+                                        .padding(horizontal = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Row(
+                                    BasicTextField(
+                                        state = textFieldState,
+                                        enabled = canSend,
+                                        readOnly = !canSend,
+                                        outputTransformation = DiscordInputOutputTransformation(
+                                            primaryColor,
+                                            highlightRanges = mentionRanges.keys.toList()
+                                        ),
                                         modifier = Modifier
-                                            .fillMaxWidth()
-                                            .heightIn(min = buttonSize)
-                                            .padding(horizontal = 4.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        BasicTextField(
-                                            value = textFieldValue,
-                                            enabled = canSend,
-                                            readOnly = !canSend,
-                                            onValueChange = {
-                                                if (canSend) {
-                                                    val oldText = textFieldValue.text
-                                                    textFieldValue = it
-                                                    mentionRanges = shiftMentionRanges(mentionRanges, oldText, it.text)
-
-if (it.selection.collapsed) {
-                                                        val cursor = it.selection.start
-                                                        val textBefore = it.text.take(cursor)
-                                                        val lastWordStart = textBefore.lastIndexOfAny(charArrayOf(' ', '\n')) + 1
-                                                        val lastWord = textBefore.substring(lastWordStart)
-
-                                                        val activeType = autocompleteStore.autocompleteType
-                                                        val trackedStart = autocompleteStore.autocompleteStart
-                                                        val mentionStillOpen = activeType == AutocompleteType.MENTION &&
-                                                            trackedStart in 0..cursor &&
-                                                            cursor > trackedStart &&
-                                                            it.text.getOrNull(trackedStart) == '@' &&
-                                                            !it.text.substring(trackedStart, cursor).contains('\n')
-
-                                                        val (type, query, start) = when {
-                                                            it.text.startsWith('/') && !it.text.contains(' ') ->
-                                                                Triple(AutocompleteType.COMMAND, it.text.substring(1), 0)
-                                                            mentionStillOpen ->
-                                                                Triple(
-                                                                    AutocompleteType.MENTION,
-                                                                    it.text.substring(trackedStart + 1, cursor),
-                                                                    trackedStart
-                                                                )
-                                                            lastWord.length >= 2 && lastWord.startsWith(':') ->
-                                                                Triple(AutocompleteType.EMOJI, lastWord.substring(1), lastWordStart)
-                                                            lastWord.startsWith('@') ->
-                                                                Triple(AutocompleteType.MENTION, lastWord.substring(1), lastWordStart)
-                                                            lastWord.startsWith('#') ->
-                                                                Triple(AutocompleteType.CHANNEL, lastWord.substring(1), lastWordStart)
-                                                            else -> Triple(null, "", -1)
-                                                        }
-                                                        autocompleteStore.updateAutocomplete(
-                                                            type,
-                                                            query,
-                                                            navigationStore.selectedGuild,
-                                                            channel,
-                                                            start = start
-                                                        )
-                                                    } else {
-                                                        autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild, channel)
-                                                    }
-
-                                                    if (it.text.isNotEmpty() && !it.text.startsWith('/')) messageStore.sendTyping(channel.id)
-                                                }
-                                            },
-                                            visualTransformation = DiscordInputVisualTransformation(
-                                                primaryColor,
-                                                highlightRanges = mentionRanges.keys.toList()
-                                            ),
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .padding(start = 12.dp, top = 8.dp, bottom = 8.dp)
-                                                .pointerInput(navigationStore.isEmojiPickerVisible) {
-                                                    if (!navigationStore.isEmojiPickerVisible) return@pointerInput
-                                                    awaitEachGesture {
-
-                                                        awaitFirstDown(requireUnconsumed = false)
-                                                        navigationStore.isEmojiPickerVisible = false
-                                                        focusRequester.requestFocus()
-                                                        keyboardController?.show()
-                                                    }
-                                                }
-                                                .focusRequester(focusRequester)
-                                                .onFocusChanged { isFocused = it.isFocused }
-                                                .onPreviewKeyEvent { event ->
-                                                    if (!canSend) return@onPreviewKeyEvent false
-                                                    if (event.type == KeyEventType.KeyDown) {
-                                                        if (autocompleteStore.autocompleteType != null) {
-                                                            val itemCount = autocompleteStore.autocompleteItems.size
-                                                            when (event.key) {
-                                                                Key.DirectionUp -> {
-                                                                    if (itemCount > 0) {
-                                                                        autocompleteStore.autocompleteSelectedIndex = (autocompleteStore.autocompleteSelectedIndex - 1 + itemCount) % itemCount
-                                                                        return@onPreviewKeyEvent true
-                                                                    }
-                                                                }
-                                                                Key.DirectionDown -> {
-                                                                    if (itemCount > 0) {
-                                                                        autocompleteStore.autocompleteSelectedIndex = (autocompleteStore.autocompleteSelectedIndex + 1) % itemCount
-                                                                        return@onPreviewKeyEvent true
-                                                                    }
-                                                                }
-                                                                Key.Tab, Key.Enter -> {
-                                                                    if (itemCount > 0 && autocompleteStore.autocompleteSelectedIndex in 0 until itemCount) {
-                                                                        val item = autocompleteStore.autocompleteItems[autocompleteStore.autocompleteSelectedIndex]
-                                                                        if (item.isCommand && item.commandObj != null) {
-                                                                            commandStore.activeCommand = item.commandObj
-                                                                            commandStore.resetSubCommand()
-                                                                            textFieldValue = TextFieldValue("")
-                                                                            clearMentions()
-                                                                            autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild, channel)
-                                                                        } else {
-                                                                            applyAutocomplete(item)
-                                                                        }
-                                                                        return@onPreviewKeyEvent true
-                                                                    }
-                                                                }
-                                                            }
-                                                        }
-
-                                                        if (event.key == Key.Escape) {
-                                                            if (autocompleteStore.autocompleteType != null) {
-                                                                autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild, channel)
-                                                                return@onPreviewKeyEvent true
-                                                            }
-                                                            if (messageStore.editingMessage != null) {
-                                                                messageStore.editingMessage = null
-                                                                textFieldValue = TextFieldValue("")
-                                                                return@onPreviewKeyEvent true
-                                                            }
-                                                            if (messageStore.replyingTo != null) {
-                                                                messageStore.replyingTo = null
-                                                                return@onPreviewKeyEvent true
-                                                            }
-                                                        }
-                                                        if (event.isCtrlPressed && event.key == Key.V) {
-                                                                val files = getClipboardFiles()
-                                                                if (files.isNotEmpty()) {
-                                                                    messageStore.pendingFiles.addAll(files.map { PendingFile(it.first, it.second) })
-                                                                    return@onPreviewKeyEvent true
-                                                                }
-                                                        }
-                                                        if (event.key == Key.Enter && !event.isShiftPressed && !isMobileView) {
-                                                            val currentText = textFieldValue.text
-                                                            if (currentText.startsWith('/') && !currentText.contains(' ')) {
-                                                                val cmdName = currentText.substring(1).trim()
-                                                                val command = commandStore.availableCommands.find { it.name == cmdName }
-                                                                if (command != null) {
-                                                                    commandStore.activeCommand = command
-                                                                    commandStore.resetSubCommand()
-                                                                    textFieldValue = TextFieldValue("")
-                                                                    clearMentions()
-                                                                    return@onPreviewKeyEvent true
-                                                                }
-                                                            }
-                                                            if (currentText.isNotBlank() || messageStore.pendingFiles.isNotEmpty()) {
-                                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                                if (messageStore.editingMessage != null) {
-                                                                    messageStore.editMessage(messageStore.editingMessage!!, resolveContent(currentText))
-                                                                    messageStore.editingMessage = null
-                                                                } else {
-                                                                    messageStore.sendMessageDraft(resolveContent(currentText), allowedMentions = allowedMentions)
-                                                                }
-                                                                textFieldValue = TextFieldValue("")
-                                                                clearMentions()
-                                                                messageStore.resetTypingEmission(channel.id)
-                                                                return@onPreviewKeyEvent true
-                                                            }
-                                                        }
-                                                    }
-                                                    false
-                                                },
-                                            textStyle = MaterialTheme.typography.bodyLarge.copy(
-                                                color = MaterialTheme.colorScheme.onSurface,
-                                                fontSize = MaterialTheme.typography.bodyLarge.fontSize * chatboxFontSize
-                                            ),
-                                            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                                            decorationBox = { innerTextField: @Composable () -> Unit ->
-                                                Box(modifier = Modifier.fillMaxWidth()) {
-                                                    if (textFieldValue.text.isEmpty()) {
-                                                        Text(
-                                                            text = placeholderText,
-                                                            style = MaterialTheme.typography.bodyLarge.copy(
-                                                                fontSize = MaterialTheme.typography.bodyLarge.fontSize * chatboxFontSize
-                                                            ),
-                                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                                                            maxLines = 1,
-                                                            overflow = TextOverflow.Ellipsis
-                                                        )
-                                                    }
-                                                    innerTextField()
+                                            .weight(1f)
+                                            .padding(start = 12.dp, top = 8.dp, bottom = 8.dp)
+                                            .pointerInput(navigationStore.isEmojiPickerVisible) {
+                                                if (!navigationStore.isEmojiPickerVisible) return@pointerInput
+                                                awaitEachGesture {
+                                                    awaitFirstDown(requireUnconsumed = false)
+                                                    navigationStore.isEmojiPickerVisible = false
+                                                    focusRequester.requestFocus()
+                                                    keyboardController?.show()
                                                 }
                                             }
-                                        )
+                                            .keyboardImageReceiver { pf ->
+                                                messageStore.pendingFiles.add(pf)
+                                            }
+                                            .focusRequester(focusRequester)
+                                            .onFocusChanged { isFocused = it.isFocused }
+                                            .onPreviewKeyEvent { event ->
+                                                if (!canSend) return@onPreviewKeyEvent false
+                                                if (event.type == KeyEventType.KeyDown) {
+                                                    if (autocompleteStore.autocompleteType != null) {
+                                                        val itemCount =
+                                                            autocompleteStore.autocompleteItems.size
+                                                        when (event.key) {
+                                                            Key.DirectionUp -> {
+                                                                if (itemCount > 0) {
+                                                                    autocompleteStore.autocompleteSelectedIndex =
+                                                                        (autocompleteStore.autocompleteSelectedIndex - 1 + itemCount) % itemCount
+                                                                    return@onPreviewKeyEvent true
+                                                                }
+                                                            }
 
-                                        val silentTypingEnabled = settingsStore.silentTyping
-                                        if (settingsStore.silentTypingButtonEnabled && canSend) {
-                                            IconButton(
-                                                onClick = {
-                                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                                    settingsStore.silentTyping = !settingsStore.silentTyping
-                                                },
-                                                modifier = Modifier.size(36.dp)
-                                            ) {
-                                                Icon(
-                                                    imageVector = if (silentTypingEnabled) Icons.Filled.KeyboardOff else Icons.Filled.Keyboard,
-                                                    contentDescription = if (silentTypingEnabled) "Silent typing enabled" else "Silent typing disabled",
-                                                    modifier = Modifier.size(24.dp),
-                                                    tint = if (silentTypingEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
+                                                            Key.DirectionDown -> {
+                                                                if (itemCount > 0) {
+                                                                    autocompleteStore.autocompleteSelectedIndex =
+                                                                        (autocompleteStore.autocompleteSelectedIndex + 1) % itemCount
+                                                                    return@onPreviewKeyEvent true
+                                                                }
+                                                            }
+
+                                                            Key.Tab, Key.Enter -> {
+                                                                if (itemCount > 0 && autocompleteStore.autocompleteSelectedIndex in 0 until itemCount) {
+                                                                    val item =
+                                                                        autocompleteStore.autocompleteItems[autocompleteStore.autocompleteSelectedIndex]
+                                                                    if (item.isCommand && item.commandObj != null) {
+                                                                        commandStore.activeCommand =
+                                                                            item.commandObj
+                                                                        commandStore.resetSubCommand()
+                                                                        lastHandledText = ""
+                                                                        lastHandledSelection =
+                                                                            TextRange.Zero
+                                                                        textFieldState.clearText()
+                                                                        clearMentions()
+                                                                        autocompleteStore.updateAutocomplete(
+                                                                            null,
+                                                                            "",
+                                                                            navigationStore.selectedGuild,
+                                                                            channel
+                                                                        )
+                                                                    } else {
+                                                                        applyAutocomplete(item)
+                                                                    }
+                                                                    return@onPreviewKeyEvent true
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+
+                                                    if (event.key == Key.Escape) {
+                                                        if (autocompleteStore.autocompleteType != null) {
+                                                            autocompleteStore.updateAutocomplete(
+                                                                null,
+                                                                "",
+                                                                navigationStore.selectedGuild,
+                                                                channel
+                                                            )
+                                                            return@onPreviewKeyEvent true
+                                                        }
+                                                        if (messageStore.editingMessage != null) {
+                                                            messageStore.editingMessage = null
+                                                            lastHandledText = ""
+                                                            lastHandledSelection =
+                                                                TextRange.Zero
+                                                            textFieldState.clearText()
+                                                            return@onPreviewKeyEvent true
+                                                        }
+                                                        if (messageStore.replyingTo != null) {
+                                                            messageStore.replyingTo = null
+                                                            return@onPreviewKeyEvent true
+                                                        }
+                                                    }
+                                                    if (event.isCtrlPressed && event.key == Key.V) {
+                                                        val files = getClipboardFiles()
+                                                        if (files.isNotEmpty()) {
+                                                            messageStore.pendingFiles.addAll(
+                                                                files.map {
+                                                                    PendingFile(
+                                                                        it.first,
+                                                                        it.second
+                                                                    )
+                                                                })
+                                                            return@onPreviewKeyEvent true
+                                                        }
+                                                    }
+                                                    if (event.key == Key.Enter && !event.isShiftPressed && !isMobileView) {
+                                                        val currentText =
+                                                            textFieldState.text.toString()
+                                                        if (currentText.startsWith('/') && !currentText.contains(
+                                                                ' '
+                                                            )
+                                                        ) {
+                                                            val cmdName =
+                                                                currentText.substring(1).trim()
+                                                            val command =
+                                                                commandStore.availableCommands.find { it.name == cmdName }
+                                                            if (command != null) {
+                                                                commandStore.activeCommand =
+                                                                    command
+                                                                commandStore.resetSubCommand()
+                                                                lastHandledText = ""
+                                                                lastHandledSelection =
+                                                                    TextRange.Zero
+                                                                textFieldState.clearText()
+                                                                clearMentions()
+                                                                return@onPreviewKeyEvent true
+                                                            }
+                                                        }
+                                                        if (currentText.isNotBlank() || messageStore.pendingFiles.isNotEmpty()) {
+                                                            haptic.performHapticFeedback(
+                                                                HapticFeedbackType.LongPress
+                                                            )
+                                                            if (messageStore.editingMessage != null) {
+                                                                messageStore.editMessage(
+                                                                    messageStore.editingMessage!!,
+                                                                    resolveContent(currentText)
+                                                                )
+                                                                messageStore.editingMessage =
+                                                                    null
+                                                            } else {
+                                                                messageStore.sendMessageDraft(
+                                                                    resolveContent(currentText),
+                                                                    allowedMentions = allowedMentions
+                                                                )
+                                                            }
+                                                            lastHandledText = ""
+                                                            lastHandledSelection =
+                                                                TextRange.Zero
+                                                            textFieldState.clearText()
+                                                            clearMentions()
+                                                            messageStore.resetTypingEmission(
+                                                                channel.id
+                                                            )
+                                                            return@onPreviewKeyEvent true
+                                                        }
+                                                    }
+                                                }
+                                                false
+                                            },
+                                        textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            fontSize = MaterialTheme.typography.bodyLarge.fontSize * chatboxFontSize
+                                        ),
+                                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                                        decorator = TextFieldDecorator { innerTextField ->
+                                            Box(modifier = Modifier.fillMaxWidth()) {
+                                                if (textFieldState.text.isEmpty()) {
+                                                    Text(
+                                                        text = placeholderText,
+                                                        style = MaterialTheme.typography.bodyLarge.copy(
+                                                            fontSize = MaterialTheme.typography.bodyLarge.fontSize * chatboxFontSize
+                                                        ),
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                                                            alpha = 0.6f
+                                                        ),
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
+                                                }
+                                                innerTextField()
                                             }
                                         }
+                                    )
 
-                                        if (!settings.chatboxHideEmojiButton && canSend) {
-                                            val showKeyboardIcon = isMobileView &&
+                                    val silentTypingEnabled = settingsStore.silentTyping
+                                    if (settingsStore.silentTypingButtonEnabled && canSend) {
+                                        IconButton(
+                                            onClick = {
+                                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                settingsStore.silentTyping =
+                                                    !settingsStore.silentTyping
+                                            },
+                                            modifier = Modifier.size(36.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = if (silentTypingEnabled) Icons.Filled.KeyboardOff else Icons.Filled.Keyboard,
+                                                contentDescription = if (silentTypingEnabled) "Silent typing enabled" else "Silent typing disabled",
+                                                modifier = Modifier.size(24.dp),
+                                                tint = if (silentTypingEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+
+                                    if (!settings.chatboxHideEmojiButton && canSend) {
+                                        val showKeyboardIcon = isMobileView &&
                                                 navigationStore.isEmojiPickerVisible &&
                                                 !settingsStore.silentTyping
-                                            IconButton(
-                                                onClick = {
-                                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                                    if (navigationStore.isEmojiPickerVisible && showKeyboardIcon) {
-                                                        navigationStore.isEmojiPickerVisible = false
-                                                        focusRequester.requestFocus()
-                                                        keyboardController?.show()
-                                                    } else {
-                                                        navigationStore.isEmojiPickerVisible = true
-                                                        if (isMobileView) {
-                                                            keyboardController?.hide()
-                                                        }
-                                                    }
-                                                },
-                                                modifier = Modifier.size(36.dp)
-                                            ) {
-                                                Icon(
-                                                    imageVector = if (showKeyboardIcon) Icons.Filled.Keyboard else Icons.Filled.SentimentSatisfied,
-                                                    contentDescription = if (showKeyboardIcon) "Switch to keyboard" else "Emojis",
-                                                    modifier = Modifier.size(24.dp),
-                                                    tint = if (navigationStore.isEmojiPickerVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
-                                            }
-                                        }
-
-                                        if (navigationStore.isEmojiPickerVisible && canSend && !isMobileView) {
-                                            androidx.compose.ui.window.Popup(
-                                                alignment = Alignment.BottomEnd,
-                                                offset = IntOffset(0, -48),
-                                                onDismissRequest = { navigationStore.isEmojiPickerVisible = false },
-                                                properties = androidx.compose.ui.window.PopupProperties(focusable = true)
-                                            ) {
-                                                EmojiPicker { emoji ->
-                                                    insertEmoji(emoji)
+                                        IconButton(
+                                            onClick = {
+                                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                if (navigationStore.isEmojiPickerVisible && showKeyboardIcon) {
                                                     navigationStore.isEmojiPickerVisible = false
+                                                    focusRequester.requestFocus()
+                                                    keyboardController?.show()
+                                                } else {
+                                                    navigationStore.isEmojiPickerVisible = true
+                                                    if (isMobileView) {
+                                                        keyboardController?.hide()
+                                                    }
                                                 }
+                                            },
+                                            modifier = Modifier.size(36.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = if (showKeyboardIcon) Icons.Filled.Keyboard else Icons.Filled.SentimentSatisfied,
+                                                contentDescription = if (showKeyboardIcon) "Switch to keyboard" else "Emojis",
+                                                modifier = Modifier.size(24.dp),
+                                                tint = if (navigationStore.isEmojiPickerVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+
+                                    if (navigationStore.isEmojiPickerVisible && canSend && !isMobileView) {
+                                        androidx.compose.ui.window.Popup(
+                                            alignment = Alignment.BottomEnd,
+                                            offset = IntOffset(0, -48),
+                                            onDismissRequest = {
+                                                navigationStore.isEmojiPickerVisible = false
+                                            },
+                                            properties = androidx.compose.ui.window.PopupProperties(
+                                                focusable = true
+                                            )
+                                        ) {
+                                            EmojiPicker { emoji ->
+                                                insertEmoji(emoji)
+                                                navigationStore.isEmojiPickerVisible = false
                                             }
                                         }
                                     }
                                 }
                             }
 
-                            val showSend = textFieldValue.text.isNotBlank() || messageStore.pendingFiles.isNotEmpty() || commandStore.activeCommand != null
+                            val showSend = textFieldState.text.isNotBlank() || messageStore.pendingFiles.isNotEmpty() || commandStore.activeCommand != null
 
                             AnimatedVisibility(
                                 visible = showSend,
@@ -1004,14 +1095,17 @@ if (it.selection.collapsed) {
                                                 commandStore.commandOptions.clear()
                                                 commandStore.resetSubCommand()
                                             } else {
+                                                val currentText = textFieldState.text.toString()
                                                 if (messageStore.editingMessage != null) {
-                                                    messageStore.editMessage(messageStore.editingMessage!!, resolveContent(textFieldValue.text))
+                                                    messageStore.editMessage(messageStore.editingMessage!!, resolveContent(currentText))
                                                     messageStore.editingMessage = null
                                                 } else {
-                                                    messageStore.sendMessageDraft(resolveContent(textFieldValue.text), allowedMentions = allowedMentions)
+                                                    messageStore.sendMessageDraft(resolveContent(currentText), allowedMentions = allowedMentions)
                                                 }
                                             }
-                                            textFieldValue = TextFieldValue("")
+                                            lastHandledText = ""
+                                            lastHandledSelection = TextRange.Zero
+                                            textFieldState.clearText()
                                             clearMentions()
                                             messageStore.resetTypingEmission(channel.id)
                                         },
@@ -1057,6 +1151,10 @@ if (it.selection.collapsed) {
         }
     }
 }
+
+expect fun Modifier.keyboardImageReceiver(
+    onMediaReceived: (PendingFile) -> Unit
+): Modifier
 
 private fun shiftMentionRanges(
     ranges: Map<IntRange, String>,
