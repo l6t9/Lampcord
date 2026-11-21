@@ -63,6 +63,10 @@ pub enum ClientCommand {
     SendTyping {
         channel_id: u64,
     },
+    AckMessage {
+        channel_id: u64,
+        message_id: u64,
+    },
     Logout,
     Shutdown,
 }

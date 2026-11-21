@@ -571,6 +571,13 @@ async fn run(
                         }
                         publish(&connection, active_token.is_some(), &cache, selected_guild_id, selected_channel_id, &fetched_messages, &error, &snapshot, &events, &seq);
                     }
+                    ClientCommand::AckMessage { channel_id, message_id } => {
+                        if let Some(cache) = cache.as_ref() {
+                            let mut guard = cache.lock().expect("cache lock");
+                            guard.read_state_mut().ack(channel_id, message_id);
+                        }
+                        publish(&connection, active_token.is_some(), &cache, selected_guild_id, selected_channel_id, &fetched_messages, &error, &snapshot, &events, &seq);
+                    }
                 }
             }
             maybe_gw = async {

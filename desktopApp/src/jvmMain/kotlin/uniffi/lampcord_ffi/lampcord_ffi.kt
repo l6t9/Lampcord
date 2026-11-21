@@ -740,6 +740,8 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
 // A JNA Library to expose the extern-C FFI definitions.
 // This is an implementation detail which will be called internally by the public API.
 
@@ -765,6 +767,8 @@ internal interface UniffiLib : Library {
     ): Unit
     fun uniffi_lampcord_ffi_fn_constructor_lampcordclient_start(`config`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Pointer
+    fun uniffi_lampcord_ffi_fn_method_lampcordclient_ack_message(`ptr`: Pointer,`channelId`: Long,`messageId`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
     fun uniffi_lampcord_ffi_fn_method_lampcordclient_connect_stored_token(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
     fun uniffi_lampcord_ffi_fn_method_lampcordclient_connect_token(`ptr`: Pointer,`token`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -901,6 +905,8 @@ internal interface UniffiLib : Library {
     ): Unit
     fun ffi_lampcord_ffi_rust_future_complete_void(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
+    fun uniffi_lampcord_ffi_checksum_method_lampcordclient_ack_message(
+    ): Short
     fun uniffi_lampcord_ffi_checksum_method_lampcordclient_connect_stored_token(
     ): Short
     fun uniffi_lampcord_ffi_checksum_method_lampcordclient_connect_token(
@@ -944,6 +950,9 @@ private fun uniffiCheckContractApiVersion(lib: UniffiLib) {
 
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: UniffiLib) {
+    if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_ack_message() != 776.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_connect_stored_token() != 46670.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1350,6 +1359,8 @@ private class JavaLangRefCleanable(
  */
 public interface LampcordClientInterface {
     
+    fun `ackMessage`(`channelId`: kotlin.ULong, `messageId`: kotlin.ULong)
+    
     /**
      * Connect using the first stored token from storage_path, if available.
      */
@@ -1482,6 +1493,18 @@ open class LampcordClient: Disposable, AutoCloseable, LampcordClientInterface {
             UniffiLib.INSTANCE.uniffi_lampcord_ffi_fn_clone_lampcordclient(pointer!!, status)
         }
     }
+
+    
+    @Throws(FfiClientException::class)override fun `ackMessage`(`channelId`: kotlin.ULong, `messageId`: kotlin.ULong)
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(FfiClientException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lampcord_ffi_fn_method_lampcordclient_ack_message(
+        it, FfiConverterULong.lower(`channelId`),FfiConverterULong.lower(`messageId`),_status)
+}
+    }
+    
+    
 
     
     /**
@@ -2016,6 +2039,12 @@ sealed class ClientCommand {
         companion object
     }
     
+    data class AckMessage(
+        val `channelId`: kotlin.ULong, 
+        val `messageId`: kotlin.ULong) : ClientCommand() {
+        companion object
+    }
+    
     object Logout : ClientCommand()
     
     
@@ -2057,8 +2086,12 @@ public object FfiConverterTypeClientCommand : FfiConverterRustBuffer<ClientComma
             7 -> ClientCommand.SendTyping(
                 FfiConverterULong.read(buf),
                 )
-            8 -> ClientCommand.Logout
-            9 -> ClientCommand.Shutdown
+            8 -> ClientCommand.AckMessage(
+                FfiConverterULong.read(buf),
+                FfiConverterULong.read(buf),
+                )
+            9 -> ClientCommand.Logout
+            10 -> ClientCommand.Shutdown
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
         }
     }
@@ -2117,6 +2150,14 @@ public object FfiConverterTypeClientCommand : FfiConverterRustBuffer<ClientComma
                 + FfiConverterULong.allocationSize(value.`channelId`)
             )
         }
+        is ClientCommand.AckMessage -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterULong.allocationSize(value.`channelId`)
+                + FfiConverterULong.allocationSize(value.`messageId`)
+            )
+        }
         is ClientCommand.Logout -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
@@ -2172,12 +2213,18 @@ public object FfiConverterTypeClientCommand : FfiConverterRustBuffer<ClientComma
                 FfiConverterULong.write(value.`channelId`, buf)
                 Unit
             }
-            is ClientCommand.Logout -> {
+            is ClientCommand.AckMessage -> {
                 buf.putInt(8)
+                FfiConverterULong.write(value.`channelId`, buf)
+                FfiConverterULong.write(value.`messageId`, buf)
+                Unit
+            }
+            is ClientCommand.Logout -> {
+                buf.putInt(9)
                 Unit
             }
             is ClientCommand.Shutdown -> {
-                buf.putInt(9)
+                buf.putInt(10)
                 Unit
             }
         }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }

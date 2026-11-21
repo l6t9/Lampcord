@@ -107,6 +107,13 @@ impl LampcordClient {
         self.send(ClientCommand::SendTyping { channel_id })
     }
 
+    pub fn ack_message(&self, channel_id: u64, message_id: u64) -> Result<(), FfiClientError> {
+        self.send(ClientCommand::AckMessage {
+            channel_id,
+            message_id,
+        })
+    }
+
     pub fn logout(&self) -> Result<(), FfiClientError> {
         self.send(ClientCommand::Logout)
     }
