@@ -460,17 +460,56 @@ tasks.matching { it.name == "packageAppImage" }.configureEach {
     dependsOn("createAppImageLocal")
 }
 
+fun rustFfiLibName(): String {
+    val os = System.getProperty("os.name").lowercase()
+    return when {
+        os.contains("win") -> "lampcord_ffi.dll"
+        os.contains("mac") || os.contains("darwin") -> "liblampcord_ffi.dylib"
+        else -> "liblampcord_ffi.so"
+    }
+}
+
+fun rustFfiResourcePrefix(): String {
+    val os = System.getProperty("os.name").lowercase()
+    val arch = System.getProperty("os.arch").lowercase()
+    val osPart = when {
+        os.contains("win") -> "win32"
+        os.contains("mac") || os.contains("darwin") -> "darwin"
+        else -> "linux"
+    }
+    val archPart = when {
+        arch == "aarch64" || arch == "arm64" -> "aarch64"
+        arch.contains("64") -> "x86-64"
+        else -> arch
+    }
+    return "$osPart-$archPart"
+}
+
+val rustFfiProfile = providers.gradleProperty("rustFfiProfile").orElse("debug")
+val rustFfiTarget = providers.gradleProperty("rustFfiTarget")
+
 val buildRustFfi by tasks.registering(Exec::class) {
     group = "rust"
     description = "Build lampcord-ffi cdylib for JVM desktop PoC"
     workingDir = rootProject.projectDir.resolve("rust")
-    commandLine("cargo", "build", "-p", "lampcord-ffi", "--features", "uniffi")
+    val args = mutableListOf("cargo", "build", "-p", "lampcord-ffi", "--features", "uniffi")
+    if (rustFfiProfile.get() == "release") args += "--release"
+    val target = rustFfiTarget.orNull
+    if (!target.isNullOrBlank()) args += listOf("--target", target)
+    commandLine(args)
 }
 
 val copyRustFfiDesktop by tasks.registering(Copy::class) {
     group = "rust"
-    description = "Copy lampcord-ffi native lib into desktop JVM resources"
+    description = "Copy lampcord-ffi native lib into desktop JVM resources for current OS/arch"
     dependsOn(buildRustFfi)
-    from(rootProject.projectDir.resolve("rust/target/debug/liblampcord_ffi.so"))
-    into(layout.projectDirectory.dir("src/jvmMain/resources/linux-x86-64"))
+    val profile = rustFfiProfile.get()
+    val target = rustFfiTarget.orNull
+    val libDir = if (!target.isNullOrBlank()) {
+        rootProject.projectDir.resolve("rust/target/$target/$profile")
+    } else {
+        rootProject.projectDir.resolve("rust/target/$profile")
+    }
+    from(libDir.resolve(rustFfiLibName()))
+    into(layout.projectDirectory.dir("src/jvmMain/resources/${rustFfiResourcePrefix()}"))
 }

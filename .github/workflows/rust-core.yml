@@ -1,0 +1,36 @@
+name: Rust Core
+
+on:
+  push:
+    branches: [rewrite/rust-core]
+    paths:
+      - "rust/**"
+      - ".github/workflows/rust-core.yml"
+  pull_request:
+    paths:
+      - "rust/**"
+      - ".github/workflows/rust-core.yml"
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+      - name: Format
+        run: cargo fmt --all -- --check
+      - name: Check
+        run: cargo check -p lampcord-model -p lampcord-core -p lampcord-transport -p lampcord-ffi
+      - name: Test
+        run: cargo test -p lampcord-model -p lampcord-core -p lampcord-transport -p lampcord-ffi
+      - name: Build FFI (uniffi)
+        run: cargo build -p lampcord-ffi --features uniffi
