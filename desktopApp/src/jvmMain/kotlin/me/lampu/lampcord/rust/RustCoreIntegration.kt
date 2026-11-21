@@ -92,6 +92,22 @@ class RustCoreIntegration(
         if (selectedChannelId != null && messages.isNotEmpty()) {
             messageStore.addMessages(selectedChannelId, messages)
         }
+
+        // Rust -> UI selection sync (PoC): update NavigationStore only when different.
+        // Direct field setters avoid Kotlin gateway subscription side effects.
+        val rustGuildId = snap.selectedGuildId?.toString()
+        val rustChannelId = snap.selectedChannelId?.toString()
+
+        if (rustGuildId != null && navigationStore.selectedGuild?.id != rustGuildId) {
+            entityStore.guilds.value[rustGuildId]?.let { guild ->
+                navigationStore.selectedGuild = guild
+            }
+        }
+        if (rustChannelId != null && navigationStore.selectedChannel?.id != rustChannelId) {
+            entityStore.channels.value[rustChannelId]?.let { channel ->
+                navigationStore.selectedChannel = channel
+            }
+        }
     }
 
     override fun close() {
