@@ -298,6 +298,7 @@ fun MessageItem(
     val hasNextSameUser = remember(message, nextMessage) {
         if (nextMessage == null) return@remember false
         if (nextMessage.author?.id != message.author?.id) return@remember false
+        if (message.author?.bot == true || message.webhook_id != null) return@remember false
         if (nextMessage.referenced_message != null) return@remember false
         val currentType = message.type ?: 0
         val nextType = nextMessage.type ?: 0
