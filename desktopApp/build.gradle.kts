@@ -459,3 +459,18 @@ exec "${'$'}APPDIR/bin/Lampcord" "${'$'}@"
 tasks.matching { it.name == "packageAppImage" }.configureEach {
     dependsOn("createAppImageLocal")
 }
+
+val buildRustFfi by tasks.registering(Exec::class) {
+    group = "rust"
+    description = "Build lampcord-ffi cdylib for JVM desktop PoC"
+    workingDir = rootProject.projectDir.resolve("rust")
+    commandLine("cargo", "build", "-p", "lampcord-ffi", "--features", "uniffi")
+}
+
+val copyRustFfiDesktop by tasks.registering(Copy::class) {
+    group = "rust"
+    description = "Copy lampcord-ffi native lib into desktop JVM resources"
+    dependsOn(buildRustFfi)
+    from(rootProject.projectDir.resolve("rust/target/debug/liblampcord_ffi.so"))
+    into(layout.projectDirectory.dir("src/jvmMain/resources/linux-x86-64"))
+}
