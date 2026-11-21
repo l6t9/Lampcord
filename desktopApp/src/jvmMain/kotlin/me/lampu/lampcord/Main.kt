@@ -34,6 +34,8 @@ import me.lampu.lampcord.shared.gateway.GatewayManager
 import me.lampu.lampcord.shared.oauth.OAuthAuthorizationHandler
 import me.lampu.lampcord.shared.rpc.DesktopRPCServer
 import me.lampu.lampcord.shared.state.AppVisibilityStore
+import me.lampu.lampcord.shared.state.EntityStore
+import me.lampu.lampcord.shared.state.MessageStore
 import me.lampu.lampcord.shared.state.SessionManager
 import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.settings.Settings
@@ -48,6 +50,7 @@ import kotlinx.coroutines.Dispatchers
 import me.lampu.lampcord.shared.utils.getPlatformName
 import me.lampu.lampcord.shared.utils.reloadTrigger
 import me.lampu.lampcord.rust.RustCoreBridge
+import me.lampu.lampcord.rust.RustCoreIntegration
 import org.koin.compose.koinInject
 import org.koin.core.context.GlobalContext.get
 import org.koin.core.context.GlobalContext.getOrNull
@@ -204,6 +207,8 @@ fun main() {
                 val rustScope = rememberCoroutineScope()
                 if (System.getProperty("lampcord.rustCore") == "true") {
                     val sessionManager: SessionManager = koinInject()
+                    val entityStore: EntityStore = koinInject()
+                    val messageStore: MessageStore = koinInject()
                     DisposableEffect(sessionManager) {
                         val bridge = runCatching { RustCoreBridge() }.getOrNull()
                         if (bridge == null) {
@@ -212,6 +217,8 @@ fun main() {
                         } else {
                             rustBridge = bridge
                             Logging.i("RustCore", "RustCoreBridge PoC started")
+                            val integration = RustCoreIntegration(bridge, entityStore, messageStore)
+                            integration.start()
                             val token = Settings.shared.discordToken.trim().takeIf { it.isNotBlank() }
                             if (token != null) {
                                 bridge.connectToken(token)
@@ -234,6 +241,7 @@ fun main() {
                             onDispose {
                                 rustBridge = null
                                 job.cancel()
+                                integration.close()
                                 bridge.close()
                                 Logging.i("RustCore", "RustCoreBridge PoC stopped")
                             }
