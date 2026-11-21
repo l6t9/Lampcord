@@ -14,7 +14,7 @@ use lampcord_core::{
     rest::RestConfig,
     rest_client::RestClient,
     state_cache::StateCache,
-    token_store::TokenStore,
+    token_store::{SavedAccount, TokenStore},
     traits::{CaptchaSolver, GatewayUrlProvider},
 };
 use lampcord_model::{message::Message, snowflake::Snowflake};
@@ -130,6 +130,26 @@ fn push_event(events: &Arc<Mutex<Vec<ClientEvent>>>, event: ClientEvent) {
     events.lock().expect("events lock").push(event);
 }
 
+fn load_token_store(path: Option<&str>) -> TokenStore {
+    let Some(path) = path else {
+        return TokenStore::new();
+    };
+    match std::fs::read_to_string(path) {
+        Ok(body) => TokenStore::from_json(&body),
+        Err(_) => TokenStore::new(),
+    }
+}
+
+fn save_token_store(path: Option<&str>, store: &TokenStore) {
+    let Some(path) = path else {
+        return;
+    };
+    if let Some(parent) = std::path::Path::new(path).parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let _ = std::fs::write(path, store.to_json());
+}
+
 fn set_snapshot(
     snapshot: &Arc<Mutex<ClientSnapshot>>,
     events: &Arc<Mutex<Vec<ClientEvent>>>,
@@ -241,7 +261,7 @@ fn build_snapshot(
     ClientSnapshot {
         seq: 0,
         connection,
-        has_token: true,
+        has_token,
         current_user_id,
         current_user,
         selected_guild_id,
@@ -271,9 +291,10 @@ async fn run(
     let mut gateway_events: Option<mpsc::UnboundedReceiver<GatewayEvent>> = None;
     let mut should_reconnect = false;
     let mut _reconnect_attempt: u32 = 0;
-    let _token_store = TokenStore::new();
+    let storage_path = config.storage_path.clone();
+    let mut token_store = load_token_store(storage_path.as_deref());
     let api_base = config.api_base.clone();
-    let _config = config;
+    let gateway_url_override = config.gateway_url.clone();
     let seq = Arc::new(std::sync::atomic::AtomicU64::new(0));
 
     let publish = |connection: &ConnectionState,
@@ -298,9 +319,10 @@ async fn run(
         set_snapshot(snapshot, events, seq, next);
     };
 
+    let has_stored_token = !token_store.accounts().is_empty();
     publish(
         &connection,
-        active_token.is_some(),
+        active_token.is_some() || has_stored_token,
         &cache,
         selected_guild_id,
         selected_channel_id,
@@ -325,6 +347,10 @@ async fn run(
                         gateway_events = None;
                         should_reconnect = false;
                         _reconnect_attempt = 0;
+                        if let Some(token) = active_token.as_deref() {
+                            token_store.remove(token);
+                            save_token_store(storage_path.as_deref(), &token_store);
+                        }
                         active_token = None;
                         cache = None;
                         rest = None;
@@ -342,6 +368,13 @@ async fn run(
                         should_reconnect = true;
                         _reconnect_attempt = 0;
                         active_token = Some(token.clone());
+                        token_store.remove(&token);
+                        token_store.add(SavedAccount {
+                            token: token.clone(),
+                            user_id: format!("token:{:x}", token.len()),
+                            username: None,
+                        });
+                        save_token_store(storage_path.as_deref(), &token_store);
                         connection = ConnectionState::Connecting;
                         error = None;
                         fetched_messages.clear();
@@ -360,7 +393,7 @@ async fn run(
                         let gw_transport = TungsteniteGatewayTransport::default();
                         let url_provider = StaticGatewayUrl {
                             rest: rest_client.clone(),
-                            override_url: _config.gateway_url.clone(),
+                            override_url: gateway_url_override.clone(),
                         };
                         let mut client = GatewayClient::new(gw_transport, url_provider);
                         let client_cache = client.cache().clone();
@@ -392,6 +425,73 @@ async fn run(
                             }
                         }));
                         push_event(&events, ClientEvent::ConnectionChanged(connection.clone()));
+                        publish(&connection, active_token.is_some(), &cache, selected_guild_id, selected_channel_id, &fetched_messages, &error, &snapshot, &events, &seq);
+                    }
+                    ClientCommand::ConnectStoredToken => {
+                        if let Some(account) = token_store.accounts().first().cloned() {
+                            // Re-dispatch by simulating connect token command path.
+                            // Keep it simple: set token and fall through logic by reusing a local block is not possible;
+                            // so we duplicate the minimal connect flow by sending to ourselves? No.
+                            // Instead, just handle inline by calling the same steps.
+                            let token = account.token;
+                            if let Some(task) = gateway_task.take() { task.abort(); }
+                            gateway_events = None;
+                            should_reconnect = true;
+                            _reconnect_attempt = 0;
+                            active_token = Some(token.clone());
+                            connection = ConnectionState::Connecting;
+                            error = None;
+                            fetched_messages.clear();
+                            let transport = match ReqwestRestTransport::new() {
+                                Ok(t) => t,
+                                Err(e) => {
+                                    connection = ConnectionState::Error { message: e.to_string() };
+                                    error = Some(format!("REST transport init failed: {e}"));
+                                    should_reconnect = false;
+                                    publish(&connection, active_token.is_some(), &cache, selected_guild_id, selected_channel_id, &fetched_messages, &error, &snapshot, &events, &seq);
+                                    continue;
+                                }
+                            };
+                            let rest_client = Arc::new(RestClient::new(default_rest_config(&api_base, Some(token.clone())), transport, NoopCaptchaSolver));
+                            let gw_transport = TungsteniteGatewayTransport::default();
+                            let url_provider = StaticGatewayUrl {
+                                rest: rest_client.clone(),
+                                override_url: gateway_url_override.clone(),
+                            };
+                            let mut client = GatewayClient::new(gw_transport, url_provider);
+                            let client_cache = client.cache().clone();
+                            cache = Some(client_cache);
+                            rest = Some(rest_client);
+                            let (gw_tx, gw_rx) = mpsc::unbounded_channel();
+                            gateway_events = Some(gw_rx);
+                            let token_clone = token.clone();
+                            gateway_task = Some(tokio::spawn(async move {
+                                let mut attempt: u32 = 0;
+                                loop {
+                                    let result = client.run_stream(&token_clone, gw_tx.clone()).await;
+                                    let terminal = match result {
+                                        Ok(t) => t,
+                                        Err(e) => {
+                                            eprintln!("[lampcord-ffi] gateway error: {e}");
+                                            None
+                                        }
+                                    };
+                                    let reconnect = match terminal {
+                                        Some(GatewayEvent::AuthFailed { .. }) => false,
+                                        Some(GatewayEvent::Closed { code }) if matches!(code, Some(4004)|Some(4010)|Some(4011)|Some(4012)|Some(4013)|Some(4014)) => false,
+                                        _ => true,
+                                    };
+                                    if !reconnect { break; }
+                                    let delay_ms = reconnect_delay_ms(attempt);
+                                    attempt = attempt.saturating_add(1);
+                                    tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
+                                }
+                            }));
+                            push_event(&events, ClientEvent::ConnectionChanged(connection.clone()));
+                        } else {
+                            error = Some("No stored token available".to_owned());
+                            push_event(&events, ClientEvent::Error { message: error.clone().unwrap_or_default() });
+                        }
                         publish(&connection, active_token.is_some(), &cache, selected_guild_id, selected_channel_id, &fetched_messages, &error, &snapshot, &events, &seq);
                     }
                     ClientCommand::SelectGuild { guild_id } => {
@@ -470,6 +570,7 @@ async fn run(
                 }
             } => {
                 let Some(ev) = maybe_gw else { gateway_events = None; continue; };
+                let prev_connection = connection.clone();
                 match ev {
                     GatewayEvent::Hello { .. } => {
                         connection = ConnectionState::Connecting;
@@ -497,7 +598,9 @@ async fn run(
                     }
                     GatewayEvent::Dispatch { .. } | GatewayEvent::HandlerErrors { .. } | GatewayEvent::HeartbeatSent | GatewayEvent::HeartbeatAck => {}
                 }
-                push_event(&events, ClientEvent::ConnectionChanged(connection.clone()));
+                if connection != prev_connection {
+                    push_event(&events, ClientEvent::ConnectionChanged(connection.clone()));
+                }
                 publish(&connection, active_token.is_some(), &cache, selected_guild_id, selected_channel_id, &fetched_messages, &error, &snapshot, &events, &seq);
             }
         }

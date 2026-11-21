@@ -1,34 +1,34 @@
 # Lampcord Rust core
 
-This directory contains the Rust core for Lampcord on the `rewrite/rust-core` branch. The goal is to build a stable, UI-agnostic engine that can be integrated with the Kotlin Multiplatform/Compose app via FFI.
+Rust core for Lampcord on `rewrite/rust-core`. Goal: stable, UI-agnostic engine integrated with Kotlin Multiplatform/Compose via FFI.
 
-The previous GPUI desktop experiment is preserved on `archive/rust-gpui-desktop`.
+The GPUI desktop experiment is preserved on `archive/rust-gpui-desktop`.
 
-## Workspace layout
+## Workspace
 
-- `crates/lampcord-model` — Discord protocol/data models (`Snowflake`, users, guilds, channels, messages, gateway types).
-- `crates/lampcord-core` — Shared session/protocol logic:
-  - auth/login, captcha, remote auth, OAuth
-  - REST config/client, gateway planning/session/queue, event dispatch
-  - `GatewayClient` (identify/resume, heartbeats, READY/RESUMED/dispatch)
-  - `StateCache`, read state, token store
-- `crates/lampcord-transport` — Concrete transports:
-  - `ReqwestRestTransport` (HTTP via reqwest/rustls)
-  - `TungsteniteGatewayTransport` (WebSocket via tokio-tungstenite/rustls)
-- `crates/lampcord-ffi` — UI-agnostic FFI facade for Kotlin/Swift/desktop bridges (commands, snapshots, events).
+- `crates/lampcord-model` — Discord protocol/data models.
+- `crates/lampcord-core` — Auth/gateway/REST/state/session/cache logic.
+- `crates/lampcord-transport` — Reqwest REST + tungstenite gateway transports.
+- `crates/lampcord-ffi` — UI-agnostic FFI facade (commands, snapshots, events, UniFFI).
 
-## Current focus
+## FFI surface (current)
 
-1. Harden core APIs and state/cache behavior.
-2. Expand `lampcord-ffi` into a real integration slice (auth/session/gateway/messages).
-3. Add UniFFI/Kotlin bridge proof-of-concept for JVM desktop.
-4. Integrate with Kotlin Multiplatform UI behind feature flags.
+- **Config**: API base, gateway URL override, user agent, storage path.
+- **Commands**: `ConnectToken`, `ConnectStoredToken`, `SelectGuild/Channel`, `FetchMessages`, `SendMessage`, `Logout`, `Shutdown`.
+- **State**: pollable `ClientSnapshot` (seq, connection, token, user, guilds/channels/messages, error) + drained `ClientEvent`s.
+- **Errors**: `FfiClientError` (UniFFI flat error) for command failures.
+- **Persistence**: simple token-store file persistence via `storage_path`.
 
-## Useful checks
+## Checks
 
 ```bash
 cd rust
 cargo fmt --all -- --check
-cargo test -p lampcord-model -p lampcord-core -p lampcord-ffi
-cargo check -p lampcord-model -p lampcord-core -p lampcord-transport -p lampcord-ffi
+cargo test -p lampcord-model -p lampcord-core -p lampcord-transport -p lampcord-ffi
+cargo build -p lampcord-ffi --features uniffi
 ```
+
+## Kotlin/JVM PoC
+
+- Generate bindings: `scripts/generate_kotlin_bindings.sh`
+- Desktop flag: `-Dlampcord.rustCore=true` (PoC bridge/injection/parity overlay; Kotlin gateway skipped in `RustCoreMode`).

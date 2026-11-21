@@ -62,6 +62,11 @@ impl LampcordClient {
         self.send(ClientCommand::ConnectToken { token })
     }
 
+    /// Connect using the first stored token from storage_path, if available.
+    pub fn connect_stored_token(&self) -> Result<(), FfiClientError> {
+        self.send(ClientCommand::ConnectStoredToken)
+    }
+
     pub fn select_guild(&self, guild_id: Option<u64>) -> Result<(), FfiClientError> {
         self.send(ClientCommand::SelectGuild { guild_id })
     }
@@ -123,17 +128,47 @@ mod tests {
     #[test]
     fn select_channel_updates_snapshot() {
         let client = LampcordClient::start(ClientConfig::default());
-        assert!(client
-            .send(ClientCommand::SelectGuild { guild_id: Some(1) })
-            .is_ok());
-        assert!(client
-            .send(ClientCommand::SelectChannel { channel_id: Some(2) })
-            .is_ok());
+        assert!(
+            client
+                .send(ClientCommand::SelectGuild { guild_id: Some(1) })
+                .is_ok()
+        );
+        assert!(
+            client
+                .send(ClientCommand::SelectChannel {
+                    channel_id: Some(2)
+                })
+                .is_ok()
+        );
         // Give the worker a moment to process commands.
         std::thread::sleep(std::time::Duration::from_millis(50));
         let snap = client.snapshot();
         assert_eq!(snap.selected_guild_id, Some(1));
         assert_eq!(snap.selected_channel_id, Some(2));
         let _ = client.shutdown();
+    }
+
+    #[test]
+    fn stored_token_sets_has_token() {
+        let path = std::env::temp_dir().join(format!(
+            "lampcord-ffi-test-{}-{}.json",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::write(&path, r#"[{"token":"abc","user_id":"1"}]"#).unwrap();
+
+        let config = ClientConfig {
+            storage_path: Some(path.to_string_lossy().into_owned()),
+            ..ClientConfig::default()
+        };
+        let client = LampcordClient::start(config);
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        let snap = client.snapshot();
+        assert!(snap.has_token);
+        let _ = client.shutdown();
+        let _ = std::fs::remove_file(path);
     }
 }

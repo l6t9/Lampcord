@@ -736,6 +736,8 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
 // A JNA Library to expose the extern-C FFI definitions.
 // This is an implementation detail which will be called internally by the public API.
 
@@ -761,6 +763,8 @@ internal interface UniffiLib : Library {
     ): Unit
     fun uniffi_lampcord_ffi_fn_constructor_lampcordclient_start(`config`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Pointer
+    fun uniffi_lampcord_ffi_fn_method_lampcordclient_connect_stored_token(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
     fun uniffi_lampcord_ffi_fn_method_lampcordclient_connect_token(`ptr`: Pointer,`token`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
     fun uniffi_lampcord_ffi_fn_method_lampcordclient_drain_events(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
@@ -893,6 +897,8 @@ internal interface UniffiLib : Library {
     ): Unit
     fun ffi_lampcord_ffi_rust_future_complete_void(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
+    fun uniffi_lampcord_ffi_checksum_method_lampcordclient_connect_stored_token(
+    ): Short
     fun uniffi_lampcord_ffi_checksum_method_lampcordclient_connect_token(
     ): Short
     fun uniffi_lampcord_ffi_checksum_method_lampcordclient_drain_events(
@@ -932,6 +938,9 @@ private fun uniffiCheckContractApiVersion(lib: UniffiLib) {
 
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: UniffiLib) {
+    if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_connect_stored_token() != 46670.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_connect_token() != 51841.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1333,6 +1342,11 @@ private class JavaLangRefCleanable(
 public interface LampcordClientInterface {
     
     /**
+     * Connect using the first stored token from storage_path, if available.
+     */
+    fun `connectStoredToken`()
+    
+    /**
      * Convenience: connect with a token.
      */
     fun `connectToken`(`token`: kotlin.String)
@@ -1457,6 +1471,21 @@ open class LampcordClient: Disposable, AutoCloseable, LampcordClientInterface {
             UniffiLib.INSTANCE.uniffi_lampcord_ffi_fn_clone_lampcordclient(pointer!!, status)
         }
     }
+
+    
+    /**
+     * Connect using the first stored token from storage_path, if available.
+     */
+    @Throws(FfiClientException::class)override fun `connectStoredToken`()
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(FfiClientException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lampcord_ffi_fn_method_lampcordclient_connect_stored_token(
+        it, _status)
+}
+    }
+    
+    
 
     
     /**
@@ -1931,6 +1960,9 @@ sealed class ClientCommand {
         companion object
     }
     
+    object ConnectStoredToken : ClientCommand()
+    
+    
     data class SelectGuild(
         val `guildId`: kotlin.ULong?) : ClientCommand() {
         companion object
@@ -1976,25 +2008,26 @@ public object FfiConverterTypeClientCommand : FfiConverterRustBuffer<ClientComma
             1 -> ClientCommand.ConnectToken(
                 FfiConverterString.read(buf),
                 )
-            2 -> ClientCommand.SelectGuild(
+            2 -> ClientCommand.ConnectStoredToken
+            3 -> ClientCommand.SelectGuild(
                 FfiConverterOptionalULong.read(buf),
                 )
-            3 -> ClientCommand.SelectChannel(
+            4 -> ClientCommand.SelectChannel(
                 FfiConverterOptionalULong.read(buf),
                 )
-            4 -> ClientCommand.FetchMessages(
+            5 -> ClientCommand.FetchMessages(
                 FfiConverterULong.read(buf),
                 FfiConverterOptionalULong.read(buf),
                 FfiConverterOptionalUByte.read(buf),
                 )
-            5 -> ClientCommand.SendMessage(
+            6 -> ClientCommand.SendMessage(
                 FfiConverterULong.read(buf),
                 FfiConverterString.read(buf),
                 FfiConverterOptionalULong.read(buf),
                 FfiConverterOptionalULong.read(buf),
                 )
-            6 -> ClientCommand.Logout
-            7 -> ClientCommand.Shutdown
+            7 -> ClientCommand.Logout
+            8 -> ClientCommand.Shutdown
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
         }
     }
@@ -2005,6 +2038,12 @@ public object FfiConverterTypeClientCommand : FfiConverterRustBuffer<ClientComma
             (
                 4UL
                 + FfiConverterString.allocationSize(value.`token`)
+            )
+        }
+        is ClientCommand.ConnectStoredToken -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
             )
         }
         is ClientCommand.SelectGuild -> {
@@ -2061,25 +2100,29 @@ public object FfiConverterTypeClientCommand : FfiConverterRustBuffer<ClientComma
                 FfiConverterString.write(value.`token`, buf)
                 Unit
             }
-            is ClientCommand.SelectGuild -> {
+            is ClientCommand.ConnectStoredToken -> {
                 buf.putInt(2)
+                Unit
+            }
+            is ClientCommand.SelectGuild -> {
+                buf.putInt(3)
                 FfiConverterOptionalULong.write(value.`guildId`, buf)
                 Unit
             }
             is ClientCommand.SelectChannel -> {
-                buf.putInt(3)
+                buf.putInt(4)
                 FfiConverterOptionalULong.write(value.`channelId`, buf)
                 Unit
             }
             is ClientCommand.FetchMessages -> {
-                buf.putInt(4)
+                buf.putInt(5)
                 FfiConverterULong.write(value.`channelId`, buf)
                 FfiConverterOptionalULong.write(value.`before`, buf)
                 FfiConverterOptionalUByte.write(value.`limit`, buf)
                 Unit
             }
             is ClientCommand.SendMessage -> {
-                buf.putInt(5)
+                buf.putInt(6)
                 FfiConverterULong.write(value.`channelId`, buf)
                 FfiConverterString.write(value.`content`, buf)
                 FfiConverterOptionalULong.write(value.`replyToMessageId`, buf)
@@ -2087,11 +2130,11 @@ public object FfiConverterTypeClientCommand : FfiConverterRustBuffer<ClientComma
                 Unit
             }
             is ClientCommand.Logout -> {
-                buf.putInt(6)
+                buf.putInt(7)
                 Unit
             }
             is ClientCommand.Shutdown -> {
-                buf.putInt(7)
+                buf.putInt(8)
                 Unit
             }
         }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }

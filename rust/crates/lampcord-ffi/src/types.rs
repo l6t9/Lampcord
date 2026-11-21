@@ -42,6 +42,7 @@ pub enum ClientCommand {
     ConnectToken {
         token: String,
     },
+    ConnectStoredToken,
     SelectGuild {
         guild_id: Option<u64>,
     },

@@ -64,6 +64,7 @@ class RustCoreBridge(
     fun drainEvents(): List<ClientEvent> = client.drainEvents()
     fun send(command: ClientCommand): Boolean = runCatching { client.send(command) }.isSuccess
     fun connectToken(token: String): Boolean = runCatching { client.connectToken(token) }.isSuccess
+    fun connectStoredToken(): Boolean = runCatching { client.connectStoredToken() }.isSuccess
     fun selectGuild(guildId: ULong?): Boolean = runCatching { client.selectGuild(guildId) }.isSuccess
     fun selectChannel(channelId: ULong?): Boolean = runCatching { client.selectChannel(channelId) }.isSuccess
     fun fetchMessages(channelId: ULong, before: ULong? = null, limit: UByte? = null): Boolean =
