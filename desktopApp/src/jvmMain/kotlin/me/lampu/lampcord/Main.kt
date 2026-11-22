@@ -35,6 +35,7 @@ import me.lampu.lampcord.shared.oauth.OAuthAuthorizationHandler
 import me.lampu.lampcord.shared.rpc.DesktopRPCServer
 import me.lampu.lampcord.shared.state.AppVisibilityStore
 import me.lampu.lampcord.shared.state.EntityStore
+import me.lampu.lampcord.shared.state.GuildStore
 import me.lampu.lampcord.shared.state.MessageStore
 import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.state.PresenceStore
@@ -216,6 +217,7 @@ fun main() {
                 if (System.getProperty("lampcord.rustCore") == "true") {
                     val sessionManager: SessionManager = koinInject()
                     val entityStore: EntityStore = koinInject()
+                    val guildStore: GuildStore = koinInject()
                     val messageStore: MessageStore = koinInject()
                     val navigationStore: NavigationStore = koinInject()
                     val userStore: UserStore = koinInject()
@@ -235,6 +237,7 @@ fun main() {
                             val integration = RustCoreIntegration(
                                 engine,
                                 entityStore,
+                                guildStore,
                                 messageStore,
                                 navigationStore,
                                 userStore,

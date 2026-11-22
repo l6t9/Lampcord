@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
 import me.lampu.lampcord.shared.model.PresenceUpdate
 import me.lampu.lampcord.shared.model.User
 import me.lampu.lampcord.shared.state.EntityStore
+import me.lampu.lampcord.shared.state.GuildStore
 import me.lampu.lampcord.shared.state.MessageStore
 import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.state.PresenceStore
@@ -27,6 +28,7 @@ import me.lampu.lampcord.shared.utils.Logging
 class RustCoreIntegration(
     private val engine: RustCoreEngine,
     private val entityStore: EntityStore,
+    private val guildStore: GuildStore,
     private val messageStore: MessageStore,
     private val navigationStore: NavigationStore,
     private val userStore: UserStore,
@@ -38,6 +40,7 @@ class RustCoreIntegration(
     private var ownership: AutoCloseable? = null
     private var lastInjectedVersions = RustSnapshotVersions()
     private var lastInjectedSnapshot: RustSnapshot? = null
+    private var initialSelectionRestored = false
 
     fun start() {
         if (job != null) return
@@ -105,15 +108,20 @@ class RustCoreIntegration(
             injectMeta(snapshot)
         }
         if (guildsChanged) {
-            if (previous != null) {
-                removedIds(previous.guilds, snapshot.guilds, RustGuild::id).forEach(entityStore::removeGuild)
+            guildStore.setGuilds(
+                RustSnapshotMapper.mapGuilds(snapshot),
+                snapshot.guilds.map { it.id.toString() },
+            )
+            if (
+                !initialSelectionRestored &&
+                snapshot.guilds.isNotEmpty() &&
+                navigationStore.selectedGuild == null &&
+                navigationStore.selectedChannel == null &&
+                !navigationStore.isFriendsSelected
+            ) {
+                initialSelectionRestored = true
+                navigationStore.restoreLastState { }
             }
-            val guilds = if (previous == null) {
-                RustSnapshotMapper.mapGuilds(snapshot)
-            } else {
-                RustSnapshotMapper.mapChangedGuilds(previous, snapshot)
-            }
-            guilds.forEach(entityStore::updateGuild)
         }
         if (channelsChanged) {
             if (previous != null) {
