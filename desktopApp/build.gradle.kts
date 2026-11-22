@@ -525,6 +525,16 @@ val smokeRustFfi by tasks.registering(JavaExec::class) {
     classpath = files(rustFfiGeneratedResourcesDir, jvmMain.output.allOutputs, jvmMain.runtimeDependencyFiles)
 }
 
+val rustFfiBenchmark by tasks.registering(Exec::class) {
+    group = "rust"
+    description = "Run lampcord-ffi snapshot patch benchmark"
+    workingDir = rootProject.projectDir.resolve("rust")
+    val args = mutableListOf("cargo", "run")
+    if (rustFfiProfile.get() == "release") args += "--release"
+    args += listOf("-p", "lampcord-ffi", "--bin", "ffi-bench", "--features", "bench")
+    commandLine(args)
+}
+
 if (providers.gradleProperty("includeRustFfi").orNull == "true") {
     kotlin.sourceSets.getByName("jvmMain").resources.srcDir(rustFfiGeneratedResourcesDir)
     tasks.matching { it.name == "jvmProcessResources" }.configureEach {

@@ -34,6 +34,9 @@ import uniffi.lampcord_ffi.PresenceSnapshot as FfiPresenceSnapshot
 import uniffi.lampcord_ffi.PlatformSecretStore
 import uniffi.lampcord_ffi.ReadStateSnapshot as FfiReadStateSnapshot
 import uniffi.lampcord_ffi.RemoteAuthState as FfiRemoteAuthState
+import uniffi.lampcord_ffi.SnapshotMetaPatch as FfiSnapshotMetaPatch
+import uniffi.lampcord_ffi.SnapshotPatch as FfiSnapshotPatch
+import uniffi.lampcord_ffi.SnapshotVersions as FfiSnapshotVersions
 
 private class SettingsSecretStore : PlatformSecretStore {
     override fun load(): String? = Settings.shared.rustCoreSecrets.takeIf { it.isNotEmpty() }
@@ -60,28 +63,33 @@ actual class RustCoreEngine actual constructor(config: RustClientConfig) : AutoC
     }
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
-    private val _snapshots = MutableStateFlow(mapSnapshot(client.snapshot()))
+    private val _snapshots = MutableStateFlow(
+        mapSnapshot(client.snapshot(), client.snapshotVersions()),
+    )
     actual val snapshots: StateFlow<RustSnapshot> = _snapshots.asStateFlow()
 
     private val _events = MutableSharedFlow<RustEventEnvelope>(extraBufferCapacity = 64)
     actual val events: SharedFlow<RustEventEnvelope> = _events.asSharedFlow()
 
     private var pollJob: Job? = scope.launch {
-        var lastSeq = _snapshots.value.seq
+        var lastVersions = client.snapshotVersions()
         while (isActive) {
             for (event in runCatching { client.drainEvents() }.getOrDefault(emptyList())) {
                 _events.tryEmit(mapEvent(event))
             }
-            val snapshot = runCatching { client.snapshotIfNewer(lastSeq) }.getOrNull()
-            if (snapshot != null) {
-                lastSeq = snapshot.seq
-                _snapshots.value = mapSnapshot(snapshot)
+            val versions = runCatching { client.snapshotVersions() }.getOrNull()
+            if (versions != null && versions.seq != lastVersions.seq) {
+                val patch = runCatching { client.snapshotPatch(lastVersions) }.getOrNull()
+                if (patch != null) {
+                    lastVersions = patch.versions
+                    _snapshots.value = mapSnapshotPatch(patch, _snapshots.value)
+                }
             }
             delay(100L)
         }
     }
 
-    actual fun snapshot(): RustSnapshot = mapSnapshot(client.snapshot())
+    actual fun snapshot(): RustSnapshot = mapSnapshot(client.snapshot(), client.snapshotVersions())
 
     actual fun drainEvents(): List<RustEventEnvelope> =
         runCatching { client.drainEvents() }
@@ -239,7 +247,32 @@ private fun mapReadState(value: FfiReadStateSnapshot): RustReadState = RustReadS
     unread = value.unread,
 )
 
-private fun mapSnapshot(value: FfiClientSnapshot): RustSnapshot = RustSnapshot(
+private fun mapVersions(value: FfiSnapshotVersions): RustSnapshotVersions = RustSnapshotVersions(
+    seq = value.seq,
+    meta = value.meta,
+    guilds = value.guilds,
+    channels = value.channels,
+    messages = value.messages,
+    members = value.members,
+    presences = value.presences,
+    readStates = value.readStates,
+)
+
+private fun mapMeta(value: FfiSnapshotMetaPatch): RustSnapshotMetaPatch = RustSnapshotMetaPatch(
+    connection = mapConnection(value.connection),
+    hasToken = value.hasToken,
+    currentUserId = value.currentUserId,
+    currentUser = value.currentUser,
+    selectedGuildId = value.selectedGuildId,
+    selectedChannelId = value.selectedChannelId,
+    auth = mapAuthState(value.auth),
+    error = value.error,
+)
+
+private fun mapSnapshot(
+    value: FfiClientSnapshot,
+    versions: FfiSnapshotVersions,
+): RustSnapshot = RustSnapshot(
     schemaVersion = value.schemaVersion,
     seq = value.seq,
     connection = mapConnection(value.connection),
@@ -256,7 +289,31 @@ private fun mapSnapshot(value: FfiClientSnapshot): RustSnapshot = RustSnapshot(
     readStates = value.readStates.map(::mapReadState),
     auth = mapAuthState(value.auth),
     error = value.error,
+    versions = mapVersions(versions),
 )
+
+private fun mapSnapshotPatch(value: FfiSnapshotPatch, previous: RustSnapshot): RustSnapshot {
+    val meta = value.meta?.let(::mapMeta)
+    return previous.copy(
+        schemaVersion = value.schemaVersion,
+        seq = value.seq,
+        connection = meta?.connection ?: previous.connection,
+        hasToken = meta?.hasToken ?: previous.hasToken,
+        currentUserId = meta?.currentUserId ?: previous.currentUserId,
+        currentUser = meta?.currentUser ?: previous.currentUser,
+        selectedGuildId = meta?.selectedGuildId ?: previous.selectedGuildId,
+        selectedChannelId = meta?.selectedChannelId ?: previous.selectedChannelId,
+        guilds = value.guilds?.map(::mapGuild) ?: previous.guilds,
+        channels = value.channels?.map(::mapChannel) ?: previous.channels,
+        messages = value.messages?.map(::mapMessage) ?: previous.messages,
+        members = value.members?.map(::mapMember) ?: previous.members,
+        presences = value.presences?.map(::mapPresence) ?: previous.presences,
+        readStates = value.readStates?.map(::mapReadState) ?: previous.readStates,
+        auth = meta?.auth ?: previous.auth,
+        error = meta?.error ?: previous.error,
+        versions = mapVersions(value.versions),
+    )
+}
 
 private fun mapEvent(value: FfiClientEventEnvelope): RustEventEnvelope = RustEventEnvelope(
     sequence = value.sequence,

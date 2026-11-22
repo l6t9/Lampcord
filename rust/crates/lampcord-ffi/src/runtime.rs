@@ -34,7 +34,8 @@ use crate::{
     snapshot::{
         AuthStateSnapshot, ChannelSnapshot, ClientSnapshot, GuildSnapshot, MAX_SNAPSHOT_MEMBERS,
         MAX_SNAPSHOT_PRESENCES, MAX_SNAPSHOT_READ_STATES, MemberSnapshot, MessageSnapshot,
-        PresenceSnapshot, ReadStateSnapshot, SNAPSHOT_SCHEMA_VERSION,
+        PresenceSnapshot, ReadStateSnapshot, SNAPSHOT_SCHEMA_VERSION, SnapshotMetaPatch,
+        SnapshotPatch, SnapshotVersions,
     },
     types::{
         AuthChallenge, AuthFailureKind, ClientCommand, ClientConfig, ClientEvent,
@@ -66,6 +67,12 @@ static EVENT_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
 type EventQueue = Arc<Mutex<Vec<ClientEventEnvelope>>>;
 type FfiRestClient = RestClient<ReqwestRestTransport, ConfigurableCaptchaSolver>;
+
+#[derive(Clone, Default)]
+struct SnapshotState {
+    snapshot: ClientSnapshot,
+    versions: SnapshotVersions,
+}
 
 #[derive(Clone, Default)]
 struct ConfigurableCaptchaSolver {
@@ -205,7 +212,7 @@ fn establish_session(
 #[derive(Clone)]
 pub struct RuntimeHandle {
     cmd_tx: mpsc::UnboundedSender<ClientCommand>,
-    snapshot: Arc<Mutex<ClientSnapshot>>,
+    snapshot: Arc<Mutex<SnapshotState>>,
     events: EventQueue,
 }
 
@@ -215,15 +222,55 @@ impl RuntimeHandle {
     }
 
     pub fn snapshot(&self) -> ClientSnapshot {
-        self.snapshot.lock().expect("snapshot lock").clone()
+        self.snapshot
+            .lock()
+            .expect("snapshot lock")
+            .snapshot
+            .clone()
     }
 
     pub fn snapshot_if_newer(&self, since: u64) -> Option<ClientSnapshot> {
-        let snapshot = self.snapshot.lock().expect("snapshot lock");
-        if snapshot.seq > since {
-            Some(snapshot.clone())
+        let state = self.snapshot.lock().expect("snapshot lock");
+        if state.snapshot.seq > since {
+            Some(state.snapshot.clone())
         } else {
             None
+        }
+    }
+
+    pub fn snapshot_versions(&self) -> SnapshotVersions {
+        self.snapshot
+            .lock()
+            .expect("snapshot lock")
+            .versions
+            .clone()
+    }
+
+    pub fn snapshot_patch(&self, since: SnapshotVersions) -> SnapshotPatch {
+        let state = self.snapshot.lock().expect("snapshot lock");
+        let snapshot = &state.snapshot;
+        let versions = &state.versions;
+        SnapshotPatch {
+            seq: snapshot.seq,
+            schema_version: snapshot.schema_version,
+            versions: versions.clone(),
+            meta: (versions.meta > since.meta).then(|| SnapshotMetaPatch {
+                connection: snapshot.connection.clone(),
+                has_token: snapshot.has_token,
+                current_user_id: snapshot.current_user_id,
+                current_user: snapshot.current_user.clone(),
+                selected_guild_id: snapshot.selected_guild_id,
+                selected_channel_id: snapshot.selected_channel_id,
+                auth: snapshot.auth.clone(),
+                error: snapshot.error.clone(),
+            }),
+            guilds: (versions.guilds > since.guilds).then(|| snapshot.guilds.clone()),
+            channels: (versions.channels > since.channels).then(|| snapshot.channels.clone()),
+            messages: (versions.messages > since.messages).then(|| snapshot.messages.clone()),
+            members: (versions.members > since.members).then(|| snapshot.members.clone()),
+            presences: (versions.presences > since.presences).then(|| snapshot.presences.clone()),
+            read_states: (versions.read_states > since.read_states)
+                .then(|| snapshot.read_states.clone()),
         }
     }
 
@@ -233,12 +280,109 @@ impl RuntimeHandle {
     }
 }
 
+#[cfg(feature = "bench")]
+pub fn benchmark_handle() -> RuntimeHandle {
+    let (cmd_tx, _cmd_rx) = mpsc::unbounded_channel();
+    let versions = SnapshotVersions {
+        seq: 1,
+        meta: 1,
+        guilds: 1,
+        channels: 1,
+        messages: 1,
+        members: 1,
+        presences: 1,
+        read_states: 1,
+    };
+    RuntimeHandle {
+        cmd_tx,
+        snapshot: Arc::new(Mutex::new(SnapshotState {
+            snapshot: benchmark_snapshot(),
+            versions,
+        })),
+        events: Arc::new(Mutex::new(Vec::new())),
+    }
+}
+
+#[cfg(feature = "bench")]
+fn benchmark_snapshot() -> ClientSnapshot {
+    ClientSnapshot {
+        schema_version: SNAPSHOT_SCHEMA_VERSION,
+        seq: 1,
+        connection: ConnectionState::Ready,
+        has_token: true,
+        current_user_id: Some(1),
+        current_user: Some("bench".to_owned()),
+        selected_guild_id: Some(1),
+        selected_channel_id: Some(1),
+        guilds: (1..=50)
+            .map(|id| GuildSnapshot {
+                id,
+                name: format!("guild-{id}"),
+                icon_url: None,
+            })
+            .collect(),
+        channels: (1..=200)
+            .map(|id| ChannelSnapshot {
+                id,
+                guild_id: Some(id % 50 + 1),
+                name: format!("channel-{id}"),
+                kind: 0,
+                parent_id: None,
+                position: Some((id % 20) as i32),
+            })
+            .collect(),
+        messages: (1..=200)
+            .map(|id| MessageSnapshot {
+                id,
+                channel_id: 1,
+                author_id: Some(id % 100 + 1),
+                author_name: format!("user-{}", id % 100 + 1),
+                content: format!("benchmark message {id}"),
+                timestamp: "2026-01-01T00:00:00Z".to_owned(),
+                edited_timestamp: None,
+            })
+            .collect(),
+        members: (1..=200)
+            .map(|id| MemberSnapshot {
+                guild_id: id % 50 + 1,
+                user_id: id,
+                username: format!("user-{id}"),
+                avatar: None,
+                nickname: None,
+                roles: vec![1, 2, 3],
+                status: Some("online".to_owned()),
+            })
+            .collect(),
+        presences: (1..=200)
+            .map(|id| PresenceSnapshot {
+                user_id: id,
+                status: "online".to_owned(),
+                activities: vec!["Compose".to_owned()],
+            })
+            .collect(),
+        read_states: (1..=200)
+            .map(|id| ReadStateSnapshot {
+                channel_id: id,
+                last_message_id: Some(id),
+                last_read_message_id: Some(id),
+                mention_count: 0,
+                unread: false,
+            })
+            .collect(),
+        auth: AuthStateSnapshot::default(),
+        error: None,
+    }
+}
+
 pub fn start(config: ClientConfig, secrets: Option<Arc<dyn SecretStore>>) -> RuntimeHandle {
     let (cmd_tx, cmd_rx) = mpsc::unbounded_channel();
-    let snapshot = Arc::new(Mutex::new(ClientSnapshot {
-        schema_version: SNAPSHOT_SCHEMA_VERSION,
-        connection: ConnectionState::Disconnected,
-        ..ClientSnapshot::default()
+    let snapshot = Arc::new(Mutex::new(SnapshotState {
+        snapshot: ClientSnapshot {
+            schema_version: SNAPSHOT_SCHEMA_VERSION,
+            connection: ConnectionState::Disconnected,
+            ..ClientSnapshot::default()
+        },
+        versions: SnapshotVersions::default(),
     }));
     let events = Arc::new(Mutex::new(Vec::new()));
     let handle = RuntimeHandle {
@@ -260,6 +404,16 @@ pub fn start(config: ClientConfig, secrets: Option<Arc<dyn SecretStore>>) -> Run
         .expect("spawn lampcord-ffi runtime thread");
 
     handle
+}
+
+fn is_low_priority_event(event: &ClientEvent) -> bool {
+    matches!(
+        event,
+        ClientEvent::TypingStarted { .. }
+            | ClientEvent::PresenceUpdated(_)
+            | ClientEvent::ReactionChanged { .. }
+            | ClientEvent::NotificationReceived(_)
+    )
 }
 
 fn push_event(events: &EventQueue, event: ClientEvent) {
@@ -298,7 +452,18 @@ fn push_event(events: &EventQueue, event: ClientEvent) {
         _ => {}
     }
     if queue.len() >= MAX_EVENT_QUEUE {
-        queue.drain(..EVENT_DROP_BATCH);
+        let mut remaining = EVENT_DROP_BATCH.min(queue.len());
+        queue.retain(|envelope| {
+            if remaining > 0 && is_low_priority_event(&envelope.event) {
+                remaining -= 1;
+                false
+            } else {
+                true
+            }
+        });
+        if remaining > 0 {
+            queue.drain(..remaining);
+        }
     }
     let emitted_at_ms = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -332,14 +497,53 @@ fn forget_token(store: &mut TokenStore, secrets: &Arc<dyn SecretStore>, token: &
 }
 
 fn set_snapshot(
-    snapshot: &Arc<Mutex<ClientSnapshot>>,
+    state: &Arc<Mutex<SnapshotState>>,
     events: &EventQueue,
     seq: &Arc<AtomicU64>,
     mut next: ClientSnapshot,
 ) {
     next.schema_version = SNAPSHOT_SCHEMA_VERSION;
     next.seq = seq.fetch_add(1, Ordering::Relaxed) + 1;
-    *snapshot.lock().expect("snapshot lock") = next;
+    let mut state = state.lock().expect("snapshot lock");
+    let previous = &state.snapshot;
+    let meta_changed = previous.connection != next.connection
+        || previous.has_token != next.has_token
+        || previous.current_user_id != next.current_user_id
+        || previous.current_user != next.current_user
+        || previous.selected_guild_id != next.selected_guild_id
+        || previous.selected_channel_id != next.selected_channel_id
+        || previous.auth != next.auth
+        || previous.error != next.error;
+    let guilds_changed = previous.guilds != next.guilds;
+    let channels_changed = previous.channels != next.channels;
+    let messages_changed = previous.messages != next.messages;
+    let members_changed = previous.members != next.members;
+    let presences_changed = previous.presences != next.presences;
+    let read_states_changed = previous.read_states != next.read_states;
+    if meta_changed {
+        state.versions.meta += 1;
+    }
+    if guilds_changed {
+        state.versions.guilds += 1;
+    }
+    if channels_changed {
+        state.versions.channels += 1;
+    }
+    if messages_changed {
+        state.versions.messages += 1;
+    }
+    if members_changed {
+        state.versions.members += 1;
+    }
+    if presences_changed {
+        state.versions.presences += 1;
+    }
+    if read_states_changed {
+        state.versions.read_states += 1;
+    }
+    state.versions.seq = next.seq;
+    state.snapshot = next;
+    drop(state);
     push_event(events, ClientEvent::SnapshotUpdated);
 }
 
@@ -802,7 +1006,7 @@ async fn run(
     config: ClientConfig,
     secrets: Option<Arc<dyn SecretStore>>,
     mut cmd_rx: mpsc::UnboundedReceiver<ClientCommand>,
-    snapshot: Arc<Mutex<ClientSnapshot>>,
+    snapshot: Arc<Mutex<SnapshotState>>,
     events: EventQueue,
 ) {
     let secret_store: Arc<dyn SecretStore> = secrets.unwrap_or_else(|| {
@@ -848,7 +1052,7 @@ async fn run(
                    fetched_messages: &HashMap<Snowflake, Vec<Message>>,
                    auth: &AuthStateSnapshot,
                    error: &Option<String>,
-                   snapshot: &Arc<Mutex<ClientSnapshot>>,
+                   snapshot: &Arc<Mutex<SnapshotState>>,
                    events: &EventQueue,
                    seq: &Arc<AtomicU64>| {
         let next = build_snapshot(
@@ -1472,7 +1676,7 @@ async fn run(
                         };
                     }
                     GatewayEvent::Dispatch { event_type, data } => {
-                        handle_dispatch(&event_type, data.as_ref(), &events, cache.as_ref());
+                        handle_dispatch(&event_type, data.as_deref(), &events, cache.as_ref());
                     }
                     GatewayEvent::HandlerErrors { errors } => {
                         for handler_error in errors {
@@ -1645,6 +1849,50 @@ mod tests {
             queued
                 .windows(2)
                 .all(|pair| pair[0].sequence < pair[1].sequence)
+        );
+    }
+
+    #[test]
+    fn low_priority_events_are_dropped_before_high_priority_events() {
+        let events: EventQueue = Arc::new(Mutex::new(Vec::new()));
+        for index in 0..MAX_EVENT_QUEUE - 1 {
+            push_event(
+                &events,
+                ClientEvent::CommandFailed {
+                    kind: FfiErrorKind::Protocol,
+                    message: index.to_string(),
+                },
+            );
+        }
+        push_event(
+            &events,
+            ClientEvent::TypingStarted {
+                channel_id: 1,
+                user_id: 999,
+            },
+        );
+        push_event(
+            &events,
+            ClientEvent::TypingStarted {
+                channel_id: 1,
+                user_id: 1000,
+            },
+        );
+
+        let queued = events.lock().expect("events lock");
+        assert_eq!(
+            queued
+                .iter()
+                .filter(|envelope| matches!(envelope.event, ClientEvent::TypingStarted { .. }))
+                .count(),
+            1
+        );
+        assert_eq!(
+            queued
+                .iter()
+                .filter(|envelope| matches!(envelope.event, ClientEvent::CommandFailed { .. }))
+                .count(),
+            MAX_EVENT_QUEUE - EVENT_DROP_BATCH
         );
     }
 }

@@ -117,6 +117,28 @@ data class RustReadState(
     val unread: Boolean,
 )
 
+data class RustSnapshotVersions(
+    val seq: ULong = 0u,
+    val meta: ULong = 0u,
+    val guilds: ULong = 0u,
+    val channels: ULong = 0u,
+    val messages: ULong = 0u,
+    val members: ULong = 0u,
+    val presences: ULong = 0u,
+    val readStates: ULong = 0u,
+)
+
+data class RustSnapshotMetaPatch(
+    val connection: RustConnection,
+    val hasToken: Boolean,
+    val currentUserId: ULong?,
+    val currentUser: String?,
+    val selectedGuildId: ULong?,
+    val selectedChannelId: ULong?,
+    val auth: RustAuthState,
+    val error: String?,
+)
+
 data class RustSnapshot(
     val schemaVersion: UInt,
     val seq: ULong,
@@ -134,6 +156,7 @@ data class RustSnapshot(
     val readStates: List<RustReadState>,
     val auth: RustAuthState,
     val error: String?,
+    val versions: RustSnapshotVersions = RustSnapshotVersions(),
 )
 
 enum class RustErrorKind {

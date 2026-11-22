@@ -31,6 +31,47 @@ pub struct ClientSnapshot {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
+pub struct SnapshotVersions {
+    pub seq: u64,
+    pub meta: u64,
+    pub guilds: u64,
+    pub channels: u64,
+    pub messages: u64,
+    pub members: u64,
+    pub presences: u64,
+    pub read_states: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
+pub struct SnapshotMetaPatch {
+    pub connection: ConnectionState,
+    pub has_token: bool,
+    pub current_user_id: Option<u64>,
+    pub current_user: Option<String>,
+    pub selected_guild_id: Option<u64>,
+    pub selected_channel_id: Option<u64>,
+    pub auth: AuthStateSnapshot,
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
+pub struct SnapshotPatch {
+    pub seq: u64,
+    pub schema_version: u32,
+    pub versions: SnapshotVersions,
+    pub meta: Option<SnapshotMetaPatch>,
+    pub guilds: Option<Vec<GuildSnapshot>>,
+    pub channels: Option<Vec<ChannelSnapshot>>,
+    pub messages: Option<Vec<MessageSnapshot>>,
+    pub members: Option<Vec<MemberSnapshot>>,
+    pub presences: Option<Vec<PresenceSnapshot>>,
+    pub read_states: Option<Vec<ReadStateSnapshot>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
 pub struct AuthStateSnapshot {
     pub challenge: Option<AuthChallenge>,
     pub remote: RemoteAuthState,

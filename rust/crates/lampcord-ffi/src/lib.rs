@@ -14,6 +14,7 @@ pub use runtime::RuntimeHandle;
 pub use snapshot::{
     AuthStateSnapshot, ChannelSnapshot, ClientSnapshot, GuildSnapshot, MemberSnapshot,
     MessageSnapshot, PresenceSnapshot, ReadStateSnapshot, SNAPSHOT_SCHEMA_VERSION,
+    SnapshotMetaPatch, SnapshotPatch, SnapshotVersions,
 };
 pub use storage::{ForeignSecretStore, PlatformSecretStore};
 pub use types::{
@@ -62,6 +63,14 @@ impl LampcordClient {
 
     pub fn snapshot_if_newer(&self, since: u64) -> Option<ClientSnapshot> {
         self.runtime.snapshot_if_newer(since)
+    }
+
+    pub fn snapshot_versions(&self) -> SnapshotVersions {
+        self.runtime.snapshot_versions()
+    }
+
+    pub fn snapshot_patch(&self, since: SnapshotVersions) -> SnapshotPatch {
+        self.runtime.snapshot_patch(since)
     }
 
     pub fn drain_events(&self) -> Vec<ClientEventEnvelope> {
@@ -277,6 +286,31 @@ mod tests {
             .expect("snapshot after change");
         assert_eq!(updated.selected_guild_id, Some(7));
         assert!(client.snapshot_if_newer(updated.seq).is_none());
+        let _ = client.shutdown();
+    }
+
+    #[test]
+    fn snapshot_patch_contains_only_changed_sections() {
+        let client = LampcordClient::start(ClientConfig::default());
+        let before = client.snapshot_versions();
+        let unchanged = client.snapshot_patch(before.clone());
+        assert!(unchanged.meta.is_none());
+        assert!(unchanged.guilds.is_none());
+        assert!(unchanged.messages.is_none());
+
+        assert!(client.select_guild(Some(11)).is_ok());
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        let after = client.snapshot_versions();
+        assert!(after.seq > before.seq);
+        assert!(after.meta > before.meta);
+        assert_eq!(after.guilds, before.guilds);
+
+        let patch = client.snapshot_patch(before);
+        assert_eq!(patch.seq, after.seq);
+        assert!(patch.guilds.is_none());
+        assert!(patch.channels.is_none());
+        let meta = patch.meta.expect("meta changed");
+        assert_eq!(meta.selected_guild_id, Some(11));
         let _ = client.shutdown();
     }
 

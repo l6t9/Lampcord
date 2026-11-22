@@ -14,10 +14,16 @@ name = "uniffi-bindgen"
 path = "src/bin/uniffi-bindgen.rs"
 required-features = ["bindgen"]
 
+[[bin]]
+name = "ffi-bench"
+path = "src/bin/ffi_bench.rs"
+required-features = ["bench"]
+
 [features]
 default = []
 uniffi = ["dep:uniffi"]
 bindgen = ["uniffi", "uniffi/cli"]
+bench = []
 
 [dependencies]
 lampcord-core.workspace = true

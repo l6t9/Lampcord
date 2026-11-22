@@ -12,6 +12,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+import me.lampu.lampcord.shared.model.PresenceUpdate
 import me.lampu.lampcord.shared.model.User
 import me.lampu.lampcord.shared.state.EntityStore
 import me.lampu.lampcord.shared.state.MessageStore
@@ -35,11 +36,15 @@ class RustCoreIntegration(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var job: Job? = null
     private var ownership: AutoCloseable? = null
+    private var lastInjectedVersions = RustSnapshotVersions()
+    private var lastInjectedSnapshot: RustSnapshot? = null
 
     fun start() {
         if (job != null) return
         RustCoreMode.requireEnabled("store injection")
         ownership = RustCoreWriteGuard.claim("RustCoreIntegration")
+        lastInjectedVersions = RustSnapshotVersions()
+        lastInjectedSnapshot = null
 
         job = scope.launch {
             launch {
@@ -83,6 +88,98 @@ class RustCoreIntegration(
     }
 
     private fun inject(snapshot: RustSnapshot) {
+        val previous = lastInjectedSnapshot
+        val versions = snapshot.versions
+        val metaChanged = previous == null || versions.meta != lastInjectedVersions.meta
+        val guildsChanged = previous == null || versions.guilds != lastInjectedVersions.guilds
+        val channelsChanged = previous == null || versions.channels != lastInjectedVersions.channels
+        val messagesChanged = previous == null || versions.messages != lastInjectedVersions.messages
+        val membersChanged = previous == null || versions.members != lastInjectedVersions.members
+        val presencesChanged = previous == null || versions.presences != lastInjectedVersions.presences
+        val readStatesChanged = previous == null || versions.readStates != lastInjectedVersions.readStates
+        val selectionChanged = previous == null ||
+            previous.selectedGuildId != snapshot.selectedGuildId ||
+            previous.selectedChannelId != snapshot.selectedChannelId
+
+        if (metaChanged) {
+            injectMeta(snapshot)
+        }
+        if (guildsChanged) {
+            if (previous != null) {
+                removedIds(previous.guilds, snapshot.guilds, RustGuild::id).forEach(entityStore::removeGuild)
+            }
+            val guilds = if (previous == null) {
+                RustSnapshotMapper.mapGuilds(snapshot)
+            } else {
+                RustSnapshotMapper.mapChangedGuilds(previous, snapshot)
+            }
+            guilds.forEach(entityStore::updateGuild)
+        }
+        if (channelsChanged) {
+            if (previous != null) {
+                removedIds(previous.channels, snapshot.channels, RustChannel::id).forEach(entityStore::removeChannel)
+            }
+            val channels = if (previous == null) {
+                RustSnapshotMapper.mapChannels(snapshot)
+            } else {
+                RustSnapshotMapper.mapChangedChannels(previous, snapshot)
+            }
+            channels.forEach(entityStore::updateChannel)
+        }
+        if (membersChanged) {
+            val members = if (previous == null) {
+                RustSnapshotMapper.mapMembers(snapshot)
+            } else {
+                RustSnapshotMapper.mapChangedMembers(previous, snapshot)
+            }
+            members.forEach { (guildId, guildMembers) -> userStore.cacheMembers(guildId, guildMembers) }
+        }
+        if (presencesChanged) {
+            val presences = if (previous == null) {
+                RustSnapshotMapper.mapPresences(snapshot)
+            } else {
+                val removed = removedIds(previous.presences, snapshot.presences, RustPresence::userId)
+                    .map { userId ->
+                        PresenceUpdate(
+                            user = User(id = userId),
+                            user_id = userId,
+                            status = "offline",
+                        )
+                    }
+                removed + RustSnapshotMapper.mapChangedPresences(previous, snapshot)
+            }
+            presenceStore.applyPresences(presences)
+        }
+        if (readStatesChanged) {
+            val acknowledgements = if (previous == null) {
+                RustSnapshotMapper.mapAcknowledgements(snapshot)
+            } else {
+                RustSnapshotMapper.mapChangedAcknowledgements(previous, snapshot)
+            }
+            readStateStore.applyAcknowledgements(acknowledgements)
+        }
+        val selectedChannelId = snapshot.selectedChannelId?.toString()
+        if (selectedChannelId != null && (messagesChanged || selectionChanged)) {
+            if (previous != null && messagesChanged) {
+                removedIds(previous.messages, snapshot.messages, RustMessage::id).forEach { messageId ->
+                    messageStore.handleMessageDelete(messageId, selectedChannelId)
+                }
+            }
+            val messages = if (previous == null || selectionChanged) {
+                RustSnapshotMapper.mapMessages(snapshot)
+            } else {
+                RustSnapshotMapper.mapChangedMessages(previous, snapshot)
+            }
+            if (messages.isNotEmpty()) {
+                messageStore.mergeMessages(selectedChannelId, messages)
+            }
+        }
+
+        lastInjectedSnapshot = snapshot
+        lastInjectedVersions = versions
+    }
+
+    private fun injectMeta(snapshot: RustSnapshot) {
         when (snapshot.connection.state) {
             RustConnectionState.READY, RustConnectionState.CONNECTED -> {
                 navigationStore.isConnected = true
@@ -100,20 +197,6 @@ class RustCoreIntegration(
         snapshot.currentUserId?.let { id ->
             val name = snapshot.currentUser ?: id.toString()
             userStore.setCurrentUser(User(id = id.toString(), username = name, global_name = name))
-        }
-
-        RustSnapshotMapper.mapGuilds(snapshot).forEach(entityStore::updateGuild)
-        RustSnapshotMapper.mapChannels(snapshot).forEach(entityStore::updateChannel)
-        RustSnapshotMapper.mapMembers(snapshot).forEach { (guildId, members) ->
-            userStore.cacheMembers(guildId, members)
-        }
-        presenceStore.applyPresences(RustSnapshotMapper.mapPresences(snapshot))
-        readStateStore.applyAcknowledgements(RustSnapshotMapper.mapAcknowledgements(snapshot))
-
-        val selectedChannelId = snapshot.selectedChannelId?.toString()
-        val messages = RustSnapshotMapper.mapMessages(snapshot)
-        if (selectedChannelId != null && messages.isNotEmpty()) {
-            messageStore.mergeMessages(selectedChannelId, messages)
         }
 
         val rustGuildId = snapshot.selectedGuildId?.toString()
@@ -182,6 +265,15 @@ class RustCoreIntegration(
         scope.cancel()
         Logging.i("RustCore", "RustCoreIntegration stopped")
     }
+}
+
+private fun <T> removedIds(
+    previous: List<T>,
+    current: List<T>,
+    id: (T) -> ULong,
+): Set<String> {
+    val currentIds = current.map(id).toHashSet()
+    return previous.map(id).filterNot(currentIds::contains).map(ULong::toString).toSet()
 }
 
 private fun messageUpdatePayload(message: RustMessage) = buildJsonObject {

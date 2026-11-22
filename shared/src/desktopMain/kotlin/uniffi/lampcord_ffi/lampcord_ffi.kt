@@ -812,6 +812,10 @@ internal open class UniffiVTableCallbackInterfacePlatformSecretStore(
 
 
 
+
+
+
+
 // A JNA Library to expose the extern-C FFI definitions.
 // This is an implementation detail which will be called internally by the public API.
 
@@ -887,6 +891,10 @@ internal interface UniffiLib : Library {
     fun uniffi_lampcord_ffi_fn_method_lampcordclient_snapshot(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_lampcord_ffi_fn_method_lampcordclient_snapshot_if_newer(`ptr`: Pointer,`since`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_lampcord_ffi_fn_method_lampcordclient_snapshot_patch(`ptr`: Pointer,`since`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_lampcord_ffi_fn_method_lampcordclient_snapshot_versions(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_lampcord_ffi_fn_method_lampcordclient_start_remote_auth(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
@@ -1068,6 +1076,10 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_lampcord_ffi_checksum_method_lampcordclient_snapshot_if_newer(
     ): Short
+    fun uniffi_lampcord_ffi_checksum_method_lampcordclient_snapshot_patch(
+    ): Short
+    fun uniffi_lampcord_ffi_checksum_method_lampcordclient_snapshot_versions(
+    ): Short
     fun uniffi_lampcord_ffi_checksum_method_lampcordclient_start_remote_auth(
     ): Short
     fun uniffi_lampcord_ffi_checksum_method_lampcordclient_submit_mfa(
@@ -1172,6 +1184,12 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_snapshot_if_newer() != 62980.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_snapshot_patch() != 64429.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_snapshot_versions() != 56919.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_start_remote_auth() != 38958.toShort()) {
@@ -1626,6 +1644,10 @@ public interface LampcordClientInterface {
     
     fun `snapshotIfNewer`(`since`: kotlin.ULong): ClientSnapshot?
     
+    fun `snapshotPatch`(`since`: SnapshotVersions): SnapshotPatch
+    
+    fun `snapshotVersions`(): SnapshotVersions
+    
     fun `startRemoteAuth`()
     
     fun `submitMfa`(`code`: kotlin.String, `ticket`: kotlin.String, `method`: kotlin.String)
@@ -1996,6 +2018,30 @@ open class LampcordClient: Disposable, AutoCloseable, LampcordClientInterface {
     uniffiRustCall() { _status ->
     UniffiLib.INSTANCE.uniffi_lampcord_ffi_fn_method_lampcordclient_snapshot_if_newer(
         it, FfiConverterULong.lower(`since`),_status)
+}
+    }
+    )
+    }
+    
+
+    override fun `snapshotPatch`(`since`: SnapshotVersions): SnapshotPatch {
+            return FfiConverterTypeSnapshotPatch.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_lampcord_ffi_fn_method_lampcordclient_snapshot_patch(
+        it, FfiConverterTypeSnapshotVersions.lower(`since`),_status)
+}
+    }
+    )
+    }
+    
+
+    override fun `snapshotVersions`(): SnapshotVersions {
+            return FfiConverterTypeSnapshotVersions.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_lampcord_ffi_fn_method_lampcordclient_snapshot_versions(
+        it, _status)
 }
     }
     )
@@ -2927,6 +2973,182 @@ public object FfiConverterTypeReadStateSnapshot: FfiConverterRustBuffer<ReadStat
             FfiConverterOptionalULong.write(value.`lastReadMessageId`, buf)
             FfiConverterUInt.write(value.`mentionCount`, buf)
             FfiConverterBoolean.write(value.`unread`, buf)
+    }
+}
+
+
+
+data class SnapshotMetaPatch (
+    var `connection`: ConnectionState, 
+    var `hasToken`: kotlin.Boolean, 
+    var `currentUserId`: kotlin.ULong?, 
+    var `currentUser`: kotlin.String?, 
+    var `selectedGuildId`: kotlin.ULong?, 
+    var `selectedChannelId`: kotlin.ULong?, 
+    var `auth`: AuthStateSnapshot, 
+    var `error`: kotlin.String?
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSnapshotMetaPatch: FfiConverterRustBuffer<SnapshotMetaPatch> {
+    override fun read(buf: ByteBuffer): SnapshotMetaPatch {
+        return SnapshotMetaPatch(
+            FfiConverterTypeConnectionState.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterOptionalULong.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalULong.read(buf),
+            FfiConverterOptionalULong.read(buf),
+            FfiConverterTypeAuthStateSnapshot.read(buf),
+            FfiConverterOptionalString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: SnapshotMetaPatch) = (
+            FfiConverterTypeConnectionState.allocationSize(value.`connection`) +
+            FfiConverterBoolean.allocationSize(value.`hasToken`) +
+            FfiConverterOptionalULong.allocationSize(value.`currentUserId`) +
+            FfiConverterOptionalString.allocationSize(value.`currentUser`) +
+            FfiConverterOptionalULong.allocationSize(value.`selectedGuildId`) +
+            FfiConverterOptionalULong.allocationSize(value.`selectedChannelId`) +
+            FfiConverterTypeAuthStateSnapshot.allocationSize(value.`auth`) +
+            FfiConverterOptionalString.allocationSize(value.`error`)
+    )
+
+    override fun write(value: SnapshotMetaPatch, buf: ByteBuffer) {
+            FfiConverterTypeConnectionState.write(value.`connection`, buf)
+            FfiConverterBoolean.write(value.`hasToken`, buf)
+            FfiConverterOptionalULong.write(value.`currentUserId`, buf)
+            FfiConverterOptionalString.write(value.`currentUser`, buf)
+            FfiConverterOptionalULong.write(value.`selectedGuildId`, buf)
+            FfiConverterOptionalULong.write(value.`selectedChannelId`, buf)
+            FfiConverterTypeAuthStateSnapshot.write(value.`auth`, buf)
+            FfiConverterOptionalString.write(value.`error`, buf)
+    }
+}
+
+
+
+data class SnapshotPatch (
+    var `seq`: kotlin.ULong, 
+    var `schemaVersion`: kotlin.UInt, 
+    var `versions`: SnapshotVersions, 
+    var `meta`: SnapshotMetaPatch?, 
+    var `guilds`: List<GuildSnapshot>?, 
+    var `channels`: List<ChannelSnapshot>?, 
+    var `messages`: List<MessageSnapshot>?, 
+    var `members`: List<MemberSnapshot>?, 
+    var `presences`: List<PresenceSnapshot>?, 
+    var `readStates`: List<ReadStateSnapshot>?
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSnapshotPatch: FfiConverterRustBuffer<SnapshotPatch> {
+    override fun read(buf: ByteBuffer): SnapshotPatch {
+        return SnapshotPatch(
+            FfiConverterULong.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterTypeSnapshotVersions.read(buf),
+            FfiConverterOptionalTypeSnapshotMetaPatch.read(buf),
+            FfiConverterOptionalSequenceTypeGuildSnapshot.read(buf),
+            FfiConverterOptionalSequenceTypeChannelSnapshot.read(buf),
+            FfiConverterOptionalSequenceTypeMessageSnapshot.read(buf),
+            FfiConverterOptionalSequenceTypeMemberSnapshot.read(buf),
+            FfiConverterOptionalSequenceTypePresenceSnapshot.read(buf),
+            FfiConverterOptionalSequenceTypeReadStateSnapshot.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: SnapshotPatch) = (
+            FfiConverterULong.allocationSize(value.`seq`) +
+            FfiConverterUInt.allocationSize(value.`schemaVersion`) +
+            FfiConverterTypeSnapshotVersions.allocationSize(value.`versions`) +
+            FfiConverterOptionalTypeSnapshotMetaPatch.allocationSize(value.`meta`) +
+            FfiConverterOptionalSequenceTypeGuildSnapshot.allocationSize(value.`guilds`) +
+            FfiConverterOptionalSequenceTypeChannelSnapshot.allocationSize(value.`channels`) +
+            FfiConverterOptionalSequenceTypeMessageSnapshot.allocationSize(value.`messages`) +
+            FfiConverterOptionalSequenceTypeMemberSnapshot.allocationSize(value.`members`) +
+            FfiConverterOptionalSequenceTypePresenceSnapshot.allocationSize(value.`presences`) +
+            FfiConverterOptionalSequenceTypeReadStateSnapshot.allocationSize(value.`readStates`)
+    )
+
+    override fun write(value: SnapshotPatch, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`seq`, buf)
+            FfiConverterUInt.write(value.`schemaVersion`, buf)
+            FfiConverterTypeSnapshotVersions.write(value.`versions`, buf)
+            FfiConverterOptionalTypeSnapshotMetaPatch.write(value.`meta`, buf)
+            FfiConverterOptionalSequenceTypeGuildSnapshot.write(value.`guilds`, buf)
+            FfiConverterOptionalSequenceTypeChannelSnapshot.write(value.`channels`, buf)
+            FfiConverterOptionalSequenceTypeMessageSnapshot.write(value.`messages`, buf)
+            FfiConverterOptionalSequenceTypeMemberSnapshot.write(value.`members`, buf)
+            FfiConverterOptionalSequenceTypePresenceSnapshot.write(value.`presences`, buf)
+            FfiConverterOptionalSequenceTypeReadStateSnapshot.write(value.`readStates`, buf)
+    }
+}
+
+
+
+data class SnapshotVersions (
+    var `seq`: kotlin.ULong, 
+    var `meta`: kotlin.ULong, 
+    var `guilds`: kotlin.ULong, 
+    var `channels`: kotlin.ULong, 
+    var `messages`: kotlin.ULong, 
+    var `members`: kotlin.ULong, 
+    var `presences`: kotlin.ULong, 
+    var `readStates`: kotlin.ULong
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSnapshotVersions: FfiConverterRustBuffer<SnapshotVersions> {
+    override fun read(buf: ByteBuffer): SnapshotVersions {
+        return SnapshotVersions(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: SnapshotVersions) = (
+            FfiConverterULong.allocationSize(value.`seq`) +
+            FfiConverterULong.allocationSize(value.`meta`) +
+            FfiConverterULong.allocationSize(value.`guilds`) +
+            FfiConverterULong.allocationSize(value.`channels`) +
+            FfiConverterULong.allocationSize(value.`messages`) +
+            FfiConverterULong.allocationSize(value.`members`) +
+            FfiConverterULong.allocationSize(value.`presences`) +
+            FfiConverterULong.allocationSize(value.`readStates`)
+    )
+
+    override fun write(value: SnapshotVersions, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`seq`, buf)
+            FfiConverterULong.write(value.`meta`, buf)
+            FfiConverterULong.write(value.`guilds`, buf)
+            FfiConverterULong.write(value.`channels`, buf)
+            FfiConverterULong.write(value.`messages`, buf)
+            FfiConverterULong.write(value.`members`, buf)
+            FfiConverterULong.write(value.`presences`, buf)
+            FfiConverterULong.write(value.`readStates`, buf)
     }
 }
 
@@ -4509,6 +4731,38 @@ public object FfiConverterOptionalTypeClientSnapshot: FfiConverterRustBuffer<Cli
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeSnapshotMetaPatch: FfiConverterRustBuffer<SnapshotMetaPatch?> {
+    override fun read(buf: ByteBuffer): SnapshotMetaPatch? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeSnapshotMetaPatch.read(buf)
+    }
+
+    override fun allocationSize(value: SnapshotMetaPatch?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeSnapshotMetaPatch.allocationSize(value)
+        }
+    }
+
+    override fun write(value: SnapshotMetaPatch?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeSnapshotMetaPatch.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeAuthChallenge: FfiConverterRustBuffer<AuthChallenge?> {
     override fun read(buf: ByteBuffer): AuthChallenge? {
         if (buf.get().toInt() == 0) {
@@ -4531,6 +4785,198 @@ public object FfiConverterOptionalTypeAuthChallenge: FfiConverterRustBuffer<Auth
         } else {
             buf.put(1)
             FfiConverterTypeAuthChallenge.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalSequenceTypeChannelSnapshot: FfiConverterRustBuffer<List<ChannelSnapshot>?> {
+    override fun read(buf: ByteBuffer): List<ChannelSnapshot>? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterSequenceTypeChannelSnapshot.read(buf)
+    }
+
+    override fun allocationSize(value: List<ChannelSnapshot>?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterSequenceTypeChannelSnapshot.allocationSize(value)
+        }
+    }
+
+    override fun write(value: List<ChannelSnapshot>?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterSequenceTypeChannelSnapshot.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalSequenceTypeGuildSnapshot: FfiConverterRustBuffer<List<GuildSnapshot>?> {
+    override fun read(buf: ByteBuffer): List<GuildSnapshot>? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterSequenceTypeGuildSnapshot.read(buf)
+    }
+
+    override fun allocationSize(value: List<GuildSnapshot>?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterSequenceTypeGuildSnapshot.allocationSize(value)
+        }
+    }
+
+    override fun write(value: List<GuildSnapshot>?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterSequenceTypeGuildSnapshot.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalSequenceTypeMemberSnapshot: FfiConverterRustBuffer<List<MemberSnapshot>?> {
+    override fun read(buf: ByteBuffer): List<MemberSnapshot>? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterSequenceTypeMemberSnapshot.read(buf)
+    }
+
+    override fun allocationSize(value: List<MemberSnapshot>?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterSequenceTypeMemberSnapshot.allocationSize(value)
+        }
+    }
+
+    override fun write(value: List<MemberSnapshot>?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterSequenceTypeMemberSnapshot.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalSequenceTypeMessageSnapshot: FfiConverterRustBuffer<List<MessageSnapshot>?> {
+    override fun read(buf: ByteBuffer): List<MessageSnapshot>? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterSequenceTypeMessageSnapshot.read(buf)
+    }
+
+    override fun allocationSize(value: List<MessageSnapshot>?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterSequenceTypeMessageSnapshot.allocationSize(value)
+        }
+    }
+
+    override fun write(value: List<MessageSnapshot>?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterSequenceTypeMessageSnapshot.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalSequenceTypePresenceSnapshot: FfiConverterRustBuffer<List<PresenceSnapshot>?> {
+    override fun read(buf: ByteBuffer): List<PresenceSnapshot>? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterSequenceTypePresenceSnapshot.read(buf)
+    }
+
+    override fun allocationSize(value: List<PresenceSnapshot>?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterSequenceTypePresenceSnapshot.allocationSize(value)
+        }
+    }
+
+    override fun write(value: List<PresenceSnapshot>?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterSequenceTypePresenceSnapshot.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalSequenceTypeReadStateSnapshot: FfiConverterRustBuffer<List<ReadStateSnapshot>?> {
+    override fun read(buf: ByteBuffer): List<ReadStateSnapshot>? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterSequenceTypeReadStateSnapshot.read(buf)
+    }
+
+    override fun allocationSize(value: List<ReadStateSnapshot>?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterSequenceTypeReadStateSnapshot.allocationSize(value)
+        }
+    }
+
+    override fun write(value: List<ReadStateSnapshot>?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterSequenceTypeReadStateSnapshot.write(value, buf)
         }
     }
 }

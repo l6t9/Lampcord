@@ -86,6 +86,7 @@ pub struct StateCache {
     guilds: HashMap<Snowflake, Guild>,
     guild_order: Vec<Snowflake>,
     channels: HashMap<Snowflake, Channel>,
+    guild_channels: HashMap<Snowflake, Vec<Snowflake>>,
     private_channel_ids: Vec<Snowflake>,
     messages: HashMap<Snowflake, Vec<Message>>,
     message_channel_order: VecDeque<Snowflake>,
@@ -153,10 +154,15 @@ impl StateCache {
 
     pub fn channels_for_guild(&self, guild_id: Snowflake) -> Vec<&Channel> {
         let mut channels: Vec<&Channel> = self
-            .channels
-            .values()
-            .filter(|channel| channel.guild_id == Some(guild_id))
-            .collect();
+            .guild_channels
+            .get(&guild_id)
+            .map(|channel_ids| {
+                channel_ids
+                    .iter()
+                    .filter_map(|channel_id| self.channels.get(channel_id))
+                    .collect()
+            })
+            .unwrap_or_default();
         channels.sort_by(|left, right| {
             left.position
                 .unwrap_or(u16::MAX)
@@ -440,12 +446,7 @@ impl StateCache {
         self.guilds.remove(&guild_id);
         self.guild_order.retain(|id| *id != guild_id);
 
-        let channel_ids: Vec<Snowflake> = self
-            .channels
-            .values()
-            .filter(|channel| channel.guild_id == Some(guild_id))
-            .map(|channel| channel.id)
-            .collect();
+        let channel_ids = self.guild_channels.remove(&guild_id).unwrap_or_default();
         for channel_id in channel_ids {
             self.remove_channel(channel_id);
         }
@@ -536,18 +537,56 @@ impl StateCache {
     }
 
     fn update_channel(&mut self, incoming: Channel) {
+        let previous_guild_id = self
+            .channels
+            .get(&incoming.id)
+            .and_then(|channel| channel.guild_id);
         let channel = match self.channels.get(&incoming.id) {
             Some(existing) => merge_channel(existing, incoming),
             None => incoming,
         };
         self.channels.insert(channel.id, channel.clone());
+        if previous_guild_id != channel.guild_id {
+            if let Some(previous_guild_id) = previous_guild_id {
+                let empty = self
+                    .guild_channels
+                    .get_mut(&previous_guild_id)
+                    .map(|channel_ids| {
+                        channel_ids.retain(|id| *id != channel.id);
+                        channel_ids.is_empty()
+                    })
+                    .unwrap_or(false);
+                if empty {
+                    self.guild_channels.remove(&previous_guild_id);
+                }
+            }
+        }
+        if let Some(guild_id) = channel.guild_id {
+            let channel_ids = self.guild_channels.entry(guild_id).or_default();
+            if !channel_ids.contains(&channel.id) {
+                channel_ids.push(channel.id);
+            }
+        }
         if channel.guild_id.is_none() && !self.private_channel_ids.contains(&channel.id) {
             self.private_channel_ids.push(channel.id);
         }
     }
 
     fn remove_channel(&mut self, channel_id: Snowflake) {
-        self.channels.remove(&channel_id);
+        let removed = self.channels.remove(&channel_id);
+        if let Some(guild_id) = removed.and_then(|channel| channel.guild_id) {
+            let empty = self
+                .guild_channels
+                .get_mut(&guild_id)
+                .map(|channel_ids| {
+                    channel_ids.retain(|id| *id != channel_id);
+                    channel_ids.is_empty()
+                })
+                .unwrap_or(false);
+            if empty {
+                self.guild_channels.remove(&guild_id);
+            }
+        }
         self.private_channel_ids.retain(|id| *id != channel_id);
         self.messages.remove(&channel_id);
         self.message_channel_order.retain(|id| *id != channel_id);
@@ -703,6 +742,7 @@ impl StateCache {
         self.guilds.clear();
         self.guild_order.clear();
         self.channels.clear();
+        self.guild_channels.clear();
         self.private_channel_ids.clear();
         self.messages.clear();
         self.message_channel_order.clear();
@@ -902,6 +942,50 @@ mod tests {
         );
         assert_eq!(cache.private_channels()[0].id, 9);
         assert_eq!(cache.read_state().mention_count(9), 1);
+    }
+
+    #[test]
+    fn guild_channel_index_tracks_updates_and_deletes() {
+        let mut cache = StateCache::new();
+        for (id, position) in [(10, 1), (11, 0)] {
+            cache
+                .handle_event(
+                    "CHANNEL_CREATE",
+                    Some(&json!({
+                        "id": id.to_string(),
+                        "guild_id": "7",
+                        "type": 0,
+                        "name": "channel",
+                        "position": position,
+                    })),
+                )
+                .expect("channel create");
+        }
+        assert_eq!(
+            cache
+                .channels_for_guild(7)
+                .iter()
+                .map(|channel| channel.id)
+                .collect::<Vec<_>>(),
+            vec![11, 10]
+        );
+
+        cache
+            .handle_event("CHANNEL_DELETE", Some(&json!({"id": "11"})))
+            .expect("channel delete");
+        assert_eq!(
+            cache
+                .channels_for_guild(7)
+                .iter()
+                .map(|channel| channel.id)
+                .collect::<Vec<_>>(),
+            vec![10]
+        );
+
+        cache
+            .handle_event("GUILD_DELETE", Some(&json!({"guild_id": "7"})))
+            .expect("guild delete");
+        assert!(cache.channels_for_guild(7).is_empty());
     }
 
     #[test]

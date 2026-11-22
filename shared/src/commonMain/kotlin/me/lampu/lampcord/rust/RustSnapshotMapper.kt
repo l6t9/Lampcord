@@ -11,9 +11,18 @@ import me.lampu.lampcord.shared.model.User
 object RustSnapshotMapper {
     fun mapGuilds(snapshot: RustSnapshot): List<Guild> = snapshot.guilds.map(::mapGuild)
 
+    fun mapChangedGuilds(previous: RustSnapshot, current: RustSnapshot): List<Guild> =
+        changedItems(previous.guilds, current.guilds, RustGuild::id).map(::mapGuild)
+
     fun mapChannels(snapshot: RustSnapshot): List<Channel> = snapshot.channels.map(::mapChannel)
 
+    fun mapChangedChannels(previous: RustSnapshot, current: RustSnapshot): List<Channel> =
+        changedItems(previous.channels, current.channels, RustChannel::id).map(::mapChannel)
+
     fun mapMessages(snapshot: RustSnapshot): List<Message> = snapshot.messages.map(::mapMessage)
+
+    fun mapChangedMessages(previous: RustSnapshot, current: RustSnapshot): List<Message> =
+        changedItems(previous.messages, current.messages, RustMessage::id).map(::mapMessage)
 
     fun mapMessage(message: RustMessage): Message = Message(
         id = message.id.toString(),
@@ -29,7 +38,36 @@ object RustSnapshotMapper {
     )
 
     fun mapMembers(snapshot: RustSnapshot): Map<String, List<Pair<String, Member>>> =
-        snapshot.members
+        mapMemberValues(snapshot.members)
+
+    fun mapChangedMembers(
+        previous: RustSnapshot,
+        current: RustSnapshot,
+    ): Map<String, List<Pair<String, Member>>> = mapMemberValues(
+        changedItems(previous.members, current.members) { member ->
+            member.guildId to member.userId
+        },
+    )
+
+    fun mapPresences(snapshot: RustSnapshot): List<PresenceUpdate> =
+        snapshot.presences.map(::mapPresence)
+
+    fun mapChangedPresences(previous: RustSnapshot, current: RustSnapshot): List<PresenceUpdate> =
+        changedItems(previous.presences, current.presences, RustPresence::userId).map(::mapPresence)
+
+    fun mapAcknowledgements(snapshot: RustSnapshot): Map<String, String> =
+        acknowledgements(snapshot.readStates)
+
+    fun mapChangedAcknowledgements(previous: RustSnapshot, current: RustSnapshot): Map<String, String> =
+        acknowledgements(changedItems(previous.readStates, current.readStates, RustReadState::channelId))
+
+    fun mapReadStateMessageIds(snapshot: RustSnapshot): Map<String, String> =
+        snapshot.readStates
+            .mapNotNull { state -> state.lastMessageId?.let { state.channelId.toString() to it.toString() } }
+            .toMap()
+
+    private fun mapMemberValues(members: List<RustMember>): Map<String, List<Pair<String, Member>>> =
+        members
             .groupBy { it.guildId.toString() }
             .mapValues { (_, members) ->
                 members.map { member ->
@@ -52,27 +90,27 @@ object RustSnapshotMapper {
                 }
             }
 
-    fun mapPresences(snapshot: RustSnapshot): List<PresenceUpdate> =
-        snapshot.presences.map { presence ->
-            PresenceUpdate(
-                user = User(id = presence.userId.toString()),
-                user_id = presence.userId.toString(),
-                status = presence.status,
-                activities = presence.activities.map { name ->
-                    Activity(name = name, type = 0)
-                },
-            )
-        }
+    private fun mapPresence(presence: RustPresence): PresenceUpdate = PresenceUpdate(
+        user = User(id = presence.userId.toString()),
+        user_id = presence.userId.toString(),
+        status = presence.status,
+        activities = presence.activities.map { name -> Activity(name = name, type = 0) },
+    )
 
-    fun mapAcknowledgements(snapshot: RustSnapshot): Map<String, String> =
-        snapshot.readStates
+    private fun acknowledgements(readStates: List<RustReadState>): Map<String, String> =
+        readStates
             .mapNotNull { state -> state.lastReadMessageId?.let { state.channelId.toString() to it.toString() } }
             .toMap()
 
-    fun mapReadStateMessageIds(snapshot: RustSnapshot): Map<String, String> =
-        snapshot.readStates
-            .mapNotNull { state -> state.lastMessageId?.let { state.channelId.toString() to it.toString() } }
-            .toMap()
+    private fun <T, K> changedItems(
+        previous: List<T>,
+        current: List<T>,
+        key: (T) -> K,
+    ): List<T> {
+        if (previous.isEmpty()) return current
+        val previousById = previous.associateBy(key)
+        return current.filter { item -> previousById[key(item)] != item }
+    }
 
     private fun mapGuild(guild: RustGuild): Guild = Guild(
         id = guild.id.toString(),

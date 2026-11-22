@@ -40,7 +40,7 @@ pub enum GatewayEvent {
     Resumed,
     Dispatch {
         event_type: String,
-        data: Option<serde_json::Value>,
+        data: Option<Arc<serde_json::Value>>,
     },
     InvalidSession {
         resumable: bool,
@@ -374,7 +374,7 @@ impl<T: GatewayTransport, U: GatewayUrlProvider> GatewayClient<T, U> {
             match tokio::time::timeout(wait, self.transport.receive()).await {
                 Ok(received) => match received? {
                     GatewayMessage::Text(text) => {
-                        let payload: Value = serde_json::from_str(&text)?;
+                        let mut payload: Value = serde_json::from_str(&text)?;
                         let op = payload
                             .get("op")
                             .and_then(Value::as_i64)
@@ -463,16 +463,19 @@ impl<T: GatewayTransport, U: GatewayUrlProvider> GatewayClient<T, U> {
                                     let event_type = payload
                                         .get("t")
                                         .and_then(Value::as_str)
-                                        .unwrap_or_default();
-                                    let errors = self
-                                        .dispatcher
-                                        .dispatch(Some(event_type), payload.get("d"));
+                                        .unwrap_or_default()
+                                        .to_owned();
+                                    let data = payload
+                                        .as_object_mut()
+                                        .and_then(|object| object.remove("d"));
+                                    let errors =
+                                        self.dispatcher.dispatch(Some(&event_type), data.as_ref());
                                     if !errors.is_empty() {
                                         let _ = tx.send(GatewayEvent::HandlerErrors { errors });
                                     }
-                                    match event_type {
+                                    match event_type.as_str() {
                                         "READY" => {
-                                            let data = payload.get("d");
+                                            let data = data.as_ref();
                                             let session_id = data
                                                 .and_then(|data| data.get("session_id"))
                                                 .and_then(Value::as_str)
@@ -511,8 +514,8 @@ impl<T: GatewayTransport, U: GatewayUrlProvider> GatewayClient<T, U> {
                                         }
                                         _ => {
                                             let _ = tx.send(GatewayEvent::Dispatch {
-                                                event_type: event_type.to_owned(),
-                                                data: payload.get("d").cloned(),
+                                                event_type: event_type.clone(),
+                                                data: data.map(Arc::new),
                                             });
                                         }
                                     }

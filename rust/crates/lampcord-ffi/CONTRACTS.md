@@ -13,6 +13,11 @@ a frontend to code against while the core evolves.
   snapshots with a sequence they have already applied.
 * `snapshot_if_newer(since)` returns a snapshot only when `ClientSnapshot.seq`
   has advanced past `since`, so poll-based frontends skip unchanged snapshots.
+* `snapshot_versions()` returns independent revisions for `meta`, `guilds`,
+  `channels`, `messages`, `members`, `presences` and `read_states`.
+  `snapshot_patch(since)` returns only the sections whose revision advanced;
+  `None` means the section is unchanged since `since`. Consumers merge non-`None`
+  sections into their previous `ClientSnapshot`.
 * Projections are bounded: messages are capped at 200 per selected channel,
   and members/presences/read states at 200 each. Use paginated commands for
   complete lists.
@@ -25,7 +30,8 @@ a frontend to code against while the core evolves.
   process-wide monotonic `sequence`.
 * `emitted_at_ms` is a UTC Unix timestamp for observability only; do not use it
   for ordering.
-* The queue is bounded (512). When full, the oldest 64 events are dropped, so
+* The queue is bounded (512). When full, typing, presence, reaction and
+  notification events are dropped first, then the oldest 64 remaining events, so
   consumers must treat events as hints and reconcile from snapshots.
 * At most one pending `SnapshotUpdated` is kept. Typing and presence events
   are last-write-wins per user/channel while queued.
@@ -58,3 +64,10 @@ message edits/deletes, reactions, typing, presence and notifications. Raw
 payloads never cross the FFI boundary. Partial `MESSAGE_UPDATE` payloads are
 overlaid onto the state cache before emission, so `MessageUpdated` snapshots
 remain complete.
+
+## Benchmarks
+
+`cargo run --release -p lampcord-ffi --bin ffi-bench --features bench` (or
+`./gradlew :desktopApp:rustFfiBenchmark`) reports per-operation timings for full
+snapshot clones, unchanged patches and meta-only patches. Use the same profile
+and machine when comparing results before and after a change.
