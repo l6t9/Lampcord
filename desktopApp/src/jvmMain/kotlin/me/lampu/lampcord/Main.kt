@@ -3,9 +3,11 @@ package me.lampu.lampcord
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.runtime.rememberCoroutineScope
+import me.lampu.lampcord.rust.RustCoreDebugOverlay
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -32,7 +34,14 @@ import me.lampu.lampcord.shared.gateway.GatewayManager
 import me.lampu.lampcord.shared.oauth.OAuthAuthorizationHandler
 import me.lampu.lampcord.shared.rpc.DesktopRPCServer
 import me.lampu.lampcord.shared.state.AppVisibilityStore
+import me.lampu.lampcord.shared.state.EntityStore
+import me.lampu.lampcord.shared.state.GuildStore
+import me.lampu.lampcord.shared.state.MessageStore
+import me.lampu.lampcord.shared.state.NavigationStore
+import me.lampu.lampcord.shared.state.PresenceStore
+import me.lampu.lampcord.shared.state.ReadStateStore
 import me.lampu.lampcord.shared.state.SessionManager
+import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.settings.ThemeMode
@@ -42,17 +51,25 @@ import me.lampu.lampcord.shared.utils.Logging
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
 import me.lampu.lampcord.shared.utils.getPlatformName
 import me.lampu.lampcord.shared.utils.reloadTrigger
+import me.lampu.lampcord.rust.RustClientConfig
+import me.lampu.lampcord.rust.RustCoreEngine
+import me.lampu.lampcord.rust.RustCoreIntegration
 import org.koin.compose.koinInject
 import org.koin.core.context.GlobalContext.get
 import org.koin.core.context.GlobalContext.getOrNull
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
 
+private val debugOverlayEnabled = System.getProperty("lampcord.debugOverlay") == "true"
+
 @OptIn(FlowPreview::class)
 fun main() {
     Logging.debugEnabled = Settings.shared.verboseLogging
+    me.lampu.lampcord.shared.state.RustCoreMode.enabled =
+        System.getProperty("lampcord.rustCore") == "true"
 
     fun initApp() {
         runCatching { getOrNull()?.getOrNull<SessionManager>()?.shutdown() }
@@ -195,6 +212,50 @@ fun main() {
                 LaunchedEffect(nucleusWindow) {
                     nucleusWindow.focusFlow.collect { AppVisibilityStore.setVisible(it) }
                 }
+
+                var rustEngine by remember { mutableStateOf<RustCoreEngine?>(null) }
+                if (System.getProperty("lampcord.rustCore") == "true") {
+                    val sessionManager: SessionManager = koinInject()
+                    val entityStore: EntityStore = koinInject()
+                    val guildStore: GuildStore = koinInject()
+                    val messageStore: MessageStore = koinInject()
+                    val navigationStore: NavigationStore = koinInject()
+                    val userStore: UserStore = koinInject()
+                    val presenceStore: PresenceStore = koinInject()
+                    val readStateStore: ReadStateStore = koinInject()
+                    DisposableEffect(sessionManager) {
+                        val engine = runCatching { RustCoreEngine(RustClientConfig()) }.getOrNull()
+                        if (engine == null) {
+                            Logging.w("RustCore", "Failed to start RustCoreEngine; falling back to Kotlin gateway")
+                            me.lampu.lampcord.shared.state.RustCoreMode.enabled = false
+                            val token = Settings.shared.discordToken.trim().takeIf { it.isNotBlank() }
+                            if (token != null) sessionManager.connect(token)
+                            onDispose {}
+                        } else {
+                            rustEngine = engine
+                            Logging.i("RustCore", "RustCoreEngine started")
+                            val integration = RustCoreIntegration(
+                                engine,
+                                entityStore,
+                                guildStore,
+                                messageStore,
+                                navigationStore,
+                                userStore,
+                                presenceStore,
+                                readStateStore,
+                            )
+                            integration.start()
+                            val token = Settings.shared.discordToken.trim().takeIf { it.isNotBlank() }
+                            if (token != null) engine.connectToken(token)
+                            onDispose {
+                                rustEngine = null
+                                integration.close()
+                                engine.close()
+                                Logging.i("RustCore", "RustCoreEngine stopped")
+                            }
+                        }
+                    }
+                }
                 MaterialTheme(
                     colorScheme = windowColorScheme,
                     typography = windowTypography,
@@ -204,7 +265,24 @@ fun main() {
                         EnergyManager.keepAwake()
                         onDispose { EnergyManager.releaseAwake() }
                     }
-                    App()
+                    androidx.compose.foundation.layout.Box {
+                        App()
+                        rustEngine?.let { engine ->
+                            if (!debugOverlayEnabled) return@let
+                            val entityStore: EntityStore = koinInject()
+                            val messageStore: MessageStore = koinInject()
+                            val navigationStore: NavigationStore = koinInject()
+                            RustCoreDebugOverlay(
+                                engine = engine,
+                                modifier = androidx.compose.ui.Modifier
+                                    .align(androidx.compose.ui.Alignment.TopEnd)
+                                    .padding(8.dp),
+                                entityStore = entityStore,
+                                messageStore = messageStore,
+                                navigationStore = navigationStore,
+                            )
+                        }
+                    }
                 }
             }
         }

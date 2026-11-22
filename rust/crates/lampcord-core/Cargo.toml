@@ -1,0 +1,23 @@
+[package]
+name = "lampcord-core"
+description = "Shared protocol and session logic for Lampcord"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+async-trait.workspace = true
+lampcord-model.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio = { workspace = true, features = ["sync", "time"] }
+base64.workspace = true
+rsa.workspace = true
+sha2.workspace = true
+rand.workspace = true
+tokio-tungstenite.workspace = true
+futures-util.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true

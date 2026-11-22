@@ -27,6 +27,10 @@ class GatewayHandler(
     private val voiceStore: VoiceStore
 ) {
     fun handleGatewayEvent(payload: GatewayPayload) {
+        if (RustCoreMode.enabled) {
+            Logging.d("GatewayHandler", "RustCoreMode enabled; ignoring Kotlin gateway event ${payload.t}")
+            return
+        }
         when (payload.t) {
             "READY" -> handleReady(payload)
             "RESUMED" -> {

@@ -459,3 +459,85 @@ exec "${'$'}APPDIR/bin/Lampcord" "${'$'}@"
 tasks.matching { it.name == "packageAppImage" }.configureEach {
     dependsOn("createAppImageLocal")
 }
+
+fun rustFfiLibName(): String {
+    val os = System.getProperty("os.name").lowercase()
+    return when {
+        os.contains("win") -> "lampcord_ffi.dll"
+        os.contains("mac") || os.contains("darwin") -> "liblampcord_ffi.dylib"
+        else -> "liblampcord_ffi.so"
+    }
+}
+
+fun rustFfiResourcePrefix(): String {
+    val os = System.getProperty("os.name").lowercase()
+    val arch = System.getProperty("os.arch").lowercase()
+    val osPart = when {
+        os.contains("win") -> "win32"
+        os.contains("mac") || os.contains("darwin") -> "darwin"
+        else -> "linux"
+    }
+    val archPart = when {
+        arch == "aarch64" || arch == "arm64" -> "aarch64"
+        arch.contains("64") -> "x86-64"
+        else -> arch
+    }
+    return "$osPart-$archPart"
+}
+
+val rustFfiProfile = providers.gradleProperty("rustFfiProfile").orElse("release")
+val rustFfiTarget = providers.gradleProperty("rustFfiTarget")
+
+val buildRustFfi by tasks.registering(Exec::class) {
+    group = "rust"
+    description = "Build lampcord-ffi cdylib for JVM desktop PoC"
+    workingDir = rootProject.projectDir.resolve("rust")
+    val args = mutableListOf("cargo", "build", "-p", "lampcord-ffi", "--features", "uniffi")
+    if (rustFfiProfile.get() == "release") args += "--release"
+    val target = rustFfiTarget.orNull
+    if (!target.isNullOrBlank()) args += listOf("--target", target)
+    commandLine(args)
+}
+
+val rustFfiGeneratedResourcesDir = layout.buildDirectory.dir("generated/rustFfi/resources")
+
+val copyRustFfiDesktop by tasks.registering(Copy::class) {
+    group = "rust"
+    description = "Copy lampcord-ffi native lib into generated JVM resources for current OS/arch"
+    dependsOn(buildRustFfi)
+    val profile = rustFfiProfile.get()
+    val target = rustFfiTarget.orNull
+    val libDir = if (!target.isNullOrBlank()) {
+        rootProject.projectDir.resolve("rust/target/$target/$profile")
+    } else {
+        rootProject.projectDir.resolve("rust/target/$profile")
+    }
+    from(libDir.resolve(rustFfiLibName()))
+    into(rustFfiGeneratedResourcesDir.map { it.dir(rustFfiResourcePrefix()) })
+}
+
+val smokeRustFfi by tasks.registering(JavaExec::class) {
+    group = "rust"
+    description = "Smoke test Rust FFI UniFFI load/start/shutdown"
+    dependsOn("compileKotlinJvm", copyRustFfiDesktop)
+    mainClass.set("me.lampu.lampcord.rust.RustFfiSmokeKt")
+    val jvmMain = kotlin.jvm().compilations.getByName("main")
+    classpath = files(rustFfiGeneratedResourcesDir, jvmMain.output.allOutputs, jvmMain.runtimeDependencyFiles)
+}
+
+val rustFfiBenchmark by tasks.registering(Exec::class) {
+    group = "rust"
+    description = "Run lampcord-ffi snapshot patch benchmark"
+    workingDir = rootProject.projectDir.resolve("rust")
+    val args = mutableListOf("cargo", "run")
+    if (rustFfiProfile.get() == "release") args += "--release"
+    args += listOf("-p", "lampcord-ffi", "--bin", "ffi-bench", "--features", "bench")
+    commandLine(args)
+}
+
+if (providers.gradleProperty("includeRustFfi").orNull == "true") {
+    kotlin.sourceSets.getByName("jvmMain").resources.srcDir(rustFfiGeneratedResourcesDir)
+    tasks.matching { it.name == "jvmProcessResources" }.configureEach {
+        dependsOn(copyRustFfiDesktop)
+    }
+}
