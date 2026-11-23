@@ -89,7 +89,7 @@ fun SettingsSection(
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
-                color = MaterialTheme.colorScheme.surfaceContainer
+                color = MaterialTheme.colorScheme.surfaceContainerHighest
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
@@ -115,7 +115,22 @@ fun <T> SettingsButtonGroup(
     BoxWithConstraints {
         val isCompact = maxWidth < 600.dp
 
-        if (maxWidth / options.size >= minimumItemWidth) {
+        if (isCompact || maxWidth / options.size < minimumItemWidth) {
+            val selectIcon: (@Composable (T, Boolean) -> Unit)? = iconProvider?.let { provider ->
+                { option, selected ->
+                    provider(option, selected)?.let { vector ->
+                        Icon(vector, contentDescription = null, modifier = Modifier.size(18.dp))
+                    }
+                }
+            }
+            SettingsSelectRow(
+                options = options,
+                selectedOption = selectedOption,
+                onOptionSelected = onOptionSelected,
+                optionLabel = labelProvider,
+                optionIcon = selectIcon,
+            )
+        } else {
             ButtonGroup(
                 modifier = Modifier
                     .then(if (isCompact) Modifier.fillMaxWidth() else Modifier)
@@ -207,44 +222,6 @@ fun <T> SettingsButtonGroup(
                     )
                 }
             }
-        } else {
-
-            var expanded by remember { mutableStateOf(false) }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box {
-                    OutlinedButton(
-                        shape = MaterialTheme.shapes.small,
-                        onClick = { expanded = !expanded }
-                    ) {
-                        Text(labelProvider(selectedOption))
-                        Spacer(Modifier.width(8.dp))
-                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Select an option")
-                    }
-
-                    DropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = {
-                            expanded = false
-
-                        },
-                    ) {
-                        options.forEachIndexed { index, option ->
-                            DropdownMenuItem(
-                                modifier = Modifier.handCursor(),
-                                text = { Text(labelProvider(option)) },
-                                onClick = {
-                                    onOptionSelected(option)
-                                    expanded = false
-
-                                }
-                            )
-                        }
-                    }
-                }
-            }
         }
     }
 }
@@ -261,10 +238,18 @@ internal fun <T> SettingsButtonGroupCustomIcon(
     BoxWithConstraints {
         val isCompact = maxWidth < 600.dp
 
-        ButtonGroup(
-            modifier = Modifier
-                .then(if (isCompact) Modifier.fillMaxWidth() else Modifier)
-                .height(44.dp),
+        if (isCompact) {
+            SettingsSelectRow(
+                options = options,
+                selectedOption = selectedOption,
+                onOptionSelected = onOptionSelected,
+                optionLabel = labelProvider,
+                optionIcon = iconProvider,
+            )
+        } else {
+            ButtonGroup(
+                modifier = Modifier
+                    .height(44.dp),
             overflowIndicator = { menuState -> ButtonGroupDefaults.OverflowIndicator(menuState) },
             horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
         ) {
@@ -341,6 +326,7 @@ internal fun <T> SettingsButtonGroupCustomIcon(
                 )
             }
         }
+        }
     }
 }
 
@@ -356,10 +342,20 @@ fun <T> SettingsLargeButtonGroup(
     BoxWithConstraints {
         val isCompact = maxWidth < 600.dp
 
-        ButtonGroup(
-            modifier = Modifier
-                .height(110.dp)
-                .then(if (isCompact) Modifier.fillMaxWidth() else Modifier.width(260.dp)),
+        if (isCompact) {
+            SettingsSelectRow(
+                options = options,
+                selectedOption = selectedOption,
+                onOptionSelected = onOptionSelected,
+                optionLabel = labelProvider,
+                optionIcon = { option, selected ->
+                    Icon(iconProvider(option, selected), contentDescription = null, modifier = Modifier.size(24.dp))
+                },
+            )
+        } else {
+            ButtonGroup(
+                modifier = Modifier
+                    .width(260.dp),
             overflowIndicator = { menuState -> ButtonGroupDefaults.OverflowIndicator(menuState) },
             horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
         ) {
@@ -422,6 +418,7 @@ fun <T> SettingsLargeButtonGroup(
                     }
                 )
             }
+        }
         }
     }
 }

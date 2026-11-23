@@ -66,6 +66,14 @@ import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
+/** M3E connected-card shape used throughout Lampcord settings. */
+fun connectedSettingsShape(first: Boolean, last: Boolean) = RoundedCornerShape(
+    topStart = if (first) 20.dp else 5.dp,
+    topEnd = if (first) 20.dp else 5.dp,
+    bottomStart = if (last) 20.dp else 5.dp,
+    bottomEnd = if (last) 20.dp else 5.dp,
+)
+
 @Composable
 fun Material3SettingsGroup(
     title: String? = null,
@@ -118,15 +126,7 @@ fun Material3SettingsItemRow(
     isLast: Boolean = false,
     horizontalPadding: Dp = 16.dp,
 ) {
-    val cornerRadius = 20.dp
-    val reducedRadius = 5.dp
-
-    val shape = RoundedCornerShape(
-        topStart = if (isFirst) cornerRadius else reducedRadius,
-        topEnd = if (isFirst) cornerRadius else reducedRadius,
-        bottomStart = if (isLast) cornerRadius else reducedRadius,
-        bottomEnd = if (isLast) cornerRadius else reducedRadius,
-    )
+    val shape = connectedSettingsShape(isFirst, isLast)
 
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -134,13 +134,16 @@ fun Material3SettingsItemRow(
 
     val backgroundColor by animateColorAsState(
         targetValue = when {
-            !item.enabled -> (item.containerColor ?: MaterialTheme.colorScheme.surfaceContainer).copy(alpha = 0.38f)
-            isPressed -> item.containerColor?.let { it.copy(alpha = it.alpha * 1.2f) } ?: MaterialTheme.colorScheme.surfaceContainerHigh
-            else -> item.containerColor ?: MaterialTheme.colorScheme.surfaceContainer
+            !item.enabled -> (item.containerColor ?: MaterialTheme.colorScheme.surfaceContainerHighest).copy(alpha = 0.38f)
+            isPressed -> item.containerColor?.let { it.copy(alpha = it.alpha * 1.2f) } ?: MaterialTheme.colorScheme.surfaceContainerHighest
+            else -> item.containerColor ?: MaterialTheme.colorScheme.surfaceContainerHighest
         },
         label = "backgroundColor",
         animationSpec = if (reduceMotion) snap() else spring(),
     )
+
+    val hasChevron = item.showChevron ?: (item.onClick != null && item.trailingContent == null)
+    val trailingValue = item.value != null || item.trailingPreview != null
 
     Column(
         modifier = item.modifier
@@ -215,7 +218,23 @@ fun Material3SettingsItemRow(
             if (item.trailingContent != null) {
                 Spacer(modifier = Modifier.width(8.dp))
                 item.trailingContent.invoke()
-            } else if (item.expandableContent != null) {
+            } else if (trailingValue) {
+                Spacer(modifier = Modifier.width(8.dp))
+                item.value?.let { value ->
+                    Text(
+                        text = value,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    )
+                }
+                item.trailingPreview?.invoke()
+                if (hasChevron) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    SettingsChevron()
+                }
+            } else if (item.expandableContent != null || hasChevron) {
                 val rotation by animateFloatAsState(
                     targetValue = if (item.expanded) 90f else 0f,
                     animationSpec = if (reduceMotion) snap() else tween(200)
@@ -278,7 +297,7 @@ fun SettingsSubScreen(
 
     Scaffold(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        containerColor = MaterialTheme.colorScheme.surface,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
         topBar = {
             LargeTopAppBar(
@@ -289,8 +308,8 @@ fun SettingsSubScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                 ),
                 windowInsets = TopAppBarDefaults.windowInsets,
                 scrollBehavior = scrollBehavior
@@ -324,6 +343,9 @@ data class Material3SettingsItem(
     val title: @Composable () -> Unit,
     val description: (@Composable () -> Unit)? = null,
     val trailingContent: (@Composable () -> Unit)? = null,
+    val trailingPreview: (@Composable () -> Unit)? = null,
+    val value: String? = null,
+    val showChevron: Boolean? = null,
     val enabled: Boolean = true,
     val iconContainerColor: Color? = null,
     val iconTint: Color? = null,
@@ -333,6 +355,15 @@ data class Material3SettingsItem(
     val expanded: Boolean = false,
     val expandableContent: (@Composable () -> Unit)? = null,
 )
+
+@Composable
+private fun SettingsChevron() {
+    Icon(
+        imageVector = Icons.Rounded.ChevronRight,
+        contentDescription = null,
+        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
 
 @Composable
 fun switchSettingsItem(

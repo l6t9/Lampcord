@@ -47,8 +47,8 @@ fun ConnectionsSettingsContent() {
                         Material3SettingsItem(
                             icon = Icons.Filled.Public,
                             title = { Text(connection.name) },
-                            description = { Text(connection.type) },
-                            trailingContent = {
+                            value = connection.type,
+                            trailingPreview = {
                                 IconButton(onClick = { /* TODO */ }) {
                                     Icon(Icons.Filled.Delete, null, tint = MaterialTheme.colorScheme.error)
                                 }

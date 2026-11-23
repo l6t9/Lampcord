@@ -52,7 +52,8 @@ fun StickerPicker(
     emojiStore: EmojiStore = koinInject(),
     navigationStore: NavigationStore = koinInject(),
     userApi: UserApi = koinInject(),
-    onStickerSelected: (Sticker) -> Unit
+    onStickerSelected: (Sticker) -> Unit,
+    userScrollEnabled: Boolean = true
 ) {
     val guilds by guildStore.guilds.collectAsState()
     val selectedGuild = navigationStore.selectedGuild
@@ -188,6 +189,7 @@ fun StickerPicker(
         Column(modifier = Modifier.fillMaxSize()) {
             LazyColumn(
                 state = listState,
+                userScrollEnabled = userScrollEnabled,
                 modifier = Modifier
                     .weight(1f),
             contentPadding = PaddingValues(4.dp)
@@ -309,6 +311,7 @@ fun StickerPicker(
                 StickerServerBar(
                     groups = filteredStickerGroups,
                     selectedIndex = selectedGroupIndex,
+                    userScrollEnabled = userScrollEnabled,
                     onSelect = { index ->
                         selectedGroupIndex = index
                         coroutineScope.launch {
@@ -329,12 +332,14 @@ private fun StickerServerBar(
     groups: List<StickerPack>,
     selectedIndex: Int,
     guildStore: GuildStore = koinInject(),
-    onSelect: (Int) -> Unit
+    onSelect: (Int) -> Unit,
+    userScrollEnabled: Boolean = true
 ) {
     val guilds by guildStore.guilds.collectAsState()
     Column {
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         LazyRow(
+            userScrollEnabled = userScrollEnabled,
             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically

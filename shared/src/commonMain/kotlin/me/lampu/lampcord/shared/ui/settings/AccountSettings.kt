@@ -97,14 +97,10 @@ fun AccountSettingsContent(userVal: me.lampu.lampcord.shared.model.User) {
                 ),
                 Material3SettingsItem(
                     title = { Text(stringResource(Res.string.two_fa)) },
-                    description = { 
-                        Text(
-                            text = stringResource(
-                                if (userVal.mfa_enabled == true) Res.string.lampcord_settings_two_fa_enabled else Res.string.lampcord_settings_two_fa_disabled
-                            ),
-                            color = if (userVal.mfa_enabled == true) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    },
+                    value = stringResource(
+                        if (userVal.mfa_enabled == true) Res.string.lampcord_settings_two_fa_enabled
+                        else Res.string.lampcord_settings_two_fa_disabled
+                    ),
                     onClick = { /* TODO */ }
                 )
             )

@@ -25,6 +25,21 @@ class CommandStore(
 
     var selectedGroup by mutableStateOf<ApplicationCommandOption?>(null)
     var selectedSubCommand by mutableStateOf<ApplicationCommandOption?>(null)
+    var activeOptionName by mutableStateOf<String?>(null)
+
+    fun activateCommand(command: ApplicationCommand) {
+        activeCommand = command
+        commandOptions.clear()
+        resetSubCommand()
+        activeOptionName = null
+    }
+
+    fun clearActiveCommand() {
+        activeCommand = null
+        commandOptions.clear()
+        resetSubCommand()
+        activeOptionName = null
+    }
 
     fun setCommands(commands: List<ApplicationCommand>, applications: List<Application>) {
         availableCommands.clear()
@@ -105,5 +120,6 @@ class CommandStore(
         availableCommands.clear()
         availableApplications.clear()
         resetSubCommand()
+        activeOptionName = null
     }
 }

@@ -124,7 +124,7 @@ fun SettingsSearchResults(
         if (results.isEmpty()) {
             Surface(
                 shape = RoundedCornerShape(20.dp),
-                color = MaterialTheme.colorScheme.surfaceContainer,
+                color = MaterialTheme.colorScheme.surfaceContainerHighest,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = horizontalPadding),
             ) {
                 Column(
@@ -171,21 +171,14 @@ private fun SettingsSearchResultRow(
     horizontalPadding: Dp,
     onClick: () -> Unit,
 ) {
-    val cornerRadius = 20.dp
-    val reducedRadius = 5.dp
-    val shape = RoundedCornerShape(
-        topStart = if (isFirst) cornerRadius else reducedRadius,
-        topEnd = if (isFirst) cornerRadius else reducedRadius,
-        bottomStart = if (isLast) cornerRadius else reducedRadius,
-        bottomEnd = if (isLast) cornerRadius else reducedRadius,
-    )
+    val shape = connectedSettingsShape(isFirst, isLast)
     
     val path = listOfNotNull(entry.screen, entry.section).distinct().joinToString(" / ")
 
     Surface(
         onClick = onClick,
         shape = shape,
-        color = MaterialTheme.colorScheme.surfaceContainer,
+        color = MaterialTheme.colorScheme.surfaceContainerHighest,
         modifier = Modifier.fillMaxWidth().padding(horizontal = horizontalPadding),
     ) {
         Row(

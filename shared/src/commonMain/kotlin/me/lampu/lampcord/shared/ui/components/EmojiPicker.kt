@@ -17,12 +17,14 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -32,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.text.font.FontWeight
@@ -78,9 +81,16 @@ fun EmojiPicker(
     settingsStore: SettingsStore = koinInject(),
     userApi: UserApi = koinInject(),
     modifier: Modifier = Modifier,
-    onKeyboardClick: (() -> Unit)? = null,
+    /** Discord returns to the system keyboard after sending a GIF or sticker. */
+    onSwitchToKeyboard: (() -> Unit)? = null,
 
     fillAvailableHeight: Boolean = false,
+
+    /** Disabled at a sheet's peek detent so dragging controls the sheet, not the list. */
+    scrollEnabled: Boolean = true,
+
+    /** Phoenix expands the custom keyboard sheet when its search field is tapped. */
+    onSearchFocused: (() -> Unit)? = null,
 
     emojisOnly: Boolean = false,
     onEmojiSelected: (Emoji) -> Unit
@@ -206,7 +216,6 @@ fun EmojiPicker(
     var showCloneModal by remember { mutableStateOf(false) }
     val isMobile = getPlatformName() == "android" || getPlatformName() == "ios"
     val searchFocusRequester = remember { FocusRequester() }
-    val showKeyboardButton = false
 
     val imeHeight = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
     val keyboardHeight = remember(imeHeight) {
@@ -324,58 +333,78 @@ fun EmojiPicker(
                     }
                 }
 
-                TextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 4.dp)
-                            .heightIn(min = 44.dp)
-                            .focusRequester(searchFocusRequester),
-                        placeholder = {
-                            Text(
-                                when (selectedTab) {
-                                    0 -> "Find the perfect emoji"
-                                    1 -> "Search GIFs (Klipy)"
-                                    else -> "Search stickers"
-                                },
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                // Phoenix's SearchBar is a 40dp "md" input: 8dp radius, 1dp
+                // outline, 12dp horizontal/8dp vertical padding, leading
+                // magnifier and a clear button only. There is no keyboard button.
+                val searchShape = RoundedCornerShape(8.dp)
+                val searchTextStyle = MaterialTheme.typography.bodyMedium.copy(
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                BasicTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 1.dp)
+                        .height(40.dp)
+                        .background(MaterialTheme.colorScheme.surfaceContainerLow, searchShape)
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, searchShape)
+                        .focusRequester(searchFocusRequester)
+                        .onFocusChanged { if (it.isFocused) onSearchFocused?.invoke() },
+                    singleLine = true,
+                    maxLines = 1,
+                    textStyle = searchTextStyle,
+                    decorationBox = { innerTextField ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Filled.Search,
+                                null,
+                                modifier = Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                             )
-                        },
-                        leadingIcon = { Icon(Icons.Filled.Search, null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)) },
-                        trailingIcon = if (searchQuery.isNotEmpty() || showKeyboardButton) {
-                            {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    if (searchQuery.isNotEmpty()) {
-                                        IconButton(onClick = { searchQuery = "" }) {
-                                            Icon(Icons.Filled.Close, null, modifier = Modifier.size(18.dp))
-                                        }
-                                    }
-                                    if (showKeyboardButton) {
-                                        IconButton(onClick = { onKeyboardClick?.invoke() }) {
-                                            Icon(
-                                                Icons.Filled.Keyboard,
-                                                "Switch to keyboard",
-                                                modifier = Modifier.size(20.dp),
-                                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        }
-                                    }
+                            Spacer(Modifier.width(8.dp))
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .wrapContentHeight(Alignment.CenterVertically)
+                            ) {
+                                if (searchQuery.isEmpty()) {
+                                    Text(
+                                        when (selectedTab) {
+                                            0 -> "Find the perfect emoji"
+                                            1 -> "Search GIFs (Klipy)"
+                                            else -> "Search stickers"
+                                        },
+                                        style = searchTextStyle,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                    )
+                                }
+                                innerTextField()
+                            }
+                            if (searchQuery.isNotEmpty()) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .clickable { searchQuery = "" },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        Icons.Filled.Close,
+                                        "Clear search",
+                                        modifier = Modifier.size(16.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                    )
                                 }
                             }
-                        } else null,
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                            focusedIndicatorColor = Color.Transparent,
-                            unfocusedIndicatorColor = Color.Transparent,
-                            disabledIndicatorColor = Color.Transparent
-                        ),
-                        shape = RoundedCornerShape(16.dp),
-                        singleLine = true,
-                        textStyle = MaterialTheme.typography.bodyMedium
-                    )
+                        }
+                    }
+                )
 
                 Box(modifier = Modifier.weight(1f).padding(16.dp)) {
                     AnimatedContent(
@@ -395,6 +424,7 @@ fun EmojiPicker(
                                 EmojiGrid(
                                     groups = filteredGroups,
                                     state = gridState,
+                                    userScrollEnabled = scrollEnabled,
                                     emojiStore = emojiStore,
                                     navigationStore = navigationStore,
                                     coroutineScope = coroutineScope,
@@ -437,6 +467,7 @@ fun EmojiPicker(
                                 query = searchQuery,
                                 onQueryChange = { searchQuery = it },
                                 mediaApi = mediaApi,
+                                userScrollEnabled = scrollEnabled,
                                 onGifSelected = { gif ->
 
                                     messageStore.sendMessageDraft(
@@ -444,12 +475,14 @@ fun EmojiPicker(
                                             ?: gif.src.takeIf { it.isNotBlank() }
                                             ?: gif.gifSrc.orEmpty()
                                     )
-                                    navigationStore.isEmojiPickerVisible = false
+                                    if (onSwitchToKeyboard != null) onSwitchToKeyboard()
+                                    else navigationStore.isEmojiPickerVisible = false
                                 }
                             )
                             2 -> StickerPicker(
                                 query = searchQuery,
                                 mediaApi = mediaApi,
+                                userScrollEnabled = scrollEnabled,
                                 onStickerSelected = { sticker ->
                                     val replacement = me.lampu.lampcord.shared.utils.FreeNitroEmojis.getStickerReplacement(
                                         sticker,
@@ -461,7 +494,8 @@ fun EmojiPicker(
                                     } else {
                                         messageStore.sendMessageDraft("", stickerIds = listOf(sticker.id))
                                     }
-                                    navigationStore.isEmojiPickerVisible = false
+                                    if (onSwitchToKeyboard != null) onSwitchToKeyboard()
+                                    else navigationStore.isEmojiPickerVisible = false
                                 }
                             )
                         }
@@ -489,6 +523,7 @@ fun EmojiGrid(
     onEmojiSelected: (Emoji) -> Unit,
     favorites: List<String> = emptyList(),
     onToggleFavorite: (String) -> Unit = {},
+    userScrollEnabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val uriHandler = LocalUriHandler.current
@@ -500,6 +535,7 @@ fun EmojiGrid(
         LazyVerticalGrid(
             columns = GridCells.Adaptive(40.dp),
             state = state,
+            userScrollEnabled = userScrollEnabled,
             modifier = modifier,
             contentPadding = PaddingValues(4.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp),

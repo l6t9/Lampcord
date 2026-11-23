@@ -76,7 +76,7 @@ fun AdditionalSettingsContent(
                 switchSettingsItem(title = "3y3 Profile Colors", description = "Invisible bio text.", checked = settingsStore.profile3y3, onCheckedChange = { if (it) show3y3Confirmation = true else settingsStore.profile3y3 = false }),
                 switchSettingsItem(title = "UserBG Banners", description = "Custom banners database.", checked = settingsStore.userBg, onCheckedChange = { if (it) showUserBgConfirmation = true else settingsStore.userBg = false }),
                 switchSettingsItem(title = "UserPFP Icons", description = "Custom icons database.", checked = settingsStore.userPfp, onCheckedChange = { if (it) showUserPfpConfirmation = true else settingsStore.userPfp = false }),
-                Material3SettingsItem(icon = Icons.Rounded.Public, title = { Text("Set UserBG Banner") }, description = { Text("Join server.") }, onClick = { uriHandler.openUri("https://discord.gg/ECg96KZ3Fh") }),
+                Material3SettingsItem(icon = Icons.Rounded.Public, title = { Text("Set UserBG Banner") }, description = { Text("Join server.") }, showChevron = false, onClick = { uriHandler.openUri("https://discord.gg/ECg96KZ3Fh") }),
             )
         )
 
@@ -197,7 +197,7 @@ fun AdditionalSettingsContent(
                 }
                 add(Material3SettingsItem(
                     title = { Text("Clear Logged Messages") },
-                    description = { Text("Permanently delete every message saved by Message Logger on this device.") },
+                    showChevron = false,
                     onClick = { showClearLoggerConfirmation = true }
                 ))
             }
@@ -209,7 +209,7 @@ fun AdditionalSettingsContent(
                 Material3SettingsItem(
                     icon = Icons.Rounded.TextFields,
                     title = { Text("Text Replacement Rules") },
-                    description = { Text("Manage automatic text substitution rules.") },
+                    value = "${settingsStore.textReplaceRules.size} rules",
                     onClick = {
                         if (platform != "android" && platform != "ios") {
                             currentSubTab = "text_replace"
