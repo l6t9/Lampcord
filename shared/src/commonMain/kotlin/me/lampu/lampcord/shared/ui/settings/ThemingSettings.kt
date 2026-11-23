@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -108,18 +109,7 @@ fun ThemeSettingsContent(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Material3SettingsGroup(
-            title = "Theme Mode",
-            content = {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                ) {
-                    ThemeModeControls(settingsStore, ::updateTheme)
-                }
-            },
-        )
+        ThemeModeControls(settingsStore, ::updateTheme)
 
         ColorPaletteSettings(settingsStore)
 
@@ -246,24 +236,49 @@ private fun ThemeCarousel(
             state = carouselState,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(232.dp),
+                .height(221.dp)
+                .padding(horizontal = 24.dp),
             maxItemWidth = 240.dp,
-            itemSpacing = 12.dp,
-            contentPadding = PaddingValues(horizontal = 24.dp),
+            itemSpacing = 8.dp,
+            contentPadding = PaddingValues(horizontal = 16.dp),
         ) { index ->
+            val itemShape = MaterialTheme.shapes.extraLarge
+            val selected = selectedIndex == index
+            val itemModifier = Modifier
+                .fillMaxWidth()
+                .height(205.dp)
+                .maskClip(itemShape)
+                .then(
+                    if (selected && entries[index] is ThemeCarouselEntry.Installed) {
+                        Modifier.maskBorder(
+                            BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
+                            itemShape,
+                        )
+                    } else {
+                        Modifier
+                    }
+                )
             when (val entry = entries[index]) {
                 ThemeCarouselEntry.Default -> DefaultThemeCard(
-                    selected = selectedIndex == index,
+                    modifier = itemModifier,
+                    selected = selected,
                     onClick = onSelectDefault,
                 )
                 is ThemeCarouselEntry.Installed -> InstalledThemeCard(
+                    modifier = itemModifier,
                     theme = entry.theme,
-                    selected = selectedIndex == index,
+                    selected = selected,
                     onClick = { onSelectTheme(entry.theme) },
                     onEdit = { onEdit(entry.theme) },
                     onDelete = { onDelete(entry.theme) },
                 )
-                ThemeCarouselEntry.Add -> AddThemeCard(onClick = onAdd)
+                ThemeCarouselEntry.Add -> AddThemeCard(
+                    modifier = itemModifier.maskBorder(
+                        BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                        itemShape,
+                    ),
+                    onClick = onAdd,
+                )
             }
         }
 
@@ -292,14 +307,15 @@ private fun ThemeCarousel(
 
 @Composable
 private fun DefaultThemeCard(
+    modifier: Modifier = Modifier,
     selected: Boolean,
     onClick: () -> Unit,
 ) {
     val container = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh
     val content = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
     Surface(
-        modifier = Modifier.fillMaxSize(),
-        shape = MaterialTheme.shapes.large,
+        modifier = modifier,
+        shape = RectangleShape,
         color = container,
         contentColor = content,
         onClick = onClick,
@@ -326,13 +342,15 @@ private fun DefaultThemeCard(
 }
 
 @Composable
-private fun AddThemeCard(onClick: () -> Unit) {
+private fun AddThemeCard(
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
     Surface(
-        modifier = Modifier.fillMaxSize(),
-        shape = MaterialTheme.shapes.large,
+        modifier = modifier,
+        shape = RectangleShape,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         contentColor = MaterialTheme.colorScheme.onSurface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
         onClick = onClick,
     ) {
         Column(
@@ -356,6 +374,7 @@ private fun AddThemeCard(onClick: () -> Unit) {
 
 @Composable
 private fun InstalledThemeCard(
+    modifier: Modifier = Modifier,
     theme: LampcordTheme,
     selected: Boolean,
     onClick: () -> Unit,
@@ -371,11 +390,10 @@ private fun InstalledThemeCard(
     val backgroundUrl = (theme.background["url"] as? JsonPrimitive)?.contentOrNull
 
     Surface(
-        modifier = Modifier.fillMaxSize(),
-        shape = MaterialTheme.shapes.large,
+        modifier = modifier,
+        shape = RectangleShape,
         color = surface,
         contentColor = content,
-        border = if (selected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
     ) {
         Box(modifier = Modifier.fillMaxSize().clickableCursor { onClick() }) {
             if (!backgroundUrl.isNullOrBlank()) {

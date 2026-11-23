@@ -727,9 +727,7 @@ private fun MobileBaseplateContentRoot(
                 }
             }
             entry<Screen.Theme> {
-                Box(Modifier.fillMaxSize().padding(bottom = navBarHeight)) {
-                    ThemeSettings(onNavigateToEditor = { navigator.navigate(Screen.ThemeEditor(it)) }, onBack = ::onSettingsBack)
-                }
+                ThemeSettings(onNavigateToEditor = { navigator.navigate(Screen.ThemeEditor(it)) }, onBack = ::onSettingsBack)
             }
             entry<Screen.ThemeEditor> { screen: Screen.ThemeEditor ->
                 Box(Modifier.fillMaxSize()) {

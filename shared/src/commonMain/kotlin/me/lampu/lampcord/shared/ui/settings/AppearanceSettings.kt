@@ -44,6 +44,8 @@ import kotlin.io.encoding.ExperimentalEncodingApi
 
 private enum class PaletteOption { DYNAMIC, CUSTOM }
 
+private enum class ThemeModeOption { LIGHT, DARK, PURE_BLACK, AUTO }
+
 @Composable
 fun AppearanceSettings(
     onNavigateToTheming: () -> Unit,
@@ -384,55 +386,64 @@ internal fun ColorPaletteSettings(settingsStore: SettingsStore) {
 
 @Composable
 internal fun ThemeModeControls(settingsStore: SettingsStore, updateTheme: (String) -> Unit) {
-    Column(
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        SettingsButtonGroup(
-            options = listOf(ThemeMode.AUTO, null),
-            selectedOption = if (settingsStore.themeMode == ThemeMode.AUTO) ThemeMode.AUTO else if (settingsStore.pureBlack) null else ThemeMode.AUTO,
-            onOptionSelected = { mode: ThemeMode? ->
-                if (mode == null) {
-                    settingsStore.themeMode = ThemeMode.DARK
-                    settingsStore.pureBlack = true
-                } else {
-                    settingsStore.themeMode = mode
-                    settingsStore.pureBlack = false
-                }
-                if (settingsStore.syncAppearance) {
-                    updateTheme(
-                        SettingsStore.discordThemeRawValue(settingsStore.themeMode, settingsStore.pureBlack)
-                    )
-                }
-            },
-            iconProvider = { mode, isSelected ->
-                when (mode) {
-                    ThemeMode.AUTO -> if (isSelected) Icons.Filled.Sync else Icons.Rounded.Sync
-                    null -> if (isSelected) Icons.Filled.Bedtime else Icons.Rounded.Bedtime
-                    else -> null
-                }
-            },
-            labelProvider = { mode: ThemeMode? -> if (mode == ThemeMode.AUTO) "Auto" else "Pure Black" }
-        )
-
-        SettingsLargeButtonGroup(
-            options = listOf(ThemeMode.LIGHT, ThemeMode.DARK),
-            selectedOption = if (settingsStore.themeMode == ThemeMode.LIGHT) ThemeMode.LIGHT else ThemeMode.DARK,
-            onOptionSelected = { mode: ThemeMode ->
-                settingsStore.themeMode = mode
-                settingsStore.pureBlack = false
-                if (settingsStore.syncAppearance) {
-                    updateTheme(SettingsStore.discordThemeRawValue(mode, pureBlack = false))
-                }
-            },
-            iconProvider = { mode: ThemeMode, isSelected ->
-                when (mode) {
-                    ThemeMode.LIGHT -> if (isSelected) Icons.Filled.LightMode else Icons.Rounded.LightMode
-                    else -> if (isSelected) Icons.Filled.DarkMode else Icons.Rounded.DarkMode
-                }
-            },
-            labelProvider = { mode: ThemeMode -> if (mode == ThemeMode.LIGHT) "Light" else "Dark" }
-        )
+    val selectedOption = when {
+        settingsStore.themeMode == ThemeMode.AUTO -> ThemeModeOption.AUTO
+        settingsStore.pureBlack -> ThemeModeOption.PURE_BLACK
+        settingsStore.themeMode == ThemeMode.LIGHT -> ThemeModeOption.LIGHT
+        else -> ThemeModeOption.DARK
     }
+    Material3SettingsGroup(
+        title = "Theme Mode",
+        items = listOf(
+            selectSettingsItem(
+                title = "Theme Mode",
+                options = ThemeModeOption.entries.toList(),
+                selectedOption = selectedOption,
+                onOptionSelected = { option ->
+                    when (option) {
+                        ThemeModeOption.AUTO -> {
+                            settingsStore.themeMode = ThemeMode.AUTO
+                            settingsStore.pureBlack = false
+                        }
+                        ThemeModeOption.LIGHT -> {
+                            settingsStore.themeMode = ThemeMode.LIGHT
+                            settingsStore.pureBlack = false
+                        }
+                        ThemeModeOption.DARK -> {
+                            settingsStore.themeMode = ThemeMode.DARK
+                            settingsStore.pureBlack = false
+                        }
+                        ThemeModeOption.PURE_BLACK -> {
+                            settingsStore.themeMode = ThemeMode.DARK
+                            settingsStore.pureBlack = true
+                        }
+                    }
+                    if (settingsStore.syncAppearance) {
+                        updateTheme(
+                            SettingsStore.discordThemeRawValue(settingsStore.themeMode, settingsStore.pureBlack)
+                        )
+                    }
+                },
+                optionLabel = {
+                    when (it) {
+                        ThemeModeOption.AUTO -> "Auto"
+                        ThemeModeOption.LIGHT -> "Light"
+                        ThemeModeOption.DARK -> "Dark"
+                        ThemeModeOption.PURE_BLACK -> "Pure Black"
+                    }
+                },
+                optionIcon = { option, isSelected ->
+                    val icon = when (option) {
+                        ThemeModeOption.AUTO -> if (isSelected) Icons.Filled.Sync else Icons.Rounded.Sync
+                        ThemeModeOption.LIGHT -> if (isSelected) Icons.Filled.LightMode else Icons.Rounded.LightMode
+                        ThemeModeOption.DARK -> if (isSelected) Icons.Filled.DarkMode else Icons.Rounded.DarkMode
+                        ThemeModeOption.PURE_BLACK -> if (isSelected) Icons.Filled.Bedtime else Icons.Rounded.Bedtime
+                    }
+                    Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
+                },
+            )
+        )
+    )
 }
 
 @OptIn(ExperimentalEncodingApi::class)
