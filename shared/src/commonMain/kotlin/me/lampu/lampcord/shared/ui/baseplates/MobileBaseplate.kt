@@ -22,6 +22,7 @@ import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -60,6 +61,15 @@ import me.lampu.lampcord.shared.ui.components.GlobalSnackbarHost
 import me.lampu.lampcord.shared.ui.components.chat.ChannelSettingsScreen
 import me.lampu.lampcord.shared.ui.components.chat.PinnedMessagesScreen
 import me.lampu.lampcord.shared.ui.components.chat.SearchScreen
+import me.lampu.lampcord.shared.ui.components.sheet.CustomKeyboardGeometry
+import me.lampu.lampcord.shared.ui.components.sheet.CustomKeyboardPortal
+import me.lampu.lampcord.shared.ui.components.sheet.DraggableKeyboardSheet
+import me.lampu.lampcord.shared.ui.components.sheet.KeyboardSheetPolicy
+import me.lampu.lampcord.shared.ui.components.sheet.LocalCustomKeyboardGeometry
+import me.lampu.lampcord.shared.ui.components.sheet.LocalCustomKeyboardPortal
+import me.lampu.lampcord.shared.ui.components.sheet.LocalCustomKeyboardSheetState
+import me.lampu.lampcord.shared.ui.components.sheet.rememberKeyboardSheetDetents
+import me.lampu.lampcord.shared.ui.components.sheet.rememberKeyboardSheetState
 import me.lampu.lampcord.shared.ui.components.guilds.ServerBottomSheet
 import me.lampu.lampcord.shared.ui.components.guilds.ServerSettings
 import me.lampu.lampcord.shared.ui.components.members.MemberHeader
@@ -103,6 +113,71 @@ fun MobileBaseplate(
     userStore: UserStore = koinInject(),
     voiceStore: VoiceStore = koinInject(),
     onExitApp: () -> Unit = {}
+) {
+    val sheetState = rememberKeyboardSheetState()
+    val sheetProgress by sheetState.progress
+    val portal = remember { CustomKeyboardPortal() }
+    val (minimum, maximum) = rememberKeyboardSheetDetents(navigationStore.isChatInputFocused)
+    val geometry = remember(minimum, maximum) { CustomKeyboardGeometry(minimum, maximum) }
+
+    CompositionLocalProvider(
+        LocalCustomKeyboardSheetState provides sheetState,
+        LocalCustomKeyboardPortal provides portal,
+        LocalCustomKeyboardGeometry provides geometry
+    ) {
+        MobileBaseplateContentRoot(
+            navigationStore = navigationStore,
+            profileStore = profileStore,
+            userStore = userStore,
+            voiceStore = voiceStore,
+            onExitApp = onExitApp
+        )
+
+        // Discord's Android portal is a same-window bottom sheet. The collapsed
+        // detent and the input's bottom safe area are the same value, so the
+        // sheet starts exactly at the input's bottom edge and expands over it.
+        if (navigationStore.isCustomKeyboardPickerVisible) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.BottomCenter
+            ) {
+                if (sheetProgress > 0.01f) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                MaterialTheme.colorScheme.scrim.copy(
+                                    alpha = KeyboardSheetPolicy.backdropAlpha(sheetProgress)
+                                )
+                            )
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null
+                            ) { sheetState.collapse() }
+                    )
+                }
+                DraggableKeyboardSheet(
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                    state = sheetState,
+                    peekHeight = geometry.minimum,
+                    expandedHeight = geometry.maximum,
+                    onBackdropClick = { sheetState.collapse() }
+                ) { expanded ->
+                    portal.content?.invoke(expanded)
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class, ExperimentalFoundationApi::class)
+@Composable
+private fun MobileBaseplateContentRoot(
+    navigationStore: NavigationStore,
+    profileStore: ProfileStore,
+    userStore: UserStore,
+    voiceStore: VoiceStore,
+    onExitApp: () -> Unit
 ) {
     val presenceStore: PresenceStore = koinInject()
     val settingsStore: SettingsStore = koinInject()

@@ -49,6 +49,7 @@ import androidx.compose.ui.util.lerp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.time.TimeSource
 
 private val KeyboardSheetTopInset = 56.dp
@@ -70,7 +71,8 @@ private object CustomKeyboardHeightStore {
 class KeyboardSheetState internal constructor(
     internal val animatable: Animatable<Float, AnimationVector1D>,
     private val scope: CoroutineScope,
-    private val animationSpec: () -> FiniteAnimationSpec<Float>
+    private val animationSpec: () -> FiniteAnimationSpec<Float>,
+    private val enabled: Boolean = true
 ) {
     val progress: State<Float> = animatable.asState()
 
@@ -81,14 +83,17 @@ class KeyboardSheetState internal constructor(
     internal var onSettled: (() -> Unit)? = null
 
     fun expand() {
+        if (!enabled) return
         animateTo(1f)
     }
 
     fun collapse() {
+        if (!enabled) return
         animateTo(0f)
     }
 
     fun toggle() {
+        if (!enabled) return
         if (expanded) collapse() else expand()
     }
 
@@ -100,16 +105,28 @@ class KeyboardSheetState internal constructor(
     }
 
     internal suspend fun dragTo(value: Float) {
+        if (!enabled) return
         animatable.snapTo(value.coerceIn(0f, 1f))
     }
 
     internal suspend fun settle(velocity: Float) {
+        if (!enabled) return
         val before = animatable.value
         val target = KeyboardSheetPolicy.snapTarget(before, velocity)
         animatable.animateTo(target, animationSpec())
         if (KeyboardSheetPolicy.crossedDetent(before, target)) {
             onSettled?.invoke()
         }
+    }
+
+    companion object {
+        /** Used by layouts that render the composer but do not host a sheet. */
+        val Disabled = KeyboardSheetState(
+            animatable = Animatable(0f),
+            scope = CoroutineScope(EmptyCoroutineContext),
+            animationSpec = { snap() },
+            enabled = false
+        )
     }
 }
 

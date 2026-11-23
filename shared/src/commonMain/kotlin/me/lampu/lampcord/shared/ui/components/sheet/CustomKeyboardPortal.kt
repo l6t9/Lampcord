@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 
 /** One source of truth for the sheet detents used by both the input and the sheet. */
 data class CustomKeyboardGeometry(val minimum: Dp, val maximum: Dp)
@@ -23,14 +24,19 @@ class CustomKeyboardPortal {
         }
 }
 
+/**
+ * Layouts without a keyboard-sheet host (notably the desktop baseplate) still
+ * render ChatInputBar. They use these inert defaults instead of crashing; the
+ * mobile baseplate overrides them with the real sheet, portal, and geometry.
+ */
 val LocalCustomKeyboardSheetState = staticCompositionLocalOf<KeyboardSheetState> {
-    error("Custom keyboard sheet state is not provided")
+    KeyboardSheetState.Disabled
 }
 
 val LocalCustomKeyboardPortal = staticCompositionLocalOf<CustomKeyboardPortal> {
-    error("Custom keyboard portal is not provided")
+    CustomKeyboardPortal()
 }
 
 val LocalCustomKeyboardGeometry = staticCompositionLocalOf<CustomKeyboardGeometry> {
-    error("Custom keyboard geometry is not provided")
+    CustomKeyboardGeometry(0.dp, 0.dp)
 }
