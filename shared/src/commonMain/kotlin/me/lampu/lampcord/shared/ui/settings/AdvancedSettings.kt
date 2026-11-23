@@ -101,6 +101,7 @@ fun AdvancedSettingsContent(settingsStore: SettingsStore = koinInject()) {
                 Material3SettingsItem(
                     title = { Text(stringResource(Res.string.lampcord_settings_clear_cache)) },
                     description = { Text(stringResource(Res.string.lampcord_settings_clear_cache_desc)) },
+                    showChevron = false,
                     onClick = {
                         scope.launch {
                             withContext(Dispatchers.IO) {
@@ -114,6 +115,7 @@ fun AdvancedSettingsContent(settingsStore: SettingsStore = koinInject()) {
                 Material3SettingsItem(
                     title = { Text(stringResource(Res.string.lampcord_settings_reset_app_state)) },
                     description = { Text(stringResource(Res.string.lampcord_settings_reset_app_state_desc)) },
+                    showChevron = false,
                     onClick = { /* TODO */ }
                 )
             )

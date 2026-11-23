@@ -253,7 +253,6 @@ fun DevicesSettingsContent(sessionApi: SessionApi = koinInject()) {
                 items = listOf(
                     Material3SettingsItem(
                         title = { Text("Log Out All Other Sessions", color = MaterialTheme.colorScheme.error) },
-                        description = { Text("You'll have to log back in on all logged out devices.") },
                         onClick = { controller.logout(null) }
                     )
                 )

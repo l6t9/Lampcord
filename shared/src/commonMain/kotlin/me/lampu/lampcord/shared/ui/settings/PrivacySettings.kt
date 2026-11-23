@@ -59,42 +59,35 @@ fun PrivacySettingsContent(settingsStore: SettingsStore = koinInject()) {
         Material3SettingsGroup(
             title = stringResource(Res.string.user_explicit_content_filter),
             items = listOf(
-                Material3SettingsItem(
-                    title = { Text(stringResource(Res.string.lampcord_settings_content_filter)) },
-                    description = {
-                        Column(modifier = Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            SettingsButtonGroup(
-                                options = listOf(2, 1, 0),
-                                selectedOption = userSettings?.explicit_content_filter ?: 1,
-                                onOptionSelected = { filter: Int -> settingsStore.updateUserSettings(UserSettings.Partial(explicit_content_filter = filter)) },
-                                iconProvider = { filter: Int, isSelected ->
-                                    when (filter) {
-                                        2 -> if (isSelected) Icons.Filled.Security else Icons.Rounded.Security
-                                        1 -> if (isSelected) Icons.Filled.Favorite else Icons.Rounded.Favorite
-                                        else -> if (isSelected) Icons.Filled.Warning else Icons.Rounded.Warning
-                                    }
-                                },
-                                labelProvider = {
-                                    when (it) {
-                                        2 -> labelKeepMeSafe
-                                        1 -> labelMyFriendsAreNice
-                                        else -> labelLiveOnTheEdge
-                                    }
-                                }
-                            )
-                            Text(
-                                text = stringResource(
-                                    when (userSettings?.explicit_content_filter) {
-                                        2 -> Res.string.user_explicit_content_filter_friends_and_non_friends_help
-                                        1 -> Res.string.user_explicit_content_filter_non_friends_help
-                                        else -> Res.string.lampcord_settings_content_filter_off_help
-                                    }
-                                ),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                selectSettingsItem(
+                    title = stringResource(Res.string.lampcord_settings_content_filter),
+                    options = listOf(2, 1, 0),
+                    selectedOption = userSettings?.explicit_content_filter ?: 1,
+                    onOptionSelected = { filter: Int ->
+                        settingsStore.updateUserSettings(UserSettings.Partial(explicit_content_filter = filter))
+                    },
+                    optionLabel = { filter ->
+                        when (filter) {
+                            2 -> labelKeepMeSafe
+                            1 -> labelMyFriendsAreNice
+                            else -> labelLiveOnTheEdge
                         }
-                    }
+                    },
+                    optionIcon = { filter, selected ->
+                        val icon = when (filter) {
+                            2 -> if (selected) Icons.Filled.Security else Icons.Rounded.Security
+                            1 -> if (selected) Icons.Filled.Favorite else Icons.Rounded.Favorite
+                            else -> if (selected) Icons.Filled.Warning else Icons.Rounded.Warning
+                        }
+                        Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
+                    },
+                    description = stringResource(
+                        when (userSettings?.explicit_content_filter) {
+                            2 -> Res.string.user_explicit_content_filter_friends_and_non_friends_help
+                            1 -> Res.string.user_explicit_content_filter_non_friends_help
+                            else -> Res.string.lampcord_settings_content_filter_off_help
+                        }
+                    ),
                 )
             )
         )

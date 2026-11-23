@@ -147,33 +147,21 @@ fun ChatSettingsContent(
         Material3SettingsGroup(
             title = "Gestures",
             items = buildList {
-                add(Material3SettingsItem(
-                    title = { Text("TapTap Action") },
-                    description = {
-                        Column(modifier = Modifier.padding(top = 8.dp)) {
-                            SettingsButtonGroup(
-                                options = TapTapAction.entries.toList(),
-                                selectedOption = Settings.shared.tapTap,
-                                onOptionSelected = { Settings.shared.tapTap = it },
-                                iconProvider = { gesture: TapTapAction, isSelected ->
-                                    when (gesture) {
-                                        TapTapAction.REPLY_OR_EDIT -> if (isSelected) Icons.Filled.Reply else Icons.Rounded.Reply
-                                        TapTapAction.EMOJI_PICKER -> if (isSelected) Icons.Filled.AddReaction else Icons.Rounded.AddReaction
-                                        TapTapAction.DELETE_MESSAGE -> if (isSelected) Icons.Filled.Delete else Icons.Rounded.Delete
-                                        TapTapAction.DISABLED -> if (isSelected) Icons.Filled.Close else Icons.Rounded.Close
-                                    }
-                                },
-                                labelProvider = {
-                                    when (it) {
-                                        TapTapAction.REPLY_OR_EDIT -> "Reply/Edit"
-                                        TapTapAction.EMOJI_PICKER -> "React"
-                                        TapTapAction.DELETE_MESSAGE -> "Delete"
-                                        TapTapAction.DISABLED -> "Disabled"
-                                    }
-                                }
-                            )
+                add(selectSettingsItem(
+                    title = "TapTap Action",
+                    options = TapTapAction.entries.toList(),
+                    selectedOption = Settings.shared.tapTap,
+                    onOptionSelected = { Settings.shared.tapTap = it },
+                    optionLabel = { tapTapLabelFor(it) },
+                    optionIcon = { gesture, selected ->
+                        val icon = when (gesture) {
+                            TapTapAction.REPLY_OR_EDIT -> if (selected) Icons.Filled.Reply else Icons.Rounded.Reply
+                            TapTapAction.EMOJI_PICKER -> if (selected) Icons.Filled.AddReaction else Icons.Rounded.AddReaction
+                            TapTapAction.DELETE_MESSAGE -> if (selected) Icons.Filled.Delete else Icons.Rounded.Delete
+                            TapTapAction.DISABLED -> if (selected) Icons.Filled.Close else Icons.Rounded.Close
                         }
-                    }
+                        Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
+                    },
                 ))
                 add(switchSettingsItem(
                     title = "Swipe to Reply",
@@ -242,36 +230,38 @@ fun ChatSettingsContent(
                     checked = userSettings?.animate_emoji ?: true,
                     onCheckedChange = { settingsStore.updateUserSettings(UserSettings.Partial(animate_emoji = it)) }
                 ))
-                add(Material3SettingsItem(
-                    title = { Text("Animate Stickers") },
-                    description = {
-                        Column(modifier = Modifier.padding(top = 8.dp)) {
-                            SettingsButtonGroup(
-                                options = listOf(0, 1, 2),
-                                selectedOption = userSettings?.animate_stickers ?: 0,
-                                onOptionSelected = { settingsStore.updateUserSettings(UserSettings.Partial(animate_stickers = it)) },
-                                iconProvider = { level: Int, isSelected ->
-                                    when (level) {
-                                        0 -> if (isSelected) Icons.Filled.PlayArrow else Icons.Rounded.PlayArrow
-                                        1 -> if (isSelected) Icons.Filled.AddReaction else Icons.Rounded.AddReaction
-                                        else -> if (isSelected) Icons.Filled.Pause else Icons.Rounded.Pause
-                                    }
-                                },
-                                labelProvider = {
-                                    when (it) {
-                                        0 -> "Always"
-                                        1 -> "On interaction"
-                                        else -> "Never"
-                                    }
-                                }
-                            )
+                add(selectSettingsItem(
+                    title = "Animate Stickers",
+                    options = listOf(0, 1, 2),
+                    selectedOption = userSettings?.animate_stickers ?: 0,
+                    onOptionSelected = { settingsStore.updateUserSettings(UserSettings.Partial(animate_stickers = it)) },
+                    optionLabel = { animateStickersLabelFor(it) },
+                    optionIcon = { level, selected ->
+                        val icon = when (level) {
+                            0 -> if (selected) Icons.Filled.PlayArrow else Icons.Rounded.PlayArrow
+                            1 -> if (selected) Icons.Filled.AddReaction else Icons.Rounded.AddReaction
+                            else -> if (selected) Icons.Filled.Pause else Icons.Rounded.Pause
                         }
-                    }
+                        Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
+                    },
                 ))
             }
         )
 
     }
+}
+
+private fun tapTapLabelFor(action: TapTapAction): String = when (action) {
+    TapTapAction.REPLY_OR_EDIT -> "Reply/Edit"
+    TapTapAction.EMOJI_PICKER -> "React"
+    TapTapAction.DELETE_MESSAGE -> "Delete"
+    TapTapAction.DISABLED -> "Disabled"
+}
+
+private fun animateStickersLabelFor(level: Int): String = when (level) {
+    0 -> "Always"
+    1 -> "On interaction"
+    else -> "Never"
 }
 
 @Composable

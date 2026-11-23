@@ -111,6 +111,29 @@ class NavigationStore(
     var isNotificationsSettingsVisible by mutableStateOf(false)
     var isMediaPickerVisible by mutableStateOf(false)
     var isEmojiPickerVisible by mutableStateOf(false)
+
+    /** Discord only learns a custom-keyboard height while a chat input is focused. */
+    var isChatInputFocused by mutableStateOf(false)
+
+    /** The expression and media pickers share one custom-keyboard surface. */
+    val isCustomKeyboardPickerVisible: Boolean
+        get() = isMediaPickerVisible || isEmojiPickerVisible
+
+    fun openEmojiPicker() {
+        isMediaPickerVisible = false
+        isEmojiPickerVisible = true
+    }
+
+    fun openMediaPicker() {
+        isEmojiPickerVisible = false
+        isMediaPickerVisible = true
+    }
+
+    fun closeCustomKeyboardPicker() {
+        isEmojiPickerVisible = false
+        isMediaPickerVisible = false
+    }
+
     var isAddFriendVisible by mutableStateOf(false)
     var isPinsVisible by mutableStateOf(false)
     var isThreadPanelVisible by mutableStateOf(false)

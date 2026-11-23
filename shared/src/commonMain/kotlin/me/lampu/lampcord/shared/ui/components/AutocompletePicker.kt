@@ -1,13 +1,15 @@
 package me.lampu.lampcord.shared.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -28,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -39,7 +42,10 @@ import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.state.AutocompleteStore
 import me.lampu.lampcord.shared.ui.icons.Icons
 import org.koin.compose.koinInject
-import androidx.compose.foundation.layout.fillMaxSize
+
+private val AutocompleteRowHeight = 48.dp
+private val AutocompleteIconSize = 32.dp
+private val AutocompleteMaxHeight = 200.dp
 
 @Composable
 fun AutocompletePicker(
@@ -52,168 +58,259 @@ fun AutocompletePicker(
     onItemSelected: (AutocompleteItem) -> Unit
 ) {
     val items = if (isSearch) autocompleteStore.searchAutocompleteItems else autocompleteStore.autocompleteItems
-
     if (items.isEmpty()) return
 
     val scrollState = rememberLazyListState()
-    
-    LaunchedEffect(selectedIndex) {
-        if (selectedIndex >= 0 && selectedIndex < items.size) {
-            if (!Settings.shared.reduceMotion) scrollState.animateScrollToItem(selectedIndex) else scrollState.scrollToItem(selectedIndex)
+    val reduceMotion = Settings.shared.reduceMotion
+
+    LaunchedEffect(selectedIndex, items.size) {
+        if (selectedIndex in 0 until items.size) {
+            if (reduceMotion) {
+                scrollState.scrollToItem(selectedIndex)
+            } else {
+                scrollState.animateScrollToItem(selectedIndex)
+            }
         }
     }
 
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(max = 320.dp),
-        shape = RoundedCornerShape(12.dp),
+            .heightIn(max = AutocompleteMaxHeight),
+        shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
-        tonalElevation = 6.dp,
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
+        ),
+        tonalElevation = 2.dp
     ) {
         Column {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                val headerTitle = when(type) {
-                    AutocompleteType.MENTION -> "Members & Roles"
-                    AutocompleteType.USER -> "Members"
-                    AutocompleteType.CHANNEL -> "Channels"
-                    AutocompleteType.COMMAND -> "Commands"
-                    AutocompleteType.EMOJI -> "Emojis"
-                    AutocompleteType.ROLE -> ""
-                }
-                
-                Text(
-                    text = headerTitle.uppercase(),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 0.5.sp
-                )
+            Text(
+                text = autocompleteSectionTitle(type, query),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            )
 
-                if (query.isNotEmpty()) {
-                    Text(
-                        text = "Matching \"$query\"",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-            
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f))
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
+            )
 
             LazyColumn(
                 state = scrollState,
                 modifier = Modifier.fillMaxWidth(),
-                contentPadding = PaddingValues(6.dp),
-                verticalArrangement = Arrangement.spacedBy(2.dp)
+                contentPadding = PaddingValues(vertical = 2.dp)
             ) {
                 itemsIndexed(items, key = { _, item -> item.id }) { index, item ->
-                    val isSelected = index == selectedIndex
-                    Surface(
-                        onClick = { onItemSelected(item) },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(8.dp),
-                        color = if (isSelected) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Transparent
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            val avatarSize = if (type == AutocompleteType.EMOJI) 32.dp else 28.dp
-                            Box(modifier = Modifier.size(avatarSize)) {
-                                Box(
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    if (item.icon != null) {
-                                        val imageShape = when(type) {
-                                            AutocompleteType.MENTION, AutocompleteType.USER -> CircleShape
-                                            AutocompleteType.EMOJI -> androidx.compose.ui.graphics.RectangleShape
-                                            else -> RoundedCornerShape(4.dp)
-                                        }
-                                        AsyncImage(
-                                            model = item.icon,
-                                            contentDescription = null,
-                                            modifier = Modifier.fillMaxSize().clip(imageShape),
-                                            contentScale = if (type == AutocompleteType.EMOJI) ContentScale.Fit else ContentScale.Crop
-                                        )
-                                    } else if (item.iconType != null) {
-                                        Icon(
-                                            imageVector = item.iconType,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(22.dp),
-                                            tint = item.color ?: MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    } else {
-                                        Box(
-                                            modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(item.title.take(1).uppercase(), style = MaterialTheme.typography.labelMedium)
-                                        }
-                                    }
-                                }
+                    if (index > 0) {
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
+                    }
+                    AutocompleteResultRow(
+                        item = item,
+                        type = type,
+                        selected = index == selectedIndex,
+                        onItemSelected = onItemSelected
+                    )
+                }
+            }
+        }
+    }
+}
 
-                                if (item.status != null) {
-                                    StatusIndicator(
-                                        status = item.status,
-                                        size = 10.dp,
-                                        borderColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                                        modifier = Modifier.align(Alignment.BottomEnd)
-                                    )
-                                }
-                            }
-                            
-                            Spacer(Modifier.width(12.dp))
-                            
-                            Column(modifier = Modifier.weight(1f)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    UsernameView(
-                                        name = item.title,
-                                        style = null,
-                                        baseStyle = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                                        color = item.color ?: MaterialTheme.colorScheme.onSurface,
-                                        roleGradient = item.gradient,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.weight(1f, fill = false)
-                                    )
-                                    if (item.isBot) {
-                                        Spacer(Modifier.width(6.dp))
-                                        Surface(
-                                            shape = RoundedCornerShape(4.dp),
-                                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
-                                        ) {
-                                            Text(
-                                                text = "BOT",
-                                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                                color = MaterialTheme.colorScheme.primary,
-                                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
-                                            )
-                                        }
-                                    }
-                                }
-                                if (item.subtitle != null) {
-                                    Text(
-                                        text = item.subtitle,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                            }
-                        }
+@Composable
+private fun autocompleteSectionTitle(type: AutocompleteType, query: String): String {
+    val title = when (type) {
+        AutocompleteType.MENTION -> "Members & roles"
+        AutocompleteType.USER -> "Members"
+        AutocompleteType.CHANNEL -> "Channels"
+        AutocompleteType.COMMAND -> "Commands"
+        AutocompleteType.EMOJI -> "Emojis"
+        AutocompleteType.ROLE -> "Roles"
+    }
+    return if (query.isBlank()) title else "$title matching \"$query\""
+}
+
+@Composable
+private fun AutocompleteResultRow(
+    item: AutocompleteItem,
+    type: AutocompleteType,
+    selected: Boolean,
+    onItemSelected: (AutocompleteItem) -> Unit
+) {
+    val isPerson = type == AutocompleteType.MENTION || type == AutocompleteType.USER
+    val isEmoji = type == AutocompleteType.EMOJI
+    val isCommand = type == AutocompleteType.COMMAND
+    val rowBackground = if (selected) {
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
+    } else {
+        Color.Transparent
+    }
+
+    val description = if (isCommand) item.subtitle else null
+    val trailing = when {
+        isCommand -> null
+        isPerson -> item.subtitle?.takeIf { it != item.title }
+        else -> item.subtitle
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(AutocompleteRowHeight)
+            .background(rowBackground)
+            .clickable(interactionSource = null, indication = null) { onItemSelected(item) }
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(modifier = Modifier.size(AutocompleteIconSize)) {
+            when {
+                item.icon != null -> {
+                    val shape = when {
+                        isPerson -> CircleShape
+                        isEmoji -> RectangleShape
+                        else -> RoundedCornerShape(8.dp)
+                    }
+                    AsyncImage(
+                        model = item.icon,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize().clip(shape),
+                        contentScale = if (isEmoji) ContentScale.Fit else ContentScale.Crop
+                    )
+                }
+                item.iconType != null -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                MaterialTheme.colorScheme.surfaceContainerHighest,
+                                RoundedCornerShape(8.dp)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = item.iconType,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
+                            tint = item.color ?: MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                        )
+                    }
+                }
+                isCommand -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                MaterialTheme.colorScheme.primaryContainer,
+                                RoundedCornerShape(8.dp)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "/",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                }
+                else -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize().background(
+                            MaterialTheme.colorScheme.surfaceVariant,
+                            CircleShape
+                        ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = item.title.take(1).uppercase(),
+                            style = MaterialTheme.typography.labelLarge
+                        )
                     }
                 }
             }
+
+            if (isPerson && item.status != null) {
+                StatusIndicator(
+                    status = item.status,
+                    size = 10.dp,
+                    borderColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                    modifier = Modifier.align(Alignment.BottomEnd)
+                )
+            }
+        }
+
+        Spacer(Modifier.width(12.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (isPerson && (item.color != null || item.gradient != null)) {
+                    UsernameView(
+                        name = item.title,
+                        style = null,
+                        baseStyle = MaterialTheme.typography.bodyLarge.copy(
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        color = item.color ?: MaterialTheme.colorScheme.onSurface,
+                        roleGradient = item.gradient,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                } else {
+                    Text(
+                        text = item.title,
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                }
+                if (item.isBot) {
+                    Spacer(Modifier.width(6.dp))
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
+                    ) {
+                        Text(
+                            text = "BOT",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                        )
+                    }
+                }
+            }
+            if (description != null) {
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 14.sp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+
+        if (trailing != null) {
+            Spacer(Modifier.width(12.dp))
+            Text(
+                text = trailing,
+                style = MaterialTheme.typography.bodySmall.copy(fontSize = 14.sp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.heightIn(max = AutocompleteRowHeight)
+            )
         }
     }
 }

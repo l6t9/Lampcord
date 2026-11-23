@@ -41,7 +41,8 @@ fun GifPicker(
     onQueryChange: (String) -> Unit,
     mediaApi: MediaApi,
     onGifSelected: (Gif) -> Unit,
-    userApi: UserApi = koinInject()
+    userApi: UserApi = koinInject(),
+    userScrollEnabled: Boolean = true
 ) {
     var gifResults by remember { mutableStateOf<List<Gif>>(emptyList()) }
     var categories by remember { mutableStateOf<List<GifCategory>>(emptyList()) }
@@ -95,6 +96,7 @@ fun GifPicker(
         if (showFavorites || query.isNotBlank()) {
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
+                userScrollEnabled = userScrollEnabled,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(4.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -113,6 +115,7 @@ fun GifPicker(
         } else {
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
+                userScrollEnabled = userScrollEnabled,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(4.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),

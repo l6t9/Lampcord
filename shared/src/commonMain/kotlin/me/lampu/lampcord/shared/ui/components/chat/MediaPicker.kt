@@ -46,8 +46,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberBottomSheetState
-import androidx.compose.material3.SheetValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -66,8 +64,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Popup
-import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.zIndex
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -79,7 +75,6 @@ import me.lampu.lampcord.shared.model.PollMedia
 import me.lampu.lampcord.shared.state.MessageStore
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.ui.components.AsyncImage
-import me.lampu.lampcord.shared.ui.components.DiscordBottomSheet
 import me.lampu.lampcord.shared.ui.components.ContainedLoadingIndicator
 import me.lampu.lampcord.shared.ui.components.VideoThumbnail
 import me.lampu.lampcord.shared.ui.icons.Icons
@@ -92,13 +87,14 @@ import me.lampu.lampcord.shared.utils.getPlatformName
 import org.koin.compose.koinInject
 import kotlin.time.Duration.Companion.milliseconds
 import me.lampu.lampcord.shared.ui.kit.clickableCursor
-import me.lampu.lampcord.shared.ui.components.rememberDiscordSheetState
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun MediaPicker(
     onDismiss: () -> Unit,
-    messageStore: MessageStore = koinInject()
+    messageStore: MessageStore = koinInject(),
+    /** Supplied by the shared custom-keyboard sheet on mobile. */
+    sheetExpanded: Boolean = false
 ) {
     val isMobile = getPlatformName() == "android" || getPlatformName() == "ios"
     val reduceMotion = Settings.shared.reduceMotion
@@ -111,13 +107,15 @@ fun MediaPicker(
         isToolbarVisible = true
     }
 
-    val animatedDismiss = {
+    val animatedDismiss: () -> Unit = {
         if (reduceMotion) {
             onDismiss()
-        } else scope.launch {
-            isToolbarVisible = false
-            delay(100.milliseconds)
-            onDismiss()
+        } else {
+            scope.launch {
+                isToolbarVisible = false
+                delay(100.milliseconds)
+                onDismiss()
+            }
         }
     }
 
@@ -130,51 +128,46 @@ fun MediaPicker(
     )
 
     if (isMobile) {
-        DiscordBottomSheet(
-            fillHeight = true,
-            onDismissRequest = { animatedDismiss() },
-            sheetState = rememberDiscordSheetState()
-        ) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                MediaPickerContent(
-                    onDismiss = onDismiss,
-                    isMobile = true,
+        // The media keyboard is hosted by the shared custom-keyboard sheet, so
+        // it sits below the input at the collapsed detent and can expand over
+        // the input just like the expression picker.
+        Box(modifier = Modifier.fillMaxSize()) {
+            MediaPickerContent(
+                onDismiss = animatedDismiss,
+                isMobile = true,
+                selectedTab = selectedTab,
+                onTabSelected = { selectedTab = it },
+                scrollEnabled = sheetExpanded,
+                messageStore = messageStore
+            )
+
+            val transition = updateTransition(targetState = isToolbarVisible, label = "ToolbarTransition")
+            val toolbarAlpha by transition.animateFloat(
+                transitionSpec = { if (reduceMotion) androidx.compose.animation.core.snap() else if (targetState) tween(400) else tween(100) },
+                label = "alpha"
+            ) { state -> if (state) 1f else 0f }
+            val toolbarSlideOffset by transition.animateDp(
+                transitionSpec = { if (reduceMotion) androidx.compose.animation.core.snap() else if (targetState) tween(400) else tween(100) },
+                label = "slide"
+            ) { state -> if (state) 0.dp else 40.dp }
+
+            // Discord renders the media tabs as the sheet's footer. Keeping
+            // them in the sheet window avoids a second overlay above the input.
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .graphicsLayer {
+                        alpha = toolbarAlpha
+                        translationY = toolbarSlideOffset.toPx()
+                    }
+                    .navigationBarsPadding()
+                    .zIndex(1f)
+            ) {
+                MediaPickerTabs(
                     selectedTab = selectedTab,
                     onTabSelected = { selectedTab = it },
-                    messageStore = messageStore
+                    onSystemPickerClick = { showSystemFilePicker = true }
                 )
-
-                val transition = updateTransition(targetState = isToolbarVisible, label = "ToolbarTransition")
-                val toolbarAlpha by transition.animateFloat(
-                    transitionSpec = { if (reduceMotion) androidx.compose.animation.core.snap() else if (targetState) tween(400) else tween(100) },
-                    label = "alpha"
-                ) { state -> if (state) 1f else 0f }
-                val toolbarSlideOffset by transition.animateDp(
-                    transitionSpec = { if (reduceMotion) androidx.compose.animation.core.snap() else if (targetState) tween(400) else tween(100) },
-                    label = "slide"
-                ) { state -> if (state) 0.dp else 40.dp }
-
-                Popup(
-                    alignment = Alignment.BottomCenter,
-                    properties = PopupProperties(
-                        focusable = false,
-                        dismissOnBackPress = false,
-                        dismissOnClickOutside = false
-                    )
-                ) {
-                    MediaPickerTabs(
-                        selectedTab = selectedTab,
-                        onTabSelected = { selectedTab = it },
-                        onSystemPickerClick = { showSystemFilePicker = true },
-                        modifier = Modifier
-                            .graphicsLayer {
-                                alpha = toolbarAlpha
-                                translationY = toolbarSlideOffset.toPx()
-                            }
-                            .navigationBarsPadding()
-                            .zIndex(1f)
-                    )
-                }
             }
         }
     } else {
@@ -203,6 +196,7 @@ private fun MediaPickerContent(
     isMobile: Boolean,
     selectedTab: Int,
     onTabSelected: (Int) -> Unit,
+    scrollEnabled: Boolean = true,
     onSystemPickerClick: (() -> Unit)? = null,
     messageStore: MessageStore = koinInject()
 ) {
@@ -245,12 +239,14 @@ private fun MediaPickerContent(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 16.dp, end = 16.dp, top = if (isMobile) 0.dp else 8.dp, bottom = 0.dp)
-        ) {
-            if (!isMobile) {
+        // Phoenix's media keyboard is handle-only on mobile. The sheet host
+        // already draws that handle, so there is no title or Done row here.
+        if (!isMobile) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 0.dp)
+            ) {
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
@@ -258,18 +254,18 @@ private fun MediaPickerContent(
                         .size(width = 32.dp, height = 4.dp)
                         .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f), CircleShape)
                 )
-            }
 
-            Text(
-                text = tabs[selectedTab],
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.align(Alignment.Center).padding(top = if (isMobile) 0.dp else 8.dp)
-            )
-            TextButton(
-                onClick = onDismiss,
-                modifier = Modifier.align(Alignment.CenterEnd).padding(top = if (isMobile) 0.dp else 8.dp)
-            ) {
-                Text(stringResource(Res.string.done))
+                Text(
+                    text = tabs[selectedTab],
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.align(Alignment.Center).padding(top = 8.dp)
+                )
+                TextButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.align(Alignment.CenterEnd).padding(top = 8.dp)
+                ) {
+                    Text(stringResource(Res.string.done))
+                }
             }
         }
 
@@ -296,6 +292,7 @@ private fun MediaPickerContent(
                     } else {
                         LazyVerticalGrid(
                             columns = GridCells.Fixed(3),
+                            userScrollEnabled = scrollEnabled,
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(bottom = 80.dp),
                             horizontalArrangement = Arrangement.spacedBy(1.dp),
@@ -404,6 +401,7 @@ private fun MediaPickerContent(
                         }
                     } else {
                         LazyColumn(
+                            userScrollEnabled = scrollEnabled,
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(bottom = 80.dp)
                         ) {
@@ -478,6 +476,7 @@ private fun MediaPickerContent(
                 }
                 4 -> {
                     LazyColumn(
+                        userScrollEnabled = scrollEnabled,
                         modifier = Modifier.fillMaxSize().padding(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(12.dp)

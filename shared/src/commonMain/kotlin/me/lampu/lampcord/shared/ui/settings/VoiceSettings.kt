@@ -22,8 +22,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.ui.components.settings.Material3SettingsGroup
+import me.lampu.lampcord.shared.ui.components.settings.Material3SettingsItem
 import me.lampu.lampcord.shared.ui.components.settings.SettingsSubScreen
-import me.lampu.lampcord.shared.ui.components.settings.expandableSettingsItem
 import me.lampu.lampcord.shared.ui.components.settings.switchSettingsItem
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.kit.clickableCursor
@@ -60,50 +60,52 @@ fun VoiceSettingsContent() {
         Material3SettingsGroup(
             title = "Input",
             items = listOf(
-                expandableSettingsItem(
-                    title = "Input Device",
-                    description = selectedInput?.name ?: "System default",
+                Material3SettingsItem(
+                    title = { Text("Input Device") },
+                    value = selectedInput?.name ?: "System default",
                     expanded = showInputs,
-                    onToggle = { showInputs = !showInputs }
-                ) {
-                    Column {
-                        inputDevices.forEach { device ->
-                            DeviceChoice(
-                                device = device,
-                                selected = device.id == (selectedInput?.id ?: ""),
-                                onSelect = {
-                                    Settings.shared.voiceInputDevice = device.id
-                                    showInputs = false
-                                }
-                            )
+                    expandableContent = {
+                        Column {
+                            inputDevices.forEach { device ->
+                                DeviceChoice(
+                                    device = device,
+                                    selected = device.id == (selectedInput?.id ?: ""),
+                                    onSelect = {
+                                        Settings.shared.voiceInputDevice = device.id
+                                        showInputs = false
+                                    }
+                                )
+                            }
                         }
-                    }
-                }
+                    },
+                    onClick = { showInputs = !showInputs }
+                )
             )
         )
 
         Material3SettingsGroup(
             title = "Output",
             items = listOf(
-                expandableSettingsItem(
-                    title = "Output Device",
-                    description = selectedOutput?.name ?: "System default",
+                Material3SettingsItem(
+                    title = { Text("Output Device") },
+                    value = selectedOutput?.name ?: "System default",
                     expanded = showOutputs,
-                    onToggle = { showOutputs = !showOutputs }
-                ) {
-                    Column {
-                        outputDevices.forEach { device ->
-                            DeviceChoice(
-                                device = device,
-                                selected = device.id == (selectedOutput?.id ?: ""),
-                                onSelect = {
-                                    Settings.shared.voiceOutputDevice = device.id
-                                    showOutputs = false
-                                }
-                            )
+                    expandableContent = {
+                        Column {
+                            outputDevices.forEach { device ->
+                                DeviceChoice(
+                                    device = device,
+                                    selected = device.id == (selectedOutput?.id ?: ""),
+                                    onSelect = {
+                                        Settings.shared.voiceOutputDevice = device.id
+                                        showOutputs = false
+                                    }
+                                )
+                            }
                         }
-                    }
-                }
+                    },
+                    onClick = { showOutputs = !showOutputs }
+                )
             )
         )
 
