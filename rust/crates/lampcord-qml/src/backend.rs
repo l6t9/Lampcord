@@ -77,6 +77,10 @@ pub mod qobject {
         #[qinvokable]
         fn send_files(self: Pin<&mut LampcordBackend>, content: QString, files: QString);
 
+        /// online, idle, dnd or invisible.
+        #[qinvokable]
+        fn set_status(self: Pin<&mut LampcordBackend>, status: QString);
+
         #[qinvokable]
         fn send_typing(self: Pin<&mut LampcordBackend>);
 
@@ -325,6 +329,9 @@ fn members_json(
             .or(status)
             .unwrap_or("offline")
             .to_owned();
+        // Compose shows a phone for people online only on mobile.
+        let mobile = own.is_none() && presence.get(&id).is_some_and(|presence| presence.mobile);
+        let status = if mobile && status == "online" { "mobile".to_owned() } else { status };
         // Compose shows the custom status, else the first activity.
         let activity = own
             .and_then(|me| me.custom_status.clone())
@@ -917,6 +924,12 @@ impl qobject::LampcordBackend {
             return;
         }
         let _ = self.client.send_attachments(channel_id, content.to_string(), paths, None, None);
+    }
+
+    pub fn set_status(mut self: Pin<&mut Self>, status: QString) {
+        // Show it right away; the snapshot confirms once Discord accepts it.
+        self.as_mut().set_current_user_status(status.clone());
+        let _ = self.client.set_status(status.to_string());
     }
 
     pub fn send_typing(self: Pin<&mut Self>) {
