@@ -1,4 +1,5 @@
 mod backend;
+mod emoji;
 mod icons;
 mod palette;
 mod surface;

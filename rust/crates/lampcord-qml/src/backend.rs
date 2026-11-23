@@ -73,6 +73,10 @@ pub mod qobject {
         #[qinvokable]
         fn send_message(self: Pin<&mut LampcordBackend>, content: QString);
 
+        /// `files` is a JSON array of file:// URLs from a file dialog.
+        #[qinvokable]
+        fn send_files(self: Pin<&mut LampcordBackend>, content: QString, files: QString);
+
         #[qinvokable]
         fn send_typing(self: Pin<&mut LampcordBackend>);
 
@@ -224,6 +228,26 @@ fn storage_path() -> Option<String> {
     let dir = base.join("lampcord-qml");
     std::fs::create_dir_all(&dir).ok()?;
     Some(dir.join("accounts.json").to_string_lossy().into_owned())
+}
+
+/// A local path from a file:// URL, percent-decoding as QML hands them out.
+fn local_path(url: &str) -> Option<String> {
+    let encoded = url.strip_prefix("file://").unwrap_or(url);
+    let bytes = encoded.as_bytes();
+    let mut decoded = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%' && i + 2 < bytes.len() {
+            if let Ok(byte) = u8::from_str_radix(&encoded[i + 1..i + 3], 16) {
+                decoded.push(byte);
+                i += 3;
+                continue;
+            }
+        }
+        decoded.push(bytes[i]);
+        i += 1;
+    }
+    String::from_utf8(decoded).ok().filter(|path| !path.is_empty())
 }
 
 fn parse_id(id: &QString) -> Option<u64> {
@@ -885,6 +909,16 @@ impl qobject::LampcordBackend {
         let _ = self.client.send_message(channel_id, content, None, None);
     }
 
+    pub fn send_files(self: Pin<&mut Self>, content: QString, files: QString) {
+        let Some(channel_id) = parse_id(self.selected_channel_id()) else { return };
+        let urls: Vec<String> = serde_json::from_str(&files.to_string()).unwrap_or_default();
+        let paths: Vec<String> = urls.iter().filter_map(|url| local_path(url)).collect();
+        if paths.is_empty() {
+            return;
+        }
+        let _ = self.client.send_attachments(channel_id, content.to_string(), paths, None, None);
+    }
+
     pub fn send_typing(self: Pin<&mut Self>) {
         if let Some(channel_id) = parse_id(self.selected_channel_id()) {
             let _ = self.client.send_typing(channel_id);
@@ -995,6 +1029,12 @@ mod tests {
             serde_json::from_str(&members_json(Some(77), &[], &members, &[], Some(&me))).unwrap();
         let names: Vec<&str> = rows.iter().map(|row| row["name"].as_str().unwrap()).collect();
         assert_eq!(names, ["bob", "zed", "amy"]);
+    }
+
+    #[test]
+    fn file_urls_become_local_paths() {
+        assert_eq!(local_path("file:///home/me/My%20Cat.png").as_deref(), Some("/home/me/My Cat.png"));
+        assert_eq!(local_path("/tmp/a.txt").as_deref(), Some("/tmp/a.txt"));
     }
 
     #[test]

@@ -60,7 +60,7 @@ fn main() {
     });
 
     CxxQtBuilder::new_qml_module(QmlModule::new("Lampcord").qml_files(qml_files))
-        .files(["src/backend.rs", "src/icons.rs", "src/palette.rs", "src/surface.rs"])
+        .files(["src/backend.rs", "src/emoji.rs", "src/icons.rs", "src/palette.rs", "src/surface.rs"])
         .cpp_file("native/surface_format.cpp")
         .include_dir("native")
         .qt_module("Quick")
