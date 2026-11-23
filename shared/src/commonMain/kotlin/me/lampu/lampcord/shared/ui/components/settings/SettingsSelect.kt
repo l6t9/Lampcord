@@ -1,6 +1,5 @@
 package me.lampu.lampcord.shared.ui.components.settings
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
@@ -40,6 +39,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntOffset
@@ -194,43 +194,6 @@ fun <T> SettingsSelectRow(
     }
 }
 
-@Composable
-private fun SelectionTonalSpot(
-    label: String,
-    expanded: Boolean,
-    optionIcon: (@Composable () -> Unit)?,
-) {
-    Box(
-        modifier = Modifier
-            .background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(50))
-            .padding(horizontal = 12.dp, vertical = 6.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSecondaryContainer) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                optionIcon?.invoke()
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.widthIn(max = 160.dp),
-                )
-                Icon(
-                    imageVector = Icons.Rounded.KeyboardArrowDown,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(16.dp)
-                        .rotate(if (expanded) 180f else 0f),
-                )
-            }
-        }
-    }
-}
-
 /**
  * A connected settings row whose title and current selection share one line.
  * The selected value keeps its icon on the right and opens the same expressive
@@ -262,11 +225,33 @@ fun <T> selectSettingsItem(
         onClick = { expanded = true },
         trailingContent = {
             Box(Modifier.trackPressPosition { anchorOffset = it }) {
-                SelectionTonalSpot(
-                    label = optionLabel(selectedOption),
-                    expanded = expanded,
-                    optionIcon = optionIcon?.let { icon -> { icon(selectedOption, true) } },
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    optionIcon?.let { icon ->
+                        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.primary) {
+                            icon(selectedOption, true)
+                        }
+                    }
+                    Text(
+                        text = optionLabel(selectedOption),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        textAlign = TextAlign.End,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.widthIn(max = 128.dp),
+                    )
+                    Icon(
+                        imageVector = Icons.Rounded.KeyboardArrowDown,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .size(18.dp)
+                            .rotate(if (expanded) 180f else 0f),
+                    )
+                }
                 ExpressiveSelectionMenu(
                     expanded = expanded,
                     onDismissRequest = { expanded = false },

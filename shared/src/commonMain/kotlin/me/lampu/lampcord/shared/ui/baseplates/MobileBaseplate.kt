@@ -134,7 +134,7 @@ private fun settingsRank(name: String): Int =
         Screen.AdditionalSettings.toString() -> 130
         Screen.UpdatesSettings.toString() -> 140
         Screen.AboutSettings.toString() -> 150
-        Screen.Theming.toString() -> 160
+        Screen.Theme.toString() -> 160
         "ThemeEditor" -> 170
         else -> -1
     }
@@ -296,7 +296,7 @@ private fun MobileBaseplateContentRoot(
             Screen.ChannelsAndRoles.toString() to 8,
             Screen.ServerSettings.toString() to 9,
             Screen.ChannelSettings.toString() to 10,
-            Screen.Theming.toString() to 11,
+            Screen.Theme.toString() to 11,
             "ThemeEditor" to 12,
             Screen.VoiceSettings.toString() to 12,
         )
@@ -423,6 +423,8 @@ private fun MobileBaseplateContentRoot(
         currentRoute == Screen.AccountSettings ||
         currentRoute == Screen.ProfilesSettings ||
         currentRoute == Screen.AppearanceSettings ||
+        currentRoute == Screen.Theme ||
+        currentRoute == Screen.ThemeEditor ||
         currentRoute == Screen.AccessibilitySettings ||
         currentRoute == Screen.LanguageSettings ||
         currentRoute == Screen.PrivacySettings ||
@@ -603,7 +605,7 @@ private fun MobileBaseplateContentRoot(
                         onNavigateToAdditional = { navigator.navigate(Screen.AdditionalSettings) },
                         onNavigateToAbout = { navigator.navigate(Screen.AboutSettings) },
                         onNavigateToUpdates = { navigator.navigate(Screen.UpdatesSettings) },
-                        onNavigateToTheming = { navigator.navigate(Screen.Theming) },
+                        onNavigateToTheming = { navigator.navigate(Screen.Theme) },
                         onNavigateToNavigation = { navigator.navigate(Screen.NavigationSettings) },
                         onDismiss = ::closeSettings
                     )
@@ -618,7 +620,7 @@ private fun MobileBaseplateContentRoot(
                 ProfilesSettings(onBack = ::onSettingsBack, userStore = userStoreForProfiles)
             }
             entry<Screen.AppearanceSettings> {
-                AppearanceSettings(onNavigateToTheming = { navigator.navigate(Screen.Theming) }, onNavigateToNavigation = { navigator.navigate(Screen.NavigationSettings) }, onBack = ::onSettingsBack)
+                AppearanceSettings(onNavigateToTheming = { navigator.navigate(Screen.Theme) }, onNavigateToNavigation = { navigator.navigate(Screen.NavigationSettings) }, onBack = ::onSettingsBack)
             }
             entry<Screen.AccessibilitySettings> {
                 AccessibilitySettings(onBack = ::onSettingsBack)
@@ -724,9 +726,9 @@ private fun MobileBaseplateContentRoot(
                     }
                 }
             }
-            entry<Screen.Theming> {
+            entry<Screen.Theme> {
                 Box(Modifier.fillMaxSize().padding(bottom = navBarHeight)) {
-                    ThemingSettings(onNavigateToEditor = { navigator.navigate(Screen.ThemeEditor(it)) }, onBack = ::onSettingsBack)
+                    ThemeSettings(onNavigateToEditor = { navigator.navigate(Screen.ThemeEditor(it)) }, onBack = ::onSettingsBack)
                 }
             }
             entry<Screen.ThemeEditor> { screen: Screen.ThemeEditor ->

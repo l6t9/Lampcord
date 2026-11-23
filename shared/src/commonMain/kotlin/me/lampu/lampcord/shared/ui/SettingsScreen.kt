@@ -100,7 +100,7 @@ import me.lampu.lampcord.shared.ui.settings.NotificationsSettingsContent
 import me.lampu.lampcord.shared.ui.settings.PrivacySettingsContent
 import me.lampu.lampcord.shared.ui.settings.ProfileSettingsContent
 import me.lampu.lampcord.shared.ui.settings.ThemeEditorScreen
-import me.lampu.lampcord.shared.ui.settings.ThemingSettingsContent
+import me.lampu.lampcord.shared.ui.settings.ThemeSettingsContent
 import me.lampu.lampcord.shared.ui.settings.UpdatesContent
 import me.lampu.lampcord.shared.ui.settings.VoiceSettingsContent
 import me.lampu.lampcord.shared.ui.settings.DebugLogScreen
@@ -138,7 +138,7 @@ enum class SettingsSection(val title: String, val icon: ImageVector, val selecte
 private fun settingsPageRank(page: String): Int =
     when (page) {
         "editor" -> 100
-        "themer", "logs" -> 50
+        "theme", "logs" -> 50
         else -> SettingsSection.entries.firstOrNull { it.name == page }?.ordinal ?: 0
     }
 
@@ -671,7 +671,7 @@ fun SettingsDesktopOverlay(
             ) {
                 val title = when {
                     editingThemeJson != null -> "Theme Editor"
-                    showThemer -> "Themer"
+                    showThemer -> "Theme"
                     showDebugLogs -> "Debug Logs"
                     else -> activeCategory.title
                 }
@@ -709,7 +709,7 @@ fun SettingsDesktopOverlay(
                 val navigationState = remember(editingThemeJson, showThemer, showDebugLogs, activeCategory) {
                     when {
                         editingThemeJson != null -> "editor" to editingThemeJson
-                        showThemer -> "themer" to null
+                        showThemer -> "theme" to null
                         showDebugLogs -> "logs" to null
                         else -> activeCategory.name to null
                     }
@@ -731,8 +731,8 @@ fun SettingsDesktopOverlay(
                 ) { (target, data) ->
                     if (target == "editor") {
                         ThemeEditorScreen(themeJson = data!!, onBack = { onEditingThemeJsonChanged(null) })
-                    } else if (target == "themer") {
-                        ThemingSettingsContent(onNavigateToEditor = { onEditingThemeJsonChanged(it) })
+                    } else if (target == "theme") {
+                        ThemeSettingsContent(onNavigateToEditor = { onEditingThemeJsonChanged(it) })
                     } else if (target == "logs") {
                         DebugLogScreen(onBack = { onShowDebugLogsChanged(false) })
                     } else {
@@ -993,7 +993,7 @@ fun rememberSettingsSearchEntries(): List<SettingsSearchEntry> {
         add(SettingsSearchEntry("root-chat", "Chat", "Control how you interact with chat and media", "Chat", "App Settings", "gestures tap swipe message display", getIcon(Icons.Rounded.Forum, Icons.Filled.Forum), "rose", SettingsSearchDestination.Advanced))
         add(SettingsSearchEntry("root-notifications", "Notifications", "Control how you're notified", "Notifications", "App Settings", "push mentions sounds", getIcon(Icons.Rounded.Notifications, Icons.Filled.Notifications), "rose", SettingsSearchDestination.Notifications))
         add(SettingsSearchEntry("root-about", "About", "App information and credits", "About", "App Settings", "version info credits developer", getIcon(Icons.Rounded.Info, Icons.Filled.Info), "neutral", SettingsSearchDestination.Advanced))
-        add(SettingsSearchEntry("root-themer", "Themer", "Manage and edit themes", "Themer", "App Settings", "theming colors custom aliucord", getIcon(Icons.Rounded.Palette, Icons.Filled.Palette), "orange", SettingsSearchDestination.Theming))
+        add(SettingsSearchEntry("root-themer", "Theme", "Theme mode, wallpaper, and custom themes", "Theme", "App Settings", "theming colors custom aliucord", getIcon(Icons.Rounded.Palette, Icons.Filled.Palette), "orange", SettingsSearchDestination.Theming))
         add(SettingsSearchEntry("root-logout", "Log Out", "Sign out of your account", "Logout", "Account", "sign out exit", getIcon(Icons.AutoMirrored.Rounded.Logout, Icons.AutoMirrored.Filled.Logout), "neutral", SettingsSearchDestination.Logout))
         
         add(SettingsSearchEntry("appearance-theme", "Theme Mode", "Auto, Light, Dark, or AMOLED", "Appearance", "Theme", "dark light amoled", getIcon(Icons.Rounded.Palette, Icons.Filled.Palette), "orange", SettingsSearchDestination.Appearance))

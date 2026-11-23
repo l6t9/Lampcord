@@ -30,12 +30,12 @@ import me.lampu.lampcord.shared.settings.ThemePaletteStyle
 import me.lampu.lampcord.shared.settings.PanelAnimation
 import me.lampu.lampcord.shared.settings.PanelType
 import me.lampu.lampcord.shared.state.SettingsStore
-import me.lampu.lampcord.shared.state.ThemeStore
 import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.ExpressiveSwitch
 import me.lampu.lampcord.shared.ui.components.HsvColorPicker
 import me.lampu.lampcord.shared.ui.components.settings.*
 import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.ui.kit.clickableCursor
 import me.lampu.lampcord.shared.utils.FilePicker
 import me.lampu.lampcord.shared.utils.importCustomFont
 import org.koin.compose.koinInject
@@ -50,7 +50,6 @@ fun AppearanceSettings(
     onNavigateToNavigation: () -> Unit,
     onBack: () -> Unit,
     settingsStore: SettingsStore = koinInject(),
-    themeStore: ThemeStore = koinInject()
 ) {
     SettingsSubScreen(
         title = "Appearance",
@@ -60,7 +59,6 @@ fun AppearanceSettings(
             onNavigateToTheming = onNavigateToTheming,
             onNavigateToNavigation = onNavigateToNavigation,
             settingsStore = settingsStore,
-            themeStore = themeStore
         )
     }
 }
@@ -70,143 +68,35 @@ fun AppearanceSettingsContent(
     onNavigateToTheming: () -> Unit,
     onNavigateToNavigation: () -> Unit,
     settingsStore: SettingsStore = koinInject(),
-    themeStore: ThemeStore = koinInject()
 ) {
     val platform = remember { me.lampu.lampcord.shared.utils.getPlatformName() }
     val isDesktop = platform != "android" && platform != "ios"
     val isMobile = !isDesktop
 
-    fun updateTheme(theme: String) {
-        settingsStore.updateUserSettings(UserSettings.Partial(theme = theme))
-    }
-
     Column(modifier = Modifier.fillMaxWidth()) {
         Material3SettingsGroup(
-            title = "Themes",
-            items = buildList {
-                themeStore.activeThemes.forEach { theme ->
-                    add(Material3SettingsItem(
-                        icon = null,
-                        title = { Text(theme.manifest.name) },
-                        description = theme.manifest.author?.let { { Text("by $it") } },
-                        trailingContent = {
-                            IconButton(onClick = { 
-                                themeStore.toggleTheme(theme, false)
-                            }) {
-                                Icon(Icons.Filled.Close, "Remove Theme")
-                            }
-                        }
-                    ))
-                }
-                add(Material3SettingsItem(
+            title = "Theme",
+            items = listOf(
+                Material3SettingsItem(
                     icon = Icons.Rounded.Palette,
-                    title = { Text("Themer") },
-                    description = { Text("Manage and edit custom themes") },
+                    title = { Text("Theme") },
+                    description = { Text("Theme mode, colors, and custom themes") },
                     onClick = onNavigateToTheming
-                ))
-            }
+                )
+            )
         )
 
         Material3SettingsGroup(
             title = "Wallpaper",
             items = listOf(
                 Material3SettingsItem(
-                    title = { Text("Wallpaper & Colors") },
+                    title = { Text("Wallpaper") },
                     description = {
                         Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(top = 8.dp)) {
                             AppearancePreview(settingsStore)
-                            ThemeControls(settingsStore, ::updateTheme)
+                            WallpaperControls(settingsStore)
                         }
                     }
-                )
-            )
-        )
-
-        Material3SettingsGroup(
-            title = "Color palette",
-            items = listOf(
-                selectSettingsItem(
-                    title = "Visual Style",
-                    options = ThemePaletteStyle.entries.toList(),
-                    selectedOption = settingsStore.themePaletteStyle,
-                    onOptionSelected = { settingsStore.themePaletteStyle = it },
-                    optionLabel = { it.name.lowercase().replace('_', ' ').replaceFirstChar { char -> char.uppercase() } },
-                    optionIcon = { style: ThemePaletteStyle, isSelected ->
-                        val icon = when (style) {
-                            ThemePaletteStyle.TONAL_SPOT -> if (isSelected) Icons.Filled.Palette else Icons.Rounded.Palette
-                            ThemePaletteStyle.EXPRESSIVE -> if (isSelected) Icons.Filled.FormatPaint else Icons.Rounded.FormatPaint
-                            ThemePaletteStyle.VIBRANT -> if (isSelected) Icons.Filled.AutoAwesome else Icons.Rounded.AutoAwesome
-                            ThemePaletteStyle.RAINBOW -> if (isSelected) Icons.Filled.Texture else Icons.Rounded.Texture
-                            ThemePaletteStyle.MONOCHROME -> if (isSelected) Icons.Filled.Rectangle else Icons.Rounded.Rectangle
-                            ThemePaletteStyle.FRUIT_SALAD -> if (isSelected) Icons.Filled.Fastfood else Icons.Rounded.Fastfood
-                            else -> if (isSelected) Icons.Filled.Palette else Icons.Rounded.Palette
-                        }
-                        Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
-                    },
-                ),
-                Material3SettingsItem(
-                    title = { Text(stringResource(Res.string.screenshare_source)) },
-                    description = {
-                        Column(modifier = Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                val selectedOption = if (settingsStore.materialYou) PaletteOption.DYNAMIC else PaletteOption.CUSTOM
-                                
-                                SettingsButtonGroupCustomIcon(
-                                    options = PaletteOption.entries,
-                                    selectedOption = selectedOption,
-                                    onOptionSelected = { option ->
-                                        settingsStore.materialYou = option == PaletteOption.DYNAMIC
-                                    },
-                                    iconProvider = { option, isSelected ->
-                                        when (option) {
-                                            PaletteOption.DYNAMIC -> {
-                                                Icon(
-                                                    Icons.Rounded.AutoAwesome, 
-                                                    null, 
-                                                    modifier = Modifier.size(18.dp),
-                                                    tint = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary
-                                                )
-                                            }
-                                            PaletteOption.CUSTOM -> {
-                                                val accentColor = remember(settingsStore.accentColor) {
-                                                    try {
-                                                        Color(settingsStore.accentColor.removePrefix("#").toLong(16) or 0xFF000000)
-                                                    } catch (_: Exception) {
-                                                        Color(0xFF6750A4)
-                                                    }
-                                                }
-                                                Box(
-                                                    modifier = Modifier
-                                                        .size(18.dp)
-                                                        .clip(RoundedCornerShape(4.dp))
-                                                        .background(accentColor)
-                                                        .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), RoundedCornerShape(4.dp))
-                                                )
-                                            }
-                                        }
-                                    },
-                                    labelProvider = { 
-                                        when (it) {
-                                            PaletteOption.DYNAMIC -> "Dynamic"
-                                            PaletteOption.CUSTOM -> "Custom"
-                                        }
-                                    }
-                                )
-
-                                ColorHexPicker(settingsStore)
-                            }
-                        }
-                    }
-                ),
-                switchSettingsItem(
-                    title = "Sync across clients",
-                    description = "Sync your theme selection across all Discord clients.",
-                    checked = settingsStore.syncAppearance,
-                    onCheckedChange = { settingsStore.syncAppearance = it }
                 )
             )
         )
@@ -320,7 +210,7 @@ fun AppearanceSettingsContent(
 }
 
 @Composable
-private fun AppearancePreview(settingsStore: SettingsStore) {
+internal fun AppearancePreview(settingsStore: SettingsStore) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -430,9 +320,70 @@ private fun CustomFontPicker(settingsStore: SettingsStore) {
     }
 }
 
-@OptIn(ExperimentalEncodingApi::class)
 @Composable
-private fun ThemeControls(settingsStore: SettingsStore, updateTheme: (String) -> Unit) {
+internal fun ColorPaletteSettings(settingsStore: SettingsStore) {
+    Material3SettingsGroup(
+        title = "Color palette",
+        items = listOf(
+            selectSettingsItem(
+                title = "Visual Style",
+                options = ThemePaletteStyle.entries.toList(),
+                selectedOption = settingsStore.themePaletteStyle,
+                onOptionSelected = { settingsStore.themePaletteStyle = it },
+                optionLabel = { it.name.lowercase().replace('_', ' ').replaceFirstChar { char -> char.uppercase() } },
+                optionIcon = { style: ThemePaletteStyle, isSelected ->
+                    val icon = when (style) {
+                        ThemePaletteStyle.TONAL_SPOT -> if (isSelected) Icons.Filled.Palette else Icons.Rounded.Palette
+                        ThemePaletteStyle.EXPRESSIVE -> if (isSelected) Icons.Filled.FormatPaint else Icons.Rounded.FormatPaint
+                        ThemePaletteStyle.VIBRANT -> if (isSelected) Icons.Filled.AutoAwesome else Icons.Rounded.AutoAwesome
+                        ThemePaletteStyle.RAINBOW -> if (isSelected) Icons.Filled.Texture else Icons.Rounded.Texture
+                        ThemePaletteStyle.MONOCHROME -> if (isSelected) Icons.Filled.Rectangle else Icons.Rounded.Rectangle
+                        ThemePaletteStyle.FRUIT_SALAD -> if (isSelected) Icons.Filled.Fastfood else Icons.Rounded.Fastfood
+                        else -> if (isSelected) Icons.Filled.Palette else Icons.Rounded.Palette
+                    }
+                    Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
+                },
+            ),
+            selectSettingsItem(
+                title = stringResource(Res.string.screenshare_source),
+                options = PaletteOption.entries,
+                selectedOption = if (settingsStore.materialYou) PaletteOption.DYNAMIC else PaletteOption.CUSTOM,
+                onOptionSelected = { option ->
+                    settingsStore.materialYou = option == PaletteOption.DYNAMIC
+                },
+                optionLabel = {
+                    when (it) {
+                        PaletteOption.DYNAMIC -> "Dynamic"
+                        PaletteOption.CUSTOM -> "Custom"
+                    }
+                },
+                optionIcon = { option, _ ->
+                    when (option) {
+                        PaletteOption.DYNAMIC -> Icon(
+                            Icons.Rounded.AutoAwesome,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        PaletteOption.CUSTOM -> EditableAccentSwatch(settingsStore)
+                    }
+                },
+            ),
+            Material3SettingsItem(
+                title = { Text("Accent Color") },
+                description = { ColorHexPicker(settingsStore) },
+            ),
+            switchSettingsItem(
+                title = "Sync across clients",
+                description = "Sync your theme selection across all Discord clients.",
+                checked = settingsStore.syncAppearance,
+                onCheckedChange = { settingsStore.syncAppearance = it }
+            )
+        )
+    )
+}
+
+@Composable
+internal fun ThemeModeControls(settingsStore: SettingsStore, updateTheme: (String) -> Unit) {
     Column(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -447,7 +398,6 @@ private fun ThemeControls(settingsStore: SettingsStore, updateTheme: (String) ->
                     settingsStore.themeMode = mode
                     settingsStore.pureBlack = false
                 }
-                // Pure Black maps to Discord's Onyx/Midnight client theme.
                 if (settingsStore.syncAppearance) {
                     updateTheme(
                         SettingsStore.discordThemeRawValue(settingsStore.themeMode, settingsStore.pureBlack)
@@ -474,7 +424,7 @@ private fun ThemeControls(settingsStore: SettingsStore, updateTheme: (String) ->
                     updateTheme(SettingsStore.discordThemeRawValue(mode, pureBlack = false))
                 }
             },
-            iconProvider = { mode: ThemeMode, isSelected -> 
+            iconProvider = { mode: ThemeMode, isSelected ->
                 when (mode) {
                     ThemeMode.LIGHT -> if (isSelected) Icons.Filled.LightMode else Icons.Rounded.LightMode
                     else -> if (isSelected) Icons.Filled.DarkMode else Icons.Rounded.DarkMode
@@ -482,7 +432,15 @@ private fun ThemeControls(settingsStore: SettingsStore, updateTheme: (String) ->
             },
             labelProvider = { mode: ThemeMode -> if (mode == ThemeMode.LIGHT) "Light" else "Dark" }
         )
-        
+    }
+}
+
+@OptIn(ExperimentalEncodingApi::class)
+@Composable
+internal fun WallpaperControls(settingsStore: SettingsStore) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
         var showBackgroundPicker by remember { mutableStateOf(false) }
         
         FilePicker(
@@ -532,9 +490,91 @@ private fun ThemeControls(settingsStore: SettingsStore, updateTheme: (String) ->
 }
 
 @Composable
+private fun accentColorValue(settingsStore: SettingsStore): Color =
+    remember(settingsStore.accentColor) {
+        try {
+            Color(settingsStore.accentColor.removePrefix("#").toLong(16) or 0xFF000000)
+        } catch (_: Exception) {
+            Color(0xFF6750A4)
+        }
+    }
+
+@Composable
+private fun AccentColorPickerPopup(
+    show: Boolean,
+    settingsStore: SettingsStore,
+    onDismiss: () -> Unit,
+    offset: IntOffset,
+) {
+    if (!show) return
+
+    Popup(
+        alignment = Alignment.TopStart,
+        onDismissRequest = onDismiss,
+        offset = offset
+    ) {
+        HsvColorPicker(
+            initialColor = accentColorValue(settingsStore),
+            onColorSelected = {
+                val r = (it.red * 255).toInt().toString(16).padStart(2, '0')
+                val g = (it.green * 255).toInt().toString(16).padStart(2, '0')
+                val b = (it.blue * 255).toInt().toString(16).padStart(2, '0')
+                settingsStore.accentColor = "#$r$g$b"
+                settingsStore.materialYou = false
+                onDismiss()
+            },
+            onDismiss = onDismiss
+        )
+    }
+}
+
+@Composable
+private fun EditableAccentSwatch(settingsStore: SettingsStore) {
+    var showPicker by remember { mutableStateOf(false) }
+
+    Box(
+        modifier = Modifier
+            .size(24.dp)
+            .clickableCursor { showPicker = true },
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .size(18.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(accentColorValue(settingsStore))
+                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), RoundedCornerShape(4.dp))
+        )
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .size(14.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surface)
+                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Rounded.Edit,
+                contentDescription = "Edit accent color",
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(10.dp)
+            )
+        }
+    }
+
+    AccentColorPickerPopup(
+        show = showPicker,
+        settingsStore = settingsStore,
+        onDismiss = { showPicker = false },
+        offset = IntOffset(0, 28)
+    )
+}
+
+@Composable
 private fun ColorHexPicker(settingsStore: SettingsStore) {
     var showPicker by remember { mutableStateOf(false) }
-    
+
     Surface(
         modifier = Modifier.fillMaxWidth().height(44.dp),
         shape = CircleShape,
@@ -554,43 +594,22 @@ private fun ColorHexPicker(settingsStore: SettingsStore) {
                     fontFamily = FontFamily.Monospace
                 )
             )
-            
+
             Spacer(Modifier.weight(1f))
-            
+
             Text(
-                "Pick color", 
-                style = MaterialTheme.typography.labelMedium, 
+                "Pick color",
+                style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Bold
             )
         }
     }
 
-    if (showPicker) {
-        Popup(
-            alignment = Alignment.TopStart,
-            onDismissRequest = { showPicker = false },
-            offset = IntOffset(0, 52)
-        ) {
-            val currentAccent = remember(settingsStore.accentColor) {
-                try {
-                    Color(settingsStore.accentColor.removePrefix("#").toLong(16) or 0xFF000000)
-                } catch (_: Exception) {
-                    Color(0xFF6750A4)
-                }
-            }
-            HsvColorPicker(
-                initialColor = currentAccent,
-                onColorSelected = {
-                    val r = (it.red * 255).toInt().toString(16).padStart(2, '0')
-                    val g = (it.green * 255).toInt().toString(16).padStart(2, '0')
-                    val b = (it.blue * 255).toInt().toString(16).padStart(2, '0')
-                    settingsStore.accentColor = "#$r$g$b"
-                    settingsStore.materialYou = false
-                    showPicker = false
-                },
-                onDismiss = { showPicker = false }
-            )
-        }
-    }
+    AccentColorPickerPopup(
+        show = showPicker,
+        settingsStore = settingsStore,
+        onDismiss = { showPicker = false },
+        offset = IntOffset(0, 52)
+    )
 }

@@ -99,7 +99,7 @@ sealed class Screen : NavKey {
     data object AboutSettings : Screen()
 
     @Serializable
-    data object Theming : Screen()
+    data object Theme : Screen()
 
     @Serializable
     data object NavigationSettings : Screen()

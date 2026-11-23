@@ -18,24 +18,30 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
+import androidx.compose.material3.carousel.HorizontalCenteredHeroCarousel
+import androidx.compose.material3.carousel.rememberCarouselState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import me.lampu.lampcord.shared.model.LampcordTheme
 import me.lampu.lampcord.shared.model.ThemeManifest
+import me.lampu.lampcord.shared.model.UserSettings
+import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.state.ThemeStore
+import me.lampu.lampcord.shared.ui.components.AsyncImage
 import me.lampu.lampcord.shared.ui.components.ExpressiveSwitch
 import me.lampu.lampcord.shared.ui.components.settings.*
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.FilePicker
-import me.lampu.lampcord.shared.utils.setClipboardText
 import org.koin.compose.koinInject
 import kotlinx.serialization.json.*
 import kotlinx.serialization.encodeToString
@@ -44,29 +50,43 @@ import me.lampu.lampcord.shared.ui.kit.handCursor
 
 private val themeJsonFormat = Json { prettyPrint = true; ignoreUnknownKeys = true }
 
-@OptIn(ExperimentalMaterial3Api::class)
+private sealed interface ThemeCarouselEntry {
+    data object Default : ThemeCarouselEntry
+    data class Installed(val theme: LampcordTheme) : ThemeCarouselEntry
+    data object Add : ThemeCarouselEntry
+}
+
 @Composable
-fun ThemingSettings(
+fun ThemeSettings(
     onNavigateToEditor: (String) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    settingsStore: SettingsStore = koinInject(),
 ) {
     SettingsSubScreen(
-        title = "Themer",
+        title = "Theme",
         onNavigateBack = onBack,
-        contentScrollable = false
     ) {
-        ThemingSettingsContent(onNavigateToEditor = onNavigateToEditor)
+        ThemeSettingsContent(
+            onNavigateToEditor = onNavigateToEditor,
+            settingsStore = settingsStore,
+        )
     }
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun ThemingSettingsContent(
+fun ThemeSettingsContent(
     onNavigateToEditor: (String) -> Unit,
-    themeStore: ThemeStore = koinInject()
+    themeStore: ThemeStore = koinInject(),
+    settingsStore: SettingsStore = koinInject(),
 ) {
     var showImportPicker by remember { mutableStateOf(false) }
+    var showAddDialog by remember { mutableStateOf(false) }
     val settings = me.lampu.lampcord.shared.settings.Settings.shared
+
+    fun updateTheme(theme: String) {
+        settingsStore.updateUserSettings(UserSettings.Partial(theme = theme))
+    }
 
     FilePicker(
         show = showImportPicker,
@@ -74,8 +94,7 @@ fun ThemingSettingsContent(
             me.lampu.lampcord.shared.utils.Logging.i("Theme", "File selected: ${files.firstOrNull()?.first}")
             files.firstOrNull()?.let { (_, data) ->
                 try {
-                    val json = data.decodeToString()
-                    themeStore.installTheme(json)
+                    themeStore.installTheme(data.decodeToString())
                 } catch (e: Exception) {
                     me.lampu.lampcord.shared.utils.Logging.e("Theme", "Error reading file: ${e.message}")
                 }
@@ -85,120 +104,384 @@ fun ThemingSettingsContent(
         onDismiss = { showImportPicker = false }
     )
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        LazyColumn(
-            modifier = Modifier.weight(1f),
-            contentPadding = PaddingValues(bottom = 80.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            item {
-                Material3SettingsGroup(
-                    title = "Transparency Mode",
-                    items = listOf(
-                        selectSettingsItem(
-                            title = "Visual Transparency",
-                            options = me.lampu.lampcord.shared.settings.TransparencyMode.entries.toList(),
-                            selectedOption = settings.transparencyMode,
-                            onOptionSelected = { settings.transparencyMode = it },
-                            optionLabel = { it.name.lowercase().replace('_', ' ').replaceFirstChar { it.uppercase() } },
-                        )
-                    )
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Material3SettingsGroup(
+            title = "Theme Mode",
+            content = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                ) {
+                    ThemeModeControls(settingsStore, ::updateTheme)
+                }
+            },
+        )
+
+        ColorPaletteSettings(settingsStore)
+
+        ThemeCarousel(
+            themes = themeStore.availableThemes,
+            activeThemeName = themeStore.activeThemes.lastOrNull()?.manifest?.name,
+            onSelectDefault = { themeStore.clearThemeSelection() },
+            onSelectTheme = { themeStore.selectTheme(it) },
+            onAdd = { showAddDialog = true },
+            onEdit = { onNavigateToEditor(themeJsonFormat.encodeToString(it)) },
+            onDelete = { themeStore.deleteTheme(it) },
+        )
+
+        Material3SettingsGroup(
+            title = "Transparency Mode",
+            items = listOf(
+                selectSettingsItem(
+                    title = "Visual Transparency",
+                    options = me.lampu.lampcord.shared.settings.TransparencyMode.entries.toList(),
+                    selectedOption = settings.transparencyMode,
+                    onOptionSelected = { settings.transparencyMode = it },
+                    optionLabel = { it.name.lowercase().replace('_', ' ').replaceFirstChar { char -> char.uppercase() } },
                 )
-            }
+            )
+        )
 
-            item {
-                Material3SettingsGroup(
-                    items = listOf(
-                        switchSettingsItem(
-                            title = "Enable Custom Fonts",
-                            description = "Enable support for custom fonts. May be unstable",
-                            checked = settings.enableCustomFonts,
-                            onCheckedChange = { settings.enableCustomFonts = it }
-                        ),
-                        switchSettingsItem(
-                            title = "Enable Custom Sounds",
-                            description = "Enable support for custom sounds",
-                            checked = settings.enableCustomSounds,
-                            onCheckedChange = { settings.enableCustomSounds = it }
-                        )
-                    )
-                )
-            }
-
-            item {
-                Material3SettingsGroup(
-                    title = "Themes",
-                    content = {
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            if (themeStore.availableThemes.isEmpty()) {
-                                Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                                    Text("No themes installed", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                            }
-
-                            themeStore.availableThemes.forEachIndexed { index, theme ->
-                                ThemeSettingsItem(
-                                    theme = theme,
-                                    isFirst = index == 0,
-                                    isLast = index == themeStore.availableThemes.lastIndex,
-                                    isActive = theme.manifest.name in themeStore.enabledThemeNames,
-                                    onToggle = { themeStore.toggleTheme(theme, it) },
-                                    onEdit = { onNavigateToEditor(themeJsonFormat.encodeToString(theme)) },
-                                    onDelete = { themeStore.deleteTheme(theme) }
-                                )
-                            }
+        Material3SettingsGroup(
+            title = "Installed Themes",
+            content = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    if (themeStore.availableThemes.isEmpty()) {
+                        Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                            Text("No themes installed", color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
+
+                    themeStore.availableThemes.forEachIndexed { index, theme ->
+                        ThemeSettingsItem(
+                            theme = theme,
+                            isFirst = index == 0,
+                            isLast = index == themeStore.availableThemes.lastIndex,
+                            isActive = theme.manifest.name == themeStore.activeThemes.lastOrNull()?.manifest?.name,
+                            onToggle = { enabled ->
+                                if (enabled) themeStore.selectTheme(theme) else themeStore.clearThemeSelection()
+                            },
+                            onEdit = { onNavigateToEditor(themeJsonFormat.encodeToString(theme)) },
+                            onDelete = { themeStore.deleteTheme(theme) }
+                        )
+                    }
+                }
+            }
+        )
+    }
+
+    if (showAddDialog) {
+        AlertDialog(
+            onDismissRequest = { showAddDialog = false },
+            title = { Text("Add Theme") },
+            text = { Text("Import a theme file or create a new theme to edit.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showAddDialog = false
+                    showImportPicker = true
+                }) {
+                    Text("Import")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    val newTheme = LampcordTheme(
+                        manifest = ThemeManifest(name = "New Theme", author = "Me")
+                    )
+                    themeStore.installTheme(Json.encodeToString(newTheme))
+                    showAddDialog = false
+                }) {
+                    Text("Create New")
+                }
+            }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ThemeCarousel(
+    themes: List<LampcordTheme>,
+    activeThemeName: String?,
+    onSelectDefault: () -> Unit,
+    onSelectTheme: (LampcordTheme) -> Unit,
+    onAdd: () -> Unit,
+    onEdit: (LampcordTheme) -> Unit,
+    onDelete: (LampcordTheme) -> Unit,
+) {
+    val entries = remember(themes) {
+        listOf<ThemeCarouselEntry>(ThemeCarouselEntry.Default) +
+            themes.map { ThemeCarouselEntry.Installed(it) } +
+            ThemeCarouselEntry.Add
+    }
+    val selectedIndex = activeThemeName?.let { name ->
+        entries.indexOfFirst { it is ThemeCarouselEntry.Installed && it.theme.manifest.name == name }
+    }?.takeIf { it >= 0 } ?: 0
+    val carouselState = rememberCarouselState(
+        initialItem = selectedIndex,
+        itemCount = { entries.size },
+    )
+
+    LaunchedEffect(selectedIndex) {
+        val target = selectedIndex.coerceIn(0, entries.lastIndex)
+        if (!me.lampu.lampcord.shared.settings.Settings.shared.reduceMotion) {
+            carouselState.animateScrollToItem(target)
+        } else {
+            carouselState.scrollToItem(target)
+        }
+    }
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        HorizontalCenteredHeroCarousel(
+            state = carouselState,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(232.dp),
+            maxItemWidth = 240.dp,
+            itemSpacing = 12.dp,
+            contentPadding = PaddingValues(horizontal = 24.dp),
+        ) { index ->
+            when (val entry = entries[index]) {
+                ThemeCarouselEntry.Default -> DefaultThemeCard(
+                    selected = selectedIndex == index,
+                    onClick = onSelectDefault,
                 )
+                is ThemeCarouselEntry.Installed -> InstalledThemeCard(
+                    theme = entry.theme,
+                    selected = selectedIndex == index,
+                    onClick = { onSelectTheme(entry.theme) },
+                    onEdit = { onEdit(entry.theme) },
+                    onDelete = { onDelete(entry.theme) },
+                )
+                ThemeCarouselEntry.Add -> AddThemeCard(onClick = onAdd)
             }
         }
 
-        Surface(
+        val selectedLabel = when (val entry = entries.getOrNull(selectedIndex)) {
+            is ThemeCarouselEntry.Installed -> entry.theme.manifest.name
+            ThemeCarouselEntry.Add -> "Add Theme"
+            else -> "Default"
+        }
+        Text(
+            text = selectedLabel,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.fillMaxWidth(),
-            color = MaterialTheme.colorScheme.surfaceContainer,
-            tonalElevation = 4.dp
+            textAlign = TextAlign.Center,
+        )
+        Text(
+            text = if (selectedIndex == 0) "Using the system theme" else "Swipe to preview themes",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Composable
+private fun DefaultThemeCard(
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val container = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh
+    val content = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        shape = MaterialTheme.shapes.large,
+        color = container,
+        contentColor = content,
+        onClick = onClick,
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(16.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
         ) {
-            Row(
-                modifier = Modifier.padding(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            Icon(
+                Icons.Rounded.AutoAwesome,
+                contentDescription = null,
+                modifier = Modifier.size(28.dp),
+            )
+            Column {
+                Text("Default", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(
+                    "Follow your system theme",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AddThemeCard(onClick: () -> Unit) {
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        onClick = onClick,
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(16.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(32.dp))
+            Spacer(Modifier.height(12.dp))
+            Text("Add Theme", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "Create or import your own",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+        }
+    }
+}
+
+@Composable
+private fun InstalledThemeCard(
+    theme: LampcordTheme,
+    selected: Boolean,
+    onClick: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    val fallbackSurface = MaterialTheme.colorScheme.surfaceContainerHigh
+    val surface = themeColor(theme, "surface", "background", fallback = fallbackSurface)
+    val primary = themeColor(theme, "primary", "accent", fallback = MaterialTheme.colorScheme.primary)
+    val secondary = themeColor(theme, "secondary", fallback = MaterialTheme.colorScheme.secondary)
+    val tertiary = themeColor(theme, "tertiary", fallback = MaterialTheme.colorScheme.tertiary)
+    val content = themeColor(theme, "onSurface", "text", fallback = MaterialTheme.colorScheme.onSurface)
+    val backgroundUrl = (theme.background["url"] as? JsonPrimitive)?.contentOrNull
+
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        shape = MaterialTheme.shapes.large,
+        color = surface,
+        contentColor = content,
+        border = if (selected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
+    ) {
+        Box(modifier = Modifier.fillMaxSize().clickableCursor { onClick() }) {
+            if (!backgroundUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = backgroundUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(content.copy(alpha = 0.62f)),
+                )
+            }
+
+            Column(
+                modifier = Modifier.fillMaxSize().padding(12.dp),
+                verticalArrangement = Arrangement.SpaceBetween,
             ) {
-                Button(
-                    onClick = { showImportPicker = true },
-                    modifier = Modifier.weight(1f),
-                    shape = CircleShape,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    Icon(Icons.Rounded.FolderOpen, null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Import Theme")
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(40.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(primary),
+                    )
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(40.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(secondary),
+                    )
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(40.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(tertiary),
+                    )
                 }
-                
-                Button(
-                    onClick = {
-                        val newTheme = LampcordTheme(
-                            manifest = ThemeManifest(name = "New Theme", author = "Me")
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            theme.manifest.name,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
-                        themeStore.installTheme(Json.encodeToString(newTheme))
-                    },
-                    modifier = Modifier.weight(1f),
-                    shape = CircleShape,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    )
+                        theme.manifest.author?.let {
+                            Text(
+                                "by $it",
+                                style = MaterialTheme.typography.bodySmall,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                    if (selected) {
+                        Icon(Icons.Rounded.Check, contentDescription = "Selected")
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
                 ) {
-                    Icon(Icons.Rounded.Add, null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("New Theme")
+                    IconButton(onClick = onEdit) {
+                        Icon(Icons.Rounded.Edit, contentDescription = stringResource(Res.string.edit))
+                    }
+                    IconButton(onClick = onDelete) {
+                        Icon(Icons.Rounded.Delete, contentDescription = stringResource(Res.string.delete))
+                    }
                 }
             }
         }
+    }
+}
+
+private fun themeColor(
+    theme: LampcordTheme,
+    vararg keys: String,
+    fallback: Color,
+): Color {
+    for (map in listOf(theme.colors, theme.simple_colors)) {
+        for (key in keys) {
+            val raw = (map[key] as? JsonPrimitive)?.contentOrNull ?: continue
+            parseThemeColor(raw)?.let { return it }
+        }
+    }
+    return fallback
+}
+
+private fun parseThemeColor(value: String): Color? {
+    val hex = value.removePrefix("#")
+    return when (hex.length) {
+        6 -> runCatching { Color(0xFF000000 or hex.toLong(16)) }.getOrNull()
+        8 -> runCatching { Color(hex.toLong(16)) }.getOrNull()
+        else -> null
     }
 }
 

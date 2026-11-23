@@ -70,7 +70,7 @@ internal val navigationSavedStateConfiguration =
                     subclass(Screen.AdditionalSettings::class, Screen.AdditionalSettings.serializer())
                     subclass(Screen.UpdatesSettings::class, Screen.UpdatesSettings.serializer())
                     subclass(Screen.AboutSettings::class, Screen.AboutSettings.serializer())
-                    subclass(Screen.Theming::class, Screen.Theming.serializer())
+                    subclass(Screen.Theme::class, Screen.Theme.serializer())
                     subclass(Screen.NavigationSettings::class, Screen.NavigationSettings.serializer())
                     subclass(Screen.ThemeEditor::class, Screen.ThemeEditor.serializer())
                 }

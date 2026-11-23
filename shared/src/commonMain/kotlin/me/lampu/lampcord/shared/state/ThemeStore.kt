@@ -81,6 +81,19 @@ class ThemeStore(
         updateActiveThemes()
     }
 
+    fun selectTheme(theme: LampcordTheme) {
+        val newEnabled = setOf(theme.manifest.name)
+        enabledThemeNames = newEnabled
+        Settings.shared.activeThemeJson = json.encodeToString(newEnabled)
+        updateActiveThemes()
+    }
+
+    fun clearThemeSelection() {
+        enabledThemeNames = emptySet()
+        Settings.shared.activeThemeJson = json.encodeToString(emptySet<String>())
+        updateActiveThemes()
+    }
+
     private fun checkAndDownloadThemeFont(theme: LampcordTheme) {
         val url = (theme.fonts["*"] as? JsonPrimitive)?.contentOrNull
             ?: (theme.fonts["whitney_medium"] as? JsonPrimitive)?.contentOrNull
