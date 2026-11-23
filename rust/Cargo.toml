@@ -5,6 +5,7 @@ members = [
     "crates/lampcord-core",
     "crates/lampcord-transport",
     "crates/lampcord-ffi",
+    "crates/lampcord-qml",
 ]
 
 [workspace.package]
