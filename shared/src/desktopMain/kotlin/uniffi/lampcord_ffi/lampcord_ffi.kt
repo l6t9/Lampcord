@@ -816,6 +816,8 @@ internal open class UniffiVTableCallbackInterfacePlatformSecretStore(
 
 
 
+
+
 // A JNA Library to expose the extern-C FFI definitions.
 // This is an implementation detail which will be called internally by the public API.
 
@@ -877,6 +879,8 @@ internal interface UniffiLib : Library {
     fun uniffi_lampcord_ffi_fn_method_lampcordclient_select_guild(`ptr`: Pointer,`guildId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
     fun uniffi_lampcord_ffi_fn_method_lampcordclient_send(`ptr`: Pointer,`command`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_lampcord_ffi_fn_method_lampcordclient_send_attachments(`ptr`: Pointer,`channelId`: Long,`content`: RustBuffer.ByValue,`filePaths`: RustBuffer.ByValue,`replyToMessageId`: RustBuffer.ByValue,`replyToGuildId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
     fun uniffi_lampcord_ffi_fn_method_lampcordclient_send_message(`ptr`: Pointer,`channelId`: Long,`content`: RustBuffer.ByValue,`replyToMessageId`: RustBuffer.ByValue,`replyToGuildId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
@@ -1062,6 +1066,8 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_lampcord_ffi_checksum_method_lampcordclient_send(
     ): Short
+    fun uniffi_lampcord_ffi_checksum_method_lampcordclient_send_attachments(
+    ): Short
     fun uniffi_lampcord_ffi_checksum_method_lampcordclient_send_message(
     ): Short
     fun uniffi_lampcord_ffi_checksum_method_lampcordclient_send_mfa_sms(
@@ -1163,6 +1169,9 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_send() != 20879.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_send_attachments() != 44073.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_lampcord_ffi_checksum_method_lampcordclient_send_message() != 8527.toShort()) {
@@ -1653,6 +1662,8 @@ public interface LampcordClientInterface {
     
     fun `send`(`command`: ClientCommand)
     
+    fun `sendAttachments`(`channelId`: kotlin.ULong, `content`: kotlin.String, `filePaths`: List<kotlin.String>, `replyToMessageId`: kotlin.ULong?, `replyToGuildId`: kotlin.ULong?)
+    
     fun `sendMessage`(`channelId`: kotlin.ULong, `content`: kotlin.String, `replyToMessageId`: kotlin.ULong?, `replyToGuildId`: kotlin.ULong?)
     
     fun `sendMfaSms`(`ticket`: kotlin.String)
@@ -1958,6 +1969,18 @@ open class LampcordClient: Disposable, AutoCloseable, LampcordClientInterface {
     uniffiRustCallWithError(FfiClientException) { _status ->
     UniffiLib.INSTANCE.uniffi_lampcord_ffi_fn_method_lampcordclient_send(
         it, FfiConverterTypeClientCommand.lower(`command`),_status)
+}
+    }
+    
+    
+
+    
+    @Throws(FfiClientException::class)override fun `sendAttachments`(`channelId`: kotlin.ULong, `content`: kotlin.String, `filePaths`: List<kotlin.String>, `replyToMessageId`: kotlin.ULong?, `replyToGuildId`: kotlin.ULong?)
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(FfiClientException) { _status ->
+    UniffiLib.INSTANCE.uniffi_lampcord_ffi_fn_method_lampcordclient_send_attachments(
+        it, FfiConverterULong.lower(`channelId`),FfiConverterString.lower(`content`),FfiConverterSequenceString.lower(`filePaths`),FfiConverterOptionalULong.lower(`replyToMessageId`),FfiConverterOptionalULong.lower(`replyToGuildId`),_status)
 }
     }
     
@@ -3799,6 +3822,18 @@ sealed class ClientCommand {
         companion object
     }
     
+    /**
+     * Uploads local files and sends them with `content` as one message.
+     */
+    data class SendAttachments(
+        val `channelId`: kotlin.ULong, 
+        val `content`: kotlin.String, 
+        val `filePaths`: List<kotlin.String>, 
+        val `replyToMessageId`: kotlin.ULong?, 
+        val `replyToGuildId`: kotlin.ULong?) : ClientCommand() {
+        companion object
+    }
+    
     data class EditMessage(
         val `channelId`: kotlin.ULong, 
         val `messageId`: kotlin.ULong, 
@@ -3902,37 +3937,44 @@ public object FfiConverterTypeClientCommand : FfiConverterRustBuffer<ClientComma
                 FfiConverterOptionalULong.read(buf),
                 FfiConverterOptionalULong.read(buf),
                 )
-            14 -> ClientCommand.EditMessage(
+            14 -> ClientCommand.SendAttachments(
+                FfiConverterULong.read(buf),
+                FfiConverterString.read(buf),
+                FfiConverterSequenceString.read(buf),
+                FfiConverterOptionalULong.read(buf),
+                FfiConverterOptionalULong.read(buf),
+                )
+            15 -> ClientCommand.EditMessage(
                 FfiConverterULong.read(buf),
                 FfiConverterULong.read(buf),
                 FfiConverterString.read(buf),
                 )
-            15 -> ClientCommand.DeleteMessage(
+            16 -> ClientCommand.DeleteMessage(
                 FfiConverterULong.read(buf),
                 FfiConverterULong.read(buf),
                 )
-            16 -> ClientCommand.AddReaction(
+            17 -> ClientCommand.AddReaction(
                 FfiConverterULong.read(buf),
                 FfiConverterULong.read(buf),
                 FfiConverterString.read(buf),
                 )
-            17 -> ClientCommand.RemoveReaction(
+            18 -> ClientCommand.RemoveReaction(
                 FfiConverterULong.read(buf),
                 FfiConverterULong.read(buf),
                 FfiConverterString.read(buf),
                 )
-            18 -> ClientCommand.SendTyping(
+            19 -> ClientCommand.SendTyping(
                 FfiConverterULong.read(buf),
                 )
-            19 -> ClientCommand.SetStatus(
+            20 -> ClientCommand.SetStatus(
                 FfiConverterString.read(buf),
                 )
-            20 -> ClientCommand.AckMessage(
+            21 -> ClientCommand.AckMessage(
                 FfiConverterULong.read(buf),
                 FfiConverterULong.read(buf),
                 )
-            21 -> ClientCommand.Logout
-            22 -> ClientCommand.Shutdown
+            22 -> ClientCommand.Logout
+            23 -> ClientCommand.Shutdown
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
         }
     }
@@ -4032,6 +4074,17 @@ public object FfiConverterTypeClientCommand : FfiConverterRustBuffer<ClientComma
                 4UL
                 + FfiConverterULong.allocationSize(value.`channelId`)
                 + FfiConverterString.allocationSize(value.`content`)
+                + FfiConverterOptionalULong.allocationSize(value.`replyToMessageId`)
+                + FfiConverterOptionalULong.allocationSize(value.`replyToGuildId`)
+            )
+        }
+        is ClientCommand.SendAttachments -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterULong.allocationSize(value.`channelId`)
+                + FfiConverterString.allocationSize(value.`content`)
+                + FfiConverterSequenceString.allocationSize(value.`filePaths`)
                 + FfiConverterOptionalULong.allocationSize(value.`replyToMessageId`)
                 + FfiConverterOptionalULong.allocationSize(value.`replyToGuildId`)
             )
@@ -4181,55 +4234,64 @@ public object FfiConverterTypeClientCommand : FfiConverterRustBuffer<ClientComma
                 FfiConverterOptionalULong.write(value.`replyToGuildId`, buf)
                 Unit
             }
-            is ClientCommand.EditMessage -> {
+            is ClientCommand.SendAttachments -> {
                 buf.putInt(14)
+                FfiConverterULong.write(value.`channelId`, buf)
+                FfiConverterString.write(value.`content`, buf)
+                FfiConverterSequenceString.write(value.`filePaths`, buf)
+                FfiConverterOptionalULong.write(value.`replyToMessageId`, buf)
+                FfiConverterOptionalULong.write(value.`replyToGuildId`, buf)
+                Unit
+            }
+            is ClientCommand.EditMessage -> {
+                buf.putInt(15)
                 FfiConverterULong.write(value.`channelId`, buf)
                 FfiConverterULong.write(value.`messageId`, buf)
                 FfiConverterString.write(value.`content`, buf)
                 Unit
             }
             is ClientCommand.DeleteMessage -> {
-                buf.putInt(15)
+                buf.putInt(16)
                 FfiConverterULong.write(value.`channelId`, buf)
                 FfiConverterULong.write(value.`messageId`, buf)
                 Unit
             }
             is ClientCommand.AddReaction -> {
-                buf.putInt(16)
-                FfiConverterULong.write(value.`channelId`, buf)
-                FfiConverterULong.write(value.`messageId`, buf)
-                FfiConverterString.write(value.`emoji`, buf)
-                Unit
-            }
-            is ClientCommand.RemoveReaction -> {
                 buf.putInt(17)
                 FfiConverterULong.write(value.`channelId`, buf)
                 FfiConverterULong.write(value.`messageId`, buf)
                 FfiConverterString.write(value.`emoji`, buf)
                 Unit
             }
-            is ClientCommand.SendTyping -> {
+            is ClientCommand.RemoveReaction -> {
                 buf.putInt(18)
+                FfiConverterULong.write(value.`channelId`, buf)
+                FfiConverterULong.write(value.`messageId`, buf)
+                FfiConverterString.write(value.`emoji`, buf)
+                Unit
+            }
+            is ClientCommand.SendTyping -> {
+                buf.putInt(19)
                 FfiConverterULong.write(value.`channelId`, buf)
                 Unit
             }
             is ClientCommand.SetStatus -> {
-                buf.putInt(19)
+                buf.putInt(20)
                 FfiConverterString.write(value.`status`, buf)
                 Unit
             }
             is ClientCommand.AckMessage -> {
-                buf.putInt(20)
+                buf.putInt(21)
                 FfiConverterULong.write(value.`channelId`, buf)
                 FfiConverterULong.write(value.`messageId`, buf)
                 Unit
             }
             is ClientCommand.Logout -> {
-                buf.putInt(21)
+                buf.putInt(22)
                 Unit
             }
             is ClientCommand.Shutdown -> {
-                buf.putInt(22)
+                buf.putInt(23)
                 Unit
             }
         }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }

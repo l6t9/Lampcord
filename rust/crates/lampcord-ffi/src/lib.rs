@@ -191,6 +191,28 @@ impl LampcordClient {
         })
     }
 
+    pub fn send_attachments(
+        &self,
+        channel_id: u64,
+        content: String,
+        file_paths: Vec<String>,
+        reply_to_message_id: Option<u64>,
+        reply_to_guild_id: Option<u64>,
+    ) -> Result<(), FfiClientError> {
+        if file_paths.is_empty() {
+            return Err(FfiClientError::invalid_input(
+                "file_paths must not be empty",
+            ));
+        }
+        self.send(ClientCommand::SendAttachments {
+            channel_id,
+            content,
+            file_paths,
+            reply_to_message_id,
+            reply_to_guild_id,
+        })
+    }
+
     pub fn edit_message(
         &self,
         channel_id: u64,

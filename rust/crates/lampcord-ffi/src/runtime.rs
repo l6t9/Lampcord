@@ -1553,6 +1553,52 @@ async fn run(
                         }
                         mark_snapshot_dirty!();
                     }
+                    ClientCommand::SendAttachments { channel_id, content, file_paths, reply_to_message_id, reply_to_guild_id } => {
+                        if let Some(rest_client) = rest.clone() {
+                            let config = default_rest_config(&api_base, user_agent.as_deref(), active_token.clone());
+                            let mut uploaded = Vec::new();
+                            let mut failure = None;
+                            for path in &file_paths {
+                                let path = std::path::Path::new(path);
+                                let filename = path
+                                    .file_name()
+                                    .map(|name| name.to_string_lossy().into_owned())
+                                    .unwrap_or_else(|| "file".to_owned());
+                                let data = match std::fs::read(path) {
+                                    Ok(data) => data,
+                                    Err(io_error) => {
+                                        failure = Some(format!("Couldn't read {filename}: {io_error}"));
+                                        break;
+                                    }
+                                };
+                                match api::upload_attachment(&*rest_client, &config, channel_id, &filename, data).await {
+                                    Ok(file) => uploaded.push(file),
+                                    Err(api_error) => {
+                                        failure = Some(format!("Failed to upload {filename}: {api_error}"));
+                                        break;
+                                    }
+                                }
+                            }
+                            if failure.is_none() {
+                                match api::send_channel_message_with_attachments(&*rest_client, &config, channel_id, &content, &uploaded, reply_to_message_id, reply_to_guild_id).await {
+                                    Ok(message) => {
+                                        let entry = fetched_messages.entry(Snowflake::from(channel_id)).or_default();
+                                        if !entry.iter().any(|existing| existing.id == message.id) {
+                                            entry.push(message);
+                                            entry.sort_by(|left, right| left.id.cmp(&right.id));
+                                        }
+                                        error = None;
+                                    }
+                                    Err(api_error) => failure = Some(format!("Failed to send message: {api_error}")),
+                                }
+                            }
+                            if let Some(message) = failure {
+                                error = Some(message.clone());
+                                push_event(&events, ClientEvent::CommandFailed { kind: FfiErrorKind::Transport, message });
+                            }
+                        }
+                        mark_snapshot_dirty!();
+                    }
                     ClientCommand::EditMessage { channel_id, message_id, content } => {
                         let channel_id = Snowflake::from(channel_id);
                         let message_id = Snowflake::from(message_id);
