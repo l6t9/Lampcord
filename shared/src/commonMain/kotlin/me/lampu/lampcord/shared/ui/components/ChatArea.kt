@@ -57,7 +57,6 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.datetime.TimeZone
@@ -82,7 +81,6 @@ private const val MIN_SCROLLBACK = 15
 @Composable
 fun ChatArea(
     modifier: Modifier = Modifier,
-    bottomContentPadding: Dp = 10.dp,
     messageStore: MessageStore = koinInject(),
     relationshipStore: RelationshipStore = koinInject(),
     navigationStore: NavigationStore = koinInject(),
@@ -244,6 +242,7 @@ fun ChatArea(
     Box(
         modifier = modifier
             .fillMaxSize()
+            .padding(bottom = 10.dp)
             .pointerInput(Unit) {
                 awaitPointerEventScope {
                     while (true) {
@@ -287,8 +286,7 @@ fun ChatArea(
         LazyColumn(
             state = scrollState,
             modifier = Modifier
-                .fillMaxSize()
-                .padding(bottom = bottomContentPadding),
+                .fillMaxSize(),
             reverseLayout = true
         ) {
             itemsIndexed(
