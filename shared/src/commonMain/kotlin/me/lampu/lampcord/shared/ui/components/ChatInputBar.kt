@@ -33,14 +33,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
@@ -624,29 +620,6 @@ fun ChatInputBar(
                 val themeBackgroundUrl = themeStore.themeBackgroundUrl.orEmpty()
                 val wallpaperUrl = if (themeBackgroundUrl.isNotEmpty()) themeBackgroundUrl else settings.chatBackground
                 val hasFrostedBackdrop = wallpaperUrl.isNotBlank()
-                val shadowColor = MaterialTheme.colorScheme.scrim.copy(
-                    alpha = if (hasFrostedBackdrop) 0.18f else 0.24f
-                )
-                val inputShadowModifier = if (isMobileView) {
-                    Modifier
-                        .graphicsLayer { clip = false }
-                        .drawBehind {
-                            val shadowHeight = 16.dp.toPx()
-                            val shadowTop = -shadowHeight
-                            drawRect(
-                                brush = Brush.verticalGradient(
-                                    colors = listOf(Color.Transparent, shadowColor),
-                                    startY = shadowTop,
-                                    endY = 0f
-                                ),
-                                topLeft = Offset(0f, shadowTop),
-                                size = Size(size.width, shadowHeight)
-                            )
-                        }
-                } else {
-                    Modifier
-                }
-
                 val customPickerVisible = isMobileView && canSend && navigationStore.isCustomKeyboardPickerVisible
                 val density = LocalDensity.current
                 val systemKeyboardHeight = systemKeyboardHeightPx(density)
@@ -664,7 +637,6 @@ fun ChatInputBar(
                         color = Color.Transparent,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .then(inputShadowModifier)
                             .padding(bottom = inputBottomPadding)
                     ) {
                         Column {
@@ -833,6 +805,7 @@ fun ChatInputBar(
                                 shape = RoundedCornerShape(composerRadius),
                                 border = BorderStroke(1.dp, composerBorderColor),
                                 color = composerSurfaceColor,
+                                shadowElevation = if (isMobileView) 8.dp else 0.dp,
                                 modifier = Modifier
                                     .weight(1f)
                                     .animateContentSize(
