@@ -32,6 +32,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
@@ -47,6 +48,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -184,7 +186,9 @@ fun ChatInputBar(
     emojiStore: EmojiStore = koinInject(),
     settingsStore: SettingsStore = koinInject(),
     profileStore: ProfileStore = koinInject(),
-    themeStore: ThemeStore = koinInject()
+    themeStore: ThemeStore = koinInject(),
+    modifier: Modifier = Modifier,
+    onHeightChanged: (Int) -> Unit = {}
 ) {
     val textFieldState = remember(channel.id) {
         val draft = messageStore.draftMessages[channel.id] ?: ""
@@ -562,7 +566,12 @@ fun ChatInputBar(
         messageStore.resetTypingEmission(channel.id)
     }
 
-    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(modifier)
+            .onSizeChanged { onHeightChanged(it.height) }
+    ) {
         val platform = getPlatformName()
         val isMobileDevice = platform == "android" || platform == "ios"
         val isMobileView = isMobileDevice || maxWidth < 600.dp
@@ -652,6 +661,16 @@ fun ChatInputBar(
                 )
                 val inputBottomPadding = with(density) { bottomInsetPx.toDp() }
                 Box(modifier = Modifier.fillMaxWidth()) {
+                    if (hasFrostedBackdrop) {
+                        AsyncImage(
+                            model = wallpaperUrl,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .matchParentSize()
+                                .blur(18.dp)
+                        )
+                    }
                     Surface(
                         color = Color.Transparent,
                         modifier = Modifier

@@ -1925,6 +1925,9 @@ private fun MainBaseplateContent(
                             if (isVoice && !voiceStore.isVoiceChatTextVisible) {
                                 VoiceArea(activeChannel)
                             } else {
+                                val density = LocalDensity.current
+                                var composerHeightPx by remember { mutableStateOf(0) }
+                                val composerBottomPadding = with(density) { composerHeightPx.toDp() }
                                 Column(
                                     modifier = Modifier
                                         .fillMaxSize()
@@ -1934,11 +1937,18 @@ private fun MainBaseplateContent(
                                         if (activeChannel.type == 15 && navigationStore.selectedThread == null) {
                                             ForumPostList()
                                         } else {
-                                            ChatArea(modifier = Modifier.fillMaxSize())
+                                            ChatArea(
+                                                modifier = Modifier.fillMaxSize(),
+                                                bottomContentPadding = composerBottomPadding + 10.dp
+                                            )
                                         }
-                                    }
-                                    if (!(activeChannel.type == 15 && navigationStore.selectedThread == null)) {
-                                        ChatInputBar(activeChannel)
+                                        if (!(activeChannel.type == 15 && navigationStore.selectedThread == null)) {
+                                            ChatInputBar(
+                                                channel = activeChannel,
+                                                modifier = Modifier.align(Alignment.BottomCenter),
+                                                onHeightChanged = { height -> composerHeightPx = height }
+                                            )
+                                        }
                                     }
                                 }
                             }
