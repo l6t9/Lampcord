@@ -67,6 +67,8 @@ pub struct CachedPresence {
     pub activities: Vec<String>,
     /// The custom status text, when one is set.
     pub custom_status: Option<String>,
+    /// Online only from a phone (`client_status` has just `mobile`).
+    pub mobile: bool,
 }
 
 /// Parses a presence from PRESENCE_UPDATE, READY `presences` or
@@ -105,11 +107,18 @@ pub fn presence_from_value(value: &Value) -> Option<CachedPresence> {
                 .map(str::to_owned)
         })
         .collect();
+    let clients = value.get("client_status").and_then(Value::as_object);
+    let mobile = clients.is_some_and(|clients| {
+        clients.contains_key("mobile")
+            && !clients.contains_key("desktop")
+            && !clients.contains_key("web")
+    });
     Some(CachedPresence {
         user_id,
         status,
         activities,
         custom_status,
+        mobile,
     })
 }
 
@@ -1246,7 +1255,7 @@ mod tests {
                         {"id": 7, "name": "Games", "color": 5793266, "guild_ids": ["11", "12"]}
                     ]},
                     "private_channels": [{"id": "9", "type": 1, "recipient_ids": ["2"]}],
-                    "merged_presences": {"friends": [{"user_id": "2", "status": "online", "activities": [
+                    "merged_presences": {"friends": [{"user_id": "2", "status": "online", "client_status": {"mobile": "online"}, "activities": [
                         {"type": 4, "name": "Custom Status", "state": "as above, so below"},
                         {"type": 0, "name": "Blender"}
                     ]}]}
@@ -1265,6 +1274,7 @@ mod tests {
         assert_eq!(folders[1].guild_ids, vec![11, 12]);
         let friend = cache.presence(2).unwrap();
         assert_eq!(friend.status, "online");
+        assert!(friend.mobile);
         assert_eq!(friend.custom_status.as_deref(), Some("as above, so below"));
         assert_eq!(friend.activities, vec!["Blender".to_owned()]);
 

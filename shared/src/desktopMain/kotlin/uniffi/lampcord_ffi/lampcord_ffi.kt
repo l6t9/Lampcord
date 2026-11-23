@@ -3113,7 +3113,11 @@ data class PresenceSnapshot (
     /**
      * Schema 3+. Custom status text, kept out of `activities`.
      */
-    var `customStatus`: kotlin.String?
+    var `customStatus`: kotlin.String?, 
+    /**
+     * Schema 3+. Online only from a phone.
+     */
+    var `mobile`: kotlin.Boolean
 ) {
     
     companion object
@@ -3129,6 +3133,7 @@ public object FfiConverterTypePresenceSnapshot: FfiConverterRustBuffer<PresenceS
             FfiConverterString.read(buf),
             FfiConverterSequenceString.read(buf),
             FfiConverterOptionalString.read(buf),
+            FfiConverterBoolean.read(buf),
         )
     }
 
@@ -3136,7 +3141,8 @@ public object FfiConverterTypePresenceSnapshot: FfiConverterRustBuffer<PresenceS
             FfiConverterULong.allocationSize(value.`userId`) +
             FfiConverterString.allocationSize(value.`status`) +
             FfiConverterSequenceString.allocationSize(value.`activities`) +
-            FfiConverterOptionalString.allocationSize(value.`customStatus`)
+            FfiConverterOptionalString.allocationSize(value.`customStatus`) +
+            FfiConverterBoolean.allocationSize(value.`mobile`)
     )
 
     override fun write(value: PresenceSnapshot, buf: ByteBuffer) {
@@ -3144,6 +3150,7 @@ public object FfiConverterTypePresenceSnapshot: FfiConverterRustBuffer<PresenceS
             FfiConverterString.write(value.`status`, buf)
             FfiConverterSequenceString.write(value.`activities`, buf)
             FfiConverterOptionalString.write(value.`customStatus`, buf)
+            FfiConverterBoolean.write(value.`mobile`, buf)
     }
 }
 

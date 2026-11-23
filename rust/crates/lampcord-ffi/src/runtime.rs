@@ -370,6 +370,7 @@ fn benchmark_snapshot() -> ClientSnapshot {
                 status: "online".to_owned(),
                 activities: vec!["Compose".to_owned()],
                 custom_status: None,
+                mobile: false,
             })
             .collect(),
         read_states: (1..=200)
@@ -726,6 +727,7 @@ fn presence_snapshot(presence: &CachedPresence) -> PresenceSnapshot {
         status: presence.status.clone(),
         activities: presence.activities.clone(),
         custom_status: presence.custom_status.clone(),
+        mobile: presence.mobile,
     }
 }
 

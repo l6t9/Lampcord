@@ -206,6 +206,8 @@ pub struct PresenceSnapshot {
     pub activities: Vec<String>,
     /// Schema 3+. Custom status text, kept out of `activities`.
     pub custom_status: Option<String>,
+    /// Schema 3+. Online only from a phone.
+    pub mobile: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
