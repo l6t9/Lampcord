@@ -69,6 +69,7 @@ fun DiscordPanels(
     swipeEnabled: Boolean = true,
     swipeToStartEnabled: Boolean = swipeEnabled,
     swipeToEndEnabled: Boolean = swipeEnabled,
+    onPanelDragStart: () -> Unit = {},
     startPanel: @Composable BoxScope.() -> Unit,
     endPanel: @Composable BoxScope.() -> Unit,
     centerPanel: @Composable BoxScope.() -> Unit
@@ -158,6 +159,11 @@ fun DiscordPanels(
                                     val maxAllowed = if (swipeToStartEnabled || state.currentValue == DiscordPanelValue.Start) startPanelWidthPx else 0f
                                     state.offset = (targetOffset + newOffset).coerceIn(minAllowed, maxAllowed) - targetOffset
                                 }
+                            },
+                            onDragStarted = {
+                                keyboardController?.hide()
+                                focusManager.clearFocus()
+                                onPanelDragStart()
                             },
                             onDragStopped = { velocity ->
                                 val currentTotalOffset = targetOffset + state.offset

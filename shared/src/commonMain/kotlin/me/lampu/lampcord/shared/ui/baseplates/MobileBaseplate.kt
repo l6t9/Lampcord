@@ -130,12 +130,13 @@ fun MobileBaseplate(
             profileStore = profileStore,
             userStore = userStore,
             voiceStore = voiceStore,
-            onExitApp = onExitApp
+            onExitApp = onExitApp,
+            onChatPanelSwipedAway = {
+                sheetState.collapse()
+                navigationStore.closeCustomKeyboardPicker()
+            }
         )
 
-        // Discord's Android portal is a same-window bottom sheet. The collapsed
-        // detent and the input's bottom safe area are the same value, so the
-        // sheet starts exactly at the input's bottom edge and expands over it.
         if (navigationStore.isCustomKeyboardPickerVisible) {
             Box(
                 modifier = Modifier.fillMaxSize(),
@@ -177,7 +178,8 @@ private fun MobileBaseplateContentRoot(
     profileStore: ProfileStore,
     userStore: UserStore,
     voiceStore: VoiceStore,
-    onExitApp: () -> Unit
+    onExitApp: () -> Unit,
+    onChatPanelSwipedAway: () -> Unit
 ) {
     val presenceStore: PresenceStore = koinInject()
     val settingsStore: SettingsStore = koinInject()
@@ -353,8 +355,13 @@ private fun MobileBaseplateContentRoot(
         if (navigationState.topLevelRoute == Screen.Chat) {
             lastPanelValue = panelState.currentValue
         }
-        if (panelState.currentValue != DiscordPanelValue.Center) {
+        val chatPanelSwipedAway = navigationState.topLevelRoute != Screen.Chat ||
+            panelState.currentValue != DiscordPanelValue.Center
+        if (chatPanelSwipedAway) {
             keyboardController?.hide()
+            if (navigationStore.isCustomKeyboardPickerVisible) {
+                onChatPanelSwipedAway()
+            }
         }
     }
 
@@ -728,6 +735,7 @@ private fun MobileBaseplateContentRoot(
                 .statusBarsPadding(),
             swipeToStartEnabled = isChat && !navigationStore.isBubble,
             swipeToEndEnabled = isChat && !navigationStore.isBubble && !Settings.shared.swipeToReplyEnabled,
+            onPanelDragStart = onChatPanelSwipedAway,
             startPanel = {
                 if (isChat) {
                     val currentBottomPadding = (navBarHeight * navBarVisibleAmount).coerceAtLeast(0.dp)

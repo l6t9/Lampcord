@@ -120,7 +120,6 @@ class KeyboardSheetState internal constructor(
     }
 
     companion object {
-        /** Used by layouts that render the composer but do not host a sheet. */
         val Disabled = KeyboardSheetState(
             animatable = Animatable(0f),
             scope = CoroutineScope(EmptyCoroutineContext),

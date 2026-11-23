@@ -613,10 +613,6 @@ fun ChatInputBar(
                     }
                 }
 
-                // Phoenix frosts the chat backdrop behind the composer instead
-                // of painting an opaque band. We blur the same wallpaper used by
-                // ChatArea and keep the overlay translucent, so the composer
-                // reads as glass over the conversation rather than a solid slab.
                 val wallpaperUrl = settings.chatBackground
                 val hasFrostedBackdrop = wallpaperUrl.isNotBlank()
                 val scrimColor = if (hasFrostedBackdrop) {
@@ -624,47 +620,44 @@ fun ChatInputBar(
                 } else {
                     MaterialTheme.colorScheme.surface
                 }
-                val scrimShadowColor = MaterialTheme.colorScheme.scrim.copy(alpha = 0.18f)
+                val scrimShadowColor = Color(0xFF1A1A1E).copy(alpha = 0.5f)
                 val inputScrimModifier = if (isMobileView) {
-                    Modifier.drawBehind {
-                        val scrimHeight = minOf(56.dp.toPx(), size.height)
-                        val scrimStart = scrimHeight / 2f
+                    Modifier
+                        .graphicsLayer { clip = false }
+                        .drawBehind {
+                            val gradientHeight = 56.dp.toPx()
+                            val overlap = gradientHeight / 2f
+                            val gradientTop = -overlap
+                            val solidTop = gradientTop + gradientHeight
 
-                        // Phoenix anchors a transparent -> background gradient
-                        // at the top of the composer, then fills the remaining
-                        // height with that same background color. Our chat
-                        // background is the Material surface role, so using
-                        // `background` here left a visible solid band in
-                        // Ash/Onyx. The solid portion now matches the chat and
-                        // only the fade + shadow are perceptible.
-                        drawRect(
-                            color = scrimColor,
-                            topLeft = Offset(0f, scrimStart),
-                            size = Size(size.width, size.height - scrimStart)
-                        )
-                        drawRect(
-                            brush = Brush.verticalGradient(
-                                colors = listOf(Color.Transparent, scrimColor),
-                                startY = 0f,
-                                endY = scrimHeight
-                            ),
-                            size = Size(size.width, scrimHeight)
-                        )
+                            drawRect(
+                                color = scrimColor,
+                                topLeft = Offset(0f, solidTop),
+                                size = Size(size.width, (size.height - solidTop).coerceAtLeast(0f))
+                            )
+                            drawRect(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(Color.Transparent, scrimColor),
+                                    startY = gradientTop,
+                                    endY = solidTop
+                                ),
+                                topLeft = Offset(0f, gradientTop),
+                                size = Size(size.width, gradientHeight)
+                            )
 
-                        // Soft upward shadow immediately above the composer,
-                        // matching Discord's 0 -1px 4px mobile chat-input shadow.
-                        val shadowHeight = minOf(8.dp.toPx(), scrimHeight)
-                        val shadowTop = size.height - shadowHeight
-                        drawRect(
-                            brush = Brush.verticalGradient(
-                                colors = listOf(Color.Transparent, scrimShadowColor),
-                                startY = shadowTop,
-                                endY = size.height
-                            ),
-                            topLeft = Offset(0f, shadowTop),
-                            size = Size(size.width, shadowHeight)
-                        )
-                    }
+                            val shadowHeight = 4.dp.toPx()
+                            val shadowOffset = 1.dp.toPx()
+                            val shadowTop = -shadowHeight - shadowOffset
+                            drawRect(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(Color.Transparent, scrimShadowColor),
+                                    startY = shadowTop,
+                                    endY = -shadowOffset
+                                ),
+                                topLeft = Offset(0f, shadowTop),
+                                size = Size(size.width, shadowHeight)
+                            )
+                        }
                 } else {
                     Modifier
                 }

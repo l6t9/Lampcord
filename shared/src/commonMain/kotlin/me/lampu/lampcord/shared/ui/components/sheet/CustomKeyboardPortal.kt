@@ -24,11 +24,6 @@ class CustomKeyboardPortal {
         }
 }
 
-/**
- * Layouts without a keyboard-sheet host (notably the desktop baseplate) still
- * render ChatInputBar. They use these inert defaults instead of crashing; the
- * mobile baseplate overrides them with the real sheet, portal, and geometry.
- */
 val LocalCustomKeyboardSheetState = staticCompositionLocalOf<KeyboardSheetState> {
     KeyboardSheetState.Disabled
 }
