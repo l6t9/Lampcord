@@ -18,6 +18,7 @@ fn collect_qml(dir: &Path, out: &mut Vec<String>) {
 
 fn main() {
     println!("cargo:rerun-if-changed=qml");
+    println!("cargo:rerun-if-changed=native");
 
     let mut files = Vec::new();
     collect_qml(Path::new("qml"), &mut files);
@@ -30,7 +31,9 @@ fn main() {
     });
 
     CxxQtBuilder::new_qml_module(QmlModule::new("Lampcord").qml_files(qml_files))
-        .files(["src/backend.rs", "src/palette.rs"])
+        .files(["src/backend.rs", "src/palette.rs", "src/surface.rs"])
+        .cpp_file("native/surface_format.cpp")
+        .include_dir("native")
         .qt_module("Quick")
         .build();
 }

@@ -1,9 +1,12 @@
 mod backend;
 mod palette;
+mod surface;
 
 use cxx_qt_lib::{QGuiApplication, QQmlApplicationEngine, QString, QUrl};
 
 fn main() {
+    surface::ffi::request_true_color_surfaces();
+
     let mut app = QGuiApplication::new();
     if let Some(mut app) = app.as_mut() {
         app.as_mut().set_application_name(&QString::from("Lampcord"));
