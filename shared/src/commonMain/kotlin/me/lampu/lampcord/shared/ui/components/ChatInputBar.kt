@@ -21,8 +21,13 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.OutputTransformation
+import androidx.compose.foundation.text.input.TextFieldBuffer
+import androidx.compose.foundation.text.input.TextFieldDecorator
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.clearText
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -52,10 +57,6 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.OffsetMapping
-import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.input.TransformedText
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
@@ -88,35 +89,35 @@ import org.koin.compose.koinInject
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import me.lampu.lampcord.shared.ui.kit.clickableCursor
 
-class DiscordInputVisualTransformation(
+class DiscordInputOutputTransformation(
     val primaryColor: Color,
     val highlightRanges: List<IntRange> = emptyList()
-) : VisualTransformation {
-    override fun filter(text: AnnotatedString): TransformedText {
-        val build = AnnotatedString.Builder()
-        val rawText = text.text
+) : OutputTransformation {
+    override fun TextFieldBuffer.transformOutput() {
+        val rawText = asCharSequence()
+        val textLength = length
         val ranges = highlightRanges
-            .filter { it.first >= 0 && it.last < rawText.length && it.first <= it.last }
+            .filter { it.first >= 0 && it.last < textLength && it.first <= it.last }
             .sortedBy { it.first }
+
+        val style = SpanStyle(
+            color = primaryColor,
+            fontWeight = FontWeight.Bold,
+            background = primaryColor.copy(alpha = 0.12f),
+            textDecoration = TextDecoration.None
+        )
 
         var rangeIndex = 0
         var i = 0
-        while (i < rawText.length) {
+        while (i < textLength) {
             while (rangeIndex < ranges.size && ranges[rangeIndex].last < i) {
                 rangeIndex++
             }
             val activeRange = ranges.getOrNull(rangeIndex)
             if (activeRange != null && i >= activeRange.first) {
                 val end = activeRange.last + 1
-                build.withStyle(
-                    SpanStyle(
-                        color = primaryColor,
-                        fontWeight = FontWeight.Bold,
-                        background = primaryColor.copy(alpha = 0.12f),
-                        textDecoration = TextDecoration.None
-                    )
-                ) {
-                    append(rawText.substring(i, end))
+                if (end > i && end <= textLength) {
+                    addStyle(style, i, end)
                 }
                 i = end
                 rangeIndex++
@@ -125,46 +126,48 @@ class DiscordInputVisualTransformation(
 
             val char = rawText[i]
             if (char == '@' || char == '#' || char == '/' || char == ':') {
-                 if (i == 0 || rawText[i-1].isWhitespace()) {
-                     val isEmoji = char == ':'
-                     var end = i + 1
-                     if (isEmoji) {
-                         var cursor = i + 1
-                         while (cursor < rawText.length && !rawText[cursor].isWhitespace()) {
-                             if (rawText[cursor] == ':') {
-                                 cursor++
-                                 end = cursor
-                                 break
-                             }
-                             cursor++
-                         }
-                         if (end == i + 1) {
-                             end = cursor.coerceAtMost(rawText.length)
-                         }
-                     } else {
-                         while (end < rawText.length && !rawText[end].isWhitespace()) {
-                             end++
-                         }
-                     }
-                     build.withStyle(
-                         SpanStyle(
-                             color = primaryColor,
-                             fontWeight = FontWeight.Bold,
-                             background = primaryColor.copy(alpha = 0.12f),
-                             textDecoration = TextDecoration.None
-                         )
-                     ) {
-                         append(rawText.substring(i, end))
-                     }
-                     i = end
-                     continue
-                 }
+                if (i == 0 || rawText[i - 1].isWhitespace()) {
+                    val isEmoji = char == ':'
+                    var end = i + 1
+                    if (isEmoji) {
+                        var cursor = i + 1
+                        while (cursor < textLength && !rawText[cursor].isWhitespace()) {
+                            if (rawText[cursor] == ':') {
+                                cursor++
+                                end = cursor
+                                break
+                            }
+                            cursor++
+                        }
+                        if (end == i + 1) {
+                            end = cursor.coerceAtMost(textLength)
+                        }
+                    } else {
+                        while (end < textLength && !rawText[end].isWhitespace()) {
+                            end++
+                        }
+                    }
+                    if (end > i && end <= textLength) {
+                        addStyle(style, i, end)
+                    }
+                    i = end
+                    continue
+                }
             }
-            build.append(char)
             i++
         }
+    }
 
-        return TransformedText(build.toAnnotatedString(), OffsetMapping.Identity)
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is DiscordInputOutputTransformation) return false
+        return primaryColor == other.primaryColor && highlightRanges == other.highlightRanges
+    }
+
+    override fun hashCode(): Int {
+        var result = primaryColor.hashCode()
+        result = 31 * result + highlightRanges.hashCode()
+        return result
     }
 }
 
@@ -183,9 +186,16 @@ fun ChatInputBar(
     settingsStore: SettingsStore = koinInject(),
     profileStore: ProfileStore = koinInject()
 ) {
-    var textFieldValue by remember(channel.id) {
+    val textFieldState = remember(channel.id) {
         val draft = messageStore.draftMessages[channel.id] ?: ""
-        mutableStateOf(TextFieldValue(draft, TextRange(draft.length)))
+        TextFieldState(draft, TextRange(draft.length))
+    }
+    var lastHandledText by remember(channel.id) {
+        mutableStateOf(messageStore.draftMessages[channel.id] ?: "")
+    }
+    var lastHandledSelection by remember(channel.id) {
+        val len = (messageStore.draftMessages[channel.id] ?: "").length
+        mutableStateOf(TextRange(len))
     }
 
     val haptic = LocalHapticFeedback.current
@@ -277,10 +287,10 @@ fun ChatInputBar(
 
     fun applyAutocomplete(item: AutocompleteItem, startOverride: Int? = null) {
         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-        val text = textFieldValue.text
-        val selection = textFieldValue.selection
-        if (selection.collapsed) {
-            val cursor = selection.start
+        val currentSelection = textFieldState.selection
+        if (currentSelection.collapsed) {
+            val cursor = currentSelection.start
+            val text = textFieldState.text.toString()
             val textBefore = text.take(cursor)
             val lastWordStart = textBefore.lastIndexOfAny(charArrayOf(' ', '\n')) + 1
 
@@ -300,7 +310,6 @@ fun ChatInputBar(
             val inputText = item.inputText ?: item.replacement
             val newText = text.replaceRange(actualStart, cursor, inputText)
             val newCursor = actualStart + inputText.length
-            textFieldValue = TextFieldValue(newText, TextRange(newCursor))
 
             val removedLen = cursor - actualStart
             val delta = inputText.length - removedLen
@@ -309,6 +318,13 @@ fun ChatInputBar(
                 shifted = shifted + (actualStart until newCursor to item.replacement)
             }
             mentionRanges = shifted
+            lastHandledText = newText
+            lastHandledSelection = TextRange(newCursor)
+
+            textFieldState.edit {
+                replace(actualStart, cursor, inputText)
+                selection = TextRange(newCursor)
+            }
 
             autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild, channel)
         }
@@ -335,23 +351,90 @@ fun ChatInputBar(
         mentionRanges = emptyMap()
     }
 
-    LaunchedEffect(textFieldValue.text) {
-        if (textFieldValue.text.isEmpty()) {
-            messageStore.draftMessages.remove(channel.id)
-        } else {
-            messageStore.draftMessages[channel.id] = textFieldValue.text
-        }
+    LaunchedEffect(textFieldState, channel.id) {
+        snapshotFlow { textFieldState.text.toString() }
+            .collect { text ->
+                if (text.isEmpty()) {
+                    messageStore.draftMessages.remove(channel.id)
+                } else {
+                    messageStore.draftMessages[channel.id] = text
+                }
+            }
+    }
+
+    LaunchedEffect(textFieldState, channel.id, canSend) {
+        snapshotFlow { textFieldState.text.toString() to textFieldState.selection }
+            .collect { (currentText, selection) ->
+                val textChanged = currentText != lastHandledText
+                val selectionChanged = selection != lastHandledSelection
+
+                if (!textChanged && !selectionChanged) return@collect
+
+                if (textChanged) {
+                    mentionRanges = shiftMentionRanges(mentionRanges, lastHandledText, currentText)
+                    lastHandledText = currentText
+                }
+                lastHandledSelection = selection
+
+                if (canSend) {
+                    if (selection.collapsed) {
+                        val cursor = selection.start
+                        val textBefore = currentText.take(cursor)
+                        val lastWordStart = textBefore.lastIndexOfAny(charArrayOf(' ', '\n')) + 1
+                        val lastWord = textBefore.substring(lastWordStart)
+
+                        val activeType = autocompleteStore.autocompleteType
+                        val trackedStart = autocompleteStore.autocompleteStart
+                        val mentionStillOpen = activeType == AutocompleteType.MENTION &&
+                            trackedStart in 0..cursor &&
+                            cursor > trackedStart &&
+                            currentText.getOrNull(trackedStart) == '@' &&
+                            !currentText.substring(trackedStart, cursor).contains('\n')
+
+                        val (type, query, start) = when {
+                            currentText.startsWith('/') && !currentText.contains(' ') ->
+                                Triple(AutocompleteType.COMMAND, currentText.substring(1), 0)
+                            mentionStillOpen ->
+                                Triple(
+                                    AutocompleteType.MENTION,
+                                    currentText.substring(trackedStart + 1, cursor),
+                                    trackedStart
+                                )
+                            lastWord.length >= 2 && lastWord.startsWith(':') ->
+                                Triple(AutocompleteType.EMOJI, lastWord.substring(1), lastWordStart)
+                            lastWord.startsWith('@') ->
+                                Triple(AutocompleteType.MENTION, lastWord.substring(1), lastWordStart)
+                            lastWord.startsWith('#') ->
+                                Triple(AutocompleteType.CHANNEL, lastWord.substring(1), lastWordStart)
+                            else -> Triple(null, "", -1)
+                        }
+                        autocompleteStore.updateAutocomplete(
+                            type,
+                            query,
+                            navigationStore.selectedGuild,
+                            channel,
+                            start = start
+                        )
+                    } else {
+                        autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild, channel)
+                    }
+
+                    if (textChanged && currentText.isNotEmpty() && !currentText.startsWith('/')) {
+                        messageStore.sendTyping(channel.id)
+                    }
+                }
+            }
     }
 
     LaunchedEffect(channel.id) {
-        val draft = messageStore.draftMessages[channel.id] ?: ""
-        textFieldValue = TextFieldValue(draft, TextRange(draft.length))
         autocompleteStore.clear()
     }
 
     LaunchedEffect(messageStore.editingMessage) {
         messageStore.editingMessage?.let {
-            textFieldValue = TextFieldValue(it.content, TextRange(it.content.length))
+            lastHandledText = it.content
+            lastHandledSelection = TextRange(it.content.length)
+            textFieldState.setTextAndPlaceCursorAtEnd(it.content)
             clearMentions()
             messageStore.pendingFiles.clear()
             messageStore.replyingTo = null
@@ -393,7 +476,7 @@ fun ChatInputBar(
                     replacement = serverReplacement,
                     inputText = ":${emoji.name}:"
                 ),
-                startOverride = textFieldValue.selection.start
+                startOverride = textFieldState.selection.start
             )
         } else {
 
@@ -404,16 +487,27 @@ fun ChatInputBar(
                 char.removeSurrounding(":").takeIf { it.isNotBlank() }
             }
             val inputText = if (shortcode != null) ":$shortcode:" else char
-            val insertStart = textFieldValue.selection.start
-            val newText = textFieldValue.text.replaceRange(
+            val insertStart = textFieldState.selection.min
+            val insertEnd = textFieldState.selection.max
+            val currentText = textFieldState.text.toString()
+            val newText = currentText.replaceRange(
                 insertStart,
-                textFieldValue.selection.end,
+                insertEnd,
                 inputText
             )
-            textFieldValue = TextFieldValue(newText, TextRange(insertStart + inputText.length))
+            val newCursor = insertStart + inputText.length
+            val delta = inputText.length - (insertEnd - insertStart)
+            var shifted = shiftMentionRanges(mentionRanges, insertStart, insertEnd, delta)
             val unicode = EmojiIndex.getCharForName(shortcode ?: char)
             if (unicode != null && unicode != inputText) {
-                mentionRanges = mentionRanges + (insertStart until insertStart + inputText.length to unicode)
+                shifted = shifted + (insertStart until newCursor to unicode)
+            }
+            mentionRanges = shifted
+            lastHandledText = newText
+            lastHandledSelection = TextRange(newCursor)
+            textFieldState.edit {
+                replace(insertStart, insertEnd, inputText)
+                selection = TextRange(newCursor)
             }
         }
     }
@@ -456,12 +550,14 @@ fun ChatInputBar(
             )
             commandStore.clearActiveCommand()
         } else if (messageStore.editingMessage != null) {
-            messageStore.editMessage(messageStore.editingMessage!!, resolveContent(textFieldValue.text))
+            messageStore.editMessage(messageStore.editingMessage!!, resolveContent(textFieldState.text.toString()))
             messageStore.editingMessage = null
         } else {
-            messageStore.sendMessageDraft(resolveContent(textFieldValue.text), allowedMentions = allowedMentions)
+            messageStore.sendMessageDraft(resolveContent(textFieldState.text.toString()), allowedMentions = allowedMentions)
         }
-        textFieldValue = TextFieldValue("")
+        lastHandledText = ""
+        lastHandledSelection = TextRange.Zero
+        textFieldState.clearText()
         clearMentions()
         messageStore.resetTypingEmission(channel.id)
     }
@@ -504,7 +600,9 @@ fun ChatInputBar(
                             onItemSelected = { item ->
                                 if (item.isCommand && item.commandObj != null) {
                                     commandStore.activateCommand(item.commandObj)
-                                    textFieldValue = TextFieldValue("")
+                                    lastHandledText = ""
+                                    lastHandledSelection = TextRange.Zero
+                                    textFieldState.clearText()
                                     clearMentions()
                                     autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild, channel)
                                 } else {
@@ -691,7 +789,7 @@ fun ChatInputBar(
                         ) {
                             val density = LocalDensity.current
                             val isKeyboardVisible = WindowInsets.ime.getBottom(density) > 0
-                            val showCollapsibleItems = textFieldValue.text.isEmpty() && (!isFocused || !isKeyboardVisible)
+                            val showCollapsibleItems = textFieldState.text.isEmpty() && (!isFocused || !isKeyboardVisible)
 
                             val uploadVisible = !settings.chatboxHideUploadButton && messageStore.editingMessage == null && canSend
                             val voiceVisible = !settings.chatboxHideVoiceButton &&
@@ -712,7 +810,7 @@ fun ChatInputBar(
                             val composerBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(
                                 alpha = if (isSystemInDarkTheme()) 0.04f else 0.2f
                             )
-                            val showSend = textFieldValue.text.isNotBlank() ||
+                            val showSend = textFieldState.text.isNotBlank() ||
                                 messageStore.pendingFiles.isNotEmpty() ||
                                 commandStore.activeCommand != null
 
@@ -815,7 +913,9 @@ fun ChatInputBar(
                                                     onClick = {
                                                         if (isEditing) {
                                                             messageStore.editingMessage = null
-                                                            textFieldValue = TextFieldValue("")
+                                                            lastHandledText = ""
+                                                            lastHandledSelection = TextRange.Zero
+                                                            textFieldState.clearText()
                                                         } else {
                                                             messageStore.replyingTo = null
                                                         }
@@ -893,23 +993,6 @@ fun ChatInputBar(
                                         color = Color.Transparent
                                     ) {
                                         Box {
-                                ContextMenu(
-                                    items = listOf(
-                                        ContextMenuItem(
-                                            label = "Paste image",
-                                            onClick = {
-                                                val pasted = getClipboardFiles()
-                                                if (pasted.isNotEmpty()) {
-                                                    messageStore.pendingFiles.addAll(pasted.map { PendingFile(it.first, it.second) })
-                                                } else {
-                                                    showToast("No image found in clipboard")
-                                                }
-                                            }
-                                        )
-                                    ),
-                                    enabled = isMobileView && canSend,
-                                    respectChildGestures = true
-                                ) {
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
@@ -953,61 +1036,10 @@ fun ChatInputBar(
                                         }
 
                                         BasicTextField(
-                                            value = textFieldValue,
+                                            state = textFieldState,
                                             enabled = canSend,
                                             readOnly = !canSend,
-                                            onValueChange = {
-                                                if (canSend) {
-                                                    val oldText = textFieldValue.text
-                                                    textFieldValue = it
-                                                    mentionRanges = shiftMentionRanges(mentionRanges, oldText, it.text)
-
-if (it.selection.collapsed) {
-                                                        val cursor = it.selection.start
-                                                        val textBefore = it.text.take(cursor)
-                                                        val lastWordStart = textBefore.lastIndexOfAny(charArrayOf(' ', '\n')) + 1
-                                                        val lastWord = textBefore.substring(lastWordStart)
-
-                                                        val activeType = autocompleteStore.autocompleteType
-                                                        val trackedStart = autocompleteStore.autocompleteStart
-                                                        val mentionStillOpen = activeType == AutocompleteType.MENTION &&
-                                                            trackedStart in 0..cursor &&
-                                                            cursor > trackedStart &&
-                                                            it.text.getOrNull(trackedStart) == '@' &&
-                                                            !it.text.substring(trackedStart, cursor).contains('\n')
-
-                                                        val (type, query, start) = when {
-                                                            it.text.startsWith('/') && !it.text.contains(' ') ->
-                                                                Triple(AutocompleteType.COMMAND, it.text.substring(1), 0)
-                                                            mentionStillOpen ->
-                                                                Triple(
-                                                                    AutocompleteType.MENTION,
-                                                                    it.text.substring(trackedStart + 1, cursor),
-                                                                    trackedStart
-                                                                )
-                                                            lastWord.length >= 2 && lastWord.startsWith(':') ->
-                                                                Triple(AutocompleteType.EMOJI, lastWord.substring(1), lastWordStart)
-                                                            lastWord.startsWith('@') ->
-                                                                Triple(AutocompleteType.MENTION, lastWord.substring(1), lastWordStart)
-                                                            lastWord.startsWith('#') ->
-                                                                Triple(AutocompleteType.CHANNEL, lastWord.substring(1), lastWordStart)
-                                                            else -> Triple(null, "", -1)
-                                                        }
-                                                        autocompleteStore.updateAutocomplete(
-                                                            type,
-                                                            query,
-                                                            navigationStore.selectedGuild,
-                                                            channel,
-                                                            start = start
-                                                        )
-                                                    } else {
-                                                        autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild, channel)
-                                                    }
-
-                                                    if (it.text.isNotEmpty() && !it.text.startsWith('/')) messageStore.sendTyping(channel.id)
-                                                }
-                                            },
-                                            visualTransformation = DiscordInputVisualTransformation(
+                                            outputTransformation = DiscordInputOutputTransformation(
                                                 primaryColor,
                                                 highlightRanges = mentionRanges.keys.toList()
                                             ),
@@ -1029,6 +1061,9 @@ if (it.selection.collapsed) {
                                                         focusRequester.requestFocus()
                                                         keyboardController?.show()
                                                     }
+                                                }
+                                                .keyboardImageReceiver { pf ->
+                                                    messageStore.pendingFiles.add(pf)
                                                 }
                                                 .focusRequester(focusRequester)
                                                 .onFocusChanged {
@@ -1058,7 +1093,9 @@ if (it.selection.collapsed) {
                                                                         val item = autocompleteStore.autocompleteItems[autocompleteStore.autocompleteSelectedIndex]
                                                                         if (item.isCommand && item.commandObj != null) {
                                                                             commandStore.activateCommand(item.commandObj)
-                                                                            textFieldValue = TextFieldValue("")
+                                                                            lastHandledText = ""
+                                                                            lastHandledSelection = TextRange.Zero
+                                                                            textFieldState.clearText()
                                                                             clearMentions()
                                                                             autocompleteStore.updateAutocomplete(null, "", navigationStore.selectedGuild, channel)
                                                                         } else {
@@ -1081,7 +1118,9 @@ if (it.selection.collapsed) {
                                                             }
                                                             if (messageStore.editingMessage != null) {
                                                                 messageStore.editingMessage = null
-                                                                textFieldValue = TextFieldValue("")
+                                                                lastHandledText = ""
+                                                                lastHandledSelection = TextRange.Zero
+                                                                textFieldState.clearText()
                                                                 return@onPreviewKeyEvent true
                                                             }
                                                             if (messageStore.replyingTo != null) {
@@ -1097,13 +1136,15 @@ if (it.selection.collapsed) {
                                                                 }
                                                         }
                                                         if (event.key == Key.Enter && !event.isShiftPressed && !isMobileView) {
-                                                            val currentText = textFieldValue.text
+                                                            val currentText = textFieldState.text.toString()
                                                             if (currentText.startsWith('/') && !currentText.contains(' ')) {
                                                                 val cmdName = currentText.substring(1).trim()
                                                                 val command = commandStore.availableCommands.find { it.name == cmdName }
                                                                 if (command != null) {
                                                                     commandStore.activateCommand(command)
-                                                                    textFieldValue = TextFieldValue("")
+                                                                    lastHandledText = ""
+                                                                    lastHandledSelection = TextRange.Zero
+                                                                    textFieldState.clearText()
                                                                     clearMentions()
                                                                     return@onPreviewKeyEvent true
                                                                 }
@@ -1129,12 +1170,12 @@ if (it.selection.collapsed) {
                                                 fontSize = MaterialTheme.typography.bodyLarge.fontSize * chatboxFontSize
                                             ),
                                             cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                                            decorationBox = { innerTextField: @Composable () -> Unit ->
+                                            decorator = TextFieldDecorator { innerTextField ->
                                                 Box(
                                                     modifier = Modifier.fillMaxWidth(),
                                                     contentAlignment = Alignment.CenterStart
                                                 ) {
-                                                    if (textFieldValue.text.isEmpty()) {
+                                                    if (textFieldState.text.isEmpty()) {
                                                         Text(
                                                             text = placeholderText,
                                                             style = MaterialTheme.typography.bodyLarge.copy(
@@ -1263,7 +1304,7 @@ if (it.selection.collapsed) {
                                                         ComposerTrailingAction.SEND -> FilledIconButton(
                                                             onClick = ::onSendClick,
                                                             enabled = canSend &&
-                                                                textFieldValue.text.length <= maxMessageLength &&
+                                                                textFieldState.text.length <= maxMessageLength &&
                                                                 (commandStore.activeCommand == null || commandStore.isCommandValid()),
                                                             colors = IconButtonDefaults.filledIconButtonColors(
                                                                 containerColor = MaterialTheme.colorScheme.primary,
@@ -1290,7 +1331,7 @@ if (it.selection.collapsed) {
                                         }
                                     }
 
-                                    val remaining = maxMessageLength - textFieldValue.text.length
+                                    val remaining = maxMessageLength - textFieldState.text.length
                                     if (remaining <= 100) {
                                         Text(
                                             text = remaining.toString(),
@@ -1305,7 +1346,6 @@ if (it.selection.collapsed) {
                                                 .padding(end = 12.dp, top = 2.dp)
                                         )
                                     }
-                                }
                             }
                         }
                                     }
@@ -1324,7 +1364,7 @@ if (it.selection.collapsed) {
             canSend,
             navigationStore.isMediaPickerVisible,
             navigationStore.isEmojiPickerVisible,
-            textFieldValue
+            textFieldState
         ) {
             if (isMobileView && canSend && !isDesktopTarget && navigationStore.isCustomKeyboardPickerVisible) {
                 customKeyboardPortal.content = { _: Boolean ->
@@ -1481,3 +1521,7 @@ private fun resolveServerContent(
 
     return result
 }
+
+expect fun Modifier.keyboardImageReceiver(
+    onMediaReceived: (PendingFile) -> Unit
+): Modifier
