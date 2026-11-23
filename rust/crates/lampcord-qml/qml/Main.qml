@@ -34,6 +34,7 @@ ApplicationWindow {
         category: "navigation"
         property string lastGuild: ""
         property string lastChannels: "{}"
+        property bool memberPanel: true
     }
 
     readonly property var guilds: JSON.parse(backend.guildsJson)

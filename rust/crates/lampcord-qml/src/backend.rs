@@ -31,6 +31,7 @@ pub mod qobject {
         #[qproperty(QString, channels_json)]
         #[qproperty(QString, messages_json)]
         #[qproperty(QString, members_json)]
+        #[qproperty(QString, pins_json)]
         #[qproperty(QString, auth_state)]
         #[qproperty(QString, auth_message)]
         #[qproperty(QString, error_text)]
@@ -66,6 +67,9 @@ pub mod qobject {
 
         #[qinvokable]
         fn select_channel(self: Pin<&mut LampcordBackend>, channel_id: QString);
+
+        #[qinvokable]
+        fn fetch_pins(self: Pin<&mut LampcordBackend>);
 
         #[qinvokable]
         fn load_older(self: Pin<&mut LampcordBackend>);
@@ -158,6 +162,7 @@ pub struct BackendRust {
     channels_json: QString,
     messages_json: QString,
     members_json: QString,
+    pins_json: QString,
     auth_state: QString,
     auth_message: QString,
     error_text: QString,
@@ -206,6 +211,7 @@ impl Default for BackendRust {
             channels_json: QString::from("[]"),
             messages_json: QString::from("[]"),
             members_json: QString::from("[]"),
+            pins_json: QString::from("[]"),
             auth_state: QString::from("idle"),
             auth_message: QString::default(),
             error_text: QString::default(),
@@ -760,6 +766,15 @@ impl qobject::LampcordBackend {
             self.as_mut().rust_mut().messages = messages;
             messages_dirty = true;
         }
+        if let Some(pins) = patch.pinned_messages {
+            // Newest pin first; each one stands alone, so nothing groups.
+            let mut rows: Vec<Value> = serde_json::from_str(&messages_json(&pins, &self.members)).unwrap_or_default();
+            rows.reverse();
+            for row in &mut rows {
+                row["grouped"] = Value::Bool(false);
+            }
+            self.as_mut().set_pins_json(QString::from(Value::Array(rows).to_string().as_str()));
+        }
 
         if channels_dirty {
             let json = channels_json(&self.channels, &self.read_states);
@@ -899,6 +914,12 @@ impl qobject::LampcordBackend {
 
     pub fn select_channel(self: Pin<&mut Self>, channel_id: QString) {
         let _ = self.client.select_channel(parse_id(&channel_id));
+    }
+
+    pub fn fetch_pins(self: Pin<&mut Self>) {
+        if let Some(channel_id) = parse_id(self.selected_channel_id()) {
+            let _ = self.client.fetch_pins(channel_id);
+        }
     }
 
     pub fn load_older(self: Pin<&mut Self>) {

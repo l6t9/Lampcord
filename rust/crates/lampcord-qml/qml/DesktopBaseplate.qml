@@ -67,7 +67,7 @@ Rectangle {
         Rectangle {
             Layout.fillHeight: true
             Layout.preferredWidth: root.extraLarge ? 300 : 240
-            visible: !root.medium && backend.selectedChannelId !== ""
+            visible: !root.medium && backend.selectedChannelId !== "" && memory.memberPanel
             radius: 16
             color: Theme.surface
             clip: true

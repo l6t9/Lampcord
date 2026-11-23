@@ -49,17 +49,18 @@ Item {
         }
     }
 
-    // Header (TopAppBar)
+    // Header (TopAppBar, 56px).
     Item {
         id: header
         width: parent.width
-        height: 64
+        height: 56
         visible: root.channel !== null
 
         Row {
-            anchors.fill: parent
+            anchors.left: parent.left
             anchors.leftMargin: 16
-            anchors.rightMargin: 16
+            anchors.verticalCenter: parent.verticalCenter
+            width: parent.width - 16 - actions.width - 8
             spacing: 8
 
             Icon {
@@ -79,12 +80,56 @@ Item {
             Text {
                 anchors.verticalCenter: parent.verticalCenter
                 width: parent.width - 36
+                elide: Text.ElideRight
                 text: root.channel ? root.channel.name : ""
                 color: Theme.surfaceText
                 font.family: Theme.font
                 font.pixelSize: 18
                 font.weight: Font.Bold
-                elide: Text.ElideRight
+            }
+        }
+
+        Row {
+            id: actions
+            anchors.right: parent.right
+            anchors.rightMargin: 8
+            anchors.verticalCenter: parent.verticalCenter
+
+            // Calls need voice in the core; the button is here but off.
+            IconButton {
+                visible: root.dm !== null
+                enabled: false
+                glyph: "Call"
+                iconSize: 22
+                tip: "Voice calls aren't available yet"
+            }
+            IconButton {
+                id: pinsButton
+                glyph: "PushPin"
+                iconSize: 22
+                iconColor: pins.opened ? Theme.primary : Theme.surfaceVariantText
+                tip: "Pins"
+                onClicked: {
+                    if (pins.opened) {
+                        pins.close()
+                    } else {
+                        backend.fetchPins()
+                        pins.open()
+                    }
+                }
+
+                PinsPopup {
+                    id: pins
+                    x: pinsButton.width - width
+                    y: pinsButton.height + 8
+                }
+            }
+            IconButton {
+                glyph: root.dm && !root.dm.group ? "AccountCircle" : "Group"
+                iconSize: 24
+                iconColor: memory.memberPanel ? Theme.primary : Theme.surfaceVariantText
+                tip: "Toggle Member List"
+                onClicked: memory.memberPanel = !memory.memberPanel
             }
         }
     }
