@@ -38,6 +38,9 @@ pub struct ClientSnapshot {
     pub current_user_status: Option<String>,
     /// Schema 3+. Custom status text; part of `meta`.
     pub current_user_custom_status: Option<String>,
+    /// Schema 3+. Your avatar frame and nameplate assets; part of `meta`.
+    pub current_user_decoration: Option<String>,
+    pub current_user_nameplate: Option<String>,
     /// Schema 3+. Pins of the selected channel once fetched; versioned with `messages`.
     pub pinned_messages: Vec<MessageSnapshot>,
 }
@@ -65,6 +68,8 @@ pub struct SnapshotMetaPatch {
     pub current_user_avatar: Option<String>,
     pub current_user_status: Option<String>,
     pub current_user_custom_status: Option<String>,
+    pub current_user_decoration: Option<String>,
+    pub current_user_nameplate: Option<String>,
     pub selected_guild_id: Option<u64>,
     pub selected_channel_id: Option<u64>,
     pub auth: AuthStateSnapshot,
@@ -123,6 +128,10 @@ pub struct RecipientSnapshot {
     pub username: String,
     pub global_name: Option<String>,
     pub avatar: Option<String>,
+    /// Avatar frame (decoration preset) asset.
+    pub decoration: Option<String>,
+    /// Nameplate collectible asset.
+    pub nameplate: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -160,6 +169,8 @@ pub struct MessageSnapshot {
     pub kind: u8,
     /// Schema 3+. Avatar hash of the author's account.
     pub author_avatar: Option<String>,
+    /// Schema 3+. The author's avatar frame asset.
+    pub author_decoration: Option<String>,
     /// Schema 3+.
     pub attachments: Vec<AttachmentSnapshot>,
     /// Schema 3+. A short view of the message this one replies to.
@@ -199,6 +210,12 @@ pub struct MemberSnapshot {
     pub nickname: Option<String>,
     pub roles: Vec<u64>,
     pub status: Option<String>,
+    /// Schema 3+.
+    pub global_name: Option<String>,
+    /// Schema 3+. Avatar frame asset (server-specific first).
+    pub decoration: Option<String>,
+    /// Schema 3+. Nameplate collectible asset.
+    pub nameplate: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

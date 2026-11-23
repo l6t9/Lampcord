@@ -2801,6 +2801,11 @@ data class ClientSnapshot (
      */
     var `currentUserCustomStatus`: kotlin.String?, 
     /**
+     * Schema 3+. Your avatar frame and nameplate assets; part of `meta`.
+     */
+    var `currentUserDecoration`: kotlin.String?, 
+    var `currentUserNameplate`: kotlin.String?, 
+    /**
      * Schema 3+. Pins of the selected channel once fetched; versioned with `messages`.
      */
     var `pinnedMessages`: List<MessageSnapshot>
@@ -2836,6 +2841,8 @@ public object FfiConverterTypeClientSnapshot: FfiConverterRustBuffer<ClientSnaps
             FfiConverterOptionalString.read(buf),
             FfiConverterOptionalString.read(buf),
             FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
             FfiConverterSequenceTypeMessageSnapshot.read(buf),
         )
     }
@@ -2862,6 +2869,8 @@ public object FfiConverterTypeClientSnapshot: FfiConverterRustBuffer<ClientSnaps
             FfiConverterOptionalString.allocationSize(value.`currentUserAvatar`) +
             FfiConverterOptionalString.allocationSize(value.`currentUserStatus`) +
             FfiConverterOptionalString.allocationSize(value.`currentUserCustomStatus`) +
+            FfiConverterOptionalString.allocationSize(value.`currentUserDecoration`) +
+            FfiConverterOptionalString.allocationSize(value.`currentUserNameplate`) +
             FfiConverterSequenceTypeMessageSnapshot.allocationSize(value.`pinnedMessages`)
     )
 
@@ -2887,6 +2896,8 @@ public object FfiConverterTypeClientSnapshot: FfiConverterRustBuffer<ClientSnaps
             FfiConverterOptionalString.write(value.`currentUserAvatar`, buf)
             FfiConverterOptionalString.write(value.`currentUserStatus`, buf)
             FfiConverterOptionalString.write(value.`currentUserCustomStatus`, buf)
+            FfiConverterOptionalString.write(value.`currentUserDecoration`, buf)
+            FfiConverterOptionalString.write(value.`currentUserNameplate`, buf)
             FfiConverterSequenceTypeMessageSnapshot.write(value.`pinnedMessages`, buf)
     }
 }
@@ -3011,7 +3022,19 @@ data class MemberSnapshot (
     var `avatar`: kotlin.String?, 
     var `nickname`: kotlin.String?, 
     var `roles`: List<kotlin.ULong>, 
-    var `status`: kotlin.String?
+    var `status`: kotlin.String?, 
+    /**
+     * Schema 3+.
+     */
+    var `globalName`: kotlin.String?, 
+    /**
+     * Schema 3+. Avatar frame asset (server-specific first).
+     */
+    var `decoration`: kotlin.String?, 
+    /**
+     * Schema 3+. Nameplate collectible asset.
+     */
+    var `nameplate`: kotlin.String?
 ) {
     
     companion object
@@ -3030,6 +3053,9 @@ public object FfiConverterTypeMemberSnapshot: FfiConverterRustBuffer<MemberSnaps
             FfiConverterOptionalString.read(buf),
             FfiConverterSequenceULong.read(buf),
             FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
         )
     }
 
@@ -3040,7 +3066,10 @@ public object FfiConverterTypeMemberSnapshot: FfiConverterRustBuffer<MemberSnaps
             FfiConverterOptionalString.allocationSize(value.`avatar`) +
             FfiConverterOptionalString.allocationSize(value.`nickname`) +
             FfiConverterSequenceULong.allocationSize(value.`roles`) +
-            FfiConverterOptionalString.allocationSize(value.`status`)
+            FfiConverterOptionalString.allocationSize(value.`status`) +
+            FfiConverterOptionalString.allocationSize(value.`globalName`) +
+            FfiConverterOptionalString.allocationSize(value.`decoration`) +
+            FfiConverterOptionalString.allocationSize(value.`nameplate`)
     )
 
     override fun write(value: MemberSnapshot, buf: ByteBuffer) {
@@ -3051,6 +3080,9 @@ public object FfiConverterTypeMemberSnapshot: FfiConverterRustBuffer<MemberSnaps
             FfiConverterOptionalString.write(value.`nickname`, buf)
             FfiConverterSequenceULong.write(value.`roles`, buf)
             FfiConverterOptionalString.write(value.`status`, buf)
+            FfiConverterOptionalString.write(value.`globalName`, buf)
+            FfiConverterOptionalString.write(value.`decoration`, buf)
+            FfiConverterOptionalString.write(value.`nameplate`, buf)
     }
 }
 
@@ -3072,6 +3104,10 @@ data class MessageSnapshot (
      * Schema 3+. Avatar hash of the author's account.
      */
     var `authorAvatar`: kotlin.String?, 
+    /**
+     * Schema 3+. The author's avatar frame asset.
+     */
+    var `authorDecoration`: kotlin.String?, 
     /**
      * Schema 3+.
      */
@@ -3100,6 +3136,7 @@ public object FfiConverterTypeMessageSnapshot: FfiConverterRustBuffer<MessageSna
             FfiConverterOptionalString.read(buf),
             FfiConverterUByte.read(buf),
             FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
             FfiConverterSequenceTypeAttachmentSnapshot.read(buf),
             FfiConverterOptionalTypeReplySnapshot.read(buf),
         )
@@ -3115,6 +3152,7 @@ public object FfiConverterTypeMessageSnapshot: FfiConverterRustBuffer<MessageSna
             FfiConverterOptionalString.allocationSize(value.`editedTimestamp`) +
             FfiConverterUByte.allocationSize(value.`kind`) +
             FfiConverterOptionalString.allocationSize(value.`authorAvatar`) +
+            FfiConverterOptionalString.allocationSize(value.`authorDecoration`) +
             FfiConverterSequenceTypeAttachmentSnapshot.allocationSize(value.`attachments`) +
             FfiConverterOptionalTypeReplySnapshot.allocationSize(value.`reply`)
     )
@@ -3129,6 +3167,7 @@ public object FfiConverterTypeMessageSnapshot: FfiConverterRustBuffer<MessageSna
             FfiConverterOptionalString.write(value.`editedTimestamp`, buf)
             FfiConverterUByte.write(value.`kind`, buf)
             FfiConverterOptionalString.write(value.`authorAvatar`, buf)
+            FfiConverterOptionalString.write(value.`authorDecoration`, buf)
             FfiConverterSequenceTypeAttachmentSnapshot.write(value.`attachments`, buf)
             FfiConverterOptionalTypeReplySnapshot.write(value.`reply`, buf)
     }
@@ -3284,7 +3323,15 @@ data class RecipientSnapshot (
     var `id`: kotlin.ULong, 
     var `username`: kotlin.String, 
     var `globalName`: kotlin.String?, 
-    var `avatar`: kotlin.String?
+    var `avatar`: kotlin.String?, 
+    /**
+     * Avatar frame (decoration preset) asset.
+     */
+    var `decoration`: kotlin.String?, 
+    /**
+     * Nameplate collectible asset.
+     */
+    var `nameplate`: kotlin.String?
 ) {
     
     companion object
@@ -3300,6 +3347,8 @@ public object FfiConverterTypeRecipientSnapshot: FfiConverterRustBuffer<Recipien
             FfiConverterString.read(buf),
             FfiConverterOptionalString.read(buf),
             FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
         )
     }
 
@@ -3307,7 +3356,9 @@ public object FfiConverterTypeRecipientSnapshot: FfiConverterRustBuffer<Recipien
             FfiConverterULong.allocationSize(value.`id`) +
             FfiConverterString.allocationSize(value.`username`) +
             FfiConverterOptionalString.allocationSize(value.`globalName`) +
-            FfiConverterOptionalString.allocationSize(value.`avatar`)
+            FfiConverterOptionalString.allocationSize(value.`avatar`) +
+            FfiConverterOptionalString.allocationSize(value.`decoration`) +
+            FfiConverterOptionalString.allocationSize(value.`nameplate`)
     )
 
     override fun write(value: RecipientSnapshot, buf: ByteBuffer) {
@@ -3315,6 +3366,8 @@ public object FfiConverterTypeRecipientSnapshot: FfiConverterRustBuffer<Recipien
             FfiConverterString.write(value.`username`, buf)
             FfiConverterOptionalString.write(value.`globalName`, buf)
             FfiConverterOptionalString.write(value.`avatar`, buf)
+            FfiConverterOptionalString.write(value.`decoration`, buf)
+            FfiConverterOptionalString.write(value.`nameplate`, buf)
     }
 }
 
@@ -3372,6 +3425,8 @@ data class SnapshotMetaPatch (
     var `currentUserAvatar`: kotlin.String?, 
     var `currentUserStatus`: kotlin.String?, 
     var `currentUserCustomStatus`: kotlin.String?, 
+    var `currentUserDecoration`: kotlin.String?, 
+    var `currentUserNameplate`: kotlin.String?, 
     var `selectedGuildId`: kotlin.ULong?, 
     var `selectedChannelId`: kotlin.ULong?, 
     var `auth`: AuthStateSnapshot, 
@@ -3394,6 +3449,8 @@ public object FfiConverterTypeSnapshotMetaPatch: FfiConverterRustBuffer<Snapshot
             FfiConverterOptionalString.read(buf),
             FfiConverterOptionalString.read(buf),
             FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
             FfiConverterOptionalULong.read(buf),
             FfiConverterOptionalULong.read(buf),
             FfiConverterTypeAuthStateSnapshot.read(buf),
@@ -3409,6 +3466,8 @@ public object FfiConverterTypeSnapshotMetaPatch: FfiConverterRustBuffer<Snapshot
             FfiConverterOptionalString.allocationSize(value.`currentUserAvatar`) +
             FfiConverterOptionalString.allocationSize(value.`currentUserStatus`) +
             FfiConverterOptionalString.allocationSize(value.`currentUserCustomStatus`) +
+            FfiConverterOptionalString.allocationSize(value.`currentUserDecoration`) +
+            FfiConverterOptionalString.allocationSize(value.`currentUserNameplate`) +
             FfiConverterOptionalULong.allocationSize(value.`selectedGuildId`) +
             FfiConverterOptionalULong.allocationSize(value.`selectedChannelId`) +
             FfiConverterTypeAuthStateSnapshot.allocationSize(value.`auth`) +
@@ -3423,6 +3482,8 @@ public object FfiConverterTypeSnapshotMetaPatch: FfiConverterRustBuffer<Snapshot
             FfiConverterOptionalString.write(value.`currentUserAvatar`, buf)
             FfiConverterOptionalString.write(value.`currentUserStatus`, buf)
             FfiConverterOptionalString.write(value.`currentUserCustomStatus`, buf)
+            FfiConverterOptionalString.write(value.`currentUserDecoration`, buf)
+            FfiConverterOptionalString.write(value.`currentUserNameplate`, buf)
             FfiConverterOptionalULong.write(value.`selectedGuildId`, buf)
             FfiConverterOptionalULong.write(value.`selectedChannelId`, buf)
             FfiConverterTypeAuthStateSnapshot.write(value.`auth`, buf)

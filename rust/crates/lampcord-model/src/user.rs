@@ -26,4 +26,49 @@ pub struct User {
     pub premium_type: Option<u8>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub public_flags: Option<u32>,
+    /// The avatar frame (an avatar decoration preset).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub avatar_decoration_data: Option<AvatarDecoration>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub collectibles: Option<Collectibles>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AvatarDecoration {
+    pub asset: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sku_id: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Nameplate {
+    pub asset: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub palette: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct Collectibles {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub nameplate: Option<Nameplate>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub avatar_decoration: Option<AvatarDecoration>,
+}
+
+impl User {
+    /// The avatar frame asset, from either place Discord puts it.
+    pub fn decoration_asset(&self) -> Option<&str> {
+        self.avatar_decoration_data
+            .as_ref()
+            .or_else(|| self.collectibles.as_ref()?.avatar_decoration.as_ref())
+            .map(|decoration| decoration.asset.as_str())
+    }
+
+    pub fn nameplate_asset(&self) -> Option<&str> {
+        self.collectibles
+            .as_ref()?
+            .nameplate
+            .as_ref()
+            .map(|nameplate| nameplate.asset.as_str())
+    }
 }

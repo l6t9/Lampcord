@@ -263,6 +263,8 @@ impl RuntimeHandle {
                 current_user_avatar: snapshot.current_user_avatar.clone(),
                 current_user_status: snapshot.current_user_status.clone(),
                 current_user_custom_status: snapshot.current_user_custom_status.clone(),
+                current_user_decoration: snapshot.current_user_decoration.clone(),
+                current_user_nameplate: snapshot.current_user_nameplate.clone(),
                 selected_guild_id: snapshot.selected_guild_id,
                 selected_channel_id: snapshot.selected_channel_id,
                 auth: snapshot.auth.clone(),
@@ -351,6 +353,7 @@ fn benchmark_snapshot() -> ClientSnapshot {
                 edited_timestamp: None,
                 kind: 0,
                 author_avatar: None,
+                author_decoration: None,
                 attachments: Vec::new(),
                 reply: None,
             })
@@ -364,6 +367,9 @@ fn benchmark_snapshot() -> ClientSnapshot {
                 nickname: None,
                 roles: vec![1, 2, 3],
                 status: Some("online".to_owned()),
+                global_name: None,
+                decoration: None,
+                nameplate: None,
             })
             .collect(),
         presences: (1..=200)
@@ -391,6 +397,8 @@ fn benchmark_snapshot() -> ClientSnapshot {
         current_user_avatar: None,
         current_user_status: None,
         current_user_custom_status: None,
+        current_user_decoration: None,
+        current_user_nameplate: None,
         pinned_messages: Vec::new(),
     }
 }
@@ -534,6 +542,8 @@ fn set_snapshot(
         || previous.current_user_avatar != next.current_user_avatar
         || previous.current_user_status != next.current_user_status
         || previous.current_user_custom_status != next.current_user_custom_status
+        || previous.current_user_decoration != next.current_user_decoration
+        || previous.current_user_nameplate != next.current_user_nameplate
         || previous.selected_guild_id != next.selected_guild_id
         || previous.selected_channel_id != next.selected_channel_id
         || previous.auth != next.auth
@@ -590,6 +600,7 @@ fn message_snapshot(message: &Message) -> MessageSnapshot {
         edited_timestamp: message.edited_timestamp.clone(),
         kind: message.kind.0,
         author_avatar: message.author.avatar.clone(),
+        author_decoration: message.author.decoration_asset().map(str::to_owned),
         attachments: message
             .attachments
             .iter()
@@ -668,6 +679,7 @@ fn message_snapshot_from_value(value: &Value) -> MessageSnapshot {
             .and_then(|author| author.get("avatar"))
             .and_then(Value::as_str)
             .map(str::to_owned),
+        author_decoration: None,
         attachments: Vec::new(),
         reply: None,
     }
@@ -845,6 +857,9 @@ fn build_snapshot(
             nickname: member.nickname,
             roles: member.roles,
             status: cache.presence(member.user_id).map(|p| p.status.clone()),
+            global_name: member.global_name,
+            decoration: member.decoration,
+            nameplate: member.nameplate,
         })
         .collect();
 
@@ -871,6 +886,8 @@ fn build_snapshot(
                     username: user.username.clone(),
                     global_name: user.global_name.clone(),
                     avatar: user.avatar.clone(),
+                    decoration: user.decoration_asset().map(str::to_owned),
+                    nameplate: user.nameplate_asset().map(str::to_owned),
                 })
                 .collect(),
             last_message_id: channel.last_message_id,
@@ -932,6 +949,12 @@ fn build_snapshot(
         current_user_avatar: cache.current_user().and_then(|user| user.avatar.clone()),
         current_user_status: cache.own_status().map(str::to_owned),
         current_user_custom_status: cache.own_custom_status().map(str::to_owned),
+        current_user_decoration: cache
+            .current_user()
+            .and_then(|user| user.decoration_asset().map(str::to_owned)),
+        current_user_nameplate: cache
+            .current_user()
+            .and_then(|user| user.nameplate_asset().map(str::to_owned)),
         pinned_messages: selected_channel_id
             .and_then(|channel_id| pinned_messages.get(&channel_id))
             .map(|pins| pins.iter().map(message_snapshot).collect())

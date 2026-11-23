@@ -54,9 +54,13 @@ pub struct CachedMember {
     pub guild_id: Snowflake,
     pub user_id: Snowflake,
     pub username: String,
+    pub global_name: Option<String>,
     pub avatar: Option<String>,
     pub nickname: Option<String>,
     pub roles: Vec<Snowflake>,
+    /// Avatar frame asset; a server-specific one wins over the user's.
+    pub decoration: Option<String>,
+    pub nameplate: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -790,6 +794,22 @@ impl StateCache {
             .or_else(|| value.get("nickname"))
             .and_then(Value::as_str)
             .map(str::to_owned);
+        let global_name = user
+            .and_then(|user| user.get("global_name"))
+            .and_then(Value::as_str)
+            .filter(|name| !name.is_empty())
+            .map(str::to_owned);
+        let asset = |value: Option<&Value>, path: &[&str]| {
+            path.iter()
+                .try_fold(value?, |value, key| value.get(key))
+                .and_then(Value::as_str)
+                .map(str::to_owned)
+        };
+        let decoration = asset(Some(value), &["avatar_decoration_data", "asset"])
+            .or_else(|| asset(user, &["avatar_decoration_data", "asset"]))
+            .or_else(|| asset(user, &["collectibles", "avatar_decoration", "asset"]));
+        let nameplate = asset(Some(value), &["collectibles", "nameplate", "asset"])
+            .or_else(|| asset(user, &["collectibles", "nameplate", "asset"]));
         let roles = value
             .get("roles")
             .and_then(Value::as_array)
@@ -806,9 +826,12 @@ impl StateCache {
                 guild_id,
                 user_id,
                 username,
+                global_name,
                 avatar,
                 nickname,
                 roles,
+                decoration,
+                nameplate,
             },
         );
     }
