@@ -92,22 +92,10 @@ Item {
         onTapped: root.clicked()
     }
 
-    ToolTip {
+    RichTooltip {
+        anchor: root
+        x: tile.x + tile.width + 12
         visible: root.hovered && root.tip !== ""
-        delay: 300
-        x: root.width + 4
-        y: (root.height - height) / 2
         text: root.tip
-        contentItem: Text {
-            text: root.tip
-            color: Theme.surface
-            font.family: Theme.font
-            font.pixelSize: 14
-            font.weight: Font.DemiBold
-        }
-        background: Rectangle {
-            radius: 8
-            color: Theme.surfaceText
-        }
     }
 }

@@ -107,23 +107,10 @@ Item {
             onTapped: root.expanded = !root.expanded
         }
 
-        ToolTip {
+        RichTooltip {
+            anchor: tile
             visible: hover.hovered
-            delay: 300
-            x: tile.width + 16
-            y: (tile.height - height) / 2
             text: root.folder.name !== "" ? root.folder.name : "Folder"
-            contentItem: Text {
-                text: root.folder.name !== "" ? root.folder.name : "Folder"
-                color: Theme.surface
-                font.family: Theme.font
-                font.pixelSize: 14
-                font.weight: Font.DemiBold
-            }
-            background: Rectangle {
-                radius: 8
-                color: Theme.surfaceText
-            }
         }
     }
 
