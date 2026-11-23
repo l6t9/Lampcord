@@ -32,11 +32,11 @@ use tokio::sync::{mpsc, oneshot, watch};
 use crate::{
     error::FfiErrorKind,
     snapshot::{
-        AuthStateSnapshot, ChannelSnapshot, ClientSnapshot, GuildFolderSnapshot, GuildSnapshot,
-        MAX_SNAPSHOT_MEMBERS, MAX_SNAPSHOT_PRESENCES, MAX_SNAPSHOT_PRIVATE_CHANNELS,
-        MAX_SNAPSHOT_READ_STATES, MemberSnapshot, MessageSnapshot, PresenceSnapshot,
-        PrivateChannelSnapshot, ReadStateSnapshot, RecipientSnapshot, SNAPSHOT_SCHEMA_VERSION,
-        SnapshotMetaPatch, SnapshotPatch, SnapshotVersions,
+        AttachmentSnapshot, AuthStateSnapshot, ChannelSnapshot, ClientSnapshot,
+        GuildFolderSnapshot, GuildSnapshot, MAX_SNAPSHOT_MEMBERS, MAX_SNAPSHOT_PRESENCES,
+        MAX_SNAPSHOT_PRIVATE_CHANNELS, MAX_SNAPSHOT_READ_STATES, MemberSnapshot, MessageSnapshot,
+        PresenceSnapshot, PrivateChannelSnapshot, ReadStateSnapshot, RecipientSnapshot,
+        ReplySnapshot, SNAPSHOT_SCHEMA_VERSION, SnapshotMetaPatch, SnapshotPatch, SnapshotVersions,
     },
     types::{
         AuthChallenge, AuthFailureKind, ClientCommand, ClientConfig, ClientEvent,
@@ -261,6 +261,8 @@ impl RuntimeHandle {
                 current_user_id: snapshot.current_user_id,
                 current_user: snapshot.current_user.clone(),
                 current_user_avatar: snapshot.current_user_avatar.clone(),
+                current_user_status: snapshot.current_user_status.clone(),
+                current_user_custom_status: snapshot.current_user_custom_status.clone(),
                 selected_guild_id: snapshot.selected_guild_id,
                 selected_channel_id: snapshot.selected_channel_id,
                 auth: snapshot.auth.clone(),
@@ -345,6 +347,10 @@ fn benchmark_snapshot() -> ClientSnapshot {
                 content: format!("benchmark message {id}"),
                 timestamp: "2026-01-01T00:00:00Z".to_owned(),
                 edited_timestamp: None,
+                kind: 0,
+                author_avatar: None,
+                attachments: Vec::new(),
+                reply: None,
             })
             .collect(),
         members: (1..=200)
@@ -363,6 +369,7 @@ fn benchmark_snapshot() -> ClientSnapshot {
                 user_id: id,
                 status: "online".to_owned(),
                 activities: vec!["Compose".to_owned()],
+                custom_status: None,
             })
             .collect(),
         read_states: (1..=200)
@@ -379,6 +386,8 @@ fn benchmark_snapshot() -> ClientSnapshot {
         private_channels: Vec::new(),
         guild_folders: Vec::new(),
         current_user_avatar: None,
+        current_user_status: None,
+        current_user_custom_status: None,
     }
 }
 
@@ -519,6 +528,8 @@ fn set_snapshot(
         || previous.current_user_id != next.current_user_id
         || previous.current_user != next.current_user
         || previous.current_user_avatar != next.current_user_avatar
+        || previous.current_user_status != next.current_user_status
+        || previous.current_user_custom_status != next.current_user_custom_status
         || previous.selected_guild_id != next.selected_guild_id
         || previous.selected_channel_id != next.selected_channel_id
         || previous.auth != next.auth
@@ -572,10 +583,44 @@ fn message_snapshot(message: &Message) -> MessageSnapshot {
         content: message.content.clone(),
         timestamp: message.timestamp.clone(),
         edited_timestamp: message.edited_timestamp.clone(),
+        kind: message.kind.0,
+        author_avatar: message.author.avatar.clone(),
+        attachments: message
+            .attachments
+            .iter()
+            .map(|attachment| AttachmentSnapshot {
+                id: attachment.id,
+                filename: attachment.filename.clone(),
+                url: attachment.url.clone(),
+                proxy_url: attachment.proxy_url.clone(),
+                content_type: attachment.content_type.clone(),
+                size: attachment.size,
+                width: attachment.width,
+                height: attachment.height,
+            })
+            .collect(),
+        reply: message
+            .referenced_message
+            .as_deref()
+            .map(|replied| ReplySnapshot {
+                message_id: replied.id,
+                author_id: replied.author.id,
+                author_name: replied
+                    .author
+                    .global_name
+                    .clone()
+                    .filter(|name| !name.is_empty())
+                    .unwrap_or_else(|| replied.author.username.clone()),
+                author_avatar: replied.author.avatar.clone(),
+                content: replied.content.clone(),
+            }),
     }
 }
 
 fn message_snapshot_from_value(value: &Value) -> MessageSnapshot {
+    if let Ok(message) = serde_json::from_value::<Message>(value.clone()) {
+        return message_snapshot(&message);
+    }
     let author = value.get("author");
     let author_id = json_id(author.and_then(|author| author.get("id")))
         .or_else(|| json_id(value.get("author_id")));
@@ -609,6 +654,17 @@ fn message_snapshot_from_value(value: &Value) -> MessageSnapshot {
             .get("edited_timestamp")
             .and_then(Value::as_str)
             .map(str::to_owned),
+        kind: value
+            .get("type")
+            .and_then(Value::as_u64)
+            .and_then(|kind| u8::try_from(kind).ok())
+            .unwrap_or_default(),
+        author_avatar: author
+            .and_then(|author| author.get("avatar"))
+            .and_then(Value::as_str)
+            .map(str::to_owned),
+        attachments: Vec::new(),
+        reply: None,
     }
 }
 
@@ -669,6 +725,7 @@ fn presence_snapshot(presence: &CachedPresence) -> PresenceSnapshot {
         user_id: presence.user_id,
         status: presence.status.clone(),
         activities: presence.activities.clone(),
+        custom_status: presence.custom_status.clone(),
     }
 }
 
@@ -866,6 +923,8 @@ fn build_snapshot(
         private_channels,
         guild_folders,
         current_user_avatar: cache.current_user().and_then(|user| user.avatar.clone()),
+        current_user_status: cache.own_status().map(str::to_owned),
+        current_user_custom_status: cache.own_custom_status().map(str::to_owned),
     }
 }
 
@@ -1003,38 +1062,10 @@ fn handle_dispatch(
             }
         }
         "PRESENCE_UPDATE" => {
-            if let Some(user_id) = json_id(
-                data.get("user")
-                    .and_then(|user| user.get("id"))
-                    .or_else(|| data.get("user_id")),
-            ) {
-                let status = data
-                    .get("status")
-                    .and_then(Value::as_str)
-                    .unwrap_or("offline")
-                    .to_owned();
-                let activities = data
-                    .get("activities")
-                    .and_then(Value::as_array)
-                    .map(|activities| {
-                        activities
-                            .iter()
-                            .filter_map(|activity| {
-                                activity
-                                    .get("name")
-                                    .and_then(Value::as_str)
-                                    .map(str::to_owned)
-                            })
-                            .collect()
-                    })
-                    .unwrap_or_default();
+            if let Some(presence) = lampcord_core::state_cache::presence_from_value(data) {
                 push_event(
                     events,
-                    ClientEvent::PresenceUpdated(presence_snapshot(&CachedPresence {
-                        user_id,
-                        status,
-                        activities,
-                    })),
+                    ClientEvent::PresenceUpdated(presence_snapshot(&presence)),
                 );
             }
         }
@@ -1617,7 +1648,13 @@ async fn run(
                     ClientCommand::SetStatus { status } => {
                         if let Some(rest_client) = rest.clone() {
                             let config = default_rest_config(&api_base, user_agent.as_deref(), active_token.clone());
-                            if let Err(api_error) = api::user::update_status(&*rest_client, &config, &status).await {
+                            let result = api::user::update_status(&*rest_client, &config, &status).await;
+                            if result.is_ok() {
+                                if let Some(cache) = cache.as_ref() {
+                                    cache.lock().expect("cache lock").set_own_status(&status);
+                                }
+                            }
+                            if let Err(api_error) = result {
                                 error = Some(format!("Failed to set status: {api_error}"));
                                 push_event(&events, ClientEvent::CommandFailed {
                                     kind: FfiErrorKind::Transport,

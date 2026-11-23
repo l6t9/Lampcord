@@ -12,9 +12,10 @@ use std::sync::Arc;
 pub use error::{FfiClientError, FfiError, FfiErrorKind, FfiResult};
 pub use runtime::RuntimeHandle;
 pub use snapshot::{
-    AuthStateSnapshot, ChannelSnapshot, ClientSnapshot, GuildFolderSnapshot, GuildSnapshot,
-    MemberSnapshot, MessageSnapshot, PresenceSnapshot, PrivateChannelSnapshot, ReadStateSnapshot,
-    RecipientSnapshot, SNAPSHOT_SCHEMA_VERSION, SnapshotMetaPatch, SnapshotPatch, SnapshotVersions,
+    AttachmentSnapshot, AuthStateSnapshot, ChannelSnapshot, ClientSnapshot, GuildFolderSnapshot,
+    GuildSnapshot, MemberSnapshot, MessageSnapshot, PresenceSnapshot, PrivateChannelSnapshot,
+    ReadStateSnapshot, RecipientSnapshot, ReplySnapshot, SNAPSHOT_SCHEMA_VERSION,
+    SnapshotMetaPatch, SnapshotPatch, SnapshotVersions,
 };
 pub use storage::{ForeignSecretStore, PlatformSecretStore};
 pub use types::{

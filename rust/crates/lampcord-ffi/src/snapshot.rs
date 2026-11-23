@@ -34,6 +34,10 @@ pub struct ClientSnapshot {
     pub guild_folders: Vec<GuildFolderSnapshot>,
     /// Schema 3+. Avatar hash of the current user; part of `meta`.
     pub current_user_avatar: Option<String>,
+    /// Schema 3+. Status picked in settings (online, idle, dnd, invisible); part of `meta`.
+    pub current_user_status: Option<String>,
+    /// Schema 3+. Custom status text; part of `meta`.
+    pub current_user_custom_status: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -57,6 +61,8 @@ pub struct SnapshotMetaPatch {
     pub current_user_id: Option<u64>,
     pub current_user: Option<String>,
     pub current_user_avatar: Option<String>,
+    pub current_user_status: Option<String>,
+    pub current_user_custom_status: Option<String>,
     pub selected_guild_id: Option<u64>,
     pub selected_channel_id: Option<u64>,
     pub auth: AuthStateSnapshot,
@@ -147,6 +153,37 @@ pub struct MessageSnapshot {
     pub content: String,
     pub timestamp: String,
     pub edited_timestamp: Option<String>,
+    /// Schema 3+. Discord message type (0 default, 3 call, 6 pin, 7 join, 19 reply, ...).
+    pub kind: u8,
+    /// Schema 3+. Avatar hash of the author's account.
+    pub author_avatar: Option<String>,
+    /// Schema 3+.
+    pub attachments: Vec<AttachmentSnapshot>,
+    /// Schema 3+. A short view of the message this one replies to.
+    pub reply: Option<ReplySnapshot>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
+pub struct AttachmentSnapshot {
+    pub id: u64,
+    pub filename: String,
+    pub url: String,
+    pub proxy_url: Option<String>,
+    pub content_type: Option<String>,
+    pub size: u64,
+    pub width: Option<u32>,
+    pub height: Option<u32>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
+pub struct ReplySnapshot {
+    pub message_id: u64,
+    pub author_id: u64,
+    pub author_name: String,
+    pub author_avatar: Option<String>,
+    pub content: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -167,6 +204,8 @@ pub struct PresenceSnapshot {
     pub user_id: u64,
     pub status: String,
     pub activities: Vec<String>,
+    /// Schema 3+. Custom status text, kept out of `activities`.
+    pub custom_status: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
