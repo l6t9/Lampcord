@@ -11,6 +11,12 @@ Rectangle {
     radius: 20
     color: Theme.surfaceContainerHighest
 
+    Nameplate {
+        anchors.fill: parent
+        radius: root.radius
+        source: backend.currentUserNameplate
+    }
+
     readonly property string status: backend.currentUserStatus
     readonly property string statusLabel: ({ idle: "Idle", dnd: "Do Not Disturb", invisible: "Invisible" })[status] || "Online"
 
@@ -45,23 +51,14 @@ Rectangle {
                 anchors.rightMargin: 8
                 spacing: 10
 
-                Item {
+                UserAvatar {
                     anchors.verticalCenter: parent.verticalCenter
-                    width: 40
-                    height: 40
-
-                    Avatar {
-                        size: 40
-                        name: backend.currentUser
-                        source: backend.currentUserAvatar
-                    }
-                    StatusDot {
-                        x: 40 - width + 2
-                        y: 40 - height + 2
-                        size: 16
-                        status: root.status
-                        ring: Theme.surfaceContainerHighest
-                    }
+                    size: 40
+                    name: backend.currentUser
+                    source: backend.currentUserAvatar
+                    decoration: backend.currentUserDecoration
+                    status: root.status
+                    ring: Theme.surfaceContainerHighest
                 }
 
                 Column {

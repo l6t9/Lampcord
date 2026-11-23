@@ -77,6 +77,7 @@ Popup {
                     width: parent.width
                     author: modelData.author
                     avatar: modelData.avatar
+                    decoration: modelData.decoration
                     content: modelData.content
                     time: modelData.time
                     edited: modelData.edited

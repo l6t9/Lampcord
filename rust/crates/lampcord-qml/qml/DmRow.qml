@@ -20,6 +20,13 @@ Item {
              : hover.hovered ? Theme.alpha(Theme.surfaceText, 0.05) : "transparent"
         Behavior on color { ColorAnimation { duration: Theme.quick } }
 
+        // DMItem shows the nameplate only while hovered or selected.
+        Nameplate {
+            anchors.fill: parent
+            source: root.dm.nameplate
+            shown: hover.hovered || root.selected
+        }
+
         Row {
             anchors.fill: parent
             anchors.leftMargin: 8
@@ -31,11 +38,14 @@ Item {
                 width: 32
                 height: 32
 
-                Avatar {
+                UserAvatar {
                     visible: !root.dm.group
                     size: 32
                     name: root.dm.name
                     source: root.dm.avatar
+                    decoration: root.dm.decoration
+                    status: root.dm.status
+                    ring: root.selected ? Theme.surfaceVariant : Theme.surface
                 }
                 Rectangle {
                     visible: root.dm.group

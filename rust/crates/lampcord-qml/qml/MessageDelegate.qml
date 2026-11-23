@@ -8,6 +8,7 @@ Item {
 
     required property string author
     required property string avatar
+    required property string decoration
     required property string content
     required property real time
     required property bool edited
@@ -76,12 +77,13 @@ Item {
         width: parent.width - 16
         implicitHeight: column.implicitHeight
 
-        Avatar {
+        UserAvatar {
             visible: !root.grouped
             y: reply.visible ? reply.height : 0
             size: 40
             name: root.author
             source: root.avatar
+            decoration: root.decoration
         }
 
         // Follow-ups show their time in the avatar gutter on hover.

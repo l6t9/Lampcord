@@ -20,27 +20,24 @@ Item {
         color: hover.hovered ? Theme.alpha(Theme.surfaceText, 0.05) : "transparent"
         Behavior on color { ColorAnimation { duration: Theme.quick } }
 
+        Nameplate {
+            anchors.fill: parent
+            source: root.member.nameplate
+        }
+
         Row {
             anchors.fill: parent
             anchors.leftMargin: 8
             anchors.rightMargin: 8
             spacing: 12
 
-            Item {
+            UserAvatar {
                 anchors.verticalCenter: parent.verticalCenter
-                width: 32
-                height: 32
-
-                Avatar {
-                    size: 32
-                    name: root.member.name
-                    source: root.member.avatar
-                }
-                StatusDot {
-                    x: 32 - width + 2
-                    y: 32 - height + 2
-                    status: root.member.status
-                }
+                size: 32
+                name: root.member.name
+                source: root.member.avatar
+                decoration: root.member.decoration
+                status: root.member.status
             }
 
             Column {

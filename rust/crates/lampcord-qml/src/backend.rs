@@ -23,6 +23,8 @@ pub mod qobject {
         #[qproperty(QString, current_user_avatar)]
         #[qproperty(QString, current_user_status)]
         #[qproperty(QString, current_user_custom_status)]
+        #[qproperty(QString, current_user_decoration)]
+        #[qproperty(QString, current_user_nameplate)]
         #[qproperty(QString, selected_guild_id)]
         #[qproperty(QString, selected_channel_id)]
         #[qproperty(QString, guilds_json)]
@@ -126,6 +128,8 @@ struct Me {
     id: u64,
     name: String,
     avatar: Option<String>,
+    decoration: Option<String>,
+    nameplate: Option<String>,
     status: String,
     custom_status: Option<String>,
 }
@@ -154,6 +158,8 @@ pub struct BackendRust {
     current_user_avatar: QString,
     current_user_status: QString,
     current_user_custom_status: QString,
+    current_user_decoration: QString,
+    current_user_nameplate: QString,
     selected_guild_id: QString,
     selected_channel_id: QString,
     guilds_json: QString,
@@ -203,6 +209,8 @@ impl Default for BackendRust {
             current_user_avatar: QString::default(),
             current_user_status: QString::from("online"),
             current_user_custom_status: QString::default(),
+            current_user_decoration: QString::default(),
+            current_user_nameplate: QString::default(),
             selected_guild_id: QString::default(),
             selected_channel_id: QString::default(),
             guilds_json: QString::from("[]"),
@@ -296,6 +304,20 @@ fn avatar_url(user_id: u64, avatar: Option<&str>) -> String {
     }
 }
 
+/// Avatar frame image, like CdnUrls.getAvatarDecorationUrl.
+fn decoration_url(asset: Option<&str>) -> String {
+    asset.map_or_else(String::new, |asset| {
+        format!("{CDN}/avatar-decoration-presets/{asset}.png?size=96&passthrough=true")
+    })
+}
+
+/// Nameplate background, as the Compose rows load it.
+fn nameplate_url(asset: Option<&str>) -> String {
+    asset.map_or_else(String::new, |asset| {
+        format!("{CDN}/assets/collectibles/{asset}img.png?passthrough=true")
+    })
+}
+
 /// The avatar Discord shows for users without one (new username system).
 fn default_avatar_url(user_id: u64) -> String {
     format!("{CDN}/embed/avatars/{}.png", (user_id >> 22) % 6)
@@ -326,7 +348,12 @@ fn members_json(
 ) -> String {
     let presence: HashMap<u64, &PresenceSnapshot> =
         presences.iter().map(|presence| (presence.user_id, presence)).collect();
-    let row = |id: u64, name: String, avatar: Option<&str>, status: Option<&str>| {
+    let row = |id: u64,
+               name: String,
+               avatar: Option<&str>,
+               status: Option<&str>,
+               decoration: Option<&str>,
+               nameplate: Option<&str>| {
         let url = avatar_url(id, avatar);
         let own = me.filter(|me| me.id == id);
         let status = own
@@ -353,16 +380,20 @@ fn members_json(
             "avatar": if url.is_empty() { default_avatar_url(id) } else { url },
             "status": status,
             "activity": activity,
+            "decoration": decoration_url(decoration),
+            "nameplate": nameplate_url(nameplate),
         })
     };
 
     let dm = selected_channel.and_then(|id| private_channels.iter().find(|channel| channel.id == id));
     let mut rows: Vec<Value> = if let Some(dm) = dm {
-        me.map(|me| row(me.id, me.name.clone(), me.avatar.as_deref(), None))
+        me.map(|me| {
+            row(me.id, me.name.clone(), me.avatar.as_deref(), None, me.decoration.as_deref(), me.nameplate.as_deref())
+        })
             .into_iter()
             .chain(dm.recipients.iter().map(|user| {
                 let name = user.global_name.clone().unwrap_or_else(|| user.username.clone());
-                row(user.id, name, user.avatar.as_deref(), None)
+                row(user.id, name, user.avatar.as_deref(), None, user.decoration.as_deref(), user.nameplate.as_deref())
             }))
             .collect()
     } else if selected_channel.is_some() {
@@ -373,8 +404,16 @@ fn members_json(
                     .nickname
                     .clone()
                     .filter(|nick| !nick.is_empty())
+                    .or_else(|| member.global_name.clone())
                     .unwrap_or_else(|| member.username.clone());
-                row(member.user_id, name, member.avatar.as_deref(), member.status.as_deref())
+                row(
+                    member.user_id,
+                    name,
+                    member.avatar.as_deref(),
+                    member.status.as_deref(),
+                    member.decoration.as_deref(),
+                    member.nameplate.as_deref(),
+                )
             })
             .collect()
     } else {
@@ -450,7 +489,13 @@ fn rail_json(guilds: &[GuildSnapshot], folders: &[GuildFolderSnapshot]) -> Strin
 }
 
 /// DM rows, most recent first: name, avatar and unread state.
-fn dms_json(channels: &[PrivateChannelSnapshot], read_states: &[ReadStateSnapshot]) -> String {
+fn dms_json(
+    channels: &[PrivateChannelSnapshot],
+    read_states: &[ReadStateSnapshot],
+    presences: &[PresenceSnapshot],
+) -> String {
+    let presence: HashMap<u64, &PresenceSnapshot> =
+        presences.iter().map(|presence| (presence.user_id, presence)).collect();
     let reads: HashMap<u64, &ReadStateSnapshot> =
         read_states.iter().map(|state| (state.channel_id, state)).collect();
     let items: Vec<Value> = channels
@@ -473,11 +518,21 @@ fn dms_json(channels: &[PrivateChannelSnapshot], read_states: &[ReadStateSnapsho
                 _ => String::new(),
             };
             let read = reads.get(&channel.id);
+            let recipient = channel.recipients.first().filter(|_| !group);
+            let status = recipient
+                .and_then(|user| presence.get(&user.id))
+                .map(|presence| {
+                    if presence.mobile && presence.status == "online" { "mobile" } else { presence.status.as_str() }
+                })
+                .unwrap_or("offline");
             json!({
                 "id": channel.id.to_string(),
                 "name": name,
                 "group": group,
                 "avatar": avatar,
+                "status": if group { "" } else { status },
+                "decoration": decoration_url(recipient.and_then(|user| user.decoration.as_deref())),
+                "nameplate": nameplate_url(recipient.and_then(|user| user.nameplate.as_deref())),
                 "members": channel.recipients.len() + 1,
                 "unread": read.is_some_and(|state| state.unread),
                 "mentions": read.map_or(0, |state| state.mention_count),
@@ -652,6 +707,7 @@ fn messages_json(messages: &[MessageSnapshot], members: &[MemberSnapshot]) -> St
                 "authorId": message.author_id.map(|id| id.to_string()).unwrap_or_default(),
                 "author": name,
                 "avatar": avatar,
+                "decoration": decoration_url(message.author_decoration.as_deref()),
                 "content": message.content,
                 "time": time,
                 "edited": message.edited_timestamp.is_some(),
@@ -695,10 +751,18 @@ impl qobject::LampcordBackend {
             self.as_mut().set_current_user_custom_status(QString::from(
                 meta.current_user_custom_status.as_deref().unwrap_or(""),
             ));
+            self.as_mut().set_current_user_decoration(QString::from(
+                decoration_url(meta.current_user_decoration.as_deref()).as_str(),
+            ));
+            self.as_mut().set_current_user_nameplate(QString::from(
+                nameplate_url(meta.current_user_nameplate.as_deref()).as_str(),
+            ));
             let me = meta.current_user_id.map(|id| Me {
                 id,
                 name: meta.current_user.clone().unwrap_or_default(),
                 avatar: meta.current_user_avatar.clone(),
+                decoration: meta.current_user_decoration.clone(),
+                nameplate: meta.current_user_nameplate.clone(),
                 status,
                 custom_status: meta.current_user_custom_status.clone(),
             });
@@ -747,6 +811,7 @@ impl qobject::LampcordBackend {
         if let Some(presences) = patch.presences {
             self.as_mut().rust_mut().presences = presences;
             members_dirty = true;
+            dms_dirty = true;
         }
         if let Some(read_states) = patch.read_states {
             self.as_mut().rust_mut().read_states = read_states;
@@ -791,7 +856,7 @@ impl qobject::LampcordBackend {
             self.as_mut().set_members_json(QString::from(json.as_str()));
         }
         if dms_dirty {
-            let json = dms_json(&self.private_channels, &self.read_states);
+            let json = dms_json(&self.private_channels, &self.read_states, &self.presences);
             self.as_mut().set_dms_json(QString::from(json.as_str()));
         }
         if messages_dirty {
@@ -1031,7 +1096,15 @@ mod tests {
 
     #[test]
     fn member_list_puts_you_first_in_dms_and_offline_last_in_servers() {
-        let me = Me { id: 1, name: "me".into(), avatar: None, status: "online".into(), custom_status: None };
+        let me = Me {
+            id: 1,
+            name: "me".into(),
+            avatar: None,
+            decoration: None,
+            nameplate: None,
+            status: "online".into(),
+            custom_status: None,
+        };
         let dm = PrivateChannelSnapshot {
             id: 50,
             kind: 1,
@@ -1041,6 +1114,8 @@ mod tests {
                 username: "friend".into(),
                 global_name: None,
                 avatar: None,
+                decoration: None,
+                nameplate: None,
             }],
             last_message_id: None,
         };
@@ -1057,6 +1132,9 @@ mod tests {
             nickname: None,
             roles: vec![],
             status: status.map(str::to_owned),
+            global_name: None,
+            decoration: None,
+            nameplate: None,
         };
         let members = [member(3, "zed", Some("online")), member(4, "amy", None), member(5, "bob", Some("idle"))];
         let rows: Vec<Value> =
@@ -1083,6 +1161,7 @@ mod tests {
             edited_timestamp: None,
             kind: 0,
             author_avatar: None,
+            author_decoration: None,
             attachments: Vec::new(),
             reply: None,
         };
