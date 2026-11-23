@@ -52,6 +52,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import me.lampu.lampcord.shared.state.*
 import me.lampu.lampcord.shared.ui.SettingsScreen
+import me.lampu.lampcord.shared.ui.animation.PhoenixPageTransitions
 import me.lampu.lampcord.shared.ui.AboutContent
 import me.lampu.lampcord.shared.ui.settings.*
 import me.lampu.lampcord.shared.ui.components.settings.SettingsSubScreen
@@ -104,6 +105,25 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.text.style.TextAlign
 
 private data class BottomNavItem(val key: String, val screen: Screen)
+
+private fun navRouteName(contentKey: Any): String = contentKey.toString().substringBefore("(")
+
+private fun isBringUpRoute(name: String): Boolean =
+    name == Screen.You.toString() || name == Screen.Settings.toString()
+
+private fun isSettingsRoute(name: String): Boolean =
+    name == Screen.Settings.toString() ||
+        name.endsWith("Settings") ||
+        name == Screen.Theming.toString() ||
+        name == "ThemeEditor"
+
+private fun settingsDepth(name: String): Int =
+    when {
+        name == Screen.Settings.toString() -> 0
+        name == "ThemeEditor" -> 2
+        isSettingsRoute(name) -> 1
+        else -> -1
+    }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class, ExperimentalFoundationApi::class)
 @Composable
@@ -237,22 +257,22 @@ private fun MobileBaseplateContentRoot(
     val keyboardController = LocalSoftwareKeyboardController.current
 
     val routeIndexMap = remember {
-        mapOf<Any, Int>(
-            Screen.Chat to 0,
-            Screen.You to 1,
-            Screen.Friends to 1,
-            Screen.GlobalSearch to 2,
-            Screen.Mentions to 3,
-            Screen.Settings to 4,
-            Screen.Search to 5,
-            Screen.Pins to 6,
-            Screen.Threads::class to 7,
-            Screen.ChannelsAndRoles to 8,
-            Screen.ServerSettings to 9,
-            Screen.ChannelSettings to 10,
-            Screen.Theming to 11,
-            Screen.ThemeEditor::class to 12,
-            Screen.VoiceSettings to 12,
+        mapOf(
+            Screen.Chat.toString() to 0,
+            Screen.You.toString() to 1,
+            Screen.Friends.toString() to 1,
+            Screen.GlobalSearch.toString() to 2,
+            Screen.Mentions.toString() to 3,
+            Screen.Settings.toString() to 4,
+            Screen.Search.toString() to 5,
+            Screen.Pins.toString() to 6,
+            "Threads" to 7,
+            Screen.ChannelsAndRoles.toString() to 8,
+            Screen.ServerSettings.toString() to 9,
+            Screen.ChannelSettings.toString() to 10,
+            Screen.Theming.toString() to 11,
+            "ThemeEditor" to 12,
+            Screen.VoiceSettings.toString() to 12,
         )
     }
     val quickSpatialSpec = MaterialTheme.motionScheme.defaultSpatialSpec<IntOffset>()
@@ -760,34 +780,58 @@ private fun MobileBaseplateContentRoot(
                         AnimatedContent(
                             targetState = currentEntry,
                             transitionSpec = {
-                                if (me.lampu.lampcord.shared.settings.Settings.shared.reduceMotion) {
+                                if (Settings.shared.reduceMotion) {
                                     EnterTransition.None togetherWith ExitTransition.None
                                 } else {
-                                    val targetKey = targetState.contentKey
-                                    val initialKey = initialState.contentKey
-
-                                    val targetIndex = routeIndexMap[targetKey] ?: routeIndexMap[targetKey::class] ?: -1
-                                    val initialIndex = routeIndexMap[initialKey] ?: routeIndexMap[initialKey::class] ?: -1
-
-                                    val enterTransition =
-                                        if (targetIndex == -1 || targetIndex > initialIndex) {
-                                            slideInHorizontally(animationSpec = quickSpatialSpec) { it / 8 } +
-                                                fadeIn(quickEffectsSpec)
-                                        } else {
-                                            slideInHorizontally(animationSpec = quickSpatialSpec) { -it / 8 } +
-                                                fadeIn(quickEffectsSpec)
+                                    val targetName = navRouteName(targetState.contentKey)
+                                    val initialName = navRouteName(initialState.contentKey)
+                                    when {
+                                        isBringUpRoute(targetName) -> {
+                                            PhoenixPageTransitions.bringUpEnter() togetherWith
+                                                PhoenixPageTransitions.bringUpExit()
                                         }
-
-                                    val exitTransition =
-                                        if (targetIndex == -1 || targetIndex > initialIndex) {
-                                            slideOutHorizontally(animationSpec = quickSpatialSpec) { -it / 8 } +
-                                                fadeOut(quickEffectsSpec)
-                                        } else {
-                                            slideOutHorizontally(animationSpec = quickSpatialSpec) { it / 8 } +
-                                                fadeOut(quickEffectsSpec)
+                                        isBringUpRoute(initialName) -> {
+                                            PhoenixPageTransitions.bringDownEnter() togetherWith
+                                                PhoenixPageTransitions.bringDownExit()
                                         }
-
-                                    enterTransition togetherWith exitTransition
+                                        isSettingsRoute(targetName) && isSettingsRoute(initialName) -> {
+                                            val targetDepth = settingsDepth(targetName)
+                                            val initialDepth = settingsDepth(initialName)
+                                            val targetIndex = routeIndexMap[targetName] ?: targetDepth
+                                            val initialIndex = routeIndexMap[initialName] ?: initialDepth
+                                            val forward = targetDepth > initialDepth ||
+                                                (targetDepth == initialDepth && targetIndex >= initialIndex)
+                                            if (forward) {
+                                                PhoenixPageTransitions.pushEnter() togetherWith
+                                                    PhoenixPageTransitions.pushExit()
+                                            } else {
+                                                PhoenixPageTransitions.popEnter() togetherWith
+                                                    PhoenixPageTransitions.popExit()
+                                            }
+                                        }
+                                        else -> {
+                                            val targetIndex = routeIndexMap[targetName] ?: -1
+                                            val initialIndex = routeIndexMap[initialName] ?: -1
+                                            val forward = targetIndex == -1 || targetIndex >= initialIndex
+                                            val enter =
+                                                if (forward) {
+                                                    slideInHorizontally(animationSpec = quickSpatialSpec) { it / 8 } +
+                                                        fadeIn(quickEffectsSpec)
+                                                } else {
+                                                    slideInHorizontally(animationSpec = quickSpatialSpec) { -it / 8 } +
+                                                        fadeIn(quickEffectsSpec)
+                                                }
+                                            val exit =
+                                                if (forward) {
+                                                    slideOutHorizontally(animationSpec = quickSpatialSpec) { -it / 8 } +
+                                                        fadeOut(quickEffectsSpec)
+                                                } else {
+                                                    slideOutHorizontally(animationSpec = quickSpatialSpec) { it / 8 } +
+                                                        fadeOut(quickEffectsSpec)
+                                                }
+                                            enter togetherWith exit
+                                        }
+                                    }
                                 }
                             },
                             contentKey = { it.contentKey },

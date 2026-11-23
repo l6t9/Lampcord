@@ -18,9 +18,6 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
@@ -74,13 +71,13 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.state.SessionManager
 import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.settings.Settings
+import me.lampu.lampcord.shared.ui.animation.PhoenixPageTransitions
 import me.lampu.lampcord.shared.ui.components.settings.Material3SettingsGroup
 import me.lampu.lampcord.shared.ui.components.settings.Material3SettingsItem
 import me.lampu.lampcord.shared.ui.components.settings.connectedSettingsShape
@@ -137,6 +134,13 @@ enum class SettingsSection(val title: String, val icon: ImageVector, val selecte
     UPDATES("Updates", Icons.Rounded.Refresh, Icons.Filled.Refresh),
     ABOUT("About", Icons.Rounded.Info, Icons.Filled.Info),
 }
+
+private fun settingsPageRank(page: String): Int =
+    when (page) {
+        "editor" -> 100
+        "themer", "logs" -> 50
+        else -> SettingsSection.entries.firstOrNull { it.name == page }?.ordinal ?: 0
+    }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -338,24 +342,19 @@ fun SettingsScreen(
         }
 
         if (isCompact) {
-            val quickSpatialSpec = MaterialTheme.motionScheme.defaultSpatialSpec<IntOffset>()
-            val quickEffectsSpec = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
-
             AnimatedContent(
                 targetState = showDebugLogs,
                 modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainerHigh),
                 transitionSpec = {
-                    if (reduceMotion) {
-                        EnterTransition.None togetherWith ExitTransition.None
-                    } else if (targetState) {
-                        (fadeIn(quickEffectsSpec) + slideInHorizontally(quickSpatialSpec) { it / 8 }).togetherWith(
-                            fadeOut(quickEffectsSpec) + slideOutHorizontally(quickSpatialSpec) { -it / 8 }
-                        )
-                    } else {
-                        (fadeIn(quickEffectsSpec) + slideInHorizontally(quickSpatialSpec) { -it / 8 }).togetherWith(
-                            fadeOut(quickEffectsSpec) + slideOutHorizontally(quickSpatialSpec) { it / 8 }
-                        )
-                    }.using(SizeTransform(clip = false) { _, _ -> tween(0) })
+                    val transition =
+                        if (reduceMotion) {
+                            EnterTransition.None togetherWith ExitTransition.None
+                        } else if (targetState) {
+                            PhoenixPageTransitions.pushEnter() togetherWith PhoenixPageTransitions.pushExit()
+                        } else {
+                            PhoenixPageTransitions.popEnter() togetherWith PhoenixPageTransitions.popExit()
+                        }
+                    transition.using(SizeTransform(clip = false) { _, _ -> tween(0) })
                 },
                 label = "SettingsTransition"
             ) { showLogs ->
@@ -721,10 +720,10 @@ fun SettingsDesktopOverlay(
                     transitionSpec = {
                         if (reduceMotion) {
                             EnterTransition.None togetherWith ExitTransition.None
+                        } else if (settingsPageRank(targetState.first) >= settingsPageRank(initialState.first)) {
+                            PhoenixPageTransitions.pushEnter() togetherWith PhoenixPageTransitions.pushExit()
                         } else {
-                            (fadeIn(animationSpec = tween(300)) + slideInVertically(animationSpec = tween(300)) { 20 }).togetherWith(
-                                fadeOut(animationSpec = tween(200))
-                            )
+                            PhoenixPageTransitions.popEnter() togetherWith PhoenixPageTransitions.popExit()
                         }
                     },
                     modifier = Modifier.fillMaxSize(),
