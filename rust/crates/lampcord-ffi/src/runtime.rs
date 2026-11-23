@@ -24,7 +24,7 @@ use lampcord_core::{
     token_store::{SavedAccount, TokenStore},
     traits::{CaptchaSolver, GatewayUrlProvider},
 };
-use lampcord_model::{message::Message, snowflake::Snowflake};
+use lampcord_model::{channel::Channel, message::Message, snowflake::Snowflake};
 use lampcord_transport::{http::ReqwestRestTransport, websocket::TungsteniteGatewayTransport};
 use serde_json::Value;
 use tokio::sync::{mpsc, oneshot, watch};
@@ -962,6 +962,21 @@ fn build_snapshot(
     }
 }
 
+/// Backfills a guild's channels from REST. Discord no longer sends
+/// `GUILD_CREATE` for every guild, so the cache needs this to populate a
+/// selected guild's sidebar.
+fn cache_guild_channels(
+    cache: &Arc<Mutex<StateCache>>,
+    guild_id: Snowflake,
+    channels: Vec<Channel>,
+) {
+    let mut cache = cache.lock().expect("cache lock");
+    for mut channel in channels {
+        channel.guild_id = Some(guild_id);
+        cache.upsert_channel(channel);
+    }
+}
+
 fn auth_failure_kind(failure: Option<LoginFailure>) -> AuthFailureKind {
     match failure {
         Some(LoginFailure::InvalidCredentials) => AuthFailureKind::InvalidCredentials,
@@ -1498,6 +1513,31 @@ async fn run(
                     ClientCommand::SelectGuild { guild_id } => {
                         selected_guild_id = guild_id.map(Snowflake::from);
                         selected_channel_id = None;
+                        if let (Some(guild_id), Some(rest_client), Some(cache)) =
+                            (selected_guild_id, rest.clone(), cache.clone())
+                        {
+                            let config = default_rest_config(
+                                &api_base,
+                                user_agent.as_deref(),
+                                active_token.clone(),
+                            );
+                            match api::channel::get_guild_channels(
+                                &*rest_client,
+                                &config,
+                                guild_id,
+                            )
+                            .await
+                            {
+                                Ok(channels) => cache_guild_channels(&cache, guild_id, channels),
+                                Err(api_error) => {
+                                    error = Some(format!("Failed to fetch channels: {api_error}"));
+                                    push_event(&events, ClientEvent::CommandFailed {
+                                        kind: FfiErrorKind::Transport,
+                                        message: error.clone().unwrap_or_default(),
+                                    });
+                                }
+                            }
+                        }
                         mark_snapshot_dirty!();
                     }
                     ClientCommand::SelectChannel { channel_id } => {
@@ -1970,6 +2010,54 @@ mod tests {
             }
             other => panic!("unexpected event: {other:?}"),
         }
+    }
+
+    #[test]
+    fn guild_channel_backfill_populates_selected_guild_snapshot() {
+        let cache = Arc::new(Mutex::new(StateCache::new()));
+        let guild_id: Snowflake = 7;
+        let channels: Vec<Channel> = vec![
+            serde_json::from_value(json!({
+                "id": "11",
+                "type": 4,
+                "name": "Info",
+                "position": 0
+            }))
+            .expect("category"),
+            serde_json::from_value(json!({
+                "id": "10",
+                "type": 0,
+                "name": "general",
+                "position": 1
+            }))
+            .expect("text channel"),
+        ];
+
+        cache_guild_channels(&cache, guild_id, channels);
+        let snapshot = build_snapshot(
+            ConnectionState::Ready,
+            true,
+            &Some(cache),
+            Some(guild_id),
+            None,
+            &HashMap::new(),
+            &HashMap::new(),
+            &AuthStateSnapshot::default(),
+            None,
+        );
+
+        let names: Vec<&str> = snapshot
+            .channels
+            .iter()
+            .map(|channel| channel.name.as_str())
+            .collect();
+        assert_eq!(names, ["Info", "general"]);
+        assert!(
+            snapshot
+                .channels
+                .iter()
+                .all(|channel| channel.guild_id == Some(guild_id))
+        );
     }
 
     #[test]

@@ -245,6 +245,12 @@ impl StateCache {
         self.channels.values()
     }
 
+    /// Inserts or merges a channel received outside gateway events, such as a
+    /// REST backfill of a guild's channel list.
+    pub fn upsert_channel(&mut self, channel: Channel) {
+        self.update_channel(channel);
+    }
+
     pub fn channels_for_guild(&self, guild_id: Snowflake) -> Vec<&Channel> {
         let mut channels: Vec<&Channel> = self
             .guild_channels
