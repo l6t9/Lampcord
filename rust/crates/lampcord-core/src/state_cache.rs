@@ -63,7 +63,54 @@ pub struct CachedMember {
 pub struct CachedPresence {
     pub user_id: Snowflake,
     pub status: String,
+    /// Names of everything but the custom status (type 4).
     pub activities: Vec<String>,
+    /// The custom status text, when one is set.
+    pub custom_status: Option<String>,
+}
+
+/// Parses a presence from PRESENCE_UPDATE, READY `presences` or
+/// `merged_presences` (which carry `user_id` instead of a `user` object).
+pub fn presence_from_value(value: &Value) -> Option<CachedPresence> {
+    let user_id = snowflake(
+        value
+            .get("user")
+            .and_then(|user| user.get("id"))
+            .or_else(|| value.get("user_id")),
+    )?;
+    let status = value
+        .get("status")
+        .and_then(Value::as_str)
+        .unwrap_or("offline")
+        .to_owned();
+    let activities: Vec<&Value> = value
+        .get("activities")
+        .and_then(Value::as_array)
+        .map(|activities| activities.iter().collect())
+        .unwrap_or_default();
+    let is_custom = |activity: &Value| activity.get("type").and_then(Value::as_u64) == Some(4);
+    let custom_status = activities
+        .iter()
+        .find(|activity| is_custom(activity))
+        .and_then(|activity| activity.get("state").and_then(Value::as_str))
+        .filter(|state| !state.is_empty())
+        .map(str::to_owned);
+    let activities = activities
+        .iter()
+        .filter(|activity| !is_custom(activity))
+        .filter_map(|activity| {
+            activity
+                .get("name")
+                .and_then(Value::as_str)
+                .map(str::to_owned)
+        })
+        .collect();
+    Some(CachedPresence {
+        user_id,
+        status,
+        activities,
+        custom_status,
+    })
 }
 
 #[derive(Debug)]
@@ -97,6 +144,8 @@ pub struct StateCache {
     guilds: HashMap<Snowflake, Guild>,
     guild_order: Vec<Snowflake>,
     guild_folders: Vec<GuildFolder>,
+    own_status: Option<String>,
+    own_custom_status: Option<String>,
     channels: HashMap<Snowflake, Channel>,
     guild_channels: HashMap<Snowflake, Vec<Snowflake>>,
     private_channel_ids: Vec<Snowflake>,
@@ -142,6 +191,21 @@ impl StateCache {
 
     pub fn guild_folders(&self) -> &[GuildFolder] {
         &self.guild_folders
+    }
+
+    /// The status picked in settings (online, idle, dnd, invisible).
+    pub fn own_status(&self) -> Option<&str> {
+        self.own_status.as_deref()
+    }
+
+    pub fn own_custom_status(&self) -> Option<&str> {
+        self.own_custom_status.as_deref()
+    }
+
+    /// Mirrors a status change made through the REST settings endpoint
+    /// before Discord echoes it back.
+    pub fn set_own_status(&mut self, status: &str) {
+        self.own_status = Some(status.to_owned());
     }
 
     pub fn guild(&self, guild_id: Snowflake) -> Option<&Guild> {
@@ -275,13 +339,21 @@ impl StateCache {
         }
     }
 
-    /// Reads `guild_folders` from READY's `user_settings` or a
-    /// USER_SETTINGS_UPDATE; payloads without the key leave folders alone.
+    /// Reads folders and the user's status from READY's `user_settings` or
+    /// a USER_SETTINGS_UPDATE; keys a payload leaves out stay as they were.
     fn apply_user_settings(&mut self, settings: Option<&Value>) {
-        let Some(folders) = settings
-            .and_then(|settings| settings.get("guild_folders"))
-            .and_then(Value::as_array)
-        else {
+        let Some(settings) = settings else { return };
+        if let Some(status) = settings.get("status").and_then(Value::as_str) {
+            self.own_status = Some(status.to_owned());
+        }
+        if let Some(custom) = settings.get("custom_status") {
+            self.own_custom_status = custom
+                .get("text")
+                .and_then(Value::as_str)
+                .filter(|text| !text.is_empty())
+                .map(str::to_owned);
+        }
+        let Some(folders) = settings.get("guild_folders").and_then(Value::as_array) else {
             return;
         };
         self.guild_folders = folders
@@ -372,6 +444,24 @@ impl StateCache {
 
         if let Some(presences) = data.get("presences").and_then(Value::as_array) {
             for presence in presences {
+                self.cache_presence_value(presence);
+            }
+        }
+        // User accounts get friends' and servers' presences here instead.
+        if let Some(merged) = data.get("merged_presences") {
+            let friends = merged
+                .get("friends")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten();
+            let guilds = merged
+                .get("guilds")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+                .filter_map(Value::as_array)
+                .flatten();
+            for presence in friends.chain(guilds) {
                 self.cache_presence_value(presence);
             }
         }
@@ -715,41 +805,9 @@ impl StateCache {
     }
 
     fn cache_presence_value(&mut self, value: &Value) {
-        let user = value.get("user");
-        let Some(user_id) = snowflake(
-            user.and_then(|user| user.get("id"))
-                .or_else(|| value.get("user_id")),
-        ) else {
-            return;
-        };
-        let status = value
-            .get("status")
-            .and_then(Value::as_str)
-            .unwrap_or("offline")
-            .to_owned();
-        let activities = value
-            .get("activities")
-            .and_then(Value::as_array)
-            .map(|activities| {
-                activities
-                    .iter()
-                    .filter_map(|activity| {
-                        activity
-                            .get("name")
-                            .and_then(Value::as_str)
-                            .map(str::to_owned)
-                    })
-                    .collect()
-            })
-            .unwrap_or_default();
-        self.presences.insert(
-            user_id,
-            CachedPresence {
-                user_id,
-                status,
-                activities,
-            },
-        );
+        if let Some(presence) = presence_from_value(value) {
+            self.presences.insert(presence.user_id, presence);
+        }
     }
 
     fn handle_guild_member(&mut self, data: Option<&Value>) -> Result<(), CacheError> {
@@ -819,6 +877,8 @@ impl StateCache {
         self.guilds.clear();
         self.guild_order.clear();
         self.guild_folders.clear();
+        self.own_status = None;
+        self.own_custom_status = None;
         self.channels.clear();
         self.guild_channels.clear();
         self.private_channel_ids.clear();
@@ -1181,15 +1241,21 @@ mod tests {
                 Some(&json!({
                     "user": {"id": "1", "username": "me"},
                     "users": [{"id": "2", "username": "friend", "global_name": "Friend"}],
-                    "user_settings": {"guild_folders": [
+                    "user_settings": {"status": "invisible", "custom_status": {"text": "as above"}, "guild_folders": [
                         {"id": null, "guild_ids": ["10"]},
                         {"id": 7, "name": "Games", "color": 5793266, "guild_ids": ["11", "12"]}
                     ]},
-                    "private_channels": [{"id": "9", "type": 1, "recipient_ids": ["2"]}]
+                    "private_channels": [{"id": "9", "type": 1, "recipient_ids": ["2"]}],
+                    "merged_presences": {"friends": [{"user_id": "2", "status": "online", "activities": [
+                        {"type": 4, "name": "Custom Status", "state": "as above, so below"},
+                        {"type": 0, "name": "Blender"}
+                    ]}]}
                 })),
             )
             .unwrap();
 
+        assert_eq!(cache.own_status(), Some("invisible"));
+        assert_eq!(cache.own_custom_status(), Some("as above"));
         let dm = cache.private_channels()[0];
         assert_eq!(dm.recipients[0].global_name.as_deref(), Some("Friend"));
         let folders = cache.guild_folders();
@@ -1197,6 +1263,10 @@ mod tests {
         assert_eq!(folders[0].id, None);
         assert_eq!(folders[1].name.as_deref(), Some("Games"));
         assert_eq!(folders[1].guild_ids, vec![11, 12]);
+        let friend = cache.presence(2).unwrap();
+        assert_eq!(friend.status, "online");
+        assert_eq!(friend.custom_status.as_deref(), Some("as above, so below"));
+        assert_eq!(friend.activities, vec!["Blender".to_owned()]);
 
         cache
             .handle_event(
