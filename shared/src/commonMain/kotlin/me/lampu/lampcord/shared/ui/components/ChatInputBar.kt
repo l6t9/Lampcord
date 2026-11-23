@@ -32,7 +32,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
@@ -48,6 +47,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -184,7 +184,10 @@ fun ChatInputBar(
     relationshipStore: RelationshipStore = koinInject(),
     emojiStore: EmojiStore = koinInject(),
     settingsStore: SettingsStore = koinInject(),
-    profileStore: ProfileStore = koinInject()
+    profileStore: ProfileStore = koinInject(),
+    themeStore: ThemeStore = koinInject(),
+    modifier: Modifier = Modifier,
+    onHeightChanged: (Int) -> Unit = {}
 ) {
     val textFieldState = remember(channel.id) {
         val draft = messageStore.draftMessages[channel.id] ?: ""
@@ -562,7 +565,12 @@ fun ChatInputBar(
         messageStore.resetTypingEmission(channel.id)
     }
 
-    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(modifier)
+            .onSizeChanged { onHeightChanged(it.height) }
+    ) {
         val platform = getPlatformName()
         val isMobileDevice = platform == "android" || platform == "ios"
         val isMobileView = isMobileDevice || maxWidth < 600.dp
@@ -613,66 +621,43 @@ fun ChatInputBar(
                     }
                 }
 
-                val wallpaperUrl = settings.chatBackground
+                val themeBackgroundUrl = themeStore.themeBackgroundUrl.orEmpty()
+                val wallpaperUrl = if (themeBackgroundUrl.isNotEmpty()) themeBackgroundUrl else settings.chatBackground
                 val hasFrostedBackdrop = wallpaperUrl.isNotBlank()
+                val scrimBaseColor = MaterialTheme.colorScheme.surfaceContainer
                 val scrimColor = if (hasFrostedBackdrop) {
-                    MaterialTheme.colorScheme.surface.copy(alpha = 0.28f)
+                    scrimBaseColor.copy(alpha = 0.68f)
                 } else {
-                    MaterialTheme.colorScheme.surface.copy(alpha = 0.55f)
+                    scrimBaseColor
                 }
-                val scrimShadowColor = Color(0xFF1A1A1E).copy(alpha = 0.35f)
                 val inputScrimModifier = if (isMobileView) {
                     Modifier
                         .graphicsLayer { clip = false }
                         .drawBehind {
-                            val gradientHeight = 56.dp.toPx()
-                            val overlap = gradientHeight / 2f
+                            val overlap = 28.dp.toPx()
                             val gradientTop = -overlap
-                            val solidTop = gradientTop + gradientHeight
-
                             drawRect(
                                 brush = Brush.verticalGradient(
                                     colors = listOf(Color.Transparent, scrimColor),
                                     startY = gradientTop,
-                                    endY = solidTop
+                                    endY = overlap
                                 ),
                                 topLeft = Offset(0f, gradientTop),
-                                size = Size(size.width, gradientHeight)
+                                size = Size(size.width, overlap * 2f)
                             )
-                            val tailHeight = (size.height - solidTop).coerceAtLeast(0f)
+                            val tailHeight = (size.height - overlap).coerceAtLeast(0f)
                             if (tailHeight > 0f) {
                                 drawRect(
-                                    brush = Brush.verticalGradient(
-                                        colors = listOf(scrimColor, scrimColor.copy(alpha = 0.08f)),
-                                        startY = solidTop,
-                                        endY = size.height
-                                    ),
-                                    topLeft = Offset(0f, solidTop),
+                                    color = scrimColor,
+                                    topLeft = Offset(0f, overlap),
                                     size = Size(size.width, tailHeight)
                                 )
                             }
-
-                            val shadowHeight = 4.dp.toPx()
-                            val shadowOffset = 1.dp.toPx()
-                            val shadowTop = -shadowHeight - shadowOffset
-                            drawRect(
-                                brush = Brush.verticalGradient(
-                                    colors = listOf(Color.Transparent, scrimShadowColor),
-                                    startY = shadowTop,
-                                    endY = -shadowOffset
-                                ),
-                                topLeft = Offset(0f, shadowTop),
-                                size = Size(size.width, shadowHeight)
-                            )
                         }
                 } else {
                     Modifier
                 }
 
-                // Discord Android uses one animated channel bottom inset:
-                // custom keyboard detent, measured IME height, or the resting
-                // max(nav bar, 16dp). Stacking nav-bar and IME padding is what
-                // created the extra gap above the input while typing.
                 val customPickerVisible = isMobileView && canSend && navigationStore.isCustomKeyboardPickerVisible
                 val density = LocalDensity.current
                 val systemKeyboardHeight = systemKeyboardHeightPx(density)
@@ -686,21 +671,6 @@ fun ChatInputBar(
                 )
                 val inputBottomPadding = with(density) { bottomInsetPx.toDp() }
                 Box(modifier = Modifier.fillMaxWidth()) {
-                    if (hasFrostedBackdrop) {
-                        AsyncImage(
-                            model = wallpaperUrl,
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .matchParentSize()
-                                .blur(18.dp)
-                        )
-                        Box(
-                            modifier = Modifier
-                                .matchParentSize()
-                                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.18f))
-                        )
-                    }
                     Surface(
                         color = Color.Transparent,
                         modifier = Modifier
@@ -865,20 +835,32 @@ fun ChatInputBar(
                                 bottomStart = composerRadius,
                                 bottomEnd = composerRadius
                             )
-                            val composerSurfaceColor = if (hasFrostedBackdrop) {
-                                MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.82f)
-                            } else {
-                                MaterialTheme.colorScheme.surfaceContainerHigh
-                            }
-
-                            // Reply/edit lives inside the same bordered shell as the
-                            // input bar, with a hairline divider between the rows.
+                            val composerBrush = Brush.verticalGradient(
+                                colors = listOf(
+                                    if (hasFrostedBackdrop) {
+                                        MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.72f)
+                                    } else {
+                                        MaterialTheme.colorScheme.surfaceContainer
+                                    },
+                                    if (hasFrostedBackdrop) {
+                                        MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.86f)
+                                    } else {
+                                        MaterialTheme.colorScheme.surfaceContainerHigh
+                                    },
+                                    if (hasFrostedBackdrop) {
+                                        MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.92f)
+                                    } else {
+                                        MaterialTheme.colorScheme.surfaceContainerHighest
+                                    }
+                                )
+                            )
                             Surface(
                                 shape = RoundedCornerShape(composerRadius),
                                 border = BorderStroke(1.dp, composerBorderColor),
-                                color = composerSurfaceColor,
+                                color = Color.Transparent,
                                 modifier = Modifier
                                     .weight(1f)
+                                    .background(composerBrush, RoundedCornerShape(composerRadius))
                                     .animateContentSize(
                                         animationSpec = if (reduceMotion) snap() else spring(stiffness = Spring.StiffnessMediumLow)
                                     )

@@ -1925,21 +1925,31 @@ private fun MainBaseplateContent(
                             if (isVoice && !voiceStore.isVoiceChatTextVisible) {
                                 VoiceArea(activeChannel)
                             } else {
+                                val density = LocalDensity.current
+                                var composerHeightPx by remember { mutableStateOf(0) }
+                                val composerBottomPadding = with(density) { composerHeightPx.toDp() }
                                 Column(
                                     modifier = Modifier
                                         .fillMaxSize()
                                 ) {
                                     DmCallStage(activeChannel)
                                     Box(modifier = Modifier.weight(1f)) {
-                                            if (activeChannel.type == 15 && navigationStore.selectedThread == null) {
-                                                ForumPostList()
-                                            } else {
-                                                ChatArea(modifier = Modifier.fillMaxSize())
-                                            }
+                                        if (activeChannel.type == 15 && navigationStore.selectedThread == null) {
+                                            ForumPostList()
+                                        } else {
+                                            ChatArea(
+                                                modifier = Modifier.fillMaxSize(),
+                                                bottomContentPadding = composerBottomPadding + 10.dp
+                                            )
                                         }
                                         if (!(activeChannel.type == 15 && navigationStore.selectedThread == null)) {
-                                            ChatInputBar(activeChannel)
+                                            ChatInputBar(
+                                                channel = activeChannel,
+                                                modifier = Modifier.align(Alignment.BottomCenter),
+                                                onHeightChanged = { height -> composerHeightPx = height }
+                                            )
                                         }
+                                    }
                                 }
                             }
                         } else if (target == "roles") {
