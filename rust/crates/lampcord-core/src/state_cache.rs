@@ -36,7 +36,18 @@ const HANDLED_EVENTS: &[&str] = &[
     "GUILD_MEMBER_REMOVE",
     "GUILD_MEMBERS_CHUNK",
     "PRESENCE_UPDATE",
+    "USER_SETTINGS_UPDATE",
 ];
+
+/// A server folder from the user's settings, in rail order. Discord also
+/// stores lone servers as nameless folders without an id.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GuildFolder {
+    pub id: Option<i64>,
+    pub name: Option<String>,
+    pub color: Option<u32>,
+    pub guild_ids: Vec<Snowflake>,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CachedMember {
@@ -85,6 +96,7 @@ pub struct StateCache {
     users: HashMap<Snowflake, User>,
     guilds: HashMap<Snowflake, Guild>,
     guild_order: Vec<Snowflake>,
+    guild_folders: Vec<GuildFolder>,
     channels: HashMap<Snowflake, Channel>,
     guild_channels: HashMap<Snowflake, Vec<Snowflake>>,
     private_channel_ids: Vec<Snowflake>,
@@ -126,6 +138,10 @@ impl StateCache {
             .iter()
             .filter_map(|guild_id| self.guilds.get(guild_id))
             .collect()
+    }
+
+    pub fn guild_folders(&self) -> &[GuildFolder] {
+        &self.guild_folders
     }
 
     pub fn guild(&self, guild_id: Snowflake) -> Option<&Guild> {
@@ -251,8 +267,48 @@ impl StateCache {
             "GUILD_MEMBER_REMOVE" => self.handle_guild_member_remove(data),
             "GUILD_MEMBERS_CHUNK" => self.handle_member_chunk(data),
             "PRESENCE_UPDATE" => self.handle_presence(data),
+            "USER_SETTINGS_UPDATE" => {
+                self.apply_user_settings(data);
+                Ok(())
+            }
             _ => Ok(()),
         }
+    }
+
+    /// Reads `guild_folders` from READY's `user_settings` or a
+    /// USER_SETTINGS_UPDATE; payloads without the key leave folders alone.
+    fn apply_user_settings(&mut self, settings: Option<&Value>) {
+        let Some(folders) = settings
+            .and_then(|settings| settings.get("guild_folders"))
+            .and_then(Value::as_array)
+        else {
+            return;
+        };
+        self.guild_folders = folders
+            .iter()
+            .map(|folder| GuildFolder {
+                id: folder.get("id").and_then(|id| match id {
+                    Value::String(text) => text.parse().ok(),
+                    other => other.as_i64(),
+                }),
+                name: folder
+                    .get("name")
+                    .and_then(Value::as_str)
+                    .filter(|name| !name.is_empty())
+                    .map(str::to_owned),
+                color: folder
+                    .get("color")
+                    .and_then(Value::as_u64)
+                    .and_then(|color| u32::try_from(color).ok()),
+                guild_ids: folder
+                    .get("guild_ids")
+                    .and_then(Value::as_array)
+                    .into_iter()
+                    .flatten()
+                    .filter_map(|id| snowflake(Some(id)))
+                    .collect(),
+            })
+            .collect();
     }
 
     fn handle_ready(&mut self, data: Option<&Value>) -> Result<(), CacheError> {
@@ -263,6 +319,17 @@ impl StateCache {
             self.cache_user(user.clone());
             self.current_user = Some(user);
         }
+
+        // With DEDUPE_USER_OBJECTS, users arrive once here and channels
+        // only carry their ids.
+        if let Some(users) = data.get("users").and_then(Value::as_array) {
+            for value in users {
+                if let Ok(user) = decode::<User>(value) {
+                    self.cache_user(user);
+                }
+            }
+        }
+        self.apply_user_settings(data.get("user_settings"));
 
         let mut guild_order = Vec::new();
         if let Some(guilds) = data.get("guilds").and_then(Value::as_array) {
@@ -287,7 +354,17 @@ impl StateCache {
         for key in ["channels", "private_channels"] {
             if let Some(channels) = data.get(key).and_then(Value::as_array) {
                 for value in channels {
-                    let channel: Channel = decode(value)?;
+                    let mut channel: Channel = decode(value)?;
+                    if channel.recipients.is_empty() {
+                        channel.recipients = value
+                            .get("recipient_ids")
+                            .and_then(Value::as_array)
+                            .into_iter()
+                            .flatten()
+                            .filter_map(|id| snowflake(Some(id)))
+                            .filter_map(|id| self.users.get(&id).cloned())
+                            .collect();
+                    }
                     self.update_channel(channel);
                 }
             }
@@ -741,6 +818,7 @@ impl StateCache {
         self.users.clear();
         self.guilds.clear();
         self.guild_order.clear();
+        self.guild_folders.clear();
         self.channels.clear();
         self.guild_channels.clear();
         self.private_channel_ids.clear();
@@ -1092,5 +1170,40 @@ mod tests {
             .expect("ready event");
         cache.switch_token("token-1");
         assert!(cache.current_user().is_some());
+    }
+
+    #[test]
+    fn ready_resolves_deduped_recipients_and_folders() {
+        let mut cache = StateCache::new();
+        cache
+            .handle_event(
+                "READY",
+                Some(&json!({
+                    "user": {"id": "1", "username": "me"},
+                    "users": [{"id": "2", "username": "friend", "global_name": "Friend"}],
+                    "user_settings": {"guild_folders": [
+                        {"id": null, "guild_ids": ["10"]},
+                        {"id": 7, "name": "Games", "color": 5793266, "guild_ids": ["11", "12"]}
+                    ]},
+                    "private_channels": [{"id": "9", "type": 1, "recipient_ids": ["2"]}]
+                })),
+            )
+            .unwrap();
+
+        let dm = cache.private_channels()[0];
+        assert_eq!(dm.recipients[0].global_name.as_deref(), Some("Friend"));
+        let folders = cache.guild_folders();
+        assert_eq!(folders.len(), 2);
+        assert_eq!(folders[0].id, None);
+        assert_eq!(folders[1].name.as_deref(), Some("Games"));
+        assert_eq!(folders[1].guild_ids, vec![11, 12]);
+
+        cache
+            .handle_event(
+                "USER_SETTINGS_UPDATE",
+                Some(&json!({"guild_folders": [{"id": "8", "guild_ids": ["12"]}]})),
+            )
+            .unwrap();
+        assert_eq!(cache.guild_folders()[0].id, Some(8));
     }
 }
