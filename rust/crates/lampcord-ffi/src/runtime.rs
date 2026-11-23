@@ -32,10 +32,11 @@ use tokio::sync::{mpsc, oneshot, watch};
 use crate::{
     error::FfiErrorKind,
     snapshot::{
-        AuthStateSnapshot, ChannelSnapshot, ClientSnapshot, GuildSnapshot, MAX_SNAPSHOT_MEMBERS,
-        MAX_SNAPSHOT_PRESENCES, MAX_SNAPSHOT_READ_STATES, MemberSnapshot, MessageSnapshot,
-        PresenceSnapshot, ReadStateSnapshot, SNAPSHOT_SCHEMA_VERSION, SnapshotMetaPatch,
-        SnapshotPatch, SnapshotVersions,
+        AuthStateSnapshot, ChannelSnapshot, ClientSnapshot, GuildFolderSnapshot, GuildSnapshot,
+        MAX_SNAPSHOT_MEMBERS, MAX_SNAPSHOT_PRESENCES, MAX_SNAPSHOT_PRIVATE_CHANNELS,
+        MAX_SNAPSHOT_READ_STATES, MemberSnapshot, MessageSnapshot, PresenceSnapshot,
+        PrivateChannelSnapshot, ReadStateSnapshot, RecipientSnapshot, SNAPSHOT_SCHEMA_VERSION,
+        SnapshotMetaPatch, SnapshotPatch, SnapshotVersions,
     },
     types::{
         AuthChallenge, AuthFailureKind, ClientCommand, ClientConfig, ClientEvent,
@@ -259,6 +260,7 @@ impl RuntimeHandle {
                 has_token: snapshot.has_token,
                 current_user_id: snapshot.current_user_id,
                 current_user: snapshot.current_user.clone(),
+                current_user_avatar: snapshot.current_user_avatar.clone(),
                 selected_guild_id: snapshot.selected_guild_id,
                 selected_channel_id: snapshot.selected_channel_id,
                 auth: snapshot.auth.clone(),
@@ -271,6 +273,9 @@ impl RuntimeHandle {
             presences: (versions.presences > since.presences).then(|| snapshot.presences.clone()),
             read_states: (versions.read_states > since.read_states)
                 .then(|| snapshot.read_states.clone()),
+            private_channels: (versions.channels > since.channels)
+                .then(|| snapshot.private_channels.clone()),
+            guild_folders: (versions.guilds > since.guilds).then(|| snapshot.guild_folders.clone()),
         }
     }
 
@@ -371,6 +376,9 @@ fn benchmark_snapshot() -> ClientSnapshot {
             .collect(),
         auth: AuthStateSnapshot::default(),
         error: None,
+        private_channels: Vec::new(),
+        guild_folders: Vec::new(),
+        current_user_avatar: None,
     }
 }
 
@@ -510,12 +518,15 @@ fn set_snapshot(
         || previous.has_token != next.has_token
         || previous.current_user_id != next.current_user_id
         || previous.current_user != next.current_user
+        || previous.current_user_avatar != next.current_user_avatar
         || previous.selected_guild_id != next.selected_guild_id
         || previous.selected_channel_id != next.selected_channel_id
         || previous.auth != next.auth
         || previous.error != next.error;
-    let guilds_changed = previous.guilds != next.guilds;
-    let channels_changed = previous.channels != next.channels;
+    let guilds_changed =
+        previous.guilds != next.guilds || previous.guild_folders != next.guild_folders;
+    let channels_changed =
+        previous.channels != next.channels || previous.private_channels != next.private_channels;
     let messages_changed = previous.messages != next.messages;
     let members_changed = previous.members != next.members;
     let presences_changed = previous.presences != next.presences;
@@ -780,6 +791,39 @@ fn build_snapshot(
         .map(presence_snapshot)
         .collect();
 
+    let private_channels: Vec<PrivateChannelSnapshot> = cache
+        .private_channels()
+        .into_iter()
+        .take(MAX_SNAPSHOT_PRIVATE_CHANNELS)
+        .map(|channel| PrivateChannelSnapshot {
+            id: channel.id,
+            kind: channel.kind.0,
+            name: channel.name.clone().filter(|name| !name.is_empty()),
+            recipients: channel
+                .recipients
+                .iter()
+                .map(|user| RecipientSnapshot {
+                    id: user.id,
+                    username: user.username.clone(),
+                    global_name: user.global_name.clone(),
+                    avatar: user.avatar.clone(),
+                })
+                .collect(),
+            last_message_id: channel.last_message_id,
+        })
+        .collect();
+
+    let guild_folders: Vec<GuildFolderSnapshot> = cache
+        .guild_folders()
+        .iter()
+        .map(|folder| GuildFolderSnapshot {
+            id: folder.id,
+            name: folder.name.clone(),
+            color: folder.color,
+            guild_ids: folder.guild_ids.clone(),
+        })
+        .collect();
+
     let mut channel_ids: Vec<Snowflake> = cache.channels().map(|channel| channel.id).collect();
     channel_ids.extend(fetched_messages.keys().copied());
     channel_ids.sort_unstable();
@@ -819,6 +863,9 @@ fn build_snapshot(
         read_states,
         auth: auth.clone(),
         error,
+        private_channels,
+        guild_folders,
+        current_user_avatar: cache.current_user().and_then(|user| user.avatar.clone()),
     }
 }
 

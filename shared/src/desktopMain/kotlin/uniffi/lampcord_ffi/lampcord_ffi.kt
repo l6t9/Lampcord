@@ -1355,6 +1355,29 @@ public object FfiConverterULong: FfiConverter<ULong, Long> {
 /**
  * @suppress
  */
+public object FfiConverterLong: FfiConverter<Long, Long> {
+    override fun lift(value: Long): Long {
+        return value
+    }
+
+    override fun read(buf: ByteBuffer): Long {
+        return buf.getLong()
+    }
+
+    override fun lower(value: Long): Long {
+        return value
+    }
+
+    override fun allocationSize(value: Long) = 8UL
+
+    override fun write(value: Long, buf: ByteBuffer) {
+        buf.putLong(value)
+    }
+}
+
+/**
+ * @suppress
+ */
 public object FfiConverterBoolean: FfiConverter<Boolean, Byte> {
     override fun lift(value: Byte): Boolean {
         return value.toInt() != 0
@@ -2654,7 +2677,19 @@ data class ClientSnapshot (
     var `presences`: List<PresenceSnapshot>, 
     var `readStates`: List<ReadStateSnapshot>, 
     var `auth`: AuthStateSnapshot, 
-    var `error`: kotlin.String?
+    var `error`: kotlin.String?, 
+    /**
+     * Schema 3+. DMs and group DMs, most recent first; versioned with `channels`.
+     */
+    var `privateChannels`: List<PrivateChannelSnapshot>, 
+    /**
+     * Schema 3+. The user's server folders in rail order; versioned with `guilds`.
+     */
+    var `guildFolders`: List<GuildFolderSnapshot>, 
+    /**
+     * Schema 3+. Avatar hash of the current user; part of `meta`.
+     */
+    var `currentUserAvatar`: kotlin.String?
 ) {
     
     companion object
@@ -2682,6 +2717,9 @@ public object FfiConverterTypeClientSnapshot: FfiConverterRustBuffer<ClientSnaps
             FfiConverterSequenceTypeReadStateSnapshot.read(buf),
             FfiConverterTypeAuthStateSnapshot.read(buf),
             FfiConverterOptionalString.read(buf),
+            FfiConverterSequenceTypePrivateChannelSnapshot.read(buf),
+            FfiConverterSequenceTypeGuildFolderSnapshot.read(buf),
+            FfiConverterOptionalString.read(buf),
         )
     }
 
@@ -2701,7 +2739,10 @@ public object FfiConverterTypeClientSnapshot: FfiConverterRustBuffer<ClientSnaps
             FfiConverterSequenceTypePresenceSnapshot.allocationSize(value.`presences`) +
             FfiConverterSequenceTypeReadStateSnapshot.allocationSize(value.`readStates`) +
             FfiConverterTypeAuthStateSnapshot.allocationSize(value.`auth`) +
-            FfiConverterOptionalString.allocationSize(value.`error`)
+            FfiConverterOptionalString.allocationSize(value.`error`) +
+            FfiConverterSequenceTypePrivateChannelSnapshot.allocationSize(value.`privateChannels`) +
+            FfiConverterSequenceTypeGuildFolderSnapshot.allocationSize(value.`guildFolders`) +
+            FfiConverterOptionalString.allocationSize(value.`currentUserAvatar`)
     )
 
     override fun write(value: ClientSnapshot, buf: ByteBuffer) {
@@ -2721,6 +2762,9 @@ public object FfiConverterTypeClientSnapshot: FfiConverterRustBuffer<ClientSnaps
             FfiConverterSequenceTypeReadStateSnapshot.write(value.`readStates`, buf)
             FfiConverterTypeAuthStateSnapshot.write(value.`auth`, buf)
             FfiConverterOptionalString.write(value.`error`, buf)
+            FfiConverterSequenceTypePrivateChannelSnapshot.write(value.`privateChannels`, buf)
+            FfiConverterSequenceTypeGuildFolderSnapshot.write(value.`guildFolders`, buf)
+            FfiConverterOptionalString.write(value.`currentUserAvatar`, buf)
     }
 }
 
@@ -2753,6 +2797,49 @@ public object FfiConverterTypeFfiError: FfiConverterRustBuffer<FfiError> {
     override fun write(value: FfiError, buf: ByteBuffer) {
             FfiConverterTypeFfiErrorKind.write(value.`kind`, buf)
             FfiConverterString.write(value.`message`, buf)
+    }
+}
+
+
+
+data class GuildFolderSnapshot (
+    /**
+     * `None` for the nameless wrapper Discord puts around a lone server.
+     */
+    var `id`: kotlin.Long?, 
+    var `name`: kotlin.String?, 
+    var `color`: kotlin.UInt?, 
+    var `guildIds`: List<kotlin.ULong>
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeGuildFolderSnapshot: FfiConverterRustBuffer<GuildFolderSnapshot> {
+    override fun read(buf: ByteBuffer): GuildFolderSnapshot {
+        return GuildFolderSnapshot(
+            FfiConverterOptionalLong.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalUInt.read(buf),
+            FfiConverterSequenceULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: GuildFolderSnapshot) = (
+            FfiConverterOptionalLong.allocationSize(value.`id`) +
+            FfiConverterOptionalString.allocationSize(value.`name`) +
+            FfiConverterOptionalUInt.allocationSize(value.`color`) +
+            FfiConverterSequenceULong.allocationSize(value.`guildIds`)
+    )
+
+    override fun write(value: GuildFolderSnapshot, buf: ByteBuffer) {
+            FfiConverterOptionalLong.write(value.`id`, buf)
+            FfiConverterOptionalString.write(value.`name`, buf)
+            FfiConverterOptionalUInt.write(value.`color`, buf)
+            FfiConverterSequenceULong.write(value.`guildIds`, buf)
     }
 }
 
@@ -2934,6 +3021,56 @@ public object FfiConverterTypePresenceSnapshot: FfiConverterRustBuffer<PresenceS
 
 
 
+data class PrivateChannelSnapshot (
+    var `id`: kotlin.ULong, 
+    /**
+     * 1 for a DM, 3 for a group DM.
+     */
+    var `kind`: kotlin.UByte, 
+    /**
+     * Only group DMs can have a name.
+     */
+    var `name`: kotlin.String?, 
+    var `recipients`: List<RecipientSnapshot>, 
+    var `lastMessageId`: kotlin.ULong?
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePrivateChannelSnapshot: FfiConverterRustBuffer<PrivateChannelSnapshot> {
+    override fun read(buf: ByteBuffer): PrivateChannelSnapshot {
+        return PrivateChannelSnapshot(
+            FfiConverterULong.read(buf),
+            FfiConverterUByte.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterSequenceTypeRecipientSnapshot.read(buf),
+            FfiConverterOptionalULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: PrivateChannelSnapshot) = (
+            FfiConverterULong.allocationSize(value.`id`) +
+            FfiConverterUByte.allocationSize(value.`kind`) +
+            FfiConverterOptionalString.allocationSize(value.`name`) +
+            FfiConverterSequenceTypeRecipientSnapshot.allocationSize(value.`recipients`) +
+            FfiConverterOptionalULong.allocationSize(value.`lastMessageId`)
+    )
+
+    override fun write(value: PrivateChannelSnapshot, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`id`, buf)
+            FfiConverterUByte.write(value.`kind`, buf)
+            FfiConverterOptionalString.write(value.`name`, buf)
+            FfiConverterSequenceTypeRecipientSnapshot.write(value.`recipients`, buf)
+            FfiConverterOptionalULong.write(value.`lastMessageId`, buf)
+    }
+}
+
+
+
 data class ReadStateSnapshot (
     var `channelId`: kotlin.ULong, 
     var `lastMessageId`: kotlin.ULong?, 
@@ -2978,11 +3115,52 @@ public object FfiConverterTypeReadStateSnapshot: FfiConverterRustBuffer<ReadStat
 
 
 
+data class RecipientSnapshot (
+    var `id`: kotlin.ULong, 
+    var `username`: kotlin.String, 
+    var `globalName`: kotlin.String?, 
+    var `avatar`: kotlin.String?
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeRecipientSnapshot: FfiConverterRustBuffer<RecipientSnapshot> {
+    override fun read(buf: ByteBuffer): RecipientSnapshot {
+        return RecipientSnapshot(
+            FfiConverterULong.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: RecipientSnapshot) = (
+            FfiConverterULong.allocationSize(value.`id`) +
+            FfiConverterString.allocationSize(value.`username`) +
+            FfiConverterOptionalString.allocationSize(value.`globalName`) +
+            FfiConverterOptionalString.allocationSize(value.`avatar`)
+    )
+
+    override fun write(value: RecipientSnapshot, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`id`, buf)
+            FfiConverterString.write(value.`username`, buf)
+            FfiConverterOptionalString.write(value.`globalName`, buf)
+            FfiConverterOptionalString.write(value.`avatar`, buf)
+    }
+}
+
+
+
 data class SnapshotMetaPatch (
     var `connection`: ConnectionState, 
     var `hasToken`: kotlin.Boolean, 
     var `currentUserId`: kotlin.ULong?, 
     var `currentUser`: kotlin.String?, 
+    var `currentUserAvatar`: kotlin.String?, 
     var `selectedGuildId`: kotlin.ULong?, 
     var `selectedChannelId`: kotlin.ULong?, 
     var `auth`: AuthStateSnapshot, 
@@ -3002,6 +3180,7 @@ public object FfiConverterTypeSnapshotMetaPatch: FfiConverterRustBuffer<Snapshot
             FfiConverterBoolean.read(buf),
             FfiConverterOptionalULong.read(buf),
             FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
             FfiConverterOptionalULong.read(buf),
             FfiConverterOptionalULong.read(buf),
             FfiConverterTypeAuthStateSnapshot.read(buf),
@@ -3014,6 +3193,7 @@ public object FfiConverterTypeSnapshotMetaPatch: FfiConverterRustBuffer<Snapshot
             FfiConverterBoolean.allocationSize(value.`hasToken`) +
             FfiConverterOptionalULong.allocationSize(value.`currentUserId`) +
             FfiConverterOptionalString.allocationSize(value.`currentUser`) +
+            FfiConverterOptionalString.allocationSize(value.`currentUserAvatar`) +
             FfiConverterOptionalULong.allocationSize(value.`selectedGuildId`) +
             FfiConverterOptionalULong.allocationSize(value.`selectedChannelId`) +
             FfiConverterTypeAuthStateSnapshot.allocationSize(value.`auth`) +
@@ -3025,6 +3205,7 @@ public object FfiConverterTypeSnapshotMetaPatch: FfiConverterRustBuffer<Snapshot
             FfiConverterBoolean.write(value.`hasToken`, buf)
             FfiConverterOptionalULong.write(value.`currentUserId`, buf)
             FfiConverterOptionalString.write(value.`currentUser`, buf)
+            FfiConverterOptionalString.write(value.`currentUserAvatar`, buf)
             FfiConverterOptionalULong.write(value.`selectedGuildId`, buf)
             FfiConverterOptionalULong.write(value.`selectedChannelId`, buf)
             FfiConverterTypeAuthStateSnapshot.write(value.`auth`, buf)
@@ -3044,7 +3225,9 @@ data class SnapshotPatch (
     var `messages`: List<MessageSnapshot>?, 
     var `members`: List<MemberSnapshot>?, 
     var `presences`: List<PresenceSnapshot>?, 
-    var `readStates`: List<ReadStateSnapshot>?
+    var `readStates`: List<ReadStateSnapshot>?, 
+    var `privateChannels`: List<PrivateChannelSnapshot>?, 
+    var `guildFolders`: List<GuildFolderSnapshot>?
 ) {
     
     companion object
@@ -3066,6 +3249,8 @@ public object FfiConverterTypeSnapshotPatch: FfiConverterRustBuffer<SnapshotPatc
             FfiConverterOptionalSequenceTypeMemberSnapshot.read(buf),
             FfiConverterOptionalSequenceTypePresenceSnapshot.read(buf),
             FfiConverterOptionalSequenceTypeReadStateSnapshot.read(buf),
+            FfiConverterOptionalSequenceTypePrivateChannelSnapshot.read(buf),
+            FfiConverterOptionalSequenceTypeGuildFolderSnapshot.read(buf),
         )
     }
 
@@ -3079,7 +3264,9 @@ public object FfiConverterTypeSnapshotPatch: FfiConverterRustBuffer<SnapshotPatc
             FfiConverterOptionalSequenceTypeMessageSnapshot.allocationSize(value.`messages`) +
             FfiConverterOptionalSequenceTypeMemberSnapshot.allocationSize(value.`members`) +
             FfiConverterOptionalSequenceTypePresenceSnapshot.allocationSize(value.`presences`) +
-            FfiConverterOptionalSequenceTypeReadStateSnapshot.allocationSize(value.`readStates`)
+            FfiConverterOptionalSequenceTypeReadStateSnapshot.allocationSize(value.`readStates`) +
+            FfiConverterOptionalSequenceTypePrivateChannelSnapshot.allocationSize(value.`privateChannels`) +
+            FfiConverterOptionalSequenceTypeGuildFolderSnapshot.allocationSize(value.`guildFolders`)
     )
 
     override fun write(value: SnapshotPatch, buf: ByteBuffer) {
@@ -3093,6 +3280,8 @@ public object FfiConverterTypeSnapshotPatch: FfiConverterRustBuffer<SnapshotPatc
             FfiConverterOptionalSequenceTypeMemberSnapshot.write(value.`members`, buf)
             FfiConverterOptionalSequenceTypePresenceSnapshot.write(value.`presences`, buf)
             FfiConverterOptionalSequenceTypeReadStateSnapshot.write(value.`readStates`, buf)
+            FfiConverterOptionalSequenceTypePrivateChannelSnapshot.write(value.`privateChannels`, buf)
+            FfiConverterOptionalSequenceTypeGuildFolderSnapshot.write(value.`guildFolders`, buf)
     }
 }
 
@@ -4603,6 +4792,38 @@ public object FfiConverterOptionalUByte: FfiConverterRustBuffer<kotlin.UByte?> {
 /**
  * @suppress
  */
+public object FfiConverterOptionalUInt: FfiConverterRustBuffer<kotlin.UInt?> {
+    override fun read(buf: ByteBuffer): kotlin.UInt? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterUInt.read(buf)
+    }
+
+    override fun allocationSize(value: kotlin.UInt?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterUInt.allocationSize(value)
+        }
+    }
+
+    override fun write(value: kotlin.UInt?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterUInt.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalInt: FfiConverterRustBuffer<kotlin.Int?> {
     override fun read(buf: ByteBuffer): kotlin.Int? {
         if (buf.get().toInt() == 0) {
@@ -4657,6 +4878,38 @@ public object FfiConverterOptionalULong: FfiConverterRustBuffer<kotlin.ULong?> {
         } else {
             buf.put(1)
             FfiConverterULong.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalLong: FfiConverterRustBuffer<kotlin.Long?> {
+    override fun read(buf: ByteBuffer): kotlin.Long? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterLong.read(buf)
+    }
+
+    override fun allocationSize(value: kotlin.Long?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterLong.allocationSize(value)
+        }
+    }
+
+    override fun write(value: kotlin.Long?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterLong.write(value, buf)
         }
     }
 }
@@ -4827,6 +5080,38 @@ public object FfiConverterOptionalSequenceTypeChannelSnapshot: FfiConverterRustB
 /**
  * @suppress
  */
+public object FfiConverterOptionalSequenceTypeGuildFolderSnapshot: FfiConverterRustBuffer<List<GuildFolderSnapshot>?> {
+    override fun read(buf: ByteBuffer): List<GuildFolderSnapshot>? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterSequenceTypeGuildFolderSnapshot.read(buf)
+    }
+
+    override fun allocationSize(value: List<GuildFolderSnapshot>?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterSequenceTypeGuildFolderSnapshot.allocationSize(value)
+        }
+    }
+
+    override fun write(value: List<GuildFolderSnapshot>?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterSequenceTypeGuildFolderSnapshot.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalSequenceTypeGuildSnapshot: FfiConverterRustBuffer<List<GuildSnapshot>?> {
     override fun read(buf: ByteBuffer): List<GuildSnapshot>? {
         if (buf.get().toInt() == 0) {
@@ -4945,6 +5230,38 @@ public object FfiConverterOptionalSequenceTypePresenceSnapshot: FfiConverterRust
         } else {
             buf.put(1)
             FfiConverterSequenceTypePresenceSnapshot.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalSequenceTypePrivateChannelSnapshot: FfiConverterRustBuffer<List<PrivateChannelSnapshot>?> {
+    override fun read(buf: ByteBuffer): List<PrivateChannelSnapshot>? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterSequenceTypePrivateChannelSnapshot.read(buf)
+    }
+
+    override fun allocationSize(value: List<PrivateChannelSnapshot>?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterSequenceTypePrivateChannelSnapshot.allocationSize(value)
+        }
+    }
+
+    override fun write(value: List<PrivateChannelSnapshot>?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterSequenceTypePrivateChannelSnapshot.write(value, buf)
         }
     }
 }
@@ -5099,6 +5416,34 @@ public object FfiConverterSequenceTypeClientEventEnvelope: FfiConverterRustBuffe
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeGuildFolderSnapshot: FfiConverterRustBuffer<List<GuildFolderSnapshot>> {
+    override fun read(buf: ByteBuffer): List<GuildFolderSnapshot> {
+        val len = buf.getInt()
+        return List<GuildFolderSnapshot>(len) {
+            FfiConverterTypeGuildFolderSnapshot.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<GuildFolderSnapshot>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeGuildFolderSnapshot.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<GuildFolderSnapshot>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeGuildFolderSnapshot.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeGuildSnapshot: FfiConverterRustBuffer<List<GuildSnapshot>> {
     override fun read(buf: ByteBuffer): List<GuildSnapshot> {
         val len = buf.getInt()
@@ -5211,6 +5556,34 @@ public object FfiConverterSequenceTypePresenceSnapshot: FfiConverterRustBuffer<L
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypePrivateChannelSnapshot: FfiConverterRustBuffer<List<PrivateChannelSnapshot>> {
+    override fun read(buf: ByteBuffer): List<PrivateChannelSnapshot> {
+        val len = buf.getInt()
+        return List<PrivateChannelSnapshot>(len) {
+            FfiConverterTypePrivateChannelSnapshot.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<PrivateChannelSnapshot>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypePrivateChannelSnapshot.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<PrivateChannelSnapshot>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypePrivateChannelSnapshot.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeReadStateSnapshot: FfiConverterRustBuffer<List<ReadStateSnapshot>> {
     override fun read(buf: ByteBuffer): List<ReadStateSnapshot> {
         val len = buf.getInt()
@@ -5229,6 +5602,34 @@ public object FfiConverterSequenceTypeReadStateSnapshot: FfiConverterRustBuffer<
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeReadStateSnapshot.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeRecipientSnapshot: FfiConverterRustBuffer<List<RecipientSnapshot>> {
+    override fun read(buf: ByteBuffer): List<RecipientSnapshot> {
+        val len = buf.getInt()
+        return List<RecipientSnapshot>(len) {
+            FfiConverterTypeRecipientSnapshot.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<RecipientSnapshot>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeRecipientSnapshot.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<RecipientSnapshot>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeRecipientSnapshot.write(it, buf)
         }
     }
 } fun `snapshotSchemaVersion`(): kotlin.UInt {

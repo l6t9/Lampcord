@@ -2,11 +2,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::types::{AuthChallenge, ConnectionState, RemoteAuthState};
 
-pub const SNAPSHOT_SCHEMA_VERSION: u32 = 2;
+pub const SNAPSHOT_SCHEMA_VERSION: u32 = 3;
 
 pub const MAX_SNAPSHOT_MEMBERS: usize = 200;
 pub const MAX_SNAPSHOT_PRESENCES: usize = 200;
 pub const MAX_SNAPSHOT_READ_STATES: usize = 200;
+pub const MAX_SNAPSHOT_PRIVATE_CHANNELS: usize = 200;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
@@ -27,6 +28,12 @@ pub struct ClientSnapshot {
     pub read_states: Vec<ReadStateSnapshot>,
     pub auth: AuthStateSnapshot,
     pub error: Option<String>,
+    /// Schema 3+. DMs and group DMs, most recent first; versioned with `channels`.
+    pub private_channels: Vec<PrivateChannelSnapshot>,
+    /// Schema 3+. The user's server folders in rail order; versioned with `guilds`.
+    pub guild_folders: Vec<GuildFolderSnapshot>,
+    /// Schema 3+. Avatar hash of the current user; part of `meta`.
+    pub current_user_avatar: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -49,6 +56,7 @@ pub struct SnapshotMetaPatch {
     pub has_token: bool,
     pub current_user_id: Option<u64>,
     pub current_user: Option<String>,
+    pub current_user_avatar: Option<String>,
     pub selected_guild_id: Option<u64>,
     pub selected_channel_id: Option<u64>,
     pub auth: AuthStateSnapshot,
@@ -68,6 +76,8 @@ pub struct SnapshotPatch {
     pub members: Option<Vec<MemberSnapshot>>,
     pub presences: Option<Vec<PresenceSnapshot>>,
     pub read_states: Option<Vec<ReadStateSnapshot>>,
+    pub private_channels: Option<Vec<PrivateChannelSnapshot>>,
+    pub guild_folders: Option<Vec<GuildFolderSnapshot>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -83,6 +93,37 @@ pub struct GuildSnapshot {
     pub id: u64,
     pub name: String,
     pub icon_url: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
+pub struct PrivateChannelSnapshot {
+    pub id: u64,
+    /// 1 for a DM, 3 for a group DM.
+    pub kind: u8,
+    /// Only group DMs can have a name.
+    pub name: Option<String>,
+    pub recipients: Vec<RecipientSnapshot>,
+    pub last_message_id: Option<u64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
+pub struct RecipientSnapshot {
+    pub id: u64,
+    pub username: String,
+    pub global_name: Option<String>,
+    pub avatar: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
+pub struct GuildFolderSnapshot {
+    /// `None` for the nameless wrapper Discord puts around a lone server.
+    pub id: Option<i64>,
+    pub name: Option<String>,
+    pub color: Option<u32>,
+    pub guild_ids: Vec<u64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
