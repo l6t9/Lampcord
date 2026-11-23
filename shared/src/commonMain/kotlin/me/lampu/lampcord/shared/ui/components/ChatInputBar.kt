@@ -905,29 +905,6 @@ fun ChatInputBar(
                                                 .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 2.dp),
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            Box(
-                                                modifier = Modifier.size(28.dp),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                IconButton(
-                                                    onClick = {
-                                                        if (isEditing) {
-                                                            messageStore.editingMessage = null
-                                                            lastHandledText = ""
-                                                            lastHandledSelection = TextRange.Zero
-                                                            textFieldState.clearText()
-                                                        } else {
-                                                            messageStore.replyingTo = null
-                                                        }
-                                                    },
-                                                    modifier = Modifier.size(24.dp)
-                                                ) {
-                                                    Icon(Icons.Filled.Close, null, modifier = Modifier.size(16.dp))
-                                                }
-                                            }
-
-                                            Spacer(Modifier.width(4.dp))
-
                                             val displayName = activeMsg?.author?.global_name
                                                 ?: activeMsg?.author?.username ?: "Unknown"
                                             val headerText = if (isEditing) {
@@ -977,6 +954,27 @@ fun ChatInputBar(
                                                             MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                                                         }
                                                     )
+                                                }
+                                            }
+
+                                            Box(
+                                                modifier = Modifier.size(28.dp),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                IconButton(
+                                                    onClick = {
+                                                        if (isEditing) {
+                                                            messageStore.editingMessage = null
+                                                            lastHandledText = ""
+                                                            lastHandledSelection = TextRange.Zero
+                                                            textFieldState.clearText()
+                                                        } else {
+                                                            messageStore.replyingTo = null
+                                                        }
+                                                    },
+                                                    modifier = Modifier.size(24.dp)
+                                                ) {
+                                                    Icon(Icons.Filled.Cancel, null, modifier = Modifier.size(16.dp))
                                                 }
                                             }
                                         }
