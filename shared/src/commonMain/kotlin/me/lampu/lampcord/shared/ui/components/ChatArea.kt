@@ -468,7 +468,9 @@ fun ChatArea(
                         if (reduceMotion) scrollState.scrollToItem(0) else scrollState.animateScrollToItem(0)
                     }
                 },
-                modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(bottom = bottomContentPadding + 16.dp, end = 16.dp)
             ) {
                 Icon(Icons.Filled.ArrowDownward, null)
             }

@@ -32,7 +32,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
@@ -661,16 +660,6 @@ fun ChatInputBar(
                 )
                 val inputBottomPadding = with(density) { bottomInsetPx.toDp() }
                 Box(modifier = Modifier.fillMaxWidth()) {
-                    if (hasFrostedBackdrop) {
-                        AsyncImage(
-                            model = wallpaperUrl,
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .matchParentSize()
-                                .blur(18.dp)
-                        )
-                    }
                     Surface(
                         color = Color.Transparent,
                         modifier = Modifier
