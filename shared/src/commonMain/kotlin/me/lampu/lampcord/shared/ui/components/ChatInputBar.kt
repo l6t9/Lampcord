@@ -616,11 +616,11 @@ fun ChatInputBar(
                 val wallpaperUrl = settings.chatBackground
                 val hasFrostedBackdrop = wallpaperUrl.isNotBlank()
                 val scrimColor = if (hasFrostedBackdrop) {
-                    MaterialTheme.colorScheme.surface.copy(alpha = 0.58f)
+                    MaterialTheme.colorScheme.surface.copy(alpha = 0.28f)
                 } else {
-                    MaterialTheme.colorScheme.surface
+                    MaterialTheme.colorScheme.surface.copy(alpha = 0.55f)
                 }
-                val scrimShadowColor = Color(0xFF1A1A1E).copy(alpha = 0.5f)
+                val scrimShadowColor = Color(0xFF1A1A1E).copy(alpha = 0.35f)
                 val inputScrimModifier = if (isMobileView) {
                     Modifier
                         .graphicsLayer { clip = false }
@@ -631,11 +631,6 @@ fun ChatInputBar(
                             val solidTop = gradientTop + gradientHeight
 
                             drawRect(
-                                color = scrimColor,
-                                topLeft = Offset(0f, solidTop),
-                                size = Size(size.width, (size.height - solidTop).coerceAtLeast(0f))
-                            )
-                            drawRect(
                                 brush = Brush.verticalGradient(
                                     colors = listOf(Color.Transparent, scrimColor),
                                     startY = gradientTop,
@@ -644,6 +639,18 @@ fun ChatInputBar(
                                 topLeft = Offset(0f, gradientTop),
                                 size = Size(size.width, gradientHeight)
                             )
+                            val tailHeight = (size.height - solidTop).coerceAtLeast(0f)
+                            if (tailHeight > 0f) {
+                                drawRect(
+                                    brush = Brush.verticalGradient(
+                                        colors = listOf(scrimColor, scrimColor.copy(alpha = 0.08f)),
+                                        startY = solidTop,
+                                        endY = size.height
+                                    ),
+                                    topLeft = Offset(0f, solidTop),
+                                    size = Size(size.width, tailHeight)
+                                )
+                            }
 
                             val shadowHeight = 4.dp.toPx()
                             val shadowOffset = 1.dp.toPx()
