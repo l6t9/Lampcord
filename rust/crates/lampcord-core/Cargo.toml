@@ -11,6 +11,7 @@ async-trait.workspace = true
 lampcord-model.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+rmp-serde.workspace = true
 tokio = { workspace = true, features = ["sync", "time"] }
 base64.workspace = true
 rsa.workspace = true

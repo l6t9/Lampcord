@@ -32,6 +32,7 @@ actual class RustCoreEngine actual constructor(config: RustClientConfig) : AutoC
 
     actual fun selectGuild(guildId: ULong?): Boolean = unavailable("selectGuild")
     actual fun selectChannel(channelId: ULong?): Boolean = unavailable("selectChannel")
+    actual fun setMemberListRanges(ranges: List<List<Int>>): Boolean = unavailable("setMemberListRanges")
     actual fun fetchMessages(channelId: ULong, before: ULong?, limit: UByte?): Boolean =
         unavailable("fetchMessages")
 

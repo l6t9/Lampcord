@@ -13,6 +13,8 @@ pub struct User {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub avatar: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub avatar_decoration_data: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bot: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub system: Option<bool>,

@@ -174,7 +174,7 @@ fun MessageItem(
     val member = message.member ?: memberState?.value
 
     LaunchedEffect(authorId, guildId) {
-        if (authorId != null && guildId != null && message.member == null) {
+        if (!me.lampu.lampcord.shared.state.RustCoreMode.enabled && authorId != null && guildId != null && message.member == null) {
             val existing = userStore.getMember(guildId, authorId)
             if (existing == null) {
                 try {

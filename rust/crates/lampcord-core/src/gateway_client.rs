@@ -1,8 +1,9 @@
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use lampcord_model::snowflake::Snowflake;
 use serde_json::{Value, json};
-use tokio::sync::mpsc::UnboundedSender;
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
 use crate::{
     event_dispatch::Dispatcher,
@@ -17,6 +18,8 @@ use crate::{
 };
 
 pub const DEFAULT_GATEWAY_URL: &str = "wss://gateway.discord.gg";
+
+pub const OP_LAZY_REQUEST: i64 = 14;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GatewayIdentityMode {
@@ -54,6 +57,9 @@ pub enum GatewayEvent {
     },
     HandlerErrors {
         errors: Vec<crate::event_dispatch::HandlerError>,
+    },
+    Failed {
+        message: String,
     },
 }
 
@@ -254,6 +260,26 @@ pub fn heartbeat_payload(sequence: Option<u32>) -> Value {
     })
 }
 
+pub fn lazy_request_payload(
+    guild_id: Snowflake,
+    channel_id: Snowflake,
+    ranges: &[[u32; 2]],
+) -> Value {
+    let mut channels = serde_json::Map::new();
+    channels.insert(channel_id.to_string(), json!(ranges));
+    json!({
+        "op": OP_LAZY_REQUEST,
+        "d": {
+            "guild_id": guild_id.to_string(),
+            "typing": true,
+            "activities": true,
+            "threads": true,
+            "members": [],
+            "channels": channels,
+        }
+    })
+}
+
 pub fn time_spent_payload(client_heartbeat_session_id: &str) -> Value {
     let now_ms = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -285,6 +311,7 @@ pub struct GatewayClient<T: GatewayTransport, U: GatewayUrlProvider> {
     identity: GatewayIdentity,
     dispatcher: Dispatcher,
     cache: Arc<Mutex<StateCache>>,
+    outbound: Option<UnboundedReceiver<Value>>,
 }
 
 impl<T: GatewayTransport, U: GatewayUrlProvider> GatewayClient<T, U> {
@@ -299,11 +326,17 @@ impl<T: GatewayTransport, U: GatewayUrlProvider> GatewayClient<T, U> {
             identity: GatewayIdentity::default(),
             dispatcher,
             cache,
+            outbound: None,
         }
     }
 
     pub fn with_identity(mut self, identity: GatewayIdentity) -> Self {
         self.identity = identity;
+        self
+    }
+
+    pub fn with_outbound(mut self, outbound: UnboundedReceiver<Value>) -> Self {
+        self.outbound = Some(outbound);
         self
     }
 
@@ -371,7 +404,22 @@ impl<T: GatewayTransport, U: GatewayUrlProvider> GatewayClient<T, U> {
                 (next_heartbeat_at.max(now)).saturating_duration_since(now)
             };
 
-            match tokio::time::timeout(wait, self.transport.receive()).await {
+            let outbound = &mut self.outbound;
+            let outbound_next = async move {
+                match outbound.as_mut() {
+                    Some(rx) => rx.recv().await,
+                    None => std::future::pending().await,
+                }
+            };
+            let received = tokio::select! {
+                biased;
+                Some(payload) = outbound_next => {
+                    self.transport.send(&payload.to_string()).await?;
+                    continue;
+                }
+                result = tokio::time::timeout(wait, self.transport.receive()) => result,
+            };
+            match received {
                 Ok(received) => match received? {
                     GatewayMessage::Text(text) => {
                         let mut payload: Value = serde_json::from_str(&text)?;
@@ -682,6 +730,23 @@ mod tests {
             client.session().resume_info(),
             Some(("session-1", 7, "wss://resume.example"))
         );
+    }
+
+    #[tokio::test]
+    async fn writes_queued_outbound_payloads_to_socket() {
+        let transport = ScriptedGatewayTransport::default();
+        transport.push(hello(41_250));
+        transport.push_close(1000);
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        tx.send(lazy_request_payload(10, 11, &[[0, 99]]))
+            .expect("queue");
+        let mut client = GatewayClient::new(transport, StaticUrl).with_outbound(rx);
+
+        client.run("token-1").await.expect("gateway run");
+
+        let sent = client.transport.sent.lock().expect("sent lock");
+        assert!(sent.iter().any(|payload| payload["op"] == OP_LAZY_REQUEST
+            && payload["d"]["guild_id"] == "10"));
     }
 
     #[tokio::test]

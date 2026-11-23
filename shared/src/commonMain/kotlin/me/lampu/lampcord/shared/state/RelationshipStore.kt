@@ -46,6 +46,7 @@ class RelationshipStore(
     }
 
     fun fetchRelationships() {
+        if (RustCoreMode.enabled) return
         scope.launch {
             val friends = userApi.getRelationships()
             _relationships.value = friends.map { hydrate(it) }.distinctBy { it.id ?: it.user?.id ?: it.user_id }

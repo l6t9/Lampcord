@@ -1,5 +1,7 @@
 package me.lampu.lampcord.shared.state
 
+import kotlin.concurrent.Volatile
+
 object RustCoreMode {
     var enabled: Boolean = false
 
