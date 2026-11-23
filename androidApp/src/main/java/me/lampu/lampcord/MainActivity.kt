@@ -38,6 +38,9 @@ open class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         requestNotificationsPermissionIfNeeded()
         setContent {
+            if (me.lampu.lampcord.shared.state.RustCoreMode.enabled) {
+                me.lampu.lampcord.rust.RustCoreHost()
+            }
             App(onExitApp = ::finish)
         }
         handleNotificationIntent(intent)

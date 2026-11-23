@@ -47,3 +47,5 @@ CLAUDE.md
 
 # Generated Rust FFI native libs for PoC
 desktopApp/src/jvmMain/resources/linux-x86-64/liblampcord_ffi.so
+
+androidApp/src/main/jniLibs/

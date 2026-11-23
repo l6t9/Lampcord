@@ -67,7 +67,28 @@ class MemberListStore(
         lastRanges = emptyList()
     }
 
+    var rustRangeRequester: ((List<List<Int>>) -> Unit)? = null
+
+    fun applyRustMemberList(guildId: String?, items: List<MemberListListItem?>, online: Int?, members: Int?) {
+        Snapshot.withMutableSnapshot {
+            memberListItems.clear()
+            memberListItems.addAll(items)
+            memberListGroups.clear()
+            items.forEach { item -> item?.group?.let { memberListGroups[it.id] = it } }
+            onlineCount = online
+            memberCount = members
+            if (guildId != null) {
+                online?.let { guildOnlineCounts[guildId] = it }
+                members?.let { guildMemberCounts[guildId] = it }
+            }
+        }
+    }
+
     fun requestMemberListRange(ranges: List<List<Int>>) {
+        if (RustCoreMode.enabled) {
+            rustRangeRequester?.invoke(ranges)
+            return
+        }
         val guild = selectionStore.selectedGuild ?: return
         val thread = selectionStore.selectedThread
         val channel = selectionStore.selectedChannel ?: return

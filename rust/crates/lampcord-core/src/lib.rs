@@ -7,6 +7,7 @@ pub mod gateway_plan;
 pub mod gateway_queue;
 pub mod gateway_session;
 pub mod oauth;
+pub mod permissions;
 pub mod read_state;
 pub mod remote_auth;
 pub mod rest;

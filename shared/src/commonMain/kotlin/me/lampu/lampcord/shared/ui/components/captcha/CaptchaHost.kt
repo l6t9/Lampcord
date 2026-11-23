@@ -1,10 +1,8 @@
 package me.lampu.lampcord.shared.ui.components.captcha
 
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,9 +10,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ContainedLoadingIndicator
@@ -28,6 +26,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -35,19 +34,25 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import dev.nucleusframework.webview.web.LoadingState
+import dev.nucleusframework.webview.jsbridge.IJsMessageHandler
+import dev.nucleusframework.webview.jsbridge.JsMessage
 import dev.nucleusframework.webview.web.WebView
+import dev.nucleusframework.webview.web.WebViewNavigator
+import dev.nucleusframework.webview.jsbridge.rememberWebViewJsBridge
 import dev.nucleusframework.webview.web.rememberWebViewNavigator
-import dev.nucleusframework.webview.web.rememberWebViewState
-import kotlinx.coroutines.delay
+import dev.nucleusframework.webview.web.rememberWebViewStateWithHTMLData
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.SendChannel
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
 import kotlin.math.roundToInt
 import me.lampu.lampcord.shared.api.CaptchaChallenge
 import me.lampu.lampcord.shared.api.CaptchaService
@@ -56,6 +61,8 @@ import me.lampu.lampcord.shared.captcha.CaptchaCoordinator
 import me.lampu.lampcord.shared.generated.resources.Res
 import me.lampu.lampcord.shared.generated.resources.cancel
 import me.lampu.lampcord.shared.generated.resources.lampcord_captcha_description
+import me.lampu.lampcord.shared.generated.resources.lampcord_captcha_failed
+import me.lampu.lampcord.shared.generated.resources.lampcord_captcha_retry
 import me.lampu.lampcord.shared.generated.resources.lampcord_captcha_title
 import me.lampu.lampcord.shared.generated.resources.lampcord_captcha_webview_missing
 import me.lampu.lampcord.shared.utils.Logging
@@ -64,16 +71,40 @@ import me.lampu.lampcord.shared.utils.isEmbeddedWebViewAvailable
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 
-internal const val CAPTCHA_TITLE_PREFIX = "LAMPCORD_CAPTCHA:"
-internal const val CAPTCHA_READY_TITLE = "LAMPCORD_READY"
-internal const val CAPTCHA_EVENT_PREFIX = "LAMPCORD_EVENT:"
-private const val CAPTCHA_PAGE_URL = "https://discord.com/login"
+internal const val CAPTCHA_BRIDGE_METHOD = "lampcord.captcha"
+internal const val CAPTCHA_BASE_URL = "https://discord.com/login"
+
 private const val CAPTCHA_USER_AGENT =
     "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36"
+private const val COLLAPSED_FRAME_DP = 96
+private const val EXPANDED_FRAME_DP = 480
 
-private const val HIDDEN_CARD_ALPHA = 0.02f
-private const val HIDDEN_CARD_OFFSET_PX = 20_000
-private const val PAGE_SETTLE_MS = 600L
+internal val TERMINAL_CAPTCHA_EVENTS = setOf(
+    "error",
+    "expired",
+    "challenge-expired",
+    "execute-failed",
+    "render-exception",
+    "set-data-error",
+    "script-load-error",
+)
+
+internal data class CaptchaBridgeEvent(
+    val seq: Long,
+    val kind: String,
+    val value: String?,
+)
+
+private fun loggedValue(event: CaptchaBridgeEvent): String =
+    if (event.kind == "token") "${event.value?.length ?: 0} chars" else event.value.orEmpty()
+
+internal fun parseCaptchaBridgeEvent(params: String): CaptchaBridgeEvent? {
+    val obj = runCatching { Json.parseToJsonElement(params).jsonObject }.getOrNull() ?: return null
+    val kind = obj["kind"]?.jsonPrimitive?.contentOrNull ?: return null
+    val seq = obj["seq"]?.jsonPrimitive?.longOrNull ?: return null
+    val value = obj["value"]?.jsonPrimitive?.contentOrNull
+    return CaptchaBridgeEvent(seq, kind, value)
+}
 
 @Composable
 fun CaptchaHost(coordinator: CaptchaCoordinator = koinInject()) {
@@ -107,11 +138,8 @@ private fun CaptchaDialogContent(
     val colors = MaterialTheme.colorScheme
     val webViewAvailable = remember { isEmbeddedWebViewAvailable() }
     var expanded by remember { mutableStateOf(false) }
-    var revealed by remember { mutableStateOf(!webViewAvailable || !challenge.isInvisible) }
-    val cardAlpha by animateFloatAsState(
-        targetValue = if (revealed) 1f else HIDDEN_CARD_ALPHA,
-        label = "captchaCardAlpha",
-    )
+    var failure by remember { mutableStateOf<String?>(null) }
+    var attempt by remember { mutableIntStateOf(0) }
     val outerPadding by animateDpAsState(
         targetValue = if (expanded) 8.dp else 24.dp,
         label = "captchaOuterPadding",
@@ -126,9 +154,7 @@ private fun CaptchaDialogContent(
             modifier = Modifier
                 .widthIn(max = 420.dp)
                 .fillMaxWidth()
-                .padding(outerPadding)
-                .offset { if (revealed) IntOffset.Zero else IntOffset(-HIDDEN_CARD_OFFSET_PX, 0) }
-                .graphicsLayer { alpha = cardAlpha },
+                .padding(outerPadding),
             shape = RoundedCornerShape(28.dp),
             color = colors.surfaceContainerHigh,
             tonalElevation = 0.dp,
@@ -149,20 +175,24 @@ private fun CaptchaDialogContent(
                 }
                 Spacer(Modifier.height(if (expanded) 12.dp else 20.dp))
                 if (webViewAvailable) {
-                    CaptchaFrame(
-                        challenge = challenge,
-                        background = colors.surfaceContainer,
-                        expanded = expanded,
-                        onExpandedChange = { expanded = it },
-                        onReveal = { revealed = true },
-                        onToken = {
-                            Logging.i(
-                                "Captcha",
-                                if (revealed) "Solved after the dialog was shown" else "Solved silently, dialog never shown",
-                            )
-                            onToken(it)
-                        },
-                    )
+                    key(attempt) {
+                        CaptchaFrame(
+                            challenge = challenge,
+                            background = colors.surfaceContainer,
+                            expanded = expanded,
+                            onExpandedChange = { expanded = it },
+                            onFailure = { failure = it },
+                            onToken = onToken,
+                        )
+                    }
+                    failure?.let {
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            text = stringResource(Res.string.lampcord_captcha_failed),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.error,
+                        )
+                    }
                 } else {
                     Text(
                         text = stringResource(Res.string.lampcord_captcha_webview_missing),
@@ -171,26 +201,26 @@ private fun CaptchaDialogContent(
                     )
                 }
                 Spacer(Modifier.height(16.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (failure != null) {
+                        TextButton(
+                            onClick = {
+                                failure = null
+                                expanded = false
+                                attempt++
+                            },
+                        ) {
+                            Text(stringResource(Res.string.lampcord_captcha_retry), color = colors.primary)
+                        }
+                        Spacer(Modifier.width(8.dp))
+                    }
                     TextButton(onClick = onCancel) {
                         Text(stringResource(Res.string.cancel), color = colors.primary)
                     }
-                }
-            }
-        }
-
-        if (!revealed) {
-            Column(
-                modifier = Modifier
-                    .matchParentSize()
-                    .pointerInput(Unit) { detectTapGestures { } },
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                ContainedLoadingIndicator(indicatorColor = colors.primary)
-                Spacer(Modifier.height(16.dp))
-                TextButton(onClick = onCancel) {
-                    Text(stringResource(Res.string.cancel), color = colors.primary)
                 }
             }
         }
@@ -204,71 +234,51 @@ private fun CaptchaFrame(
     background: Color,
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
-    onReveal: () -> Unit,
+    onFailure: (String) -> Unit,
     onToken: (String) -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
+    val events = remember { Channel<CaptchaBridgeEvent>(Channel.UNLIMITED) }
     val navigator = rememberWebViewNavigator()
-    val webViewState = rememberWebViewState(CAPTCHA_PAGE_URL) {
-        customUserAgentString = CAPTCHA_USER_AGENT
-        androidWebSettings.apply {
-            useWideViewPort = true
-            domStorageEnabled = true
-        }
-    }
-
+    val jsBridge = rememberWebViewJsBridge(navigator)
     val isDark = background.luminance() < 0.5f
-    val script = remember(challenge, background) {
-        captchaInjectionScript(
+    val html = remember(challenge, background) {
+        captchaPageHtml(
             challenge = challenge,
             background = background.toCssHex(),
             theme = if (isDark) "dark" else "light",
         )
     }
-
-    var widgetReady by remember(script) { mutableStateOf(false) }
-    var lastEvent by remember { mutableStateOf<String?>(null) }
-    val pageLoaded = webViewState.loadingState is LoadingState.Finished
+    val webViewState = rememberWebViewStateWithHTMLData(html, baseUrl = CAPTCHA_BASE_URL)
+    var ready by remember { mutableStateOf(false) }
 
     LaunchedEffect(webViewState) {
         webViewState.webSettings.isJavaScriptEnabled = true
+        webViewState.webSettings.customUserAgentString = CAPTCHA_USER_AGENT
     }
 
-    LaunchedEffect(pageLoaded, script) {
-        if (pageLoaded) {
-            delay(PAGE_SETTLE_MS)
-            navigator.evaluateJavaScript(script)
-        }
+    LaunchedEffect(jsBridge) {
+        jsBridge.register(CaptchaBridgeHandler(events))
     }
 
-    val initialTitle = remember { webViewState.pageTitle }
-    val title = webViewState.pageTitle
-    LaunchedEffect(title) {
-        if (title == CAPTCHA_READY_TITLE) {
-            widgetReady = true
-        } else if (title != null && title.startsWith(CAPTCHA_EVENT_PREFIX)) {
-            widgetReady = true
-            val event = title.removePrefix(CAPTCHA_EVENT_PREFIX)
-            if (event != lastEvent) {
-                lastEvent = event
-                Logging.i("Captcha", "hCaptcha: $event")
+    LaunchedEffect(events) {
+        var lastSeq = 0L
+        for (event in events) {
+            if (event.seq <= lastSeq) continue
+            lastSeq = event.seq
+            Logging.i("Captcha", "event: ${event.kind}: ${loggedValue(event)}")
+            when (event.kind) {
+                "ready" -> ready = true
+                "open" -> onExpandedChange(true)
+                "close" -> onExpandedChange(false)
+                "token" -> event.value?.takeIf { it.isNotEmpty() }?.let(onToken)
             }
-            if (event == "open") {
-                onReveal()
-                onExpandedChange(true)
-            }
-            if (event == "close") onExpandedChange(false)
-            if (isFailureEvent(event)) onReveal()
-        } else if (title != null && title.startsWith(CAPTCHA_TITLE_PREFIX) && title != initialTitle) {
-            widgetReady = true
-            val token = title.removePrefix(CAPTCHA_TITLE_PREFIX)
-            Logging.i("Captcha", "Received solved token, length=${token.length}")
-            onToken(token)
+            if (event.kind in TERMINAL_CAPTCHA_EVENTS) onFailure(event.kind)
         }
     }
 
     val frameHeight by animateDpAsState(
-        targetValue = if (expanded) 480.dp else 96.dp,
+        targetValue = if (expanded) EXPANDED_FRAME_DP.dp else COLLAPSED_FRAME_DP.dp,
         label = "captchaFrameHeight",
     )
 
@@ -285,264 +295,233 @@ private fun CaptchaFrame(
         WebView(
             state = webViewState,
             navigator = navigator,
+            webViewJsBridge = jsBridge,
             modifier = Modifier.fillMaxSize(),
             onCreated = { native -> configureCaptchaWebView(native) },
         )
-        if (!widgetReady) {
+        if (!ready) {
             ContainedLoadingIndicator(indicatorColor = colors.primary)
         }
     }
 }
 
-internal fun captchaInjectionScript(
+private class CaptchaBridgeHandler(
+    private val events: SendChannel<CaptchaBridgeEvent>,
+) : IJsMessageHandler {
+    override fun methodName(): String = CAPTCHA_BRIDGE_METHOD
+
+    override fun handle(
+        message: JsMessage,
+        navigator: WebViewNavigator?,
+        callback: (String) -> Unit,
+    ) {
+        parseCaptchaBridgeEvent(message.params)?.let { events.trySend(it) }
+    }
+}
+
+internal fun captchaPageHtml(
     challenge: CaptchaChallenge,
     background: String,
     theme: String,
 ): String {
     val sitekey = jsString(challenge.sitekey)
     val rqdata = challenge.rqdata?.let { jsString(it) } ?: "null"
-    val prefix = jsString(CAPTCHA_TITLE_PREFIX)
-    val ready = jsString(CAPTCHA_READY_TITLE)
-    val eventPrefix = jsString(CAPTCHA_EVENT_PREFIX)
-    val bg = jsString(background)
+    val invisible = if (challenge.isInvisible) "true" else "false"
     val themeLiteral = jsString(theme)
-    val invisibleLiteral = if (challenge.isInvisible) "true" else "false"
     val actionLiteral = jsString(RECAPTCHA_ENTERPRISE_ACTION)
-    val scriptSrc = jsString(
-        when (challenge.service) {
-            CaptchaService.HCAPTCHA -> "https://js.hcaptcha.com/1/api.js?render=explicit&onload=lampcordReady"
-            CaptchaService.RECAPTCHA -> "https://www.google.com/recaptcha/api.js?render=explicit&onload=lampcordReady"
-            CaptchaService.RECAPTCHA_ENTERPRISE -> "https://www.google.com/recaptcha/enterprise.js?render=${challenge.sitekey}"
-        },
-    )
+    val scriptSrc = jsString(captchaScriptSource(challenge))
     val serviceBlock = when (challenge.service) {
         CaptchaService.HCAPTCHA -> HCAPTCHA_SERVICE_JS
         CaptchaService.RECAPTCHA -> RECAPTCHA_SERVICE_JS
         CaptchaService.RECAPTCHA_ENTERPRISE -> RECAPTCHA_ENTERPRISE_SERVICE_JS
     }
-    val head = """
+    return """
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<style>
+html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: $background; }
+body { display: flex; align-items: center; justify-content: center; }
+#captcha { display: flex; min-height: 78px; width: 100%; align-items: center; justify-content: center; }
+</style>
+</head>
+<body>
+<div id="captcha"></div>
+<script>
 (function () {
-  if (window.__lampcordTimer) { clearInterval(window.__lampcordTimer); }
-  var stale = document.getElementById('lampcord-captcha');
-  if (stale && stale.parentNode) { stale.parentNode.removeChild(stale); }
-  var staleStyle = document.getElementById('lampcord-captcha-style');
-  if (staleStyle && staleStyle.parentNode) { staleStyle.parentNode.removeChild(staleStyle); }
-
-  var doc = document;
-
-  var lock = doc.createElement('style');
-  lock.id = 'lampcord-captcha-style';
-  lock.textContent = 'html,body{overflow:hidden !important;width:100% !important;height:100% !important;' +
-    'max-width:100% !important;margin:0 !important;overscroll-behavior:none !important;}' +
-    '#lampcord-captcha{overflow:hidden;overscroll-behavior:none;}';
-  (doc.head || doc.documentElement).appendChild(lock);
-
-  var viewport = doc.querySelector('meta[name="viewport"]');
-  if (!viewport) {
-    viewport = doc.createElement('meta');
-    viewport.name = 'viewport';
-    (doc.head || doc.documentElement).appendChild(viewport);
-  }
-  viewport.content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no';
-
   var SITEKEY = $sitekey;
   var RQDATA = $rqdata;
-  var INVISIBLE = $invisibleLiteral;
+  var INVISIBLE = $invisible;
   var THEME = $themeLiteral;
   var ACTION = $actionLiteral;
-  var READY = $ready;
+  var SRC = $scriptSrc;
 
-  var rendered = false;
   var widgetId = null;
   var executed = false;
-  var executeTries = 0;
-  var solved = false;
+  var finished = false;
+  var seq = 0;
+  var queue = [];
 
-  var status = '';
-  doc.title = status;
-
-  var overlay = doc.createElement('div');
-  overlay.id = 'lampcord-captcha';
-  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:100000;' +
-    'display:flex;align-items:center;justify-content:center;background:' + $bg + ';';
-  var box = doc.createElement('div');
-  box.style.cssText = 'max-width:100%;';
-  overlay.appendChild(box);
-  doc.documentElement.appendChild(overlay);
-
-  function setStatus(value) {
-    if (solved) { return; }
-    status = value;
-    doc.title = status;
-  }
-  function report(message) { setStatus($eventPrefix + message); }
-  function errorText(e) {
-    if (!e) { return 'null'; }
-    if (typeof e === 'string') { return e; }
-    try { return JSON.stringify(e); } catch (_) { return String(e); }
+  function text(value) {
+    if (value === null || value === undefined) { return 'null'; }
+    if (typeof value === 'string') { return value; }
+    if (value instanceof Error) { return value.name + ': ' + value.message; }
+    try { return JSON.stringify(value); } catch (_) { return String(value); }
   }
 
-  window.lampcordDone = function (token) {
-    solved = true;
-    status = $prefix + token;
-    doc.title = status;
-  };
-  window.lampcordReady = function () { serviceRender(); };
-
-  function fit() {
-    var natural = box.scrollWidth;
-    var available = doc.documentElement.clientWidth - 24;
-    if (natural > 0 && natural > available) {
-      box.style.transformOrigin = 'center center';
-      box.style.transform = 'scale(' + (available / natural) + ')';
-    } else {
-      box.style.transform = '';
+  function flush() {
+    while (queue.length > 0) {
+      try {
+        window.kmpJsBridge.callNative('lampcord.captcha', JSON.stringify(queue[0]), function () {});
+      } catch (_) {
+        return;
+      }
+      queue.shift();
     }
   }
-"""
-    val tail = """
-  window.__lampcordTimer = setInterval(function () {
-    if (!overlay.isConnected) { doc.documentElement.appendChild(overlay); }
-    if (doc.title !== status) { doc.title = status; }
-    if (window.scrollX !== 0 || window.scrollY !== 0) { window.scrollTo(0, 0); }
-    serviceRender();
-    serviceExecute();
-    fit();
-  }, 500);
 
-  var s = doc.createElement('script');
-  s.src = $scriptSrc;
-  s.onerror = function () { report('script-load-error'); };
-  doc.documentElement.appendChild(s);
+  function send(kind, value) {
+    seq += 1;
+    queue.push({ seq: seq, kind: kind, value: value === undefined ? null : text(value) });
+    flush();
+  }
+
+  function solved(token) {
+    if (finished) { return; }
+    finished = true;
+    send('token', token);
+  }
+
+  setInterval(flush, 250);
+
+  window.addEventListener('error', function (e) {
+    send('window-error', (e.message || 'error') + ' line ' + e.lineno);
+  });
+
+  var originalConsoleError = console.error;
+  console.error = function () {
+    send('console-error', Array.prototype.map.call(arguments, function (v) { return text(v); }).join(' '));
+    originalConsoleError.apply(console, arguments);
+  };
+
+  function loadScript() {
+    var s = document.createElement('script');
+    s.src = SRC;
+    s.onload = function () { renderService(); };
+    s.onerror = function () { send('script-load-error'); };
+    document.body.appendChild(s);
+  }
+
+$serviceBlock
+
+  loadScript();
 })();
+</script>
+</body>
+</html>
 """
-    return head + serviceBlock + tail
 }
 
-private val FAILURE_EVENT_PREFIXES = listOf(
-    "error",
-    "expired",
-    "challenge-expired",
-    "execute",
-    "render-exception",
-    "script-load-error",
-)
-
-private fun isFailureEvent(event: String): Boolean =
-    FAILURE_EVENT_PREFIXES.any { event.startsWith(it) }
+private fun captchaScriptSource(challenge: CaptchaChallenge): String = when (challenge.service) {
+    CaptchaService.HCAPTCHA -> "https://js.hcaptcha.com/1/api.js?render=explicit"
+    CaptchaService.RECAPTCHA -> "https://www.google.com/recaptcha/api.js?render=explicit"
+    CaptchaService.RECAPTCHA_ENTERPRISE -> "https://www.google.com/recaptcha/enterprise.js?render=${challenge.sitekey}"
+}
 
 private const val HCAPTCHA_SERVICE_JS = """
-  function serviceRender() {
-    if (rendered || !window.hcaptcha) { return; }
-    rendered = true;
+  function renderService() {
+    if (!window.hcaptcha) { send('render-exception', 'hcaptcha missing'); return; }
     var opts = {
       sitekey: SITEKEY,
       theme: THEME,
-      callback: window.lampcordDone,
-      'open-callback': function () { report('open'); },
-      'close-callback': function () { report('close'); },
-      'error-callback': function (code) { report('error:' + errorText(code)); },
-      'expired-callback': function () { report('expired'); },
-      'chalexpired-callback': function () { report('challenge-expired'); }
+      callback: solved,
+      'open-callback': function () { send('open'); },
+      'close-callback': function () { send('close'); },
+      'error-callback': function (code) { send('error', code); },
+      'expired-callback': function () { send('expired'); },
+      'chalexpired-callback': function () { send('challenge-expired'); }
     };
     if (INVISIBLE) { opts.size = 'invisible'; }
     try {
-      widgetId = hcaptcha.render(box, opts);
+      widgetId = hcaptcha.render('captcha', opts);
     } catch (e) {
-      report('render-exception:' + errorText(e));
+      send('render-exception', e);
       return;
     }
-    if (RQDATA && widgetId !== null) {
+    if (RQDATA !== null) {
       try { hcaptcha.setData(widgetId, { rqdata: RQDATA }); }
-      catch (e) { report('set-data-error:' + errorText(e)); }
+      catch (e) { send('set-data-error', e); }
     }
-    setStatus(READY);
+    send('ready');
+    executeService();
   }
 
-  function fallbackToVisible() {
-    if (!INVISIBLE) { return; }
-    INVISIBLE = false;
+  function executeService() {
+    if (!INVISIBLE || widgetId === null || executed) { return; }
     executed = true;
-    rendered = false;
-    widgetId = null;
-    try { box.innerHTML = ''; } catch (_) {}
-    serviceRender();
-    report('execute-fallback-visible');
-  }
-
-  function serviceExecute() {
-    if (!INVISIBLE || widgetId === null || executed || executeTries >= 5) { return; }
-    executeTries++;
     try {
       var pending = hcaptcha.execute(widgetId);
-      executed = true;
       if (pending && typeof pending.catch === 'function') {
-        pending.catch(function (e) {
-          report('execute-error:' + errorText(e));
-          fallbackToVisible();
-        });
+        pending.catch(function (e) { send('execute-failed', e); });
       }
     } catch (e) {
-      report('execute-failed:' + executeTries + ':' + errorText(e));
-      fallbackToVisible();
+      send('execute-failed', e);
     }
   }
 """
 
 private const val RECAPTCHA_SERVICE_JS = """
-  function serviceRender() {
-    if (rendered || !window.grecaptcha || typeof grecaptcha.render !== 'function') { return; }
-    rendered = true;
+  function renderService() {
+    if (!window.grecaptcha || typeof grecaptcha.render !== 'function') { send('render-exception', 'grecaptcha missing'); return; }
     var opts = {
       sitekey: SITEKEY,
       theme: THEME,
-      callback: window.lampcordDone,
-      'expired-callback': function () { report('expired'); },
-      'error-callback': function () { report('error:recaptcha'); }
+      callback: solved,
+      'expired-callback': function () { send('expired'); },
+      'error-callback': function () { send('error', 'recaptcha'); }
     };
     if (INVISIBLE) { opts.size = 'invisible'; }
     try {
-      widgetId = grecaptcha.render(box, opts);
-      setStatus(READY);
+      widgetId = grecaptcha.render('captcha', opts);
     } catch (e) {
-      report('render-exception:' + e);
+      send('render-exception', e);
+      return;
     }
+    send('ready');
+    executeService();
   }
 
-  function serviceExecute() {
-    if (!INVISIBLE || widgetId === null || executed || executeTries >= 5) { return; }
-    executeTries++;
+  function executeService() {
+    if (!INVISIBLE || widgetId === null || executed) { return; }
+    executed = true;
     try {
-      executed = true;
       grecaptcha.execute(widgetId);
     } catch (e) {
-      report('execute-failed:' + executeTries + ':' + e);
+      send('execute-failed', e);
     }
   }
 """
 
 private const val RECAPTCHA_ENTERPRISE_SERVICE_JS = """
-  var enterpriseReady = false;
-
-  function serviceRender() {
-    if (rendered || !window.grecaptcha || !grecaptcha.enterprise) { return; }
-    rendered = true;
+  function renderService() {
+    if (!window.grecaptcha || !grecaptcha.enterprise) { send('render-exception', 'grecaptcha.enterprise missing'); return; }
     grecaptcha.enterprise.ready(function () {
-      enterpriseReady = true;
-      setStatus(READY);
+      send('ready');
+      executeService();
     });
   }
 
-  function serviceExecute() {
-    if (!enterpriseReady || executed || executeTries >= 5) { return; }
-    executeTries++;
+  function executeService() {
+    if (executed) { return; }
     executed = true;
     try {
       grecaptcha.enterprise.execute(SITEKEY, { action: ACTION })
-        .then(function (token) { window.lampcordDone(token); })
-        .catch(function (e) { report('execute-error:' + e); });
+        .then(solved)
+        .catch(function (e) { send('execute-failed', e); });
     } catch (e) {
-      report('execute-failed:' + executeTries + ':' + e);
+      send('execute-failed', e);
     }
   }
 """

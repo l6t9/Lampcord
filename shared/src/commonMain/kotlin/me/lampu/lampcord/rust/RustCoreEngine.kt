@@ -21,6 +21,7 @@ expect class RustCoreEngine(config: RustClientConfig) : AutoCloseable {
 
     fun selectGuild(guildId: ULong?): Boolean
     fun selectChannel(channelId: ULong?): Boolean
+    fun setMemberListRanges(ranges: List<List<Int>>): Boolean
     fun fetchMessages(channelId: ULong, before: ULong? = null, limit: UByte? = null): Boolean
     fun fetchMentions(limit: UByte? = null, before: ULong? = null): Boolean
     fun sendMessage(

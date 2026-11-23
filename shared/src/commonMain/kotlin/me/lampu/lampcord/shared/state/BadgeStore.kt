@@ -1,5 +1,6 @@
 package me.lampu.lampcord.shared.state
 
+import kotlinx.coroutines.delay
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -12,6 +13,8 @@ import me.lampu.lampcord.shared.model.BadgeMapping
 import me.lampu.lampcord.shared.model.CustomBadge
 import me.lampu.lampcord.shared.utils.ResourceLoader
 
+private const val BADGE_FETCH_DELAY_MILLIS = 10_000L
+
 class BadgeStore(
     private val httpClient: HttpClient,
     private val json: Json,
@@ -22,7 +25,10 @@ class BadgeStore(
 
     init {
         loadLocalBadges()
-        fetchBadges()
+        scope.launch {
+            delay(BADGE_FETCH_DELAY_MILLIS)
+            fetchBadges()
+        }
     }
 
     private fun loadLocalBadges() {

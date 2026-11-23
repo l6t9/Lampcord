@@ -194,6 +194,8 @@ kotlin {
                 implementation(libs.coil.gif)
 
                 implementation(libs.androidx.navigation3.ui)
+
+                implementation("net.java.dev.jna:jna:${libs.versions.jna.get()}@aar")
             }
         }
 

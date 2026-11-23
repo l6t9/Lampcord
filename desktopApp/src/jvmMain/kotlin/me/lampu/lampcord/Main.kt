@@ -35,6 +35,7 @@ import me.lampu.lampcord.shared.oauth.OAuthAuthorizationHandler
 import me.lampu.lampcord.shared.rpc.DesktopRPCServer
 import me.lampu.lampcord.shared.state.AppVisibilityStore
 import me.lampu.lampcord.shared.state.EntityStore
+import me.lampu.lampcord.shared.state.MemberListStore
 import me.lampu.lampcord.shared.state.GuildStore
 import me.lampu.lampcord.shared.state.MessageStore
 import me.lampu.lampcord.shared.state.NavigationStore
@@ -223,8 +224,15 @@ fun main() {
                     val userStore: UserStore = koinInject()
                     val presenceStore: PresenceStore = koinInject()
                     val readStateStore: ReadStateStore = koinInject()
+                    val memberListStore: MemberListStore = koinInject()
+                    val relationshipStore: me.lampu.lampcord.shared.state.RelationshipStore = koinInject()
                     DisposableEffect(sessionManager) {
-                        val engine = runCatching { RustCoreEngine(RustClientConfig()) }.getOrNull()
+                        val engine = try {
+                            RustCoreEngine(RustClientConfig(storagePath = "${me.lampu.lampcord.shared.utils.getAppStoragePath()}/lampcord-accounts.json"))
+                        } catch (error: Throwable) {
+                            Logging.e("RustCore", "RustCoreEngine init failed", error)
+                            null
+                        }
                         if (engine == null) {
                             Logging.w("RustCore", "Failed to start RustCoreEngine; falling back to Kotlin gateway")
                             me.lampu.lampcord.shared.state.RustCoreMode.enabled = false
@@ -243,10 +251,12 @@ fun main() {
                                 userStore,
                                 presenceStore,
                                 readStateStore,
+                                memberListStore,
+                                relationshipStore,
                             )
                             integration.start()
                             val token = Settings.shared.discordToken.trim().takeIf { it.isNotBlank() }
-                            if (token != null) engine.connectToken(token)
+                            if (token != null) engine.connectToken(token) else engine.connectStoredToken()
                             onDispose {
                                 rustEngine = null
                                 integration.close()

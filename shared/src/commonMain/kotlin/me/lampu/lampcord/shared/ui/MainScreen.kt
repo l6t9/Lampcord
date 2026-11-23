@@ -77,6 +77,17 @@ fun MainScreen(
             !me.lampu.lampcord.shared.ui.baseplates.usesDesktopBaseplate(maxWidth)
         Column(Modifier.fillMaxSize().then(if (hasVoiceBar) Modifier.statusBarsPadding() else Modifier)) {
             if (hasVoiceBar) VoiceConnectionPanel(voiceStore)
+            if (navigationStore.isConnected && navigationStore.isConnecting) {
+                Column(Modifier.fillMaxWidth()) {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    Text(
+                        text = loadingMessage,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                    )
+                }
+            }
             AnimatedContent(
                 modifier = Modifier.weight(1f),
                 targetState = navigationStore.isConnected to navigationStore.isConnecting,

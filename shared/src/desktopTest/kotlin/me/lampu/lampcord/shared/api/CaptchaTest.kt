@@ -17,6 +17,7 @@ import me.lampu.lampcord.shared.captcha.CaptchaCoordinator
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
 
 private const val CAPTCHA_BODY =
     """{"captcha_key":["invalid-input-response"],"captcha_sitekey":"site-1","captcha_service":"hcaptcha","captcha_session_id":"sess-1","captcha_rqtoken":"rq-1"}"""
@@ -72,6 +73,17 @@ class CaptchaRetryTest {
             withTimeout(5_000) { client.post(URL) { setBody("{}") } }
         }
         Unit
+    }
+
+    @Test
+    fun timedOutChallengeThrowsTimeoutAndClearsPending() = runBlocking {
+        val coordinator = CaptchaCoordinator(timeoutMillis = 50)
+        val engine = MockEngine { respond(CAPTCHA_BODY, HttpStatusCode.BadRequest, JSON_HEADERS) }
+        val client = clientFor(coordinator, engine)
+        assertFailsWith<CaptchaTimeoutException> {
+            withTimeout(5_000) { client.post(URL) { setBody("{}") } }
+        }
+        assertNull(coordinator.pending.value)
     }
 
     @Test

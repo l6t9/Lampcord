@@ -15,14 +15,18 @@ import kotlinx.coroutines.launch
 import me.lampu.lampcord.shared.model.PresenceUpdate
 import me.lampu.lampcord.shared.model.User
 import me.lampu.lampcord.shared.state.EntityStore
+import me.lampu.lampcord.shared.state.MemberListStore
+import me.lampu.lampcord.shared.state.RelationshipStore
 import me.lampu.lampcord.shared.state.GuildStore
 import me.lampu.lampcord.shared.state.MessageStore
 import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.state.PresenceStore
+import me.lampu.lampcord.shared.state.RustChannelVisibility
 import me.lampu.lampcord.shared.state.RustCoreMode
 import me.lampu.lampcord.shared.state.RustCoreWriteGuard
 import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.state.ReadStateStore
+import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.utils.Logging
 
 class RustCoreIntegration(
@@ -34,6 +38,8 @@ class RustCoreIntegration(
     private val userStore: UserStore,
     private val presenceStore: PresenceStore,
     private val readStateStore: ReadStateStore,
+    private val memberListStore: MemberListStore,
+    private val relationshipStore: RelationshipStore,
 ) : AutoCloseable {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var job: Job? = null
@@ -42,14 +48,35 @@ class RustCoreIntegration(
     private var lastInjectedSnapshot: RustSnapshot? = null
     private var initialSelectionRestored = false
 
+    private var sentGuildId: String? = null
+    private var sentChannelId: String? = null
+
+    private fun syncSelection(guildId: String?, channelId: String?) {
+        if (guildId != sentGuildId) {
+            sentGuildId = guildId
+            engine.selectGuild(guildId?.toULongOrNull())
+        }
+        if (channelId != sentChannelId) {
+            sentChannelId = channelId
+            engine.selectChannel(channelId?.toULongOrNull())
+        }
+    }
+
     fun start() {
         if (job != null) return
         RustCoreMode.requireEnabled("store injection")
         ownership = RustCoreWriteGuard.claim("RustCoreIntegration")
+        memberListStore.rustRangeRequester = { ranges -> engine.setMemberListRanges(ranges) }
         lastInjectedVersions = RustSnapshotVersions()
         lastInjectedSnapshot = null
 
         job = scope.launch {
+            launch {
+                snapshotFlow { navigationStore.selectedGuild?.id to navigationStore.selectedChannel?.id }
+                    .distinctUntilChanged()
+                    .collect { (guildId, channelId) -> syncSelection(guildId, channelId) }
+            }
+
             launch {
                 var lastSeq: ULong? = null
                 engine.snapshots.collectLatest { snapshot ->
@@ -133,6 +160,9 @@ class RustCoreIntegration(
                 RustSnapshotMapper.mapChangedChannels(previous, snapshot)
             }
             channels.forEach(entityStore::updateChannel)
+            RustChannelVisibility.replaceHidden(snapshot.channels.filter { !it.canView }.map { it.id.toString() })
+            RustChannelVisibility.replaceReadOnly(snapshot.channels.filter { !it.canSend }.map { it.id.toString() })
+            guildStore.setPrivateChannels(RustSnapshotMapper.mapPrivateChannels(snapshot))
         }
         if (membersChanged) {
             val members = if (previous == null) {
@@ -141,6 +171,12 @@ class RustCoreIntegration(
                 RustSnapshotMapper.mapChangedMembers(previous, snapshot)
             }
             members.forEach { (guildId, guildMembers) -> userStore.cacheMembers(guildId, guildMembers) }
+            memberListStore.applyRustMemberList(
+                guildId = snapshot.selectedGuildId?.toString(),
+                items = RustSnapshotMapper.mapMemberListItems(snapshot),
+                online = snapshot.memberList.onlineCount,
+                members = snapshot.memberList.memberCount,
+            )
         }
         if (presencesChanged) {
             val presences = if (previous == null) {
@@ -168,7 +204,7 @@ class RustCoreIntegration(
         }
         val selectedChannelId = snapshot.selectedChannelId?.toString()
         if (selectedChannelId != null && (messagesChanged || selectionChanged)) {
-            if (previous != null && messagesChanged) {
+            if (previous != null && messagesChanged && !selectionChanged) {
                 removedIds(previous.messages, snapshot.messages, RustMessage::id).forEach { messageId ->
                     messageStore.handleMessageDelete(messageId, selectedChannelId)
                 }
@@ -195,32 +231,42 @@ class RustCoreIntegration(
             }
             RustConnectionState.CONNECTING, RustConnectionState.RESUMING -> {
                 navigationStore.isConnecting = true
+                navigationStore.isConnected = snapshot.guilds.isNotEmpty()
             }
             RustConnectionState.DISCONNECTED, RustConnectionState.ERROR -> {
-                navigationStore.isConnected = false
+                navigationStore.isConnected = snapshot.guilds.isNotEmpty()
                 navigationStore.isConnecting = false
+                if (snapshot.connection.state == RustConnectionState.ERROR &&
+                    snapshot.connection.message == "Authentication failed"
+                ) {
+                    Logging.w("RustCore", "Token rejected; returning to login")
+                    Settings.shared.discordToken = ""
+                    engine.logout()
+                }
             }
         }
 
-        snapshot.currentUserId?.let { id ->
-            val name = snapshot.currentUser ?: id.toString()
-            userStore.setCurrentUser(User(id = id.toString(), username = name, global_name = name))
+        val lastUser = lastInjectedSnapshot
+        if (lastUser?.relationships != snapshot.relationships) {
+            relationshipStore.handleReady(RustSnapshotMapper.mapRelationships(snapshot))
+        }
+        if (lastUser?.currentUserId != snapshot.currentUserId || lastUser?.currentUser != snapshot.currentUser ||
+            lastUser?.currentUserAvatar != snapshot.currentUserAvatar
+        ) {
+            snapshot.currentUserId?.let { id ->
+                val name = snapshot.currentUser ?: id.toString()
+                userStore.setCurrentUser(
+                    User(id = id.toString(), username = name, global_name = name, avatar = snapshot.currentUserAvatar)
+                )
+            }
         }
 
-        val rustGuildId = snapshot.selectedGuildId?.toString()
-        val rustChannelId = snapshot.selectedChannelId?.toString()
-        if (rustGuildId != null && navigationStore.selectedGuild?.id != rustGuildId) {
-            entityStore.guilds.value[rustGuildId]?.let { navigationStore.selectedGuild = it }
-        }
-        if (rustChannelId != null && navigationStore.selectedChannel?.id != rustChannelId) {
-            entityStore.channels.value[rustChannelId]?.let { navigationStore.selectedChannel = it }
-        }
     }
 
     private fun handle(event: RustEvent) {
         when (event) {
             RustEvent.SnapshotUpdated -> Unit
-            is RustEvent.ConnectionChanged -> Unit
+            is RustEvent.ConnectionChanged -> Logging.i("RustCore", "connection changed: $event")
             is RustEvent.AuthChanged -> Logging.i("RustCore", "auth=${event.challenge}")
             is RustEvent.RemoteAuthChanged -> Logging.i("RustCore", "remoteAuth=${event.state}")
             is RustEvent.MessageUpdated -> {
@@ -266,6 +312,7 @@ class RustCoreIntegration(
     }
 
     override fun close() {
+        memberListStore.rustRangeRequester = null
         job?.cancel()
         job = null
         ownership?.close()
