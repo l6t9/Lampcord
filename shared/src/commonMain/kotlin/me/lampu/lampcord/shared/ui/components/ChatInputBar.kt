@@ -835,32 +835,17 @@ fun ChatInputBar(
                                 bottomStart = composerRadius,
                                 bottomEnd = composerRadius
                             )
-                            val composerBrush = Brush.verticalGradient(
-                                colors = listOf(
-                                    if (hasFrostedBackdrop) {
-                                        MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.72f)
-                                    } else {
-                                        MaterialTheme.colorScheme.surfaceContainer
-                                    },
-                                    if (hasFrostedBackdrop) {
-                                        MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.86f)
-                                    } else {
-                                        MaterialTheme.colorScheme.surfaceContainerHigh
-                                    },
-                                    if (hasFrostedBackdrop) {
-                                        MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.92f)
-                                    } else {
-                                        MaterialTheme.colorScheme.surfaceContainerHighest
-                                    }
-                                )
-                            )
+                            val composerSurfaceColor = if (hasFrostedBackdrop) {
+                                MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.86f)
+                            } else {
+                                MaterialTheme.colorScheme.surfaceContainerHigh
+                            }
                             Surface(
                                 shape = RoundedCornerShape(composerRadius),
                                 border = BorderStroke(1.dp, composerBorderColor),
-                                color = Color.Transparent,
+                                color = composerSurfaceColor,
                                 modifier = Modifier
                                     .weight(1f)
-                                    .background(composerBrush, RoundedCornerShape(composerRadius))
                                     .animateContentSize(
                                         animationSpec = if (reduceMotion) snap() else spring(stiffness = Spring.StiffnessMediumLow)
                                     )
