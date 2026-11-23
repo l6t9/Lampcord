@@ -154,6 +154,10 @@ pub enum ClientCommand {
         reply_to_message_id: Option<u64>,
         reply_to_guild_id: Option<u64>,
     },
+    /// Loads the channel's pinned messages into `ClientSnapshot.pinned_messages`.
+    FetchPins {
+        channel_id: u64,
+    },
     /// Uploads local files and sends them with `content` as one message.
     SendAttachments {
         channel_id: u64,

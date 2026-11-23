@@ -191,6 +191,10 @@ impl LampcordClient {
         })
     }
 
+    pub fn fetch_pins(&self, channel_id: u64) -> Result<(), FfiClientError> {
+        self.send(ClientCommand::FetchPins { channel_id })
+    }
+
     pub fn send_attachments(
         &self,
         channel_id: u64,

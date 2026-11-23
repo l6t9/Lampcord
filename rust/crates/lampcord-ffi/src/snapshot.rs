@@ -38,6 +38,8 @@ pub struct ClientSnapshot {
     pub current_user_status: Option<String>,
     /// Schema 3+. Custom status text; part of `meta`.
     pub current_user_custom_status: Option<String>,
+    /// Schema 3+. Pins of the selected channel once fetched; versioned with `messages`.
+    pub pinned_messages: Vec<MessageSnapshot>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -79,6 +81,7 @@ pub struct SnapshotPatch {
     pub guilds: Option<Vec<GuildSnapshot>>,
     pub channels: Option<Vec<ChannelSnapshot>>,
     pub messages: Option<Vec<MessageSnapshot>>,
+    pub pinned_messages: Option<Vec<MessageSnapshot>>,
     pub members: Option<Vec<MemberSnapshot>>,
     pub presences: Option<Vec<PresenceSnapshot>>,
     pub read_states: Option<Vec<ReadStateSnapshot>>,

@@ -271,6 +271,8 @@ impl RuntimeHandle {
             guilds: (versions.guilds > since.guilds).then(|| snapshot.guilds.clone()),
             channels: (versions.channels > since.channels).then(|| snapshot.channels.clone()),
             messages: (versions.messages > since.messages).then(|| snapshot.messages.clone()),
+            pinned_messages: (versions.messages > since.messages)
+                .then(|| snapshot.pinned_messages.clone()),
             members: (versions.members > since.members).then(|| snapshot.members.clone()),
             presences: (versions.presences > since.presences).then(|| snapshot.presences.clone()),
             read_states: (versions.read_states > since.read_states)
@@ -389,6 +391,7 @@ fn benchmark_snapshot() -> ClientSnapshot {
         current_user_avatar: None,
         current_user_status: None,
         current_user_custom_status: None,
+        pinned_messages: Vec::new(),
     }
 }
 
@@ -539,7 +542,8 @@ fn set_snapshot(
         previous.guilds != next.guilds || previous.guild_folders != next.guild_folders;
     let channels_changed =
         previous.channels != next.channels || previous.private_channels != next.private_channels;
-    let messages_changed = previous.messages != next.messages;
+    let messages_changed =
+        previous.messages != next.messages || previous.pinned_messages != next.pinned_messages;
     let members_changed = previous.members != next.members;
     let presences_changed = previous.presences != next.presences;
     let read_states_changed = previous.read_states != next.read_states;
@@ -746,6 +750,7 @@ fn build_snapshot(
     selected_guild_id: Option<Snowflake>,
     selected_channel_id: Option<Snowflake>,
     fetched_messages: &HashMap<Snowflake, Vec<Message>>,
+    pinned_messages: &HashMap<Snowflake, Vec<Message>>,
     auth: &AuthStateSnapshot,
     error: Option<String>,
 ) -> ClientSnapshot {
@@ -927,6 +932,10 @@ fn build_snapshot(
         current_user_avatar: cache.current_user().and_then(|user| user.avatar.clone()),
         current_user_status: cache.own_status().map(str::to_owned),
         current_user_custom_status: cache.own_custom_status().map(str::to_owned),
+        pinned_messages: selected_channel_id
+            .and_then(|channel_id| pinned_messages.get(&channel_id))
+            .map(|pins| pins.iter().map(message_snapshot).collect())
+            .unwrap_or_default(),
     }
 }
 
@@ -1107,6 +1116,7 @@ async fn run(
     let mut selected_guild_id: Option<Snowflake> = None;
     let mut selected_channel_id: Option<Snowflake> = None;
     let mut fetched_messages: HashMap<Snowflake, Vec<Message>> = HashMap::new();
+    let mut pinned_messages: HashMap<Snowflake, Vec<Message>> = HashMap::new();
     let mut auth_state = AuthStateSnapshot::default();
     let mut gateway_task: Option<tokio::task::JoinHandle<()>> = None;
     let mut gateway_events: Option<mpsc::UnboundedReceiver<GatewayEvent>> = None;
@@ -1130,6 +1140,7 @@ async fn run(
                    selected_guild_id: Option<Snowflake>,
                    selected_channel_id: Option<Snowflake>,
                    fetched_messages: &HashMap<Snowflake, Vec<Message>>,
+                   pinned_messages: &HashMap<Snowflake, Vec<Message>>,
                    auth: &AuthStateSnapshot,
                    error: &Option<String>,
                    snapshot: &Arc<Mutex<SnapshotState>>,
@@ -1142,6 +1153,7 @@ async fn run(
             selected_guild_id,
             selected_channel_id,
             fetched_messages,
+            pinned_messages,
             auth,
             error.clone(),
         );
@@ -1157,6 +1169,7 @@ async fn run(
                 selected_guild_id,
                 selected_channel_id,
                 &fetched_messages,
+                &pinned_messages,
                 &auth_state,
                 &error,
                 &snapshot,
@@ -1597,6 +1610,24 @@ async fn run(
                             if let Some(message) = failure {
                                 error = Some(message.clone());
                                 push_event(&events, ClientEvent::CommandFailed { kind: FfiErrorKind::Transport, message });
+                            }
+                        }
+                        mark_snapshot_dirty!();
+                    }
+                    ClientCommand::FetchPins { channel_id } => {
+                        if let Some(rest_client) = rest.clone() {
+                            let config = default_rest_config(&api_base, user_agent.as_deref(), active_token.clone());
+                            match api::message::get_pinned_messages(&*rest_client, &config, channel_id).await {
+                                Ok(pins) => {
+                                    pinned_messages.insert(Snowflake::from(channel_id), pins);
+                                }
+                                Err(api_error) => {
+                                    error = Some(format!("Failed to load pins: {api_error}"));
+                                    push_event(&events, ClientEvent::CommandFailed {
+                                        kind: FfiErrorKind::Transport,
+                                        message: error.clone().unwrap_or_default(),
+                                    });
+                                }
                             }
                         }
                         mark_snapshot_dirty!();
