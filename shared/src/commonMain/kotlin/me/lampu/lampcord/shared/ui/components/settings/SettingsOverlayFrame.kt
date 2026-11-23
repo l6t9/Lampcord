@@ -52,7 +52,7 @@ fun SettingsOverlayFrame(
                 .fillMaxHeight()
                 .pointerInput(Unit) { detectTapGestures { } },
             shape = RoundedCornerShape(32.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
         ) {
             content()

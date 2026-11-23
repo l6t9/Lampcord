@@ -134,9 +134,9 @@ fun Material3SettingsItemRow(
 
     val backgroundColor by animateColorAsState(
         targetValue = when {
-            !item.enabled -> (item.containerColor ?: MaterialTheme.colorScheme.surfaceContainerHighest).copy(alpha = 0.38f)
-            isPressed -> item.containerColor?.let { it.copy(alpha = it.alpha * 1.2f) } ?: MaterialTheme.colorScheme.surfaceContainerHighest
-            else -> item.containerColor ?: MaterialTheme.colorScheme.surfaceContainerHighest
+            !item.enabled -> (item.containerColor ?: MaterialTheme.colorScheme.surfaceContainer).copy(alpha = 0.38f)
+            isPressed -> item.containerColor?.let { it.copy(alpha = it.alpha * 1.2f) } ?: MaterialTheme.colorScheme.surfaceContainerHigh
+            else -> item.containerColor ?: MaterialTheme.colorScheme.surfaceContainer
         },
         label = "backgroundColor",
         animationSpec = if (reduceMotion) snap() else spring(),
@@ -297,7 +297,7 @@ fun SettingsSubScreen(
 
     Scaffold(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        containerColor = MaterialTheme.colorScheme.surface,
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
         topBar = {
             LargeTopAppBar(
@@ -308,8 +308,8 @@ fun SettingsSubScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer
                 ),
                 windowInsets = TopAppBarDefaults.windowInsets,
                 scrollBehavior = scrollBehavior

@@ -124,7 +124,7 @@ fun SettingsSearchResults(
         if (results.isEmpty()) {
             Surface(
                 shape = RoundedCornerShape(20.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                color = MaterialTheme.colorScheme.surfaceContainer,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = horizontalPadding),
             ) {
                 Column(
@@ -178,7 +178,7 @@ private fun SettingsSearchResultRow(
     Surface(
         onClick = onClick,
         shape = shape,
-        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+        color = MaterialTheme.colorScheme.surfaceContainer,
         modifier = Modifier.fillMaxWidth().padding(horizontal = horizontalPadding),
     ) {
         Row(

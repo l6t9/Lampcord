@@ -95,18 +95,12 @@ fun ThemingSettingsContent(
                 Material3SettingsGroup(
                     title = "Transparency Mode",
                     items = listOf(
-                        Material3SettingsItem(
-                            title = { Text("Visual Transparency") },
-                            description = {
-                                Column(modifier = Modifier.padding(top = 8.dp)) {
-                                    SettingsButtonGroup(
-                                        options = me.lampu.lampcord.shared.settings.TransparencyMode.entries,
-                                        selectedOption = settings.transparencyMode,
-                                        onOptionSelected = { settings.transparencyMode = it },
-                                        labelProvider = { it.name.lowercase().replace('_', ' ').replaceFirstChar { it.uppercase() } }
-                                    )
-                                }
-                            }
+                        selectSettingsItem(
+                            title = "Visual Transparency",
+                            options = me.lampu.lampcord.shared.settings.TransparencyMode.entries.toList(),
+                            selectedOption = settings.transparencyMode,
+                            onOptionSelected = { settings.transparencyMode = it },
+                            optionLabel = { it.name.lowercase().replace('_', ' ').replaceFirstChar { it.uppercase() } },
                         )
                     )
                 )

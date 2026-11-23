@@ -1,5 +1,6 @@
 package me.lampu.lampcord.shared.ui.components.settings
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -20,11 +22,13 @@ import androidx.compose.material3.DropdownMenuPopup
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -190,6 +194,43 @@ fun <T> SettingsSelectRow(
     }
 }
 
+@Composable
+private fun SelectionTonalSpot(
+    label: String,
+    expanded: Boolean,
+    optionIcon: (@Composable () -> Unit)?,
+) {
+    Box(
+        modifier = Modifier
+            .background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(50))
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSecondaryContainer) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                optionIcon?.invoke()
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.widthIn(max = 160.dp),
+                )
+                Icon(
+                    imageVector = Icons.Rounded.KeyboardArrowDown,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(16.dp)
+                        .rotate(if (expanded) 180f else 0f),
+                )
+            }
+        }
+    }
+}
+
 /**
  * A connected settings row whose title and current selection share one line.
  * The selected value keeps its icon on the right and opens the same expressive
@@ -209,6 +250,7 @@ fun <T> selectSettingsItem(
     optionIcon: (@Composable (T, Boolean) -> Unit)? = null,
 ): Material3SettingsItem {
     var expanded by remember { mutableStateOf(false) }
+    var anchorOffset by remember { mutableStateOf(IntOffset.Zero) }
 
     return Material3SettingsItem(
         icon = icon,
@@ -219,40 +261,26 @@ fun <T> selectSettingsItem(
         showChevron = false,
         onClick = { expanded = true },
         trailingContent = {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                if (optionIcon != null) {
-                    optionIcon(selectedOption, true)
-                }
-                Text(
-                    text = optionLabel(selectedOption),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+            Box(Modifier.trackPressPosition { anchorOffset = it }) {
+                SelectionTonalSpot(
+                    label = optionLabel(selectedOption),
+                    expanded = expanded,
+                    optionIcon = optionIcon?.let { icon -> { icon(selectedOption, true) } },
                 )
-                Icon(
-                    imageVector = Icons.Rounded.KeyboardArrowDown,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.rotate(if (expanded) 180f else 0f),
+                ExpressiveSelectionMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false },
+                    options = options,
+                    selectedOption = selectedOption,
+                    onOptionSelected = { option ->
+                        onOptionSelected(option)
+                        expanded = false
+                    },
+                    optionLabel = optionLabel,
+                    optionIcon = optionIcon,
+                    anchorOffset = anchorOffset,
                 )
             }
-            ExpressiveSelectionMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false },
-                options = options,
-                selectedOption = selectedOption,
-                onOptionSelected = { option ->
-                    onOptionSelected(option)
-                    expanded = false
-                },
-                optionLabel = optionLabel,
-                optionIcon = optionIcon,
-                anchorOffset = IntOffset.Zero,
-            )
         },
     )
 }

@@ -125,29 +125,24 @@ fun AppearanceSettingsContent(
         Material3SettingsGroup(
             title = "Color palette",
             items = listOf(
-                Material3SettingsItem(
-                    title = { Text("Visual Style") },
-                    description = {
-                        Column(modifier = Modifier.padding(top = 8.dp)) {
-                            SettingsButtonGroup(
-                                options = ThemePaletteStyle.entries.toList(),
-                                selectedOption = settingsStore.themePaletteStyle,
-                                onOptionSelected = { settingsStore.themePaletteStyle = it },
-                                iconProvider = { style: ThemePaletteStyle, isSelected ->
-                                    when (style) {
-                                        ThemePaletteStyle.TONAL_SPOT -> if (isSelected) Icons.Filled.Palette else Icons.Rounded.Palette
-                                        ThemePaletteStyle.EXPRESSIVE -> if (isSelected) Icons.Filled.FormatPaint else Icons.Rounded.FormatPaint
-                                        ThemePaletteStyle.VIBRANT -> if (isSelected) Icons.Filled.AutoAwesome else Icons.Rounded.AutoAwesome
-                                        ThemePaletteStyle.RAINBOW -> if (isSelected) Icons.Filled.Texture else Icons.Rounded.Texture
-                                        ThemePaletteStyle.MONOCHROME -> if (isSelected) Icons.Filled.Rectangle else Icons.Rounded.Rectangle
-                                        ThemePaletteStyle.FRUIT_SALAD -> if (isSelected) Icons.Filled.Fastfood else Icons.Rounded.Fastfood
-                                        else -> if (isSelected) Icons.Filled.Palette else Icons.Rounded.Palette
-                                    }
-                                },
-                                labelProvider = { it.name.lowercase().replace('_', ' ').replaceFirstChar { char -> char.uppercase() } }
-                            )
+                selectSettingsItem(
+                    title = "Visual Style",
+                    options = ThemePaletteStyle.entries.toList(),
+                    selectedOption = settingsStore.themePaletteStyle,
+                    onOptionSelected = { settingsStore.themePaletteStyle = it },
+                    optionLabel = { it.name.lowercase().replace('_', ' ').replaceFirstChar { char -> char.uppercase() } },
+                    optionIcon = { style: ThemePaletteStyle, isSelected ->
+                        val icon = when (style) {
+                            ThemePaletteStyle.TONAL_SPOT -> if (isSelected) Icons.Filled.Palette else Icons.Rounded.Palette
+                            ThemePaletteStyle.EXPRESSIVE -> if (isSelected) Icons.Filled.FormatPaint else Icons.Rounded.FormatPaint
+                            ThemePaletteStyle.VIBRANT -> if (isSelected) Icons.Filled.AutoAwesome else Icons.Rounded.AutoAwesome
+                            ThemePaletteStyle.RAINBOW -> if (isSelected) Icons.Filled.Texture else Icons.Rounded.Texture
+                            ThemePaletteStyle.MONOCHROME -> if (isSelected) Icons.Filled.Rectangle else Icons.Rounded.Rectangle
+                            ThemePaletteStyle.FRUIT_SALAD -> if (isSelected) Icons.Filled.Fastfood else Icons.Rounded.Fastfood
+                            else -> if (isSelected) Icons.Filled.Palette else Icons.Rounded.Palette
                         }
-                    }
+                        Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
+                    },
                 ),
                 Material3SettingsItem(
                     title = { Text(stringResource(Res.string.screenshare_source)) },
@@ -219,48 +214,38 @@ fun AppearanceSettingsContent(
         Material3SettingsGroup(
             title = "Animation",
             items = listOf(
-                Material3SettingsItem(
-                    title = { Text("Panel Animation") },
-                    description = {
-                        Column(modifier = Modifier.padding(top = 8.dp)) {
-                            SettingsButtonGroup(
-                                options = PanelAnimation.entries.toList(),
-                                selectedOption = settingsStore.panelAnimation,
-                                onOptionSelected = { settingsStore.panelAnimation = it },
-                                iconProvider = { animation, isSelected ->
-                                    when (animation) {
-                                        PanelAnimation.MINIMAL -> if (isSelected) Icons.Filled.Speed else Icons.Rounded.Speed
-                                        PanelAnimation.EXPRESSIVE -> if (isSelected) Icons.Filled.AutoAwesome else Icons.Rounded.AutoAwesome
-                                    }
-                                },
-                                labelProvider = { it.name.lowercase().replaceFirstChar { char -> char.uppercase() } }
-                            )
+                selectSettingsItem(
+                    title = "Panel Animation",
+                    options = PanelAnimation.entries.toList(),
+                    selectedOption = settingsStore.panelAnimation,
+                    onOptionSelected = { settingsStore.panelAnimation = it },
+                    optionLabel = { it.name.lowercase().replaceFirstChar { char -> char.uppercase() } },
+                    optionIcon = { animation, isSelected ->
+                        val icon = when (animation) {
+                            PanelAnimation.MINIMAL -> if (isSelected) Icons.Filled.Speed else Icons.Rounded.Speed
+                            PanelAnimation.EXPRESSIVE -> if (isSelected) Icons.Filled.AutoAwesome else Icons.Rounded.AutoAwesome
                         }
-                    }
+                        Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
+                    },
                 ),
-                Material3SettingsItem(
-                    title = { Text("Panel Layout") },
-                    description = {
-                        Column(modifier = Modifier.padding(top = 8.dp)) {
-                            SettingsButtonGroup(
-                                options = PanelType.entries.toList(),
-                                selectedOption = settingsStore.panelType,
-                                onOptionSelected = { settingsStore.panelType = it },
-                                iconProvider = { type, isSelected ->
-                                    when (type) {
-                                        PanelType.CENTER -> if (isSelected) Icons.Filled.List else Icons.Rounded.List
-                                        PanelType.OVERLAPPING -> if (isSelected) Icons.Filled.MenuOpen else Icons.Rounded.MenuOpen
-                                    }
-                                },
-                                labelProvider = { type ->
-                                    when (type) {
-                                        PanelType.CENTER -> "Center Panel"
-                                        PanelType.OVERLAPPING -> "Overlapping"
-                                    }
-                                }
-                            )
+                selectSettingsItem(
+                    title = "Panel Layout",
+                    options = PanelType.entries.toList(),
+                    selectedOption = settingsStore.panelType,
+                    onOptionSelected = { settingsStore.panelType = it },
+                    optionLabel = { type ->
+                        when (type) {
+                            PanelType.CENTER -> "Center Panel"
+                            PanelType.OVERLAPPING -> "Overlapping"
                         }
-                    }
+                    },
+                    optionIcon = { type, isSelected ->
+                        val icon = when (type) {
+                            PanelType.CENTER -> if (isSelected) Icons.Filled.List else Icons.Rounded.List
+                            PanelType.OVERLAPPING -> if (isSelected) Icons.Filled.MenuOpen else Icons.Rounded.MenuOpen
+                        }
+                        Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
+                    },
                 )
             )
         )
@@ -270,27 +255,19 @@ fun AppearanceSettingsContent(
         Material3SettingsGroup(
             title = "Display",
             items = buildList {
-                add(Material3SettingsItem(
-                    title = { Text("UI Density") },
-                    description = { 
-                        Column(modifier = Modifier.padding(top = 4.dp)) {
-                            Text("Adjust the space between server, channel, and member lists.")
-                            Spacer(Modifier.height(12.dp))
-                            SettingsButtonGroup(
-                                options = me.lampu.lampcord.shared.settings.MessageSpacingMode.entries.toList(),
-                                selectedOption = settingsStore.messageSpacingMode,
-                                onOptionSelected = { settingsStore.messageSpacingMode = it },
-                                iconProvider = null,
-                                labelProvider = {
-                                    when (it) {
-                                        me.lampu.lampcord.shared.settings.MessageSpacingMode.COMPACT -> "Compact"
-                                        me.lampu.lampcord.shared.settings.MessageSpacingMode.DEFAULT -> "Default"
-                                        me.lampu.lampcord.shared.settings.MessageSpacingMode.SPACIOUS -> "Spacious"
-                                    }
-                                }
-                            )
+                add(selectSettingsItem(
+                    title = "UI Density",
+                    description = "Adjust the space between server, channel, and member lists.",
+                    options = me.lampu.lampcord.shared.settings.MessageSpacingMode.entries.toList(),
+                    selectedOption = settingsStore.messageSpacingMode,
+                    onOptionSelected = { settingsStore.messageSpacingMode = it },
+                    optionLabel = {
+                        when (it) {
+                            me.lampu.lampcord.shared.settings.MessageSpacingMode.COMPACT -> "Compact"
+                            me.lampu.lampcord.shared.settings.MessageSpacingMode.DEFAULT -> "Default"
+                            me.lampu.lampcord.shared.settings.MessageSpacingMode.SPACIOUS -> "Spacious"
                         }
-                    }
+                    },
                 ))
                 if (!isMobile) return@buildList
                 add(Material3SettingsItem(
@@ -305,88 +282,26 @@ fun AppearanceSettingsContent(
         Material3SettingsGroup(
             title = "Typography",
             items = buildList {
-                add(Material3SettingsItem(
-                    title = { Text("App Font") },
-                    description = {
-                        Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 8.dp)) {
-                            SettingsButtonGroup(
-                                options = FontOption.entries.toList(),
-                                selectedOption = settingsStore.appFont,
-                                onOptionSelected = { settingsStore.appFont = it },
-                                labelProvider = {
-                                    when (it) {
-                                        FontOption.SYSTEM -> "System"
-                                        FontOption.INTER -> "Inter"
-                                        FontOption.MAPLE_MONO -> "Maple Mono"
-                                        FontOption.CUSTOM -> "Custom"
-                                    }
-                                }
-                            )
-
-                            if (settingsStore.appFont == FontOption.CUSTOM) {
-                                var showFontPicker by remember { mutableStateOf(false) }
-
-                                FilePicker(
-                                    show = showFontPicker,
-                                    onFileSelected = { files ->
-                                        files.firstOrNull()?.let { (name, bytes) ->
-                                            settingsStore.customFontPath = importCustomFont(name, bytes)
-                                            settingsStore.customFontName = name
-                                        }
-                                        showFontPicker = false
-                                    },
-                                    onDismiss = { showFontPicker = false }
-                                )
-
-                                Surface(
-                                    onClick = { showFontPicker = true },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(16.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                    ) {
-                                        Icon(Icons.Rounded.FolderOpen, null, tint = MaterialTheme.colorScheme.primary)
-                                        Column(modifier = Modifier.weight(1f)) {
-                                            Text(
-                                                if (settingsStore.customFontPath.isEmpty()) {
-                                                    "Choose font file"
-                                                } else {
-                                                    settingsStore.customFontName.ifEmpty {
-                                                        settingsStore.customFontPath.split("/").last()
-                                                    }
-                                                },
-                                                style = MaterialTheme.typography.bodyLarge,
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                            if (settingsStore.customFontPath.isNotEmpty()) {
-                                                Text(
-                                                    settingsStore.customFontPath,
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis
-                                                )
-                                            }
-                                        }
-                                        if (settingsStore.customFontPath.isNotEmpty()) {
-                                            IconButton(onClick = {
-                                                settingsStore.customFontPath = ""
-                                                settingsStore.customFontName = ""
-                                            }) {
-                                                Icon(Icons.Rounded.Close, null)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                add(selectSettingsItem(
+                    title = "App Font",
+                    options = FontOption.entries.toList(),
+                    selectedOption = settingsStore.appFont,
+                    onOptionSelected = { settingsStore.appFont = it },
+                    optionLabel = {
+                        when (it) {
+                            FontOption.SYSTEM -> "System"
+                            FontOption.INTER -> "Inter"
+                            FontOption.MAPLE_MONO -> "Maple Mono"
+                            FontOption.CUSTOM -> "Custom"
                         }
-                    }
+                    },
                 ))
+                if (settingsStore.appFont == FontOption.CUSTOM) {
+                    add(Material3SettingsItem(
+                        title = { Text("Custom Font File") },
+                        description = { CustomFontPicker(settingsStore) }
+                    ))
+                }
 
                 add(Material3SettingsItem(
                     title = { Text("Font Scale: ${(settingsStore.fontScale * 100).toInt()}%") },
@@ -447,6 +362,69 @@ private fun AppearancePreview(settingsStore: SettingsStore) {
                 )
                 Spacer(Modifier.height(8.dp))
                 Text("No background set", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun CustomFontPicker(settingsStore: SettingsStore) {
+    var showFontPicker by remember { mutableStateOf(false) }
+
+    FilePicker(
+        show = showFontPicker,
+        onFileSelected = { files ->
+            files.firstOrNull()?.let { (name, bytes) ->
+                settingsStore.customFontPath = importCustomFont(name, bytes)
+                settingsStore.customFontName = name
+            }
+            showFontPicker = false
+        },
+        onDismiss = { showFontPicker = false }
+    )
+
+    Surface(
+        onClick = { showFontPicker = true },
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Icon(Icons.Rounded.FolderOpen, null, tint = MaterialTheme.colorScheme.primary)
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    if (settingsStore.customFontPath.isEmpty()) {
+                        "Choose font file"
+                    } else {
+                        settingsStore.customFontName.ifEmpty {
+                            settingsStore.customFontPath.split("/").last()
+                        }
+                    },
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                if (settingsStore.customFontPath.isNotEmpty()) {
+                    Text(
+                        settingsStore.customFontPath,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+            if (settingsStore.customFontPath.isNotEmpty()) {
+                IconButton(onClick = {
+                    settingsStore.customFontPath = ""
+                    settingsStore.customFontName = ""
+                }) {
+                    Icon(Icons.Rounded.Close, null)
+                }
             }
         }
     }

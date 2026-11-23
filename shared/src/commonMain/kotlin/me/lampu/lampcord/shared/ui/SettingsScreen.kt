@@ -344,7 +344,7 @@ fun SettingsScreen(
         if (isCompact) {
             AnimatedContent(
                 targetState = showDebugLogs,
-                modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface),
                 transitionSpec = {
                     val transition =
                         if (reduceMotion) {
@@ -364,7 +364,7 @@ fun SettingsScreen(
                     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
                     Scaffold(
                         modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        containerColor = MaterialTheme.colorScheme.surface,
                         contentWindowInsets = WindowInsets(0),
                         topBar = {
                             LargeTopAppBar(
@@ -375,8 +375,8 @@ fun SettingsScreen(
                                     }
                                 },
                                 colors = TopAppBarDefaults.topAppBarColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                                    containerColor = MaterialTheme.colorScheme.surface,
+                                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer
                                 ),
                                 windowInsets = TopAppBarDefaults.windowInsets,
                                 actions = {
@@ -704,7 +704,7 @@ fun SettingsDesktopOverlay(
             Surface(
                 modifier = Modifier.fillMaxWidth().weight(1f),
                 shape = RoundedCornerShape(28.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerHighest
+                color = MaterialTheme.colorScheme.surfaceContainerLow
             ) {
                 val navigationState = remember(editingThemeJson, showThemer, showDebugLogs, activeCategory) {
                     when {
@@ -880,7 +880,7 @@ private fun DesktopSettingsNavItem(
     destructive: Boolean = false
 ) {
     val background by animateColorAsState(
-        targetValue = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface,
+        targetValue = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer,
         label = "settingsNavigationItem"
     )
     Row(

@@ -89,7 +89,7 @@ fun SettingsSection(
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerHighest
+                color = MaterialTheme.colorScheme.surfaceContainer
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
