@@ -28,6 +28,7 @@ pub mod qobject {
         #[qproperty(QString, dms_json)]
         #[qproperty(QString, channels_json)]
         #[qproperty(QString, messages_json)]
+        #[qproperty(QString, members_json)]
         #[qproperty(QString, auth_state)]
         #[qproperty(QString, auth_message)]
         #[qproperty(QString, error_text)]
@@ -89,7 +90,7 @@ use cxx_qt_lib::QString;
 use lampcord_ffi::{
     AuthChallenge, ChannelSnapshot, ClientConfig, ConnectionState, GuildFolderSnapshot,
     GuildSnapshot, LampcordClient, PrivateChannelSnapshot, RemoteAuthState,
-    MemberSnapshot, MessageSnapshot, ReadStateSnapshot, SnapshotVersions,
+    MemberSnapshot, MessageSnapshot, PresenceSnapshot, ReadStateSnapshot, SnapshotVersions,
 };
 use serde_json::{Value, json};
 
@@ -105,6 +106,14 @@ const CHANNEL_ANNOUNCEMENT: u8 = 5;
 const CHANNEL_STAGE: u8 = 13;
 const CHANNEL_FORUM: u8 = 15;
 
+/// The signed-in user, as the member list and message rows need it.
+#[derive(Clone, PartialEq)]
+struct Me {
+    id: u64,
+    name: String,
+    avatar: Option<String>,
+}
+
 pub struct BackendRust {
     client: LampcordClient,
     versions: SnapshotVersions,
@@ -114,7 +123,10 @@ pub struct BackendRust {
     private_channels: Vec<PrivateChannelSnapshot>,
     messages: Vec<MessageSnapshot>,
     members: Vec<MemberSnapshot>,
+    presences: Vec<PresenceSnapshot>,
     read_states: Vec<ReadStateSnapshot>,
+    me: Option<Me>,
+    selected_channel: Option<u64>,
     mfa_ticket: Option<String>,
     mfa_method: String,
     acked: Option<u64>,
@@ -131,6 +143,7 @@ pub struct BackendRust {
     dms_json: QString,
     channels_json: QString,
     messages_json: QString,
+    members_json: QString,
     auth_state: QString,
     auth_message: QString,
     error_text: QString,
@@ -157,7 +170,10 @@ impl Default for BackendRust {
             private_channels: Vec::new(),
             messages: Vec::new(),
             members: Vec::new(),
+            presences: Vec::new(),
             read_states: Vec::new(),
+            me: None,
+            selected_channel: None,
             mfa_ticket: None,
             mfa_method: "totp".to_owned(),
             acked: None,
@@ -173,6 +189,7 @@ impl Default for BackendRust {
             dms_json: QString::from("[]"),
             channels_json: QString::from("[]"),
             messages_json: QString::from("[]"),
+            members_json: QString::from("[]"),
             auth_state: QString::from("idle"),
             auth_message: QString::default(),
             error_text: QString::default(),
@@ -254,6 +271,73 @@ fn qr_modules(url: &str) -> (String, i32) {
         .map(|color| if color == qrcode::Color::Dark { '1' } else { '0' })
         .collect();
     (modules, code.width() as i32)
+}
+
+/// The right sidebar for the open channel: everyone in a DM (you first),
+/// or the server's cached members, online before offline.
+fn members_json(
+    selected_channel: Option<u64>,
+    private_channels: &[PrivateChannelSnapshot],
+    members: &[MemberSnapshot],
+    presences: &[PresenceSnapshot],
+    me: Option<&Me>,
+) -> String {
+    let presence: HashMap<u64, &PresenceSnapshot> =
+        presences.iter().map(|presence| (presence.user_id, presence)).collect();
+    let row = |id: u64, name: String, avatar: Option<&str>, status: Option<&str>| {
+        let url = avatar_url(id, avatar);
+        let status = presence
+            .get(&id)
+            .map(|presence| presence.status.as_str())
+            .or(status)
+            .unwrap_or("offline")
+            .to_owned();
+        let activity = presence
+            .get(&id)
+            .and_then(|presence| presence.activities.first().cloned())
+            .unwrap_or_default();
+        json!({
+            "id": id.to_string(),
+            "name": name,
+            "avatar": if url.is_empty() { default_avatar_url(id) } else { url },
+            "status": status,
+            "activity": activity,
+        })
+    };
+
+    let dm = selected_channel.and_then(|id| private_channels.iter().find(|channel| channel.id == id));
+    let mut rows: Vec<Value> = if let Some(dm) = dm {
+        me.map(|me| row(me.id, me.name.clone(), me.avatar.as_deref(), Some("online")))
+            .into_iter()
+            .chain(dm.recipients.iter().map(|user| {
+                let name = user.global_name.clone().unwrap_or_else(|| user.username.clone());
+                row(user.id, name, user.avatar.as_deref(), None)
+            }))
+            .collect()
+    } else if selected_channel.is_some() {
+        members
+            .iter()
+            .map(|member| {
+                let name = member
+                    .nickname
+                    .clone()
+                    .filter(|nick| !nick.is_empty())
+                    .unwrap_or_else(|| member.username.clone());
+                row(member.user_id, name, member.avatar.as_deref(), member.status.as_deref())
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
+    if dm.is_none() {
+        let offline = |row: &Value| matches!(row["status"].as_str(), Some("offline" | "invisible"));
+        rows.sort_by(|a, b| {
+            offline(a)
+                .cmp(&offline(b))
+                .then_with(|| a["name"].as_str().unwrap_or("").to_lowercase().cmp(&b["name"].as_str().unwrap_or("").to_lowercase()))
+        });
+    }
+    Value::Array(rows).to_string()
 }
 
 fn guild_json(guild: &GuildSnapshot) -> Value {
@@ -435,6 +519,7 @@ fn messages_json(
     messages: &[MessageSnapshot],
     members: &[MemberSnapshot],
     private_channels: &[PrivateChannelSnapshot],
+    me: Option<&Me>,
 ) -> String {
     let members: HashMap<u64, &MemberSnapshot> =
         members.iter().map(|member| (member.user_id, member)).collect();
@@ -442,6 +527,7 @@ fn messages_json(
         .iter()
         .flat_map(|channel| channel.recipients.iter())
         .map(|user| (user.id, user.avatar.as_deref()))
+        .chain(me.map(|me| (me.id, me.avatar.as_deref())))
         .collect();
     let mut previous: Option<&MessageSnapshot> = None;
     let items: Vec<Value> = messages
@@ -491,6 +577,8 @@ impl qobject::LampcordBackend {
         }
         self.as_mut().rust_mut().versions = patch.versions.clone();
 
+        let mut members_dirty = false;
+        let mut me_changed = false;
         if let Some(meta) = patch.meta {
             let connection = QString::from(connection_name(&meta.connection));
             self.as_mut().set_connection(connection);
@@ -503,6 +591,18 @@ impl qobject::LampcordBackend {
                 if url.is_empty() { default_avatar_url(id) } else { url }
             });
             self.as_mut().set_current_user_avatar(QString::from(avatar.as_str()));
+            let me = meta.current_user_id.map(|id| Me {
+                id,
+                name: meta.current_user.clone().unwrap_or_default(),
+                avatar: meta.current_user_avatar.clone(),
+            });
+            if me != self.me || meta.selected_channel_id != self.selected_channel {
+                me_changed = me != self.me;
+                let mut rust = self.as_mut().rust_mut();
+                rust.me = me;
+                rust.selected_channel = meta.selected_channel_id;
+                members_dirty = true;
+            }
             self.as_mut().set_selected_guild_id(id_string(meta.selected_guild_id));
             self.as_mut().set_selected_channel_id(id_string(meta.selected_channel_id));
             let error = match (&meta.connection, &meta.error) {
@@ -533,10 +633,18 @@ impl qobject::LampcordBackend {
         let mut channels_dirty = false;
         let mut messages_dirty = false;
         let mut dms_dirty = false;
+        if me_changed {
+            messages_dirty = true;
+        }
         if let Some(private_channels) = patch.private_channels {
             self.as_mut().rust_mut().private_channels = private_channels;
             dms_dirty = true;
             messages_dirty = true;
+            members_dirty = true;
+        }
+        if let Some(presences) = patch.presences {
+            self.as_mut().rust_mut().presences = presences;
+            members_dirty = true;
         }
         if let Some(read_states) = patch.read_states {
             self.as_mut().rust_mut().read_states = read_states;
@@ -550,6 +658,7 @@ impl qobject::LampcordBackend {
         if let Some(members) = patch.members {
             self.as_mut().rust_mut().members = members;
             messages_dirty = true;
+            members_dirty = true;
         }
         if let Some(messages) = patch.messages {
             self.as_mut().rust_mut().messages = messages;
@@ -560,12 +669,22 @@ impl qobject::LampcordBackend {
             let json = channels_json(&self.channels, &self.read_states);
             self.as_mut().set_channels_json(QString::from(json.as_str()));
         }
+        if members_dirty {
+            let json = members_json(
+                self.selected_channel,
+                &self.private_channels,
+                &self.members,
+                &self.presences,
+                self.me.as_ref(),
+            );
+            self.as_mut().set_members_json(QString::from(json.as_str()));
+        }
         if dms_dirty {
             let json = dms_json(&self.private_channels, &self.read_states);
             self.as_mut().set_dms_json(QString::from(json.as_str()));
         }
         if messages_dirty {
-            let json = messages_json(&self.messages, &self.members, &self.private_channels);
+            let json = messages_json(&self.messages, &self.members, &self.private_channels, self.me.as_ref());
             self.as_mut().set_messages_json(QString::from(json.as_str()));
         }
     }
@@ -778,6 +897,42 @@ mod tests {
     }
 
     #[test]
+    fn member_list_puts_you_first_in_dms_and_offline_last_in_servers() {
+        let me = Me { id: 1, name: "me".into(), avatar: None };
+        let dm = PrivateChannelSnapshot {
+            id: 50,
+            kind: 1,
+            name: None,
+            recipients: vec![lampcord_ffi::RecipientSnapshot {
+                id: 2,
+                username: "friend".into(),
+                global_name: None,
+                avatar: None,
+            }],
+            last_message_id: None,
+        };
+        let rows: Vec<Value> =
+            serde_json::from_str(&members_json(Some(50), &[dm], &[], &[], Some(&me))).unwrap();
+        let ids: Vec<&str> = rows.iter().map(|row| row["id"].as_str().unwrap()).collect();
+        assert_eq!(ids, ["1", "2"]);
+
+        let member = |user_id: u64, name: &str, status: Option<&str>| MemberSnapshot {
+            guild_id: 9,
+            user_id,
+            username: name.into(),
+            avatar: None,
+            nickname: None,
+            roles: vec![],
+            status: status.map(str::to_owned),
+        };
+        let members = [member(3, "zed", Some("online")), member(4, "amy", None), member(5, "bob", Some("idle"))];
+        let rows: Vec<Value> =
+            serde_json::from_str(&members_json(Some(77), &[], &members, &[], Some(&me))).unwrap();
+        let names: Vec<&str> = rows.iter().map(|row| row["name"].as_str().unwrap()).collect();
+        assert_eq!(names, ["bob", "zed", "amy"]);
+    }
+
+    #[test]
     fn consecutive_messages_from_one_author_are_grouped() {
         let message = |id: u64, author: u64| MessageSnapshot {
             id,
@@ -796,7 +951,7 @@ mod tests {
             message(base + 2 * minute, 2),
             message(base + 20 * minute, 2),
         ];
-        let rows: Vec<Value> = serde_json::from_str(&messages_json(&messages, &[], &[])).unwrap();
+        let rows: Vec<Value> = serde_json::from_str(&messages_json(&messages, &[], &[], None)).unwrap();
         let grouped: Vec<bool> = rows.iter().map(|row| row["grouped"].as_bool().unwrap()).collect();
         assert_eq!(grouped, [false, true, false, false]);
     }
