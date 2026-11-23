@@ -32,6 +32,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
@@ -624,35 +625,24 @@ fun ChatInputBar(
                 val themeBackgroundUrl = themeStore.themeBackgroundUrl.orEmpty()
                 val wallpaperUrl = if (themeBackgroundUrl.isNotEmpty()) themeBackgroundUrl else settings.chatBackground
                 val hasFrostedBackdrop = wallpaperUrl.isNotBlank()
-                val scrimBaseColor = MaterialTheme.colorScheme.surfaceContainer
-                val scrimColor = if (hasFrostedBackdrop) {
-                    scrimBaseColor.copy(alpha = 0.68f)
-                } else {
-                    scrimBaseColor
-                }
+                val shadowColor = MaterialTheme.colorScheme.scrim.copy(
+                    alpha = if (hasFrostedBackdrop) 0.2f else 0.28f
+                )
                 val inputScrimModifier = if (isMobileView) {
                     Modifier
                         .graphicsLayer { clip = false }
                         .drawBehind {
-                            val overlap = 28.dp.toPx()
-                            val gradientTop = -overlap
+                            val shadowHeight = 24.dp.toPx()
+                            val shadowTop = -shadowHeight
                             drawRect(
                                 brush = Brush.verticalGradient(
-                                    colors = listOf(Color.Transparent, scrimColor),
-                                    startY = gradientTop,
-                                    endY = overlap
+                                    colors = listOf(Color.Transparent, shadowColor),
+                                    startY = shadowTop,
+                                    endY = 0f
                                 ),
-                                topLeft = Offset(0f, gradientTop),
-                                size = Size(size.width, overlap * 2f)
+                                topLeft = Offset(0f, shadowTop),
+                                size = Size(size.width, shadowHeight)
                             )
-                            val tailHeight = (size.height - overlap).coerceAtLeast(0f)
-                            if (tailHeight > 0f) {
-                                drawRect(
-                                    color = scrimColor,
-                                    topLeft = Offset(0f, overlap),
-                                    size = Size(size.width, tailHeight)
-                                )
-                            }
                         }
                 } else {
                     Modifier
@@ -671,6 +661,16 @@ fun ChatInputBar(
                 )
                 val inputBottomPadding = with(density) { bottomInsetPx.toDp() }
                 Box(modifier = Modifier.fillMaxWidth()) {
+                    if (hasFrostedBackdrop) {
+                        AsyncImage(
+                            model = wallpaperUrl,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .matchParentSize()
+                                .blur(18.dp)
+                        )
+                    }
                     Surface(
                         color = Color.Transparent,
                         modifier = Modifier
