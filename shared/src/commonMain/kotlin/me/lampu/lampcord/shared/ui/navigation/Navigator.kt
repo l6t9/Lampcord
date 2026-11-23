@@ -8,6 +8,8 @@ import androidx.navigation3.runtime.NavKey
 class Navigator(
     val state: NavigationState,
 ) {
+    private val rootStack = mutableListOf(state.startRoute)
+
     val canGoBack: Boolean
         get() {
             val stack = state.backStacks[state.topLevelRoute] ?: return false
@@ -28,6 +30,16 @@ class Navigator(
                 val stack = state.backStacks.getValue(topLevelKey)
                 while (stack.size > 1) stack.removeLastOrNull()
             }
+            if (state.topLevelRoute != topLevelKey) {
+                val existingIndex = rootStack.indexOf(topLevelKey)
+                if (existingIndex >= 0) {
+                    while (rootStack.size > existingIndex + 1) {
+                        rootStack.removeLastOrNull()
+                    }
+                } else {
+                    rootStack.add(topLevelKey)
+                }
+            }
             state.topLevelRoute = topLevelKey
         } else {
             val stack = state.backStacks[state.topLevelRoute] ?: return
@@ -45,10 +57,38 @@ class Navigator(
 
         if (currentRoute == state.topLevelRoute) {
             if (state.topLevelRoute == state.startRoute) return false
-            state.topLevelRoute = state.startRoute
+            val currentIndex = rootStack.lastIndexOf(state.topLevelRoute)
+            if (currentIndex > 0) {
+                while (rootStack.size > currentIndex) {
+                    rootStack.removeLastOrNull()
+                }
+                state.topLevelRoute = rootStack.last()
+            } else {
+                rootStack.clear()
+                rootStack.add(state.startRoute)
+                state.topLevelRoute = state.startRoute
+            }
         } else {
             currentStack.removeLastOrNull()
         }
         return true
+    }
+
+    fun goBackTo(route: Screen): Boolean {
+        val index = rootStack.indexOf(route)
+        if (index >= 0) {
+            while (rootStack.size > index + 1) {
+                rootStack.removeLastOrNull()
+            }
+            state.topLevelRoute = route
+            return true
+        }
+        if (route == state.startRoute) {
+            rootStack.clear()
+            rootStack.add(state.startRoute)
+            state.topLevelRoute = state.startRoute
+            return true
+        }
+        return false
     }
 }

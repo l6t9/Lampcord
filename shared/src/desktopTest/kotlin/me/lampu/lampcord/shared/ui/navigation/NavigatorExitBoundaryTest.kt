@@ -75,6 +75,18 @@ class NavigatorExitBoundaryTest {
     }
 
     @Test
+    fun `back from settings returns to the route that opened it`() {
+        val state = newState()
+        val navigator = Navigator(state)
+
+        navigator.navigate(Screen.You)
+        navigator.navigate(Screen.Settings)
+
+        assertTrue(navigator.goBack())
+        assertEquals(Screen.You, state.topLevelRoute)
+    }
+
+    @Test
     fun `returning from settings leaves You stack clean for one-step back`() {
         val state = newState()
         val navigator = Navigator(state)
@@ -87,5 +99,18 @@ class NavigatorExitBoundaryTest {
         assertEquals(Screen.You, state.backStacks.getValue(Screen.You).last())
         assertTrue(navigator.goBack())
         assertEquals(Screen.Chat, state.topLevelRoute)
+    }
+
+    @Test
+    fun `goBackTo pops the root stack to the explicit route`() {
+        val state = newState()
+        val navigator = Navigator(state)
+
+        navigator.navigate(Screen.You)
+        navigator.navigate(Screen.Settings)
+
+        assertTrue(navigator.goBackTo(Screen.You))
+        assertEquals(Screen.You, state.topLevelRoute)
+        assertFalse(navigator.canGoBackInStack)
     }
 }

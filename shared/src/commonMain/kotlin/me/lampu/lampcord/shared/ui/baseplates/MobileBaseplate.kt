@@ -108,22 +108,38 @@ private data class BottomNavItem(val key: String, val screen: Screen)
 
 private fun navRouteName(contentKey: Any): String = contentKey.toString().substringBefore("(")
 
-private fun isBringUpRoute(name: String): Boolean =
-    name == Screen.You.toString() || name == Screen.Settings.toString()
+private fun modalRank(name: String): Int =
+    when (name) {
+        Screen.You.toString() -> 1
+        Screen.Settings.toString() -> 2
+        else -> 0
+    }
 
-private fun isSettingsRoute(name: String): Boolean =
-    name == Screen.Settings.toString() ||
-        name.endsWith("Settings") ||
-        name == Screen.Theming.toString() ||
-        name == "ThemeEditor"
-
-private fun settingsDepth(name: String): Int =
-    when {
-        name == Screen.Settings.toString() -> 0
-        name == "ThemeEditor" -> 2
-        isSettingsRoute(name) -> 1
+private fun settingsRank(name: String): Int =
+    when (name) {
+        Screen.Settings.toString() -> 0
+        Screen.AccountSettings.toString() -> 10
+        Screen.ProfilesSettings.toString() -> 20
+        Screen.PrivacySettings.toString() -> 30
+        Screen.ConnectionsSettings.toString() -> 40
+        Screen.DevicesSettings.toString() -> 50
+        Screen.AppearanceSettings.toString() -> 60
+        Screen.AccessibilitySettings.toString() -> 70
+        Screen.LanguageSettings.toString() -> 80
+        Screen.VoiceSettings.toString() -> 90
+        Screen.ChatSettings.toString() -> 100
+        Screen.NotificationsSettings.toString() -> 110
+        Screen.NavigationSettings.toString() -> 115
+        Screen.AdvancedSettings.toString() -> 120
+        Screen.AdditionalSettings.toString() -> 130
+        Screen.UpdatesSettings.toString() -> 140
+        Screen.AboutSettings.toString() -> 150
+        Screen.Theming.toString() -> 160
+        "ThemeEditor" -> 170
         else -> -1
     }
+
+private fun isSettingsRoute(name: String): Boolean = settingsRank(name) >= 0
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class, ExperimentalFoundationApi::class)
 @Composable
@@ -249,7 +265,17 @@ private fun MobileBaseplateContentRoot(
             }
         }
         navigationStore.isSettingsVisible = false
-        navigator.navigate(settingsReturnRoute)
+        if (!navigator.goBackTo(settingsReturnRoute)) {
+            navigator.goBack()
+        }
+    }
+
+    fun onSettingsBack() {
+        if (navigator.canGoBackInStack) {
+            navigator.goBack()
+        } else {
+            closeSettings()
+        }
     }
 
     val panelState = rememberDiscordPanelsState()
@@ -585,56 +611,56 @@ private fun MobileBaseplateContentRoot(
             }
             entry<Screen.AccountSettings> {
                 val userStoreForAccount: UserStore = koinInject()
-                AccountSettings(onBack = { navigator.goBack() }, userStore = userStoreForAccount)
+                AccountSettings(onBack = ::onSettingsBack, userStore = userStoreForAccount)
             }
             entry<Screen.ProfilesSettings> {
                 val userStoreForProfiles: UserStore = koinInject()
-                ProfilesSettings(onBack = { navigator.goBack() }, userStore = userStoreForProfiles)
+                ProfilesSettings(onBack = ::onSettingsBack, userStore = userStoreForProfiles)
             }
             entry<Screen.AppearanceSettings> {
-                AppearanceSettings(onNavigateToTheming = { navigator.navigate(Screen.Theming) }, onNavigateToNavigation = { navigator.navigate(Screen.NavigationSettings) }, onBack = { navigator.goBack() })
+                AppearanceSettings(onNavigateToTheming = { navigator.navigate(Screen.Theming) }, onNavigateToNavigation = { navigator.navigate(Screen.NavigationSettings) }, onBack = ::onSettingsBack)
             }
             entry<Screen.AccessibilitySettings> {
-                AccessibilitySettings(onBack = { navigator.goBack() })
+                AccessibilitySettings(onBack = ::onSettingsBack)
             }
             entry<Screen.LanguageSettings> {
-                me.lampu.lampcord.shared.ui.settings.LanguageSettings(onBack = { navigator.goBack() })
+                me.lampu.lampcord.shared.ui.settings.LanguageSettings(onBack = ::onSettingsBack)
             }
             entry<Screen.PrivacySettings> {
-                PrivacySettings(onBack = { navigator.goBack() })
+                PrivacySettings(onBack = ::onSettingsBack)
             }
             entry<Screen.ConnectionsSettings> {
-                ConnectionsSettings(onBack = { navigator.goBack() })
+                ConnectionsSettings(onBack = ::onSettingsBack)
             }
             entry<Screen.DevicesSettings> {
-                DevicesSettings(onBack = { navigator.goBack() })
+                DevicesSettings(onBack = ::onSettingsBack)
             }
             entry<Screen.VoiceSettings> {
-                me.lampu.lampcord.shared.ui.settings.VoiceSettings(onBack = { navigator.goBack() })
+                me.lampu.lampcord.shared.ui.settings.VoiceSettings(onBack = ::onSettingsBack)
             }
             entry<Screen.ChatSettings> {
-                ChatSettings(onBack = { navigator.goBack() })
+                ChatSettings(onBack = ::onSettingsBack)
             }
             entry<Screen.NotificationsSettings> {
-                NotificationsSettings(onBack = { navigator.goBack() })
+                NotificationsSettings(onBack = ::onSettingsBack)
             }
             entry<Screen.NavigationSettings> {
-                NavigationSettings(onBack = { navigator.goBack() })
+                NavigationSettings(onBack = ::onSettingsBack)
             }
             entry<Screen.AdvancedSettings> {
-                AdvancedSettings(onBack = { navigator.goBack() })
+                AdvancedSettings(onBack = ::onSettingsBack)
             }
             entry<Screen.AdditionalSettings> {
-                AdditionalSettings(onBack = { navigator.goBack() })
+                AdditionalSettings(onBack = ::onSettingsBack)
             }
             entry<Screen.UpdatesSettings> {
-                SettingsSubScreen(title = "Updates", onNavigateBack = { navigator.goBack() }) {
+                SettingsSubScreen(title = "Updates", onNavigateBack = ::onSettingsBack) {
                     me.lampu.lampcord.shared.ui.settings.UpdatesContent()
                 }
             }
             entry<Screen.AboutSettings> {
                 val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
-                SettingsSubScreen(title = "About", onNavigateBack = { navigator.goBack() }) {
+                SettingsSubScreen(title = "About", onNavigateBack = ::onSettingsBack) {
                     AboutContent(version = me.lampu.lampcord.shared.update.APP_VERSION, onOpenUrl = { uriHandler.openUri(it) })
                 }
             }
@@ -646,7 +672,6 @@ private fun MobileBaseplateContentRoot(
                         Spacer(Modifier.height(24.dp))
                         Button(onClick = {
                             navigationStore.isSettingsVisible = true
-                            navigator.navigate(Screen.Settings)
                         }) {
                             Text(stringResource(Res.string.password_manager_open_settings))
                         }
@@ -701,12 +726,12 @@ private fun MobileBaseplateContentRoot(
             }
             entry<Screen.Theming> {
                 Box(Modifier.fillMaxSize().padding(bottom = navBarHeight)) {
-                    ThemingSettings(onNavigateToEditor = { navigator.navigate(Screen.ThemeEditor(it)) }, onBack = { navigator.goBack() })
+                    ThemingSettings(onNavigateToEditor = { navigator.navigate(Screen.ThemeEditor(it)) }, onBack = ::onSettingsBack)
                 }
             }
             entry<Screen.ThemeEditor> { screen: Screen.ThemeEditor ->
                 Box(Modifier.fillMaxSize()) {
-                    ThemeEditorScreen(themeJson = screen.themeJson, onBack = { navigator.goBack() })
+                    ThemeEditorScreen(themeJson = screen.themeJson, onBack = ::onSettingsBack)
                 }
             }
         }
@@ -785,22 +810,11 @@ private fun MobileBaseplateContentRoot(
                                 } else {
                                     val targetName = navRouteName(targetState.contentKey)
                                     val initialName = navRouteName(initialState.contentKey)
+                                    val targetRank = modalRank(targetName)
+                                    val initialRank = modalRank(initialName)
                                     when {
-                                        isBringUpRoute(targetName) -> {
-                                            PhoenixPageTransitions.bringUpEnter() togetherWith
-                                                PhoenixPageTransitions.bringUpExit()
-                                        }
-                                        isBringUpRoute(initialName) -> {
-                                            PhoenixPageTransitions.bringDownEnter() togetherWith
-                                                PhoenixPageTransitions.bringDownExit()
-                                        }
                                         isSettingsRoute(targetName) && isSettingsRoute(initialName) -> {
-                                            val targetDepth = settingsDepth(targetName)
-                                            val initialDepth = settingsDepth(initialName)
-                                            val targetIndex = routeIndexMap[targetName] ?: targetDepth
-                                            val initialIndex = routeIndexMap[initialName] ?: initialDepth
-                                            val forward = targetDepth > initialDepth ||
-                                                (targetDepth == initialDepth && targetIndex >= initialIndex)
+                                            val forward = settingsRank(targetName) >= settingsRank(initialName)
                                             if (forward) {
                                                 PhoenixPageTransitions.pushEnter() togetherWith
                                                     PhoenixPageTransitions.pushExit()
@@ -808,6 +822,22 @@ private fun MobileBaseplateContentRoot(
                                                 PhoenixPageTransitions.popEnter() togetherWith
                                                     PhoenixPageTransitions.popExit()
                                             }
+                                        }
+                                        targetRank > initialRank && !isSettingsRoute(initialName) -> {
+                                            PhoenixPageTransitions.bringUpEnter() togetherWith
+                                                PhoenixPageTransitions.bringUpExit()
+                                        }
+                                        initialRank > targetRank && !isSettingsRoute(targetName) -> {
+                                            PhoenixPageTransitions.bringDownEnter() togetherWith
+                                                PhoenixPageTransitions.bringDownExit()
+                                        }
+                                        isSettingsRoute(targetName) -> {
+                                            PhoenixPageTransitions.bringUpEnter() togetherWith
+                                                PhoenixPageTransitions.bringUpExit()
+                                        }
+                                        isSettingsRoute(initialName) -> {
+                                            PhoenixPageTransitions.bringDownEnter() togetherWith
+                                                PhoenixPageTransitions.bringDownExit()
                                         }
                                         else -> {
                                             val targetIndex = routeIndexMap[targetName] ?: -1
@@ -1413,7 +1443,7 @@ private fun MobileBaseplateContentRoot(
                         true
                     }
                     navigationStore.isSettingsVisible -> {
-                        closeSettings()
+                        onSettingsBack()
                         true
                     }
                     panelState.currentValue == DiscordPanelValue.End -> {
