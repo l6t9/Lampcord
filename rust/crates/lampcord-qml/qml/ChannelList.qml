@@ -26,6 +26,9 @@ Item {
         id: header
         width: parent.width
         height: 48
+        // The panel's clip is rectangular, so the header rounds itself.
+        topLeftRadius: 16
+        topRightRadius: 16
         color: Theme.surface
         z: 1
 
