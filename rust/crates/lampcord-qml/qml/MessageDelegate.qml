@@ -45,8 +45,8 @@ Item {
             Icon {
                 anchors.centerIn: parent
                 size: 18
-                name: ({ 1: "person_add", 2: "person_remove", 3: "volume", 4: "edit", 5: "image",
-                         6: "push_pin", 7: "arrow_forward", 12: "campaign", 18: "tag" })[root.kind] || "info"
+                name: ({ 1: "PersonAdd", 2: "PersonRemove", 3: "VolumeUp", 4: "Edit", 5: "Image",
+                         6: "PushPin", 7: "ArrowForward", 12: "Campaign", 18: "Tag" })[root.kind] || "Info"
                 color: ({ 1: "#23A559", 2: "#F23F43", 3: Theme.primary, 6: Theme.primary, 7: "#23A559",
                           8: "#EB459E", 9: "#EB459E", 10: "#EB459E", 11: "#EB459E", 12: Theme.primary,
                           18: Theme.primary })[root.kind] || Theme.surfaceVariantText
@@ -244,7 +244,7 @@ Item {
 
                             Icon {
                                 anchors.verticalCenter: parent.verticalCenter
-                                name: "description"
+                                name: "Description"
                                 size: 32
                                 color: Theme.primary
                             }
@@ -269,7 +269,7 @@ Item {
                             }
                             IconButton {
                                 anchors.verticalCenter: parent.verticalCenter
-                                glyph: "download"
+                                glyph: "Download"
                                 tip: "Download"
                                 onClicked: Qt.openUrlExternally(modelData.url)
                             }

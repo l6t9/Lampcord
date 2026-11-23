@@ -34,7 +34,7 @@ Item {
 
             Icon {
                 anchors.verticalCenter: parent.verticalCenter
-                name: "search"
+                name: "Search"
                 size: 18
                 color: Theme.surfaceVariantText
             }

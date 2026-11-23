@@ -45,7 +45,7 @@ Item {
 
                     Icon {
                         anchors.centerIn: parent
-                        name: "group"
+                        name: "Group"
                         size: 20
                         color: Theme.primaryContainerText
                     }

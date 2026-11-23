@@ -28,7 +28,7 @@ Rectangle {
         anchors.left: parent.left
         anchors.margins: 12
         visible: root.step !== "credentials"
-        glyph: "arrow_back"
+        glyph: "Rounded.ArrowBack"
         iconColor: Theme.surfaceText
         tip: "Back to login"
         onClicked: root.go("credentials")
@@ -78,7 +78,7 @@ Rectangle {
                         echoMode: shown ? TextInput.Normal : TextInput.Password
                         enabled: !root.busy
                         error: root.errorText !== ""
-                        trailingIcon: shown ? "visibility_off" : "visibility"
+                        trailingIcon: shown ? "Rounded.VisibilityOff" : "Rounded.Visibility"
                         onTrailingClicked: shown = !shown
                         onTextEdited: if (backend.authState === "failed") backend.resetAuth()
                         onAccepted: submit.clicked()

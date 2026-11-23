@@ -48,7 +48,7 @@ Item {
 
             Icon {
                 anchors.verticalCenter: parent.verticalCenter
-                name: ({ 2: "volume", 13: "volume", 5: "campaign", 15: "forum" })[root.channel.kind] || "tag"
+                name: ({ 2: "VolumeUp", 13: "VolumeUp", 5: "Campaign", 15: "Rounded.Forum" })[root.channel.kind] || "Tag"
                 size: 24
                 color: Theme.alpha(root.tint, root.selected ? 1 : 0.8)
             }

@@ -53,7 +53,7 @@ Item {
             Icon {
                 anchors.verticalCenter: parent.verticalCenter
                 visible: root.guild !== null
-                name: "expand"
+                name: "KeyboardArrowDown"
                 size: 16
             }
         }

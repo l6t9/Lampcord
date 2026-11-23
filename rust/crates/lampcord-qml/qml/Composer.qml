@@ -87,7 +87,7 @@ Item {
             anchors.bottom: parent.bottom
             width: 46
             height: 46
-            glyph: "send"
+            glyph: "Rounded.Send"
             iconSize: 24
             iconColor: Theme.primaryText
             container: Theme.primary

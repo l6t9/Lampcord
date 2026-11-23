@@ -28,7 +28,7 @@ Item {
         }
         Icon {
             anchors.verticalCenter: parent.verticalCenter
-            name: root.collapsed ? "chevron_right" : "expand"
+            name: root.collapsed ? "ChevronRight" : "KeyboardArrowDown"
             size: 16
             color: root.tint
         }

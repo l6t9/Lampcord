@@ -65,7 +65,7 @@ Item {
             Icon {
                 anchors.verticalCenter: parent.verticalCenter
                 visible: root.dm === null || root.dm.group
-                name: root.dm ? "group" : root.channel && root.channel.kind === 5 ? "campaign" : "tag"
+                name: root.dm ? "Group" : root.channel && root.channel.kind === 5 ? "Campaign" : "Tag"
                 size: 28
                 color: Theme.surfaceVariantText
             }

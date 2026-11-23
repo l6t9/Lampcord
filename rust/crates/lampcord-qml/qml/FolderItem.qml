@@ -53,7 +53,7 @@ Item {
         Icon {
             anchors.centerIn: parent
             visible: root.expanded
-            name: "folder_open"
+            name: "FolderOpen"
             size: 28
             color: Theme.primary
         }

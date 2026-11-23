@@ -49,7 +49,7 @@ Rectangle {
         IconButton {
             id: settings
             anchors.verticalCenter: parent.verticalCenter
-            glyph: "settings"
+            glyph: "Rounded.Settings"
             iconSize: 20
             tip: "User Settings"
             onClicked: menu.open()
@@ -73,7 +73,7 @@ Rectangle {
                     contentItem: Row {
                         spacing: 12
                         leftPadding: 4
-                        Icon { name: "logout"; size: 20; color: Theme.error; anchors.verticalCenter: parent.verticalCenter }
+                        Icon { name: "Logout"; size: 20; color: Theme.error; anchors.verticalCenter: parent.verticalCenter }
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
                             text: logoutItem.text
