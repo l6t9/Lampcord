@@ -139,6 +139,11 @@ pub enum Body {
     Json(String),
     Replayable(String),
     Streaming,
+    /// Raw bytes with their content type, e.g. a file PUT to an upload URL.
+    Bytes {
+        content_type: String,
+        data: Vec<u8>,
+    },
 }
 
 impl Body {
@@ -153,7 +158,7 @@ impl Body {
     pub fn as_text(&self) -> Option<&str> {
         match self {
             Self::Json(value) | Self::Replayable(value) => Some(value),
-            Self::None | Self::Streaming => None,
+            Self::None | Self::Streaming | Self::Bytes { .. } => None,
         }
     }
 }

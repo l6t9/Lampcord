@@ -228,4 +228,54 @@ mod tests {
             &["token-1".to_owned()]
         );
     }
+
+    #[tokio::test]
+    async fn attachments_are_reserved_uploaded_then_referenced() {
+        let transport = ScriptedRestTransport::default();
+        transport.responses.lock().unwrap().extend([
+            RestResponse {
+                status: 200,
+                body: r#"{"attachments":[{"id":0,"upload_url":"https://up.example/slot","upload_filename":"abc/cat.png"}]}"#.to_owned(),
+            },
+            RestResponse { status: 200, body: String::new() },
+            RestResponse {
+                status: 200,
+                body: r#"{"id":"5","channel_id":"9","author":{"id":"1","username":"me"},"content":"hi","timestamp":"2026-01-01T00:00:00Z"}"#.to_owned(),
+            },
+        ]);
+        let client = RestClient::new(config(), transport, StaticSolver);
+
+        let uploaded =
+            crate::api::upload_attachment(&client, &config(), 9, "cat.png", vec![1, 2, 3])
+                .await
+                .unwrap();
+        assert_eq!(uploaded.uploaded_filename, "abc/cat.png");
+        crate::api::send_channel_message_with_attachments(
+            &client,
+            &config(),
+            9,
+            "hi",
+            &[uploaded],
+            None,
+            None,
+        )
+        .await
+        .unwrap();
+
+        let requests = client.transport.requests.lock().unwrap();
+        assert!(requests[0].url.ends_with("/channels/9/attachments"));
+        // The PUT goes to the storage URL, with the raw bytes and no token.
+        assert_eq!(requests[1].url, "https://up.example/slot");
+        assert!(requests[1].headers.is_empty());
+        assert_eq!(
+            requests[1].body,
+            Body::Bytes {
+                content_type: "application/octet-stream".to_owned(),
+                data: vec![1, 2, 3]
+            }
+        );
+        let sent: serde_json::Value =
+            serde_json::from_str(requests[2].body.as_text().unwrap()).unwrap();
+        assert_eq!(sent["attachments"][0]["uploaded_filename"], "abc/cat.png");
+    }
 }

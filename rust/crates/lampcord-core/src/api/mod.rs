@@ -131,6 +131,108 @@ where
     send_json(client, req).await
 }
 
+/// A file already uploaded to Discord's storage, ready to attach.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UploadedAttachment {
+    pub filename: String,
+    pub uploaded_filename: String,
+}
+
+/// Uploads one file the way the official client does: reserve an upload
+/// URL for the channel, then PUT the bytes there (no Discord auth).
+pub async fn upload_attachment<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    channel_id: u64,
+    filename: &str,
+    data: Vec<u8>,
+) -> Result<UploadedAttachment, ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let body = serde_json::json!({
+        "files": [{ "filename": filename, "file_size": data.len(), "id": "0" }]
+    });
+    let req = config.request(
+        HttpMethod::Post,
+        &format!("/channels/{channel_id}/attachments"),
+        config.standard_headers(),
+        Body::json(&body),
+    );
+    let slots: serde_json::Value = send_json(client, req).await?;
+    let slot = &slots["attachments"][0];
+    let (Some(url), Some(uploaded_filename)) = (
+        slot["upload_url"].as_str(),
+        slot["upload_filename"].as_str(),
+    ) else {
+        return Err(ApiError::Http {
+            status: 200,
+            body: format!("no upload slot in {slots}"),
+        });
+    };
+
+    let put = RestRequest {
+        method: HttpMethod::Put,
+        url: url.to_owned(),
+        headers: Vec::new(),
+        body: Body::Bytes {
+            content_type: "application/octet-stream".to_owned(),
+            data,
+        },
+    };
+    let response = client.send(put).await?;
+    if !(200..300).contains(&response.status) {
+        return Err(ApiError::Http {
+            status: response.status,
+            body: response.body,
+        });
+    }
+    Ok(UploadedAttachment {
+        filename: filename.to_owned(),
+        uploaded_filename: uploaded_filename.to_owned(),
+    })
+}
+
+/// Sends a message carrying files from [`upload_attachment`].
+pub async fn send_channel_message_with_attachments<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    channel_id: u64,
+    content: &str,
+    attachments: &[UploadedAttachment],
+    reply_to_message_id: Option<u64>,
+    reply_to_guild_id: Option<u64>,
+) -> Result<lampcord_model::message::Message, ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let mut req = create_message_request_with_reply(
+        config,
+        channel_id,
+        content,
+        reply_to_message_id,
+        reply_to_guild_id,
+    );
+    if let Some(text) = req.body.as_text() {
+        let mut body: serde_json::Value = serde_json::from_str(text)?;
+        body["attachments"] = attachments
+            .iter()
+            .enumerate()
+            .map(|(index, file)| {
+                serde_json::json!({
+                    "id": index.to_string(),
+                    "filename": file.filename,
+                    "uploaded_filename": file.uploaded_filename,
+                })
+            })
+            .collect();
+        req.body = Body::Json(body.to_string());
+    }
+    send_json(client, req).await
+}
+
 pub async fn send_channel_message<T, S>(
     client: &RestClient<T, S>,
     config: &RestConfig,

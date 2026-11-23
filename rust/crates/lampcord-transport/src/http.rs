@@ -56,6 +56,9 @@ impl RestTransport for ReqwestRestTransport {
             Body::Json(text) | Body::Replayable(text) => builder
                 .header("Content-Type", "application/json")
                 .body(text),
+            Body::Bytes { content_type, data } => {
+                builder.header("Content-Type", content_type).body(data)
+            }
             Body::Streaming => {
                 return Err(TransportError(
                     "streaming bodies are not supported by ReqwestRestTransport".to_owned(),
