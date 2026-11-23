@@ -21,6 +21,8 @@ pub mod qobject {
         #[qproperty(QString, current_user)]
         #[qproperty(QString, current_user_id)]
         #[qproperty(QString, current_user_avatar)]
+        #[qproperty(QString, current_user_status)]
+        #[qproperty(QString, current_user_custom_status)]
         #[qproperty(QString, selected_guild_id)]
         #[qproperty(QString, selected_channel_id)]
         #[qproperty(QString, guilds_json)]
@@ -112,6 +114,8 @@ struct Me {
     id: u64,
     name: String,
     avatar: Option<String>,
+    status: String,
+    custom_status: Option<String>,
 }
 
 pub struct BackendRust {
@@ -136,6 +140,8 @@ pub struct BackendRust {
     current_user: QString,
     current_user_id: QString,
     current_user_avatar: QString,
+    current_user_status: QString,
+    current_user_custom_status: QString,
     selected_guild_id: QString,
     selected_channel_id: QString,
     guilds_json: QString,
@@ -182,6 +188,8 @@ impl Default for BackendRust {
             current_user: QString::default(),
             current_user_id: QString::default(),
             current_user_avatar: QString::default(),
+            current_user_status: QString::from("online"),
+            current_user_custom_status: QString::default(),
             selected_guild_id: QString::default(),
             selected_channel_id: QString::default(),
             guilds_json: QString::from("[]"),
@@ -286,15 +294,21 @@ fn members_json(
         presences.iter().map(|presence| (presence.user_id, presence)).collect();
     let row = |id: u64, name: String, avatar: Option<&str>, status: Option<&str>| {
         let url = avatar_url(id, avatar);
-        let status = presence
-            .get(&id)
-            .map(|presence| presence.status.as_str())
+        let own = me.filter(|me| me.id == id);
+        let status = own
+            .map(|me| me.status.as_str())
+            .or_else(|| presence.get(&id).map(|presence| presence.status.as_str()))
             .or(status)
             .unwrap_or("offline")
             .to_owned();
-        let activity = presence
-            .get(&id)
-            .and_then(|presence| presence.activities.first().cloned())
+        // Compose shows the custom status, else the first activity.
+        let activity = own
+            .and_then(|me| me.custom_status.clone())
+            .or_else(|| {
+                presence.get(&id).and_then(|presence| {
+                    presence.custom_status.clone().or_else(|| presence.activities.first().cloned())
+                })
+            })
             .unwrap_or_default();
         json!({
             "id": id.to_string(),
@@ -307,7 +321,7 @@ fn members_json(
 
     let dm = selected_channel.and_then(|id| private_channels.iter().find(|channel| channel.id == id));
     let mut rows: Vec<Value> = if let Some(dm) = dm {
-        me.map(|me| row(me.id, me.name.clone(), me.avatar.as_deref(), Some("online")))
+        me.map(|me| row(me.id, me.name.clone(), me.avatar.as_deref(), None))
             .into_iter()
             .chain(dm.recipients.iter().map(|user| {
                 let name = user.global_name.clone().unwrap_or_else(|| user.username.clone());
@@ -515,44 +529,87 @@ fn channels_json(channels: &[ChannelSnapshot], read_states: &[ReadStateSnapshot]
     Value::Array(items).to_string()
 }
 
-fn messages_json(
-    messages: &[MessageSnapshot],
-    members: &[MemberSnapshot],
-    private_channels: &[PrivateChannelSnapshot],
-    me: Option<&Me>,
-) -> String {
+/// What Discord shows instead of content for system messages, after the
+/// author's name. `None` for ordinary messages.
+fn system_text(kind: u8) -> Option<&'static str> {
+    Some(match kind {
+        1 => "added a recipient.",
+        2 => "removed a recipient.",
+        3 => "started a call.",
+        4 => "changed the channel name.",
+        5 => "changed the channel icon.",
+        6 => "pinned a message to this channel.",
+        7 => "joined the server.",
+        8 => "just boosted the server!",
+        9..=11 => "just boosted the server to a new level!",
+        12 => "added a followed channel to this channel.",
+        18 => "started a thread.",
+        _ => return None,
+    })
+}
+
+fn is_image(attachment: &lampcord_ffi::AttachmentSnapshot) -> bool {
+    attachment
+        .content_type
+        .as_deref()
+        .map_or_else(
+            || {
+                let name = attachment.filename.to_lowercase();
+                [".png", ".jpg", ".jpeg", ".gif", ".webp"].iter().any(|ext| name.ends_with(ext))
+            },
+            |kind| kind.starts_with("image/"),
+        )
+}
+
+/// Message rows for the chat list. Kept flat (attachments as a JSON
+/// string, reply fields inlined) because they feed a QML ListModel.
+fn messages_json(messages: &[MessageSnapshot], members: &[MemberSnapshot]) -> String {
     let members: HashMap<u64, &MemberSnapshot> =
         members.iter().map(|member| (member.user_id, member)).collect();
-    let recipients: HashMap<u64, Option<&str>> = private_channels
-        .iter()
-        .flat_map(|channel| channel.recipients.iter())
-        .map(|user| (user.id, user.avatar.as_deref()))
-        .chain(me.map(|me| (me.id, me.avatar.as_deref())))
-        .collect();
+    let user_avatar = |id: u64, hash: Option<&str>| {
+        let url = avatar_url(id, hash);
+        if url.is_empty() { default_avatar_url(id) } else { url }
+    };
     let mut previous: Option<&MessageSnapshot> = None;
     let items: Vec<Value> = messages
         .iter()
         .map(|message| {
             let time = snowflake_ms(message.id);
-            let grouped = previous.is_some_and(|prev| {
-                prev.author_id == message.author_id
-                    && time.saturating_sub(snowflake_ms(prev.id)) < GROUP_WINDOW_MS
-            });
+            let system = system_text(message.kind);
+            // Like Compose: replies and system rows always start a new group.
+            let grouped = message.reply.is_none()
+                && system.is_none()
+                && previous.is_some_and(|prev| {
+                    prev.author_id == message.author_id
+                        && system_text(prev.kind).is_none()
+                        && time.saturating_sub(snowflake_ms(prev.id)) < GROUP_WINDOW_MS
+                });
             previous = Some(message);
             let member = message.author_id.and_then(|id| members.get(&id));
             let name = member
                 .and_then(|member| member.nickname.clone())
                 .filter(|nick| !nick.is_empty())
                 .unwrap_or_else(|| message.author_name.clone());
-            let avatar = match (message.author_id, member) {
-                (Some(id), Some(member)) => avatar_url(id, member.avatar.as_deref()),
-                (Some(id), None) => avatar_url(id, recipients.get(&id).copied().flatten()),
-                _ => String::new(),
-            };
-            let avatar = match message.author_id {
-                Some(id) if avatar.is_empty() => default_avatar_url(id),
-                _ => avatar,
-            };
+            let avatar = message
+                .author_id
+                .map(|id| user_avatar(id, message.author_avatar.as_deref()))
+                .unwrap_or_default();
+            let attachments: Vec<Value> = message
+                .attachments
+                .iter()
+                .map(|attachment| {
+                    json!({
+                        "url": attachment.url,
+                        "preview": attachment.proxy_url.clone().unwrap_or_else(|| attachment.url.clone()),
+                        "filename": attachment.filename,
+                        "size": attachment.size,
+                        "image": is_image(attachment),
+                        "width": attachment.width.unwrap_or(0),
+                        "height": attachment.height.unwrap_or(0),
+                    })
+                })
+                .collect();
+            let reply = message.reply.as_ref();
             json!({
                 "id": message.id.to_string(),
                 "authorId": message.author_id.map(|id| id.to_string()).unwrap_or_default(),
@@ -562,6 +619,12 @@ fn messages_json(
                 "time": time,
                 "edited": message.edited_timestamp.is_some(),
                 "grouped": grouped,
+                "system": system.unwrap_or(""),
+                "kind": message.kind,
+                "attachments": Value::Array(attachments).to_string(),
+                "replyAuthor": reply.map(|reply| reply.author_name.clone()).unwrap_or_default(),
+                "replyAvatar": reply.map(|reply| user_avatar(reply.author_id, reply.author_avatar.as_deref())).unwrap_or_default(),
+                "replyContent": reply.map(|reply| reply.content.clone()).unwrap_or_default(),
             })
         })
         .collect();
@@ -578,7 +641,6 @@ impl qobject::LampcordBackend {
         self.as_mut().rust_mut().versions = patch.versions.clone();
 
         let mut members_dirty = false;
-        let mut me_changed = false;
         if let Some(meta) = patch.meta {
             let connection = QString::from(connection_name(&meta.connection));
             self.as_mut().set_connection(connection);
@@ -591,13 +653,19 @@ impl qobject::LampcordBackend {
                 if url.is_empty() { default_avatar_url(id) } else { url }
             });
             self.as_mut().set_current_user_avatar(QString::from(avatar.as_str()));
+            let status = meta.current_user_status.clone().unwrap_or_else(|| "online".to_owned());
+            self.as_mut().set_current_user_status(QString::from(status.as_str()));
+            self.as_mut().set_current_user_custom_status(QString::from(
+                meta.current_user_custom_status.as_deref().unwrap_or(""),
+            ));
             let me = meta.current_user_id.map(|id| Me {
                 id,
                 name: meta.current_user.clone().unwrap_or_default(),
                 avatar: meta.current_user_avatar.clone(),
+                status,
+                custom_status: meta.current_user_custom_status.clone(),
             });
             if me != self.me || meta.selected_channel_id != self.selected_channel {
-                me_changed = me != self.me;
                 let mut rust = self.as_mut().rust_mut();
                 rust.me = me;
                 rust.selected_channel = meta.selected_channel_id;
@@ -633,9 +701,6 @@ impl qobject::LampcordBackend {
         let mut channels_dirty = false;
         let mut messages_dirty = false;
         let mut dms_dirty = false;
-        if me_changed {
-            messages_dirty = true;
-        }
         if let Some(private_channels) = patch.private_channels {
             self.as_mut().rust_mut().private_channels = private_channels;
             dms_dirty = true;
@@ -684,7 +749,7 @@ impl qobject::LampcordBackend {
             self.as_mut().set_dms_json(QString::from(json.as_str()));
         }
         if messages_dirty {
-            let json = messages_json(&self.messages, &self.members, &self.private_channels, self.me.as_ref());
+            let json = messages_json(&self.messages, &self.members);
             self.as_mut().set_messages_json(QString::from(json.as_str()));
         }
     }
@@ -898,7 +963,7 @@ mod tests {
 
     #[test]
     fn member_list_puts_you_first_in_dms_and_offline_last_in_servers() {
-        let me = Me { id: 1, name: "me".into(), avatar: None };
+        let me = Me { id: 1, name: "me".into(), avatar: None, status: "online".into(), custom_status: None };
         let dm = PrivateChannelSnapshot {
             id: 50,
             kind: 1,
@@ -942,6 +1007,10 @@ mod tests {
             content: String::new(),
             timestamp: String::new(),
             edited_timestamp: None,
+            kind: 0,
+            author_avatar: None,
+            attachments: Vec::new(),
+            reply: None,
         };
         let minute = 60_000u64 << 22;
         let base = 1u64 << 40;
@@ -951,7 +1020,7 @@ mod tests {
             message(base + 2 * minute, 2),
             message(base + 20 * minute, 2),
         ];
-        let rows: Vec<Value> = serde_json::from_str(&messages_json(&messages, &[], &[], None)).unwrap();
+        let rows: Vec<Value> = serde_json::from_str(&messages_json(&messages, &[])).unwrap();
         let grouped: Vec<bool> = rows.iter().map(|row| row["grouped"].as_bool().unwrap()).collect();
         assert_eq!(grouped, [false, true, false, false]);
     }

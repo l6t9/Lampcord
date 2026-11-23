@@ -25,8 +25,7 @@ Item {
                 messages.remove(i)
             if (i < messages.count && messages.get(i).id === item.id) {
                 const row = messages.get(i)
-                if (row.content !== item.content || row.grouped !== item.grouped
-                        || row.author !== item.author || row.avatar !== item.avatar || row.edited !== item.edited)
+                if (Object.keys(item).some(key => row[key] !== item[key]))
                     messages.set(i, item)
             } else {
                 messages.insert(i, item)
