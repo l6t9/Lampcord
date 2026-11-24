@@ -41,9 +41,13 @@ impl GatewayTransport for TungsteniteGatewayTransport {
             request.headers_mut().insert(name, value);
         }
 
-        let (socket, _) = tokio_tungstenite::connect_async(request)
-            .await
-            .map_err(|error| TransportError(error.to_string()))?;
+        let (socket, _) = tokio::time::timeout(
+            std::time::Duration::from_secs(20),
+            tokio_tungstenite::connect_async(request),
+        )
+        .await
+        .map_err(|_| TransportError("gateway connect timed out after 20s".to_owned()))?
+        .map_err(|error| TransportError(error.to_string()))?;
         self.socket = Some(socket);
         self.close_code = None;
         Ok(())

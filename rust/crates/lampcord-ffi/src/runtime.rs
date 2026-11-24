@@ -14,13 +14,13 @@ use lampcord_core::{
     api,
     auth::{self, LoginFailure},
     captcha::{self, CaptchaChallenge},
-    gateway_client::{GatewayClient, GatewayEvent},
+    gateway_client::{GatewayClient, GatewayEvent, lazy_request_payload},
     gateway_plan::reconnect_delay_ms,
     remote_auth::{self, RemoteAuthState as CoreRemoteAuthState},
     rest::RestConfig,
     rest_client::RestClient,
     secret_store::{FileSecretStore, SecretStore},
-    state_cache::{CachedPresence, StateCache},
+    state_cache::{CachedPresence, MemberListRow, PersistedCache, StateCache},
     token_store::{SavedAccount, TokenStore},
     traits::{CaptchaSolver, GatewayUrlProvider},
 };
@@ -34,10 +34,11 @@ use crate::{
     snapshot::{
         AttachmentSnapshot, AuthStateSnapshot, BadgeSnapshot, ChannelSnapshot, ClientSnapshot,
         GuildFolderSnapshot, GuildSnapshot, MAX_SNAPSHOT_MEMBERS, MAX_SNAPSHOT_PRESENCES,
-        MAX_SNAPSHOT_PRIVATE_CHANNELS, MAX_SNAPSHOT_READ_STATES, MemberSnapshot, MessageSnapshot,
-        PresenceSnapshot, PrivateChannelSnapshot, ProfileSnapshot, ReadStateSnapshot,
-        RecipientSnapshot, ReplySnapshot, SNAPSHOT_SCHEMA_VERSION, SnapshotMetaPatch,
-        SnapshotPatch, SnapshotVersions,
+        MAX_SNAPSHOT_PRIVATE_CHANNELS, MAX_SNAPSHOT_READ_STATES, MEMBER_LIST_ROW_GROUP,
+        MEMBER_LIST_ROW_MEMBER, MEMBER_LIST_ROW_PENDING, MemberListRowSnapshot, MemberListSnapshot,
+        MemberSnapshot, MessageSnapshot, PresenceSnapshot, PrivateChannelSnapshot, ProfileSnapshot,
+        ReadStateSnapshot, RecipientSnapshot, RelationshipSnapshot, ReplySnapshot,
+        SNAPSHOT_SCHEMA_VERSION, SnapshotMetaPatch, SnapshotPatch, SnapshotVersions,
     },
     types::{
         AuthChallenge, AuthFailureKind, ClientCommand, ClientConfig, ClientEvent,
@@ -49,6 +50,11 @@ const MAX_EVENT_QUEUE: usize = 512;
 const EVENT_DROP_BATCH: usize = 64;
 const SNAPSHOT_COALESCE: Duration = Duration::from_millis(32);
 const SNAPSHOT_DISPATCH_EVENTS: &[&str] = &[
+    "RELATIONSHIP_ADD",
+    "RELATIONSHIP_UPDATE",
+    "RELATIONSHIP_REMOVE",
+    "USER_SETTINGS_UPDATE",
+    "GUILD_MEMBER_LIST_UPDATE",
     "MESSAGE_CREATE",
     "MESSAGE_UPDATE",
     "MESSAGE_DELETE",
@@ -63,7 +69,9 @@ const SNAPSHOT_DISPATCH_EVENTS: &[&str] = &[
     "GUILD_MEMBER_UPDATE",
     "GUILD_MEMBER_REMOVE",
     "GUILD_MEMBERS_CHUNK",
+    "GUILD_MEMBER_LIST_UPDATE",
     "PRESENCE_UPDATE",
+    "USER_SETTINGS_UPDATE",
 ];
 static EVENT_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
@@ -113,6 +121,12 @@ struct Session {
     task: tokio::task::JoinHandle<()>,
     cache: Arc<Mutex<StateCache>>,
     events: mpsc::UnboundedReceiver<GatewayEvent>,
+    outbound: mpsc::UnboundedSender<Value>,
+}
+
+enum InternalEvent {
+    Messages(Snowflake, Vec<Message>),
+    PrivateChannels(Vec<Channel>),
 }
 
 fn default_rest_config(
@@ -166,7 +180,9 @@ fn establish_session(
         rest: rest.clone(),
         override_url: gateway_url_override,
     };
-    let mut client = GatewayClient::new(TungsteniteGatewayTransport::default(), url_provider);
+    let (out_tx, out_rx) = mpsc::unbounded_channel();
+    let mut client = GatewayClient::new(TungsteniteGatewayTransport::default(), url_provider)
+        .with_outbound(out_rx);
     let cache = client.cache().clone();
     let (gw_tx, gw_rx) = mpsc::unbounded_channel();
     let token = token.to_owned();
@@ -178,6 +194,9 @@ fn establish_session(
                 Ok(terminal) => terminal,
                 Err(error) => {
                     eprintln!("[lampcord-ffi] gateway error: {error}");
+                    let _ = gw_tx.send(GatewayEvent::Failed {
+                        message: error.to_string(),
+                    });
                     None
                 }
             };
@@ -207,6 +226,7 @@ fn establish_session(
             task,
             cache,
             events: gw_rx,
+            outbound: out_tx,
         },
     ))
 }
@@ -284,6 +304,8 @@ impl RuntimeHandle {
             private_channels: (versions.channels > since.channels)
                 .then(|| snapshot.private_channels.clone()),
             guild_folders: (versions.guilds > since.guilds).then(|| snapshot.guild_folders.clone()),
+            member_list: (versions.members > since.members).then(|| snapshot.member_list.clone()),
+            relationships: snapshot.relationships.clone(),
         }
     }
 
@@ -325,6 +347,7 @@ fn benchmark_snapshot() -> ClientSnapshot {
         has_token: true,
         current_user_id: Some(1),
         current_user: Some("bench".to_owned()),
+        current_user_avatar: None,
         selected_guild_id: Some(1),
         selected_channel_id: Some(1),
         guilds: (1..=50)
@@ -342,6 +365,10 @@ fn benchmark_snapshot() -> ClientSnapshot {
                 kind: 0,
                 parent_id: None,
                 position: Some((id % 20) as i32),
+                can_view: true,
+                can_send: true,
+                icon: None,
+                recipients: Vec::new(),
             })
             .collect(),
         messages: (1..=200)
@@ -350,11 +377,11 @@ fn benchmark_snapshot() -> ClientSnapshot {
                 channel_id: 1,
                 author_id: Some(id % 100 + 1),
                 author_name: format!("user-{}", id % 100 + 1),
+                author_avatar: None,
                 content: format!("benchmark message {id}"),
                 timestamp: "2026-01-01T00:00:00Z".to_owned(),
                 edited_timestamp: None,
                 kind: 0,
-                author_avatar: None,
                 author_decoration: None,
                 attachments: Vec::new(),
                 reply: None,
@@ -396,7 +423,8 @@ fn benchmark_snapshot() -> ClientSnapshot {
         error: None,
         private_channels: Vec::new(),
         guild_folders: Vec::new(),
-        current_user_avatar: None,
+        member_list: MemberListSnapshot::default(),
+        relationships: Vec::new(),
         current_user_status: None,
         current_user_custom_status: None,
         current_user_decoration: None,
@@ -558,7 +586,8 @@ fn set_snapshot(
         previous.channels != next.channels || previous.private_channels != next.private_channels;
     let messages_changed =
         previous.messages != next.messages || previous.pinned_messages != next.pinned_messages;
-    let members_changed = previous.members != next.members;
+    let members_changed =
+        previous.members != next.members || previous.member_list != next.member_list;
     let presences_changed = previous.presences != next.presences;
     let read_states_changed = previous.read_states != next.read_states;
     if meta_changed {
@@ -599,11 +628,11 @@ fn message_snapshot(message: &Message) -> MessageSnapshot {
             .clone()
             .filter(|name| !name.is_empty())
             .unwrap_or_else(|| message.author.username.clone()),
+        author_avatar: message.author.avatar.clone(),
         content: message.content.clone(),
         timestamp: message.timestamp.clone(),
         edited_timestamp: message.edited_timestamp.clone(),
         kind: message.kind.0,
-        author_avatar: message.author.avatar.clone(),
         author_decoration: message.author.decoration_asset().map(str::to_owned),
         attachments: message
             .attachments
@@ -656,6 +685,10 @@ fn message_snapshot_from_value(value: &Value) -> MessageSnapshot {
         .unwrap_or("unknown")
         .to_owned();
     MessageSnapshot {
+        author_avatar: author
+            .and_then(|author| author.get("avatar"))
+            .and_then(Value::as_str)
+            .map(str::to_owned),
         id: json_id(value.get("id")).unwrap_or_default(),
         channel_id: json_id(value.get("channel_id")).unwrap_or_default(),
         author_id,
@@ -679,10 +712,6 @@ fn message_snapshot_from_value(value: &Value) -> MessageSnapshot {
             .and_then(Value::as_u64)
             .and_then(|kind| u8::try_from(kind).ok())
             .unwrap_or_default(),
-        author_avatar: author
-            .and_then(|author| author.get("avatar"))
-            .and_then(Value::as_str)
-            .map(str::to_owned),
         author_decoration: None,
         attachments: Vec::new(),
         reply: None,
@@ -850,6 +879,186 @@ fn json_id(value: Option<&Value>) -> Option<u64> {
     }
 }
 
+fn subscribe_guild_members(
+    guild_id: Snowflake,
+    cache: &Option<Arc<Mutex<StateCache>>>,
+    outbound: &Option<mpsc::UnboundedSender<Value>>,
+) {
+    request_member_list_ranges(guild_id, &[[0, 99]], cache, outbound);
+}
+
+fn request_member_list_ranges(
+    guild_id: Snowflake,
+    ranges: &[[u32; 2]],
+    cache: &Option<Arc<Mutex<StateCache>>>,
+    outbound: &Option<mpsc::UnboundedSender<Value>>,
+) {
+    let (Some(cache), Some(outbound)) = (cache, outbound) else {
+        return;
+    };
+    let channel_id = {
+        let cache = cache.lock().expect("cache lock");
+        cache
+            .channels_for_guild(guild_id)
+            .into_iter()
+            .find(|channel| matches!(channel.kind.0, 0 | 2 | 5 | 13))
+            .map(|channel| channel.id)
+    };
+    if let Some(channel_id) = channel_id {
+        let _ = outbound.send(lazy_request_payload(guild_id, channel_id, ranges));
+    }
+}
+
+fn member_list_snapshot(cache: &StateCache, guild_id: Option<Snowflake>) -> MemberListSnapshot {
+    let Some(guild_id) = guild_id else {
+        return MemberListSnapshot::default();
+    };
+    let Some(state) = cache.member_list(guild_id) else {
+        return MemberListSnapshot::default();
+    };
+    let rows = state
+        .rows
+        .iter()
+        .map(|row| match row {
+            MemberListRow::Pending => pending_row(),
+            MemberListRow::Group { id, count } => MemberListRowSnapshot {
+                kind: MEMBER_LIST_ROW_GROUP,
+                group_id: Some(id.clone()),
+                group_count: *count,
+                member: None,
+            },
+            MemberListRow::Member(user_id) => match cache.member(guild_id, *user_id) {
+                Some(member) => MemberListRowSnapshot {
+                    kind: MEMBER_LIST_ROW_MEMBER,
+                    member: Some(MemberSnapshot {
+                        guild_id,
+                        user_id: *user_id,
+                        username: member.username.clone(),
+                        avatar: member.avatar.clone(),
+                        nickname: member.nickname.clone(),
+                        roles: member.roles.clone(),
+                        status: cache
+                            .presence(*user_id)
+                            .map(|presence| presence.status.clone()),
+                        global_name: member.global_name.clone(),
+                        decoration: member.decoration.clone(),
+                        nameplate: member.nameplate.clone(),
+                    }),
+                    ..MemberListRowSnapshot::default()
+                },
+                None => pending_row(),
+            },
+        })
+        .collect();
+    MemberListSnapshot {
+        rows,
+        online_count: state.online_count,
+        member_count: state.member_count,
+    }
+}
+
+fn relationships_snapshot(cache: &StateCache) -> Vec<RelationshipSnapshot> {
+    cache
+        .relationship_entries()
+        .into_iter()
+        .map(|relationship| {
+            let user = cache.user(relationship.user_id);
+            RelationshipSnapshot {
+                user_id: relationship.user_id,
+                kind: relationship.kind,
+                username: user.map(|user| user.username.clone()).unwrap_or_default(),
+                global_name: user.and_then(|user| user.global_name.clone()),
+                avatar: user.and_then(|user| user.avatar.clone()),
+                avatar_decoration: user
+                    .and_then(|user| user.decoration_asset())
+                    .map(str::to_owned),
+            }
+        })
+        .collect()
+}
+
+fn pending_row() -> MemberListRowSnapshot {
+    MemberListRowSnapshot {
+        kind: MEMBER_LIST_ROW_PENDING,
+        ..MemberListRowSnapshot::default()
+    }
+}
+
+fn channel_can_view(cache: &StateCache, channel: &Channel) -> bool {
+    let Some(guild_id) = channel.guild_id else {
+        return true;
+    };
+    let (Some(guild), Some(user)) = (cache.guild(guild_id), cache.current_user()) else {
+        return false;
+    };
+    let Some(member) = cache.member(guild_id, user.id) else {
+        return true;
+    };
+    let member_roles = member.roles.clone();
+    lampcord_core::permissions::can_view_channel(guild, channel, &member_roles, user.id)
+}
+
+fn channel_can_send(cache: &StateCache, channel: &Channel) -> bool {
+    let Some(guild_id) = channel.guild_id else {
+        return true;
+    };
+    let (Some(guild), Some(user)) = (cache.guild(guild_id), cache.current_user()) else {
+        return false;
+    };
+    let Some(member) = cache.member(guild_id, user.id) else {
+        return true;
+    };
+    let member_roles = member.roles.clone();
+    lampcord_core::permissions::can_send_messages(guild, channel, &member_roles, user.id)
+}
+
+fn channel_snapshot(channel: &Channel, can_view: bool, can_send: bool) -> ChannelSnapshot {
+    ChannelSnapshot {
+        can_send,
+        icon: channel.icon.clone(),
+        recipients: channel
+            .recipients
+            .iter()
+            .map(|user| RecipientSnapshot {
+                id: user.id,
+                username: user.username.clone(),
+                global_name: user.global_name.clone(),
+                avatar: user.avatar.clone(),
+                decoration: user.decoration_asset().map(str::to_owned),
+                nameplate: user.nameplate_asset().map(str::to_owned),
+            })
+            .collect(),
+        can_view,
+        id: channel.id,
+        guild_id: channel.guild_id,
+        name: channel_display_name(channel),
+        kind: channel.kind.0,
+        parent_id: channel.parent_id,
+        position: channel.position.map(|position| position as i32),
+    }
+}
+
+fn channel_display_name(channel: &Channel) -> String {
+    if let Some(name) = channel.name.as_ref().filter(|name| !name.is_empty()) {
+        return name.clone();
+    }
+    let names: Vec<String> = channel
+        .recipients
+        .iter()
+        .map(|user| {
+            user.global_name
+                .clone()
+                .filter(|name| !name.is_empty())
+                .unwrap_or_else(|| user.username.clone())
+        })
+        .collect();
+    if names.is_empty() {
+        format!("channel-{}", channel.id)
+    } else {
+        names.join(", ")
+    }
+}
+
 fn build_snapshot(
     connection: ConnectionState,
     has_token: bool,
@@ -896,7 +1105,7 @@ fn build_snapshot(
         })
         .collect();
 
-    let channels: Vec<ChannelSnapshot> = selected_guild_id
+    let guild_channels: Vec<Channel> = selected_guild_id
         .into_iter()
         .flat_map(|guild_id| {
             cache
@@ -905,16 +1114,16 @@ fn build_snapshot(
                 .cloned()
                 .collect::<Vec<_>>()
         })
-        .map(|channel| ChannelSnapshot {
-            id: channel.id,
-            guild_id: channel.guild_id,
-            name: channel
-                .name
-                .clone()
-                .unwrap_or_else(|| format!("channel-{}", channel.id)),
-            kind: channel.kind.0,
-            parent_id: channel.parent_id,
-            position: channel.position.map(|position| position as i32),
+        .collect();
+    let channels: Vec<ChannelSnapshot> = guild_channels
+        .iter()
+        .chain(cache.private_channels())
+        .map(|channel| {
+            channel_snapshot(
+                channel,
+                channel_can_view(&cache, channel),
+                channel_can_send(&cache, channel),
+            )
         })
         .collect();
 
@@ -1030,6 +1239,7 @@ fn build_snapshot(
         has_token,
         current_user_id,
         current_user,
+        current_user_avatar: cache.current_user().and_then(|user| user.avatar.clone()),
         selected_guild_id,
         selected_channel_id,
         guilds,
@@ -1038,11 +1248,12 @@ fn build_snapshot(
         members,
         presences,
         read_states,
+        member_list: member_list_snapshot(&cache, selected_guild_id),
+        relationships: relationships_snapshot(&cache),
         auth: auth.clone(),
         error,
         private_channels,
         guild_folders,
-        current_user_avatar: cache.current_user().and_then(|user| user.avatar.clone()),
         current_user_status: cache.own_status().map(str::to_owned),
         current_user_custom_status: cache.own_custom_status().map(str::to_owned),
         current_user_decoration: cache
@@ -1246,7 +1457,22 @@ async fn run(
     let mut connection = ConnectionState::Disconnected;
     let mut error: Option<String> = None;
     let mut active_token: Option<String> = None;
-    let mut cache: Option<Arc<Mutex<StateCache>>> = None;
+    let cache_file = config
+        .storage_path
+        .as_deref()
+        .map(|path| std::path::Path::new(path).with_file_name("lampcord-cache.bin"));
+    let mut persisted_initial: Option<PersistedCache> = cache_file
+        .as_ref()
+        .and_then(|file| std::fs::read(file).ok())
+        .and_then(|bytes| PersistedCache::from_bytes(&bytes));
+    let preloaded = Arc::new(Mutex::new(StateCache::new()));
+    if let Some(persisted) = &persisted_initial {
+        preloaded.lock().expect("cache lock").restore(persisted);
+    }
+    let mut cache: Option<Arc<Mutex<StateCache>>> = Some(preloaded);
+    let mut persist_ticker = tokio::time::interval(std::time::Duration::from_secs(5));
+    persist_ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+    persist_ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
     let mut rest: Option<Arc<FfiRestClient>> = None;
     let mut selected_guild_id: Option<Snowflake> = None;
     let mut selected_channel_id: Option<Snowflake> = None;
@@ -1256,6 +1482,7 @@ async fn run(
     let mut auth_state = AuthStateSnapshot::default();
     let mut gateway_task: Option<tokio::task::JoinHandle<()>> = None;
     let mut gateway_events: Option<mpsc::UnboundedReceiver<GatewayEvent>> = None;
+    let mut gateway_outbound: Option<mpsc::UnboundedSender<Value>> = None;
     let mut remote_task: Option<tokio::task::JoinHandle<()>> = None;
     let mut remote_cancel: Option<oneshot::Sender<()>> = None;
     let mut remote_events: Option<mpsc::UnboundedReceiver<CoreRemoteAuthState>> = None;
@@ -1265,7 +1492,7 @@ async fn run(
     let gateway_url_override = config.gateway_url.clone();
     let captcha_solver = ConfigurableCaptchaSolver::default();
     let seq = Arc::new(AtomicU64::new(0));
-    let mut snapshot_dirty = false;
+    let mut snapshot_dirty = true;
     let mut last_publish = Instant::now();
     let mut flush_ticker = tokio::time::interval(SNAPSHOT_COALESCE);
     flush_ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
@@ -1356,8 +1583,13 @@ async fn run(
                     if let Some(task) = gateway_task.take() {
                         task.abort();
                     }
+                    gateway_outbound = Some(session.outbound.clone());
                     gateway_task = Some(session.task);
                     gateway_events = Some(session.events);
+                    if let Some(persisted) = &persisted_initial {
+                        session.cache.lock().expect("cache lock").restore(persisted);
+                    }
+                    persisted_initial = None;
                     cache = Some(session.cache);
                     rest = Some(rest_client);
                     active_token = Some(token.clone());
@@ -1382,8 +1614,27 @@ async fn run(
         }};
     }
 
+    let (fetch_tx, mut fetch_rx) = mpsc::unbounded_channel::<InternalEvent>();
+
     loop {
         tokio::select! {
+            Some(event) = fetch_rx.recv() => {
+                match event {
+                    InternalEvent::Messages(channel_id, messages) => {
+                        let selected = selected_channel_id == Some(channel_id);
+                        fetched_messages.insert(channel_id, messages);
+                        if selected {
+                            mark_snapshot_dirty!();
+                        }
+                    }
+                    InternalEvent::PrivateChannels(channels) => {
+                        if let Some(cache) = &cache {
+                            cache.lock().expect("cache lock").upsert_channels(channels);
+                        }
+                        mark_snapshot_dirty!();
+                    }
+                }
+            }
             maybe_cmd = cmd_rx.recv() => {
                 let Some(cmd) = maybe_cmd else { break; };
                 let is_add_reaction = matches!(&cmd, ClientCommand::AddReaction { .. });
@@ -1395,6 +1646,9 @@ async fn run(
                         break;
                     }
                     ClientCommand::Logout => {
+                        if let Some(file) = &cache_file {
+                            let _ = std::fs::remove_file(file);
+                        }
                         if let Some(task) = gateway_task.take() { task.abort(); }
                         if let Some(cancel) = remote_cancel.take() { let _ = cancel.send(()); }
                         if let Some(task) = remote_task.take() { task.abort(); }
@@ -1612,43 +1866,63 @@ async fn run(
                         mark_snapshot_dirty!();
                     }
                     ClientCommand::SelectGuild { guild_id } => {
-                        selected_guild_id = guild_id.map(Snowflake::from);
-                        selected_channel_id = None;
-                        if let (Some(guild_id), Some(rest_client), Some(cache)) =
-                            (selected_guild_id, rest.clone(), cache.clone())
-                        {
-                            let config = default_rest_config(
-                                &api_base,
-                                user_agent.as_deref(),
-                                active_token.clone(),
-                            );
-                            match api::channel::get_guild_channels(
-                                &*rest_client,
-                                &config,
-                                guild_id,
-                            )
-                            .await
-                            {
-                                Ok(channels) => cache_guild_channels(&cache, guild_id, channels),
-                                Err(api_error) => {
-                                    error = Some(format!("Failed to fetch channels: {api_error}"));
-                                    push_event(&events, ClientEvent::CommandFailed {
-                                        kind: FfiErrorKind::Transport,
-                                        message: error.clone().unwrap_or_default(),
-                                    });
+                        let next = guild_id.map(Snowflake::from);
+                        if next != selected_guild_id {
+                            selected_guild_id = next;
+                            selected_channel_id = None;
+                            if let Some(guild_id) = selected_guild_id {
+                                subscribe_guild_members(guild_id, &cache, &gateway_outbound);
+                                // Backfill channels for servers the cache only knows by id.
+                                if let (Some(rest_client), Some(cache)) = (rest.clone(), cache.clone()) {
+                                    let config = default_rest_config(
+                                        &api_base,
+                                        user_agent.as_deref(),
+                                        active_token.clone(),
+                                    );
+                                    match api::channel::get_guild_channels(&*rest_client, &config, guild_id).await {
+                                        Ok(channels) => cache_guild_channels(&cache, guild_id, channels),
+                                        Err(api_error) => {
+                                            error = Some(format!("Failed to fetch channels: {api_error}"));
+                                            push_event(&events, ClientEvent::CommandFailed {
+                                                kind: FfiErrorKind::Transport,
+                                                message: error.clone().unwrap_or_default(),
+                                            });
+                                        }
+                                    }
                                 }
                             }
+                            mark_snapshot_dirty!();
                         }
-                        mark_snapshot_dirty!();
+                    }
+                    ClientCommand::SetMemberListRanges { ranges } => {
+                        if let Some(guild_id) = selected_guild_id {
+                            let pairs: Vec<[u32; 2]> = ranges
+                                .iter()
+                                .filter_map(|range| match range.as_slice() {
+                                    [start, end] => Some([*start, *end]),
+                                    _ => None,
+                                })
+                                .collect();
+                            request_member_list_ranges(guild_id, &pairs, &cache, &gateway_outbound);
+                        }
                     }
                     ClientCommand::SelectChannel { channel_id } => {
-                        selected_channel_id = channel_id.map(Snowflake::from);
+                        let next = channel_id.map(Snowflake::from);
+                        if next == selected_channel_id {
+                            continue;
+                        }
+                        selected_channel_id = next;
                         if let (Some(channel_id), Some(rest_client)) = (selected_channel_id, rest.clone()) {
                             let config = default_rest_config(&api_base, user_agent.as_deref(), active_token.clone());
-                            if let Ok(mut messages) = api::fetch_channel_messages(&*rest_client, &config, channel_id, 50, None).await {
-                                messages.sort_by(|left, right| left.id.cmp(&right.id));
-                                fetched_messages.insert(channel_id, messages);
-                            }
+                            let fetch_tx = fetch_tx.clone();
+                            tokio::spawn(async move {
+                                if let Ok(mut messages) =
+                                    api::fetch_channel_messages(&*rest_client, &config, channel_id, 50, None).await
+                                {
+                                    messages.sort_by(|left, right| left.id.cmp(&right.id));
+                                    let _ = fetch_tx.send(InternalEvent::Messages(channel_id, messages));
+                                }
+                            });
                         }
                         mark_snapshot_dirty!();
                     }
@@ -2022,6 +2296,18 @@ async fn run(
                     GatewayEvent::Ready { .. } => {
                         connection = ConnectionState::Ready;
                         error = None;
+                        if let Some(rest_client) = rest.clone() {
+                            let config = default_rest_config(&api_base, user_agent.as_deref(), active_token.clone());
+                            let fetch_tx = fetch_tx.clone();
+                            tokio::spawn(async move {
+                                if let Ok(channels) = api::channel::get_private_channels(&*rest_client, &config).await {
+                                    let _ = fetch_tx.send(InternalEvent::PrivateChannels(channels));
+                                }
+                            });
+                        }
+                        if let Some(guild_id) = selected_guild_id {
+                            subscribe_guild_members(guild_id, &cache, &gateway_outbound);
+                        }
                     }
                     GatewayEvent::Resumed => {
                         connection = ConnectionState::Ready;
@@ -2041,6 +2327,9 @@ async fn run(
                     GatewayEvent::Dispatch { event_type, data } => {
                         handle_dispatch(&event_type, data.as_deref(), &events, cache.as_ref());
                     }
+                    GatewayEvent::Failed { message } => {
+                        push_event(&events, ClientEvent::Error { message });
+                    }
                     GatewayEvent::HandlerErrors { errors } => {
                         for handler_error in errors {
                             push_event(&events, ClientEvent::CommandFailed {
@@ -2059,6 +2348,22 @@ async fn run(
                     mark_snapshot_dirty!();
                 }
                 flush_snapshot!(false);
+            }
+            _ = persist_ticker.tick() => {
+                if let (Some(live), Some(file)) = (cache.clone(), cache_file.clone()) {
+                    let persisted = live.lock().expect("cache lock").take_persisted_if_dirty();
+                    if let Some(persisted) = persisted {
+                        tokio::task::spawn_blocking(move || {
+                            let Ok(bytes) = persisted.to_bytes() else {
+                                return;
+                            };
+                            let temp = file.with_extension("tmp");
+                            if std::fs::write(&temp, bytes).is_ok() {
+                                let _ = std::fs::rename(&temp, &file);
+                            }
+                        });
+                    }
+                }
             }
             _ = flush_ticker.tick() => {
                 flush_snapshot!(false);

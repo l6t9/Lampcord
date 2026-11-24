@@ -1,5 +1,6 @@
 package me.lampu.lampcord.rust
 
+import me.lampu.lampcord.shared.utils.Logging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -28,7 +29,10 @@ import uniffi.lampcord_ffi.ConnectionState as FfiConnectionState
 import uniffi.lampcord_ffi.FfiErrorKind as FfiErrorKind
 import uniffi.lampcord_ffi.GuildSnapshot as FfiGuildSnapshot
 import uniffi.lampcord_ffi.LampcordClient
+import uniffi.lampcord_ffi.MemberListRowSnapshot as FfiMemberListRowSnapshot
+import uniffi.lampcord_ffi.MemberListSnapshot as FfiMemberListSnapshot
 import uniffi.lampcord_ffi.MemberSnapshot as FfiMemberSnapshot
+import uniffi.lampcord_ffi.RelationshipSnapshot as FfiRelationshipSnapshot
 import uniffi.lampcord_ffi.MessageSnapshot as FfiMessageSnapshot
 import uniffi.lampcord_ffi.PresenceSnapshot as FfiPresenceSnapshot
 import uniffi.lampcord_ffi.PlatformSecretStore
@@ -96,8 +100,14 @@ actual class RustCoreEngine actual constructor(config: RustClientConfig) : AutoC
             .getOrDefault(emptyList())
             .map(::mapEvent)
 
-    actual fun connectToken(token: String): Boolean = runCatching { client.connectToken(token) }.isSuccess
-    actual fun connectStoredToken(): Boolean = runCatching { client.connectStoredToken() }.isSuccess
+    actual fun connectToken(token: String): Boolean =
+        runCatching { client.connectToken(token) }
+            .onFailure { Logging.w("RustCore", "connectToken failed: ${it.message}", it) }
+            .isSuccess
+    actual fun connectStoredToken(): Boolean =
+        runCatching { client.connectStoredToken() }
+            .onFailure { Logging.w("RustCore", "connectStoredToken failed: ${it.message}", it) }
+            .isSuccess
 
     actual fun loginPassword(login: String, password: String, captchaKey: String?): Boolean =
         runCatching { client.loginPassword(login, password, captchaKey) }.isSuccess
@@ -111,6 +121,8 @@ actual class RustCoreEngine actual constructor(config: RustClientConfig) : AutoC
     actual fun cancelRemoteAuth(): Boolean = runCatching { client.cancelRemoteAuth() }.isSuccess
 
     actual fun selectGuild(guildId: ULong?): Boolean = runCatching { client.selectGuild(guildId) }.isSuccess
+    actual fun setMemberListRanges(ranges: List<List<Int>>): Boolean =
+        runCatching { client.setMemberListRanges(ranges.map { range -> range.map(Int::toUInt) }) }.isSuccess
     actual fun selectChannel(channelId: ULong?): Boolean = runCatching { client.selectChannel(channelId) }.isSuccess
 
     actual fun fetchMessages(channelId: ULong, before: ULong?, limit: UByte?): Boolean =
@@ -214,6 +226,17 @@ private fun mapChannel(value: FfiChannelSnapshot): RustChannel = RustChannel(
     kind = value.kind,
     parentId = value.parentId,
     position = value.position,
+    canView = value.canView,
+    canSend = value.canSend,
+    icon = value.icon,
+    recipients = value.recipients.map { recipient ->
+        RustRecipient(
+            id = recipient.id,
+            username = recipient.username,
+            globalName = recipient.globalName,
+            avatar = recipient.avatar,
+        )
+    },
 )
 
 private fun mapMessage(value: FfiMessageSnapshot): RustMessage = RustMessage(
@@ -224,6 +247,7 @@ private fun mapMessage(value: FfiMessageSnapshot): RustMessage = RustMessage(
     content = value.content,
     timestamp = value.timestamp,
     editedTimestamp = value.editedTimestamp,
+    authorAvatar = value.authorAvatar,
 )
 
 private fun mapMember(value: FfiMemberSnapshot): RustMember = RustMember(
@@ -234,6 +258,28 @@ private fun mapMember(value: FfiMemberSnapshot): RustMember = RustMember(
     nickname = value.nickname,
     roles = value.roles,
     status = value.status,
+)
+
+private fun mapMemberListRow(value: FfiMemberListRowSnapshot): RustMemberListRow = RustMemberListRow(
+    kind = value.kind.toInt(),
+    groupId = value.groupId,
+    groupCount = value.groupCount?.toInt(),
+    member = value.member?.let(::mapMember),
+)
+
+private fun mapRelationship(value: FfiRelationshipSnapshot): RustRelationship = RustRelationship(
+    userId = value.userId,
+    kind = value.kind.toInt(),
+    username = value.username,
+    globalName = value.globalName,
+    avatar = value.avatar,
+    avatarDecoration = value.avatarDecoration,
+)
+
+private fun mapMemberList(value: FfiMemberListSnapshot): RustMemberList = RustMemberList(
+    rows = value.rows.map(::mapMemberListRow),
+    onlineCount = value.onlineCount?.toInt(),
+    memberCount = value.memberCount?.toInt(),
 )
 
 private fun mapPresence(value: FfiPresenceSnapshot): RustPresence =
@@ -263,6 +309,7 @@ private fun mapMeta(value: FfiSnapshotMetaPatch): RustSnapshotMetaPatch = RustSn
     hasToken = value.hasToken,
     currentUserId = value.currentUserId,
     currentUser = value.currentUser,
+    currentUserAvatar = value.currentUserAvatar,
     selectedGuildId = value.selectedGuildId,
     selectedChannelId = value.selectedChannelId,
     auth = mapAuthState(value.auth),
@@ -279,6 +326,7 @@ private fun mapSnapshot(
     hasToken = value.hasToken,
     currentUserId = value.currentUserId,
     currentUser = value.currentUser,
+    currentUserAvatar = value.currentUserAvatar,
     selectedGuildId = value.selectedGuildId,
     selectedChannelId = value.selectedChannelId,
     guilds = value.guilds.map(::mapGuild),
@@ -287,6 +335,8 @@ private fun mapSnapshot(
     members = value.members.map(::mapMember),
     presences = value.presences.map(::mapPresence),
     readStates = value.readStates.map(::mapReadState),
+    memberList = mapMemberList(value.memberList),
+    relationships = value.relationships.map(::mapRelationship),
     auth = mapAuthState(value.auth),
     error = value.error,
     versions = mapVersions(versions),
@@ -301,6 +351,7 @@ private fun mapSnapshotPatch(value: FfiSnapshotPatch, previous: RustSnapshot): R
         hasToken = meta?.hasToken ?: previous.hasToken,
         currentUserId = meta?.currentUserId ?: previous.currentUserId,
         currentUser = meta?.currentUser ?: previous.currentUser,
+        currentUserAvatar = meta?.currentUserAvatar ?: previous.currentUserAvatar,
         selectedGuildId = meta?.selectedGuildId ?: previous.selectedGuildId,
         selectedChannelId = meta?.selectedChannelId ?: previous.selectedChannelId,
         guilds = value.guilds?.map(::mapGuild) ?: previous.guilds,
@@ -309,6 +360,8 @@ private fun mapSnapshotPatch(value: FfiSnapshotPatch, previous: RustSnapshot): R
         members = value.members?.map(::mapMember) ?: previous.members,
         presences = value.presences?.map(::mapPresence) ?: previous.presences,
         readStates = value.readStates?.map(::mapReadState) ?: previous.readStates,
+        memberList = value.memberList?.let(::mapMemberList) ?: previous.memberList,
+        relationships = value.relationships.map(::mapRelationship),
         auth = meta?.auth ?: previous.auth,
         error = meta?.error ?: previous.error,
         versions = mapVersions(value.versions),

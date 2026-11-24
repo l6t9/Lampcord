@@ -139,6 +139,9 @@ pub enum ClientCommand {
     SelectChannel {
         channel_id: Option<u64>,
     },
+    SetMemberListRanges {
+        ranges: Vec<Vec<u32>>,
+    },
     FetchMessages {
         channel_id: u64,
         before: Option<u64>,

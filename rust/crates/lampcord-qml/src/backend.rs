@@ -1052,6 +1052,10 @@ mod tests {
             kind,
             parent_id: parent,
             position: Some(position),
+            can_view: true,
+            can_send: true,
+            icon: None,
+            recipients: Vec::new(),
         }
     }
 

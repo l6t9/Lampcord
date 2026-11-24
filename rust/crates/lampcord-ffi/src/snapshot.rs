@@ -18,6 +18,7 @@ pub struct ClientSnapshot {
     pub has_token: bool,
     pub current_user_id: Option<u64>,
     pub current_user: Option<String>,
+    pub current_user_avatar: Option<String>,
     pub selected_guild_id: Option<u64>,
     pub selected_channel_id: Option<u64>,
     pub guilds: Vec<GuildSnapshot>,
@@ -26,14 +27,14 @@ pub struct ClientSnapshot {
     pub members: Vec<MemberSnapshot>,
     pub presences: Vec<PresenceSnapshot>,
     pub read_states: Vec<ReadStateSnapshot>,
+    pub member_list: MemberListSnapshot,
+    pub relationships: Vec<RelationshipSnapshot>,
     pub auth: AuthStateSnapshot,
     pub error: Option<String>,
     /// Schema 3+. DMs and group DMs, most recent first; versioned with `channels`.
     pub private_channels: Vec<PrivateChannelSnapshot>,
     /// Schema 3+. The user's server folders in rail order; versioned with `guilds`.
     pub guild_folders: Vec<GuildFolderSnapshot>,
-    /// Schema 3+. Avatar hash of the current user; part of `meta`.
-    pub current_user_avatar: Option<String>,
     /// Schema 3+. Status picked in settings (online, idle, dnd, invisible); part of `meta`.
     pub current_user_status: Option<String>,
     /// Schema 3+. Custom status text; part of `meta`.
@@ -95,6 +96,8 @@ pub struct SnapshotPatch {
     pub read_states: Option<Vec<ReadStateSnapshot>>,
     pub private_channels: Option<Vec<PrivateChannelSnapshot>>,
     pub guild_folders: Option<Vec<GuildFolderSnapshot>>,
+    pub member_list: Option<MemberListSnapshot>,
+    pub relationships: Vec<RelationshipSnapshot>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -191,6 +194,10 @@ pub struct ChannelSnapshot {
     pub kind: u8,
     pub parent_id: Option<u64>,
     pub position: Option<i32>,
+    pub can_view: bool,
+    pub can_send: bool,
+    pub icon: Option<String>,
+    pub recipients: Vec<RecipientSnapshot>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -200,13 +207,12 @@ pub struct MessageSnapshot {
     pub channel_id: u64,
     pub author_id: Option<u64>,
     pub author_name: String,
+    pub author_avatar: Option<String>,
     pub content: String,
     pub timestamp: String,
     pub edited_timestamp: Option<String>,
     /// Schema 3+. Discord message type (0 default, 3 call, 6 pin, 7 join, 19 reply, ...).
     pub kind: u8,
-    /// Schema 3+. Avatar hash of the author's account.
-    pub author_avatar: Option<String>,
     /// Schema 3+. The author's avatar frame asset.
     pub author_decoration: Option<String>,
     /// Schema 3+.
@@ -254,6 +260,38 @@ pub struct MemberSnapshot {
     pub decoration: Option<String>,
     /// Schema 3+. Nameplate collectible asset.
     pub nameplate: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
+pub struct RelationshipSnapshot {
+    pub user_id: u64,
+    pub kind: u8,
+    pub username: String,
+    pub global_name: Option<String>,
+    pub avatar: Option<String>,
+    pub avatar_decoration: Option<String>,
+}
+
+pub const MEMBER_LIST_ROW_PENDING: u8 = 0;
+pub const MEMBER_LIST_ROW_GROUP: u8 = 1;
+pub const MEMBER_LIST_ROW_MEMBER: u8 = 2;
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
+pub struct MemberListRowSnapshot {
+    pub kind: u8,
+    pub group_id: Option<String>,
+    pub group_count: Option<u32>,
+    pub member: Option<MemberSnapshot>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
+pub struct MemberListSnapshot {
+    pub rows: Vec<MemberListRowSnapshot>,
+    pub online_count: Option<u32>,
+    pub member_count: Option<u32>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

@@ -45,6 +45,8 @@ pub struct Channel {
     #[serde(default, with = "crate::snowflake::serde::option")]
     pub last_message_id: Option<Snowflake>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub topic: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub nsfw: Option<bool>,

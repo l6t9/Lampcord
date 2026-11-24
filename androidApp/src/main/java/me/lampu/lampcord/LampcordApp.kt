@@ -16,6 +16,7 @@ class LampcordApp : Application() {
         initSettings(this)
 
         Logging.debugEnabled = Settings.shared.verboseLogging
+        me.lampu.lampcord.shared.state.RustCoreMode.enabled = BuildConfig.RUST_CORE
 
         startKoin {
             androidContext(this@LampcordApp)

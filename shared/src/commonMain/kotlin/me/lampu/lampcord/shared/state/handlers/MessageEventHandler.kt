@@ -218,6 +218,7 @@ class MessageEventHandler(
     }
 
     private fun hydrateDmChannel(channelId: String, lastMessageId: String) {
+        if (me.lampu.lampcord.shared.state.RustCoreMode.enabled) return
         val channel = entityStore.channels.value[channelId]
         if (channel != null && !channel.recipients.isNullOrEmpty()) return
         if (!fetchingDmChannels.add(channelId)) return

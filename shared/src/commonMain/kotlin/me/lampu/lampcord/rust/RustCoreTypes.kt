@@ -1,6 +1,5 @@
 package me.lampu.lampcord.rust
 
-
 data class RustClientConfig(
     val apiBase: String = "https://discord.com/api/v9",
     val gatewayUrl: String? = null,
@@ -81,6 +80,17 @@ data class RustChannel(
     val kind: UByte,
     val parentId: ULong?,
     val position: Int?,
+    val canView: Boolean = true,
+    val icon: String? = null,
+    val recipients: List<RustRecipient> = emptyList(),
+    val canSend: Boolean = true,
+)
+
+data class RustRecipient(
+    val id: ULong,
+    val username: String,
+    val globalName: String?,
+    val avatar: String?,
 )
 
 data class RustMessage(
@@ -91,6 +101,7 @@ data class RustMessage(
     val content: String,
     val timestamp: String,
     val editedTimestamp: String?,
+    val authorAvatar: String? = null,
 )
 
 data class RustMember(
@@ -133,6 +144,7 @@ data class RustSnapshotMetaPatch(
     val hasToken: Boolean,
     val currentUserId: ULong?,
     val currentUser: String?,
+    val currentUserAvatar: String? = null,
     val selectedGuildId: ULong?,
     val selectedChannelId: ULong?,
     val auth: RustAuthState,
@@ -146,6 +158,7 @@ data class RustSnapshot(
     val hasToken: Boolean,
     val currentUserId: ULong?,
     val currentUser: String?,
+    val currentUserAvatar: String? = null,
     val selectedGuildId: ULong?,
     val selectedChannelId: ULong?,
     val guilds: List<RustGuild>,
@@ -156,7 +169,22 @@ data class RustSnapshot(
     val readStates: List<RustReadState>,
     val auth: RustAuthState,
     val error: String?,
+    val memberList: RustMemberList = RustMemberList(),
+    val relationships: List<RustRelationship> = emptyList(),
     val versions: RustSnapshotVersions = RustSnapshotVersions(),
+)
+
+data class RustMemberListRow(
+    val kind: Int,
+    val groupId: String? = null,
+    val groupCount: Int? = null,
+    val member: RustMember? = null,
+)
+
+data class RustMemberList(
+    val rows: List<RustMemberListRow> = emptyList(),
+    val onlineCount: Int? = null,
+    val memberCount: Int? = null,
 )
 
 enum class RustErrorKind {
@@ -205,4 +233,13 @@ data class RustEventEnvelope(
     val sequence: ULong,
     val emittedAtMs: ULong,
     val event: RustEvent,
+)
+
+data class RustRelationship(
+    val userId: ULong,
+    val kind: Int,
+    val username: String,
+    val globalName: String?,
+    val avatar: String?,
+    val avatarDecoration: String?,
 )

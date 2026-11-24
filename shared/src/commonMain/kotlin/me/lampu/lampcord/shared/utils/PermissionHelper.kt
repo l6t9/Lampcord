@@ -133,10 +133,16 @@ object PermissionHelper {
     }
 
     fun canViewChannel(member: Member, guild: Guild, channel: Channel, userId: String? = null): Boolean {
+        if (me.lampu.lampcord.shared.state.RustCoreMode.enabled) {
+            return me.lampu.lampcord.shared.state.RustChannelVisibility.canView(channel.id)
+        }
         return hasPermission(member, guild, channel, Permission.VIEW_CHANNEL, userId)
     }
 
     fun canSendMessages(member: Member, guild: Guild, channel: Channel, userId: String? = null): Boolean {
+        if (me.lampu.lampcord.shared.state.RustCoreMode.enabled) {
+            return me.lampu.lampcord.shared.state.RustChannelVisibility.canSend(channel.id)
+        }
         val isThread = channel.type == 10 || channel.type == 11 || channel.type == 12
         if (!isThread) {
             return hasPermission(member, guild, channel, Permission.SEND_MESSAGES, userId)

@@ -35,8 +35,12 @@ const HANDLED_EVENTS: &[&str] = &[
     "GUILD_MEMBER_UPDATE",
     "GUILD_MEMBER_REMOVE",
     "GUILD_MEMBERS_CHUNK",
+    "GUILD_MEMBER_LIST_UPDATE",
     "PRESENCE_UPDATE",
     "USER_SETTINGS_UPDATE",
+    "RELATIONSHIP_ADD",
+    "RELATIONSHIP_UPDATE",
+    "RELATIONSHIP_REMOVE",
 ];
 
 /// A server folder from the user's settings, in rail order. Discord also
@@ -50,6 +54,20 @@ pub struct GuildFolder {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum MemberListRow {
+    Pending,
+    Group { id: String, count: Option<u32> },
+    Member(Snowflake),
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct MemberListState {
+    pub rows: Vec<MemberListRow>,
+    pub online_count: Option<u32>,
+    pub member_count: Option<u32>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct CachedMember {
     pub guild_id: Snowflake,
     pub user_id: Snowflake,
@@ -130,6 +148,7 @@ pub fn presence_from_value(value: &Value) -> Option<CachedPresence> {
 pub enum CacheError {
     MissingData(&'static str),
     InvalidPayload(serde_json::Error),
+    SkippedEntries { event: &'static str, count: usize },
 }
 
 impl std::fmt::Display for CacheError {
@@ -137,6 +156,9 @@ impl std::fmt::Display for CacheError {
         match self {
             Self::MissingData(field) => write!(formatter, "missing {field} in gateway payload"),
             Self::InvalidPayload(error) => write!(formatter, "invalid cache payload: {error}"),
+            Self::SkippedEntries { event, count } => {
+                write!(formatter, "skipped {count} undecodable entries in {event}")
+            }
         }
     }
 }
@@ -167,6 +189,10 @@ pub struct StateCache {
     members: HashMap<Snowflake, HashMap<Snowflake, CachedMember>>,
     presences: HashMap<Snowflake, CachedPresence>,
     read_state: ReadStateStore,
+    guild_order_hint: Vec<Snowflake>,
+    member_lists: HashMap<Snowflake, MemberListState>,
+    dirty: bool,
+    relationships: HashMap<Snowflake, CachedRelationship>,
 }
 
 impl StateCache {
@@ -196,9 +222,22 @@ impl StateCache {
     }
 
     pub fn ordered_guilds(&self) -> Vec<&Guild> {
-        self.guild_order
+        let rank: HashMap<Snowflake, usize> = self
+            .guild_order_hint
             .iter()
-            .filter_map(|guild_id| self.guilds.get(guild_id))
+            .enumerate()
+            .map(|(index, id)| (*id, index))
+            .collect();
+        let mut keyed: Vec<(usize, usize, Snowflake)> = self
+            .guild_order
+            .iter()
+            .enumerate()
+            .map(|(arrival, id)| (rank.get(id).copied().unwrap_or(usize::MAX), arrival, *id))
+            .collect();
+        keyed.sort_unstable();
+        keyed
+            .into_iter()
+            .filter_map(|(_, _, guild_id)| self.guilds.get(&guild_id))
             .collect()
     }
 
@@ -298,6 +337,10 @@ impl StateCache {
             .unwrap_or_default()
     }
 
+    pub fn member_list(&self, guild_id: Snowflake) -> Option<&MemberListState> {
+        self.member_lists.get(&guild_id)
+    }
+
     pub fn member(&self, guild_id: Snowflake, user_id: Snowflake) -> Option<&CachedMember> {
         self.members.get(&guild_id)?.get(&user_id)
     }
@@ -339,6 +382,9 @@ impl StateCache {
         event_type: &str,
         data: Option<&Value>,
     ) -> Result<(), CacheError> {
+        if !matches!(event_type, "PRESENCE_UPDATE" | "TYPING_START") {
+            self.dirty = true;
+        }
         match event_type {
             "READY" => self.handle_ready(data),
             "MESSAGE_CREATE" => self.handle_message_create(data),
@@ -354,10 +400,10 @@ impl StateCache {
             "GUILD_MEMBER_REMOVE" => self.handle_guild_member_remove(data),
             "GUILD_MEMBERS_CHUNK" => self.handle_member_chunk(data),
             "PRESENCE_UPDATE" => self.handle_presence(data),
-            "USER_SETTINGS_UPDATE" => {
-                self.apply_user_settings(data);
-                Ok(())
-            }
+            "GUILD_MEMBER_LIST_UPDATE" => self.handle_member_list_update(data),
+            "USER_SETTINGS_UPDATE" => self.handle_user_settings(data),
+            "RELATIONSHIP_ADD" | "RELATIONSHIP_UPDATE" => self.handle_relationship_upsert(data),
+            "RELATIONSHIP_REMOVE" => self.handle_relationship_remove(data),
             _ => Ok(()),
         }
     }
@@ -425,10 +471,18 @@ impl StateCache {
             }
         }
         self.apply_user_settings(data.get("user_settings"));
+        if let Some(settings) = data.get("user_settings") {
+            let hint = guild_order_from_settings(settings);
+            if !hint.is_empty() {
+                self.guild_order_hint = hint;
+            }
+        }
 
+        let mut skipped = 0usize;
         let mut guild_order = Vec::new();
         if let Some(guilds) = data.get("guilds").and_then(Value::as_array) {
-            for value in guilds {
+            let merged_members = data.get("merged_members").and_then(Value::as_array);
+            for (index, value) in guilds.iter().enumerate() {
                 if let Some(guild_id) = snowflake(value.get("id")) {
                     if let Some(members) = value.get("members").and_then(Value::as_array) {
                         for member in members {
@@ -436,7 +490,21 @@ impl StateCache {
                         }
                     }
                 }
-                let guild: Guild = decode(value)?;
+                let guild: Guild = match decode(value) {
+                    Ok(guild) => guild,
+                    Err(_) => {
+                        skipped += 1;
+                        continue;
+                    }
+                };
+                if let Some(members) = merged_members
+                    .and_then(|lists| lists.get(index))
+                    .and_then(Value::as_array)
+                {
+                    for member in members {
+                        self.cache_member_value(guild.id, member);
+                    }
+                }
                 if !guild_order.contains(&guild.id) {
                     guild_order.push(guild.id);
                 }
@@ -444,23 +512,50 @@ impl StateCache {
             }
         }
         self.guild_order = guild_order;
+        self.guilds.retain(|id, _| self.guild_order.contains(id));
+        self.guild_channels
+            .retain(|guild_id, _| self.guilds.contains_key(guild_id));
+        let stale_channels: Vec<Snowflake> = self
+            .channels
+            .values()
+            .filter(|channel| {
+                channel
+                    .guild_id
+                    .is_some_and(|guild_id| !self.guilds.contains_key(&guild_id))
+            })
+            .map(|channel| channel.id)
+            .collect();
+        for channel_id in stale_channels {
+            self.channels.remove(&channel_id);
+        }
 
         self.private_channel_ids.clear();
+        self.member_lists.clear();
+        self.relationships.clear();
+        if let Some(relationships) = data.get("relationships").and_then(Value::as_array) {
+            for value in relationships {
+                self.ingest_relationship(value);
+            }
+        }
         for key in ["channels", "private_channels"] {
             if let Some(channels) = data.get(key).and_then(Value::as_array) {
                 for value in channels {
-                    let mut channel: Channel = decode(value)?;
-                    if channel.recipients.is_empty() {
-                        channel.recipients = value
-                            .get("recipient_ids")
-                            .and_then(Value::as_array)
-                            .into_iter()
-                            .flatten()
-                            .filter_map(|id| snowflake(Some(id)))
-                            .filter_map(|id| self.users.get(&id).cloned())
-                            .collect();
+                    match decode::<Channel>(value) {
+                        Ok(mut channel) => {
+                            if channel.recipients.is_empty() {
+                                channel.recipients = value
+                                    .get("recipient_ids")
+                                    .and_then(Value::as_array)
+                                    .into_iter()
+                                    .flatten()
+                                    .filter_map(|id| snowflake(Some(id)))
+                                    .filter_map(|id| self.users.get(&id).cloned())
+                                    .collect();
+                            }
+                            self.update_channel(channel);
+                        }
+                        Err(_) => skipped += 1,
                     }
-                    self.update_channel(channel);
                 }
             }
         }
@@ -490,6 +585,48 @@ impl StateCache {
         }
 
         self.read_state.handle_ready(data);
+        if skipped > 0 {
+            return Err(CacheError::SkippedEntries {
+                event: "READY",
+                count: skipped,
+            });
+        }
+        Ok(())
+    }
+
+    fn handle_relationship_upsert(&mut self, data: Option<&Value>) -> Result<(), CacheError> {
+        let data = data.ok_or(CacheError::MissingData("RELATIONSHIP"))?;
+        self.ingest_relationship(data);
+        Ok(())
+    }
+
+    fn handle_relationship_remove(&mut self, data: Option<&Value>) -> Result<(), CacheError> {
+        let data = data.ok_or(CacheError::MissingData("RELATIONSHIP_REMOVE"))?;
+        if let Some(user_id) = snowflake(data.get("id")) {
+            self.relationships.remove(&user_id);
+        }
+        Ok(())
+    }
+
+    fn ingest_relationship(&mut self, value: &Value) {
+        let Some(user_id) = snowflake(value.get("id")) else {
+            return;
+        };
+        let kind = value.get("type").and_then(Value::as_u64).unwrap_or(0) as u8;
+        if let Some(user) = value.get("user").and_then(|user| decode::<User>(user).ok()) {
+            self.cache_user(user);
+        }
+        self.relationships
+            .insert(user_id, CachedRelationship { user_id, kind });
+    }
+
+    fn handle_user_settings(&mut self, data: Option<&Value>) -> Result<(), CacheError> {
+        let data = data.ok_or(CacheError::MissingData("USER_SETTINGS_UPDATE"))?;
+        self.apply_user_settings(Some(data));
+        let hint = guild_order_from_settings(data);
+        if !hint.is_empty() {
+            self.guild_order_hint = hint;
+        }
         Ok(())
     }
 
@@ -602,11 +739,16 @@ impl StateCache {
         let guild: Guild = decode(data)?;
         self.merge_guild(guild.clone());
 
+        let mut skipped = 0usize;
         if let Some(channels) = data.get("channels").and_then(Value::as_array) {
             for value in channels {
-                let mut channel: Channel = decode(value)?;
-                channel.guild_id = Some(guild.id);
-                self.update_channel(channel);
+                match decode::<Channel>(value) {
+                    Ok(mut channel) => {
+                        channel.guild_id = Some(guild.id);
+                        self.update_channel(channel);
+                    }
+                    Err(_) => skipped += 1,
+                }
             }
         }
         if let Some(members) = data.get("members").and_then(Value::as_array) {
@@ -618,6 +760,12 @@ impl StateCache {
             for presence in presences {
                 self.cache_presence_value(presence);
             }
+        }
+        if skipped > 0 {
+            return Err(CacheError::SkippedEntries {
+                event: "GUILD_CREATE",
+                count: skipped,
+            });
         }
         Ok(())
     }
@@ -672,7 +820,26 @@ impl StateCache {
     }
 
     fn cache_user(&mut self, user: User) {
-        self.users.insert(user.id, user);
+        let merged = match self.users.remove(&user.id) {
+            Some(existing) => User {
+                avatar: user.avatar.clone().or_else(|| existing.avatar.clone()),
+                avatar_decoration_data: user
+                    .avatar_decoration_data
+                    .clone()
+                    .or_else(|| existing.avatar_decoration_data.clone()),
+                collectibles: user
+                    .collectibles
+                    .clone()
+                    .or_else(|| existing.collectibles.clone()),
+                global_name: user
+                    .global_name
+                    .clone()
+                    .or_else(|| existing.global_name.clone()),
+                ..user
+            },
+            None => user,
+        };
+        self.users.insert(merged.id, merged);
         if self.users.len() > MAX_CACHED_USERS {
             let current_id = self.current_user.as_ref().map(|u| u.id);
             let mut to_remove = Vec::new();
@@ -717,12 +884,24 @@ impl StateCache {
                     .or_else(|| existing.permissions.clone()),
                 member_count: incoming.member_count.or(existing.member_count),
                 unavailable: incoming.unavailable.or(existing.unavailable),
+                roles: if incoming.roles.is_empty() {
+                    existing.roles.clone()
+                } else {
+                    incoming.roles
+                },
             },
             None => incoming,
         };
         self.guilds.insert(merged.id, merged.clone());
         if !self.guild_order.contains(&merged.id) {
             self.guild_order.push(merged.id);
+        }
+    }
+
+    pub fn upsert_channels(&mut self, channels: Vec<Channel>) {
+        self.dirty = true;
+        for channel in channels {
+            self.update_channel(channel);
         }
     }
 
@@ -790,15 +969,18 @@ impl StateCache {
         ) else {
             return;
         };
+        let cached = self.users.get(&user_id);
         let username = user
             .and_then(|user| user.get("username"))
             .and_then(Value::as_str)
-            .unwrap_or("unknown")
-            .to_owned();
+            .map(str::to_owned)
+            .or_else(|| cached.map(|cached| cached.username.clone()))
+            .unwrap_or_else(|| "unknown".to_owned());
         let avatar = user
             .and_then(|user| user.get("avatar"))
             .and_then(Value::as_str)
-            .map(str::to_owned);
+            .map(str::to_owned)
+            .or_else(|| cached.and_then(|cached| cached.avatar.clone()));
         let nickname = value
             .get("nick")
             .or_else(|| value.get("nickname"))
@@ -876,6 +1058,125 @@ impl StateCache {
         Ok(())
     }
 
+    fn handle_member_list_update(&mut self, data: Option<&Value>) -> Result<(), CacheError> {
+        let data = data.ok_or(CacheError::MissingData("GUILD_MEMBER_LIST_UPDATE"))?;
+        let guild_id = snowflake(data.get("guild_id")).ok_or(CacheError::MissingData(
+            "guild_id in GUILD_MEMBER_LIST_UPDATE",
+        ))?;
+        let ops = data
+            .get("ops")
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default();
+
+        let mut state = self.member_lists.remove(&guild_id).unwrap_or_default();
+        if let Some(count) = u32_of(data.get("online_count")) {
+            state.online_count = Some(count);
+        }
+        if let Some(count) = u32_of(data.get("member_count")) {
+            state.member_count = Some(count);
+        }
+        let rows = &mut state.rows;
+        for op in &ops {
+            match op.get("op").and_then(Value::as_str).unwrap_or_default() {
+                "SYNC" => {
+                    let Some((start, _end)) = index_pair(op.get("range")) else {
+                        continue;
+                    };
+                    let items = op
+                        .get("items")
+                        .and_then(Value::as_array)
+                        .cloned()
+                        .unwrap_or_default();
+                    if rows.len() < start + items.len() {
+                        rows.resize(start + items.len(), MemberListRow::Pending);
+                    }
+                    for (offset, item) in items.iter().enumerate() {
+                        rows[start + offset] = self.cache_list_item(guild_id, item);
+                    }
+                }
+                "INSERT" => {
+                    let (Some(index), Some(item)) = (index_of(op.get("index")), op.get("item"))
+                    else {
+                        continue;
+                    };
+                    let row = self.cache_list_item(guild_id, item);
+                    if index <= rows.len() {
+                        rows.insert(index, row);
+                    }
+                }
+                "UPDATE" => {
+                    let (Some(index), Some(item)) = (index_of(op.get("index")), op.get("item"))
+                    else {
+                        continue;
+                    };
+                    let row = self.cache_list_item(guild_id, item);
+                    if index < rows.len() {
+                        rows[index] = row;
+                    }
+                }
+                "DELETE" => {
+                    let Some(index) = index_of(op.get("index")) else {
+                        continue;
+                    };
+                    if index < rows.len() {
+                        if let MemberListRow::Member(user_id) = rows[index] {
+                            if let Some(members) = self.members.get_mut(&guild_id) {
+                                members.remove(&user_id);
+                            }
+                        }
+                        rows.remove(index);
+                    }
+                }
+                "INVALIDATE" => {
+                    let Some((start, end)) = index_pair(op.get("range")) else {
+                        continue;
+                    };
+                    let end = end.min(rows.len().saturating_sub(1));
+                    for row in rows.iter_mut().take(end + 1).skip(start) {
+                        *row = MemberListRow::Pending;
+                    }
+                }
+                _ => {}
+            }
+        }
+        self.member_lists.insert(guild_id, state);
+        Ok(())
+    }
+
+    fn cache_list_item(&mut self, guild_id: Snowflake, item: &Value) -> MemberListRow {
+        if let Some(group) = item.get("group") {
+            return MemberListRow::Group {
+                id: group
+                    .get("id")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_owned(),
+                count: u32_of(group.get("count")),
+            };
+        }
+        let Some(member) = item.get("member") else {
+            return MemberListRow::Pending;
+        };
+        let Some(user_id) = snowflake(
+            member
+                .get("user")
+                .and_then(|user| user.get("id"))
+                .or_else(|| member.get("user_id")),
+        ) else {
+            return MemberListRow::Pending;
+        };
+        self.cache_member_value(guild_id, member);
+        if let Some(presence) = member.get("presence").and_then(Value::as_object) {
+            let mut presence = presence.clone();
+            presence
+                .entry("user".to_owned())
+                .or_insert_with(|| serde_json::json!({ "id": user_id.to_string() }));
+            self.cache_presence_value(&Value::Object(presence));
+        }
+        MemberListRow::Member(user_id)
+    }
+
     fn handle_member_chunk(&mut self, data: Option<&Value>) -> Result<(), CacheError> {
         let data = data.ok_or(CacheError::MissingData("GUILD_MEMBERS_CHUNK"))?;
         let guild_id = snowflake(data.get("guild_id"))
@@ -921,6 +1222,8 @@ impl StateCache {
         self.guild_folders.clear();
         self.own_status = None;
         self.own_custom_status = None;
+        self.guild_order_hint.clear();
+        self.member_lists.clear();
         self.channels.clear();
         self.guild_channels.clear();
         self.private_channel_ids.clear();
@@ -946,6 +1249,122 @@ impl StateCache {
                 self.messages.remove(&oldest);
             }
         }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct CachedRelationship {
+    pub user_id: Snowflake,
+    pub kind: u8,
+}
+
+const PERSISTED_CHANNELS: usize = 20;
+const PERSISTED_MEMBERS_PER_GUILD: usize = 500;
+
+#[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
+pub struct PersistedCache {
+    current_user: Option<User>,
+    users: Vec<User>,
+    guilds: Vec<Guild>,
+    guild_order: Vec<Snowflake>,
+    guild_order_hint: Vec<Snowflake>,
+    channels: Vec<Channel>,
+    members: Vec<(Snowflake, Vec<CachedMember>)>,
+    messages: Vec<(Snowflake, Vec<Message>)>,
+    relationships: Vec<CachedRelationship>,
+}
+
+const PERSISTED_MESSAGES_PER_CHANNEL: usize = 50;
+
+impl PersistedCache {
+    pub fn to_bytes(&self) -> Result<Vec<u8>, rmp_serde::encode::Error> {
+        rmp_serde::to_vec_named(self)
+    }
+
+    pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
+        rmp_serde::from_slice(bytes).ok()
+    }
+}
+
+impl StateCache {
+    pub fn relationship_entries(&self) -> Vec<CachedRelationship> {
+        self.relationships.values().cloned().collect()
+    }
+
+    pub fn take_persisted_if_dirty(&mut self) -> Option<PersistedCache> {
+        if !self.dirty {
+            return None;
+        }
+        self.dirty = false;
+        Some(self.persisted())
+    }
+
+    pub fn persisted(&self) -> PersistedCache {
+        PersistedCache {
+            current_user: self.current_user.clone(),
+            users: self.users.values().cloned().collect(),
+            guilds: self.guilds.values().cloned().collect(),
+            guild_order: self.guild_order.clone(),
+            guild_order_hint: self.guild_order_hint.clone(),
+            channels: self.channels.values().cloned().collect(),
+            members: self
+                .members
+                .iter()
+                .map(|(guild_id, members)| {
+                    (
+                        *guild_id,
+                        members
+                            .values()
+                            .take(PERSISTED_MEMBERS_PER_GUILD)
+                            .cloned()
+                            .collect(),
+                    )
+                })
+                .collect(),
+            messages: self
+                .message_channel_order
+                .iter()
+                .rev()
+                .take(PERSISTED_CHANNELS)
+                .filter_map(|channel_id| {
+                    self.messages.get(channel_id).map(|messages| {
+                        let start = messages
+                            .len()
+                            .saturating_sub(PERSISTED_MESSAGES_PER_CHANNEL);
+                        (*channel_id, messages[start..].to_vec())
+                    })
+                })
+                .collect(),
+            relationships: self.relationships.values().cloned().collect(),
+        }
+    }
+
+    pub fn restore(&mut self, persisted: &PersistedCache) {
+        self.current_user = persisted.current_user.clone();
+        for user in &persisted.users {
+            self.users.insert(user.id, user.clone());
+        }
+        for guild in &persisted.guilds {
+            self.guilds.insert(guild.id, guild.clone());
+        }
+        self.guild_order = persisted.guild_order.clone();
+        self.guild_order_hint = persisted.guild_order_hint.clone();
+        self.upsert_channels(persisted.channels.clone());
+        for (guild_id, members) in &persisted.members {
+            let entry = self.members.entry(*guild_id).or_default();
+            for member in members {
+                entry.insert(member.user_id, member.clone());
+            }
+        }
+        for (channel_id, messages) in &persisted.messages {
+            self.messages.insert(*channel_id, messages.clone());
+            self.message_channel_order.push_back(*channel_id);
+        }
+        for relationship in &persisted.relationships {
+            self.relationships
+                .insert(relationship.user_id, relationship.clone());
+        }
+        self.dirty = false;
     }
 }
 
@@ -984,6 +1403,45 @@ impl GatewayEventHandler for StateCacheHandler {
     }
 }
 
+fn guild_order_from_settings(settings: &Value) -> Vec<Snowflake> {
+    let from_folders: Vec<Snowflake> = settings
+        .get("guild_folders")
+        .and_then(Value::as_array)
+        .map(|folders| {
+            folders
+                .iter()
+                .filter_map(|folder| folder.get("guild_ids").and_then(Value::as_array))
+                .flatten()
+                .filter_map(|id| snowflake(Some(id)))
+                .collect()
+        })
+        .unwrap_or_default();
+    if !from_folders.is_empty() {
+        return from_folders;
+    }
+    settings
+        .get("guild_positions")
+        .and_then(Value::as_array)
+        .map(|ids| ids.iter().filter_map(|id| snowflake(Some(id))).collect())
+        .unwrap_or_default()
+}
+
+fn u32_of(value: Option<&Value>) -> Option<u32> {
+    value?.as_u64().and_then(|value| u32::try_from(value).ok())
+}
+
+fn index_of(value: Option<&Value>) -> Option<usize> {
+    value?.as_u64().map(|index| index as usize)
+}
+
+fn index_pair(value: Option<&Value>) -> Option<(usize, usize)> {
+    let pair = value?.as_array()?;
+    Some((
+        pair.first()?.as_u64()? as usize,
+        pair.get(1)?.as_u64()? as usize,
+    ))
+}
+
 fn decode<T: DeserializeOwned>(value: &Value) -> Result<T, CacheError> {
     serde_json::from_value(value.clone()).map_err(CacheError::InvalidPayload)
 }
@@ -1019,6 +1477,7 @@ fn merge_channel(existing: &Channel, incoming: Channel) -> Channel {
         position: incoming.position.or(existing.position),
         parent_id: incoming.parent_id.or(existing.parent_id),
         last_message_id: incoming.last_message_id.or(existing.last_message_id),
+        icon: incoming.icon.or_else(|| existing.icon.clone()),
         topic: incoming.topic.or_else(|| existing.topic.clone()),
         nsfw: incoming.nsfw.or(existing.nsfw),
         bitrate: incoming.bitrate.or(existing.bitrate),
@@ -1318,5 +1777,350 @@ mod tests {
             )
             .unwrap();
         assert_eq!(cache.guild_folders()[0].id, Some(8));
+    }
+}
+
+#[cfg(test)]
+mod ordering_and_members_tests {
+    use super::*;
+    use serde_json::json;
+
+    fn guild(id: u64) -> Value {
+        json!({"id": id.to_string(), "name": format!("g{id}"), "icon": format!("icon{id}")})
+    }
+
+    #[test]
+    fn ready_applies_folder_order_from_user_settings() {
+        let mut cache = StateCache::new();
+        cache
+            .handle_event(
+                "READY",
+                Some(&json!({
+                    "user": {"id": "1", "username": "me"},
+                    "guilds": [guild(10), guild(20), guild(30)],
+                    "user_settings": {
+                        "guild_folders": [
+                            {"id": null, "guild_ids": ["30"]},
+                            {"id": 5, "guild_ids": ["20", "10"]}
+                        ]
+                    }
+                })),
+            )
+            .expect("ready");
+        let ids: Vec<u64> = cache.ordered_guilds().iter().map(|g| g.id).collect();
+        assert_eq!(ids, vec![30, 20, 10]);
+    }
+
+    #[test]
+    fn unlisted_guilds_follow_listed_ones_and_positions_are_used_as_fallback() {
+        let mut cache = StateCache::new();
+        cache
+            .handle_event(
+                "READY",
+                Some(&json!({
+                    "user": {"id": "1", "username": "me"},
+                    "guilds": [guild(10), guild(20), guild(30)],
+                    "user_settings": {"guild_positions": ["20", "10"]}
+                })),
+            )
+            .expect("ready");
+        let ids: Vec<u64> = cache.ordered_guilds().iter().map(|g| g.id).collect();
+        assert_eq!(ids, vec![20, 10, 30]);
+    }
+
+    #[test]
+    fn user_settings_update_reorders_without_clearing_on_partial_payload() {
+        let mut cache = StateCache::new();
+        cache
+            .handle_event(
+                "READY",
+                Some(&json!({
+                    "user": {"id": "1", "username": "me"},
+                    "guilds": [guild(10), guild(20)],
+                    "user_settings": {"guild_positions": ["10", "20"]}
+                })),
+            )
+            .expect("ready");
+        cache
+            .handle_event(
+                "USER_SETTINGS_UPDATE",
+                Some(&json!({"guild_positions": ["20", "10"]})),
+            )
+            .expect("settings");
+        let ids: Vec<u64> = cache.ordered_guilds().iter().map(|g| g.id).collect();
+        assert_eq!(ids, vec![20, 10]);
+        cache
+            .handle_event("USER_SETTINGS_UPDATE", Some(&json!({"theme": "dark"})))
+            .expect("partial settings");
+        let ids: Vec<u64> = cache.ordered_guilds().iter().map(|g| g.id).collect();
+        assert_eq!(ids, vec![20, 10]);
+    }
+
+    #[test]
+    fn ready_caches_merged_members_with_users_from_users_array() {
+        let mut cache = StateCache::new();
+        cache
+            .handle_event(
+                "READY",
+                Some(&json!({
+                    "user": {"id": "1", "username": "me"},
+                    "guilds": [guild(10)],
+                    "users": [{"id": "55", "username": "alice", "avatar": "av"}],
+                    "merged_members": [[{"user_id": "55", "nick": "Ali", "roles": []}]]
+                })),
+            )
+            .expect("ready");
+        let member = cache.member(10, 55).expect("merged member cached");
+        assert_eq!(member.username, "alice");
+        assert_eq!(member.avatar.as_deref(), Some("av"));
+        assert_eq!(member.nickname.as_deref(), Some("Ali"));
+    }
+
+    #[test]
+    fn member_list_sync_insert_update_delete_track_members() {
+        let mut cache = StateCache::new();
+        cache
+            .handle_event(
+                "READY",
+                Some(&json!({"user": {"id": "1", "username": "me"}, "guilds": [guild(10)]})),
+            )
+            .expect("ready");
+        let member = |id: u64, name: &str| {
+            json!({"member": {"user": {"id": id.to_string(), "username": name}, "roles": [],
+                   "presence": {"status": "online", "activities": []}}})
+        };
+        cache
+            .handle_event(
+                "GUILD_MEMBER_LIST_UPDATE",
+                Some(&json!({"guild_id": "10", "ops": [{"op": "SYNC", "range": [0, 2],
+                    "items": [{"group": {"id": "online", "count": 2}}, member(1, "a"), member(2, "b")]}]})),
+            )
+            .expect("sync");
+        assert!(cache.member(10, 1).is_some());
+        assert!(cache.member(10, 2).is_some());
+        assert_eq!(cache.presence(2).map(|p| p.status.as_str()), Some("online"));
+
+        cache
+            .handle_event(
+                "GUILD_MEMBER_LIST_UPDATE",
+                Some(&json!({"guild_id": "10", "ops": [{"op": "INSERT", "index": 1, "item": member(3, "c")}]})),
+            )
+            .expect("insert");
+        assert!(cache.member(10, 3).is_some());
+
+        cache
+            .handle_event(
+                "GUILD_MEMBER_LIST_UPDATE",
+                Some(&json!({"guild_id": "10", "ops": [{"op": "DELETE", "index": 2}]})),
+            )
+            .expect("delete");
+        assert!(cache.member(10, 1).is_none());
+        assert!(cache.member(10, 2).is_some());
+    }
+
+    #[test]
+    fn channels_without_guild_appear_as_private_channels_with_recipient_names() {
+        let mut cache = StateCache::new();
+        cache
+            .handle_event(
+                "READY",
+                Some(&json!({
+                    "user": {"id": "1", "username": "me"},
+                    "guilds": [],
+                    "private_channels": [{
+                        "id": "900", "type": 1, "last_message_id": null,
+                        "recipients": [{"id": "77", "username": "bob", "global_name": "Bob"}]
+                    }]
+                })),
+            )
+            .expect("ready");
+        let dms = cache.private_channels();
+        assert_eq!(dms.len(), 1);
+        assert_eq!(dms[0].id, 900);
+        assert_eq!(dms[0].recipients[0].global_name.as_deref(), Some("Bob"));
+    }
+
+    #[test]
+    fn member_list_rows_keep_groups_members_and_counts() {
+        let mut cache = StateCache::new();
+        cache
+            .handle_event(
+                "READY",
+                Some(&json!({"user": {"id": "1", "username": "me"}, "guilds": [guild(10)]})),
+            )
+            .expect("ready");
+        cache
+            .handle_event(
+                "GUILD_MEMBER_LIST_UPDATE",
+                Some(&json!({
+                    "guild_id": "10", "online_count": 3, "member_count": 9,
+                    "ops": [{"op": "SYNC", "range": [0, 2], "items": [
+                        {"group": {"id": "online", "count": 3}},
+                        {"member": {"user": {"id": "5", "username": "eve"}, "roles": []}},
+                        {"member": {"user": {"id": "6", "username": "fox"}, "roles": []}}
+                    ]}]
+                })),
+            )
+            .expect("sync");
+        let state = cache.member_list(10).expect("member list");
+        assert_eq!(state.online_count, Some(3));
+        assert_eq!(state.member_count, Some(9));
+        assert_eq!(
+            state.rows,
+            vec![
+                MemberListRow::Group {
+                    id: "online".to_owned(),
+                    count: Some(3)
+                },
+                MemberListRow::Member(5),
+                MemberListRow::Member(6),
+            ]
+        );
+    }
+
+    #[test]
+    fn one_undecodable_channel_does_not_hide_the_rest_of_the_guild() {
+        let mut cache = StateCache::new();
+        cache
+            .handle_event(
+                "READY",
+                Some(&json!({"user": {"id": "1", "username": "me"}, "guilds": [guild(10)]})),
+            )
+            .expect("ready");
+        let result = cache.handle_event(
+            "GUILD_CREATE",
+            Some(&json!({
+                "id": "10", "name": "g10",
+                "channels": [
+                    {"id": "100", "type": 0, "name": "general", "position": 0},
+                    {"type": 0, "name": "broken, no id"},
+                    {"id": "102", "type": 0, "name": "after-the-bad-one", "position": 2}
+                ]
+            })),
+        );
+        assert!(matches!(
+            result,
+            Err(CacheError::SkippedEntries {
+                event: "GUILD_CREATE",
+                count: 1
+            })
+        ));
+        let names: Vec<String> = cache
+            .channels_for_guild(10)
+            .iter()
+            .filter_map(|channel| channel.name.clone())
+            .collect();
+        assert_eq!(
+            names,
+            vec!["general".to_owned(), "after-the-bad-one".to_owned()]
+        );
+    }
+
+    #[test]
+    fn persisted_cache_round_trips_guilds_channels_and_users() {
+        let mut cache = StateCache::new();
+        cache
+            .handle_event(
+                "READY",
+                Some(&json!({
+                    "user": {"id": "1", "username": "me"},
+                    "guilds": [guild(10)],
+                    "users": [{"id": "55", "username": "alice", "avatar": "av"}]
+                })),
+            )
+            .expect("ready");
+        cache
+            .handle_event(
+                "GUILD_CREATE",
+                Some(&json!({"id": "10", "name": "g10", "channels": [{"id": "100", "type": 0, "name": "general"}]})),
+            )
+            .expect("guild create");
+        let bytes = cache.persisted().to_bytes().expect("serialize");
+        let persisted = PersistedCache::from_bytes(&bytes).expect("deserialize");
+
+        let mut restored = StateCache::new();
+        restored.restore(&persisted);
+        assert_eq!(restored.guild(10).map(|guild| guild.id), Some(10));
+        assert_eq!(restored.channels_for_guild(10).len(), 1);
+        assert_eq!(
+            restored
+                .user(55)
+                .and_then(|user| user.avatar.clone())
+                .as_deref(),
+            Some("av")
+        );
+    }
+
+    #[test]
+    fn relationships_survive_a_persist_and_restore() {
+        let mut cache = StateCache::new();
+        cache
+            .handle_event(
+                "READY",
+                Some(&json!({
+                    "user": {"id": "1", "username": "me"},
+                    "guilds": [],
+                    "relationships": [{"id": "55", "type": 1, "user": {"id": "55", "username": "alice"}}]
+                })),
+            )
+            .expect("ready");
+        cache
+            .handle_event("RELATIONSHIP_REMOVE", Some(&json!({"id": "55"})))
+            .expect("remove");
+        cache
+            .handle_event("RELATIONSHIP_ADD", Some(&json!({"id": "66", "type": 1})))
+            .expect("add");
+        let bytes = cache.persisted().to_bytes().expect("serialize");
+        let persisted = PersistedCache::from_bytes(&bytes).expect("deserialize");
+        let mut restored = StateCache::new();
+        restored.restore(&persisted);
+        assert_eq!(
+            restored
+                .relationships
+                .get(&66)
+                .map(|relationship| relationship.kind),
+            Some(1)
+        );
+        assert!(restored.relationships.get(&55).is_none());
+    }
+
+    #[test]
+    fn partial_user_update_keeps_the_cached_avatar() {
+        let mut cache = StateCache::new();
+        cache
+            .handle_event(
+                "READY",
+                Some(&json!({
+                    "user": {"id": "1", "username": "me"},
+                    "guilds": [guild(10)],
+                    "users": [{"id": "55", "username": "alice", "avatar": "av"}]
+                })),
+            )
+            .expect("ready");
+        cache
+            .handle_event(
+                "READY",
+                Some(&json!({
+                    "user": {"id": "1", "username": "me"},
+                    "guilds": [guild(10)],
+                    "users": [{"id": "55", "username": "alice"}]
+                })),
+            )
+            .expect("second ready");
+        assert_eq!(
+            cache
+                .user(55)
+                .and_then(|user| user.avatar.clone())
+                .as_deref(),
+            Some("av")
+        );
+    }
+
+    #[test]
+    fn lazy_request_payload_uses_opcode_14_and_string_ids() {
+        let payload = crate::gateway_client::lazy_request_payload(10, 11, &[[0, 99]]);
+        assert_eq!(payload["op"], 14);
+        assert_eq!(payload["d"]["guild_id"], "10");
+        assert_eq!(payload["d"]["channels"]["11"], json!([[0, 99]]));
     }
 }

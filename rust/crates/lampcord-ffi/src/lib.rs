@@ -1,6 +1,7 @@
 #[cfg(feature = "uniffi")]
 uniffi::setup_scaffolding!();
 
+pub mod c_api;
 pub mod error;
 pub mod runtime;
 pub mod snapshot;
@@ -153,6 +154,10 @@ impl LampcordClient {
 
     pub fn select_channel(&self, channel_id: Option<u64>) -> Result<(), FfiClientError> {
         self.send(ClientCommand::SelectChannel { channel_id })
+    }
+
+    pub fn set_member_list_ranges(&self, ranges: Vec<Vec<u32>>) -> Result<(), FfiClientError> {
+        self.send(ClientCommand::SetMemberListRanges { ranges })
     }
 
     pub fn fetch_messages(

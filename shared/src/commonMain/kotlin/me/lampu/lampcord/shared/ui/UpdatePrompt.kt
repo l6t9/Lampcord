@@ -1,5 +1,10 @@
 package me.lampu.lampcord.shared.ui
 
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import me.lampu.lampcord.shared.settings.Settings
+import me.lampu.lampcord.shared.state.NavigationStore
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -43,10 +48,13 @@ import me.lampu.lampcord.shared.ui.components.DiscordBottomSheet
 import me.lampu.lampcord.shared.ui.components.rememberDiscordSheetState
 import org.koin.compose.koinInject
 
+private const val UPDATE_CHECK_DELAY_MILLIS = 15_000L
+
 @Composable
 fun UpdatePrompt(
     updateManager: UpdateManager = koinInject(),
     settingsStore: SettingsStore = koinInject(),
+    navigationStore: NavigationStore = koinInject(),
 ) {
     if (currentUpdateTarget() != UpdateTarget.ANDROID) return
 
@@ -57,6 +65,8 @@ fun UpdatePrompt(
 
     LaunchedEffect(Unit) {
         if (!settingsStore.checkForUpdates) return@LaunchedEffect
+        snapshotFlow { navigationStore.isConnected }.first { it }
+        delay(UPDATE_CHECK_DELAY_MILLIS)
         val channel = if (NIGHTLY_BUILD > 0) UpdateChannel.NIGHTLY else UpdateChannel.STABLE
         updateManager.check(channel)
     }
@@ -64,7 +74,9 @@ fun UpdatePrompt(
     val available = state as? UpdateState.Available
     val ready = state as? UpdateState.ReadyToInstall
 
-    if (available != null && !dismissed && settingsStore.updateNotifications) {
+    if (available != null && !dismissed && settingsStore.updateNotifications &&
+        available.version != Settings.shared.lastAnnouncedUpdateVersion
+    ) {
         UpdateSheet(
             title = "Update available",
             version = available.version,
@@ -74,8 +86,14 @@ fun UpdatePrompt(
             busyLabel = null,
             progress = null,
             footnote = installNote,
-            onPrimary = { scope.launch { updateManager.download() } },
-            onSecondary = { dismissed = true },
+            onPrimary = {
+                Settings.shared.lastAnnouncedUpdateVersion = available.version
+                scope.launch { updateManager.download() }
+            },
+            onSecondary = {
+                Settings.shared.lastAnnouncedUpdateVersion = available.version
+                dismissed = true
+            },
         )
     } else if (ready != null) {
         UpdateSheet(

@@ -103,6 +103,7 @@ class Settings(private val settings: KmpSettings) {
     var userBg by preferenceBoolean("user_bg", false)
     var userPfp by preferenceBoolean("user_pfp", false)
     var checkForUpdates by preferenceBoolean("check_for_updates", true)
+    var lastAnnouncedUpdateVersion by preference("last_announced_update_version", "")
     var updateNotifications by preferenceBoolean("update_notifications", true)
     var hideNavLabels by preferenceBoolean("hide_nav_labels", false)
     var showChatSearch by preferenceBoolean("show_chat_search", false)
