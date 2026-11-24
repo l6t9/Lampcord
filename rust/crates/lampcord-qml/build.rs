@@ -41,6 +41,7 @@ fn collect_qml(dir: &Path, out: &mut Vec<String>) {
 
 fn main() {
     println!("cargo:rerun-if-changed=qml");
+    println!("cargo:rerun-if-env-changed=CXX_QT_AUTORCC_OPTIONS");
     let out_dir = PathBuf::from(std::env::var("OUT_DIR").unwrap());
     for (table, source) in ICON_SOURCES {
         let source = Path::new(ICON_DIR).join(source);

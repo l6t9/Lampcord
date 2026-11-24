@@ -1,11 +1,16 @@
 [package]
 name = "lampcord-qml"
-description = "Qt Quick (QML) desktop shell for Lampcord, driven by lampcord-ffi"
+description = "Qt Quick (QML) shell for Lampcord, driven by lampcord-ffi"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 # material-colors needs 1.97 for the 2025 colour spec.
 rust-version = "1.97"
+
+[lib]
+name = "lampcord_qml"
+path = "src/lib.rs"
+crate-type = ["rlib", "staticlib"]
 
 [[bin]]
 name = "lampcord-qml"
