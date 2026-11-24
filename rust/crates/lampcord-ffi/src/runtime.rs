@@ -297,6 +297,7 @@ impl RuntimeHandle {
             messages: (versions.messages > since.messages).then(|| snapshot.messages.clone()),
             pinned_messages: (versions.messages > since.messages)
                 .then(|| snapshot.pinned_messages.clone()),
+            mentions: (versions.messages > since.messages).then(|| snapshot.mentions.clone()),
             members: (versions.members > since.members).then(|| snapshot.members.clone()),
             presences: (versions.presences > since.presences).then(|| snapshot.presences.clone()),
             read_states: (versions.read_states > since.read_states)
@@ -431,6 +432,7 @@ fn benchmark_snapshot() -> ClientSnapshot {
         current_user_nameplate: None,
         profile: None,
         pinned_messages: Vec::new(),
+        mentions: Vec::new(),
     }
 }
 
@@ -584,8 +586,9 @@ fn set_snapshot(
         previous.guilds != next.guilds || previous.guild_folders != next.guild_folders;
     let channels_changed =
         previous.channels != next.channels || previous.private_channels != next.private_channels;
-    let messages_changed =
-        previous.messages != next.messages || previous.pinned_messages != next.pinned_messages;
+    let messages_changed = previous.messages != next.messages
+        || previous.pinned_messages != next.pinned_messages
+        || previous.mentions != next.mentions;
     let members_changed =
         previous.members != next.members || previous.member_list != next.member_list;
     let presences_changed = previous.presences != next.presences;
@@ -1067,6 +1070,7 @@ fn build_snapshot(
     selected_channel_id: Option<Snowflake>,
     fetched_messages: &HashMap<Snowflake, Vec<Message>>,
     pinned_messages: &HashMap<Snowflake, Vec<Message>>,
+    fetched_mentions: &[Message],
     profile: &Option<ProfileSnapshot>,
     auth: &AuthStateSnapshot,
     error: Option<String>,
@@ -1267,6 +1271,7 @@ fn build_snapshot(
             .and_then(|channel_id| pinned_messages.get(&channel_id))
             .map(|pins| pins.iter().map(message_snapshot).collect())
             .unwrap_or_default(),
+        mentions: fetched_mentions.iter().map(message_snapshot).collect(),
     }
 }
 
@@ -1299,6 +1304,31 @@ fn auth_failure_kind(failure: Option<LoginFailure>) -> AuthFailureKind {
         Some(LoginFailure::PasswordUpdateRequired) => AuthFailureKind::PasswordUpdateRequired,
         Some(LoginFailure::Network) => AuthFailureKind::Network,
         _ => AuthFailureKind::Unknown,
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+struct MfaFlow {
+    login_instance_id: Option<String>,
+    fingerprint: Option<String>,
+}
+
+fn remember_mfa_flow(
+    flows: &mut HashMap<String, MfaFlow>,
+    challenge: &AuthChallenge,
+    login_instance_id: Option<String>,
+    fingerprint: Option<String>,
+) {
+    if let AuthChallenge::MfaRequired { ticket, .. } = challenge {
+        flows.insert(
+            ticket.clone(),
+            MfaFlow {
+                login_instance_id,
+                fingerprint,
+            },
+        );
+    } else if matches!(challenge, AuthChallenge::Success { .. }) {
+        flows.clear();
     }
 }
 
@@ -1477,9 +1507,14 @@ async fn run(
     let mut selected_guild_id: Option<Snowflake> = None;
     let mut selected_channel_id: Option<Snowflake> = None;
     let mut fetched_messages: HashMap<Snowflake, Vec<Message>> = HashMap::new();
+    let mut fetched_mentions: Vec<Message> = Vec::new();
     let mut pinned_messages: HashMap<Snowflake, Vec<Message>> = HashMap::new();
     let mut profile: Option<ProfileSnapshot> = None;
     let mut auth_state = AuthStateSnapshot::default();
+    // Discord ties an MFA ticket to the login instance and fingerprint from the
+    // password response. Keep those alongside the ticket; the public challenge
+    // only exposes what the UI needs to display.
+    let mut mfa_flows: HashMap<String, MfaFlow> = HashMap::new();
     let mut gateway_task: Option<tokio::task::JoinHandle<()>> = None;
     let mut gateway_events: Option<mpsc::UnboundedReceiver<GatewayEvent>> = None;
     let mut gateway_outbound: Option<mpsc::UnboundedSender<Value>> = None;
@@ -1504,6 +1539,7 @@ async fn run(
                    selected_channel_id: Option<Snowflake>,
                    fetched_messages: &HashMap<Snowflake, Vec<Message>>,
                    pinned_messages: &HashMap<Snowflake, Vec<Message>>,
+                   fetched_mentions: &[Message],
                    profile: &Option<ProfileSnapshot>,
                    auth: &AuthStateSnapshot,
                    error: &Option<String>,
@@ -1518,6 +1554,7 @@ async fn run(
             selected_channel_id,
             fetched_messages,
             pinned_messages,
+            fetched_mentions,
             profile,
             auth,
             error.clone(),
@@ -1535,6 +1572,7 @@ async fn run(
                 selected_channel_id,
                 &fetched_messages,
                 &pinned_messages,
+                &fetched_mentions,
                 &profile,
                 &auth_state,
                 &error,
@@ -1597,6 +1635,7 @@ async fn run(
                     connection = ConnectionState::Connecting;
                     error = None;
                     fetched_messages.clear();
+                    fetched_mentions.clear();
                     persist_token(&mut token_store, &secret_store, &token);
                     push_event(&events, ClientEvent::ConnectionChanged(connection.clone()));
                     Ok::<(), String>(())
@@ -1665,6 +1704,7 @@ async fn run(
                         selected_guild_id = None;
                         selected_channel_id = None;
                         fetched_messages.clear();
+                        fetched_mentions.clear();
                         auth_state = AuthStateSnapshot::default();
                         error = None;
                         connection = ConnectionState::Disconnected;
@@ -1712,9 +1752,17 @@ async fn run(
                                     .ok()
                                     .flatten();
                                 let request = auth::LoginRequest::new(login, password);
+                                mfa_flows.clear();
                                 match api::auth::login(&client, &config, &request, fingerprint.as_deref()).await {
                                     Ok(response) => {
+                                        let login_instance_id = response.login_instance_id.clone();
                                         let challenge = auth_challenge_from_response(response);
+                                        remember_mfa_flow(
+                                            &mut mfa_flows,
+                                            &challenge,
+                                            login_instance_id,
+                                            fingerprint.clone(),
+                                        );
                                         if let AuthChallenge::Success { token } = &challenge {
                                             if let Err(message) = connect_session!(token.clone()) {
                                                 update_auth!(AuthChallenge::Failed {
@@ -1741,6 +1789,7 @@ async fn run(
                     }
                     ClientCommand::SubmitMfa { code, ticket, method } => {
                         captcha_solver.set(None);
+                        let flow = mfa_flows.get(&ticket).cloned().unwrap_or_default();
                         let config = default_rest_config(&api_base, user_agent.as_deref(), None);
                         match ReqwestRestTransport::new() {
                             Err(transport_error) => {
@@ -1751,10 +1800,25 @@ async fn run(
                             }
                             Ok(transport) => {
                                 let client = RestClient::new(config.clone(), transport, captcha_solver.clone());
-                                let request = auth::MfaLoginRequest::new(code, ticket);
-                                match api::auth::login_mfa(&client, &config, &request, None, &method).await {
+                                let fingerprint = match flow.fingerprint.clone() {
+                                    Some(fingerprint) => Some(fingerprint),
+                                    None => api::auth::get_fingerprint(&client, &config)
+                                        .await
+                                        .ok()
+                                        .flatten(),
+                                };
+                                let request = auth::MfaLoginRequest::new(code, ticket)
+                                    .with_login_instance_id(flow.login_instance_id.as_deref());
+                                match api::auth::login_mfa(&client, &config, &request, fingerprint.as_deref(), &method).await {
                                     Ok(response) => {
+                                        let login_instance_id = response.login_instance_id.clone();
                                         let challenge = auth_challenge_from_response(response);
+                                        remember_mfa_flow(
+                                            &mut mfa_flows,
+                                            &challenge,
+                                            login_instance_id,
+                                            fingerprint.clone(),
+                                        );
                                         if let AuthChallenge::Success { token } = &challenge {
                                             if let Err(message) = connect_session!(token.clone()) {
                                                 update_auth!(AuthChallenge::Failed {
@@ -1780,10 +1844,18 @@ async fn run(
                         mark_snapshot_dirty!();
                     }
                     ClientCommand::SendMfaSms { ticket } => {
+                        let flow = mfa_flows.get(&ticket).cloned().unwrap_or_default();
                         let config = default_rest_config(&api_base, user_agent.as_deref(), None);
                         if let Ok(transport) = ReqwestRestTransport::new() {
                             let client = RestClient::new(config.clone(), transport, captcha_solver.clone());
-                            match api::auth::send_mfa_sms(&client, &config, &ticket, None).await {
+                            let fingerprint = match flow.fingerprint {
+                                Some(fingerprint) => Some(fingerprint),
+                                None => api::auth::get_fingerprint(&client, &config)
+                                    .await
+                                    .ok()
+                                    .flatten(),
+                            };
+                            match api::auth::send_mfa_sms(&client, &config, &ticket, fingerprint.as_deref()).await {
                                 Ok(phone) => update_auth!(AuthChallenge::SmsSent { phone }),
                                 Err(api_error) => update_auth!(AuthChallenge::Failed {
                                     kind: AuthFailureKind::Network,
@@ -1963,12 +2035,7 @@ async fn run(
                             match api::message::get_mentions(&*rest_client, &config, limit.unwrap_or(50).clamp(1, 100), before).await {
                                 Ok(messages) => {
                                     let count = messages.len() as u32;
-                                    for message in messages {
-                                        fetched_messages
-                                            .entry(message.channel_id)
-                                            .or_default()
-                                            .push(message);
-                                    }
+                                    fetched_mentions = messages;
                                     push_event(&events, ClientEvent::MentionsLoaded { count });
                                 }
                                 Err(api_error) => {
@@ -2512,6 +2579,7 @@ mod tests {
             None,
             &HashMap::new(),
             &HashMap::new(),
+            &[],
             &None,
             &AuthStateSnapshot::default(),
             None,
@@ -2567,6 +2635,34 @@ mod tests {
             }
             other => panic!("unexpected challenge: {other:?}"),
         }
+    }
+
+    #[test]
+    fn mfa_flow_keeps_login_instance_and_fingerprint_for_ticket() {
+        let mut flows = HashMap::new();
+        remember_mfa_flow(
+            &mut flows,
+            &AuthChallenge::MfaRequired {
+                ticket: "ticket-1".to_owned(),
+                methods: vec!["totp".to_owned()],
+            },
+            Some("instance-1".to_owned()),
+            Some("fingerprint-1".to_owned()),
+        );
+
+        let flow = flows.get("ticket-1").expect("stored MFA flow");
+        assert_eq!(flow.login_instance_id.as_deref(), Some("instance-1"));
+        assert_eq!(flow.fingerprint.as_deref(), Some("fingerprint-1"));
+
+        remember_mfa_flow(
+            &mut flows,
+            &AuthChallenge::Success {
+                token: "token".to_owned(),
+            },
+            None,
+            None,
+        );
+        assert!(flows.is_empty());
     }
 
     #[test]

@@ -12,28 +12,74 @@ Item {
     property string placeholder
     property real lastTyping: 0
     property var files: []
+    property string replyId: ""
+    property string replyAuthor: ""
+    property string replyPreview: ""
+    property string editId: ""
 
     readonly property bool canSend: input.text.trim() !== "" || files.length > 0
 
     implicitHeight: column.implicitHeight
 
+    function clearContext() {
+        replyId = ""
+        replyAuthor = ""
+        replyPreview = ""
+        editId = ""
+    }
+
     function reset() {
         input.clear()
         files = []
         lastTyping = 0
+        clearContext()
         emojiPicker.close()
+    }
+
+    function replyTo(id, author, content) {
+        clearContext()
+        replyId = id
+        replyAuthor = author
+        replyPreview = content.replace(/\s+/g, " ").slice(0, 120)
+        input.forceActiveFocus()
+    }
+
+    function editMessage(id, content) {
+        clearContext()
+        editId = id
+        input.text = content
+        input.cursorPosition = content.length
+        input.forceActiveFocus()
+    }
+
+    function handleBack() {
+        if (emojiPicker.opened) {
+            emojiPicker.close()
+            return true
+        }
+        if (replyId !== "" || editId !== "") {
+            clearContext()
+            return true
+        }
+        return false
     }
 
     function send() {
         if (!canSend)
             return
-        if (files.length > 0)
-            backend.sendFiles(input.text, JSON.stringify(files))
+        const text = input.text
+        if (editId !== "")
+            backend.editMessage(editId, text)
+        else if (replyId !== "" && files.length === 0)
+            backend.sendReply(text, replyId)
+        else if (files.length > 0)
+            backend.sendFiles(text, JSON.stringify(files))
         else
-            backend.sendMessage(input.text)
+            backend.sendMessage(text)
         input.clear()
         files = []
         lastTyping = 0
+        clearContext()
     }
 
     FileDialog {
@@ -46,6 +92,68 @@ Item {
     Column {
         id: column
         width: parent.width
+
+        // Reply/edit banner, like ChatInputBar's reply banner.
+        Rectangle {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.leftMargin: 8
+            anchors.rightMargin: 8
+            height: visible ? 52 : 0
+            radius: 10
+            color: Theme.surfaceContainerHigh
+            visible: root.replyId !== "" || root.editId !== ""
+
+            Rectangle {
+                anchors.left: parent.left
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                width: 3
+                radius: 1
+                color: Theme.primary
+            }
+
+            Row {
+                anchors.fill: parent
+                anchors.leftMargin: 12
+                anchors.rightMargin: 4
+                spacing: 8
+
+                Column {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: parent.width - 44
+                    spacing: 1
+
+                    Text {
+                        width: parent.width
+                        text: root.editId !== "" ? "Editing message" : "Replying to " + root.replyAuthor
+                        color: Theme.primary
+                        font.family: Theme.font
+                        font.pixelSize: 12
+                        font.weight: Font.DemiBold
+                        elide: Text.ElideRight
+                    }
+                    Text {
+                        width: parent.width
+                        text: root.editId !== "" ? "Save your changes below" : root.replyPreview
+                        color: Theme.surfaceVariantText
+                        font.family: Theme.font
+                        font.pixelSize: 11
+                        elide: Text.ElideRight
+                    }
+                }
+
+                IconButton {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 36
+                    height: 36
+                    glyph: "Rounded.Close"
+                    iconSize: 18
+                    tip: "Cancel"
+                    onClicked: root.clearContext()
+                }
+            }
+        }
 
         // Queued uploads.
         Row {

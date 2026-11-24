@@ -4,6 +4,8 @@ import QtQuick.Controls.Basic
 Button {
     id: control
 
+    property alias horizontalAlignment: label.horizontalAlignment
+
     implicitHeight: 40
     leftPadding: 12
     rightPadding: 12
@@ -14,6 +16,7 @@ Button {
     font.letterSpacing: 0.1
 
     contentItem: Text {
+        id: label
         text: control.text
         font: control.font
         color: Theme.primary

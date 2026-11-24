@@ -96,17 +96,31 @@ cd rust
 LAMPCORD_QML_MOBILE=1 cargo run -p lampcord-qml
 ```
 
-## What is in the first slice
+## What works in the mobile UI
 
-- Rust `lampcord-qml` is now both the desktop binary and a library exposing
+- Rust `lampcord-qml` is both the desktop binary and a library exposing
   `lampcord_qml_main()` for the Qt Android activity.
 - `MobileMain.qml`: full-screen root, backend polling, navigation restore,
-  Android back-key handling.
-- `MobileBaseplate.qml`: Compose-like start drawer (guild rail + channel list),
-  centre chat surface, member drawer, and five-tab bottom navigation.
-- Reuses the existing QML login, connecting, chat, composer, emoji, pins,
-  account and member components.
+  safe-area margins and a double-back exit confirmation.
+- `MobileBaseplate.qml`: a small navigation stack, per-tab back handling,
+  configurable bottom tabs, start drawer (guild rail + channel list), chat
+  surface, member drawer, pins and search actions.
+- Chat: `ChatView.qml` hides the desktop header on mobile and reuses the
+  message list, pins and composer. Long-press/right-click opens reply, edit and
+  delete actions; the composer shows reply/edit banners and sends through the
+  matching backend calls.
+- `MobileDms.qml`: searchable list of open conversations.
+- `MobileSearch.qml`: local finder over guilds, channels, DMs and loaded
+  messages, with a persisted recent-search list. Gateway-side search is not
+  exposed by the core yet.
+- `MobileMentions.qml`: real mentions page backed by a new `mentions` section
+  in the FFI snapshot; tapping a result opens its channel.
+- `MobileYou.qml`: profile card, presence and custom-status controls,
+  configurable bottom tabs and logout confirmation.
+- `LoginScreen.qml`: credentials, token, MFA, QR login, SMS fallback and
+  password reset. Captcha display is still not wired to the core.
 
-Deliberately still stubbed in this slice: Search, Mentions, You settings tree,
-voice calls, GIFs/stickers, captcha solving, notifications, secure token
-storage, and deep links. These need their own Kotlin→Rust/QML port slices.
+Still out of scope for this slice: voice calls, reactions/threads/polls,
+GIFs/stickers, notifications and conversation bubbles, secure token storage,
+content-URI attachments from Android's file picker, and deep links. These need
+their own Kotlin→Rust/QML port slices.

@@ -19,6 +19,14 @@ Rectangle {
         manualStep = next
     }
 
+    Connections {
+        target: backend
+        function onAuthStateChanged() {
+            if (backend.authState === "failed")
+                code.text = ""
+        }
+    }
+
     // The QR session only lives while the login screen is up.
     Component.onCompleted: backend.startQrLogin()
     Component.onDestruction: backend.cancelQrLogin()
@@ -35,7 +43,12 @@ Rectangle {
     }
 
     Flickable {
-        anchors.fill: parent
+        anchors.top: parent.top
+        anchors.topMargin: window.statusBarInset
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: window.navBarInset
+        anchors.left: parent.left
+        anchors.right: parent.right
         contentHeight: Math.max(height, column.implicitHeight + 48)
         boundsBehavior: Flickable.StopAtBounds
 
@@ -85,10 +98,20 @@ Rectangle {
                     }
                     ErrorBanner { text: root.errorText }
                     Item { implicitHeight: 8 }
-                    TextButton {
-                        Layout.alignment: Qt.AlignHCenter
-                        text: "Login with token"
-                        onClicked: root.go("token")
+                    RowLayout {
+                        Layout.fillWidth: true
+                        TextButton {
+                            Layout.alignment: Qt.AlignLeft
+                            text: "Login with token"
+                            onClicked: root.go("token")
+                        }
+                        Item { Layout.fillWidth: true }
+                        TextButton {
+                            Layout.alignment: Qt.AlignRight
+                            text: "Forgot password?"
+                            enabled: login.text.trim().length > 0
+                            onClicked: backend.forgotPassword(login.text)
+                        }
                     }
                     Item { implicitHeight: 36 }
                     FilledButton {
@@ -163,17 +186,25 @@ Rectangle {
                                                               : "Enter the 6-digit code from your authenticator app."
                     }
                     Item { implicitHeight: 20 }
-                    OutlinedField {
+                    OtpInput {
                         id: code
                         Layout.fillWidth: true
-                        label: "Code"
-                        inputMethodHints: Qt.ImhDigitsOnly
                         enabled: !root.busy
                         error: root.errorText !== ""
-                        onAccepted: mfaSubmit.clicked()
+                        onAccepted: backend.submitMfa(code.text)
+                        onTextChanged: {
+                            if (!root.busy && root.step === "mfa" && code.text.length === 6)
+                                backend.submitMfa(code.text)
+                        }
                     }
                     ErrorBanner { text: root.errorText }
-                    Item { implicitHeight: 20 }
+                    Item { implicitHeight: 8 }
+                    TextButton {
+                        Layout.alignment: Qt.AlignHCenter
+                        text: "Send code by SMS instead"
+                        onClicked: backend.sendMfaSms()
+                    }
+                    Item { implicitHeight: 12 }
                     FilledButton {
                         id: mfaSubmit
                         Layout.fillWidth: true

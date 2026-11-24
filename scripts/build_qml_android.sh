@@ -1,20 +1,16 @@
 #!/usr/bin/env bash
-# Build the Rust QML client as an Android APK using the same cxx-qt module as
-# the desktop app. Requires Qt for Android and cargo-ndk.
+# Build the Rust QML client as an Android APK using Qt's CMake toolchain.
+# Requires Qt for Android 6.12, the matching host Qt, and cargo-ndk.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-QT_ANDROID_PREFIX="${QT_ANDROID_PREFIX:-$HOME/Qt/6.7.3/android_arm64_v8a}"
-QT_HOST_PREFIX="${QT_HOST_PREFIX:-$HOME/Qt/6.7.3/gcc_64}"
+QT_ANDROID_PREFIX="${QT_ANDROID_PREFIX:-$HOME/Qt/6.12.0/android_arm64_v8a}"
+QT_HOST_PREFIX="${QT_HOST_PREFIX:-$HOME/Qt/6.12.0/gcc_64}"
 ANDROID_SDK_ROOT="${ANDROID_SDK_ROOT:-$HOME/Android/Sdk}"
 ANDROID_NDK_HOME="${ANDROID_NDK_HOME:-$ANDROID_SDK_ROOT/ndk/27.2.12479018}"
 JAVA_HOME="${JAVA_HOME:-/home/lampu/temp_jdk/jdk-21.0.6+7}"
 ABI="${ABI:-arm64-v8a}"
 BUILD_DIR="${BUILD_DIR:-$REPO_ROOT/rust/target/android-$ABI-qml}"
-# Qt 6.7's androiddeployqt always picks the highest installed Android platform,
-# but its bundled AGP 7.4.1 cannot read the API 37+ SDK metadata. Give Qt a
-# narrow SDK view so packaging uses API 34 / build-tools 34.0.0.
-QT_SDK="$REPO_ROOT/rust/target/android-sdk-qt"
 
 case "$ABI" in
     arm64-v8a) RUST_TARGET="aarch64-linux-android" ;;
@@ -30,30 +26,51 @@ for path in "$QT_ANDROID_PREFIX" "$QT_HOST_PREFIX" "$ANDROID_NDK_HOME" "$JAVA_HO
     fi
 done
 
-mkdir -p "$QT_SDK/platforms" "$QT_SDK/build-tools" "$QT_SDK/platform-tools"
-ln -sfn "$ANDROID_SDK_ROOT/platforms/android-34" "$QT_SDK/platforms/android-34"
-ln -sfn "$ANDROID_SDK_ROOT/build-tools/34.0.0" "$QT_SDK/build-tools/34.0.0"
-ln -sfn "$ANDROID_SDK_ROOT/platform-tools" "$QT_SDK/platform-tools"
-
-export ANDROID_HOME="$QT_SDK"
-export ANDROID_SDK_ROOT="$QT_SDK"
+export ANDROID_HOME="$ANDROID_SDK_ROOT"
+export ANDROID_SDK_ROOT
 export ANDROID_NDK_HOME
 export ANDROID_NDK_ROOT="$ANDROID_NDK_HOME"
 export JAVA_HOME
 # cxx-qt's build script must compile against the Android Qt headers, not the
 # host Qt headers that happen to be earlier in PATH for the desktop build.
 export QMAKE="$QT_ANDROID_PREFIX/bin/qmake"
-# Qt's Android package here was built without zstd support, but host RCC uses
-# zstd compression by default. Generate zlib-compressed resources instead.
+# The Android Qt package is built without zstd support, while host RCC defaults
+# to zstd. Generate zlib-compressed resources so the generated code can link.
 export CXX_QT_AUTORCC_OPTIONS="--no-zstd"
 export PATH="$JAVA_HOME/bin:$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin:$QT_HOST_PREFIX/bin:$PATH"
+
+# Qt signs the release APK with these variables (see QT_ANDROID_SIGN_APK).
+local_properties="$REPO_ROOT/local.properties"
+if [ ! -f "$local_properties" ]; then
+    echo "Missing $local_properties with release signing properties" >&2
+    exit 2
+fi
+while IFS='=' read -r key value || [ -n "${key:-}" ]; do
+    case "$key" in
+        release.storeFile)
+            case "$value" in
+                /*) export QT_ANDROID_KEYSTORE_PATH="$value" ;;
+                *) export QT_ANDROID_KEYSTORE_PATH="$REPO_ROOT/$value" ;;
+            esac
+            ;;
+        release.keyAlias) export QT_ANDROID_KEYSTORE_ALIAS="$value" ;;
+        release.storePassword) export QT_ANDROID_KEYSTORE_STORE_PASS="$value" ;;
+        release.keyPassword) export QT_ANDROID_KEYSTORE_KEY_PASS="$value" ;;
+    esac
+done < "$local_properties"
+for var in QT_ANDROID_KEYSTORE_PATH QT_ANDROID_KEYSTORE_ALIAS QT_ANDROID_KEYSTORE_STORE_PASS QT_ANDROID_KEYSTORE_KEY_PASS; do
+    if [ -z "${!var:-}" ]; then
+        echo "Missing $var in $local_properties" >&2
+        exit 2
+    fi
+done
 
 echo "==> Building Rust QML library for $RUST_TARGET"
 (
     cd "$REPO_ROOT/rust"
     cargo ndk \
         --target "$ABI" \
-        --platform 27 \
+        --platform 34 \
         build --release \
         -p lampcord-qml \
         --lib
@@ -70,17 +87,15 @@ cmake -S "$REPO_ROOT/rust/crates/lampcord-qml/android" -B "$BUILD_DIR" -G Ninja 
     -DCMAKE_TOOLCHAIN_FILE="$QT_ANDROID_PREFIX/lib/cmake/Qt6/qt.toolchain.cmake" \
     -DQT_CHAINLOAD_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake" \
     -DANDROID_ABI="$ABI" \
-    -DANDROID_PLATFORM=android-27 \
-    -DANDROID_SDK_ROOT="$ANDROID_SDK_ROOT" \
-    -DANDROID_NDK_ROOT="$ANDROID_NDK_HOME" \
+    -DANDROID_PLATFORM=android-34 \
     -DQT_HOST_PATH="$QT_HOST_PREFIX" \
     -DCMAKE_BUILD_TYPE=Release \
     -DLAMPCORD_RUST_LIB="$RUST_LIB"
 
-echo "==> Building APK"
+echo "==> Building signed APK"
 cmake --build "$BUILD_DIR"
 
 echo
-echo "APK output is under:"
+echo "Signed APK is under:"
 echo "  $BUILD_DIR"
 find "$BUILD_DIR" -name '*.apk' -type f -print

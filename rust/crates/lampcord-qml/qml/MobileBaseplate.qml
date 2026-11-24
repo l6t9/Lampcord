@@ -3,25 +3,92 @@ import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import Lampcord
 
-// First mobile slice: the Compose MobileBaseplate's navigation shape —
-// start drawer (server rail + channels), centre chat, bottom navigation —
-// rebuilt from the existing desktop QML components.
+// Mobile coordinator: a small navigation stack, the five Compose tabs, the
+// start/member drawers and the chat surface. Each tab owns one route; opening
+// a conversation from search/mentions replaces the stack with the chat route.
 Item {
     id: root
     anchors.fill: parent
 
     property string route: "chat"
+    property string tab: "home"
+    property var stack: [{ route: "chat", tab: "home" }]
 
     readonly property var guild: window.guilds.find(g => g.id === backend.selectedGuildId) || null
     readonly property var channel: window.channels.find(c => c.id === backend.selectedChannelId) || null
 
+    readonly property var tabs: {
+        const out = []
+        if (memory.showHome) out.push({ routeKey: "home", glyph: "Home", label: "Home" })
+        if (memory.showDms) out.push({ routeKey: "dm", glyph: "ChatBubble", label: "Messages" })
+        if (memory.showSearch) out.push({ routeKey: "search", glyph: "Search", label: "Search" })
+        if (memory.showMentions) out.push({ routeKey: "mentions", glyph: "AlternateEmail", label: "Mentions" })
+        if (memory.showYou) out.push({ routeKey: "you", glyph: "AccountCircle", label: "You" })
+        if (out.length === 0) out.push({ routeKey: "you", glyph: "AccountCircle", label: "You" })
+        return out
+    }
+
     readonly property string title: {
+        if (root.route === "dm") return "Direct Messages"
         if (root.route === "you") return "You"
         if (root.route === "search") return "Search"
         if (root.route === "mentions") return "Mentions"
         if (root.channel) return root.channel.name
         if (root.guild) return root.guild.name
         return "Direct Messages"
+    }
+
+    function pushRoute(key) {
+        const next = { route: key, tab: root.tab }
+        root.stack = root.stack.concat([next])
+        root.route = key
+    }
+
+    function replaceRoute(key, newTab) {
+        if (newTab && newTab !== "")
+            root.tab = newTab
+        root.stack = [{ route: key, tab: root.tab }]
+        root.route = key
+    }
+
+    function selectRoute(key) {
+        if (key === "home") {
+            if (root.route !== "chat")
+                root.replaceRoute("chat", "home")
+            else
+                root.tab = "home"
+            navDrawer.open()
+            return
+        }
+        root.replaceRoute(key, key)
+        navDrawer.close()
+        memberDrawer.close()
+    }
+
+    function handleBack() {
+        if (navDrawer.open) {
+            navDrawer.close()
+            return true
+        }
+        if (memberDrawer.open) {
+            memberDrawer.close()
+            return true
+        }
+        const view = contentLoader.item
+        if (view && view.handleBack && view.handleBack())
+            return true
+        if (root.stack.length > 1) {
+            const next = root.stack[root.stack.length - 2]
+            root.stack = root.stack.slice(0, -1)
+            root.route = next.route
+            root.tab = next.tab
+            return true
+        }
+        if (root.route !== "chat") {
+            root.replaceRoute("chat")
+            return true
+        }
+        return false
     }
 
     Rectangle {
@@ -45,7 +112,14 @@ Item {
             anchors.topMargin: window.statusBarInset
             anchors.leftMargin: 4
             anchors.rightMargin: 4
-            spacing: 4
+            spacing: 2
+
+            IconButton {
+                visible: root.stack.length > 1 || root.route !== "chat"
+                glyph: "Rounded.ArrowBack"
+                tip: "Back"
+                onClicked: root.handleBack()
+            }
 
             IconButton {
                 glyph: "Rounded.Menu"
@@ -55,7 +129,7 @@ Item {
 
             Text {
                 Layout.fillWidth: true
-                leftPadding: 8
+                leftPadding: 6
                 text: root.title
                 color: Theme.surfaceText
                 font.family: Theme.font
@@ -65,7 +139,25 @@ Item {
             }
 
             IconButton {
-                visible: backend.selectedChannelId !== ""
+                visible: backend.selectedChannelId !== "" && root.route === "chat"
+                glyph: "Rounded.Search"
+                tip: "Search"
+                onClicked: root.pushRoute("search")
+            }
+
+            IconButton {
+                visible: backend.selectedChannelId !== "" && root.route === "chat"
+                glyph: "PushPin"
+                tip: "Pins"
+                onClicked: {
+                    const view = contentLoader.item
+                    if (view && view.openPins)
+                        view.openPins()
+                }
+            }
+
+            IconButton {
+                visible: backend.selectedChannelId !== "" && root.route === "chat"
                 glyph: "Rounded.Group"
                 tip: "Members"
                 onClicked: memberDrawer.open()
@@ -85,11 +177,15 @@ Item {
         clip: true
 
         Loader {
+            id: contentLoader
             anchors.fill: parent
             sourceComponent: {
-                if (root.route === "you") return accountComponent
-                if (root.route === "chat" || root.route === "dm") return chatComponent
-                return pendingComponent
+                if (root.route === "chat") return chatComponent
+                if (root.route === "dm") return dmsComponent
+                if (root.route === "search") return searchComponent
+                if (root.route === "mentions") return mentionsComponent
+                if (root.route === "you") return youComponent
+                return chatComponent
             }
         }
     }
@@ -98,37 +194,39 @@ Item {
         id: chatComponent
         ChatView {
             anchors.fill: parent
+            compact: true
         }
     }
 
     Component {
-        id: accountComponent
-        AccountPanel {
+        id: dmsComponent
+        MobileDms {
             anchors.fill: parent
+            onOpenServers: navDrawer.open()
+            onOpenedDm: root.replaceRoute("chat", "dm")
         }
     }
 
     Component {
-        id: pendingComponent
-        Item {
-            Column {
-                anchors.centerIn: parent
-                spacing: 12
+        id: searchComponent
+        MobileSearch {
+            anchors.fill: parent
+            onOpened: root.replaceRoute("chat")
+        }
+    }
 
-                Icon {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    name: root.route === "search" ? "Rounded.Search"
-                        : root.route === "mentions" ? "Rounded.AlternateEmail" : "Rounded.Home"
-                    size: 48
-                    color: Theme.outline
-                }
-                Text {
-                    text: root.title + " is not ported to QML yet"
-                    color: Theme.surfaceVariantText
-                    font.family: Theme.font
-                    font.pixelSize: 14
-                }
-            }
+    Component {
+        id: mentionsComponent
+        MobileMentions {
+            anchors.fill: parent
+            onOpenedDm: root.replaceRoute("chat", "mentions")
+        }
+    }
+
+    Component {
+        id: youComponent
+        MobileYou {
+            anchors.fill: parent
         }
     }
 
@@ -138,9 +236,9 @@ Item {
         id: navDrawer
         edge: Qt.LeftEdge
         width: Math.min(320, root.width * 0.86)
-        height: root.height
+        y: window.statusBarInset
+        height: root.height - window.statusBarInset - window.navBarInset
         modal: true
-        overviewMode: true
 
         background: Rectangle { color: Theme.surfaceContainerLow }
 
@@ -175,9 +273,9 @@ Item {
         id: memberDrawer
         edge: Qt.RightEdge
         width: Math.min(300, root.width * 0.86)
-        height: root.height
+        y: window.statusBarInset
+        height: root.height - window.statusBarInset - window.navBarInset
         modal: true
-        overviewMode: true
 
         background: Rectangle { color: Theme.surfaceContainerLow }
 
@@ -192,8 +290,10 @@ Item {
     Connections {
         target: memory
         function onMemberPanelChanged() {
-            if (memory.memberPanel && !memberDrawer.open) memberDrawer.open()
-            if (!memory.memberPanel && memberDrawer.open) memberDrawer.close()
+            if (memory.memberPanel && !memberDrawer.open)
+                memberDrawer.open()
+            if (!memory.memberPanel && memberDrawer.open)
+                memberDrawer.close()
         }
     }
 
@@ -208,30 +308,26 @@ Item {
         color: Theme.surface
         z: 2
 
-        ListModel {
-            id: navModel
-            ListElement { routeKey: "home"; glyph: "Home"; label: "Home" }
-            ListElement { routeKey: "dm"; glyph: "ChatBubble"; label: "Messages" }
-            ListElement { routeKey: "search"; glyph: "Search"; label: "Search" }
-            ListElement { routeKey: "mentions"; glyph: "AlternateEmail"; label: "Mentions" }
-            ListElement { routeKey: "you"; glyph: "AccountCircle"; label: "You" }
-        }
-
         Row {
             anchors.fill: parent
             anchors.bottomMargin: window.navBarInset
 
             Repeater {
-                model: navModel
+                model: root.tabs
 
                 delegate: AbstractButton {
-                    width: parent.width / navModel.count
+                    required property var modelData
+                    width: parent.width / root.tabs.length
                     height: parent.height
                     down: false
 
-                    readonly property bool selected: root.route === model.routeKey
+                    readonly property bool selected: {
+                        if (modelData.routeKey === "home")
+                            return root.tab === "home" && root.route === "chat"
+                        return root.tab === modelData.routeKey
+                    }
 
-                    onClicked: root.selectRoute(model.routeKey)
+                    onClicked: root.selectRoute(modelData.routeKey)
 
                     Column {
                         anchors.centerIn: parent
@@ -239,43 +335,36 @@ Item {
 
                         Icon {
                             anchors.horizontalCenter: parent.horizontalCenter
-                            name: selected ? model.glyph : "Rounded." + model.glyph
+                            name: selected ? modelData.glyph : "Rounded." + modelData.glyph
                             size: 22
                             color: selected ? Theme.primary : Theme.surfaceVariantText
                         }
                         Text {
-                            text: model.label
+                            text: modelData.label
                             color: selected ? Theme.primary : Theme.surfaceVariantText
                             font.family: Theme.font
                             font.pixelSize: 11
                         }
+                    }
+
+                    MentionBadge {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        anchors.top: parent.top
+                        anchors.topMargin: 8
+                        visible: modelData.routeKey === "dm" && root.totalMentions > 0
+                        count: root.totalMentions
                     }
                 }
             }
         }
     }
 
-    function selectRoute(key) {
-        route = key
-        navDrawer.close()
-        memberDrawer.close()
-        if (key === "home" || key === "dm")
-            window.openHome()
-    }
-
-    function handleBack() {
-        if (navDrawer.open) {
-            navDrawer.close()
-            return true
-        }
-        if (memberDrawer.open) {
-            memberDrawer.close()
-            return true
-        }
-        if (route !== "chat") {
-            route = "chat"
-            return true
-        }
-        return false
+    readonly property int totalMentions: {
+        let count = 0
+        for (const dm of window.dms)
+            count += dm.mentions || 0
+        for (const channel of window.channels)
+            count += channel.mentions || 0
+        return count
     }
 }

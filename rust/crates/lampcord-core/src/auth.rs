@@ -75,6 +75,11 @@ impl MfaLoginRequest {
         }
     }
 
+    pub fn with_login_instance_id(mut self, id: Option<&str>) -> Self {
+        self.login_instance_id = id.filter(|id| !id.is_empty()).map(str::to_owned);
+        self
+    }
+
     pub fn to_value(&self) -> Value {
         serde_json::to_value(self).unwrap_or(Value::Null)
     }
@@ -315,5 +320,22 @@ mod tests {
         assert_eq!(logout_token, None);
         assert_eq!(completed.token.as_deref(), Some("new-token"));
         assert_eq!(completed.failure, None);
+    }
+
+    #[test]
+    fn mfa_request_keeps_login_instance_id() {
+        let request = MfaLoginRequest::new("123456", "ticket")
+            .with_login_instance_id(Some("instance-1"));
+        assert_eq!(
+            request.to_value(),
+            serde_json::json!({
+                "code": "123456",
+                "ticket": "ticket",
+                "login_instance_id": "instance-1"
+            })
+        );
+
+        let without = MfaLoginRequest::new("123456", "ticket").with_login_instance_id(Some(""));
+        assert_eq!(without.login_instance_id, None);
     }
 }

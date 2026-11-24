@@ -15,6 +15,9 @@ ApplicationWindow {
     color: Theme.surfaceContainerHigh
     font.family: Theme.font
 
+    readonly property int statusBarInset: 0
+    readonly property int navBarInset: 0
+
     LampcordBackend {
         id: backend
     }

@@ -7,6 +7,29 @@ Item {
     readonly property var dm: window.dms.find(d => d.id === backend.selectedChannelId) || null
     readonly property var channel: dm || window.channels.find(c => c.id === backend.selectedChannelId) || null
     property bool loadingOlder: false
+    // Mobile has its own top app bar, so it hides this desktop header.
+    property bool compact: false
+
+    function openPins() {
+        backend.fetchPins()
+        pins.width = Math.min(420, root.width - 16)
+        if (compact) {
+            pins.x = root.width - pins.width - 8
+            pins.y = 8
+        } else {
+            pins.x = pinsButton.width - pins.width
+            pins.y = pinsButton.height + 8
+        }
+        pins.open()
+    }
+
+    function handleBack() {
+        if (pins.opened) {
+            pins.close()
+            return true
+        }
+        return composer.handleBack()
+    }
 
     // Newest first, matching the bottom-to-top list below.
     ListModel { id: messages }
@@ -54,7 +77,7 @@ Item {
         id: header
         width: parent.width
         height: 56
-        visible: root.channel !== null
+        visible: !root.compact && root.channel !== null
 
         Row {
             anchors.left: parent.left
@@ -109,19 +132,13 @@ Item {
                 iconSize: 22
                 iconColor: pins.opened ? Theme.primary : Theme.surfaceVariantText
                 tip: "Pins"
-                onClicked: {
-                    if (pins.opened) {
-                        pins.close()
-                    } else {
-                        backend.fetchPins()
-                        pins.open()
-                    }
-                }
+                onClicked: pins.opened ? pins.close() : root.openPins()
 
                 PinsPopup {
                     id: pins
                     x: pinsButton.width - width
                     y: pinsButton.height + 8
+                    onAboutToShow: width = Math.min(420, root.width - 16)
                 }
             }
             IconButton {
@@ -136,7 +153,7 @@ Item {
 
     ListView {
         id: list
-        anchors.top: header.bottom
+        anchors.top: root.compact ? parent.top : header.bottom
         anchors.bottom: composer.top
         width: parent.width
         visible: root.channel !== null
@@ -150,6 +167,13 @@ Item {
 
         delegate: MessageDelegate {
             width: list.width
+            messageId: model.id
+            authorId: model.authorId
+            mine: model.authorId !== "" && model.authorId === backend.currentUserId
+
+            onActionReply: id => composer.replyTo(id, model.author, model.content)
+            onActionEdit: (id, content) => composer.editMessage(id, content)
+            onActionDelete: id => backend.deleteMessage(id)
         }
 
         // Reaching the oldest loaded message pulls the previous page.

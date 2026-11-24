@@ -114,7 +114,9 @@ impl LampcordClient {
         ticket: String,
         method: String,
     ) -> Result<(), FfiClientError> {
-        if code.trim().is_empty() || ticket.trim().is_empty() || method.trim().is_empty() {
+        let code = code.trim().to_owned();
+        let method = method.trim().to_owned();
+        if code.is_empty() || ticket.trim().is_empty() || method.is_empty() {
             return Err(FfiClientError::invalid_input(
                 "code, ticket and method must not be empty",
             ));

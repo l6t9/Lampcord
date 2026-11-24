@@ -35,6 +35,11 @@ ApplicationWindow {
         property string lastGuild: ""
         property string lastChannels: "{}"
         property bool memberPanel: true
+        property bool showHome: true
+        property bool showDms: true
+        property bool showSearch: true
+        property bool showMentions: true
+        property bool showYou: true
     }
 
     readonly property var guilds: JSON.parse(backend.guildsJson)
@@ -101,6 +106,65 @@ ApplicationWindow {
             backend.selectChannel(target.id)
     }
 
+    property real lastBackAt: 0
+
+    function exitOrWarn() {
+        const now = Date.now()
+        if (now - window.lastBackAt < 2000)
+            Qt.quit()
+        window.lastBackAt = now
+        backToast.show("Press back again to exit")
+    }
+
+    function handleBack() {
+        if (mainView.item && mainView.item.handleBack && mainView.item.handleBack())
+            return
+        exitOrWarn()
+    }
+
+    // Qt 6.12 sends back presses to the background unless a window-level
+    // shortcut accepts them. A Shortcut works regardless of which touch-driven
+    // item currently has active focus.
+    Shortcut {
+        sequences: ["Back"]
+        enabled: Qt.platform.os === "android"
+        onActivated: window.handleBack()
+    }
+
+    Rectangle {
+        id: backToast
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: window.navBarInset + 80
+        z: 100
+        radius: 20
+        color: Theme.surfaceContainerHighest
+        opacity: 0
+        visible: opacity > 0
+
+        function show(message) {
+            label.text = message
+            opacity = 1
+            timer.restart()
+        }
+
+        Text {
+            id: label
+            anchors.margins: 14
+            color: Theme.surfaceText
+            font.family: Theme.font
+            font.pixelSize: 13
+        }
+
+        Behavior on opacity { NumberAnimation { duration: Theme.quick } }
+
+        Timer {
+            id: timer
+            interval: 2000
+            onTriggered: backToast.opacity = 0
+        }
+    }
+
     Loader {
         id: mainView
         anchors.fill: parent
@@ -120,12 +184,5 @@ ApplicationWindow {
     Component {
         id: mobileView
         MobileBaseplate {}
-    }
-
-    focus: true
-    Keys.enabled: true
-    Keys.onBackPressed: {
-        if (mainView.item && mainView.item.handleBack && mainView.item.handleBack())
-            event.accepted = true
     }
 }

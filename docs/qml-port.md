@@ -10,15 +10,17 @@ What the Qt Quick client (`rust/crates/lampcord-qml`) has from the README roadma
   * [x] Real-time chat & gateway sync
   * [ ] Markdown parsing & code highlighting
   * [ ] Custom emojis, reactions & stickers
-  * [ ] Message replies & edit / delete
-  * [ ] Message pinning & thread views
+  * [x] Message replies & edit / delete
+  * [x] Message pinning (thread views still missing)
+  * [x] Mentions inbox
+  * [ ] Full gateway search (local finder only)
   * [ ] Local message deletion logger
   * [ ] Slash commands & application options
 ## Voice and media
   * [ ] Native DAVE voice protocol (DAVE v1)
   * [ ] Voice channels & in-call controls
   * [ ] Image / video viewer & audio player
-  * [ ] Custom status & activity / rich presence
+  * [x] Custom status (activity / rich presence still missing)
   * [ ] Video calling & screen share rendering
 ## Notifications
   * [ ] Android system notifications & conversation bubbles

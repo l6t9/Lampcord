@@ -34,6 +34,8 @@ pub mod qobject {
         #[qproperty(QString, messages_json)]
         #[qproperty(QString, members_json)]
         #[qproperty(QString, pins_json)]
+        #[qproperty(QString, mentions_json)]
+        #[qproperty(QString, profile_json)]
         #[qproperty(QString, auth_state)]
         #[qproperty(QString, auth_message)]
         #[qproperty(QString, error_text)]
@@ -56,6 +58,15 @@ pub mod qobject {
         fn submit_mfa(self: Pin<&mut LampcordBackend>, code: QString);
 
         #[qinvokable]
+        fn send_mfa_sms(self: Pin<&mut LampcordBackend>);
+
+        #[qinvokable]
+        fn forgot_password(self: Pin<&mut LampcordBackend>, login: QString);
+
+        #[qinvokable]
+        fn fetch_profile(self: Pin<&mut LampcordBackend>, user_id: QString);
+
+        #[qinvokable]
         fn reset_auth(self: Pin<&mut LampcordBackend>);
 
         #[qinvokable]
@@ -74,10 +85,16 @@ pub mod qobject {
         fn fetch_pins(self: Pin<&mut LampcordBackend>);
 
         #[qinvokable]
+        fn fetch_mentions(self: Pin<&mut LampcordBackend>);
+
+        #[qinvokable]
         fn load_older(self: Pin<&mut LampcordBackend>);
 
         #[qinvokable]
         fn send_message(self: Pin<&mut LampcordBackend>, content: QString);
+
+        #[qinvokable]
+        fn send_reply(self: Pin<&mut LampcordBackend>, content: QString, message_id: QString);
 
         /// `files` is a JSON array of file:// URLs from a file dialog.
         #[qinvokable]
@@ -86,6 +103,15 @@ pub mod qobject {
         /// online, idle, dnd or invisible.
         #[qinvokable]
         fn set_status(self: Pin<&mut LampcordBackend>, status: QString);
+
+        #[qinvokable]
+        fn set_custom_status(self: Pin<&mut LampcordBackend>, text: QString);
+
+        #[qinvokable]
+        fn edit_message(self: Pin<&mut LampcordBackend>, message_id: QString, content: QString);
+
+        #[qinvokable]
+        fn delete_message(self: Pin<&mut LampcordBackend>, message_id: QString);
 
         #[qinvokable]
         fn send_typing(self: Pin<&mut LampcordBackend>);
@@ -142,6 +168,7 @@ pub struct BackendRust {
     channels: Vec<ChannelSnapshot>,
     private_channels: Vec<PrivateChannelSnapshot>,
     messages: Vec<MessageSnapshot>,
+    mentions: Vec<MessageSnapshot>,
     members: Vec<MemberSnapshot>,
     presences: Vec<PresenceSnapshot>,
     read_states: Vec<ReadStateSnapshot>,
@@ -169,6 +196,8 @@ pub struct BackendRust {
     messages_json: QString,
     members_json: QString,
     pins_json: QString,
+    mentions_json: QString,
+    profile_json: QString,
     auth_state: QString,
     auth_message: QString,
     error_text: QString,
@@ -194,6 +223,7 @@ impl Default for BackendRust {
             channels: Vec::new(),
             private_channels: Vec::new(),
             messages: Vec::new(),
+            mentions: Vec::new(),
             members: Vec::new(),
             presences: Vec::new(),
             read_states: Vec::new(),
@@ -220,6 +250,8 @@ impl Default for BackendRust {
             messages_json: QString::from("[]"),
             members_json: QString::from("[]"),
             pins_json: QString::from("[]"),
+            mentions_json: QString::from("[]"),
+            profile_json: QString::from("{}"),
             auth_state: QString::from("idle"),
             auth_message: QString::default(),
             error_text: QString::default(),
@@ -575,6 +607,7 @@ fn channels_json(channels: &[ChannelSnapshot], read_states: &[ReadStateSnapshot]
         let read = reads.get(&channel.id);
         json!({
             "id": channel.id.to_string(),
+            "guildId": channel.guild_id.map(|id| id.to_string()).unwrap_or_default(),
             "name": channel.name,
             "kind": channel.kind,
             "category": false,
@@ -704,6 +737,7 @@ fn messages_json(messages: &[MessageSnapshot], members: &[MemberSnapshot]) -> St
             let reply = message.reply.as_ref();
             json!({
                 "id": message.id.to_string(),
+                "channelId": message.channel_id.to_string(),
                 "authorId": message.author_id.map(|id| id.to_string()).unwrap_or_default(),
                 "author": name,
                 "avatar": avatar,
@@ -757,6 +791,8 @@ impl qobject::LampcordBackend {
             self.as_mut().set_current_user_nameplate(QString::from(
                 nameplate_url(meta.current_user_nameplate.as_deref()).as_str(),
             ));
+            let profile = serde_json::to_string(&meta.profile).unwrap_or_else(|_| "{}".to_owned());
+            self.as_mut().set_profile_json(QString::from(profile.as_str()));
             let me = meta.current_user_id.map(|id| Me {
                 id,
                 name: meta.current_user.clone().unwrap_or_default(),
@@ -801,6 +837,7 @@ impl qobject::LampcordBackend {
 
         let mut channels_dirty = false;
         let mut messages_dirty = false;
+        let mut mentions_dirty = false;
         let mut dms_dirty = false;
         if let Some(private_channels) = patch.private_channels {
             self.as_mut().rust_mut().private_channels = private_channels;
@@ -825,6 +862,7 @@ impl qobject::LampcordBackend {
         if let Some(members) = patch.members {
             self.as_mut().rust_mut().members = members;
             messages_dirty = true;
+            mentions_dirty = true;
             members_dirty = true;
         }
         if let Some(messages) = patch.messages {
@@ -840,6 +878,10 @@ impl qobject::LampcordBackend {
             }
             self.as_mut().set_pins_json(QString::from(Value::Array(rows).to_string().as_str()));
         }
+        if let Some(mentions) = patch.mentions {
+            self.as_mut().rust_mut().mentions = mentions;
+            mentions_dirty = true;
+        }
 
         if channels_dirty {
             let json = channels_json(&self.channels, &self.read_states);
@@ -854,6 +896,10 @@ impl qobject::LampcordBackend {
                 self.me.as_ref(),
             );
             self.as_mut().set_members_json(QString::from(json.as_str()));
+        }
+        if mentions_dirty {
+            let json = messages_json(&self.mentions, &self.members);
+            self.as_mut().set_mentions_json(QString::from(json.as_str()));
         }
         if dms_dirty {
             let json = dms_json(&self.private_channels, &self.read_states, &self.presences);
@@ -953,9 +999,38 @@ impl qobject::LampcordBackend {
         };
         let method = self.mfa_method.clone();
         self.as_mut().begin_auth();
-        let code = code.to_string().replace(' ', "");
+        let code = code.to_string().trim().to_owned();
         if let Err(error) = self.client.submit_mfa(code, ticket, method) {
             self.fail_auth(error.to_string());
+        }
+    }
+
+    pub fn send_mfa_sms(mut self: Pin<&mut Self>) {
+        let Some(ticket) = self.mfa_ticket.clone() else {
+            self.fail_auth("The login session expired. Start again.".to_owned());
+            return;
+        };
+        self.as_mut().begin_auth();
+        if let Err(error) = self.client.send_mfa_sms(ticket) {
+            self.fail_auth(error.to_string());
+        }
+    }
+
+    pub fn forgot_password(mut self: Pin<&mut Self>, login: QString) {
+        let login = login.to_string().trim().to_owned();
+        if login.is_empty() {
+            self.fail_auth("Enter your email or phone number first.".to_owned());
+            return;
+        }
+        self.as_mut().begin_auth();
+        if let Err(error) = self.client.forgot_password(login) {
+            self.fail_auth(error.to_string());
+        }
+    }
+
+    pub fn fetch_profile(self: Pin<&mut Self>, user_id: QString) {
+        if let Some(user_id) = parse_id(&user_id) {
+            let _ = self.client.fetch_profile(user_id, parse_id(self.selected_guild_id()));
         }
     }
 
@@ -987,6 +1062,10 @@ impl qobject::LampcordBackend {
         }
     }
 
+    pub fn fetch_mentions(self: Pin<&mut Self>) {
+        let _ = self.client.fetch_mentions(Some(50), None);
+    }
+
     pub fn load_older(self: Pin<&mut Self>) {
         let Some(channel_id) = parse_id(self.selected_channel_id()) else { return };
         let oldest = self.messages.first().map(|message| message.id);
@@ -1000,6 +1079,17 @@ impl qobject::LampcordBackend {
         }
         let Some(channel_id) = parse_id(self.selected_channel_id()) else { return };
         let _ = self.client.send_message(channel_id, content, None, None);
+    }
+
+    pub fn send_reply(self: Pin<&mut Self>, content: QString, message_id: QString) {
+        let content = content.to_string();
+        if content.trim().is_empty() {
+            return;
+        }
+        let Some(channel_id) = parse_id(self.selected_channel_id()) else { return };
+        let Some(reply_id) = parse_id(&message_id) else { return };
+        let guild_id = parse_id(self.selected_guild_id());
+        let _ = self.client.send_message(channel_id, content, Some(reply_id), guild_id);
     }
 
     pub fn send_files(self: Pin<&mut Self>, content: QString, files: QString) {
@@ -1016,6 +1106,32 @@ impl qobject::LampcordBackend {
         // Show it right away; the snapshot confirms once Discord accepts it.
         self.as_mut().set_current_user_status(status.clone());
         let _ = self.client.set_status(status.to_string());
+    }
+
+    pub fn set_custom_status(mut self: Pin<&mut Self>, text: QString) {
+        self.as_mut().set_current_user_custom_status(text.clone());
+        let text = text.to_string();
+        let _ = self.client.set_custom_status(if text.trim().is_empty() { None } else { Some(text) });
+    }
+
+    pub fn edit_message(self: Pin<&mut Self>, message_id: QString, content: QString) {
+        let content = content.to_string();
+        if content.trim().is_empty() {
+            return;
+        }
+        if let (Some(channel_id), Some(message_id)) =
+            (parse_id(self.selected_channel_id()), parse_id(&message_id))
+        {
+            let _ = self.client.edit_message(channel_id, message_id, content);
+        }
+    }
+
+    pub fn delete_message(self: Pin<&mut Self>, message_id: QString) {
+        if let (Some(channel_id), Some(message_id)) =
+            (parse_id(self.selected_channel_id()), parse_id(&message_id))
+        {
+            let _ = self.client.delete_message(channel_id, message_id);
+        }
     }
 
     pub fn send_typing(self: Pin<&mut Self>) {

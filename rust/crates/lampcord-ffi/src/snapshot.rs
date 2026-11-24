@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::types::{AuthChallenge, ConnectionState, RemoteAuthState};
 
-pub const SNAPSHOT_SCHEMA_VERSION: u32 = 3;
+pub const SNAPSHOT_SCHEMA_VERSION: u32 = 4;
 
 pub const MAX_SNAPSHOT_MEMBERS: usize = 200;
 pub const MAX_SNAPSHOT_PRESENCES: usize = 200;
@@ -46,6 +46,9 @@ pub struct ClientSnapshot {
     pub profile: Option<ProfileSnapshot>,
     /// Schema 3+. Pins of the selected channel once fetched; versioned with `messages`.
     pub pinned_messages: Vec<MessageSnapshot>,
+    /// Schema 4+. The last mentions page fetched by the client; versioned with `messages`.
+    #[serde(default)]
+    pub mentions: Vec<MessageSnapshot>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -91,6 +94,7 @@ pub struct SnapshotPatch {
     pub channels: Option<Vec<ChannelSnapshot>>,
     pub messages: Option<Vec<MessageSnapshot>>,
     pub pinned_messages: Option<Vec<MessageSnapshot>>,
+    pub mentions: Option<Vec<MessageSnapshot>>,
     pub members: Option<Vec<MemberSnapshot>>,
     pub presences: Option<Vec<PresenceSnapshot>>,
     pub read_states: Option<Vec<ReadStateSnapshot>>,

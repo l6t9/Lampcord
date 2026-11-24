@@ -20,6 +20,16 @@ Item {
     required property string replyAvatar
     required property string replyContent
 
+    // Optional message actions. Pins and inbox rows don't pass an id, so the
+    // menu simply stays unavailable there.
+    property string messageId: ""
+    property string authorId: ""
+    property bool mine: false
+
+    signal actionReply(string id)
+    signal actionEdit(string id, string content)
+    signal actionDelete(string id)
+
     readonly property bool isSystem: system !== ""
     readonly property var files: JSON.parse(attachments)
 
@@ -284,6 +294,56 @@ Item {
 
     HoverHandler {
         id: hover
+    }
+
+    // Mobile long-press and desktop right-click open the same action menu.
+    // Left clicks propagate so links in the message stay tappable.
+    MouseArea {
+        anchors.fill: parent
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
+        propagateComposedEvents: true
+
+        onClicked: mouse => {
+            if (mouse.button === Qt.RightButton) {
+                actions.open()
+                mouse.accepted = true
+            } else {
+                mouse.accepted = false
+            }
+        }
+        onPressAndHold: actions.open()
+    }
+
+    LampMenu {
+        id: actions
+        x: Math.max(4, root.width - width - 12)
+        y: 4
+        enabled: root.messageId !== "" && !root.isSystem
+
+        LampMenuItem {
+            text: "Reply"
+            onTriggered: {
+                root.actionReply(root.messageId)
+                actions.close()
+            }
+        }
+        LampMenuItem {
+            visible: root.mine
+            text: "Edit"
+            onTriggered: {
+                root.actionEdit(root.messageId, root.content)
+                actions.close()
+            }
+        }
+        LampMenuItem {
+            visible: root.mine
+            text: "Delete"
+            danger: true
+            onTriggered: {
+                root.actionDelete(root.messageId)
+                actions.close()
+            }
+        }
     }
 
     // DateTimeUtils.formatTimestamp from the Compose client.
