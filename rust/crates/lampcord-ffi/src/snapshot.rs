@@ -41,6 +41,8 @@ pub struct ClientSnapshot {
     /// Schema 3+. Your avatar frame and nameplate assets; part of `meta`.
     pub current_user_decoration: Option<String>,
     pub current_user_nameplate: Option<String>,
+    /// Schema 3+. The last profile fetched with FetchProfile; part of `meta`.
+    pub profile: Option<ProfileSnapshot>,
     /// Schema 3+. Pins of the selected channel once fetched; versioned with `messages`.
     pub pinned_messages: Vec<MessageSnapshot>,
 }
@@ -70,6 +72,7 @@ pub struct SnapshotMetaPatch {
     pub current_user_custom_status: Option<String>,
     pub current_user_decoration: Option<String>,
     pub current_user_nameplate: Option<String>,
+    pub profile: Option<ProfileSnapshot>,
     pub selected_guild_id: Option<u64>,
     pub selected_channel_id: Option<u64>,
     pub auth: AuthStateSnapshot,
@@ -132,6 +135,41 @@ pub struct RecipientSnapshot {
     pub decoration: Option<String>,
     /// Nameplate collectible asset.
     pub nameplate: Option<String>,
+}
+
+/// A user profile as shown on profile cards. Server-specific values (guild
+/// member profile) already override the account's.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
+pub struct ProfileSnapshot {
+    pub user_id: u64,
+    pub guild_id: Option<u64>,
+    pub username: String,
+    pub global_name: Option<String>,
+    pub nickname: Option<String>,
+    pub avatar: Option<String>,
+    /// Banner image URL, server banner first.
+    pub banner_url: Option<String>,
+    pub accent_color: Option<u32>,
+    /// The two Nitro profile theme colours, when set.
+    pub theme_colors: Vec<u32>,
+    pub bio: Option<String>,
+    pub pronouns: Option<String>,
+    pub decoration: Option<String>,
+    pub badges: Vec<BadgeSnapshot>,
+    pub mutual_guild_ids: Vec<u64>,
+    pub mutual_friends_count: Option<u32>,
+    /// ISO timestamp of joining the server the profile was opened from.
+    pub joined_at: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
+pub struct BadgeSnapshot {
+    pub id: String,
+    pub description: String,
+    pub icon: String,
+    pub link: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

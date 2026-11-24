@@ -32,11 +32,12 @@ use tokio::sync::{mpsc, oneshot, watch};
 use crate::{
     error::FfiErrorKind,
     snapshot::{
-        AttachmentSnapshot, AuthStateSnapshot, ChannelSnapshot, ClientSnapshot,
+        AttachmentSnapshot, AuthStateSnapshot, BadgeSnapshot, ChannelSnapshot, ClientSnapshot,
         GuildFolderSnapshot, GuildSnapshot, MAX_SNAPSHOT_MEMBERS, MAX_SNAPSHOT_PRESENCES,
         MAX_SNAPSHOT_PRIVATE_CHANNELS, MAX_SNAPSHOT_READ_STATES, MemberSnapshot, MessageSnapshot,
-        PresenceSnapshot, PrivateChannelSnapshot, ReadStateSnapshot, RecipientSnapshot,
-        ReplySnapshot, SNAPSHOT_SCHEMA_VERSION, SnapshotMetaPatch, SnapshotPatch, SnapshotVersions,
+        PresenceSnapshot, PrivateChannelSnapshot, ProfileSnapshot, ReadStateSnapshot,
+        RecipientSnapshot, ReplySnapshot, SNAPSHOT_SCHEMA_VERSION, SnapshotMetaPatch,
+        SnapshotPatch, SnapshotVersions,
     },
     types::{
         AuthChallenge, AuthFailureKind, ClientCommand, ClientConfig, ClientEvent,
@@ -265,6 +266,7 @@ impl RuntimeHandle {
                 current_user_custom_status: snapshot.current_user_custom_status.clone(),
                 current_user_decoration: snapshot.current_user_decoration.clone(),
                 current_user_nameplate: snapshot.current_user_nameplate.clone(),
+                profile: snapshot.profile.clone(),
                 selected_guild_id: snapshot.selected_guild_id,
                 selected_channel_id: snapshot.selected_channel_id,
                 auth: snapshot.auth.clone(),
@@ -399,6 +401,7 @@ fn benchmark_snapshot() -> ClientSnapshot {
         current_user_custom_status: None,
         current_user_decoration: None,
         current_user_nameplate: None,
+        profile: None,
         pinned_messages: Vec::new(),
     }
 }
@@ -544,6 +547,7 @@ fn set_snapshot(
         || previous.current_user_custom_status != next.current_user_custom_status
         || previous.current_user_decoration != next.current_user_decoration
         || previous.current_user_nameplate != next.current_user_nameplate
+        || previous.profile != next.profile
         || previous.selected_guild_id != next.selected_guild_id
         || previous.selected_channel_id != next.selected_channel_id
         || previous.auth != next.auth
@@ -737,6 +741,97 @@ fn message_snapshot_from_cached_value(
     snapshot
 }
 
+/// Maps GET /users/{id}/profile into a ProfileSnapshot, letting the
+/// server member profile override the account's bio, pronouns, banner and
+/// theme like the official client.
+fn profile_snapshot(value: &Value, user_id: u64, guild_id: Option<u64>) -> ProfileSnapshot {
+    let user = &value["user"];
+    let account = &value["user_profile"];
+    let member_profile = &value["guild_member_profile"];
+    let member = &value["guild_member"];
+    let text = |value: &Value| {
+        value
+            .as_str()
+            .filter(|text| !text.is_empty())
+            .map(str::to_owned)
+    };
+    let pick = |key: &str| {
+        text(&member_profile[key])
+            .or_else(|| text(&account[key]))
+            .or_else(|| text(&user[key]))
+    };
+    let colors = |value: &Value| -> Vec<u32> {
+        value
+            .as_array()
+            .map(|colors| {
+                colors
+                    .iter()
+                    .filter_map(|c| c.as_u64().and_then(|c| u32::try_from(c).ok()))
+                    .collect()
+            })
+            .unwrap_or_default()
+    };
+
+    let banner_url = match (guild_id, text(&member_profile["banner"])) {
+        (Some(guild), Some(hash)) => Some(format!(
+            "https://cdn.discordapp.com/guilds/{guild}/users/{user_id}/banners/{hash}.png?size=600"
+        )),
+        _ => text(&account["banner"])
+            .or_else(|| text(&user["banner"]))
+            .map(|hash| {
+                format!("https://cdn.discordapp.com/banners/{user_id}/{hash}.png?size=600")
+            }),
+    };
+    let theme_colors = Some(colors(&member_profile["theme_colors"]))
+        .filter(|colors| !colors.is_empty())
+        .unwrap_or_else(|| colors(&account["theme_colors"]));
+    let accent_color = [
+        &member_profile["accent_color"],
+        &account["accent_color"],
+        &user["accent_color"],
+    ]
+    .iter()
+    .find_map(|value| value.as_u64().and_then(|c| u32::try_from(c).ok()));
+    let decoration = text(&user["avatar_decoration_data"]["asset"])
+        .or_else(|| text(&user["collectibles"]["avatar_decoration"]["asset"]));
+
+    ProfileSnapshot {
+        user_id,
+        guild_id,
+        username: text(&user["username"]).unwrap_or_default(),
+        global_name: text(&user["global_name"]),
+        nickname: text(&member["nick"]),
+        avatar: text(&user["avatar"]),
+        banner_url,
+        accent_color,
+        theme_colors,
+        bio: pick("bio"),
+        pronouns: pick("pronouns"),
+        decoration,
+        badges: value["badges"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(|badge| BadgeSnapshot {
+                id: text(&badge["id"]).unwrap_or_default(),
+                description: text(&badge["description"]).unwrap_or_default(),
+                icon: text(&badge["icon"]).unwrap_or_default(),
+                link: text(&badge["link"]),
+            })
+            .collect(),
+        mutual_guild_ids: value["mutual_guilds"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|guild| json_id(guild.get("id")))
+            .collect(),
+        mutual_friends_count: value["mutual_friends_count"]
+            .as_u64()
+            .and_then(|count| u32::try_from(count).ok()),
+        joined_at: text(&member["joined_at"]),
+    }
+}
+
 fn presence_snapshot(presence: &CachedPresence) -> PresenceSnapshot {
     PresenceSnapshot {
         user_id: presence.user_id,
@@ -763,6 +858,7 @@ fn build_snapshot(
     selected_channel_id: Option<Snowflake>,
     fetched_messages: &HashMap<Snowflake, Vec<Message>>,
     pinned_messages: &HashMap<Snowflake, Vec<Message>>,
+    profile: &Option<ProfileSnapshot>,
     auth: &AuthStateSnapshot,
     error: Option<String>,
 ) -> ClientSnapshot {
@@ -955,6 +1051,7 @@ fn build_snapshot(
         current_user_nameplate: cache
             .current_user()
             .and_then(|user| user.nameplate_asset().map(str::to_owned)),
+        profile: profile.clone(),
         pinned_messages: selected_channel_id
             .and_then(|channel_id| pinned_messages.get(&channel_id))
             .map(|pins| pins.iter().map(message_snapshot).collect())
@@ -1140,6 +1237,7 @@ async fn run(
     let mut selected_channel_id: Option<Snowflake> = None;
     let mut fetched_messages: HashMap<Snowflake, Vec<Message>> = HashMap::new();
     let mut pinned_messages: HashMap<Snowflake, Vec<Message>> = HashMap::new();
+    let mut profile: Option<ProfileSnapshot> = None;
     let mut auth_state = AuthStateSnapshot::default();
     let mut gateway_task: Option<tokio::task::JoinHandle<()>> = None;
     let mut gateway_events: Option<mpsc::UnboundedReceiver<GatewayEvent>> = None;
@@ -1164,6 +1262,7 @@ async fn run(
                    selected_channel_id: Option<Snowflake>,
                    fetched_messages: &HashMap<Snowflake, Vec<Message>>,
                    pinned_messages: &HashMap<Snowflake, Vec<Message>>,
+                   profile: &Option<ProfileSnapshot>,
                    auth: &AuthStateSnapshot,
                    error: &Option<String>,
                    snapshot: &Arc<Mutex<SnapshotState>>,
@@ -1177,6 +1276,7 @@ async fn run(
             selected_channel_id,
             fetched_messages,
             pinned_messages,
+            profile,
             auth,
             error.clone(),
         );
@@ -1193,6 +1293,7 @@ async fn run(
                 selected_channel_id,
                 &fetched_messages,
                 &pinned_messages,
+                &profile,
                 &auth_state,
                 &error,
                 &snapshot,
@@ -1637,6 +1738,42 @@ async fn run(
                         }
                         mark_snapshot_dirty!();
                     }
+                    ClientCommand::FetchProfile { user_id, guild_id } => {
+                        if let Some(rest_client) = rest.clone() {
+                            let config = default_rest_config(&api_base, user_agent.as_deref(), active_token.clone());
+                            match api::user::get_user_profile(&*rest_client, &config, user_id, guild_id).await {
+                                Ok(value) => profile = Some(profile_snapshot(&value, user_id, guild_id)),
+                                Err(api_error) => {
+                                    error = Some(format!("Failed to load profile: {api_error}"));
+                                    push_event(&events, ClientEvent::CommandFailed {
+                                        kind: FfiErrorKind::Transport,
+                                        message: error.clone().unwrap_or_default(),
+                                    });
+                                }
+                            }
+                        }
+                        mark_snapshot_dirty!();
+                    }
+                    ClientCommand::SetCustomStatus { text } => {
+                        if let Some(rest_client) = rest.clone() {
+                            let config = default_rest_config(&api_base, user_agent.as_deref(), active_token.clone());
+                            match api::user::update_custom_status(&*rest_client, &config, text.as_deref(), None, None).await {
+                                Ok(_) => {
+                                    if let Some(cache) = cache.as_ref() {
+                                        cache.lock().expect("cache lock").set_own_custom_status(text.as_deref());
+                                    }
+                                }
+                                Err(api_error) => {
+                                    error = Some(format!("Failed to set custom status: {api_error}"));
+                                    push_event(&events, ClientEvent::CommandFailed {
+                                        kind: FfiErrorKind::Transport,
+                                        message: error.clone().unwrap_or_default(),
+                                    });
+                                }
+                            }
+                        }
+                        mark_snapshot_dirty!();
+                    }
                     ClientCommand::FetchPins { channel_id } => {
                         if let Some(rest_client) = rest.clone() {
                             let config = default_rest_config(&api_base, user_agent.as_deref(), active_token.clone());
@@ -1970,6 +2107,34 @@ mod tests {
             }
             other => panic!("unexpected event: {other:?}"),
         }
+    }
+
+    #[test]
+    fn profiles_prefer_the_server_member_profile() {
+        let value = serde_json::json!({
+            "user": {"id": "7", "username": "dim", "global_name": "DiM", "avatar": "abc", "banner": "acct",
+                     "avatar_decoration_data": {"asset": "deco"}},
+            "user_profile": {"bio": "account bio", "pronouns": "they/them", "theme_colors": [1, 2]},
+            "guild_member_profile": {"bio": "server bio", "banner": "srv"},
+            "guild_member": {"nick": "dimmy", "joined_at": "2024-01-01T00:00:00Z"},
+            "badges": [{"id": "hypesquad", "description": "HypeSquad", "icon": "h"}],
+            "mutual_guilds": [{"id": "9"}],
+            "mutual_friends_count": 3
+        });
+        let profile = profile_snapshot(&value, 7, Some(42));
+        assert_eq!(profile.bio.as_deref(), Some("server bio"));
+        assert_eq!(profile.pronouns.as_deref(), Some("they/them"));
+        assert_eq!(profile.theme_colors, vec![1, 2]);
+        assert_eq!(profile.nickname.as_deref(), Some("dimmy"));
+        assert_eq!(profile.decoration.as_deref(), Some("deco"));
+        assert!(
+            profile
+                .banner_url
+                .unwrap()
+                .contains("/guilds/42/users/7/banners/srv.png")
+        );
+        assert_eq!(profile.mutual_guild_ids, vec![9]);
+        assert_eq!(profile.badges[0].description, "HypeSquad");
     }
 
     #[test]

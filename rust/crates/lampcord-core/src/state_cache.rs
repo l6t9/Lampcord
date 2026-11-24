@@ -221,6 +221,10 @@ impl StateCache {
         self.own_status = Some(status.to_owned());
     }
 
+    pub fn set_own_custom_status(&mut self, text: Option<&str>) {
+        self.own_custom_status = text.filter(|text| !text.is_empty()).map(str::to_owned);
+    }
+
     pub fn guild(&self, guild_id: Snowflake) -> Option<&Guild> {
         self.guilds.get(&guild_id)
     }

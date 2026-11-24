@@ -12,10 +12,10 @@ use std::sync::Arc;
 pub use error::{FfiClientError, FfiError, FfiErrorKind, FfiResult};
 pub use runtime::RuntimeHandle;
 pub use snapshot::{
-    AttachmentSnapshot, AuthStateSnapshot, ChannelSnapshot, ClientSnapshot, GuildFolderSnapshot,
-    GuildSnapshot, MemberSnapshot, MessageSnapshot, PresenceSnapshot, PrivateChannelSnapshot,
-    ReadStateSnapshot, RecipientSnapshot, ReplySnapshot, SNAPSHOT_SCHEMA_VERSION,
-    SnapshotMetaPatch, SnapshotPatch, SnapshotVersions,
+    AttachmentSnapshot, AuthStateSnapshot, BadgeSnapshot, ChannelSnapshot, ClientSnapshot,
+    GuildFolderSnapshot, GuildSnapshot, MemberSnapshot, MessageSnapshot, PresenceSnapshot,
+    PrivateChannelSnapshot, ProfileSnapshot, ReadStateSnapshot, RecipientSnapshot, ReplySnapshot,
+    SNAPSHOT_SCHEMA_VERSION, SnapshotMetaPatch, SnapshotPatch, SnapshotVersions,
 };
 pub use storage::{ForeignSecretStore, PlatformSecretStore};
 pub use types::{
@@ -189,6 +189,14 @@ impl LampcordClient {
             reply_to_message_id,
             reply_to_guild_id,
         })
+    }
+
+    pub fn fetch_profile(&self, user_id: u64, guild_id: Option<u64>) -> Result<(), FfiClientError> {
+        self.send(ClientCommand::FetchProfile { user_id, guild_id })
+    }
+
+    pub fn set_custom_status(&self, text: Option<String>) -> Result<(), FfiClientError> {
+        self.send(ClientCommand::SetCustomStatus { text })
     }
 
     pub fn fetch_pins(&self, channel_id: u64) -> Result<(), FfiClientError> {
