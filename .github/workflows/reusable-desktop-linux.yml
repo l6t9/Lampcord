@@ -47,6 +47,8 @@ on:
     secrets:
       GRADLE_ENCRYPTION_KEY:
         required: false
+      AUR_SSH_PRIVATE_KEY:
+        required: false
 
 jobs:
   package:
@@ -216,10 +218,51 @@ jobs:
             exit 1
           }
 
+          # Update .SRCINFO to match the rewritten PKGBUILD.
+          python3 - "$workdir/PKGBUILD" "$workdir/.SRCINFO" <<'PY'
+          import pathlib, re, sys
+          pkgbuild, srcinfo = map(pathlib.Path, sys.argv[1:3])
+          text = pkgbuild.read_text(encoding='utf-8')
+          def val(key, default=''):
+              m = re.search(rf"^{re.escape(key)}=(.*)$", text, re.M)
+              if not m: return default
+              v = m.group(1).strip()
+              if v.startswith(("'", '"')) and v.endswith(("'", '"')): v = v[1:-1]
+              return v
+          def arr(key):
+              m = re.search(rf"^{re.escape(key)}=\((.*?)\)$", text, re.M | re.S)
+              if not m: return []
+              return re.findall(r"'([^']*)'|\"([^\"]*)\"|([^\s()]+)", m.group(1))
+          def flat(key):
+              out=[]
+              for a,b,c in arr(key):
+                  out.append(a or b or c)
+              return out
+          lines = [
+              f"pkgbase = {val('pkgname')}",
+              f"\tpkgdesc = {val('pkgdesc')}",
+              f"\tpkgver = {val('pkgver')}",
+              f"\tpkgrel = {val('pkgrel')}",
+              f"\turl = {val('url')}",
+          ]
+          for a in flat('arch'): lines.append(f"\tarch = {a}")
+          lines.append(f"\tlicense = {val('license')}")
+          for d in flat('depends'): lines.append(f"\tdepends = {d}")
+          for d in flat('optdepends'): lines.append(f"\toptdepends = {d}")
+          for p in flat('provides'): lines.append(f"\tprovides = {p}")
+          for c in flat('conflicts'): lines.append(f"\tconflicts = {c}")
+          for o in flat('options'): lines.append(f"\toptions = {o}")
+          for s in flat('source'): lines.append(f"\tsource = {s}")
+          for s in flat('sha256sums'): lines.append(f"\tsha256sums = {s}")
+          lines += ["", f"pkgname = {val('pkgname')}", ""]
+          srcinfo.write_text("\n".join(lines), encoding='utf-8')
+          PY
+
           mkdir -p dist/aur
           tar -czf "dist/aur/lampcord-bin-${version}-aur.tar.gz" -C "$staging" "lampcord-bin"
           tar -tzf "dist/aur/lampcord-bin-${version}-aur.tar.gz" > /dev/null
           cp "$tarball" "dist/aur/"
+          cp "$workdir/PKGBUILD" "$workdir/.SRCINFO" dist/aur/
           ls -1 dist/aur
 
       - name: Upload native Linux assets
@@ -237,6 +280,42 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           STAGING_RELEASE_TAG: ${{ inputs.staging-release-tag }}
         run: gh release upload "$STAGING_RELEASE_TAG" dist/aur/* --clobber --repo "$GITHUB_REPOSITORY"
+
+      - name: Publish AUR package
+        if: inputs.package-aur && env.AUR_SSH_PRIVATE_KEY != ''
+        shell: bash
+        env:
+          AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          test -f dist/aur/PKGBUILD || { echo "dist/aur/PKGBUILD missing" >&2; exit 1; }
+          test -f dist/aur/.SRCINFO || { echo "dist/aur/.SRCINFO missing" >&2; exit 1; }
+
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$AUR_SSH_PRIVATE_KEY" > ~/.ssh/aur
+          chmod 600 ~/.ssh/aur
+          ssh-keyscan -t ed25519,rsa aur.archlinux.org >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+          export GIT_SSH_COMMAND="ssh -i ~/.ssh/aur -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes"
+          git clone ssh://aur@aur.archlinux.org/lampcord-bin.git /tmp/aur-lampcord-bin
+
+          cp dist/aur/PKGBUILD dist/aur/.SRCINFO /tmp/aur-lampcord-bin/
+          cd /tmp/aur-lampcord-bin
+
+          git config user.name "lampcord-bot"
+          git config user.email "lampcord-bot@users.noreply.github.com"
+
+          if git diff --quiet -- PKGBUILD .SRCINFO; then
+            echo "AUR package unchanged; skipping push."
+            exit 0
+          fi
+
+          pkgver="$(awk -F' = ' '/^[[:space:]]*pkgver = /{print $2; exit}' .SRCINFO)"
+          git add PKGBUILD .SRCINFO
+          git commit -m "Update lampcord-bin to ${pkgver}"
+          git push origin master
 
       - name: Upload Linux artifact
         if: inputs.upload-artifact
