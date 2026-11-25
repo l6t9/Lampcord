@@ -91,3 +91,63 @@ impl RestTransport for ReqwestRestTransport {
         Ok(RestResponse { status, body })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::{Read, Write};
+    use std::net::TcpListener;
+
+    #[tokio::test]
+    async fn cloned_transports_share_the_cookie_jar() {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind test server");
+        let address = listener.local_addr().expect("test server address");
+        let server = std::thread::spawn(move || {
+            let mut requests = Vec::new();
+            for _ in 0..2 {
+                let (mut stream, _) = listener.accept().expect("accept request");
+                let mut buffer = [0_u8; 4096];
+                let read = stream.read(&mut buffer).expect("read request");
+                requests.push(String::from_utf8_lossy(&buffer[..read]).into_owned());
+                let body = "{}";
+                let response = format!(
+                    "HTTP/1.1 200 OK\r\nSet-Cookie: lampcord-test=1; Path=/\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                    body.len(),
+                    body
+                );
+                stream.write_all(response.as_bytes()).expect("write response");
+            }
+            requests
+        });
+
+        let transport = ReqwestRestTransport::new().expect("transport");
+        let request = |path: &str| RestRequest {
+            method: HttpMethod::Get,
+            url: format!("http://{address}/{path}"),
+            headers: Vec::new(),
+            body: Body::None,
+        };
+        transport
+            .clone()
+            .execute(request("first"))
+            .await
+            .expect("first request");
+        transport
+            .clone()
+            .execute(request("second"))
+            .await
+            .expect("second request");
+
+        let requests = server.join().expect("test server thread");
+        assert!(
+            !requests[0].to_ascii_lowercase().contains("cookie:"),
+            "first request cannot have the cookie yet: {}",
+            requests[0]
+        );
+        assert!(
+            requests[1].to_ascii_lowercase().contains("lampcord-test=1"),
+            "cloned transport must reuse the cookie jar: {}",
+            requests[1]
+        );
+    }
+}

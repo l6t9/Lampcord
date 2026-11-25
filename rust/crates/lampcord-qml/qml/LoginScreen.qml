@@ -9,19 +9,29 @@ Rectangle {
 
     color: Theme.background
 
-    property string step: backend.authState === "mfa" ? "mfa" : manualStep
+    // Stay on the MFA step after a rejected code, like the Compose login does.
+    property bool mfaActive: false
+    property string step: mfaActive ? "mfa" : manualStep
     property string manualStep: "credentials"
     readonly property bool busy: backend.authState === "pending" || backend.authState === "success"
     readonly property string errorText: backend.authState === "failed" ? backend.authMessage : ""
 
     function go(next) {
         backend.resetAuth()
+        mfaActive = false
         manualStep = next
+    }
+
+    function submitMfa() {
+        if (!root.busy && root.mfaActive && code.text.length === 6)
+            backend.submitMfa(code.text)
     }
 
     Connections {
         target: backend
         function onAuthStateChanged() {
+            if (backend.authState === "mfa")
+                mfaActive = true
             if (backend.authState === "failed")
                 code.text = ""
         }
@@ -191,11 +201,8 @@ Rectangle {
                         Layout.fillWidth: true
                         enabled: !root.busy
                         error: root.errorText !== ""
-                        onAccepted: backend.submitMfa(code.text)
-                        onTextChanged: {
-                            if (!root.busy && root.step === "mfa" && code.text.length === 6)
-                                backend.submitMfa(code.text)
-                        }
+                        onAccepted: root.submitMfa()
+                        onTextChanged: root.submitMfa()
                     }
                     ErrorBanner { text: root.errorText }
                     Item { implicitHeight: 8 }
@@ -210,8 +217,8 @@ Rectangle {
                         Layout.fillWidth: true
                         text: "Verify"
                         loading: root.busy
-                        enabled: !root.busy && code.text.trim().length >= 6
-                        onClicked: backend.submitMfa(code.text)
+                        enabled: !root.busy && code.text.length === 6
+                        onClicked: root.submitMfa()
                     }
                 }
             }

@@ -1,7 +1,7 @@
 use std::{
     collections::HashMap,
     sync::{
-        Arc, Mutex,
+        Arc, Mutex, OnceLock,
         atomic::{AtomicU64, Ordering},
     },
     thread,
@@ -17,7 +17,7 @@ use lampcord_core::{
     gateway_client::{GatewayClient, GatewayEvent, lazy_request_payload},
     gateway_plan::reconnect_delay_ms,
     remote_auth::{self, RemoteAuthState as CoreRemoteAuthState},
-    rest::RestConfig,
+    rest::{DESKTOP_USER_AGENT, RestConfig},
     rest_client::RestClient,
     secret_store::{FileSecretStore, SecretStore},
     state_cache::{CachedPresence, MemberListRow, PersistedCache, StateCache},
@@ -129,36 +129,195 @@ enum InternalEvent {
     PrivateChannels(Vec<Channel>),
 }
 
+static INSTALLATION_ID: OnceLock<String> = OnceLock::new();
+static SUPER_PROPERTIES: OnceLock<String> = OnceLock::new();
+
+fn unix_nanos() -> u128 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_nanos())
+        .unwrap_or_default()
+}
+
+fn random_uuid() -> String {
+    let mixed = unix_nanos() ^ ((std::process::id() as u128) << 64);
+    let b = mixed.to_le_bytes();
+    format!(
+        "{:02x}{:02x}{:02x}{:02x}-{:02x}{:02x}-4{:02x}{:01x}-a{:02x}{:01x}-\
+         {:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
+        b[0],
+        b[1],
+        b[2],
+        b[3],
+        b[4],
+        b[5],
+        b[6],
+        b[7] >> 4,
+        b[8],
+        b[9] >> 4,
+        b[10],
+        b[11],
+        b[12],
+        b[13],
+        b[14],
+        b[15]
+    )
+}
+
+fn installation_id() -> &'static str {
+    INSTALLATION_ID.get_or_init(random_uuid)
+}
+
+#[cfg(target_os = "android")]
+fn android_property(name: &str) -> Option<String> {
+    let output = std::process::Command::new("getprop")
+        .arg(name)
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let value = String::from_utf8_lossy(&output.stdout).trim().to_owned();
+    (!value.is_empty()).then_some(value)
+}
+
+fn os_version() -> String {
+    #[cfg(target_os = "android")]
+    {
+        android_property("ro.build.version.release").unwrap_or_else(|| "unknown".to_owned())
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        std::fs::read_to_string("/proc/sys/kernel/osrelease")
+            .ok()
+            .map(|value| value.trim().to_owned())
+            .filter(|value| !value.is_empty())
+            .unwrap_or_else(|| std::env::consts::OS.to_owned())
+    }
+}
+
+fn device_name() -> String {
+    #[cfg(target_os = "android")]
+    {
+        let model = android_property("ro.product.model").unwrap_or_default();
+        let product = android_property("ro.product.build.product")
+            .or_else(|| android_property("ro.product.device"))
+            .unwrap_or_default();
+        format!("{model}, {product}")
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        "Desktop".to_owned()
+    }
+}
+
+fn desktop_os_name() -> String {
+    match std::env::consts::OS {
+        "macos" => "Mac OS X".to_owned(),
+        "windows" => "Windows".to_owned(),
+        os => {
+            let mut chars = os.chars();
+            match chars.next() {
+                Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+                None => os.to_owned(),
+            }
+        }
+    }
+}
+
+fn system_timezone() -> String {
+    if let Ok(tz) = std::env::var("TZ") {
+        if !tz.is_empty() {
+            return tz;
+        }
+    }
+    if let Ok(tz) = std::fs::read_to_string("/etc/timezone") {
+        let tz = tz.trim();
+        if !tz.is_empty() {
+            return tz.to_owned();
+        }
+    }
+    "UTC".to_owned()
+}
+
+// Discord checks X-Super-Properties during MFA. The old placeholder build
+// number and device strings are rejected as an invalid code even when the TOTP
+// value is correct, so mirror the properties the Kotlin client sends.
+fn super_properties() -> &'static str {
+    SUPER_PROPERTIES.get_or_init(|| {
+        let mobile = cfg!(target_os = "android");
+        let vendor_id = random_uuid();
+        let value = if mobile {
+            serde_json::json!({
+                "os": "Android",
+                "browser": "Discord Android",
+                "device": device_name(),
+                "system_locale": "en-US",
+                "has_client_mods": false,
+                "client_version": "341.0 - rn",
+                "release_channel": "canaryRelease",
+                "device_vendor_id": vendor_id,
+                "design_id": 2,
+                "browser_user_agent": "Discord-Android/341200;RNA",
+                "browser_version": "",
+                "os_version": os_version(),
+                "client_build_number": 6081,
+                "client_event_source": null,
+                "client_launch_id": random_uuid(),
+                "launch_signature": unix_nanos().to_string(),
+                "client_app_state": "active",
+                "client_heartbeat_session_id": random_uuid()
+            })
+        } else {
+            serde_json::json!({
+                "os": desktop_os_name(),
+                "browser": "Discord Client",
+                "device": "Desktop",
+                "system_locale": "en-US",
+                "has_client_mods": false,
+                "client_version": "0.0.398",
+                "release_channel": "stable",
+                "device_vendor_id": vendor_id,
+                "design_id": 2,
+                "browser_user_agent": "",
+                "browser_version": "37.6.0",
+                "os_version": os_version(),
+                "client_build_number": 575562,
+                "client_event_source": null,
+                "client_launch_id": null,
+                "launch_signature": "",
+                "client_app_state": null,
+                "client_heartbeat_session_id": null
+            })
+        };
+        base64::engine::general_purpose::STANDARD.encode(value.to_string().as_bytes())
+    })
+}
+
+fn default_user_agent() -> &'static str {
+    if cfg!(target_os = "android") {
+        "Discord-Android/341200;RNA"
+    } else {
+        DESKTOP_USER_AGENT
+    }
+}
+
 fn default_rest_config(
     api_base: &str,
     user_agent: Option<&str>,
     token: Option<String>,
 ) -> RestConfig {
-    let super_properties = serde_json::json!({
-        "os": "Linux",
-        "browser": "Discord Client",
-        "device": "lampcord-ffi",
-        "system_locale": "en-US",
-        "has_client_mods": false,
-        "release_channel": "stable",
-        "client_version": "0.0.0",
-        "os_version": "",
-        "browser_user_agent": "",
-        "browser_version": "",
-        "device_vendor_id": "",
-        "client_build_number": 0
-    });
-    let encoded =
-        base64::engine::general_purpose::STANDARD.encode(super_properties.to_string().as_bytes());
     let mut config = RestConfig::new(
         token,
-        encoded,
-        "lampcord-ffi-installation".to_owned(),
-        "UTC".to_owned(),
+        super_properties(),
+        installation_id(),
+        system_timezone(),
     )
     .with_api_base(api_base.to_owned());
     if let Some(user_agent) = user_agent.filter(|agent| !agent.is_empty()) {
         config = config.with_user_agent(user_agent.to_owned());
+    } else {
+        config = config.with_user_agent(default_user_agent());
     }
     config
 }
@@ -1526,6 +1685,11 @@ async fn run(
     let user_agent = config.user_agent.clone();
     let gateway_url_override = config.gateway_url.clone();
     let captcha_solver = ConfigurableCaptchaSolver::default();
+    // Kotlin uses one Ktor client for /experiments, /auth/login and /auth/mfa,
+    // so the cookies set by the first two requests reach the MFA request. A
+    // fresh transport per command silently drops them and Discord answers with
+    // "invalid two-factor code" even for a correct code.
+    let auth_transport = ReqwestRestTransport::new();
     let seq = Arc::new(AtomicU64::new(0));
     let mut snapshot_dirty = true;
     let mut last_publish = Instant::now();
@@ -1738,7 +1902,7 @@ async fn run(
                     ClientCommand::LoginPassword { login, password, captcha_key } => {
                         captcha_solver.set(captcha_key);
                         let config = default_rest_config(&api_base, user_agent.as_deref(), None);
-                        match ReqwestRestTransport::new() {
+                        match auth_transport.clone() {
                             Err(transport_error) => {
                                 update_auth!(AuthChallenge::Failed {
                                     kind: AuthFailureKind::Network,
@@ -1750,10 +1914,11 @@ async fn run(
                                 let fingerprint = api::auth::get_fingerprint(&client, &config)
                                     .await
                                     .ok()
-                                    .flatten();
+                                    .flatten()
+                                    .unwrap_or_default();
                                 let request = auth::LoginRequest::new(login, password);
                                 mfa_flows.clear();
-                                match api::auth::login(&client, &config, &request, fingerprint.as_deref()).await {
+                                match api::auth::login(&client, &config, &request, Some(&fingerprint)).await {
                                     Ok(response) => {
                                         let login_instance_id = response.login_instance_id.clone();
                                         let challenge = auth_challenge_from_response(response);
@@ -1761,7 +1926,7 @@ async fn run(
                                             &mut mfa_flows,
                                             &challenge,
                                             login_instance_id,
-                                            fingerprint.clone(),
+                                            Some(fingerprint),
                                         );
                                         if let AuthChallenge::Success { token } = &challenge {
                                             if let Err(message) = connect_session!(token.clone()) {
@@ -1791,7 +1956,7 @@ async fn run(
                         captcha_solver.set(None);
                         let flow = mfa_flows.get(&ticket).cloned().unwrap_or_default();
                         let config = default_rest_config(&api_base, user_agent.as_deref(), None);
-                        match ReqwestRestTransport::new() {
+                        match auth_transport.clone() {
                             Err(transport_error) => {
                                 update_auth!(AuthChallenge::Failed {
                                     kind: AuthFailureKind::Network,
@@ -1800,16 +1965,17 @@ async fn run(
                             }
                             Ok(transport) => {
                                 let client = RestClient::new(config.clone(), transport, captcha_solver.clone());
-                                let fingerprint = match flow.fingerprint.clone() {
-                                    Some(fingerprint) => Some(fingerprint),
+                                let fingerprint = match flow.fingerprint {
+                                    Some(fingerprint) => fingerprint,
                                     None => api::auth::get_fingerprint(&client, &config)
                                         .await
                                         .ok()
-                                        .flatten(),
+                                        .flatten()
+                                        .unwrap_or_default(),
                                 };
                                 let request = auth::MfaLoginRequest::new(code, ticket)
                                     .with_login_instance_id(flow.login_instance_id.as_deref());
-                                match api::auth::login_mfa(&client, &config, &request, fingerprint.as_deref(), &method).await {
+                                match api::auth::login_mfa(&client, &config, &request, Some(&fingerprint), &method).await {
                                     Ok(response) => {
                                         let login_instance_id = response.login_instance_id.clone();
                                         let challenge = auth_challenge_from_response(response);
@@ -1817,7 +1983,7 @@ async fn run(
                                             &mut mfa_flows,
                                             &challenge,
                                             login_instance_id,
-                                            fingerprint.clone(),
+                                            Some(fingerprint),
                                         );
                                         if let AuthChallenge::Success { token } = &challenge {
                                             if let Err(message) = connect_session!(token.clone()) {
@@ -1846,16 +2012,17 @@ async fn run(
                     ClientCommand::SendMfaSms { ticket } => {
                         let flow = mfa_flows.get(&ticket).cloned().unwrap_or_default();
                         let config = default_rest_config(&api_base, user_agent.as_deref(), None);
-                        if let Ok(transport) = ReqwestRestTransport::new() {
+                        if let Ok(transport) = auth_transport.clone() {
                             let client = RestClient::new(config.clone(), transport, captcha_solver.clone());
                             let fingerprint = match flow.fingerprint {
-                                Some(fingerprint) => Some(fingerprint),
+                                Some(fingerprint) => fingerprint,
                                 None => api::auth::get_fingerprint(&client, &config)
                                     .await
                                     .ok()
-                                    .flatten(),
+                                    .flatten()
+                                    .unwrap_or_default(),
                             };
-                            match api::auth::send_mfa_sms(&client, &config, &ticket, fingerprint.as_deref()).await {
+                            match api::auth::send_mfa_sms(&client, &config, &ticket, Some(&fingerprint)).await {
                                 Ok(phone) => update_auth!(AuthChallenge::SmsSent { phone }),
                                 Err(api_error) => update_auth!(AuthChallenge::Failed {
                                     kind: AuthFailureKind::Network,
@@ -1867,7 +2034,7 @@ async fn run(
                     }
                     ClientCommand::ForgotPassword { login } => {
                         let config = default_rest_config(&api_base, user_agent.as_deref(), None);
-                        if let Ok(transport) = ReqwestRestTransport::new() {
+                        if let Ok(transport) = auth_transport.clone() {
                             let client = RestClient::new(config.clone(), transport, captcha_solver.clone());
                             match api::auth::forgot_password(&client, &config, &login, None).await {
                                 Ok(api::auth::ForgotPasswordResult::Sent) => {
@@ -2635,6 +2802,42 @@ mod tests {
             }
             other => panic!("unexpected challenge: {other:?}"),
         }
+    }
+
+    #[test]
+    fn rest_config_uses_client_super_properties_for_mfa() {
+        let config = default_rest_config("https://example.invalid/api/v9", None, None);
+        let headers = config.login_headers(None);
+        let encoded = headers
+            .iter()
+            .find(|(name, _)| name == "X-Super-Properties")
+            .map(|(_, value)| value.as_str())
+            .expect("super properties header");
+        let decoded = base64::engine::general_purpose::STANDARD
+            .decode(encoded)
+            .expect("base64 super properties");
+        let properties: Value = serde_json::from_slice(&decoded).expect("json super properties");
+
+        if cfg!(target_os = "android") {
+            assert_eq!(properties["client_build_number"], json!(6081));
+            assert_eq!(properties["browser"], "Discord Android");
+        } else {
+            assert_eq!(properties["client_build_number"], json!(575562));
+            assert_eq!(properties["browser"], "Discord Client");
+            assert_eq!(properties["device"], "Desktop");
+            assert_eq!(properties["browser_version"], "37.6.0");
+        }
+        assert_eq!(properties["design_id"], json!(2));
+        assert!(properties["device_vendor_id"].as_str().is_some_and(|id| id.len() == 36));
+
+        let other = default_rest_config("https://example.invalid/api/v9", None, None);
+        let installation = |headers: &[(String, String)]| {
+            headers
+                .iter()
+                .find(|(name, _)| name == "X-Installation-Id")
+                .map(|(_, value)| value.clone())
+        };
+        assert_eq!(installation(&headers), installation(&other.login_headers(None)));
     }
 
     #[test]

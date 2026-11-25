@@ -1010,6 +1010,10 @@ impl qobject::LampcordBackend {
             self.fail_auth("The login session expired. Start again.".to_owned());
             return;
         };
+        // Choosing SMS changes the verification endpoint, not just the code
+        // delivery. Keep the submit method in sync so the next code is checked
+        // against /auth/mfa/sms.
+        self.as_mut().rust_mut().mfa_method = "sms".to_owned();
         self.as_mut().begin_auth();
         if let Err(error) = self.client.send_mfa_sms(ticket) {
             self.fail_auth(error.to_string());

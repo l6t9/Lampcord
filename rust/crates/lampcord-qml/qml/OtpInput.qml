@@ -1,8 +1,9 @@
 import QtQuick
 import QtQuick.Controls.Basic
 
-// Six-box OTP field matching the Compose login screen. A transparent input
-// sits over the boxes so mobile keyboards and paste still work normally.
+// Six-box OTP field matching the Compose login screen. The transparent input
+// handles typing, paste and the mobile keyboard; the MouseArea maps taps to a
+// specific digit box instead of relying on invisible text metrics.
 Item {
     id: control
 
@@ -16,17 +17,33 @@ Item {
     implicitWidth: 360
     implicitHeight: 56
 
-    function setText(value) {
+    function focusInput(index) {
+        if (!control.enabled)
+            return
+        input.forceActiveFocus()
+        const target = index === undefined ? input.text.length : index
+        input.cursorPosition = Math.max(0, Math.min(target, input.text.length))
+    }
+
+    function normalize(value) {
+        // Do not set TextInput.maximumLength: it truncates "123 456" before the
+        // separator can be removed.
         const digits = String(value).replace(/[^0-9]/g, "").slice(0, control.length)
-        if (digits !== control.text)
-            control.text = digits
-        if (input.text !== digits)
+        if (input.text !== digits) {
+            const cursor = Math.min(input.cursorPosition, digits.length)
             input.text = digits
+            input.cursorPosition = cursor
+        }
+        if (control.text !== digits)
+            control.text = digits
     }
 
     onTextChanged: {
-        if (input && input.text !== control.text)
+        if (input.text !== control.text) {
+            const cursor = Math.min(input.cursorPosition, control.text.length)
             input.text = control.text
+            input.cursorPosition = cursor
+        }
     }
 
     Row {
@@ -68,11 +85,21 @@ Item {
         anchors.fill: parent
         opacity: 0
         enabled: control.enabled
-        maximumLength: control.length
         inputMethodHints: Qt.ImhDigitsOnly
-        onTextChanged: control.setText(text)
+        onTextChanged: control.normalize(text)
         onAccepted: control.accepted()
-        onVisibleChanged: if (visible && enabled) forceActiveFocus()
-        Component.onCompleted: if (visible && enabled) forceActiveFocus()
+        onVisibleChanged: if (visible && enabled) control.focusInput()
+        Component.onCompleted: if (visible && enabled) control.focusInput()
+    }
+
+    MouseArea {
+        anchors.fill: parent
+        z: 2
+        enabled: control.enabled
+        onClicked: {
+            const box = Math.min(control.length - 1,
+                                 Math.max(0, Math.floor(mouseX / width * control.length)))
+            control.focusInput(box)
+        }
     }
 }
