@@ -314,6 +314,7 @@ fun ChatArea(
                     if (priorMessage == null) return@remember false
                     if (showDateSeparator) return@remember false
                     if (priorMessage.author?.id != message.author?.id) return@remember false
+                    if (message.author?.bot == true || message.webhook_id != null) return@remember false
                     if (message.referenced_message != null) return@remember false
                     val currentType = message.type ?: 0
                     val priorType = priorMessage.type ?: 0
