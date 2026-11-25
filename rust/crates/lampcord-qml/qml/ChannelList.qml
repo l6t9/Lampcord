@@ -4,6 +4,8 @@ import QtQuick.Controls.Basic
 Item {
     id: root
 
+    property bool mobile: false
+
     readonly property var guild: window.guilds.find(g => g.id === backend.selectedGuildId) || null
     property var collapsed: ({})
 
@@ -23,14 +25,29 @@ Item {
     }
 
     Rectangle {
+        anchors.fill: parent
+        color: Theme.surface
+    }
+
+    Rectangle {
         id: header
         width: parent.width
-        height: 48
-        // The panel's clip is rectangular, so the header rounds itself.
-        topLeftRadius: 16
-        topRightRadius: 16
+        height: root.mobile ? 56 : 48
+        // Floating refresh uses square drawer corners; the old panel rounded
+        // its own header because the whole sheet was clipped.
+        topLeftRadius: root.mobile ? 0 : 16
+        topRightRadius: root.mobile ? 0 : 16
         color: Theme.surface
         z: 1
+
+        Rectangle {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            height: 1
+            visible: root.mobile
+            color: Theme.outlineVariant
+        }
 
         Row {
             anchors.fill: parent
@@ -44,9 +61,8 @@ Item {
                 text: root.guild ? root.guild.name : "Direct Messages"
                 color: Theme.surfaceText
                 font.family: Theme.font
-                // DM header is titleMedium, the server header titleSmall.
-                font.pixelSize: root.guild ? 14 : 16
-                font.letterSpacing: root.guild ? 0.1 : 0.15
+                font.pixelSize: root.mobile ? 16 : root.guild ? 14 : 16
+                font.letterSpacing: root.mobile ? 0 : root.guild ? 0.1 : 0.15
                 font.weight: Font.DemiBold
                 elide: Text.ElideRight
             }
@@ -55,6 +71,7 @@ Item {
                 visible: root.guild !== null
                 name: "KeyboardArrowDown"
                 size: 16
+                color: Theme.surfaceVariantText
             }
         }
     }
@@ -79,6 +96,7 @@ Item {
             Component {
                 id: categoryRow
                 CategoryRow {
+                    mobile: root.mobile
                     name: modelData.name
                     collapsed: !!root.collapsed[modelData.id]
                     onToggled: {
@@ -92,6 +110,7 @@ Item {
             Component {
                 id: channelRow
                 ChannelRow {
+                    mobile: root.mobile
                     channel: modelData
                     selected: backend.selectedChannelId === modelData.id
                     onClicked: window.openChannel(modelData.id)
@@ -117,6 +136,7 @@ Item {
         delegate: DmRow {
             required property var modelData
             width: dmList.width
+            mobile: root.mobile
             dm: modelData
             selected: backend.selectedChannelId === modelData.id
             onClicked: window.openDm(modelData.id)

@@ -6,6 +6,7 @@ Item {
     id: root
 
     property var member
+    property bool mobile: false
 
     readonly property bool offline: member.status === "offline" || member.status === "invisible"
 
@@ -18,11 +19,12 @@ Item {
         anchors.rightMargin: 4
         radius: 8
         color: hover.hovered ? Theme.alpha(Theme.surfaceText, 0.05) : "transparent"
-        Behavior on color { ColorAnimation { duration: Theme.quick } }
+        Behavior on color { ColorAnimation { duration: 100 } }
 
         Nameplate {
             anchors.fill: parent
             source: root.member.nameplate
+            shown: !root.mobile
         }
 
         Row {

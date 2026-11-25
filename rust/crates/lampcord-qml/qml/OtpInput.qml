@@ -20,9 +20,18 @@ Item {
     function focusInput(index) {
         if (!control.enabled)
             return
-        input.forceActiveFocus()
+        input.forceActiveFocus(Qt.MouseFocusReason)
         const target = index === undefined ? input.text.length : index
         input.cursorPosition = Math.max(0, Math.min(target, input.text.length))
+    }
+
+    function showKeyboard(index) {
+        if (!control.enabled)
+            return
+        focusInput(index)
+        // On Android the field can keep active focus after the keyboard is
+        // dismissed, so forceActiveFocus() alone will not reopen it.
+        Qt.inputMethod.show()
     }
 
     function normalize(value) {
@@ -99,7 +108,7 @@ Item {
         onClicked: {
             const box = Math.min(control.length - 1,
                                  Math.max(0, Math.floor(mouseX / width * control.length)))
-            control.focusInput(box)
+            control.showKeyboard(box)
         }
     }
 }

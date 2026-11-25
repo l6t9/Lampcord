@@ -9,6 +9,8 @@ Item {
     property bool loadingOlder: false
     // Mobile has its own top app bar, so it hides this desktop header.
     property bool compact: false
+    // The mobile composer floats over the chat surface with M3 side/bottom insets.
+    property bool floatingComposer: false
 
     function openPins() {
         backend.fetchPins()
@@ -41,7 +43,13 @@ Item {
     // Merge the snapshot into the model in place so the list keeps its
     // scroll position (and delegates) across updates.
     function sync() {
-        const incoming = JSON.parse(backend.messagesJson).reverse()
+        const incoming = JSON.parse(backend.messagesJson).reverse().map(item => {
+            // ListModel role names cannot shadow an Item's `id`, so the
+            // delegate reads `messageId` instead of `model.id`.
+            const row = Object.assign({}, item)
+            row.messageId = item.id
+            return row
+        })
         let i = 0
         for (const item of incoming) {
             while (i < messages.count && idCompare(messages.get(i).id, item.id) > 0)
@@ -154,24 +162,25 @@ Item {
     ListView {
         id: list
         anchors.top: root.compact ? parent.top : header.bottom
-        anchors.bottom: composer.top
+        // The floating composer overlays the list like Phoenix; keep a small
+        // gap so the newest message is never hidden behind the pill.
+        anchors.bottom: root.floatingComposer ? parent.bottom : composer.top
+        anchors.bottomMargin: root.floatingComposer ? 96 + window.navBarInset : 8
         width: parent.width
         visible: root.channel !== null
         model: messages
         verticalLayoutDirection: ListView.BottomToTop
         clip: true
         reuseItems: true
-        bottomMargin: 8
+        bottomMargin: root.floatingComposer ? 0 : 8
         boundsBehavior: Flickable.StopAtBounds
         ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded; width: 6 }
 
         delegate: MessageDelegate {
             width: list.width
-            messageId: model.id
-            authorId: model.authorId
-            mine: model.authorId !== "" && model.authorId === backend.currentUserId
+            mine: authorId !== "" && authorId === backend.currentUserId
 
-            onActionReply: id => composer.replyTo(id, model.author, model.content)
+            onActionReply: id => composer.replyTo(id, author, content)
             onActionEdit: (id, content) => composer.editMessage(id, content)
             onActionDelete: id => backend.deleteMessage(id)
         }
@@ -200,6 +209,7 @@ Item {
         anchors.bottom: parent.bottom
         width: parent.width
         visible: root.channel !== null
+        floating: root.floatingComposer
         placeholder: !root.channel ? "" : root.dm ? "Message @" + root.dm.name : "Message #" + root.channel.name
     }
 

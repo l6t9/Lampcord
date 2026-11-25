@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Dialogs
+import QtQuick.Effects
 
 // ChatInputBar on desktop: the round add button, the rounded field with
 // the emoji button inside it, and the send button, which only slides in
@@ -10,6 +11,7 @@ Item {
     id: root
 
     property string placeholder
+    property bool floating: false
     property real lastTyping: 0
     property var files: []
     property string replyId: ""
@@ -89,6 +91,21 @@ Item {
         onAccepted: root.files = root.files.concat(selectedFiles.map(url => url.toString()))
     }
 
+    // Phoenix floating inputs sit over the message list with a short scrim,
+    // instead of pushing the list up with a solid app bar.
+    Rectangle {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: row.top
+        height: 56
+        visible: root.floating
+        z: -1
+        gradient: Gradient {
+            GradientStop { position: 0; color: "transparent" }
+            GradientStop { position: 1; color: Theme.surfaceContainerLow }
+        }
+    }
+
     Column {
         id: column
         width: parent.width
@@ -100,7 +117,7 @@ Item {
             anchors.leftMargin: 8
             anchors.rightMargin: 8
             height: visible ? 52 : 0
-            radius: 10
+            radius: root.floating ? 12 : 10
             color: Theme.surfaceContainerHigh
             visible: root.replyId !== "" || root.editId !== ""
 
@@ -219,18 +236,19 @@ Item {
 
         Row {
             id: row
-            x: 8
+            x: root.floating ? 16 : 8
             topPadding: 2
-            bottomPadding: 8
-            width: parent.width - 16
+            bottomPadding: (root.floating ? 16 : 8) + (root.floating ? window.navBarInset : 0)
+            width: parent.width - (root.floating ? 32 : 16)
             spacing: 0
 
             IconButton {
                 id: add
                 anchors.bottom: parent.bottom
-                anchors.bottomMargin: 8
-                width: 46
-                height: 46
+                anchors.bottomMargin: root.floating ? 0 : 8
+                width: root.floating ? 40 : 46
+                height: root.floating ? 40 : 46
+                iconSize: root.floating ? 20 : 24
                 glyph: "Add"
                 iconColor: Theme.surfaceVariantText
                 container: Theme.surfaceContainerHigh
@@ -240,24 +258,42 @@ Item {
 
             Item { width: 4; height: 1 }
 
-            Rectangle {
+            Item {
                 id: field
                 width: parent.width - add.width - 4 - sendSlot.width
-                height: Math.max(46, Math.min(input.implicitHeight, 240))
+                height: root.floating
+                    ? Math.max(54, Math.min(input.implicitHeight + 20, 200))
+                    : Math.max(46, Math.min(input.implicitHeight, 240))
                 anchors.bottom: parent.bottom
-                anchors.bottomMargin: 8
-                radius: 16
-                color: Theme.surfaceContainerHigh
+                anchors.bottomMargin: root.floating ? 0 : 8
+
+                RectangularShadow {
+                    anchors.fill: fieldSurface
+                    radius: fieldSurface.radius
+                    blur: root.floating ? 4 : 12
+                    offset.y: root.floating ? -1 : 3
+                    color: Qt.rgba(0, 0, 0, 0.24)
+                    visible: root.floating
+                }
+
+                Rectangle {
+                    id: fieldSurface
+                    anchors.fill: parent
+                    radius: 16
+                    color: Theme.surfaceContainerHigh
+                    border.width: root.floating ? 1 : 0
+                    border.color: Theme.alpha(Theme.outlineVariant, 0.5)
+                }
 
                 ScrollView {
                     anchors.fill: parent
                     anchors.leftMargin: 12
-                    anchors.rightMargin: 44
+                    anchors.rightMargin: root.floating ? 40 : 44
 
                     TextArea {
                         id: input
-                        topPadding: 13
-                        bottomPadding: 13
+                        topPadding: root.floating ? 10 : 13
+                        bottomPadding: root.floating ? 10 : 13
                         leftPadding: 0
                         rightPadding: 0
                         wrapMode: TextEdit.Wrap
@@ -295,9 +331,10 @@ Item {
                     anchors.right: parent.right
                     anchors.rightMargin: 4
                     anchors.bottom: parent.bottom
-                    anchors.bottomMargin: 5
-                    width: 36
-                    height: 36
+                    anchors.bottomMargin: root.floating ? 11 : 5
+                    width: root.floating ? 32 : 36
+                    height: root.floating ? 32 : 36
+                    iconSize: root.floating ? 18 : 24
                     glyph: "SentimentSatisfied"
                     iconColor: emojiPicker.opened ? Theme.primary : Theme.surfaceVariantText
                     tip: "Emoji"
@@ -320,17 +357,24 @@ Item {
             Item {
                 id: sendSlot
                 anchors.bottom: parent.bottom
-                anchors.bottomMargin: 8
-                width: root.canSend ? 50 : 0
-                height: 46
+                anchors.bottomMargin: root.floating ? 0 : 8
+                width: root.canSend ? (root.floating ? 44 : 50) : 0
+                height: root.floating ? 54 : 46
                 clip: true
 
-                Behavior on width { NumberAnimation { duration: Theme.medium; easing.type: Easing.OutCubic } }
+                Behavior on width {
+                    NumberAnimation {
+                        duration: root.floating ? 100 : Theme.medium
+                        easing.type: Easing.OutCubic
+                    }
+                }
 
                 IconButton {
                     x: 4
-                    width: 46
-                    height: 46
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: root.floating ? 36 : 46
+                    height: root.floating ? 36 : 46
+                    iconSize: root.floating ? 20 : 24
                     glyph: "Rounded.Send"
                     iconColor: Theme.primaryText
                     container: Theme.primary

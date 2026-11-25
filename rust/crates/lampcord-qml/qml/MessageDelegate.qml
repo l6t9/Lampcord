@@ -20,10 +20,10 @@ Item {
     required property string replyAvatar
     required property string replyContent
 
-    // Optional message actions. Pins and inbox rows don't pass an id, so the
-    // menu simply stays unavailable there.
-    property string messageId: ""
-    property string authorId: ""
+    // Message identity comes from the model role in chat. Pins and inbox rows
+    // pass empty ids, so their action menu stays unavailable.
+    required property string messageId
+    required property string authorId
     property bool mine: false
 
     signal actionReply(string id)

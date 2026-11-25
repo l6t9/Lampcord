@@ -9,6 +9,7 @@ Item {
 
     property var folder
     property bool expanded: false
+    property bool mobile: false
     readonly property var guilds: folder.guilds
     readonly property bool childSelected: guilds.some(g => g.id === backend.selectedGuildId)
     readonly property color tint: folder.color !== "" ? folder.color : Theme.primary
@@ -47,8 +48,10 @@ Item {
         width: 48
         height: 48
         radius: 16
-        color: Theme.alpha(root.tint, root.expanded ? (hover.hovered ? 0.2 : 0.1) : (hover.hovered ? 0.35 : 0.2))
-        Behavior on color { ColorAnimation { duration: Theme.quick } }
+        color: root.mobile
+            ? Theme.alpha(root.tint, root.expanded ? (hover.hovered ? 0.3 : 0.18) : (hover.hovered ? 0.45 : 0.25))
+            : Theme.alpha(root.tint, root.expanded ? (hover.hovered ? 0.2 : 0.1) : (hover.hovered ? 0.35 : 0.2))
+        Behavior on color { ColorAnimation { duration: 100 } }
 
         Icon {
             anchors.centerIn: parent
@@ -127,6 +130,7 @@ Item {
             delegate: GuildItem {
                 required property var modelData
                 width: children_.width
+                mobile: root.mobile
                 icon: modelData.icon
                 label: modelData.initials
                 tip: modelData.name

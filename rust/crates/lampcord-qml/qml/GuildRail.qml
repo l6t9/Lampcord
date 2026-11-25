@@ -3,20 +3,29 @@ import QtQuick
 ListView {
     id: rail
 
+    property bool mobile: false
+
     model: window.rail
-    spacing: 8
+    spacing: mobile ? 6 : 8
     topMargin: 8
     bottomMargin: 8
     clip: true
     boundsBehavior: Flickable.StopAtBounds
 
+    Rectangle {
+        anchors.fill: parent
+        z: -1
+        color: rail.mobile ? Theme.surfaceContainerLowest : "transparent"
+    }
+
     header: Column {
         width: rail.width
-        spacing: 8
-        bottomPadding: 8
+        spacing: rail.mobile ? 6 : 8
+        bottomPadding: rail.mobile ? 4 : 8
 
         GuildItem {
             width: rail.width
+            mobile: rail.mobile
             glyph: "discord"
             tip: "Direct Messages"
             selected: backend.selectedGuildId === ""
@@ -34,6 +43,7 @@ ListView {
 
                 GuildItem {
                     anchors.fill: parent
+                    mobile: rail.mobile
                     icon: modelData.avatar
                     label: modelData.name.slice(0, 2)
                     tip: modelData.name
@@ -57,6 +67,7 @@ ListView {
         Component {
             id: guildItem
             GuildItem {
+                mobile: rail.mobile
                 icon: modelData.icon
                 label: modelData.initials
                 tip: modelData.name
@@ -68,6 +79,7 @@ ListView {
         Component {
             id: folderItem
             FolderItem {
+                mobile: rail.mobile
                 folder: modelData
             }
         }

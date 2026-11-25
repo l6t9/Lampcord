@@ -75,6 +75,8 @@ Popup {
                     id: message
                     y: 2
                     width: parent.width
+                    messageId: ""
+                    authorId: ""
                     author: modelData.author
                     avatar: modelData.avatar
                     decoration: modelData.decoration

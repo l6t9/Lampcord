@@ -7,6 +7,7 @@ Item {
 
     property var dm
     property bool selected: false
+    property bool mobile: false
     signal clicked()
 
     implicitHeight: 48
@@ -18,13 +19,13 @@ Item {
         radius: 8
         color: root.selected ? Theme.surfaceVariant
              : hover.hovered ? Theme.alpha(Theme.surfaceText, 0.05) : "transparent"
-        Behavior on color { ColorAnimation { duration: Theme.quick } }
+        Behavior on color { ColorAnimation { duration: 100 } }
 
-        // DMItem shows the nameplate only while hovered or selected.
+        // Phoenix DM rows are flat; desktop keeps the spotlight nameplate.
         Nameplate {
             anchors.fill: parent
             source: root.dm.nameplate
-            shown: hover.hovered || root.selected
+            shown: !root.mobile && (hover.hovered || root.selected)
         }
 
         Row {

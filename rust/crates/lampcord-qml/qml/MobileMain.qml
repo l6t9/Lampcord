@@ -40,6 +40,14 @@ ApplicationWindow {
         property bool showSearch: true
         property bool showMentions: true
         property bool showYou: true
+
+        // Phoenix-style shell defaults: full-width overlapping panels with the
+        // expressive spring. These are Settings values so they persist like the
+        // Compose navigation settings.
+        property string panelType: "overlapping"
+        property string panelAnimation: "expressive"
+        property bool reduceMotion: false
+        property bool hideNavLabels: false
     }
 
     readonly property var guilds: JSON.parse(backend.guildsJson)

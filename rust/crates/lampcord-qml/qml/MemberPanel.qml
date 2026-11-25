@@ -6,6 +6,12 @@ import QtQuick.Controls.Basic
 Item {
     id: root
 
+    // The overlapping member sheet needs a back affordance; the desktop panel
+    // keeps its original search pill at the top.
+    property bool backVisible: false
+    property bool mobile: false
+    signal backClicked()
+
     readonly property var members: JSON.parse(backend.membersJson)
     readonly property var shown: {
         const needle = search.text.trim().toLowerCase()
@@ -17,13 +23,49 @@ Item {
         function onSelectedChannelIdChanged() { search.clear() }
     }
 
+    Row {
+        id: mobileHeader
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        height: visible ? (root.mobile ? 56 : 52) : 0
+        visible: root.backVisible
+
+        Rectangle {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            height: 1
+            color: root.mobile ? Theme.outlineVariant : "transparent"
+        }
+
+        IconButton {
+            anchors.verticalCenter: parent.verticalCenter
+            width: 40
+            height: 40
+            glyph: "Rounded.ArrowBack"
+            iconColor: Theme.surfaceVariantText
+            tip: "Back to chat"
+            onClicked: root.backClicked()
+        }
+
+        Text {
+            anchors.verticalCenter: parent.verticalCenter
+            text: "Members"
+            color: Theme.surfaceText
+            font.family: Theme.font
+            font.pixelSize: root.mobile ? 18 : 16
+            font.weight: Font.DemiBold
+        }
+    }
+
     Rectangle {
         id: pill
         x: 16
-        y: 16
+        y: mobileHeader.height + 8
         width: parent.width - 32
         height: 40
-        radius: 20
+        radius: root.mobile ? 12 : 20
         color: Theme.surfaceContainerHigh
 
         Row {
@@ -93,6 +135,7 @@ Item {
         delegate: MemberRow {
             required property var modelData
             width: list.width
+            mobile: root.mobile
             member: modelData
         }
     }

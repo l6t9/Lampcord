@@ -5,15 +5,16 @@ Item {
 
     property string name
     property bool collapsed: false
+    property bool mobile: false
     signal toggled()
 
-    implicitHeight: 12 + 20 + 4
+    implicitHeight: root.mobile ? 32 : 12 + 20 + 4
 
     readonly property color tint: hover.hovered ? Theme.surfaceText : Theme.surfaceVariantText
 
     Row {
         x: 16
-        y: 12
+        y: root.mobile ? 6 : 12
         height: 20
         spacing: 4
 

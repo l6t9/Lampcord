@@ -86,6 +86,7 @@ Item {
         delegate: DmRow {
             required property var modelData
             width: list.width
+            mobile: true
             dm: modelData
             selected: backend.selectedChannelId === modelData.id
             onClicked: {

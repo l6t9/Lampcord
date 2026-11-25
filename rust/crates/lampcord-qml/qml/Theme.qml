@@ -54,4 +54,14 @@ QtObject {
     function alpha(c, a) {
         return Qt.rgba(c.r, c.g, c.b, a)
     }
+
+    // Compose's Color.lerp, used by the mobile panels to tint the root surface
+    // while a side panel opens.
+    function lerp(a, b, amount) {
+        const t = Math.max(0, Math.min(1, amount))
+        return Qt.rgba(a.r + (b.r - a.r) * t,
+                       a.g + (b.g - a.g) * t,
+                       a.b + (b.b - a.b) * t,
+                       a.a + (b.a - a.a) * t)
+    }
 }
