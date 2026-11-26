@@ -17,3 +17,4 @@ pub mod session;
 pub mod state_cache;
 pub mod token_store;
 pub mod traits;
+pub mod user_guild_settings;

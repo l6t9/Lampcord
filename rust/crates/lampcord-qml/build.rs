@@ -13,22 +13,35 @@ const ICON_DIR: &str = "../../../shared/src/commonMain/kotlin/me/lampu/lampcord/
 /// Pulls every `const val X_Path = "..."` out of a Compose icon file into a
 /// `{"X": "..."}` table, so QML gets the exact same shapes.
 fn extract_icons(source: &Path, out: &Path) {
-    let text = fs::read_to_string(source).unwrap_or_else(|e| panic!("reading {}: {e}", source.display()));
+    let text =
+        fs::read_to_string(source).unwrap_or_else(|e| panic!("reading {}: {e}", source.display()));
     let mut entries = Vec::new();
     for line in text.lines() {
-        let Some(rest) = line.trim().strip_prefix("internal const val ") else { continue };
-        let Some((name, value)) = rest.split_once("_Path = \"") else { continue };
-        let Some(path) = value.strip_suffix('"') else { continue };
+        let Some(rest) = line.trim().strip_prefix("internal const val ") else {
+            continue;
+        };
+        let Some((name, value)) = rest.split_once("_Path = \"") else {
+            continue;
+        };
+        let Some(path) = value.strip_suffix('"') else {
+            continue;
+        };
         entries.push(format!("\"{name}\":\"{path}\""));
     }
-    assert!(!entries.is_empty(), "no icon paths found in {}", source.display());
+    assert!(
+        !entries.is_empty(),
+        "no icon paths found in {}",
+        source.display()
+    );
     fs::write(out, format!("{{{}}}", entries.join(","))).expect("writing icon table");
 }
 
 /// Every .qml file under `qml/`, relative to the crate root, so the module
 /// picks up new components without editing this list.
 fn collect_qml(dir: &Path, out: &mut Vec<String>) {
-    let Ok(entries) = fs::read_dir(dir) else { return };
+    let Ok(entries) = fs::read_dir(dir) else {
+        return;
+    };
     for entry in entries.flatten() {
         let path = entry.path();
         if path.is_dir() {
@@ -61,7 +74,13 @@ fn main() {
     });
 
     CxxQtBuilder::new_qml_module(QmlModule::new("Lampcord").qml_files(qml_files))
-        .files(["src/backend.rs", "src/emoji.rs", "src/icons.rs", "src/palette.rs", "src/surface.rs"])
+        .files([
+            "src/backend.rs",
+            "src/emoji.rs",
+            "src/icons.rs",
+            "src/palette.rs",
+            "src/surface.rs",
+        ])
         .cpp_file("native/surface_format.cpp")
         .include_dir("native")
         .qt_module("Quick")

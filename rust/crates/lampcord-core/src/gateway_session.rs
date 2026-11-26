@@ -54,6 +54,10 @@ impl GatewaySession {
         self.resume_gateway_url = None;
     }
 
+    pub fn rotate_token(&mut self, token: &str) {
+        self.token = Some(token.to_owned());
+    }
+
     pub fn clear(&mut self) {
         self.token = None;
         self.clear_resume();

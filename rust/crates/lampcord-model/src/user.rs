@@ -103,6 +103,8 @@ impl User {
         }
         let gid = pg.identity_guild_id.as_deref().filter(|s| !s.is_empty())?;
         let hash = pg.badge.as_deref().filter(|s| !s.is_empty())?;
-        Some(format!("https://cdn.discordapp.com/clan-badges/{gid}/{hash}.png?size=32"))
+        Some(format!(
+            "https://cdn.discordapp.com/clan-badges/{gid}/{hash}.png?size=32"
+        ))
     }
 }

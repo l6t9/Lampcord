@@ -347,7 +347,7 @@ fn establish_session(
         .with_outbound(out_rx);
     let cache = client.cache().clone();
     let (gw_tx, gw_rx) = mpsc::unbounded_channel();
-    let token = token.to_owned();
+    let mut token = token.to_owned();
     let task = tokio::spawn(async move {
         let mut attempt: u32 = 0;
         loop {
@@ -362,6 +362,9 @@ fn establish_session(
                     None
                 }
             };
+            if let Some(refreshed) = client.take_refreshed_token() {
+                token = refreshed;
+            }
             let reconnect = match terminal {
                 Some(GatewayEvent::AuthFailed { .. }) => false,
                 Some(GatewayEvent::Closed { code })
@@ -886,11 +889,16 @@ fn message_snapshot(message: &Message) -> MessageSnapshot {
                     return None;
                 }
                 Some(ReactionSnapshot {
-                    emoji_id: emoji
-                        .get("id")
-                        .and_then(|v| v.as_str().map(str::to_owned).or_else(|| v.as_u64().map(|n| n.to_string()))),
+                    emoji_id: emoji.get("id").and_then(|v| {
+                        v.as_str()
+                            .map(str::to_owned)
+                            .or_else(|| v.as_u64().map(|n| n.to_string()))
+                    }),
                     emoji_name,
-                    animated: emoji.get("animated").and_then(Value::as_bool).unwrap_or(false),
+                    animated: emoji
+                        .get("animated")
+                        .and_then(Value::as_bool)
+                        .unwrap_or(false),
                     count: r.get("count").and_then(Value::as_u64).unwrap_or(1) as u32,
                     me: r.get("me").and_then(Value::as_bool).unwrap_or(false),
                 })
@@ -901,9 +909,17 @@ fn message_snapshot(message: &Message) -> MessageSnapshot {
             .iter()
             .filter_map(|s| {
                 let id = json_id(s.get("id"))?;
-                let name = s.get("name").and_then(Value::as_str).unwrap_or_default().to_owned();
+                let name = s
+                    .get("name")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_owned();
                 let format_type = s.get("format_type").and_then(Value::as_u64).unwrap_or(1) as u8;
-                Some(StickerSnapshot { id, name, format_type })
+                Some(StickerSnapshot {
+                    id,
+                    name,
+                    format_type,
+                })
             })
             .collect(),
         pinned: message.pinned,
@@ -986,7 +1002,10 @@ fn message_snapshot_from_value(value: &Value) -> MessageSnapshot {
         reply: None,
         reactions: Vec::new(),
         stickers: Vec::new(),
-        pinned: value.get("pinned").and_then(Value::as_bool).unwrap_or(false),
+        pinned: value
+            .get("pinned")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
         embeds_json: value
             .get("embeds")
             .and_then(|e| serde_json::to_string(e).ok())
@@ -1222,7 +1241,10 @@ fn member_list_snapshot(cache: &StateCache, guild_id: Option<Snowflake>) -> Memb
                         global_name: member.global_name.clone(),
                         decoration: member.decoration.clone(),
                         nameplate: member.nameplate.clone(),
-                        clan_tag: cache.user(*user_id).and_then(|u| u.clan_tag()).map(str::to_owned),
+                        clan_tag: cache
+                            .user(*user_id)
+                            .and_then(|u| u.clan_tag())
+                            .map(str::to_owned),
                         clan_badge: cache.user(*user_id).and_then(|u| u.clan_badge_url()),
                     }),
                     ..MemberListRowSnapshot::default()
@@ -1406,7 +1428,8 @@ fn build_snapshot(
                 {
                     unread = true;
                 }
-                mention_count = mention_count.saturating_add(read_state_for_guilds.mention_count(ch.id));
+                mention_count =
+                    mention_count.saturating_add(read_state_for_guilds.mention_count(ch.id));
             }
             GuildSnapshot {
                 id: guild.id,
@@ -1484,7 +1507,10 @@ fn build_snapshot(
             global_name: member.global_name,
             decoration: member.decoration,
             nameplate: member.nameplate,
-            clan_tag: cache.user(member.user_id).and_then(|u| u.clan_tag()).map(str::to_owned),
+            clan_tag: cache
+                .user(member.user_id)
+                .and_then(|u| u.clan_tag())
+                .map(str::to_owned),
             clan_badge: cache.user(member.user_id).and_then(|u| u.clan_badge_url()),
         })
         .collect();
@@ -1564,7 +1590,10 @@ fn build_snapshot(
         current_user,
         current_user_username: cache.current_user().map(|user| user.username.clone()),
         current_user_email: cache.current_user().and_then(|user| user.email.clone()),
-        current_user_mfa_enabled: cache.current_user().and_then(|user| user.mfa_enabled).unwrap_or(false),
+        current_user_mfa_enabled: cache
+            .current_user()
+            .and_then(|user| user.mfa_enabled)
+            .unwrap_or(false),
         current_user_avatar: cache.current_user().and_then(|user| user.avatar.clone()),
         selected_guild_id,
         selected_channel_id,
@@ -3206,6 +3235,12 @@ async fn run(
                     GatewayEvent::Resumed => {
                         connection = ConnectionState::Ready;
                     }
+                    GatewayEvent::AuthTokenRefreshed { token: refreshed } => {
+                        if let Some(previous) = active_token.replace(refreshed.clone()) {
+                            forget_token(&mut token_store, &secret_store, &previous);
+                        }
+                        persist_token(&mut token_store, &secret_store, &refreshed);
+                    }
                     GatewayEvent::AuthFailed { .. } => {
                         connection = ConnectionState::Error { message: "Authentication failed".to_owned() };
                         error = Some("Authentication failed".to_owned());
@@ -3494,7 +3529,11 @@ mod tests {
             assert_eq!(properties["browser_version"], "37.6.0");
         }
         assert_eq!(properties["design_id"], json!(2));
-        assert!(properties["device_vendor_id"].as_str().is_some_and(|id| id.len() == 36));
+        assert!(
+            properties["device_vendor_id"]
+                .as_str()
+                .is_some_and(|id| id.len() == 36)
+        );
 
         let other = default_rest_config("https://example.invalid/api/v9", None, None);
         let installation = |headers: &[(String, String)]| {
@@ -3503,7 +3542,10 @@ mod tests {
                 .find(|(name, _)| name == "X-Installation-Id")
                 .map(|(_, value)| value.clone())
         };
-        assert_eq!(installation(&headers), installation(&other.login_headers(None)));
+        assert_eq!(
+            installation(&headers),
+            installation(&other.login_headers(None))
+        );
     }
 
     #[test]

@@ -8,8 +8,8 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use crate::{
     event_dispatch::Dispatcher,
     gateway_plan::{
-        HELLO_TIMEOUT_MS, OP_DISPATCH, OP_HEARTBEAT, OP_IDENTIFY, OP_RESUME, control_action,
-        gateway_url, resume_decision,
+        HELLO_TIMEOUT_MS, OP_DISPATCH, OP_IDENTIFY, OP_RESUME, control_action, gateway_url,
+        resume_decision,
     },
     gateway_session::GatewaySession,
     rest::DESKTOP_USER_AGENT,
@@ -20,6 +20,9 @@ use crate::{
 pub const DEFAULT_GATEWAY_URL: &str = "wss://gateway.discord.gg";
 
 pub const OP_LAZY_REQUEST: i64 = 14;
+pub const OP_QOS_HEARTBEAT: i64 = 40;
+pub const OP_TIME_SPENT: i64 = 41;
+pub const QOS_VERSION: u32 = 31;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GatewayIdentityMode {
@@ -39,6 +42,9 @@ pub enum GatewayEvent {
         session_id: String,
         resume_gateway_url: Option<String>,
         user_id: Option<String>,
+    },
+    AuthTokenRefreshed {
+        token: String,
     },
     Resumed,
     Dispatch {
@@ -103,6 +109,8 @@ pub struct GatewayIdentity {
     pub compress: bool,
     /// Used for op 41 time-spent/session updates (matches identify properties).
     pub client_heartbeat_session_id: String,
+    pub client_launch_id: String,
+    pub initialization_timestamp: u64,
 }
 
 impl Default for GatewayIdentity {
@@ -213,7 +221,7 @@ impl GatewayIdentity {
         Self {
             properties,
             client_state: json!({
-                "guild_hashes": {},
+                "guild_versions": {},
                 "highest_last_message_id": 0,
                 "read_state_version": 0,
                 "user_guild_settings_version": -1,
@@ -222,6 +230,11 @@ impl GatewayIdentity {
             large_threshold: 100,
             compress: false,
             client_heartbeat_session_id,
+            client_launch_id,
+            initialization_timestamp: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_millis() as u64,
         }
     }
 }
@@ -255,8 +268,15 @@ impl GatewayIdentity {
 
 pub fn heartbeat_payload(sequence: Option<u32>) -> Value {
     json!({
-        "op": OP_HEARTBEAT,
-        "d": sequence,
+        "op": OP_QOS_HEARTBEAT,
+        "d": {
+            "seq": sequence,
+            "qos": {
+                "ver": QOS_VERSION,
+                "active": true,
+                "reasons": ["foregrounded"],
+            },
+        },
     })
 }
 
@@ -280,17 +300,13 @@ pub fn lazy_request_payload(
     })
 }
 
-pub fn time_spent_payload(client_heartbeat_session_id: &str) -> Value {
-    let now_ms = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_millis() as u64;
+pub fn time_spent_payload(identity: &GatewayIdentity) -> Value {
     json!({
-        "op": 41,
+        "op": OP_TIME_SPENT,
         "d": {
-            "initialization_timestamp": now_ms,
-            "session_id": client_heartbeat_session_id,
-            "client_launch_id": client_heartbeat_session_id,
+            "initialization_timestamp": identity.initialization_timestamp,
+            "session_id": identity.client_heartbeat_session_id,
+            "client_launch_id": identity.client_launch_id,
         }
     })
 }
@@ -312,6 +328,7 @@ pub struct GatewayClient<T: GatewayTransport, U: GatewayUrlProvider> {
     dispatcher: Dispatcher,
     cache: Arc<Mutex<StateCache>>,
     outbound: Option<UnboundedReceiver<Value>>,
+    refreshed_token: Option<String>,
 }
 
 impl<T: GatewayTransport, U: GatewayUrlProvider> GatewayClient<T, U> {
@@ -327,6 +344,7 @@ impl<T: GatewayTransport, U: GatewayUrlProvider> GatewayClient<T, U> {
             dispatcher,
             cache,
             outbound: None,
+            refreshed_token: None,
         }
     }
 
@@ -346,6 +364,20 @@ impl<T: GatewayTransport, U: GatewayUrlProvider> GatewayClient<T, U> {
 
     pub fn cache(&self) -> &Arc<Mutex<StateCache>> {
         &self.cache
+    }
+
+    pub fn take_refreshed_token(&mut self) -> Option<String> {
+        self.refreshed_token.take()
+    }
+
+    async fn send_heartbeat(
+        &mut self,
+        tx: &UnboundedSender<GatewayEvent>,
+    ) -> Result<(), GatewayError> {
+        let payload = heartbeat_payload(self.session.last_sequence());
+        self.transport.send(&payload.to_string()).await?;
+        let _ = tx.send(GatewayEvent::HeartbeatSent);
+        Ok(())
     }
 
     /// Runs the gateway connection until it closes and returns all emitted events.
@@ -472,9 +504,7 @@ impl<T: GatewayTransport, U: GatewayUrlProvider> GatewayClient<T, U> {
                                 });
                             }
                             crate::gateway_plan::ControlAction::Heartbeat => {
-                                let payload = heartbeat_payload(self.session.last_sequence());
-                                self.transport.send(&payload.to_string()).await?;
-                                let _ = tx.send(GatewayEvent::HeartbeatSent);
+                                self.send_heartbeat(&tx).await?;
                                 if let Some(interval) = heartbeat_interval_ms {
                                     next_heartbeat_at = tokio::time::Instant::now()
                                         + Duration::from_millis(interval);
@@ -543,10 +573,24 @@ impl<T: GatewayTransport, U: GatewayUrlProvider> GatewayClient<T, U> {
                                                 resume_gateway_url.clone(),
                                             );
                                             // Match Lampcord/Kotlin: send time-spent/session update on READY.
-                                            let op41 = time_spent_payload(
-                                                &self.identity.client_heartbeat_session_id,
-                                            );
+                                            let op41 = time_spent_payload(&self.identity);
                                             let _ = self.transport.send(&op41.to_string()).await;
+                                            if let Some(refreshed) = data
+                                                .and_then(|data| data.get("auth_token"))
+                                                .and_then(Value::as_str)
+                                                .filter(|refreshed| {
+                                                    !refreshed.is_empty() && *refreshed != token
+                                                })
+                                            {
+                                                self.session.rotate_token(refreshed);
+                                                if let Ok(mut cache) = self.cache.lock() {
+                                                    cache.rotate_token(refreshed);
+                                                }
+                                                self.refreshed_token = Some(refreshed.to_owned());
+                                                let _ = tx.send(GatewayEvent::AuthTokenRefreshed {
+                                                    token: refreshed.to_owned(),
+                                                });
+                                            }
                                             let _ = tx.send(GatewayEvent::Ready {
                                                 session_id,
                                                 resume_gateway_url,
@@ -554,10 +598,6 @@ impl<T: GatewayTransport, U: GatewayUrlProvider> GatewayClient<T, U> {
                                             });
                                         }
                                         "RESUMED" => {
-                                            let op41 = time_spent_payload(
-                                                &self.identity.client_heartbeat_session_id,
-                                            );
-                                            let _ = self.transport.send(&op41.to_string()).await;
                                             let _ = tx.send(GatewayEvent::Resumed);
                                         }
                                         _ => {
@@ -591,9 +631,7 @@ impl<T: GatewayTransport, U: GatewayUrlProvider> GatewayClient<T, U> {
                 },
                 Err(_elapsed) => {
                     if let Some(interval) = heartbeat_interval_ms {
-                        let payload = heartbeat_payload(self.session.last_sequence());
-                        self.transport.send(&payload.to_string()).await?;
-                        let _ = tx.send(GatewayEvent::HeartbeatSent);
+                        self.send_heartbeat(&tx).await?;
                         next_heartbeat_at =
                             tokio::time::Instant::now() + Duration::from_millis(interval);
                     } else {
@@ -693,6 +731,34 @@ mod tests {
         json!({"op": 10, "d": {"heartbeat_interval": interval}})
     }
 
+    #[test]
+    fn heartbeat_uses_qos_payload() {
+        let payload = heartbeat_payload(Some(7));
+        assert_eq!(payload["op"], OP_QOS_HEARTBEAT);
+        assert_eq!(payload["d"]["seq"], 7);
+        assert_eq!(payload["d"]["qos"]["ver"], 31);
+        assert_eq!(payload["d"]["qos"]["active"], true);
+    }
+
+    #[test]
+    fn time_spent_payload_matches_source_shape() {
+        let identity = GatewayIdentity::desktop(None);
+        let payload = time_spent_payload(&identity);
+        assert_eq!(payload["op"], OP_TIME_SPENT);
+        assert_eq!(
+            payload["d"]["session_id"],
+            identity.client_heartbeat_session_id.as_str()
+        );
+        assert_eq!(
+            payload["d"]["client_launch_id"],
+            identity.client_launch_id.as_str()
+        );
+        assert_eq!(
+            payload["d"]["initialization_timestamp"],
+            identity.initialization_timestamp
+        );
+    }
+
     #[tokio::test]
     async fn identifies_and_records_ready_state() {
         let transport = ScriptedGatewayTransport::default();
@@ -726,6 +792,38 @@ mod tests {
             resume_gateway_url: Some("wss://resume.example".to_owned()),
             user_id: Some("42".to_owned()),
         }));
+        assert_eq!(
+            client.session().resume_info(),
+            Some(("session-1", 7, "wss://resume.example"))
+        );
+    }
+
+    #[tokio::test]
+    async fn ready_with_refreshed_token_emits_rotation_and_keeps_session() {
+        let transport = ScriptedGatewayTransport::default();
+        transport.push(hello(41_250));
+        transport.push(json!({
+            "op": 0,
+            "s": 7,
+            "t": "READY",
+            "d": {
+                "session_id": "session-1",
+                "resume_gateway_url": "wss://resume.example",
+                "user": {"id": "42", "username": "lamp"},
+                "guilds": [],
+                "auth_token": "token-2"
+            }
+        }));
+        transport.push_close(1000);
+        let mut client = GatewayClient::new(transport, StaticUrl);
+
+        let events = client.run("token-1").await.expect("gateway run");
+
+        assert!(events.contains(&GatewayEvent::AuthTokenRefreshed {
+            token: "token-2".to_owned(),
+        }));
+        assert_eq!(client.take_refreshed_token(), Some("token-2".to_owned()));
+        assert_eq!(client.take_refreshed_token(), None);
         assert_eq!(
             client.session().resume_info(),
             Some(("session-1", 7, "wss://resume.example"))

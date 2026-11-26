@@ -7,7 +7,7 @@ use crate::{
     traits::{CaptchaSolver, RestTransport},
 };
 
-use super::{ApiError, send_json};
+use super::{ApiError, send_empty, send_json};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct SettingsProtoResponse {
@@ -428,4 +428,61 @@ where
         }
     });
     update_user_settings(client, config, &body).await
+}
+
+pub async fn get_note<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    user_id: u64,
+) -> Result<Value, ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let req = config.request(
+        HttpMethod::Get,
+        &format!("/users/@me/notes/{user_id}"),
+        config.standard_headers(),
+        Body::None,
+    );
+    send_json(client, req).await
+}
+
+pub async fn set_note<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    user_id: u64,
+    note: &str,
+) -> Result<(), ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let body = serde_json::json!({ "note": note });
+    let req = config.request(
+        HttpMethod::Put,
+        &format!("/users/@me/notes/{user_id}"),
+        config.standard_headers(),
+        Body::Json(body.to_string()),
+    );
+    send_empty(client, req).await
+}
+
+pub async fn update_user_guild_settings<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    guild_id: u64,
+    body: &Value,
+) -> Result<Value, ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let req = config.request(
+        HttpMethod::Patch,
+        &format!("/users/@me/guilds/{guild_id}/settings"),
+        config.standard_headers(),
+        Body::Json(body.to_string()),
+    );
+    send_json(client, req).await
 }

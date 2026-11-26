@@ -6,7 +6,7 @@ use crate::{
     traits::{CaptchaSolver, RestTransport},
 };
 
-use super::{ApiError, send_json};
+use super::{ApiError, send_empty, send_json};
 
 pub async fn get_applications<T, S>(
     client: &RestClient<T, S>,
@@ -25,6 +25,60 @@ where
     let req = config.request(
         HttpMethod::Get,
         &path,
+        config.standard_headers(),
+        Body::None,
+    );
+    send_json(client, req).await
+}
+
+pub async fn send_interaction<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    body: &Value,
+) -> Result<(), ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let req = config.request(
+        HttpMethod::Post,
+        &format!("/interactions"),
+        config.standard_headers(),
+        Body::Json(body.to_string()),
+    );
+    send_empty(client, req).await
+}
+
+pub async fn get_guild_command_index<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    guild_id: u64,
+) -> Result<Value, ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let req = config.request(
+        HttpMethod::Get,
+        &format!("/guilds/{guild_id}/application-command-index"),
+        config.standard_headers(),
+        Body::None,
+    );
+    send_json(client, req).await
+}
+
+pub async fn get_channel_command_index<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    channel_id: u64,
+) -> Result<Value, ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let req = config.request(
+        HttpMethod::Get,
+        &format!("/channels/{channel_id}/application-command-index"),
         config.standard_headers(),
         Body::None,
     );

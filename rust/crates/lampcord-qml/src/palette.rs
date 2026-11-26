@@ -149,8 +149,12 @@ fn matugen_seed(home: &Path) -> Option<Rgb> {
         cache.join("wal/colors.json"),
     ];
     for path in candidates {
-        let Ok(text) = fs::read_to_string(&path) else { continue };
-        let Ok(val) = serde_json::from_str::<Value>(&text) else { continue };
+        let Ok(text) = fs::read_to_string(&path) else {
+            continue;
+        };
+        let Ok(val) = serde_json::from_str::<Value>(&text) else {
+            continue;
+        };
         let seed_str = val
             .pointer("/colors/dark/primary")
             .or_else(|| val.pointer("/colors/primary/dark"))
@@ -199,7 +203,9 @@ impl qobject::Palette {
             return;
         }
 
-        let home = std::env::var_os("HOME").map(PathBuf::from).unwrap_or_default();
+        let home = std::env::var_os("HOME")
+            .map(PathBuf::from)
+            .unwrap_or_default();
         if self.matugen_sync {
             if let Some(seed) = matugen_seed(&home) {
                 let json = scheme_json(seed, variant);
@@ -212,9 +218,12 @@ impl qobject::Palette {
         }
 
         let wallpaper = current_wallpaper(&home);
-        let source = wallpaper
-            .as_ref()
-            .map(|path| (path.clone(), fs::metadata(path).and_then(|meta| meta.modified()).ok()));
+        let source = wallpaper.as_ref().map(|path| {
+            (
+                path.clone(),
+                fs::metadata(path).and_then(|meta| meta.modified()).ok(),
+            )
+        });
         if source == self.source && self.source.is_some() {
             return;
         }
@@ -257,7 +266,12 @@ fn scheme_json(seed: Rgb, variant: Variant) -> String {
         );
         let roles: Map<String, Value> = ROLES
             .iter()
-            .map(|role| (camel(role.name()), Value::from(hex(scheme.get_rgb((*role).into())))))
+            .map(|role| {
+                (
+                    camel(role.name()),
+                    Value::from(hex(scheme.get_rgb((*role).into()))),
+                )
+            })
             .collect();
         Value::Object(roles)
     };
@@ -286,7 +300,11 @@ fn camel(snake: &str) -> String {
 fn wallpaper_seed(path: &Path) -> Option<Rgb> {
     let image = image::open(path).ok()?;
     let thumb = image
-        .resize(MAX_EXTRACTION_SIZE, MAX_EXTRACTION_SIZE, image::imageops::FilterType::Triangle)
+        .resize(
+            MAX_EXTRACTION_SIZE,
+            MAX_EXTRACTION_SIZE,
+            image::imageops::FilterType::Triangle,
+        )
         .to_rgba8();
     let pixels: Vec<Rgb> = thumb
         .pixels()
@@ -319,7 +337,10 @@ fn xdg(var: &str, fallback: &str, home: &Path) -> PathBuf {
 
 fn normalize(raw: &str) -> Option<PathBuf> {
     let value = raw.trim().trim_matches(|c| c == '\'' || c == '"');
-    let value = value.strip_prefix("file://").or_else(|| value.strip_prefix("file:")).unwrap_or(value);
+    let value = value
+        .strip_prefix("file://")
+        .or_else(|| value.strip_prefix("file:"))
+        .unwrap_or(value);
     let path = PathBuf::from(value);
     path.is_file().then_some(path)
 }
@@ -348,15 +369,29 @@ fn current_wallpaper(home: &Path) -> Option<PathBuf> {
         }
     }
 
-    if let Some(path) = fs::read_to_string(cache.join("wal/wal")).ok().as_deref().and_then(normalize) {
+    if let Some(path) = fs::read_to_string(cache.join("wal/wal"))
+        .ok()
+        .as_deref()
+        .and_then(normalize)
+    {
         return Some(path);
     }
 
-    let gnome_dark = run("gsettings", &["get", "org.gnome.desktop.interface", "color-scheme"])
-        .is_some_and(|scheme| scheme.to_lowercase().contains("dark"));
-    let keys: &[&str] = if gnome_dark { &["picture-uri-dark", "picture-uri"] } else { &["picture-uri"] };
+    let gnome_dark = run(
+        "gsettings",
+        &["get", "org.gnome.desktop.interface", "color-scheme"],
+    )
+    .is_some_and(|scheme| scheme.to_lowercase().contains("dark"));
+    let keys: &[&str] = if gnome_dark {
+        &["picture-uri-dark", "picture-uri"]
+    } else {
+        &["picture-uri"]
+    };
     for key in keys {
-        if let Some(path) = run("gsettings", &["get", "org.gnome.desktop.background", key]).as_deref().and_then(normalize) {
+        if let Some(path) = run("gsettings", &["get", "org.gnome.desktop.background", key])
+            .as_deref()
+            .and_then(normalize)
+        {
             return Some(path);
         }
     }
@@ -381,8 +416,9 @@ fn current_wallpaper(home: &Path) -> Option<PathBuf> {
     }
 
     run("swww", &["query"]).and_then(|output| {
-        output
-            .lines()
-            .find_map(|line| line.split_once("image:").and_then(|(_, path)| normalize(path)))
+        output.lines().find_map(|line| {
+            line.split_once("image:")
+                .and_then(|(_, path)| normalize(path))
+        })
     })
 }

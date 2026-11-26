@@ -185,19 +185,33 @@ pub mod qobject {
         fn fetch_guild_settings(self: Pin<&mut LampcordBackend>, guild_id: QString);
 
         #[qinvokable]
-        fn create_guild_role(self: Pin<&mut LampcordBackend>, guild_id: QString, name: QString, color: i32);
+        fn create_guild_role(
+            self: Pin<&mut LampcordBackend>,
+            guild_id: QString,
+            name: QString,
+            color: i32,
+        );
 
         #[qinvokable]
         fn delete_guild_role(self: Pin<&mut LampcordBackend>, guild_id: QString, role_id: QString);
 
         #[qinvokable]
-        fn delete_guild_emoji(self: Pin<&mut LampcordBackend>, guild_id: QString, emoji_id: QString);
+        fn delete_guild_emoji(
+            self: Pin<&mut LampcordBackend>,
+            guild_id: QString,
+            emoji_id: QString,
+        );
 
         #[qinvokable]
         fn unban_member(self: Pin<&mut LampcordBackend>, guild_id: QString, user_id: QString);
 
         #[qinvokable]
-        fn create_channel(self: Pin<&mut LampcordBackend>, guild_id: QString, name: QString, kind: i32);
+        fn create_channel(
+            self: Pin<&mut LampcordBackend>,
+            guild_id: QString,
+            name: QString,
+            kind: i32,
+        );
 
         #[qinvokable]
         fn delete_channel(self: Pin<&mut LampcordBackend>, channel_id: QString);
@@ -348,8 +362,12 @@ impl Default for BackendRust {
         let client = LampcordClient::start(config);
         let _ = client.connect_stored_token();
         let props = load_lampcord_properties();
-        let initial_log_deleted = props.get("message_logger_enabled").is_some_and(|v| v == "true");
-        let initial_desktop_notif = props.get("notifications_enabled").map_or(true, |v| v == "true");
+        let initial_log_deleted = props
+            .get("message_logger_enabled")
+            .is_some_and(|v| v == "true");
+        let initial_desktop_notif = props
+            .get("notifications_enabled")
+            .map_or(true, |v| v == "true");
         let initial_config_json = properties_to_json(&props);
         Self {
             client,
@@ -470,7 +488,10 @@ fn load_lampcord_properties() -> std::collections::BTreeMap<String, String> {
         }
         if let Some((k, v)) = trimmed.split_once('=') {
             let key = unescape_java_prop(k.trim());
-            if matches!(key.as_str(), "discord_token" | "saved_accounts" | "rust_core_secrets") {
+            if matches!(
+                key.as_str(),
+                "discord_token" | "saved_accounts" | "rust_core_secrets"
+            ) {
                 continue;
             }
             map.insert(key, unescape_java_prop(v.trim()));
@@ -492,7 +513,10 @@ fn save_lampcord_property(key: &str, value: &str) {
     if let Some(parent) = path.parent() {
         let _ = std::fs::create_dir_all(parent);
     }
-    let escaped_val = value.replace('\\', "\\\\").replace('\n', "\\n").replace('\r', "\\r");
+    let escaped_val = value
+        .replace('\\', "\\\\")
+        .replace('\n', "\\n")
+        .replace('\r', "\\r");
     let new_line = format!("{key}={escaped_val}");
     let existing = std::fs::read_to_string(&path).unwrap_or_default();
     let mut lines: Vec<String> = existing.lines().map(str::to_owned).collect();
@@ -522,18 +546,20 @@ fn save_lampcord_property(key: &str, value: &str) {
 
 fn sha256_hex(input: &[u8]) -> String {
     const K: [u32; 64] = [
-        0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
-        0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
-        0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
-        0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
-        0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
-        0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
-        0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
-        0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
+        0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4,
+        0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe,
+        0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f,
+        0x4a7484aa, 0x5cb0a9dc, 0x76f988da, 0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7,
+        0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc,
+        0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b,
+        0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070, 0x19a4c116,
+        0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+        0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7,
+        0xc67178f2,
     ];
     let mut h: [u32; 8] = [
-        0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
-        0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19,
+        0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab,
+        0x5be0cd19,
     ];
     let bit_len = (input.len() as u64) * 8;
     let mut data = input.to_vec();
@@ -545,23 +571,41 @@ fn sha256_hex(input: &[u8]) -> String {
     for chunk in data.chunks_exact(64) {
         let mut w = [0u32; 64];
         for i in 0..16 {
-            w[i] = u32::from_be_bytes([chunk[i * 4], chunk[i * 4 + 1], chunk[i * 4 + 2], chunk[i * 4 + 3]]);
+            w[i] = u32::from_be_bytes([
+                chunk[i * 4],
+                chunk[i * 4 + 1],
+                chunk[i * 4 + 2],
+                chunk[i * 4 + 3],
+            ]);
         }
         for i in 16..64 {
             let s0 = w[i - 15].rotate_right(7) ^ w[i - 15].rotate_right(18) ^ (w[i - 15] >> 3);
             let s1 = w[i - 2].rotate_right(17) ^ w[i - 2].rotate_right(19) ^ (w[i - 2] >> 10);
-            w[i] = w[i - 16].wrapping_add(s0).wrapping_add(w[i - 7]).wrapping_add(s1);
+            w[i] = w[i - 16]
+                .wrapping_add(s0)
+                .wrapping_add(w[i - 7])
+                .wrapping_add(s1);
         }
         let [mut a, mut b, mut c, mut d, mut e, mut f, mut g, mut hh] = h;
         for i in 0..64 {
             let s1 = e.rotate_right(6) ^ e.rotate_right(11) ^ e.rotate_right(25);
             let ch = (e & f) ^ ((!e) & g);
-            let t1 = hh.wrapping_add(s1).wrapping_add(ch).wrapping_add(K[i]).wrapping_add(w[i]);
+            let t1 = hh
+                .wrapping_add(s1)
+                .wrapping_add(ch)
+                .wrapping_add(K[i])
+                .wrapping_add(w[i]);
             let s0 = a.rotate_right(2) ^ a.rotate_right(13) ^ a.rotate_right(22);
             let maj = (a & b) ^ (a & c) ^ (b & c);
             let t2 = s0.wrapping_add(maj);
-            hh = g; g = f; f = e; e = d.wrapping_add(t1);
-            d = c; c = b; b = a; a = t1.wrapping_add(t2);
+            hh = g;
+            g = f;
+            f = e;
+            e = d.wrapping_add(t1);
+            d = c;
+            c = b;
+            b = a;
+            a = t1.wrapping_add(t2);
         }
         for (slot, delta) in h.iter_mut().zip([a, b, c, d, e, f, g, hh]) {
             *slot = slot.wrapping_add(delta);
@@ -714,7 +758,9 @@ fn load_logged_deleted_messages(channel_id: u64) -> Vec<MessageSnapshot> {
 fn storage_path() -> Option<String> {
     let base = std::env::var_os("XDG_DATA_HOME")
         .map(std::path::PathBuf::from)
-        .or_else(|| std::env::var_os("HOME").map(|home| std::path::Path::new(&home).join(".local/share")))?;
+        .or_else(|| {
+            std::env::var_os("HOME").map(|home| std::path::Path::new(&home).join(".local/share"))
+        })?;
     let dir = base.join("lampcord-qml");
     std::fs::create_dir_all(&dir).ok()?;
     Some(dir.join("accounts.json").to_string_lossy().into_owned())
@@ -737,7 +783,9 @@ fn local_path(url: &str) -> Option<String> {
         decoded.push(bytes[i]);
         i += 1;
     }
-    String::from_utf8(decoded).ok().filter(|path| !path.is_empty())
+    String::from_utf8(decoded)
+        .ok()
+        .filter(|path| !path.is_empty())
 }
 
 fn parse_id(id: &QString) -> Option<u64> {
@@ -804,7 +852,13 @@ fn qr_modules(url: &str) -> (String, i32) {
     let modules = code
         .to_colors()
         .into_iter()
-        .map(|color| if color == qrcode::Color::Dark { '1' } else { '0' })
+        .map(|color| {
+            if color == qrcode::Color::Dark {
+                '1'
+            } else {
+                '0'
+            }
+        })
         .collect();
     (modules, code.width() as i32)
 }
@@ -823,10 +877,11 @@ fn members_json(
     presences: &[PresenceSnapshot],
     me: Option<&Me>,
 ) -> String {
-    let presence: HashMap<u64, &PresenceSnapshot> =
-        presences.iter().map(|presence| (presence.user_id, presence)).collect();
-    let role_map: HashMap<u64, &RoleSnapshot> =
-        roles.iter().map(|role| (role.id, role)).collect();
+    let presence: HashMap<u64, &PresenceSnapshot> = presences
+        .iter()
+        .map(|presence| (presence.user_id, presence))
+        .collect();
+    let role_map: HashMap<u64, &RoleSnapshot> = roles.iter().map(|role| (role.id, role)).collect();
     let owner_id = selected_guild.and_then(|g| g.owner_id);
 
     let role_color = |member_roles: &[u64]| -> String {
@@ -859,13 +914,20 @@ fn members_json(
             .to_owned();
         // Compose shows a phone for people online only on mobile.
         let mobile = own.is_none() && presence.get(&id).is_some_and(|presence| presence.mobile);
-        let status = if mobile && status == "online" { "mobile".to_owned() } else { status };
+        let status = if mobile && status == "online" {
+            "mobile".to_owned()
+        } else {
+            status
+        };
         // Compose shows the custom status, else the first activity.
         let activity = own
             .and_then(|me| me.custom_status.clone())
             .or_else(|| {
                 presence.get(&id).and_then(|presence| {
-                    presence.custom_status.clone().or_else(|| presence.activities.first().cloned())
+                    presence
+                        .custom_status
+                        .clone()
+                        .or_else(|| presence.activities.first().cloned())
                 })
             })
             .unwrap_or_default();
@@ -885,7 +947,8 @@ fn members_json(
         })
     };
 
-    let dm = selected_channel.and_then(|id| private_channels.iter().find(|channel| channel.id == id));
+    let dm =
+        selected_channel.and_then(|id| private_channels.iter().find(|channel| channel.id == id));
     if let Some(dm) = dm {
         let member_rows: Vec<Value> = me
             .map(|me| {
@@ -904,7 +967,10 @@ fn members_json(
             })
             .into_iter()
             .chain(dm.recipients.iter().map(|user| {
-                let name = user.global_name.clone().unwrap_or_else(|| user.username.clone());
+                let name = user
+                    .global_name
+                    .clone()
+                    .unwrap_or_else(|| user.username.clone());
                 row(
                     user.id,
                     name,
@@ -1055,8 +1121,16 @@ fn base64_encode(bytes: &[u8]) -> String {
         let n = (b0 << 16) | (b1 << 8) | b2;
         out.push(TABLE[((n >> 18) & 63) as usize] as char);
         out.push(TABLE[((n >> 12) & 63) as usize] as char);
-        out.push(if chunk.len() > 1 { TABLE[((n >> 6) & 63) as usize] as char } else { '=' });
-        out.push(if chunk.len() > 2 { TABLE[(n & 63) as usize] as char } else { '=' });
+        out.push(if chunk.len() > 1 {
+            TABLE[((n >> 6) & 63) as usize] as char
+        } else {
+            '='
+        });
+        out.push(if chunk.len() > 2 {
+            TABLE[(n & 63) as usize] as char
+        } else {
+            '='
+        });
     }
     out
 }
@@ -1092,7 +1166,9 @@ fn strip_3y3(bio: &str) -> String {
 fn lampcord_badge_data_uri(icon_path: &str) -> Option<String> {
     let bytes: &[u8] = match icon_path {
         "badges/blobcatcozystars.png" => {
-            include_bytes!("../../../../shared/src/commonMain/resources/badges/blobcatcozystars.png")
+            include_bytes!(
+                "../../../../shared/src/commonMain/resources/badges/blobcatcozystars.png"
+            )
         }
         "badges/lamp.png" => {
             include_bytes!("../../../../shared/src/commonMain/resources/badges/lamp.png")
@@ -1106,7 +1182,8 @@ fn lampcord_badge_data_uri(icon_path: &str) -> Option<String> {
 }
 
 fn lampcord_badges_for(user_id: u64, member_roles: &[u64]) -> Vec<Value> {
-    static RAW: &str = include_str!("../../../../shared/src/commonMain/resources/badges/badges.json");
+    static RAW: &str =
+        include_str!("../../../../shared/src/commonMain/resources/badges/badges.json");
     let Ok(mapping) = serde_json::from_str::<Value>(RAW) else {
         return Vec::new();
     };
@@ -1135,7 +1212,9 @@ fn lampcord_badges_for(user_id: u64, member_roles: &[u64]) -> Vec<Value> {
     }
     let mut out = Vec::new();
     for id in ids {
-        let Some(def) = mapping["badges"].get(&id) else { continue };
+        let Some(def) = mapping["badges"].get(&id) else {
+            continue;
+        };
         let name = def["name"].as_str().unwrap_or(&id);
         let icon = def["icon"].as_str().unwrap_or("");
         let icon_url = if icon.starts_with("http") {
@@ -1170,8 +1249,14 @@ fn profile_json_str(
 
     // 3y3 bio tags supply profile colors, banner, or avatar when absent.
     let mut theme_colors = p.theme_colors.clone();
-    if let Some(arr) = decoded_3y3.as_ref().and_then(|v| v["theme_colors"].as_array()) {
-        let parsed: Vec<u32> = arr.iter().filter_map(|x| x.as_u64().map(|n| (n & 0xFFFFFF) as u32)).collect();
+    if let Some(arr) = decoded_3y3
+        .as_ref()
+        .and_then(|v| v["theme_colors"].as_array())
+    {
+        let parsed: Vec<u32> = arr
+            .iter()
+            .filter_map(|x| x.as_u64().map(|n| (n & 0xFFFFFF) as u32))
+            .collect();
         if !parsed.is_empty() {
             theme_colors = parsed;
         }
@@ -1182,11 +1267,21 @@ fn profile_json_str(
         .or(p.accent_color);
     let banner_url = decoded_3y3
         .as_ref()
-        .and_then(|v| v["banner"].as_str().filter(|s| !s.is_empty()).map(str::to_owned))
+        .and_then(|v| {
+            v["banner"]
+                .as_str()
+                .filter(|s| !s.is_empty())
+                .map(str::to_owned)
+        })
         .or_else(|| p.banner_url.clone());
     let avatar = decoded_3y3
         .as_ref()
-        .and_then(|v| v["avatar"].as_str().filter(|s| !s.is_empty()).map(str::to_owned))
+        .and_then(|v| {
+            v["avatar"]
+                .as_str()
+                .filter(|s| !s.is_empty())
+                .map(str::to_owned)
+        })
         .or_else(|| p.avatar.clone());
 
     let mut badges: Vec<Value> = p
@@ -1222,14 +1317,22 @@ fn profile_json_str(
         .map(|m| m.status.as_str())
         .or_else(|| {
             pres.map(|pr| {
-                if pr.mobile && pr.status == "online" { "mobile" } else { pr.status.as_str() }
+                if pr.mobile && pr.status == "online" {
+                    "mobile"
+                } else {
+                    pr.status.as_str()
+                }
             })
         })
         .unwrap_or("offline");
     let activity = own
         .and_then(|m| m.custom_status.clone())
         .or_else(|| {
-            pres.and_then(|pr| pr.custom_status.clone().or_else(|| pr.activities.first().cloned()))
+            pres.and_then(|pr| {
+                pr.custom_status
+                    .clone()
+                    .or_else(|| pr.activities.first().cloned())
+            })
         })
         .unwrap_or_default();
 
@@ -1281,9 +1384,12 @@ fn guilds_json(guilds: &[GuildSnapshot]) -> String {
 /// server in a nameless folder shows as a plain server), with servers that
 /// no folder mentions yet (e.g. just joined) on top.
 fn rail_json(guilds: &[GuildSnapshot], folders: &[GuildFolderSnapshot]) -> String {
-    let by_id: HashMap<u64, &GuildSnapshot> = guilds.iter().map(|guild| (guild.id, guild)).collect();
-    let foldered: std::collections::HashSet<u64> =
-        folders.iter().flat_map(|folder| folder.guild_ids.iter().copied()).collect();
+    let by_id: HashMap<u64, &GuildSnapshot> =
+        guilds.iter().map(|guild| (guild.id, guild)).collect();
+    let foldered: std::collections::HashSet<u64> = folders
+        .iter()
+        .flat_map(|folder| folder.guild_ids.iter().copied())
+        .collect();
 
     let mut items: Vec<Value> = guilds
         .iter()
@@ -1304,9 +1410,16 @@ fn rail_json(guilds: &[GuildSnapshot], folders: &[GuildFolderSnapshot]) -> Strin
             items.extend(members);
             continue;
         }
-        let key = folder.id.map_or_else(|| format!("index-{index}"), |id| id.to_string());
-        let folder_unread = members.iter().any(|g| g["unread"].as_bool().unwrap_or(false));
-        let folder_mentions: u64 = members.iter().map(|g| g["mentions"].as_u64().unwrap_or(0)).sum();
+        let key = folder
+            .id
+            .map_or_else(|| format!("index-{index}"), |id| id.to_string());
+        let folder_unread = members
+            .iter()
+            .any(|g| g["unread"].as_bool().unwrap_or(false));
+        let folder_mentions: u64 = members
+            .iter()
+            .map(|g| g["mentions"].as_u64().unwrap_or(0))
+            .sum();
         items.push(json!({
             "kind": "folder",
             "id": key,
@@ -1326,26 +1439,42 @@ fn dms_json(
     read_states: &[ReadStateSnapshot],
     presences: &[PresenceSnapshot],
 ) -> String {
-    let presence: HashMap<u64, &PresenceSnapshot> =
-        presences.iter().map(|presence| (presence.user_id, presence)).collect();
-    let reads: HashMap<u64, &ReadStateSnapshot> =
-        read_states.iter().map(|state| (state.channel_id, state)).collect();
+    let presence: HashMap<u64, &PresenceSnapshot> = presences
+        .iter()
+        .map(|presence| (presence.user_id, presence))
+        .collect();
+    let reads: HashMap<u64, &ReadStateSnapshot> = read_states
+        .iter()
+        .map(|state| (state.channel_id, state))
+        .collect();
     let items: Vec<Value> = channels
         .iter()
         .map(|channel| {
             let names: Vec<String> = channel
                 .recipients
                 .iter()
-                .map(|user| user.global_name.clone().unwrap_or_else(|| user.username.clone()))
+                .map(|user| {
+                    user.global_name
+                        .clone()
+                        .unwrap_or_else(|| user.username.clone())
+                })
                 .collect();
             let name = channel.name.clone().unwrap_or_else(|| {
-                if names.is_empty() { "Unnamed".to_owned() } else { names.join(", ") }
+                if names.is_empty() {
+                    "Unnamed".to_owned()
+                } else {
+                    names.join(", ")
+                }
             });
             let group = channel.kind == 3;
             let avatar = match (group, channel.recipients.first()) {
                 (false, Some(user)) => {
                     let url = avatar_url(user.id, user.avatar.as_deref());
-                    if url.is_empty() { default_avatar_url(user.id) } else { url }
+                    if url.is_empty() {
+                        default_avatar_url(user.id)
+                    } else {
+                        url
+                    }
                 }
                 _ => String::new(),
             };
@@ -1356,7 +1485,11 @@ fn dms_json(
             let status = recipient
                 .and_then(|user| presence.get(&user.id))
                 .map(|presence| {
-                    if presence.mobile && presence.status == "online" { "mobile" } else { presence.status.as_str() }
+                    if presence.mobile && presence.status == "online" {
+                        "mobile"
+                    } else {
+                        presence.status.as_str()
+                    }
                 })
                 .unwrap_or("offline");
             json!({
@@ -1390,11 +1523,7 @@ fn initials(name: &str) -> String {
 fn is_listed_kind(kind: u8) -> bool {
     matches!(
         kind,
-        CHANNEL_TEXT
-            | CHANNEL_VOICE
-            | CHANNEL_ANNOUNCEMENT
-            | CHANNEL_STAGE
-            | CHANNEL_FORUM
+        CHANNEL_TEXT | CHANNEL_VOICE | CHANNEL_ANNOUNCEMENT | CHANNEL_STAGE | CHANNEL_FORUM
     )
 }
 
@@ -1433,10 +1562,18 @@ fn clean_channel_name(
     is_category: bool,
     props: &std::collections::BTreeMap<String, String>,
 ) -> String {
-    let remove_emojis = props.get("clean_channels_remove_emojis").map_or(true, |v| v == "true");
-    let hide_symbols = props.get("clean_channels_hide_symbols").map_or(true, |v| v == "true");
-    let normalize_letters = props.get("clean_channels_normalize_letters").map_or(true, |v| v == "true");
-    let cap_categories = props.get("clean_channels_capitalize_categories").map_or(true, |v| v == "true");
+    let remove_emojis = props
+        .get("clean_channels_remove_emojis")
+        .map_or(true, |v| v == "true");
+    let hide_symbols = props
+        .get("clean_channels_hide_symbols")
+        .map_or(true, |v| v == "true");
+    let normalize_letters = props
+        .get("clean_channels_normalize_letters")
+        .map_or(true, |v| v == "true");
+    let cap_categories = props
+        .get("clean_channels_capitalize_categories")
+        .map_or(true, |v| v == "true");
 
     let mut s = raw.to_owned();
     if remove_emojis {
@@ -1468,7 +1605,11 @@ fn clean_channel_name(
             .collect();
     }
     let cleaned = s.split_whitespace().collect::<Vec<_>>().join(" ");
-    let mut out = if cleaned.is_empty() { raw.to_owned() } else { cleaned };
+    let mut out = if cleaned.is_empty() {
+        raw.to_owned()
+    } else {
+        cleaned
+    };
     if is_category && cap_categories {
         let mut chars = out.chars();
         if let Some(first) = chars.next() {
@@ -1480,8 +1621,10 @@ fn clean_channel_name(
 
 fn channels_json(channels: &[ChannelSnapshot], read_states: &[ReadStateSnapshot]) -> String {
     let props = load_lampcord_properties();
-    let reads: HashMap<u64, &ReadStateSnapshot> =
-        read_states.iter().map(|state| (state.channel_id, state)).collect();
+    let reads: HashMap<u64, &ReadStateSnapshot> = read_states
+        .iter()
+        .map(|state| (state.channel_id, state))
+        .collect();
     let sort_key = |channel: &&ChannelSnapshot| {
         let voice = matches!(channel.kind, CHANNEL_VOICE | CHANNEL_STAGE);
         (voice, channel.position.unwrap_or(i32::MAX), channel.id)
@@ -1515,7 +1658,11 @@ fn channels_json(channels: &[ChannelSnapshot], read_states: &[ReadStateSnapshot]
     let mut loose: Vec<&ChannelSnapshot> = channels
         .iter()
         .filter(|channel| is_listed_kind(channel.kind))
-        .filter(|channel| channel.parent_id.is_none_or(|parent| !category_ids.contains(&parent)))
+        .filter(|channel| {
+            channel
+                .parent_id
+                .is_none_or(|parent| !category_ids.contains(&parent))
+        })
         .collect();
     loose.sort_by_key(sort_key);
     items.extend(loose.into_iter().map(row));
@@ -1523,7 +1670,9 @@ fn channels_json(channels: &[ChannelSnapshot], read_states: &[ReadStateSnapshot]
     for category in categories {
         let mut children: Vec<&ChannelSnapshot> = channels
             .iter()
-            .filter(|channel| is_listed_kind(channel.kind) && channel.parent_id == Some(category.id))
+            .filter(|channel| {
+                is_listed_kind(channel.kind) && channel.parent_id == Some(category.id)
+            })
             .collect();
         if children.is_empty() {
             continue;
@@ -1580,42 +1729,39 @@ fn system_parts(kind: u8, id: u64) -> Option<(&'static str, &'static str)> {
 }
 
 fn is_image(attachment: &lampcord_ffi::AttachmentSnapshot) -> bool {
-    attachment
-        .content_type
-        .as_deref()
-        .map_or_else(
-            || {
-                let name = attachment.filename.to_lowercase();
-                [".png", ".jpg", ".jpeg", ".gif", ".webp"].iter().any(|ext| name.ends_with(ext))
-            },
-            |kind| kind.starts_with("image/"),
-        )
+    attachment.content_type.as_deref().map_or_else(
+        || {
+            let name = attachment.filename.to_lowercase();
+            [".png", ".jpg", ".jpeg", ".gif", ".webp"]
+                .iter()
+                .any(|ext| name.ends_with(ext))
+        },
+        |kind| kind.starts_with("image/"),
+    )
 }
 
 fn is_video(attachment: &lampcord_ffi::AttachmentSnapshot) -> bool {
-    attachment
-        .content_type
-        .as_deref()
-        .map_or_else(
-            || {
-                let name = attachment.filename.to_lowercase();
-                [".mp4", ".webm", ".mov", ".mkv"].iter().any(|ext| name.ends_with(ext))
-            },
-            |kind| kind.starts_with("video/"),
-        )
+    attachment.content_type.as_deref().map_or_else(
+        || {
+            let name = attachment.filename.to_lowercase();
+            [".mp4", ".webm", ".mov", ".mkv"]
+                .iter()
+                .any(|ext| name.ends_with(ext))
+        },
+        |kind| kind.starts_with("video/"),
+    )
 }
 
 fn is_audio(attachment: &lampcord_ffi::AttachmentSnapshot) -> bool {
-    attachment
-        .content_type
-        .as_deref()
-        .map_or_else(
-            || {
-                let name = attachment.filename.to_lowercase();
-                [".mp3", ".ogg", ".wav", ".flac", ".m4a", ".opus"].iter().any(|ext| name.ends_with(ext))
-            },
-            |kind| kind.starts_with("audio/"),
-        )
+    attachment.content_type.as_deref().map_or_else(
+        || {
+            let name = attachment.filename.to_lowercase();
+            [".mp3", ".ogg", ".wav", ".flac", ".m4a", ".opus"]
+                .iter()
+                .any(|ext| name.ends_with(ext))
+        },
+        |kind| kind.starts_with("audio/"),
+    )
 }
 
 fn date_label_for_ms(ms: u64) -> String {
@@ -1650,11 +1796,21 @@ fn relationships_json(
             let url = avatar_url(rel.user_id, rel.avatar.as_deref());
             let status = presence
                 .get(&rel.user_id)
-                .map(|p| if p.mobile && p.status == "online" { "mobile" } else { p.status.as_str() })
+                .map(|p| {
+                    if p.mobile && p.status == "online" {
+                        "mobile"
+                    } else {
+                        p.status.as_str()
+                    }
+                })
                 .unwrap_or("offline");
             let activity = presence
                 .get(&rel.user_id)
-                .and_then(|p| p.custom_status.clone().or_else(|| p.activities.first().cloned()))
+                .and_then(|p| {
+                    p.custom_status
+                        .clone()
+                        .or_else(|| p.activities.first().cloned())
+                })
                 .unwrap_or_default();
             let display = rel
                 .global_name
@@ -1684,15 +1840,21 @@ fn messages_json(
     deleted_ids: &std::collections::HashSet<u64>,
     me: Option<&Me>,
 ) -> String {
-    let members: HashMap<u64, &MemberSnapshot> =
-        members.iter().map(|member| (member.user_id, member)).collect();
+    let members: HashMap<u64, &MemberSnapshot> = members
+        .iter()
+        .map(|member| (member.user_id, member))
+        .collect();
     let my_roles: &[u64] = me
         .and_then(|m| members.get(&m.id))
         .map(|m| m.roles.as_slice())
         .unwrap_or(&[]);
     let user_avatar = |id: u64, hash: Option<&str>| {
         let url = avatar_url(id, hash);
-        if url.is_empty() { default_avatar_url(id) } else { url }
+        if url.is_empty() {
+            default_avatar_url(id)
+        } else {
+            url
+        }
     };
     let mut previous: Option<&MessageSnapshot> = None;
     let mut previous_day: Option<u64> = None;
@@ -1839,9 +2001,17 @@ impl qobject::LampcordBackend {
         let mut deleted_dirty = false;
         for env in events {
             match env.event {
-                ClientEvent::MessageDeleted { channel_id, message_id } => {
+                ClientEvent::MessageDeleted {
+                    channel_id,
+                    message_id,
+                } => {
                     if *self.log_deleted_messages() {
-                        if let Some(msg) = self.messages.iter().find(|m| m.id == message_id && m.channel_id == channel_id).cloned() {
+                        if let Some(msg) = self
+                            .messages
+                            .iter()
+                            .find(|m| m.id == message_id && m.channel_id == channel_id)
+                            .cloned()
+                        {
                             let mut rust = self.as_mut().rust_mut();
                             let entry = rust.deleted_messages.entry(channel_id).or_default();
                             if !entry.iter().any(|m| m.id == message_id) {
@@ -1861,7 +2031,8 @@ impl qobject::LampcordBackend {
                     let channel_id = msg.channel_id.to_string();
                     self.as_mut().set_toast_title(QString::from(title.as_str()));
                     self.as_mut().set_toast_body(QString::from(body.as_str()));
-                    self.as_mut().set_toast_channel_id(QString::from(channel_id.as_str()));
+                    self.as_mut()
+                        .set_toast_channel_id(QString::from(channel_id.as_str()));
                     let seq = *self.toast_seq() + 1;
                     self.as_mut().set_toast_seq(seq);
                     if *self.desktop_notifications() {
@@ -1898,15 +2069,26 @@ impl qobject::LampcordBackend {
             self.as_mut().set_current_user_email(QString::from(
                 meta.current_user_email.as_deref().unwrap_or(""),
             ));
-            self.as_mut().set_current_user_mfa_enabled(meta.current_user_mfa_enabled);
-            self.as_mut().set_current_user_id(id_string(meta.current_user_id));
+            self.as_mut()
+                .set_current_user_mfa_enabled(meta.current_user_mfa_enabled);
+            self.as_mut()
+                .set_current_user_id(id_string(meta.current_user_id));
             let avatar = meta.current_user_id.map_or_else(String::new, |id| {
                 let url = avatar_url(id, meta.current_user_avatar.as_deref());
-                if url.is_empty() { default_avatar_url(id) } else { url }
+                if url.is_empty() {
+                    default_avatar_url(id)
+                } else {
+                    url
+                }
             });
-            self.as_mut().set_current_user_avatar(QString::from(avatar.as_str()));
-            let status = meta.current_user_status.clone().unwrap_or_else(|| "online".to_owned());
-            self.as_mut().set_current_user_status(QString::from(status.as_str()));
+            self.as_mut()
+                .set_current_user_avatar(QString::from(avatar.as_str()));
+            let status = meta
+                .current_user_status
+                .clone()
+                .unwrap_or_else(|| "online".to_owned());
+            self.as_mut()
+                .set_current_user_status(QString::from(status.as_str()));
             self.as_mut().set_current_user_custom_status(QString::from(
                 meta.current_user_custom_status.as_deref().unwrap_or(""),
             ));
@@ -1921,8 +2103,10 @@ impl qobject::LampcordBackend {
                 self.as_mut().rust_mut().latest_profile = meta.profile;
                 profile_dirty = true;
             }
-            let accounts = serde_json::to_string(&meta.saved_accounts).unwrap_or_else(|_| "[]".to_owned());
-            self.as_mut().set_saved_accounts_json(QString::from(accounts.as_str()));
+            let accounts =
+                serde_json::to_string(&meta.saved_accounts).unwrap_or_else(|_| "[]".to_owned());
+            self.as_mut()
+                .set_saved_accounts_json(QString::from(accounts.as_str()));
             let me = meta.current_user_id.map(|id| Me {
                 id,
                 name: meta.current_user.clone().unwrap_or_default(),
@@ -1950,10 +2134,13 @@ impl qobject::LampcordBackend {
                     &self.presences,
                     self.me.as_ref(),
                 );
-                self.as_mut().set_profile_json(QString::from(profile.as_str()));
+                self.as_mut()
+                    .set_profile_json(QString::from(profile.as_str()));
             }
-            self.as_mut().set_selected_guild_id(id_string(meta.selected_guild_id));
-            self.as_mut().set_selected_channel_id(id_string(meta.selected_channel_id));
+            self.as_mut()
+                .set_selected_guild_id(id_string(meta.selected_guild_id));
+            self.as_mut()
+                .set_selected_channel_id(id_string(meta.selected_channel_id));
             let error = match (&meta.connection, &meta.error) {
                 (ConnectionState::Error { message }, _) => message.clone(),
                 (_, Some(error)) => error.clone(),
@@ -1971,7 +2158,8 @@ impl qobject::LampcordBackend {
 
         let mut rail_dirty = false;
         if let Some(guilds) = patch.guilds {
-            self.as_mut().set_guilds_json(QString::from(guilds_json(&guilds).as_str()));
+            self.as_mut()
+                .set_guilds_json(QString::from(guilds_json(&guilds).as_str()));
             self.as_mut().rust_mut().guilds = guilds;
             rail_dirty = true;
             members_dirty = true;
@@ -1995,7 +2183,8 @@ impl qobject::LampcordBackend {
                     })
                 })
                 .collect();
-            self.as_mut().set_guild_emojis_json(QString::from(Value::Array(rows).to_string().as_str()));
+            self.as_mut()
+                .set_guild_emojis_json(QString::from(Value::Array(rows).to_string().as_str()));
         }
         if let Some(roles) = patch.guild_roles {
             let rows: Vec<Value> = roles
@@ -2011,7 +2200,8 @@ impl qobject::LampcordBackend {
                 .collect();
             self.as_mut().rust_mut().guild_roles = roles;
             members_dirty = true;
-            self.as_mut().set_guild_roles_json(QString::from(Value::Array(rows).to_string().as_str()));
+            self.as_mut()
+                .set_guild_roles_json(QString::from(Value::Array(rows).to_string().as_str()));
         }
         if let Some(bans) = patch.guild_bans {
             let rows: Vec<Value> = bans
@@ -2026,7 +2216,8 @@ impl qobject::LampcordBackend {
                     })
                 })
                 .collect();
-            self.as_mut().set_guild_bans_json(QString::from(Value::Array(rows).to_string().as_str()));
+            self.as_mut()
+                .set_guild_bans_json(QString::from(Value::Array(rows).to_string().as_str()));
         }
         if let Some(threads) = patch.threads {
             let rows: Vec<Value> = threads
@@ -2042,7 +2233,8 @@ impl qobject::LampcordBackend {
                     })
                 })
                 .collect();
-            self.as_mut().set_threads_json(QString::from(Value::Array(rows).to_string().as_str()));
+            self.as_mut()
+                .set_threads_json(QString::from(Value::Array(rows).to_string().as_str()));
         }
         if rail_dirty {
             let json = rail_json(&self.guilds, &self.guild_folders);
@@ -2092,7 +2284,8 @@ impl qobject::LampcordBackend {
                     messages.first().map(|m| m.channel_id),
                 ) {
                     if old_cid == new_cid {
-                        let new_ids: std::collections::HashSet<u64> = messages.iter().map(|m| m.id).collect();
+                        let new_ids: std::collections::HashSet<u64> =
+                            messages.iter().map(|m| m.id).collect();
                         let gone: Vec<MessageSnapshot> = self
                             .messages
                             .iter()
@@ -2117,21 +2310,35 @@ impl qobject::LampcordBackend {
         let empty_deleted = std::collections::HashSet::new();
         if let Some(pins) = patch.pinned_messages {
             // Newest pin first; each one stands alone, so nothing groups.
-            let mut rows: Vec<Value> = serde_json::from_str(&messages_json(&pins, &self.members, &empty_deleted, self.me.as_ref())).unwrap_or_default();
+            let mut rows: Vec<Value> = serde_json::from_str(&messages_json(
+                &pins,
+                &self.members,
+                &empty_deleted,
+                self.me.as_ref(),
+            ))
+            .unwrap_or_default();
             rows.reverse();
             for row in &mut rows {
                 row["grouped"] = Value::Bool(false);
                 row["showDate"] = Value::Bool(false);
             }
-            self.as_mut().set_pins_json(QString::from(Value::Array(rows).to_string().as_str()));
+            self.as_mut()
+                .set_pins_json(QString::from(Value::Array(rows).to_string().as_str()));
         }
         if let Some(results) = patch.search_results {
-            let mut rows: Vec<Value> = serde_json::from_str(&messages_json(&results, &self.members, &empty_deleted, self.me.as_ref())).unwrap_or_default();
+            let mut rows: Vec<Value> = serde_json::from_str(&messages_json(
+                &results,
+                &self.members,
+                &empty_deleted,
+                self.me.as_ref(),
+            ))
+            .unwrap_or_default();
             for row in &mut rows {
                 row["grouped"] = Value::Bool(false);
                 row["showDate"] = Value::Bool(false);
             }
-            self.as_mut().set_search_results_json(QString::from(Value::Array(rows).to_string().as_str()));
+            self.as_mut()
+                .set_search_results_json(QString::from(Value::Array(rows).to_string().as_str()));
         }
         if let Some(mentions) = patch.mentions {
             self.as_mut().rust_mut().mentions = mentions;
@@ -2140,7 +2347,8 @@ impl qobject::LampcordBackend {
 
         if channels_dirty {
             let json = channels_json(&self.channels, &self.read_states);
-            self.as_mut().set_channels_json(QString::from(json.as_str()));
+            self.as_mut()
+                .set_channels_json(QString::from(json.as_str()));
         }
         if members_dirty {
             let selected_guild = self
@@ -2164,16 +2372,24 @@ impl qobject::LampcordBackend {
                     &self.presences,
                     self.me.as_ref(),
                 );
-                self.as_mut().set_profile_json(QString::from(profile.as_str()));
+                self.as_mut()
+                    .set_profile_json(QString::from(profile.as_str()));
             }
         }
         if relationships_dirty {
             let json = relationships_json(&self.relationships, &self.presences);
-            self.as_mut().set_relationships_json(QString::from(json.as_str()));
+            self.as_mut()
+                .set_relationships_json(QString::from(json.as_str()));
         }
         if mentions_dirty {
-            let json = messages_json(&self.mentions, &self.members, &empty_deleted, self.me.as_ref());
-            self.as_mut().set_mentions_json(QString::from(json.as_str()));
+            let json = messages_json(
+                &self.mentions,
+                &self.members,
+                &empty_deleted,
+                self.me.as_ref(),
+            );
+            self.as_mut()
+                .set_mentions_json(QString::from(json.as_str()));
         }
         if dms_dirty {
             let json = dms_json(&self.private_channels, &self.read_states, &self.presences);
@@ -2207,7 +2423,8 @@ impl qobject::LampcordBackend {
                 }
             }
             let json = messages_json(&combined, &self.members, &deleted_ids, self.me.as_ref());
-            self.as_mut().set_messages_json(QString::from(json.as_str()));
+            self.as_mut()
+                .set_messages_json(QString::from(json.as_str()));
         }
     }
 
@@ -2241,7 +2458,8 @@ impl qobject::LampcordBackend {
             Some(AuthChallenge::Failed { message, .. }) => ("failed", message),
         };
         self.as_mut().set_auth_state(QString::from(state));
-        self.as_mut().set_auth_message(QString::from(message.as_str()));
+        self.as_mut()
+            .set_auth_message(QString::from(message.as_str()));
     }
 
     fn apply_remote_auth(mut self: Pin<&mut Self>, remote: RemoteAuthState) {
@@ -2250,7 +2468,8 @@ impl qobject::LampcordBackend {
             RemoteAuthState::Connecting => "connecting",
             RemoteAuthState::QrReady { url } => {
                 let (modules, size) = qr_modules(&url);
-                self.as_mut().set_qr_modules(QString::from(modules.as_str()));
+                self.as_mut()
+                    .set_qr_modules(QString::from(modules.as_str()));
                 self.as_mut().set_qr_size(size);
                 "ready"
             }
@@ -2271,7 +2490,8 @@ impl qobject::LampcordBackend {
 
     fn fail_auth(mut self: Pin<&mut Self>, message: String) {
         self.as_mut().set_auth_state(QString::from("failed"));
-        self.as_mut().set_auth_message(QString::from(message.as_str()));
+        self.as_mut()
+            .set_auth_message(QString::from(message.as_str()));
     }
 
     pub fn login_token(mut self: Pin<&mut Self>, token: QString) {
@@ -2284,9 +2504,11 @@ impl qobject::LampcordBackend {
 
     pub fn login_password(mut self: Pin<&mut Self>, login: QString, password: QString) {
         self.as_mut().begin_auth();
-        let result = self
-            .client
-            .login_password(login.to_string().trim().to_owned(), password.to_string(), None);
+        let result = self.client.login_password(
+            login.to_string().trim().to_owned(),
+            password.to_string(),
+            None,
+        );
         if let Err(error) = result {
             self.fail_auth(error.to_string());
         }
@@ -2334,7 +2556,9 @@ impl qobject::LampcordBackend {
 
     pub fn fetch_profile(self: Pin<&mut Self>, user_id: QString) {
         if let Some(user_id) = parse_id(&user_id) {
-            let _ = self.client.fetch_profile(user_id, parse_id(self.selected_guild_id()));
+            let _ = self
+                .client
+                .fetch_profile(user_id, parse_id(self.selected_guild_id()));
         }
     }
 
@@ -2371,7 +2595,9 @@ impl qobject::LampcordBackend {
     }
 
     pub fn load_older(self: Pin<&mut Self>) {
-        let Some(channel_id) = parse_id(self.selected_channel_id()) else { return };
+        let Some(channel_id) = parse_id(self.selected_channel_id()) else {
+            return;
+        };
         let oldest = self.messages.first().map(|message| message.id);
         let _ = self.client.fetch_messages(channel_id, oldest, Some(50));
     }
@@ -2381,7 +2607,9 @@ impl qobject::LampcordBackend {
         if content.trim().is_empty() {
             return;
         }
-        let Some(channel_id) = parse_id(self.selected_channel_id()) else { return };
+        let Some(channel_id) = parse_id(self.selected_channel_id()) else {
+            return;
+        };
         let _ = self.client.send_message(channel_id, content, None, None);
     }
 
@@ -2390,20 +2618,30 @@ impl qobject::LampcordBackend {
         if content.trim().is_empty() {
             return;
         }
-        let Some(channel_id) = parse_id(self.selected_channel_id()) else { return };
-        let Some(reply_id) = parse_id(&message_id) else { return };
+        let Some(channel_id) = parse_id(self.selected_channel_id()) else {
+            return;
+        };
+        let Some(reply_id) = parse_id(&message_id) else {
+            return;
+        };
         let guild_id = parse_id(self.selected_guild_id());
-        let _ = self.client.send_message(channel_id, content, Some(reply_id), guild_id);
+        let _ = self
+            .client
+            .send_message(channel_id, content, Some(reply_id), guild_id);
     }
 
     pub fn send_files(self: Pin<&mut Self>, content: QString, files: QString) {
-        let Some(channel_id) = parse_id(self.selected_channel_id()) else { return };
+        let Some(channel_id) = parse_id(self.selected_channel_id()) else {
+            return;
+        };
         let urls: Vec<String> = serde_json::from_str(&files.to_string()).unwrap_or_default();
         let paths: Vec<String> = urls.iter().filter_map(|url| local_path(url)).collect();
         if paths.is_empty() {
             return;
         }
-        let _ = self.client.send_attachments(channel_id, content.to_string(), paths, None, None);
+        let _ = self
+            .client
+            .send_attachments(channel_id, content.to_string(), paths, None, None);
     }
 
     pub fn set_status(mut self: Pin<&mut Self>, status: QString) {
@@ -2415,7 +2653,11 @@ impl qobject::LampcordBackend {
     pub fn set_custom_status(mut self: Pin<&mut Self>, text: QString) {
         self.as_mut().set_current_user_custom_status(text.clone());
         let text = text.to_string();
-        let _ = self.client.set_custom_status(if text.trim().is_empty() { None } else { Some(text) });
+        let _ = self.client.set_custom_status(if text.trim().is_empty() {
+            None
+        } else {
+            Some(text)
+        });
     }
 
     pub fn edit_message(self: Pin<&mut Self>, message_id: QString, content: QString) {
@@ -2445,8 +2687,12 @@ impl qobject::LampcordBackend {
     }
 
     pub fn ack_latest(mut self: Pin<&mut Self>) {
-        let Some(channel_id) = parse_id(self.selected_channel_id()) else { return };
-        let Some(latest) = self.messages.last().map(|message| message.id) else { return };
+        let Some(channel_id) = parse_id(self.selected_channel_id()) else {
+            return;
+        };
+        let Some(latest) = self.messages.last().map(|message| message.id) else {
+            return;
+        };
         if self.acked == Some(latest) {
             return;
         }
@@ -2464,7 +2710,9 @@ impl qobject::LampcordBackend {
         if let (Some(channel_id), Some(message_id)) =
             (parse_id(self.selected_channel_id()), parse_id(&message_id))
         {
-            let _ = self.client.add_reaction(channel_id, message_id, emoji.to_string());
+            let _ = self
+                .client
+                .add_reaction(channel_id, message_id, emoji.to_string());
         }
     }
 
@@ -2472,7 +2720,9 @@ impl qobject::LampcordBackend {
         if let (Some(channel_id), Some(message_id)) =
             (parse_id(self.selected_channel_id()), parse_id(&message_id))
         {
-            let _ = self.client.remove_reaction(channel_id, message_id, emoji.to_string());
+            let _ = self
+                .client
+                .remove_reaction(channel_id, message_id, emoji.to_string());
         }
     }
 
@@ -2541,15 +2791,20 @@ impl qobject::LampcordBackend {
         if q.trim().is_empty() {
             return;
         }
-        let guild_id = if scope.to_string() == "channel" { None } else { parse_id(self.selected_guild_id()) };
+        let guild_id = if scope.to_string() == "channel" {
+            None
+        } else {
+            parse_id(self.selected_guild_id())
+        };
         let channel_id = parse_id(self.selected_channel_id());
         let _ = self.client.search_messages(guild_id, channel_id, q);
     }
 
     pub fn fetch_threads(self: Pin<&mut Self>) {
-        if let (Some(guild_id), Some(channel_id)) =
-            (parse_id(self.selected_guild_id()), parse_id(self.selected_channel_id()))
-        {
+        if let (Some(guild_id), Some(channel_id)) = (
+            parse_id(self.selected_guild_id()),
+            parse_id(self.selected_channel_id()),
+        ) {
             let _ = self.client.fetch_threads(guild_id, channel_id);
         }
     }
@@ -2560,7 +2815,9 @@ impl qobject::LampcordBackend {
             return;
         }
         if let Some(channel_id) = parse_id(self.selected_channel_id()) {
-            let _ = self.client.create_thread(channel_id, name, parse_id(&message_id));
+            let _ = self
+                .client
+                .create_thread(channel_id, name, parse_id(&message_id));
         }
     }
 
@@ -2572,7 +2829,9 @@ impl qobject::LampcordBackend {
 
     pub fn create_guild_role(self: Pin<&mut Self>, guild_id: QString, name: QString, color: i32) {
         if let Some(guild_id) = parse_id(&guild_id) {
-            let _ = self.client.create_guild_role(guild_id, name.to_string(), color.max(0) as u32);
+            let _ = self
+                .client
+                .create_guild_role(guild_id, name.to_string(), color.max(0) as u32);
         }
     }
 
@@ -2600,7 +2859,9 @@ impl qobject::LampcordBackend {
             return;
         }
         if let Some(guild_id) = parse_id(&guild_id) {
-            let _ = self.client.create_channel(guild_id, name, kind.clamp(0, 255) as u8, None);
+            let _ = self
+                .client
+                .create_channel(guild_id, name, kind.clamp(0, 255) as u8, None);
         }
     }
 
@@ -2633,7 +2894,8 @@ impl qobject::LampcordBackend {
         }
         let empty = std::collections::HashSet::new();
         let json = messages_json(&self.messages, &self.members, &empty, self.me.as_ref());
-        self.as_mut().set_messages_json(QString::from(json.as_str()));
+        self.as_mut()
+            .set_messages_json(QString::from(json.as_str()));
     }
 
     pub fn render_markdown(
@@ -2685,7 +2947,10 @@ impl qobject::LampcordBackend {
     pub fn set_config(mut self: Pin<&mut Self>, key: QString, value: QString) {
         let key = key.to_string();
         let value = value.to_string();
-        if matches!(key.as_str(), "discord_token" | "saved_accounts" | "rust_core_secrets") {
+        if matches!(
+            key.as_str(),
+            "discord_token" | "saved_accounts" | "rust_core_secrets"
+        ) {
             return;
         }
         save_lampcord_property(&key, &value);
@@ -2696,7 +2961,8 @@ impl qobject::LampcordBackend {
             self.as_mut().set_desktop_notifications(value == "true");
         } else if key.starts_with("clean_channels_") {
             let ch_json = channels_json(&self.channels, &self.read_states);
-            self.as_mut().set_channels_json(QString::from(ch_json.as_str()));
+            self.as_mut()
+                .set_channels_json(QString::from(ch_json.as_str()));
         }
         let json = properties_to_json(&props);
         self.as_mut().set_config_json(QString::from(json.as_str()));
@@ -2749,7 +3015,14 @@ mod tests {
 
     #[test]
     fn rail_follows_folders_with_unfiled_servers_on_top() {
-        let guild = |id: u64| GuildSnapshot { id, name: format!("g{id}"), icon_url: None, owner_id: None, unread: false, mention_count: 0 };
+        let guild = |id: u64| GuildSnapshot {
+            id,
+            name: format!("g{id}"),
+            icon_url: None,
+            owner_id: None,
+            unread: false,
+            mention_count: 0,
+        };
         let folder = |id: Option<i64>, guild_ids: Vec<u64>| GuildFolderSnapshot {
             id,
             name: None,
@@ -2761,11 +3034,22 @@ mod tests {
         let rows: Vec<Value> = serde_json::from_str(&rail_json(&guilds, &folders)).unwrap();
         let shape: Vec<String> = rows
             .iter()
-            .map(|row| format!("{}:{}", row["kind"].as_str().unwrap(), row["id"].as_str().unwrap()))
+            .map(|row| {
+                format!(
+                    "{}:{}",
+                    row["kind"].as_str().unwrap(),
+                    row["id"].as_str().unwrap()
+                )
+            })
             .collect();
         assert_eq!(shape, ["guild:4", "guild:2", "folder:9"]);
         // Unknown ids are skipped; folder order is kept.
-        let inner: Vec<&str> = rows[2]["guilds"].as_array().unwrap().iter().map(|g| g["id"].as_str().unwrap()).collect();
+        let inner: Vec<&str> = rows[2]["guilds"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|g| g["id"].as_str().unwrap())
+            .collect();
         assert_eq!(inner, ["3", "1"]);
         assert_eq!(rows[2]["color"], "#5865f2");
     }
@@ -2832,7 +3116,11 @@ mod tests {
             clan_tag: None,
             clan_badge: None,
         };
-        let members = [member(3, "zed", Some("online")), member(4, "amy", None), member(5, "bob", Some("idle"))];
+        let members = [
+            member(3, "zed", Some("online")),
+            member(4, "amy", None),
+            member(5, "bob", Some("idle")),
+        ];
         let rows: Vec<Value> = serde_json::from_str(&members_json(
             None,
             Some(77),
@@ -2860,7 +3148,10 @@ mod tests {
 
     #[test]
     fn file_urls_become_local_paths() {
-        assert_eq!(local_path("file:///home/me/My%20Cat.png").as_deref(), Some("/home/me/My Cat.png"));
+        assert_eq!(
+            local_path("file:///home/me/My%20Cat.png").as_deref(),
+            Some("/home/me/My Cat.png")
+        );
         assert_eq!(local_path("/tmp/a.txt").as_deref(), Some("/tmp/a.txt"));
     }
 
@@ -2895,8 +3186,17 @@ mod tests {
             message(base + 2 * minute, 2),
             message(base + 20 * minute, 2),
         ];
-        let rows: Vec<Value> = serde_json::from_str(&messages_json(&messages, &[], &std::collections::HashSet::new(), None)).unwrap();
-        let grouped: Vec<bool> = rows.iter().map(|row| row["grouped"].as_bool().unwrap()).collect();
+        let rows: Vec<Value> = serde_json::from_str(&messages_json(
+            &messages,
+            &[],
+            &std::collections::HashSet::new(),
+            None,
+        ))
+        .unwrap();
+        let grouped: Vec<bool> = rows
+            .iter()
+            .map(|row| row["grouped"].as_bool().unwrap())
+            .collect();
         assert_eq!(grouped, [false, true, false, false]);
     }
 }

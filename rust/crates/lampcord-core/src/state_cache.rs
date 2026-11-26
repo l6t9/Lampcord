@@ -197,6 +197,7 @@ pub struct StateCache {
     members: HashMap<Snowflake, HashMap<Snowflake, CachedMember>>,
     presences: HashMap<Snowflake, CachedPresence>,
     read_state: ReadStateStore,
+    user_guild_settings: crate::user_guild_settings::UserGuildSettingsStore,
     guild_order_hint: Vec<Snowflake>,
     member_lists: HashMap<Snowflake, MemberListState>,
     dirty: bool,
@@ -215,6 +216,10 @@ impl StateCache {
             return;
         }
         self.clear_data();
+        self.token = Some(token.to_owned());
+    }
+
+    pub fn rotate_token(&mut self, token: &str) {
         self.token = Some(token.to_owned());
     }
 
@@ -356,7 +361,11 @@ impl StateCache {
             .is_some_and(|g| g.muted)
     }
 
-    pub fn channel_unobtrusive_unread(&self, guild_id: Option<Snowflake>, channel_id: Snowflake) -> bool {
+    pub fn channel_unobtrusive_unread(
+        &self,
+        guild_id: Option<Snowflake>,
+        channel_id: Snowflake,
+    ) -> bool {
         if let Some(c) = self.channel_notif_settings.get(&channel_id) {
             return c.unobtrusive;
         }
@@ -397,6 +406,10 @@ impl StateCache {
         presences
     }
 
+    pub fn user_guild_settings(&self) -> &crate::user_guild_settings::UserGuildSettingsStore {
+        &self.user_guild_settings
+    }
+
     pub fn read_state(&self) -> &ReadStateStore {
         &self.read_state
     }
@@ -432,6 +445,7 @@ impl StateCache {
             "GUILD_MEMBER_LIST_UPDATE" => self.handle_member_list_update(data),
             "USER_SETTINGS_UPDATE" => self.handle_user_settings(data),
             "USER_GUILD_SETTINGS_UPDATE" => {
+                self.user_guild_settings.handle_update(data);
                 if let Some(entry) = data {
                     self.apply_guild_notif_entry(entry);
                 }
@@ -629,6 +643,7 @@ impl StateCache {
         }
 
         self.read_state.handle_ready(data);
+        self.user_guild_settings.handle_ready(data);
         if skipped > 0 {
             return Err(CacheError::SkippedEntries {
                 event: "READY",
@@ -670,7 +685,10 @@ impl StateCache {
         let parse_setting = |obj: &Value| -> NotifSetting {
             let muted = obj.get("muted").and_then(Value::as_bool).unwrap_or(false);
             let flags = obj.get("flags").and_then(Value::as_u64).unwrap_or(0);
-            let msg_notif = obj.get("message_notifications").and_then(Value::as_u64).unwrap_or(0);
+            let msg_notif = obj
+                .get("message_notifications")
+                .and_then(Value::as_u64)
+                .unwrap_or(0);
             let unobtrusive = if (flags & UNREADS_ALL_MESSAGES) != 0 {
                 false
             } else {
@@ -1347,6 +1365,7 @@ impl StateCache {
         self.members.clear();
         self.presences.clear();
         self.read_state.clear();
+        self.user_guild_settings.clear();
     }
 
     fn touch_message_channel(&mut self, channel_id: Snowflake) {
