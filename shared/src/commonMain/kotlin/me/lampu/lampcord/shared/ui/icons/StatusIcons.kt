@@ -52,6 +52,18 @@ object StatusIcons {
         )
     }
 
+    // Icon drawn by A user (resucutie)
+    // This icon is exclusive for Lampcord
+    val Vr: ImageVector by lazy {
+        statusVector(
+            name = "Status.Vr",
+            pathData = "M4 8C2 8 0 6 0 4 0 2 2 0 4 0H16C18 0 20 2 20 4 20 6 18 8 16 8 16 8 14 8 13 6 12 3 8 3 7 6 6 8 4 8 4 8",
+            fill = Color(0xFF3BA55C),
+            viewportWidth = 20f,
+            viewportHeight = 8f,
+        )
+    }
+
     val Invisible: ImageVector by lazy {
         statusVector(
             name = "Status.Invisible",
@@ -68,6 +80,7 @@ object StatusIcons {
         "dnd" -> Dnd
         "streaming" -> Streaming
         "mobile" -> Mobile
+        "vr" -> Vr
         else -> Invisible
     }
 }

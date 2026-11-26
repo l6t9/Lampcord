@@ -11,6 +11,7 @@ import me.lampu.lampcord.shared.api.UserApi
 import me.lampu.lampcord.shared.model.PresenceUpdate
 import me.lampu.lampcord.shared.model.ReadyPayload
 import me.lampu.lampcord.shared.model.Session
+import me.lampu.lampcord.shared.utils.Logging
 
 class PresenceStore(private val userApi: UserApi) {
     private val _presences = MutableStateFlow<Map<String, Map<String, PresenceUpdate>>>(emptyMap())
@@ -205,6 +206,11 @@ class PresenceStore(private val userApi: UserApi) {
 
         if (p.status == "online") {
             val cs = p.client_status
+            // from my personal tests on the discord client, looks like vr takes priority over
+            // anything else, even if you're on desktop - A user (resucutie)
+            if (cs.vr == "online") {
+                return "vr"
+            }
             if (cs.mobile == "online" && cs.desktop != "online" && cs.web != "online") {
                 return "mobile"
             }
