@@ -5,38 +5,38 @@ What the Qt Quick client (`rust/crates/lampcord-qml`) has from the README roadma
 ## Authentication
   * [x] Password & token login
   * [x] Remote QR code login
-  * [ ] Multi-account switcher
+  * [x] Multi-account switcher
 ## Messaging and chat
   * [x] Real-time chat & gateway sync
-  * [ ] Markdown parsing & code highlighting
-  * [ ] Custom emojis, reactions & stickers
+  * [x] Markdown parsing & code highlighting
+  * [x] Custom emojis, reactions & stickers
   * [x] Message replies & edit / delete
-  * [x] Message pinning (thread views still missing)
+  * [x] Message pinning & thread views
   * [x] Mentions inbox
-  * [ ] Full gateway search (local finder only)
-  * [ ] Local message deletion logger
-  * [ ] Slash commands & application options
+  * [x] Full gateway / REST search
+  * [x] Local message deletion logger
+  * [x] Slash commands & application options
 ## Voice and media
   * [ ] Native DAVE voice protocol (DAVE v1)
-  * [ ] Voice channels & in-call controls
-  * [ ] Image / video viewer & audio player
-  * [x] Custom status (activity / rich presence still missing)
+  * [ ] Voice channels & in-call controls (native voice engine pending)
+  * [x] Image / video viewer & audio player
+  * [x] Custom status & activity / rich presence display
   * [ ] Video calling & screen share rendering
 ## Notifications
   * [ ] Android system notifications & conversation bubbles
-  * [ ] Desktop system notifications & toasts
+  * [x] Desktop system notifications & toasts
   * [ ] Background FCM push notification sync
 ## Customization and themes
-  * [ ] Custom Material 3 Expressive (M3E) themes & Matugen color sync
-  * [ ] Custom font selection (Inter, Maple Mono, System)
-  * [ ] Custom client profiles, UserBG & UserPFP
-  * [ ] Client-side free Nitro emojis
+  * [x] Custom Material 3 Expressive (M3E) themes & Matugen color sync
+  * [x] Custom font selection (Inter, Maple Mono, System)
+  * [x] Custom client profiles, UserBG & UserPFP
+  * [x] Client-side free Nitro emojis
 ## Guild and channel management
-  * [ ] Server settings (roles, channels, emoji management)
-  * [ ] Stage & forum channel creation and moderation
+  * [x] Server settings (roles, channels, emoji & ban management)
+  * [x] Stage & forum channel creation and moderation
 ## Desktop UI parity
-  * [ ] Profile pop-ups
-  * [ ] Join server & friends buttons
-  * [ ] Animations & date separators
-  * [ ] Server channel rendering
-  * [ ] Settings screen
+  * [x] Profile pop-ups
+  * [x] Join server & friends buttons
+  * [x] Animations & date separators
+  * [x] Server channel rendering
+  * [x] Settings screen
