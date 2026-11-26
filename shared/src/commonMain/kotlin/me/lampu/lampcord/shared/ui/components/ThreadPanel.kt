@@ -49,6 +49,7 @@ import me.lampu.lampcord.shared.state.NavigationStore
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.utils.DateTimeUtils
 import org.koin.compose.koinInject
+import kotlin.time.Instant
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -196,7 +197,7 @@ fun ThreadPanelItem(thread: Channel, onClick: () -> Unit) {
         val id = thread.lastMessageId() ?: thread.id
         id.toLongOrNull()?.let { snowflake ->
             val ts = (snowflake shr 22) + 1420070400000L
-            DateTimeUtils.formatDiscordTimestamp(ts / 1000, "R")
+            DateTimeUtils.formatRelativeTimestamp(Instant.fromEpochSeconds(ts / 1000))
         }
     }
     val supporting = buildString {

@@ -43,6 +43,7 @@ import me.lampu.lampcord.shared.utils.PermissionHelper
 import org.koin.compose.koinInject
 import me.lampu.lampcord.shared.ui.components.ContextMenu
 import me.lampu.lampcord.shared.ui.components.ContextMenuItem
+import kotlin.time.Instant
 
 private enum class ForumSortMode(val label: String) {
     LatestActivity("Latest activity"),
@@ -422,7 +423,7 @@ fun ForumPostItem(
 
     val timeAgo = remember(thread.id) {
         val timestamp = (thread.id.toLong() shr 22) + 1420070400000L
-        DateTimeUtils.formatDiscordTimestamp(timestamp / 1000, "R")
+        DateTimeUtils.formatRelativeTimestamp(Instant.fromEpochSeconds(timestamp / 1000))
     }
 
     val currentUser by userStore.currentUser.collectAsState()
