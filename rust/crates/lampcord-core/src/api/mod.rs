@@ -116,6 +116,25 @@ where
     Ok(serde_json::from_str::<Resp>(&response.body)?)
 }
 
+pub async fn send_empty<T, S>(
+    client: &RestClient<T, S>,
+    request: RestRequest,
+) -> Result<(), ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let response = client.send(request).await?;
+    if (200..300).contains(&response.status) {
+        Ok(())
+    } else {
+        Err(ApiError::Http {
+            status: response.status,
+            body: response.body,
+        })
+    }
+}
+
 pub async fn fetch_channel_messages<T, S>(
     client: &RestClient<T, S>,
     config: &RestConfig,

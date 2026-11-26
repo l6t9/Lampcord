@@ -29,8 +29,12 @@ use cxx_qt_lib::QString;
 
 static FILLED: LazyLock<HashMap<String, String>> =
     LazyLock::new(|| parse(include_str!(concat!(env!("OUT_DIR"), "/icons_filled.json"))));
-static ROUNDED: LazyLock<HashMap<String, String>> =
-    LazyLock::new(|| parse(include_str!(concat!(env!("OUT_DIR"), "/icons_rounded.json"))));
+static ROUNDED: LazyLock<HashMap<String, String>> = LazyLock::new(|| {
+    parse(include_str!(concat!(
+        env!("OUT_DIR"),
+        "/icons_rounded.json"
+    )))
+});
 
 fn parse(table: &str) -> HashMap<String, String> {
     serde_json::from_str(table).expect("icon table is valid JSON")

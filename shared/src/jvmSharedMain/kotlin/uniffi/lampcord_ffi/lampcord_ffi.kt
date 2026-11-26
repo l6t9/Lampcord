@@ -2936,7 +2936,8 @@ data class ClientSnapshot (
     /**
      * Schema 3+. Pins of the selected channel once fetched; versioned with `messages`.
      */
-    var `pinnedMessages`: List<MessageSnapshot>
+    var `pinnedMessages`: List<MessageSnapshot>,
+    var `mentions`: List<MessageSnapshot>
 ) {
     
     companion object
@@ -2975,6 +2976,7 @@ public object FfiConverterTypeClientSnapshot: FfiConverterRustBuffer<ClientSnaps
             FfiConverterOptionalString.read(buf),
             FfiConverterOptionalTypeProfileSnapshot.read(buf),
             FfiConverterSequenceTypeMessageSnapshot.read(buf),
+            FfiConverterSequenceTypeMessageSnapshot.read(buf),
         )
     }
 
@@ -3005,7 +3007,8 @@ public object FfiConverterTypeClientSnapshot: FfiConverterRustBuffer<ClientSnaps
             FfiConverterOptionalString.allocationSize(value.`currentUserDecoration`) +
             FfiConverterOptionalString.allocationSize(value.`currentUserNameplate`) +
             FfiConverterOptionalTypeProfileSnapshot.allocationSize(value.`profile`) +
-            FfiConverterSequenceTypeMessageSnapshot.allocationSize(value.`pinnedMessages`)
+            FfiConverterSequenceTypeMessageSnapshot.allocationSize(value.`pinnedMessages`) +
+            FfiConverterSequenceTypeMessageSnapshot.allocationSize(value.`mentions`)
     )
 
     override fun write(value: ClientSnapshot, buf: ByteBuffer) {
@@ -3036,6 +3039,7 @@ public object FfiConverterTypeClientSnapshot: FfiConverterRustBuffer<ClientSnaps
             FfiConverterOptionalString.write(value.`currentUserNameplate`, buf)
             FfiConverterOptionalTypeProfileSnapshot.write(value.`profile`, buf)
             FfiConverterSequenceTypeMessageSnapshot.write(value.`pinnedMessages`, buf)
+            FfiConverterSequenceTypeMessageSnapshot.write(value.`mentions`, buf)
     }
 }
 
@@ -3865,6 +3869,7 @@ data class SnapshotPatch (
     var `channels`: List<ChannelSnapshot>?, 
     var `messages`: List<MessageSnapshot>?, 
     var `pinnedMessages`: List<MessageSnapshot>?, 
+    var `mentions`: List<MessageSnapshot>?, 
     var `members`: List<MemberSnapshot>?, 
     var `presences`: List<PresenceSnapshot>?, 
     var `readStates`: List<ReadStateSnapshot>?, 
@@ -3891,6 +3896,7 @@ public object FfiConverterTypeSnapshotPatch: FfiConverterRustBuffer<SnapshotPatc
             FfiConverterOptionalSequenceTypeChannelSnapshot.read(buf),
             FfiConverterOptionalSequenceTypeMessageSnapshot.read(buf),
             FfiConverterOptionalSequenceTypeMessageSnapshot.read(buf),
+            FfiConverterOptionalSequenceTypeMessageSnapshot.read(buf),
             FfiConverterOptionalSequenceTypeMemberSnapshot.read(buf),
             FfiConverterOptionalSequenceTypePresenceSnapshot.read(buf),
             FfiConverterOptionalSequenceTypeReadStateSnapshot.read(buf),
@@ -3910,6 +3916,7 @@ public object FfiConverterTypeSnapshotPatch: FfiConverterRustBuffer<SnapshotPatc
             FfiConverterOptionalSequenceTypeChannelSnapshot.allocationSize(value.`channels`) +
             FfiConverterOptionalSequenceTypeMessageSnapshot.allocationSize(value.`messages`) +
             FfiConverterOptionalSequenceTypeMessageSnapshot.allocationSize(value.`pinnedMessages`) +
+            FfiConverterOptionalSequenceTypeMessageSnapshot.allocationSize(value.`mentions`) +
             FfiConverterOptionalSequenceTypeMemberSnapshot.allocationSize(value.`members`) +
             FfiConverterOptionalSequenceTypePresenceSnapshot.allocationSize(value.`presences`) +
             FfiConverterOptionalSequenceTypeReadStateSnapshot.allocationSize(value.`readStates`) +
@@ -3928,6 +3935,7 @@ public object FfiConverterTypeSnapshotPatch: FfiConverterRustBuffer<SnapshotPatc
             FfiConverterOptionalSequenceTypeChannelSnapshot.write(value.`channels`, buf)
             FfiConverterOptionalSequenceTypeMessageSnapshot.write(value.`messages`, buf)
             FfiConverterOptionalSequenceTypeMessageSnapshot.write(value.`pinnedMessages`, buf)
+            FfiConverterOptionalSequenceTypeMessageSnapshot.write(value.`mentions`, buf)
             FfiConverterOptionalSequenceTypeMemberSnapshot.write(value.`members`, buf)
             FfiConverterOptionalSequenceTypePresenceSnapshot.write(value.`presences`, buf)
             FfiConverterOptionalSequenceTypeReadStateSnapshot.write(value.`readStates`, buf)

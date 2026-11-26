@@ -77,7 +77,11 @@ pub fn twemoji_url(surrogates: &str) -> String {
         .collect::<Vec<_>>()
         .join("-")
         .replace("1f441-fe0f-200d-1f5e8-fe0f", "1f441-200d-1f5e8");
-    if code.is_empty() { String::new() } else { format!("{TWEMOJI}/{code}.png") }
+    if code.is_empty() {
+        String::new()
+    } else {
+        format!("{TWEMOJI}/{code}.png")
+    }
 }
 
 #[derive(Default)]
@@ -103,7 +107,10 @@ mod tests {
         // Lone FE0F is dropped…
         assert_eq!(twemoji_url("☺️"), format!("{TWEMOJI}/263a.png"));
         // …but kept in ZWJ sequences.
-        assert_eq!(twemoji_url("🏳️‍🌈"), format!("{TWEMOJI}/1f3f3-fe0f-200d-1f308.png"));
+        assert_eq!(
+            twemoji_url("🏳️‍🌈"),
+            format!("{TWEMOJI}/1f3f3-fe0f-200d-1f308.png")
+        );
         let groups: Value = serde_json::from_str(&GROUPS).unwrap();
         assert_eq!(groups.as_array().unwrap().len(), 8);
         assert!(groups[0]["emojis"].as_array().unwrap().len() > 100);

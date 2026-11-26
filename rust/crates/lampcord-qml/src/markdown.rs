@@ -28,16 +28,73 @@ fn highlight_code(code: &str, lang: &str) -> String {
             "Err", "move", "ref", "in", "as",
         ],
         "kt" | "kotlin" | "java" => &[
-            "fun", "val", "var", "class", "object", "interface", "data", "sealed", "enum", "if",
-            "else", "when", "for", "while", "return", "import", "package", "private", "public",
-            "internal", "override", "suspend", "companion", "true", "false", "null", "this",
-            "super", "in", "is", "as", "try", "catch", "finally",
+            "fun",
+            "val",
+            "var",
+            "class",
+            "object",
+            "interface",
+            "data",
+            "sealed",
+            "enum",
+            "if",
+            "else",
+            "when",
+            "for",
+            "while",
+            "return",
+            "import",
+            "package",
+            "private",
+            "public",
+            "internal",
+            "override",
+            "suspend",
+            "companion",
+            "true",
+            "false",
+            "null",
+            "this",
+            "super",
+            "in",
+            "is",
+            "as",
+            "try",
+            "catch",
+            "finally",
         ],
         "js" | "ts" | "javascript" | "typescript" | "qml" => &[
-            "function", "const", "let", "var", "if", "else", "for", "while", "return", "import",
-            "export", "default", "class", "extends", "new", "this", "true", "false", "null",
-            "undefined", "async", "await", "try", "catch", "switch", "case", "break", "property",
-            "readonly", "signal", "required",
+            "function",
+            "const",
+            "let",
+            "var",
+            "if",
+            "else",
+            "for",
+            "while",
+            "return",
+            "import",
+            "export",
+            "default",
+            "class",
+            "extends",
+            "new",
+            "this",
+            "true",
+            "false",
+            "null",
+            "undefined",
+            "async",
+            "await",
+            "try",
+            "catch",
+            "switch",
+            "case",
+            "break",
+            "property",
+            "readonly",
+            "signal",
+            "required",
         ],
         "py" | "python" => &[
             "def", "class", "if", "elif", "else", "for", "while", "return", "import", "from", "as",
@@ -45,10 +102,41 @@ fn highlight_code(code: &str, lang: &str) -> String {
             "True", "False", "None", "and", "or", "not", "in", "is", "async", "await",
         ],
         "c" | "cpp" | "c++" | "h" | "hpp" => &[
-            "int", "void", "char", "bool", "float", "double", "long", "short", "unsigned", "signed",
-            "const", "static", "struct", "class", "enum", "namespace", "template", "typename",
-            "auto", "if", "else", "for", "while", "switch", "case", "return", "include", "true",
-            "false", "nullptr", "public", "private", "protected", "virtual", "override",
+            "int",
+            "void",
+            "char",
+            "bool",
+            "float",
+            "double",
+            "long",
+            "short",
+            "unsigned",
+            "signed",
+            "const",
+            "static",
+            "struct",
+            "class",
+            "enum",
+            "namespace",
+            "template",
+            "typename",
+            "auto",
+            "if",
+            "else",
+            "for",
+            "while",
+            "switch",
+            "case",
+            "return",
+            "include",
+            "true",
+            "false",
+            "nullptr",
+            "public",
+            "private",
+            "protected",
+            "virtual",
+            "override",
         ],
         "sh" | "bash" | "zsh" | "shell" => &[
             "if", "then", "else", "elif", "fi", "for", "do", "done", "while", "case", "esac",
@@ -117,11 +205,16 @@ fn highlight_code(code: &str, lang: &str) -> String {
                 ));
             } else if c.is_ascii_digit() {
                 let start = i;
-                while i < chars.len() && (chars[i].is_ascii_alphanumeric() || chars[i] == '.' || chars[i] == '_') {
+                while i < chars.len()
+                    && (chars[i].is_ascii_alphanumeric() || chars[i] == '.' || chars[i] == '_')
+                {
                     i += 1;
                 }
                 let num: String = chars[start..i].iter().collect();
-                out.push_str(&format!("<font color=\"{num_color}\">{}</font>", escape_html(&num)));
+                out.push_str(&format!(
+                    "<font color=\"{num_color}\">{}</font>",
+                    escape_html(&num)
+                ));
             } else if c.is_ascii_alphabetic() || c == '_' {
                 let start = i;
                 while i < chars.len() && (chars[i].is_ascii_alphanumeric() || chars[i] == '_') {
@@ -129,7 +222,10 @@ fn highlight_code(code: &str, lang: &str) -> String {
                 }
                 let word: String = chars[start..i].iter().collect();
                 if keywords.contains(&word.as_str()) {
-                    out.push_str(&format!("<font color=\"{kw_color}\"><b>{}</b></font>", escape_html(&word)));
+                    out.push_str(&format!(
+                        "<font color=\"{kw_color}\"><b>{}</b></font>",
+                        escape_html(&word)
+                    ));
                 } else {
                     out.push_str(&escape_html(&word));
                 }
@@ -257,7 +353,10 @@ fn is_jumbo_emoji_only(content: &str) -> bool {
                 let inner = &rest[1..close];
                 if let Some(after) = inner.strip_prefix("a:").or_else(|| inner.strip_prefix(':')) {
                     if let Some((name, id)) = after.split_once(':') {
-                        if !name.is_empty() && !id.is_empty() && id.chars().all(|c| c.is_ascii_digit()) {
+                        if !name.is_empty()
+                            && !id.is_empty()
+                            && id.chars().all(|c| c.is_ascii_digit())
+                        {
                             count += 1;
                             rest = &rest[close + 1..];
                             continue;
@@ -351,7 +450,9 @@ pub fn render_markdown(
                 let (lang, code) = match block.find('\n') {
                     Some(nl) => {
                         let first = block[..nl].trim();
-                        if first.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '#' | '-' | '_')) {
+                        if first.chars().all(|c| {
+                            c.is_ascii_alphanumeric() || matches!(c, '+' | '#' | '-' | '_')
+                        }) {
                             (first, &block[nl + 1..])
                         } else {
                             ("", block)
@@ -376,7 +477,9 @@ pub fn render_markdown(
                     highlight_code(code_trimmed, lang)
                 ));
                 first_block = false;
-                rest = after_open[fence_end + 3..].strip_prefix('\n').unwrap_or(&after_open[fence_end + 3..]);
+                rest = after_open[fence_end + 3..]
+                    .strip_prefix('\n')
+                    .unwrap_or(&after_open[fence_end + 3..]);
             } else {
                 // Unclosed code fence, render as plain inline blocks.
                 if !first_block {
@@ -443,32 +546,101 @@ fn render_blocks(
         if let Some(h1) = line.strip_prefix("# ") {
             out.push_str(&format!(
                 "<span style=\"font-size:22px;font-weight:700;\">{}</span>",
-                render_inline(h1, code_bg, mention_bg, mention_fg, muted_fg, mono_font, emoji_px, member_names, channel_names, role_info)
+                render_inline(
+                    h1,
+                    code_bg,
+                    mention_bg,
+                    mention_fg,
+                    muted_fg,
+                    mono_font,
+                    emoji_px,
+                    member_names,
+                    channel_names,
+                    role_info
+                )
             ));
         } else if let Some(h2) = line.strip_prefix("## ") {
             out.push_str(&format!(
                 "<span style=\"font-size:19px;font-weight:700;\">{}</span>",
-                render_inline(h2, code_bg, mention_bg, mention_fg, muted_fg, mono_font, emoji_px, member_names, channel_names, role_info)
+                render_inline(
+                    h2,
+                    code_bg,
+                    mention_bg,
+                    mention_fg,
+                    muted_fg,
+                    mono_font,
+                    emoji_px,
+                    member_names,
+                    channel_names,
+                    role_info
+                )
             ));
         } else if let Some(h3) = line.strip_prefix("### ") {
             out.push_str(&format!(
                 "<span style=\"font-size:17px;font-weight:700;\">{}</span>",
-                render_inline(h3, code_bg, mention_bg, mention_fg, muted_fg, mono_font, emoji_px, member_names, channel_names, role_info)
+                render_inline(
+                    h3,
+                    code_bg,
+                    mention_bg,
+                    mention_fg,
+                    muted_fg,
+                    mono_font,
+                    emoji_px,
+                    member_names,
+                    channel_names,
+                    role_info
+                )
             ));
         } else if let Some(sub) = line.strip_prefix("-# ") {
             out.push_str(&format!(
                 "<span style=\"font-size:12px;color:{muted_fg};\">{}</span>",
-                render_inline(sub, code_bg, mention_bg, mention_fg, muted_fg, mono_font, emoji_px, member_names, channel_names, role_info)
+                render_inline(
+                    sub,
+                    code_bg,
+                    mention_bg,
+                    mention_fg,
+                    muted_fg,
+                    mono_font,
+                    emoji_px,
+                    member_names,
+                    channel_names,
+                    role_info
+                )
             ));
-        } else if let Some(quote) = line.strip_prefix("> ").or_else(|| line.strip_prefix(">>> ")) {
+        } else if let Some(quote) = line
+            .strip_prefix("> ")
+            .or_else(|| line.strip_prefix(">>> "))
+        {
             out.push_str(&format!(
                 "<span style=\"color:{muted_fg};\">│&nbsp;</span>{}",
-                render_inline(quote, code_bg, mention_bg, mention_fg, muted_fg, mono_font, emoji_px, member_names, channel_names, role_info)
+                render_inline(
+                    quote,
+                    code_bg,
+                    mention_bg,
+                    mention_fg,
+                    muted_fg,
+                    mono_font,
+                    emoji_px,
+                    member_names,
+                    channel_names,
+                    role_info
+                )
             ));
         } else if let Some(bullet) = line.strip_prefix("- ").or_else(|| line.strip_prefix("* ")) {
             out.push_str(&format!(
                 "&nbsp;&nbsp;•&nbsp;{}",
-                render_inline(bullet, code_bg, mention_bg, mention_fg, muted_fg, mono_font, emoji_px, member_names, channel_names, role_info)
+                render_inline(
+                    bullet,
+                    code_bg,
+                    mention_bg,
+                    mention_fg,
+                    muted_fg,
+                    mono_font,
+                    emoji_px,
+                    member_names,
+                    channel_names,
+                    role_info
+                )
             ));
         } else {
             out.push_str(&render_inline(
@@ -522,7 +694,16 @@ fn render_inline(
         if bytes[i] == b'<' {
             if let Some(close_rel) = line[i..].find('>') {
                 let token = &line[i + 1..i + close_rel];
-                if let Some(html) = render_discord_token(token, mention_bg, mention_fg, muted_fg, emoji_px, member_names, channel_names, role_info) {
+                if let Some(html) = render_discord_token(
+                    token,
+                    mention_bg,
+                    mention_fg,
+                    muted_fg,
+                    emoji_px,
+                    member_names,
+                    channel_names,
+                    role_info,
+                ) {
                     out.push_str(&html);
                     i += close_rel + 1;
                     continue;
@@ -585,7 +766,18 @@ fn render_inline(
                 let inner = &line[i + 3..i + 3 + end];
                 out.push_str(&format!(
                     "<b><i>{}</i></b>",
-                    render_inline(inner, code_bg, mention_bg, mention_fg, muted_fg, mono_font, emoji_px, member_names, channel_names, role_info)
+                    render_inline(
+                        inner,
+                        code_bg,
+                        mention_bg,
+                        mention_fg,
+                        muted_fg,
+                        mono_font,
+                        emoji_px,
+                        member_names,
+                        channel_names,
+                        role_info
+                    )
                 ));
                 i += end + 6;
                 continue;
@@ -597,7 +789,18 @@ fn render_inline(
                 let inner = &line[i + 2..i + 2 + end];
                 out.push_str(&format!(
                     "<b>{}</b>",
-                    render_inline(inner, code_bg, mention_bg, mention_fg, muted_fg, mono_font, emoji_px, member_names, channel_names, role_info)
+                    render_inline(
+                        inner,
+                        code_bg,
+                        mention_bg,
+                        mention_fg,
+                        muted_fg,
+                        mono_font,
+                        emoji_px,
+                        member_names,
+                        channel_names,
+                        role_info
+                    )
                 ));
                 i += end + 4;
                 continue;
@@ -609,7 +812,18 @@ fn render_inline(
                 let inner = &line[i + 2..i + 2 + end];
                 out.push_str(&format!(
                     "<u>{}</u>",
-                    render_inline(inner, code_bg, mention_bg, mention_fg, muted_fg, mono_font, emoji_px, member_names, channel_names, role_info)
+                    render_inline(
+                        inner,
+                        code_bg,
+                        mention_bg,
+                        mention_fg,
+                        muted_fg,
+                        mono_font,
+                        emoji_px,
+                        member_names,
+                        channel_names,
+                        role_info
+                    )
                 ));
                 i += end + 4;
                 continue;
@@ -621,7 +835,18 @@ fn render_inline(
                 let inner = &line[i + 2..i + 2 + end];
                 out.push_str(&format!(
                     "<s>{}</s>",
-                    render_inline(inner, code_bg, mention_bg, mention_fg, muted_fg, mono_font, emoji_px, member_names, channel_names, role_info)
+                    render_inline(
+                        inner,
+                        code_bg,
+                        mention_bg,
+                        mention_fg,
+                        muted_fg,
+                        mono_font,
+                        emoji_px,
+                        member_names,
+                        channel_names,
+                        role_info
+                    )
                 ));
                 i += end + 4;
                 continue;
@@ -646,7 +871,18 @@ fn render_inline(
                     let inner = &line[i + 1..i + 1 + end];
                     out.push_str(&format!(
                         "<i>{}</i>",
-                        render_inline(inner, code_bg, mention_bg, mention_fg, muted_fg, mono_font, emoji_px, member_names, channel_names, role_info)
+                        render_inline(
+                            inner,
+                            code_bg,
+                            mention_bg,
+                            mention_fg,
+                            muted_fg,
+                            mono_font,
+                            emoji_px,
+                            member_names,
+                            channel_names,
+                            role_info
+                        )
                     ));
                     i += end + 2;
                     continue;

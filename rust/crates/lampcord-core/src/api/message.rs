@@ -6,7 +6,7 @@ use crate::{
     traits::{CaptchaSolver, RestTransport},
 };
 
-use super::{ApiError, send_json};
+use super::{ApiError, send_empty, send_json};
 
 pub async fn edit_message<T, S>(
     client: &RestClient<T, S>,
@@ -266,6 +266,27 @@ where
     send_json(client, req).await
 }
 
+pub async fn set_poll_answers<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    channel_id: u64,
+    message_id: u64,
+    answer_ids: &[u32],
+) -> Result<Value, ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let body = serde_json::json!({ "answer_ids": answer_ids });
+    let req = config.request(
+        HttpMethod::Put,
+        &format!("/channels/{channel_id}/polls/{message_id}/answers/@me"),
+        config.standard_headers(),
+        Body::Json(body.to_string()),
+    );
+    send_json(client, req).await
+}
+
 pub async fn vote_poll_answer<T, S>(
     client: &RestClient<T, S>,
     config: &RestConfig,
@@ -277,13 +298,7 @@ where
     T: RestTransport,
     S: CaptchaSolver,
 {
-    let req = config.request(
-        HttpMethod::Put,
-        &format!("/channels/{channel_id}/polls/{message_id}/answers/{answer_id}"),
-        config.standard_headers(),
-        Body::None,
-    );
-    send_json(client, req).await
+    set_poll_answers(client, config, channel_id, message_id, &[answer_id]).await
 }
 
 pub async fn unvote_poll_answer<T, S>(
@@ -291,19 +306,30 @@ pub async fn unvote_poll_answer<T, S>(
     config: &RestConfig,
     channel_id: u64,
     message_id: u64,
-    answer_id: u32,
+    _answer_id: u32,
 ) -> Result<Value, ApiError>
 where
     T: RestTransport,
     S: CaptchaSolver,
 {
-    let req = config.request(
-        HttpMethod::Delete,
-        &format!("/channels/{channel_id}/polls/{message_id}/answers/{answer_id}"),
-        config.standard_headers(),
-        Body::None,
-    );
-    send_json(client, req).await
+    set_poll_answers(client, config, channel_id, message_id, &[]).await
+}
+
+pub fn next_poll_selection(current: &[u32], answer_id: u32, allow_multiselect: bool) -> Vec<u32> {
+    if current.contains(&answer_id) {
+        return current
+            .iter()
+            .copied()
+            .filter(|id| *id != answer_id)
+            .collect();
+    }
+    if allow_multiselect {
+        let mut next = current.to_vec();
+        next.push(answer_id);
+        next
+    } else {
+        vec![answer_id]
+    }
 }
 
 pub async fn expire_poll<T, S>(
@@ -403,7 +429,7 @@ fn push_query_param(params: &mut Vec<(String, String)>, key: &str, value: String
     params.push((key.to_owned(), value));
 }
 
-fn url_encode_component(s: &str) -> String {
+pub(super) fn url_encode_component(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     for b in s.bytes() {
         match b {
@@ -594,4 +620,161 @@ where
 /// Percent-encode an emoji for use in reaction URL path segments (e.g. unicode emoji or `name:id`).
 pub fn encode_reaction_emoji(emoji: &str) -> String {
     url_encode_component(emoji)
+}
+
+pub async fn get_channel_messages_before<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    channel_id: u64,
+    message_id: u64,
+    limit: u8,
+) -> Result<Vec<lampcord_model::message::Message>, ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let path = format!("/channels/{channel_id}/messages?before={message_id}&limit={limit}");
+    let req = config.request(
+        HttpMethod::Get,
+        &path,
+        config.standard_headers(),
+        Body::None,
+    );
+    send_json(client, req).await
+}
+
+pub async fn ack_pins<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    channel_id: u64,
+) -> Result<(), ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let req = config.request(
+        HttpMethod::Post,
+        &format!("/channels/{channel_id}/pins/ack"),
+        config.standard_headers(),
+        Body::None,
+    );
+    send_empty(client, req).await
+}
+
+pub async fn get_poll_answer_voters<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    channel_id: u64,
+    message_id: u64,
+    answer_id: u32,
+    limit: u8,
+) -> Result<Value, ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let req = config.request(
+        HttpMethod::Get,
+        &format!("/channels/{channel_id}/polls/{message_id}/answers/{answer_id}?limit={limit}"),
+        config.standard_headers(),
+        Body::None,
+    );
+    send_json(client, req).await
+}
+
+pub async fn get_saved_messages<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+) -> Result<Value, ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let req = config.request(
+        HttpMethod::Get,
+        &format!("/users/@me/saved-messages?bookmark_ids=true"),
+        config.standard_headers(),
+        Body::None,
+    );
+    send_json(client, req).await
+}
+
+pub async fn save_message<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    channel_id: u64,
+    message_id: u64,
+    due_at: Option<&str>,
+    source: Option<&str>,
+) -> Result<(), ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let body = serde_json::json!({ "due_at": due_at, "source": source });
+    let req = config.request(
+        HttpMethod::Put,
+        &format!("/users/@me/saved-messages/{channel_id}/{message_id}"),
+        config.standard_headers(),
+        Body::Json(body.to_string()),
+    );
+    send_empty(client, req).await
+}
+
+pub async fn unsave_message<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    channel_id: u64,
+    message_id: u64,
+) -> Result<(), ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let req = config.request(
+        HttpMethod::Delete,
+        &format!("/users/@me/saved-messages/{channel_id}/{message_id}"),
+        config.standard_headers(),
+        Body::None,
+    );
+    send_empty(client, req).await
+}
+
+pub async fn refresh_attachment_urls<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    urls: &[String],
+) -> Result<Value, ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let body = serde_json::json!({ "attachment_urls": urls });
+    let req = config.request(
+        HttpMethod::Post,
+        &format!("/attachments/refresh-urls"),
+        config.standard_headers(),
+        Body::Json(body.to_string()),
+    );
+    send_json(client, req).await
+}
+
+#[cfg(test)]
+mod poll_selection_tests {
+    use super::next_poll_selection;
+
+    #[test]
+    fn multiselect_adds_and_removes_without_dropping_others() {
+        let selected = next_poll_selection(&[], 1, true);
+        let selected = next_poll_selection(&selected, 3, true);
+        assert_eq!(selected, vec![1, 3]);
+        assert_eq!(next_poll_selection(&selected, 1, true), vec![3]);
+    }
+
+    #[test]
+    fn single_select_replaces_the_previous_answer() {
+        let selected = next_poll_selection(&[], 2, false);
+        assert_eq!(next_poll_selection(&selected, 4, false), vec![4]);
+        assert_eq!(next_poll_selection(&[4], 4, false), Vec::<u32>::new());
+    }
 }

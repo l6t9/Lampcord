@@ -6,7 +6,8 @@ use crate::{
     traits::{CaptchaSolver, RestTransport},
 };
 
-use super::{ApiError, send_json};
+use super::message::url_encode_component;
+use super::{ApiError, send_empty, send_json};
 
 pub async fn get_guild<T, S>(
     client: &RestClient<T, S>,
@@ -731,4 +732,463 @@ where
         }
     }
     Ok(false)
+}
+
+pub async fn update_guild<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    guild_id: u64,
+    body: &Value,
+) -> Result<Value, ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let req = config.request(
+        HttpMethod::Patch,
+        &format!("/guilds/{guild_id}"),
+        config.standard_headers(),
+        Body::Json(body.to_string()),
+    );
+    send_json(client, req).await
+}
+
+pub async fn delete_guild<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    guild_id: u64,
+) -> Result<(), ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let req = config.request(
+        HttpMethod::Post,
+        &format!("/guilds/{guild_id}/delete"),
+        config.standard_headers(),
+        Body::None,
+    );
+    send_empty(client, req).await
+}
+
+pub async fn get_guild_prune_count<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    guild_id: u64,
+    days: u32,
+    include_roles: &[u64],
+) -> Result<Value, ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let mut query = format!("days={days}");
+    for role_id in include_roles {
+        query.push_str(&format!("&include_roles={role_id}"));
+    }
+    let req = config.request(
+        HttpMethod::Get,
+        &format!("/guilds/{guild_id}/prune?{query}"),
+        config.standard_headers(),
+        Body::None,
+    );
+    send_json(client, req).await
+}
+
+pub async fn begin_guild_prune<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    guild_id: u64,
+    body: &Value,
+) -> Result<Value, ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let req = config.request(
+        HttpMethod::Post,
+        &format!("/guilds/{guild_id}/prune"),
+        config.standard_headers(),
+        Body::Json(body.to_string()),
+    );
+    send_json(client, req).await
+}
+
+pub async fn set_guild_vanity_url<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    guild_id: u64,
+    code: Option<&str>,
+) -> Result<Value, ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let body = serde_json::json!({ "code": code });
+    let req = config.request(
+        HttpMethod::Patch,
+        &format!("/guilds/{guild_id}/vanity-url"),
+        config.standard_headers(),
+        Body::Json(body.to_string()),
+    );
+    send_json(client, req).await
+}
+
+pub async fn search_guild_bans<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    guild_id: u64,
+    limit: u16,
+    user_ids: &[u64],
+    query_text: Option<&str>,
+) -> Result<Value, ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let mut query = format!("limit={limit}");
+    for user_id in user_ids {
+        query.push_str(&format!("&user_ids={user_id}"));
+    }
+    if let Some(text) = query_text.filter(|text| !text.trim().is_empty()) {
+        query.push_str(&format!("&query={}", url_encode_component(text)));
+    }
+    let req = config.request(
+        HttpMethod::Get,
+        &format!("/guilds/{guild_id}/bans/search?{query}"),
+        config.standard_headers(),
+        Body::None,
+    );
+    send_json(client, req).await
+}
+
+pub async fn get_guild_templates<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    guild_id: u64,
+) -> Result<Value, ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let req = config.request(
+        HttpMethod::Get,
+        &format!("/guilds/{guild_id}/templates"),
+        config.standard_headers(),
+        Body::None,
+    );
+    send_json(client, req).await
+}
+
+pub async fn create_guild_template<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    guild_id: u64,
+    name: &str,
+    description: Option<&str>,
+) -> Result<Value, ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let body = serde_json::json!({ "name": name, "description": description });
+    let req = config.request(
+        HttpMethod::Post,
+        &format!("/guilds/{guild_id}/templates"),
+        config.standard_headers(),
+        Body::Json(body.to_string()),
+    );
+    send_json(client, req).await
+}
+
+pub async fn sync_guild_template<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    guild_id: u64,
+    code: &str,
+) -> Result<Value, ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let req = config.request(
+        HttpMethod::Put,
+        &format!("/guilds/{guild_id}/templates/{code}"),
+        config.standard_headers(),
+        Body::None,
+    );
+    send_json(client, req).await
+}
+
+pub async fn update_guild_template<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    guild_id: u64,
+    code: &str,
+    name: &str,
+    description: Option<&str>,
+) -> Result<Value, ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let body = serde_json::json!({ "name": name, "description": description });
+    let req = config.request(
+        HttpMethod::Patch,
+        &format!("/guilds/{guild_id}/templates/{code}"),
+        config.standard_headers(),
+        Body::Json(body.to_string()),
+    );
+    send_json(client, req).await
+}
+
+pub async fn resolve_guild_template<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    code: &str,
+) -> Result<Value, ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let req = config.request(
+        HttpMethod::Get,
+        &format!("/guilds/templates/{code}"),
+        config.standard_headers(),
+        Body::None,
+    );
+    send_json(client, req).await
+}
+
+pub async fn create_guild_from_template<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    code: &str,
+    name: &str,
+    icon: Option<&str>,
+) -> Result<Value, ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let body = serde_json::json!({ "name": name, "icon": icon });
+    let req = config.request(
+        HttpMethod::Post,
+        &format!("/guilds/templates/{code}"),
+        config.standard_headers(),
+        Body::Json(body.to_string()),
+    );
+    send_json(client, req).await
+}
+
+pub async fn create_guild_sound<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    guild_id: u64,
+    body: &Value,
+) -> Result<Value, ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let req = config.request(
+        HttpMethod::Post,
+        &format!("/guilds/{guild_id}/soundboard-sounds"),
+        config.standard_headers(),
+        Body::Json(body.to_string()),
+    );
+    send_json(client, req).await
+}
+
+pub async fn update_guild_sound<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    guild_id: u64,
+    sound_id: u64,
+    body: &Value,
+) -> Result<Value, ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let req = config.request(
+        HttpMethod::Patch,
+        &format!("/guilds/{guild_id}/soundboard-sounds/{sound_id}"),
+        config.standard_headers(),
+        Body::Json(body.to_string()),
+    );
+    send_json(client, req).await
+}
+
+pub async fn delete_guild_sound<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    guild_id: u64,
+    sound_id: u64,
+) -> Result<(), ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let req = config.request(
+        HttpMethod::Delete,
+        &format!("/guilds/{guild_id}/soundboard-sounds/{sound_id}"),
+        config.standard_headers(),
+        Body::None,
+    );
+    send_empty(client, req).await
+}
+
+pub async fn add_role_members<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    guild_id: u64,
+    role_id: u64,
+    member_ids: &[String],
+) -> Result<Value, ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let body = serde_json::json!({ "member_ids": member_ids });
+    let req = config.request(
+        HttpMethod::Patch,
+        &format!("/guilds/{guild_id}/roles/{role_id}/members"),
+        config.standard_headers(),
+        Body::Json(body.to_string()),
+    );
+    send_json(client, req).await
+}
+
+pub async fn list_automod_rules<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    guild_id: u64,
+) -> Result<Value, ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let req = config.request(
+        HttpMethod::Get,
+        &format!("/guilds/{guild_id}/auto-moderation/rules"),
+        config.standard_headers(),
+        Body::None,
+    );
+    send_json(client, req).await
+}
+
+pub async fn create_automod_rule<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    guild_id: u64,
+    body: &Value,
+) -> Result<Value, ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let req = config.request(
+        HttpMethod::Post,
+        &format!("/guilds/{guild_id}/auto-moderation/rules"),
+        config.standard_headers(),
+        Body::Json(body.to_string()),
+    );
+    send_json(client, req).await
+}
+
+pub async fn update_automod_rule<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    guild_id: u64,
+    rule_id: u64,
+    body: &Value,
+) -> Result<Value, ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let req = config.request(
+        HttpMethod::Patch,
+        &format!("/guilds/{guild_id}/auto-moderation/rules/{rule_id}"),
+        config.standard_headers(),
+        Body::Json(body.to_string()),
+    );
+    send_json(client, req).await
+}
+
+pub async fn delete_automod_rule<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    guild_id: u64,
+    rule_id: u64,
+) -> Result<(), ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let req = config.request(
+        HttpMethod::Delete,
+        &format!("/guilds/{guild_id}/auto-moderation/rules/{rule_id}"),
+        config.standard_headers(),
+        Body::None,
+    );
+    send_empty(client, req).await
+}
+
+pub async fn list_guild_scheduled_events<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    guild_id: u64,
+) -> Result<Value, ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let req = config.request(
+        HttpMethod::Get,
+        &format!("/guilds/{guild_id}/scheduled-events"),
+        config.standard_headers(),
+        Body::None,
+    );
+    send_json(client, req).await
+}
+
+pub async fn create_guild_scheduled_event<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    guild_id: u64,
+    body: &Value,
+) -> Result<Value, ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let req = config.request(
+        HttpMethod::Post,
+        &format!("/guilds/{guild_id}/scheduled-events"),
+        config.standard_headers(),
+        Body::Json(body.to_string()),
+    );
+    send_json(client, req).await
+}
+
+pub async fn update_guild_scheduled_event<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    guild_id: u64,
+    event_id: u64,
+    body: &Value,
+) -> Result<Value, ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let req = config.request(
+        HttpMethod::Patch,
+        &format!("/guilds/{guild_id}/scheduled-events/{event_id}"),
+        config.standard_headers(),
+        Body::Json(body.to_string()),
+    );
+    send_json(client, req).await
 }

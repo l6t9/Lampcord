@@ -17,6 +17,8 @@ import kotlinx.coroutines.launch
 import me.lampu.lampcord.shared.api.MessageApi
 import me.lampu.lampcord.shared.model.Message
 import me.lampu.lampcord.shared.model.Poll
+import me.lampu.lampcord.shared.model.PollAnswerCount
+import me.lampu.lampcord.shared.model.PollResults
 import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.kit.clickableCursor
@@ -269,19 +271,9 @@ fun PollView(
                                         val channelId = message.channel_id
                                         val messageId = message.id
 
-                                        val toRemove = myVotedAnswerIds - selectedAnswerIds
-                                        val toAdd = selectedAnswerIds - myVotedAnswerIds
-
-                                        var updatedMsg: Message? = null
-                                        for (ansId in toRemove) {
-                                            updatedMsg = messageApi.unvotePollAnswer(channelId, messageId, ansId) ?: updatedMsg
-                                        }
-                                        for (ansId in toAdd) {
-                                            updatedMsg = messageApi.votePollAnswer(channelId, messageId, ansId) ?: updatedMsg
-                                        }
-
-                                        if (updatedMsg != null) {
-                                            updatedMsg.poll?.let { currentPoll = it }
+                                        val voted = messageApi.votePollAnswers(channelId, messageId, selectedAnswerIds)
+                                        if (voted) {
+                                            currentPoll = currentPoll.withVotes(selectedAnswerIds)
                                         }
                                         isSubmitting = false
                                         showResults = true
@@ -342,6 +334,26 @@ fun PollView(
             }
         }
     }
+}
+
+private fun Poll.withVotes(votedAnswerIds: Set<Int>): Poll {
+    val previous = results?.answer_counts?.associateBy { it.id }.orEmpty()
+    val counts = answers.map { answer ->
+        val before = previous[answer.answer_id]
+        val wasVoted = before?.me_voted == true
+        val isVoted = answer.answer_id in votedAnswerIds
+        val delta = when {
+            isVoted && !wasVoted -> 1
+            !isVoted && wasVoted -> -1
+            else -> 0
+        }
+        PollAnswerCount(
+            id = answer.answer_id,
+            count = ((before?.count ?: 0) + delta).coerceAtLeast(0),
+            me_voted = isVoted
+        )
+    }
+    return copy(results = PollResults(is_finalized = results?.is_finalized ?: false, answer_counts = counts))
 }
 
 private fun formatPollExpiry(expiryIso: String?, isClosed: Boolean): String {

@@ -115,7 +115,9 @@ mod tests {
                     body.len(),
                     body
                 );
-                stream.write_all(response.as_bytes()).expect("write response");
+                stream
+                    .write_all(response.as_bytes())
+                    .expect("write response");
             }
             requests
         });

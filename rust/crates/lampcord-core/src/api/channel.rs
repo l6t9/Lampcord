@@ -6,7 +6,7 @@ use crate::{
     traits::{CaptchaSolver, RestTransport},
 };
 
-use super::{ApiError, send_json};
+use super::{ApiError, send_empty, send_json};
 
 pub async fn get_guild_channels<T, S>(
     client: &RestClient<T, S>,
@@ -618,6 +618,24 @@ where
     send_json(client, req).await
 }
 
+pub async fn get_channel_invites<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    channel_id: u64,
+) -> Result<Value, ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let req = config.request(
+        HttpMethod::Get,
+        &format!("/channels/{channel_id}/invites"),
+        config.standard_headers(),
+        Body::None,
+    );
+    send_json(client, req).await
+}
+
 pub async fn create_guild_channel<T, S>(
     client: &RestClient<T, S>,
     config: &RestConfig,
@@ -644,4 +662,155 @@ where
         Body::Json(payload.to_string()),
     );
     send_json(client, req).await
+}
+
+pub async fn create_webhook<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    channel_id: u64,
+    name: &str,
+) -> Result<Value, ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let body = serde_json::json!({ "name": name });
+    let req = config.request(
+        HttpMethod::Post,
+        &format!("/channels/{channel_id}/webhooks"),
+        config.standard_headers(),
+        Body::Json(body.to_string()),
+    );
+    send_json(client, req).await
+}
+
+pub async fn update_webhook<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    webhook_id: u64,
+    body: &Value,
+) -> Result<Value, ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let req = config.request(
+        HttpMethod::Patch,
+        &format!("/webhooks/{webhook_id}"),
+        config.standard_headers(),
+        Body::Json(body.to_string()),
+    );
+    send_json(client, req).await
+}
+
+pub async fn delete_webhook<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    webhook_id: u64,
+) -> Result<(), ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let req = config.request(
+        HttpMethod::Delete,
+        &format!("/webhooks/{webhook_id}"),
+        config.standard_headers(),
+        Body::None,
+    );
+    send_empty(client, req).await
+}
+
+pub async fn set_permission_overwrite<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    channel_id: u64,
+    overwrite_id: u64,
+    body: &Value,
+) -> Result<(), ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let req = config.request(
+        HttpMethod::Put,
+        &format!("/channels/{channel_id}/permissions/{overwrite_id}"),
+        config.standard_headers(),
+        Body::Json(body.to_string()),
+    );
+    send_empty(client, req).await
+}
+
+pub async fn create_stage_instance<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    body: &Value,
+) -> Result<Value, ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let req = config.request(
+        HttpMethod::Post,
+        &format!("/stage-instances"),
+        config.standard_headers(),
+        Body::Json(body.to_string()),
+    );
+    send_json(client, req).await
+}
+
+pub async fn update_stage_instance<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    channel_id: u64,
+    body: &Value,
+) -> Result<Value, ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let req = config.request(
+        HttpMethod::Patch,
+        &format!("/stage-instances/{channel_id}"),
+        config.standard_headers(),
+        Body::Json(body.to_string()),
+    );
+    send_json(client, req).await
+}
+
+pub async fn delete_stage_instance<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    channel_id: u64,
+) -> Result<(), ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let req = config.request(
+        HttpMethod::Delete,
+        &format!("/stage-instances/{channel_id}"),
+        config.standard_headers(),
+        Body::None,
+    );
+    send_empty(client, req).await
+}
+
+pub async fn send_soundboard_sound<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    channel_id: u64,
+    body: &Value,
+) -> Result<(), ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let req = config.request(
+        HttpMethod::Post,
+        &format!("/channels/{channel_id}/send-soundboard-sound"),
+        config.standard_headers(),
+        Body::Json(body.to_string()),
+    );
+    send_empty(client, req).await
 }

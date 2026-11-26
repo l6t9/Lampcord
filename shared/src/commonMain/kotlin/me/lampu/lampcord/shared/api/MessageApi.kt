@@ -421,29 +421,18 @@ class MessageApi(private val rest: RestClient) {
         }
     }
 
-    suspend fun votePollAnswer(channelId: String, messageId: String, answerId: Int): Message? {
+    suspend fun votePollAnswers(channelId: String, messageId: String, answerIds: Set<Int>): Boolean {
         return try {
-            val response = rest.httpClient.put("${rest.apiBase}/channels/$channelId/polls/$messageId/answers/$answerId") {
+            val response = rest.httpClient.put("${rest.apiBase}/channels/$channelId/polls/$messageId/answers/@me") {
                 standardHeaders(rest)
+                contentType(ContentType.Application.Json)
+                setBody(PollVoteRequest(answer_ids = answerIds.toList()))
             }
-            if (response.status.isSuccess()) response.body() else null
+            response.status.isSuccess()
         } catch (e: Exception) {
             if (e is CancellationException) throw e
-            Logging.e("Poll", "Error voting on poll answer $answerId: ${e.message}")
-            null
-        }
-    }
-
-    suspend fun unvotePollAnswer(channelId: String, messageId: String, answerId: Int): Message? {
-        return try {
-            val response = rest.httpClient.delete("${rest.apiBase}/channels/$channelId/polls/$messageId/answers/$answerId") {
-                standardHeaders(rest)
-            }
-            if (response.status.isSuccess()) response.body() else null
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            Logging.e("Poll", "Error removing vote on poll answer $answerId: ${e.message}")
-            null
+            Logging.e("Poll", "Error voting on poll $messageId: ${e.message}")
+            false
         }
     }
 
@@ -460,3 +449,6 @@ class MessageApi(private val rest: RestClient) {
         }
     }
 }
+
+@Serializable
+private data class PollVoteRequest(val answer_ids: List<Int>)

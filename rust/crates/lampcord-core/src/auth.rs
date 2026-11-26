@@ -324,8 +324,8 @@ mod tests {
 
     #[test]
     fn mfa_request_keeps_login_instance_id() {
-        let request = MfaLoginRequest::new("123456", "ticket")
-            .with_login_instance_id(Some("instance-1"));
+        let request =
+            MfaLoginRequest::new("123456", "ticket").with_login_instance_id(Some("instance-1"));
         assert_eq!(
             request.to_value(),
             serde_json::json!({
