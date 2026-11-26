@@ -19,6 +19,8 @@ pub struct User {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mfa_enabled: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub email: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub locale: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub flags: Option<u32>,
@@ -31,6 +33,20 @@ pub struct User {
     pub avatar_decoration_data: Option<AvatarDecoration>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub collectibles: Option<Collectibles>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub primary_guild: Option<PrimaryGuild>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct PrimaryGuild {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub identity_guild_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tag: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub badge: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub identity_enabled: Option<bool>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -70,5 +86,23 @@ impl User {
             .nameplate
             .as_ref()
             .map(|nameplate| nameplate.asset.as_str())
+    }
+
+    pub fn clan_tag(&self) -> Option<&str> {
+        let pg = self.primary_guild.as_ref()?;
+        if pg.identity_enabled == Some(false) {
+            return None;
+        }
+        pg.tag.as_deref().filter(|t| !t.is_empty())
+    }
+
+    pub fn clan_badge_url(&self) -> Option<String> {
+        let pg = self.primary_guild.as_ref()?;
+        if pg.identity_enabled == Some(false) {
+            return None;
+        }
+        let gid = pg.identity_guild_id.as_deref().filter(|s| !s.is_empty())?;
+        let hash = pg.badge.as_deref().filter(|s| !s.is_empty())?;
+        Some(format!("https://cdn.discordapp.com/clan-badges/{gid}/{hash}.png?size=32"))
     }
 }

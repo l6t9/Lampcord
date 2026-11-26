@@ -13,10 +13,13 @@ use std::sync::Arc;
 pub use error::{FfiClientError, FfiError, FfiErrorKind, FfiResult};
 pub use runtime::RuntimeHandle;
 pub use snapshot::{
-    AttachmentSnapshot, AuthStateSnapshot, BadgeSnapshot, ChannelSnapshot, ClientSnapshot,
-    GuildFolderSnapshot, GuildSnapshot, MemberSnapshot, MessageSnapshot, PresenceSnapshot,
-    PrivateChannelSnapshot, ProfileSnapshot, ReadStateSnapshot, RecipientSnapshot, ReplySnapshot,
-    SNAPSHOT_SCHEMA_VERSION, SnapshotMetaPatch, SnapshotPatch, SnapshotVersions,
+    AttachmentSnapshot, AuthStateSnapshot, BadgeSnapshot, BanSnapshot, ChannelSnapshot,
+    ClientSnapshot, EmojiSnapshot, GuildFolderSnapshot, GuildSnapshot, MEMBER_LIST_ROW_GROUP,
+    MEMBER_LIST_ROW_MEMBER, MemberListSnapshot, MemberSnapshot, MessageSnapshot, PresenceSnapshot,
+    PrivateChannelSnapshot, ProfileSnapshot, ReactionSnapshot, ReadStateSnapshot,
+    RecipientSnapshot, RelationshipSnapshot, ReplySnapshot, RoleSnapshot, SNAPSHOT_SCHEMA_VERSION,
+    SavedAccountSnapshot, SnapshotMetaPatch, SnapshotPatch, SnapshotVersions, StickerSnapshot,
+    ThreadSnapshot,
 };
 pub use storage::{ForeignSecretStore, PlatformSecretStore};
 pub use types::{
@@ -291,6 +294,141 @@ impl LampcordClient {
             channel_id,
             message_id,
         })
+    }
+
+    pub fn mark_guild_read(&self, guild_id: u64) -> Result<(), FfiClientError> {
+        self.send(ClientCommand::MarkGuildRead { guild_id })
+    }
+
+    pub fn pin_message(&self, channel_id: u64, message_id: u64) -> Result<(), FfiClientError> {
+        self.send(ClientCommand::PinMessage {
+            channel_id,
+            message_id,
+        })
+    }
+
+    pub fn unpin_message(&self, channel_id: u64, message_id: u64) -> Result<(), FfiClientError> {
+        self.send(ClientCommand::UnpinMessage {
+            channel_id,
+            message_id,
+        })
+    }
+
+    pub fn join_guild(&self, invite_code: String) -> Result<(), FfiClientError> {
+        self.send(ClientCommand::JoinGuild { invite_code })
+    }
+
+    pub fn leave_guild(&self, guild_id: u64) -> Result<(), FfiClientError> {
+        self.send(ClientCommand::LeaveGuild { guild_id })
+    }
+
+    pub fn send_friend_request(&self, username: String) -> Result<(), FfiClientError> {
+        self.send(ClientCommand::SendFriendRequest { username })
+    }
+
+    pub fn accept_friend_request(&self, user_id: u64) -> Result<(), FfiClientError> {
+        self.send(ClientCommand::AcceptFriendRequest { user_id })
+    }
+
+    pub fn remove_relationship(&self, user_id: u64) -> Result<(), FfiClientError> {
+        self.send(ClientCommand::RemoveRelationship { user_id })
+    }
+
+    pub fn block_user(&self, user_id: u64) -> Result<(), FfiClientError> {
+        self.send(ClientCommand::BlockUser { user_id })
+    }
+
+    pub fn open_dm(&self, user_id: u64) -> Result<(), FfiClientError> {
+        self.send(ClientCommand::OpenDm { user_id })
+    }
+
+    pub fn search_messages(
+        &self,
+        guild_id: Option<u64>,
+        channel_id: Option<u64>,
+        query: String,
+    ) -> Result<(), FfiClientError> {
+        self.send(ClientCommand::SearchMessages {
+            guild_id,
+            channel_id,
+            query,
+        })
+    }
+
+    pub fn fetch_threads(&self, guild_id: u64, channel_id: u64) -> Result<(), FfiClientError> {
+        self.send(ClientCommand::FetchThreads {
+            guild_id,
+            channel_id,
+        })
+    }
+
+    pub fn create_thread(
+        &self,
+        channel_id: u64,
+        name: String,
+        message_id: Option<u64>,
+    ) -> Result<(), FfiClientError> {
+        self.send(ClientCommand::CreateThread {
+            channel_id,
+            name,
+            message_id,
+        })
+    }
+
+    pub fn fetch_guild_settings(&self, guild_id: u64) -> Result<(), FfiClientError> {
+        self.send(ClientCommand::FetchGuildSettings { guild_id })
+    }
+
+    pub fn create_guild_role(
+        &self,
+        guild_id: u64,
+        name: String,
+        color: u32,
+    ) -> Result<(), FfiClientError> {
+        self.send(ClientCommand::CreateGuildRole {
+            guild_id,
+            name,
+            color,
+        })
+    }
+
+    pub fn delete_guild_role(&self, guild_id: u64, role_id: u64) -> Result<(), FfiClientError> {
+        self.send(ClientCommand::DeleteGuildRole { guild_id, role_id })
+    }
+
+    pub fn delete_guild_emoji(&self, guild_id: u64, emoji_id: u64) -> Result<(), FfiClientError> {
+        self.send(ClientCommand::DeleteGuildEmoji { guild_id, emoji_id })
+    }
+
+    pub fn unban_member(&self, guild_id: u64, user_id: u64) -> Result<(), FfiClientError> {
+        self.send(ClientCommand::UnbanMember { guild_id, user_id })
+    }
+
+    pub fn create_channel(
+        &self,
+        guild_id: u64,
+        name: String,
+        kind: u8,
+        parent_id: Option<u64>,
+    ) -> Result<(), FfiClientError> {
+        self.send(ClientCommand::CreateChannel {
+            guild_id,
+            name,
+            kind,
+            parent_id,
+        })
+    }
+
+    pub fn delete_channel(&self, channel_id: u64) -> Result<(), FfiClientError> {
+        self.send(ClientCommand::DeleteChannel { channel_id })
+    }
+
+    pub fn switch_account(&self, user_id: String) -> Result<(), FfiClientError> {
+        self.send(ClientCommand::SwitchAccount { user_id })
+    }
+
+    pub fn remove_saved_account(&self, user_id: String) -> Result<(), FfiClientError> {
+        self.send(ClientCommand::RemoveSavedAccount { user_id })
     }
 
     pub fn logout(&self) -> Result<(), FfiClientError> {

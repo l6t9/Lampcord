@@ -25,15 +25,15 @@ impl ReadStateStore {
     pub fn handle_ready(&mut self, ready: &Value) {
         let states = ready
             .get("read_state")
-            .or_else(|| ready.get("read_states"))
-            .and_then(Value::as_array);
+            .and_then(|rs| rs.as_array().or_else(|| rs.get("entries").and_then(Value::as_array)))
+            .or_else(|| ready.get("read_states").and_then(Value::as_array));
 
         let Some(states) = states else {
             return;
         };
 
         for state in states {
-            let Some(channel_id) = parse_u64(state.get("channel_id")) else {
+            let Some(channel_id) = parse_u64(state.get("channel_id").or_else(|| state.get("id"))) else {
                 continue;
             };
             let last_message_id = parse_u64(state.get("last_message_id"));

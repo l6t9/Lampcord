@@ -72,6 +72,8 @@ pub struct Message {
     pub referenced_message: Option<Box<Message>>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub sticker_items: Vec<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub message_snapshots: Vec<serde_json::Value>,
     #[serde(default)]
     pub pinned: bool,
     #[serde(default, rename = "type")]

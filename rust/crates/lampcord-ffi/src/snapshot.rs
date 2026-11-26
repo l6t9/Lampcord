@@ -18,6 +18,12 @@ pub struct ClientSnapshot {
     pub has_token: bool,
     pub current_user_id: Option<u64>,
     pub current_user: Option<String>,
+    #[serde(default)]
+    pub current_user_username: Option<String>,
+    #[serde(default)]
+    pub current_user_email: Option<String>,
+    #[serde(default)]
+    pub current_user_mfa_enabled: bool,
     pub current_user_avatar: Option<String>,
     pub selected_guild_id: Option<u64>,
     pub selected_channel_id: Option<u64>,
@@ -49,6 +55,24 @@ pub struct ClientSnapshot {
     /// Schema 4+. The last mentions page fetched by the client; versioned with `messages`.
     #[serde(default)]
     pub mentions: Vec<MessageSnapshot>,
+    /// Schema 4+. Last search results fetched by the client; versioned with `messages`.
+    #[serde(default)]
+    pub search_results: Vec<MessageSnapshot>,
+    /// Schema 4+. Custom emojis for the selected guild; versioned with `guilds`.
+    #[serde(default)]
+    pub guild_emojis: Vec<EmojiSnapshot>,
+    /// Schema 4+. Roles for the selected guild; versioned with `guilds`.
+    #[serde(default)]
+    pub guild_roles: Vec<RoleSnapshot>,
+    /// Schema 4+. Active/archived threads for the selected channel/guild; versioned with `channels`.
+    #[serde(default)]
+    pub threads: Vec<ThreadSnapshot>,
+    /// Schema 4+. Bans for the selected guild (loaded on demand); versioned with `guilds`.
+    #[serde(default)]
+    pub guild_bans: Vec<BanSnapshot>,
+    /// Schema 4+. Saved accounts from the local token store; versioned with `meta`.
+    #[serde(default)]
+    pub saved_accounts: Vec<SavedAccountSnapshot>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -71,6 +95,12 @@ pub struct SnapshotMetaPatch {
     pub has_token: bool,
     pub current_user_id: Option<u64>,
     pub current_user: Option<String>,
+    #[serde(default)]
+    pub current_user_username: Option<String>,
+    #[serde(default)]
+    pub current_user_email: Option<String>,
+    #[serde(default)]
+    pub current_user_mfa_enabled: bool,
     pub current_user_avatar: Option<String>,
     pub current_user_status: Option<String>,
     pub current_user_custom_status: Option<String>,
@@ -81,6 +111,8 @@ pub struct SnapshotMetaPatch {
     pub selected_channel_id: Option<u64>,
     pub auth: AuthStateSnapshot,
     pub error: Option<String>,
+    #[serde(default)]
+    pub saved_accounts: Vec<SavedAccountSnapshot>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -95,6 +127,16 @@ pub struct SnapshotPatch {
     pub messages: Option<Vec<MessageSnapshot>>,
     pub pinned_messages: Option<Vec<MessageSnapshot>>,
     pub mentions: Option<Vec<MessageSnapshot>>,
+    #[serde(default)]
+    pub search_results: Option<Vec<MessageSnapshot>>,
+    #[serde(default)]
+    pub guild_emojis: Option<Vec<EmojiSnapshot>>,
+    #[serde(default)]
+    pub guild_roles: Option<Vec<RoleSnapshot>>,
+    #[serde(default)]
+    pub threads: Option<Vec<ThreadSnapshot>>,
+    #[serde(default)]
+    pub guild_bans: Option<Vec<BanSnapshot>>,
     pub members: Option<Vec<MemberSnapshot>>,
     pub presences: Option<Vec<PresenceSnapshot>>,
     pub read_states: Option<Vec<ReadStateSnapshot>>,
@@ -117,6 +159,12 @@ pub struct GuildSnapshot {
     pub id: u64,
     pub name: String,
     pub icon_url: Option<String>,
+    #[serde(default)]
+    pub owner_id: Option<u64>,
+    #[serde(default)]
+    pub unread: bool,
+    #[serde(default)]
+    pub mention_count: u32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -142,6 +190,10 @@ pub struct RecipientSnapshot {
     pub decoration: Option<String>,
     /// Nameplate collectible asset.
     pub nameplate: Option<String>,
+    #[serde(default)]
+    pub system: bool,
+    #[serde(default)]
+    pub bot: bool,
 }
 
 /// A user profile as shown on profile cards. Server-specific values (guild
@@ -202,6 +254,79 @@ pub struct ChannelSnapshot {
     pub can_send: bool,
     pub icon: Option<String>,
     pub recipients: Vec<RecipientSnapshot>,
+    #[serde(default)]
+    pub topic: Option<String>,
+    #[serde(default)]
+    pub nsfw: bool,
+    #[serde(default)]
+    pub muted: bool,
+    #[serde(default)]
+    pub unobtrusive_unread: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
+pub struct ReactionSnapshot {
+    pub emoji_id: Option<String>,
+    pub emoji_name: String,
+    pub animated: bool,
+    pub count: u32,
+    pub me: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
+pub struct StickerSnapshot {
+    pub id: u64,
+    pub name: String,
+    pub format_type: u8,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
+pub struct EmojiSnapshot {
+    pub id: u64,
+    pub name: String,
+    pub animated: bool,
+    pub guild_id: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
+pub struct RoleSnapshot {
+    pub id: u64,
+    pub name: String,
+    pub color: u32,
+    pub position: i32,
+    pub permissions: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
+pub struct ThreadSnapshot {
+    pub id: u64,
+    pub parent_id: Option<u64>,
+    pub name: String,
+    pub message_count: u32,
+    pub member_count: u32,
+    pub archived: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
+pub struct BanSnapshot {
+    pub user_id: u64,
+    pub username: String,
+    pub avatar: Option<String>,
+    pub reason: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
+pub struct SavedAccountSnapshot {
+    pub user_id: String,
+    pub username: Option<String>,
+    pub active: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -223,6 +348,20 @@ pub struct MessageSnapshot {
     pub attachments: Vec<AttachmentSnapshot>,
     /// Schema 3+. A short view of the message this one replies to.
     pub reply: Option<ReplySnapshot>,
+    #[serde(default)]
+    pub reactions: Vec<ReactionSnapshot>,
+    #[serde(default)]
+    pub stickers: Vec<StickerSnapshot>,
+    #[serde(default)]
+    pub pinned: bool,
+    #[serde(default)]
+    pub embeds_json: String,
+    #[serde(default)]
+    pub forwarded_json: String,
+    #[serde(default)]
+    pub author_clan_tag: Option<String>,
+    #[serde(default)]
+    pub author_clan_badge: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -264,6 +403,10 @@ pub struct MemberSnapshot {
     pub decoration: Option<String>,
     /// Schema 3+. Nameplate collectible asset.
     pub nameplate: Option<String>,
+    #[serde(default)]
+    pub clan_tag: Option<String>,
+    #[serde(default)]
+    pub clan_badge: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

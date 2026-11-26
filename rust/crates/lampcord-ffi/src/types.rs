@@ -207,6 +207,87 @@ pub enum ClientCommand {
         channel_id: u64,
         message_id: u64,
     },
+    MarkGuildRead {
+        guild_id: u64,
+    },
+    PinMessage {
+        channel_id: u64,
+        message_id: u64,
+    },
+    UnpinMessage {
+        channel_id: u64,
+        message_id: u64,
+    },
+    JoinGuild {
+        invite_code: String,
+    },
+    LeaveGuild {
+        guild_id: u64,
+    },
+    SendFriendRequest {
+        username: String,
+    },
+    AcceptFriendRequest {
+        user_id: u64,
+    },
+    RemoveRelationship {
+        user_id: u64,
+    },
+    BlockUser {
+        user_id: u64,
+    },
+    OpenDm {
+        user_id: u64,
+    },
+    SearchMessages {
+        guild_id: Option<u64>,
+        channel_id: Option<u64>,
+        query: String,
+    },
+    FetchThreads {
+        guild_id: u64,
+        channel_id: u64,
+    },
+    CreateThread {
+        channel_id: u64,
+        name: String,
+        message_id: Option<u64>,
+    },
+    FetchGuildSettings {
+        guild_id: u64,
+    },
+    CreateGuildRole {
+        guild_id: u64,
+        name: String,
+        color: u32,
+    },
+    DeleteGuildRole {
+        guild_id: u64,
+        role_id: u64,
+    },
+    DeleteGuildEmoji {
+        guild_id: u64,
+        emoji_id: u64,
+    },
+    UnbanMember {
+        guild_id: u64,
+        user_id: u64,
+    },
+    CreateChannel {
+        guild_id: u64,
+        name: String,
+        kind: u8,
+        parent_id: Option<u64>,
+    },
+    DeleteChannel {
+        channel_id: u64,
+    },
+    SwitchAccount {
+        user_id: String,
+    },
+    RemoveSavedAccount {
+        user_id: String,
+    },
     Logout,
     Shutdown,
 }

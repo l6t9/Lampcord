@@ -617,3 +617,31 @@ where
     );
     send_json(client, req).await
 }
+
+pub async fn create_guild_channel<T, S>(
+    client: &RestClient<T, S>,
+    config: &RestConfig,
+    guild_id: u64,
+    name: &str,
+    kind: u8,
+    parent_id: Option<u64>,
+) -> Result<lampcord_model::channel::Channel, ApiError>
+where
+    T: RestTransport,
+    S: CaptchaSolver,
+{
+    let mut payload = serde_json::json!({
+        "name": name,
+        "type": kind,
+    });
+    if let Some(parent_id) = parent_id {
+        payload["parent_id"] = Value::String(parent_id.to_string());
+    }
+    let req = config.request(
+        HttpMethod::Post,
+        &format!("/guilds/{guild_id}/channels"),
+        config.standard_headers(),
+        Body::Json(payload.to_string()),
+    );
+    send_json(client, req).await
+}

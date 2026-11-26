@@ -32,13 +32,15 @@ use tokio::sync::{mpsc, oneshot, watch};
 use crate::{
     error::FfiErrorKind,
     snapshot::{
-        AttachmentSnapshot, AuthStateSnapshot, BadgeSnapshot, ChannelSnapshot, ClientSnapshot,
-        GuildFolderSnapshot, GuildSnapshot, MAX_SNAPSHOT_MEMBERS, MAX_SNAPSHOT_PRESENCES,
-        MAX_SNAPSHOT_PRIVATE_CHANNELS, MAX_SNAPSHOT_READ_STATES, MEMBER_LIST_ROW_GROUP,
-        MEMBER_LIST_ROW_MEMBER, MEMBER_LIST_ROW_PENDING, MemberListRowSnapshot, MemberListSnapshot,
-        MemberSnapshot, MessageSnapshot, PresenceSnapshot, PrivateChannelSnapshot, ProfileSnapshot,
-        ReadStateSnapshot, RecipientSnapshot, RelationshipSnapshot, ReplySnapshot,
-        SNAPSHOT_SCHEMA_VERSION, SnapshotMetaPatch, SnapshotPatch, SnapshotVersions,
+        AttachmentSnapshot, AuthStateSnapshot, BadgeSnapshot, BanSnapshot, ChannelSnapshot,
+        ClientSnapshot, EmojiSnapshot, GuildFolderSnapshot, GuildSnapshot, MAX_SNAPSHOT_MEMBERS,
+        MAX_SNAPSHOT_PRESENCES, MAX_SNAPSHOT_PRIVATE_CHANNELS, MAX_SNAPSHOT_READ_STATES,
+        MEMBER_LIST_ROW_GROUP, MEMBER_LIST_ROW_MEMBER, MEMBER_LIST_ROW_PENDING,
+        MemberListRowSnapshot, MemberListSnapshot, MemberSnapshot, MessageSnapshot,
+        PresenceSnapshot, PrivateChannelSnapshot, ProfileSnapshot, ReactionSnapshot,
+        ReadStateSnapshot, RecipientSnapshot, RelationshipSnapshot, ReplySnapshot, RoleSnapshot,
+        SNAPSHOT_SCHEMA_VERSION, SavedAccountSnapshot, SnapshotMetaPatch, SnapshotPatch,
+        SnapshotVersions, StickerSnapshot, ThreadSnapshot,
     },
     types::{
         AuthChallenge, AuthFailureKind, ClientCommand, ClientConfig, ClientEvent,
@@ -50,6 +52,7 @@ const MAX_EVENT_QUEUE: usize = 512;
 const EVENT_DROP_BATCH: usize = 64;
 const SNAPSHOT_COALESCE: Duration = Duration::from_millis(32);
 const SNAPSHOT_DISPATCH_EVENTS: &[&str] = &[
+    "READY_SUPPLEMENTAL",
     "RELATIONSHIP_ADD",
     "RELATIONSHIP_UPDATE",
     "RELATIONSHIP_REMOVE",
@@ -440,6 +443,9 @@ impl RuntimeHandle {
                 has_token: snapshot.has_token,
                 current_user_id: snapshot.current_user_id,
                 current_user: snapshot.current_user.clone(),
+                current_user_username: snapshot.current_user_username.clone(),
+                current_user_email: snapshot.current_user_email.clone(),
+                current_user_mfa_enabled: snapshot.current_user_mfa_enabled,
                 current_user_avatar: snapshot.current_user_avatar.clone(),
                 current_user_status: snapshot.current_user_status.clone(),
                 current_user_custom_status: snapshot.current_user_custom_status.clone(),
@@ -450,6 +456,7 @@ impl RuntimeHandle {
                 selected_channel_id: snapshot.selected_channel_id,
                 auth: snapshot.auth.clone(),
                 error: snapshot.error.clone(),
+                saved_accounts: snapshot.saved_accounts.clone(),
             }),
             guilds: (versions.guilds > since.guilds).then(|| snapshot.guilds.clone()),
             channels: (versions.channels > since.channels).then(|| snapshot.channels.clone()),
@@ -457,6 +464,12 @@ impl RuntimeHandle {
             pinned_messages: (versions.messages > since.messages)
                 .then(|| snapshot.pinned_messages.clone()),
             mentions: (versions.messages > since.messages).then(|| snapshot.mentions.clone()),
+            search_results: (versions.messages > since.messages)
+                .then(|| snapshot.search_results.clone()),
+            guild_emojis: (versions.guilds > since.guilds).then(|| snapshot.guild_emojis.clone()),
+            guild_roles: (versions.guilds > since.guilds).then(|| snapshot.guild_roles.clone()),
+            threads: (versions.channels > since.channels).then(|| snapshot.threads.clone()),
+            guild_bans: (versions.guilds > since.guilds).then(|| snapshot.guild_bans.clone()),
             members: (versions.members > since.members).then(|| snapshot.members.clone()),
             presences: (versions.presences > since.presences).then(|| snapshot.presences.clone()),
             read_states: (versions.read_states > since.read_states)
@@ -507,6 +520,9 @@ fn benchmark_snapshot() -> ClientSnapshot {
         has_token: true,
         current_user_id: Some(1),
         current_user: Some("bench".to_owned()),
+        current_user_username: Some("bench".to_owned()),
+        current_user_email: None,
+        current_user_mfa_enabled: false,
         current_user_avatar: None,
         selected_guild_id: Some(1),
         selected_channel_id: Some(1),
@@ -515,6 +531,9 @@ fn benchmark_snapshot() -> ClientSnapshot {
                 id,
                 name: format!("guild-{id}"),
                 icon_url: None,
+                owner_id: None,
+                unread: false,
+                mention_count: 0,
             })
             .collect(),
         channels: (1..=200)
@@ -529,6 +548,10 @@ fn benchmark_snapshot() -> ClientSnapshot {
                 can_send: true,
                 icon: None,
                 recipients: Vec::new(),
+                topic: None,
+                nsfw: false,
+                muted: false,
+                unobtrusive_unread: false,
             })
             .collect(),
         messages: (1..=200)
@@ -545,6 +568,13 @@ fn benchmark_snapshot() -> ClientSnapshot {
                 author_decoration: None,
                 attachments: Vec::new(),
                 reply: None,
+                reactions: Vec::new(),
+                stickers: Vec::new(),
+                pinned: false,
+                embeds_json: "[]".to_owned(),
+                forwarded_json: "[]".to_owned(),
+                author_clan_tag: None,
+                author_clan_badge: None,
             })
             .collect(),
         members: (1..=200)
@@ -559,6 +589,8 @@ fn benchmark_snapshot() -> ClientSnapshot {
                 global_name: None,
                 decoration: None,
                 nameplate: None,
+                clan_tag: None,
+                clan_badge: None,
             })
             .collect(),
         presences: (1..=200)
@@ -592,6 +624,12 @@ fn benchmark_snapshot() -> ClientSnapshot {
         profile: None,
         pinned_messages: Vec::new(),
         mentions: Vec::new(),
+        search_results: Vec::new(),
+        guild_emojis: Vec::new(),
+        guild_roles: Vec::new(),
+        threads: Vec::new(),
+        guild_bans: Vec::new(),
+        saved_accounts: Vec::new(),
     }
 }
 
@@ -731,6 +769,9 @@ fn set_snapshot(
         || previous.has_token != next.has_token
         || previous.current_user_id != next.current_user_id
         || previous.current_user != next.current_user
+        || previous.current_user_username != next.current_user_username
+        || previous.current_user_email != next.current_user_email
+        || previous.current_user_mfa_enabled != next.current_user_mfa_enabled
         || previous.current_user_avatar != next.current_user_avatar
         || previous.current_user_status != next.current_user_status
         || previous.current_user_custom_status != next.current_user_custom_status
@@ -740,14 +781,20 @@ fn set_snapshot(
         || previous.selected_guild_id != next.selected_guild_id
         || previous.selected_channel_id != next.selected_channel_id
         || previous.auth != next.auth
-        || previous.error != next.error;
-    let guilds_changed =
-        previous.guilds != next.guilds || previous.guild_folders != next.guild_folders;
-    let channels_changed =
-        previous.channels != next.channels || previous.private_channels != next.private_channels;
+        || previous.error != next.error
+        || previous.saved_accounts != next.saved_accounts;
+    let guilds_changed = previous.guilds != next.guilds
+        || previous.guild_folders != next.guild_folders
+        || previous.guild_emojis != next.guild_emojis
+        || previous.guild_roles != next.guild_roles
+        || previous.guild_bans != next.guild_bans;
+    let channels_changed = previous.channels != next.channels
+        || previous.private_channels != next.private_channels
+        || previous.threads != next.threads;
     let messages_changed = previous.messages != next.messages
         || previous.pinned_messages != next.pinned_messages
-        || previous.mentions != next.mentions;
+        || previous.mentions != next.mentions
+        || previous.search_results != next.search_results;
     let members_changed =
         previous.members != next.members || previous.member_list != next.member_list;
     let presences_changed = previous.presences != next.presences;
@@ -825,6 +872,66 @@ fn message_snapshot(message: &Message) -> MessageSnapshot {
                 author_avatar: replied.author.avatar.clone(),
                 content: replied.content.clone(),
             }),
+        reactions: message
+            .reactions
+            .iter()
+            .filter_map(|r| {
+                let emoji = r.get("emoji")?;
+                let emoji_name = emoji
+                    .get("name")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_owned();
+                if emoji_name.is_empty() {
+                    return None;
+                }
+                Some(ReactionSnapshot {
+                    emoji_id: emoji
+                        .get("id")
+                        .and_then(|v| v.as_str().map(str::to_owned).or_else(|| v.as_u64().map(|n| n.to_string()))),
+                    emoji_name,
+                    animated: emoji.get("animated").and_then(Value::as_bool).unwrap_or(false),
+                    count: r.get("count").and_then(Value::as_u64).unwrap_or(1) as u32,
+                    me: r.get("me").and_then(Value::as_bool).unwrap_or(false),
+                })
+            })
+            .collect(),
+        stickers: message
+            .sticker_items
+            .iter()
+            .filter_map(|s| {
+                let id = json_id(s.get("id"))?;
+                let name = s.get("name").and_then(Value::as_str).unwrap_or_default().to_owned();
+                let format_type = s.get("format_type").and_then(Value::as_u64).unwrap_or(1) as u8;
+                Some(StickerSnapshot { id, name, format_type })
+            })
+            .collect(),
+        pinned: message.pinned,
+        embeds_json: if message.embeds.is_empty() {
+            "[]".to_owned()
+        } else {
+            serde_json::to_string(&message.embeds).unwrap_or_else(|_| "[]".to_owned())
+        },
+        forwarded_json: if message.message_snapshots.is_empty() {
+            "[]".to_owned()
+        } else {
+            let items: Vec<Value> = message
+                .message_snapshots
+                .iter()
+                .filter_map(|snap| {
+                    let inner = snap.get("message")?;
+                    Some(serde_json::json!({
+                        "content": inner.get("content").and_then(Value::as_str).unwrap_or(""),
+                        "timestamp": inner.get("timestamp").and_then(Value::as_str).unwrap_or(""),
+                        "attachments": inner.get("attachments").cloned().unwrap_or_else(|| Value::Array(Vec::new())),
+                        "embeds": inner.get("embeds").cloned().unwrap_or_else(|| Value::Array(Vec::new())),
+                    }))
+                })
+                .collect();
+            serde_json::to_string(&items).unwrap_or_else(|_| "[]".to_owned())
+        },
+        author_clan_tag: message.author.clan_tag().map(str::to_owned),
+        author_clan_badge: message.author.clan_badge_url(),
     }
 }
 
@@ -877,6 +984,16 @@ fn message_snapshot_from_value(value: &Value) -> MessageSnapshot {
         author_decoration: None,
         attachments: Vec::new(),
         reply: None,
+        reactions: Vec::new(),
+        stickers: Vec::new(),
+        pinned: value.get("pinned").and_then(Value::as_bool).unwrap_or(false),
+        embeds_json: value
+            .get("embeds")
+            .and_then(|e| serde_json::to_string(e).ok())
+            .unwrap_or_else(|| "[]".to_owned()),
+        forwarded_json: "[]".to_owned(),
+        author_clan_tag: None,
+        author_clan_badge: None,
     }
 }
 
@@ -1105,6 +1222,8 @@ fn member_list_snapshot(cache: &StateCache, guild_id: Option<Snowflake>) -> Memb
                         global_name: member.global_name.clone(),
                         decoration: member.decoration.clone(),
                         nameplate: member.nameplate.clone(),
+                        clan_tag: cache.user(*user_id).and_then(|u| u.clan_tag()).map(str::to_owned),
+                        clan_badge: cache.user(*user_id).and_then(|u| u.clan_badge_url()),
                     }),
                     ..MemberListRowSnapshot::default()
                 },
@@ -1174,9 +1293,17 @@ fn channel_can_send(cache: &StateCache, channel: &Channel) -> bool {
     lampcord_core::permissions::can_send_messages(guild, channel, &member_roles, user.id)
 }
 
-fn channel_snapshot(channel: &Channel, can_view: bool, can_send: bool) -> ChannelSnapshot {
+fn channel_snapshot(
+    channel: &Channel,
+    can_view: bool,
+    can_send: bool,
+    muted: bool,
+    unobtrusive_unread: bool,
+) -> ChannelSnapshot {
     ChannelSnapshot {
         can_send,
+        muted,
+        unobtrusive_unread,
         icon: channel.icon.clone(),
         recipients: channel
             .recipients
@@ -1188,6 +1315,8 @@ fn channel_snapshot(channel: &Channel, can_view: bool, can_send: bool) -> Channe
                 avatar: user.avatar.clone(),
                 decoration: user.decoration_asset().map(str::to_owned),
                 nameplate: user.nameplate_asset().map(str::to_owned),
+                system: user.system.unwrap_or(false),
+                bot: user.bot.unwrap_or(false),
             })
             .collect(),
         can_view,
@@ -1197,6 +1326,8 @@ fn channel_snapshot(channel: &Channel, can_view: bool, can_send: bool) -> Channe
         kind: channel.kind.0,
         parent_id: channel.parent_id,
         position: channel.position.map(|position| position as i32),
+        topic: channel.topic.clone(),
+        nsfw: channel.nsfw.unwrap_or(false),
     }
 }
 
@@ -1230,6 +1361,12 @@ fn build_snapshot(
     fetched_messages: &HashMap<Snowflake, Vec<Message>>,
     pinned_messages: &HashMap<Snowflake, Vec<Message>>,
     fetched_mentions: &[Message],
+    search_results: &[Message],
+    guild_emojis: &HashMap<Snowflake, Vec<EmojiSnapshot>>,
+    guild_roles: &HashMap<Snowflake, Vec<RoleSnapshot>>,
+    threads: &[ThreadSnapshot],
+    guild_bans: &HashMap<Snowflake, Vec<BanSnapshot>>,
+    saved_accounts: &[SavedAccountSnapshot],
     profile: &Option<ProfileSnapshot>,
     auth: &AuthStateSnapshot,
     error: Option<String>,
@@ -1242,6 +1379,7 @@ fn build_snapshot(
             selected_channel_id,
             auth: auth.clone(),
             error,
+            saved_accounts: saved_accounts.to_vec(),
             ..ClientSnapshot::default()
         };
     };
@@ -1255,16 +1393,32 @@ fn build_snapshot(
             .unwrap_or_else(|| user.username.clone())
     });
 
+    let read_state_for_guilds = cache.read_state();
     let guilds: Vec<GuildSnapshot> = cache
         .ordered_guilds()
         .into_iter()
-        .map(|guild| GuildSnapshot {
-            id: guild.id,
-            name: guild
-                .name
-                .clone()
-                .unwrap_or_else(|| "Unknown guild".to_owned()),
-            icon_url: guild.icon.clone(),
+        .map(|guild| {
+            let mut unread = false;
+            let mut mention_count = 0u32;
+            for ch in cache.channels_for_guild(guild.id) {
+                if matches!(ch.kind.0, 0 | 5 | 10 | 11 | 12 | 15)
+                    && read_state_for_guilds.is_unread(ch.id, ch.last_message_id, None)
+                {
+                    unread = true;
+                }
+                mention_count = mention_count.saturating_add(read_state_for_guilds.mention_count(ch.id));
+            }
+            GuildSnapshot {
+                id: guild.id,
+                name: guild
+                    .name
+                    .clone()
+                    .unwrap_or_else(|| "Unknown guild".to_owned()),
+                icon_url: guild.icon.clone(),
+                owner_id: guild.owner_id,
+                unread,
+                mention_count,
+            }
         })
         .collect();
 
@@ -1286,6 +1440,8 @@ fn build_snapshot(
                 channel,
                 channel_can_view(&cache, channel),
                 channel_can_send(&cache, channel),
+                cache.channel_muted(channel.guild_id, channel.id),
+                cache.channel_unobtrusive_unread(channel.guild_id, channel.id),
             )
         })
         .collect();
@@ -1328,6 +1484,8 @@ fn build_snapshot(
             global_name: member.global_name,
             decoration: member.decoration,
             nameplate: member.nameplate,
+            clan_tag: cache.user(member.user_id).and_then(|u| u.clan_tag()).map(str::to_owned),
+            clan_badge: cache.user(member.user_id).and_then(|u| u.clan_badge_url()),
         })
         .collect();
 
@@ -1356,6 +1514,8 @@ fn build_snapshot(
                     avatar: user.avatar.clone(),
                     decoration: user.decoration_asset().map(str::to_owned),
                     nameplate: user.nameplate_asset().map(str::to_owned),
+                    system: user.system.unwrap_or(false),
+                    bot: user.bot.unwrap_or(false),
                 })
                 .collect(),
             last_message_id: channel.last_message_id,
@@ -1402,6 +1562,9 @@ fn build_snapshot(
         has_token,
         current_user_id,
         current_user,
+        current_user_username: cache.current_user().map(|user| user.username.clone()),
+        current_user_email: cache.current_user().and_then(|user| user.email.clone()),
+        current_user_mfa_enabled: cache.current_user().and_then(|user| user.mfa_enabled).unwrap_or(false),
         current_user_avatar: cache.current_user().and_then(|user| user.avatar.clone()),
         selected_guild_id,
         selected_channel_id,
@@ -1431,6 +1594,21 @@ fn build_snapshot(
             .map(|pins| pins.iter().map(message_snapshot).collect())
             .unwrap_or_default(),
         mentions: fetched_mentions.iter().map(message_snapshot).collect(),
+        search_results: search_results.iter().map(message_snapshot).collect(),
+        guild_emojis: selected_guild_id
+            .and_then(|gid| guild_emojis.get(&gid))
+            .cloned()
+            .unwrap_or_default(),
+        guild_roles: selected_guild_id
+            .and_then(|gid| guild_roles.get(&gid))
+            .cloned()
+            .unwrap_or_default(),
+        threads: threads.to_vec(),
+        guild_bans: selected_guild_id
+            .and_then(|gid| guild_bans.get(&gid))
+            .cloned()
+            .unwrap_or_default(),
+        saved_accounts: saved_accounts.to_vec(),
     }
 }
 
@@ -1668,6 +1846,11 @@ async fn run(
     let mut fetched_messages: HashMap<Snowflake, Vec<Message>> = HashMap::new();
     let mut fetched_mentions: Vec<Message> = Vec::new();
     let mut pinned_messages: HashMap<Snowflake, Vec<Message>> = HashMap::new();
+    let mut search_results: Vec<Message> = Vec::new();
+    let mut guild_emojis: HashMap<Snowflake, Vec<EmojiSnapshot>> = HashMap::new();
+    let mut guild_roles: HashMap<Snowflake, Vec<RoleSnapshot>> = HashMap::new();
+    let mut threads: Vec<ThreadSnapshot> = Vec::new();
+    let mut guild_bans: HashMap<Snowflake, Vec<BanSnapshot>> = HashMap::new();
     let mut profile: Option<ProfileSnapshot> = None;
     let mut auth_state = AuthStateSnapshot::default();
     // Discord ties an MFA ticket to the login instance and fingerprint from the
@@ -1704,6 +1887,12 @@ async fn run(
                    fetched_messages: &HashMap<Snowflake, Vec<Message>>,
                    pinned_messages: &HashMap<Snowflake, Vec<Message>>,
                    fetched_mentions: &[Message],
+                   search_results: &[Message],
+                   guild_emojis: &HashMap<Snowflake, Vec<EmojiSnapshot>>,
+                   guild_roles: &HashMap<Snowflake, Vec<RoleSnapshot>>,
+                   threads: &[ThreadSnapshot],
+                   guild_bans: &HashMap<Snowflake, Vec<BanSnapshot>>,
+                   saved_accounts: &[SavedAccountSnapshot],
                    profile: &Option<ProfileSnapshot>,
                    auth: &AuthStateSnapshot,
                    error: &Option<String>,
@@ -1719,6 +1908,12 @@ async fn run(
             fetched_messages,
             pinned_messages,
             fetched_mentions,
+            search_results,
+            guild_emojis,
+            guild_roles,
+            threads,
+            guild_bans,
+            saved_accounts,
             profile,
             auth,
             error.clone(),
@@ -1727,7 +1922,16 @@ async fn run(
     };
 
     macro_rules! publish_snapshot {
-        () => {
+        () => {{
+            let saved_accounts: Vec<SavedAccountSnapshot> = token_store
+                .accounts()
+                .iter()
+                .map(|acc| SavedAccountSnapshot {
+                    user_id: acc.user_id.clone(),
+                    username: acc.username.clone(),
+                    active: active_token.as_deref() == Some(acc.token.as_str()),
+                })
+                .collect();
             publish(
                 &connection,
                 active_token.is_some() || !token_store.accounts().is_empty(),
@@ -1737,6 +1941,12 @@ async fn run(
                 &fetched_messages,
                 &pinned_messages,
                 &fetched_mentions,
+                &search_results,
+                &guild_emojis,
+                &guild_roles,
+                &threads,
+                &guild_bans,
+                &saved_accounts,
                 &profile,
                 &auth_state,
                 &error,
@@ -1744,7 +1954,7 @@ async fn run(
                 &events,
                 &seq,
             )
-        };
+        }};
     }
 
     macro_rules! publish_now {
@@ -2466,6 +2676,456 @@ async fn run(
                         }
                         mark_snapshot_dirty!();
                     }
+                    ClientCommand::MarkGuildRead { guild_id } => {
+                        let pairs: Vec<(u64, u64)> = if let Some(cache) = cache.as_ref() {
+                            let mut guard = cache.lock().expect("cache lock");
+                            let channels: Vec<(u64, Option<u64>)> = guard
+                                .channels_for_guild(guild_id)
+                                .into_iter()
+                                .map(|ch| (ch.id, ch.last_message_id))
+                                .collect();
+                            let mut to_ack = Vec::new();
+                            for (cid, last_msg) in channels {
+                                let newest = last_msg.or_else(|| guard.read_state().most_recent_message_id(cid));
+                                if let Some(mid) = newest {
+                                    if guard.read_state().is_unread(cid, last_msg, None)
+                                        || guard.read_state().mention_count(cid) > 0
+                                    {
+                                        guard.read_state_mut().ack(cid, mid);
+                                        to_ack.push((cid, mid));
+                                    }
+                                }
+                            }
+                            to_ack
+                        } else {
+                            Vec::new()
+                        };
+                        if !pairs.is_empty() {
+                            if let Some(rest_client) = rest.clone() {
+                                let config = default_rest_config(&api_base, user_agent.as_deref(), active_token.clone());
+                                let _ = api::channel::ack_bulk(&*rest_client, &config, &pairs).await;
+                            }
+                        }
+                        mark_snapshot_dirty!();
+                    }
+                    ClientCommand::PinMessage { channel_id, message_id } => {
+                        if let Some(rest_client) = rest.clone() {
+                            let config = default_rest_config(&api_base, user_agent.as_deref(), active_token.clone());
+                            if let Err(api_error) = api::message::pin_message(&*rest_client, &config, channel_id, message_id).await {
+                                error = Some(format!("Failed to pin message: {api_error}"));
+                            } else if let Ok(pins) = api::message::get_pinned_messages(&*rest_client, &config, channel_id).await {
+                                pinned_messages.insert(Snowflake::from(channel_id), pins);
+                                error = None;
+                            }
+                        }
+                        mark_snapshot_dirty!();
+                    }
+                    ClientCommand::UnpinMessage { channel_id, message_id } => {
+                        if let Some(rest_client) = rest.clone() {
+                            let config = default_rest_config(&api_base, user_agent.as_deref(), active_token.clone());
+                            if let Err(api_error) = api::message::unpin_message(&*rest_client, &config, channel_id, message_id).await {
+                                error = Some(format!("Failed to unpin message: {api_error}"));
+                            } else if let Ok(pins) = api::message::get_pinned_messages(&*rest_client, &config, channel_id).await {
+                                pinned_messages.insert(Snowflake::from(channel_id), pins);
+                                error = None;
+                            }
+                        }
+                        mark_snapshot_dirty!();
+                    }
+                    ClientCommand::JoinGuild { invite_code } => {
+                        if let Some(rest_client) = rest.clone() {
+                            let config = default_rest_config(&api_base, user_agent.as_deref(), active_token.clone());
+                            let code = invite_code
+                                .trim()
+                                .rsplit('/')
+                                .next()
+                                .unwrap_or(invite_code.trim());
+                            match api::guild::join_guild(&*rest_client, &config, code, None).await {
+                                Ok(_) => error = None,
+                                Err(api_error) => {
+                                    error = Some(format!("Failed to join server: {api_error}"));
+                                }
+                            }
+                        }
+                        mark_snapshot_dirty!();
+                    }
+                    ClientCommand::LeaveGuild { guild_id } => {
+                        if let Some(rest_client) = rest.clone() {
+                            let config = default_rest_config(&api_base, user_agent.as_deref(), active_token.clone());
+                            match api::guild::leave_guild(&*rest_client, &config, guild_id).await {
+                                Ok(()) => {
+                                    if selected_guild_id == Some(guild_id) {
+                                        selected_guild_id = None;
+                                        selected_channel_id = None;
+                                    }
+                                    error = None;
+                                }
+                                Err(api_error) => {
+                                    error = Some(format!("Failed to leave server: {api_error}"));
+                                }
+                            }
+                        }
+                        mark_snapshot_dirty!();
+                    }
+                    ClientCommand::SendFriendRequest { username } => {
+                        if let Some(rest_client) = rest.clone() {
+                            let config = default_rest_config(&api_base, user_agent.as_deref(), active_token.clone());
+                            let (name, disc) = match username.trim().split_once('#') {
+                                Some((n, d)) => (n.trim(), Some(d.trim())),
+                                None => (username.trim(), None),
+                            };
+                            match api::user::send_friend_request_by_username(&*rest_client, &config, name, disc).await {
+                                Ok(_) => error = None,
+                                Err(api_error) => {
+                                    error = Some(format!("Failed to send friend request: {api_error}"));
+                                }
+                            }
+                        }
+                        mark_snapshot_dirty!();
+                    }
+                    ClientCommand::AcceptFriendRequest { user_id } => {
+                        if let Some(rest_client) = rest.clone() {
+                            let config = default_rest_config(&api_base, user_agent.as_deref(), active_token.clone());
+                            match api::user::put_relationship(&*rest_client, &config, user_id, None).await {
+                                Ok(()) => error = None,
+                                Err(api_error) => {
+                                    error = Some(format!("Failed to accept friend request: {api_error}"));
+                                }
+                            }
+                        }
+                        mark_snapshot_dirty!();
+                    }
+                    ClientCommand::RemoveRelationship { user_id } => {
+                        if let Some(rest_client) = rest.clone() {
+                            let config = default_rest_config(&api_base, user_agent.as_deref(), active_token.clone());
+                            match api::user::delete_relationship(&*rest_client, &config, user_id).await {
+                                Ok(()) => error = None,
+                                Err(api_error) => {
+                                    error = Some(format!("Failed to remove relationship: {api_error}"));
+                                }
+                            }
+                        }
+                        mark_snapshot_dirty!();
+                    }
+                    ClientCommand::BlockUser { user_id } => {
+                        if let Some(rest_client) = rest.clone() {
+                            let config = default_rest_config(&api_base, user_agent.as_deref(), active_token.clone());
+                            match api::user::put_relationship(&*rest_client, &config, user_id, Some(2)).await {
+                                Ok(()) => error = None,
+                                Err(api_error) => {
+                                    error = Some(format!("Failed to block user: {api_error}"));
+                                }
+                            }
+                        }
+                        mark_snapshot_dirty!();
+                    }
+                    ClientCommand::OpenDm { user_id } => {
+                        if let Some(rest_client) = rest.clone() {
+                            let config = default_rest_config(&api_base, user_agent.as_deref(), active_token.clone());
+                            match api::channel::create_dm(&*rest_client, &config, user_id).await {
+                                Ok(channel) => {
+                                    let cid = channel.id;
+                                    if let Some(cache) = &cache {
+                                        cache.lock().expect("cache lock").upsert_channels(vec![channel]);
+                                    }
+                                    selected_guild_id = None;
+                                    selected_channel_id = Some(cid);
+                                    error = None;
+                                }
+                                Err(api_error) => {
+                                    error = Some(format!("Failed to open DM: {api_error}"));
+                                }
+                            }
+                        }
+                        mark_snapshot_dirty!();
+                    }
+                    ClientCommand::SearchMessages { guild_id, channel_id, query } => {
+                        if let Some(rest_client) = rest.clone() {
+                            let config = default_rest_config(&api_base, user_agent.as_deref(), active_token.clone());
+                            let q = query.trim();
+                            let result = if let Some(gid) = guild_id {
+                                api::message::search_guild_messages(
+                                    &*rest_client, &config, gid, Some(q),
+                                    &[], &[], &[], None, None, Some("desc"), &[], 0, &[],
+                                ).await
+                            } else if let Some(cid) = channel_id {
+                                api::message::search_channel_messages(
+                                    &*rest_client, &config, cid, Some(q),
+                                    &[], &[], &[], None, None, Some("desc"), &[], 0,
+                                ).await
+                            } else {
+                                Ok(None)
+                            };
+                            match result {
+                                Ok(Some(body)) => {
+                                    let mut found = Vec::new();
+                                    if let Some(groups) = body.get("messages").and_then(Value::as_array) {
+                                        for group in groups {
+                                            if let Some(arr) = group.as_array() {
+                                                for item in arr {
+                                                    if item.get("hit").and_then(Value::as_bool).unwrap_or(false) {
+                                                        if let Ok(msg) = serde_json::from_value::<Message>(item.clone()) {
+                                                            found.push(msg);
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    search_results = found;
+                                    error = None;
+                                }
+                                Ok(None) => {
+                                    search_results.clear();
+                                    error = None;
+                                }
+                                Err(api_error) => {
+                                    error = Some(format!("Search failed: {api_error}"));
+                                }
+                            }
+                        }
+                        mark_snapshot_dirty!();
+                    }
+                    ClientCommand::FetchThreads { guild_id: _, channel_id } => {
+                        if let Some(rest_client) = rest.clone() {
+                            let config = default_rest_config(&api_base, user_agent.as_deref(), active_token.clone());
+                            match api::channel::get_active_threads(&*rest_client, &config, channel_id).await {
+                                Ok(body) => {
+                                    threads = body
+                                        .get("threads")
+                                        .and_then(Value::as_array)
+                                        .map(|arr| {
+                                            arr.iter()
+                                                .filter_map(|t| {
+                                                    Some(ThreadSnapshot {
+                                                        id: json_id(t.get("id"))?,
+                                                        parent_id: json_id(t.get("parent_id")),
+                                                        name: t.get("name").and_then(Value::as_str).unwrap_or("Thread").to_owned(),
+                                                        message_count: t.get("message_count").and_then(Value::as_u64).unwrap_or(0) as u32,
+                                                        member_count: t.get("member_count").and_then(Value::as_u64).unwrap_or(0) as u32,
+                                                        archived: t.get("thread_metadata").and_then(|m| m.get("archived")).and_then(Value::as_bool).unwrap_or(false),
+                                                    })
+                                                })
+                                                .collect()
+                                        })
+                                        .unwrap_or_default();
+                                    error = None;
+                                }
+                                Err(api_error) => {
+                                    error = Some(format!("Failed to load threads: {api_error}"));
+                                }
+                            }
+                        }
+                        mark_snapshot_dirty!();
+                    }
+                    ClientCommand::CreateThread { channel_id, name, message_id } => {
+                        if let Some(rest_client) = rest.clone() {
+                            let config = default_rest_config(&api_base, user_agent.as_deref(), active_token.clone());
+                            let res = if let Some(mid) = message_id {
+                                api::channel::create_thread_from_message(&*rest_client, &config, channel_id, mid, &name).await
+                            } else {
+                                api::channel::create_thread(&*rest_client, &config, channel_id, &name, &name, &[]).await
+                            };
+                            match res {
+                                Ok(thread) => {
+                                    threads.push(ThreadSnapshot {
+                                        id: thread.id,
+                                        parent_id: thread.parent_id,
+                                        name: thread.name.clone().unwrap_or(name),
+                                        message_count: 0,
+                                        member_count: 1,
+                                        archived: false,
+                                    });
+                                    if let Some(cache) = &cache {
+                                        cache.lock().expect("cache lock").upsert_channels(vec![thread]);
+                                    }
+                                    error = None;
+                                }
+                                Err(api_error) => {
+                                    error = Some(format!("Failed to create thread: {api_error}"));
+                                }
+                            }
+                        }
+                        mark_snapshot_dirty!();
+                    }
+                    ClientCommand::FetchGuildSettings { guild_id } => {
+                        if let Some(rest_client) = rest.clone() {
+                            let config = default_rest_config(&api_base, user_agent.as_deref(), active_token.clone());
+                            if let Ok(roles_val) = api::guild::get_guild_roles(&*rest_client, &config, guild_id).await {
+                                let roles: Vec<RoleSnapshot> = roles_val
+                                    .iter()
+                                    .filter_map(|r| {
+                                        Some(RoleSnapshot {
+                                            id: json_id(r.get("id"))?,
+                                            name: r.get("name").and_then(Value::as_str).unwrap_or("").to_owned(),
+                                            color: r.get("color").and_then(Value::as_u64).unwrap_or(0) as u32,
+                                            position: r.get("position").and_then(Value::as_i64).unwrap_or(0) as i32,
+                                            permissions: r.get("permissions").and_then(Value::as_str).unwrap_or("0").to_owned(),
+                                        })
+                                    })
+                                    .collect();
+                                guild_roles.insert(guild_id, roles);
+                            }
+                            if let Ok(emojis_val) = api::guild::get_guild_emojis(&*rest_client, &config, guild_id).await {
+                                let emojis: Vec<EmojiSnapshot> = emojis_val
+                                    .iter()
+                                    .filter_map(|e| {
+                                        Some(EmojiSnapshot {
+                                            id: json_id(e.get("id"))?,
+                                            name: e.get("name").and_then(Value::as_str).unwrap_or("").to_owned(),
+                                            animated: e.get("animated").and_then(Value::as_bool).unwrap_or(false),
+                                            guild_id,
+                                        })
+                                    })
+                                    .collect();
+                                guild_emojis.insert(guild_id, emojis);
+                            }
+                            if let Ok(bans_val) = api::guild::get_guild_bans(&*rest_client, &config, guild_id).await {
+                                let bans: Vec<BanSnapshot> = bans_val
+                                    .iter()
+                                    .filter_map(|b| {
+                                        let user = b.get("user")?;
+                                        Some(BanSnapshot {
+                                            user_id: json_id(user.get("id"))?,
+                                            username: user.get("username").and_then(Value::as_str).unwrap_or("unknown").to_owned(),
+                                            avatar: user.get("avatar").and_then(Value::as_str).map(str::to_owned),
+                                            reason: b.get("reason").and_then(Value::as_str).map(str::to_owned),
+                                        })
+                                    })
+                                    .collect();
+                                guild_bans.insert(guild_id, bans);
+                            }
+                        }
+                        mark_snapshot_dirty!();
+                    }
+                    ClientCommand::CreateGuildRole { guild_id, name, color } => {
+                        if let Some(rest_client) = rest.clone() {
+                            let config = default_rest_config(&api_base, user_agent.as_deref(), active_token.clone());
+                            match api::guild::create_role(&*rest_client, &config, guild_id).await {
+                                Ok(created) => {
+                                    if let Some(role_id) = json_id(created.get("id")) {
+                                        let body = serde_json::json!({ "name": name, "color": color });
+                                        let _ = api::guild::update_role(&*rest_client, &config, guild_id, role_id, &body).await;
+                                        guild_roles.entry(guild_id).or_default().push(RoleSnapshot {
+                                            id: role_id,
+                                            name,
+                                            color,
+                                            position: 0,
+                                            permissions: "0".to_owned(),
+                                        });
+                                    }
+                                    error = None;
+                                }
+                                Err(api_error) => {
+                                    error = Some(format!("Failed to create role: {api_error}"));
+                                }
+                            }
+                        }
+                        mark_snapshot_dirty!();
+                    }
+                    ClientCommand::DeleteGuildRole { guild_id, role_id } => {
+                        if let Some(rest_client) = rest.clone() {
+                            let config = default_rest_config(&api_base, user_agent.as_deref(), active_token.clone());
+                            match api::guild::delete_role(&*rest_client, &config, guild_id, role_id).await {
+                                Ok(()) => {
+                                    if let Some(roles) = guild_roles.get_mut(&guild_id) {
+                                        roles.retain(|r| r.id != role_id);
+                                    }
+                                    error = None;
+                                }
+                                Err(api_error) => {
+                                    error = Some(format!("Failed to delete role: {api_error}"));
+                                }
+                            }
+                        }
+                        mark_snapshot_dirty!();
+                    }
+                    ClientCommand::DeleteGuildEmoji { guild_id, emoji_id } => {
+                        if let Some(rest_client) = rest.clone() {
+                            let config = default_rest_config(&api_base, user_agent.as_deref(), active_token.clone());
+                            match api::guild::delete_emoji(&*rest_client, &config, guild_id, emoji_id).await {
+                                Ok(()) => {
+                                    if let Some(emojis) = guild_emojis.get_mut(&guild_id) {
+                                        emojis.retain(|e| e.id != emoji_id);
+                                    }
+                                    error = None;
+                                }
+                                Err(api_error) => {
+                                    error = Some(format!("Failed to delete emoji: {api_error}"));
+                                }
+                            }
+                        }
+                        mark_snapshot_dirty!();
+                    }
+                    ClientCommand::UnbanMember { guild_id, user_id } => {
+                        if let Some(rest_client) = rest.clone() {
+                            let config = default_rest_config(&api_base, user_agent.as_deref(), active_token.clone());
+                            match api::guild::unban_member(&*rest_client, &config, guild_id, user_id).await {
+                                Ok(()) => {
+                                    if let Some(bans) = guild_bans.get_mut(&guild_id) {
+                                        bans.retain(|b| b.user_id != user_id);
+                                    }
+                                    error = None;
+                                }
+                                Err(api_error) => {
+                                    error = Some(format!("Failed to unban member: {api_error}"));
+                                }
+                            }
+                        }
+                        mark_snapshot_dirty!();
+                    }
+                    ClientCommand::CreateChannel { guild_id, name, kind, parent_id } => {
+                        if let Some(rest_client) = rest.clone() {
+                            let config = default_rest_config(&api_base, user_agent.as_deref(), active_token.clone());
+                            match api::channel::create_guild_channel(&*rest_client, &config, guild_id, &name, kind, parent_id).await {
+                                Ok(channel) => {
+                                    if let Some(cache) = &cache {
+                                        cache.lock().expect("cache lock").upsert_channels(vec![channel]);
+                                    }
+                                    error = None;
+                                }
+                                Err(api_error) => {
+                                    error = Some(format!("Failed to create channel: {api_error}"));
+                                }
+                            }
+                        }
+                        mark_snapshot_dirty!();
+                    }
+                    ClientCommand::DeleteChannel { channel_id } => {
+                        if let Some(rest_client) = rest.clone() {
+                            let config = default_rest_config(&api_base, user_agent.as_deref(), active_token.clone());
+                            match api::channel::delete_channel(&*rest_client, &config, channel_id).await {
+                                Ok(_) => {
+                                    if selected_channel_id == Some(channel_id) {
+                                        selected_channel_id = None;
+                                    }
+                                    error = None;
+                                }
+                                Err(api_error) => {
+                                    error = Some(format!("Failed to delete channel: {api_error}"));
+                                }
+                            }
+                        }
+                        mark_snapshot_dirty!();
+                    }
+                    ClientCommand::SwitchAccount { user_id } => {
+                        if let Some(account) = token_store.accounts().iter().find(|a| a.user_id == user_id).cloned() {
+                            if let Err(message) = connect_session!(account.token) {
+                                connection = ConnectionState::Error { message: message.clone() };
+                                error = Some(format!("Account switch failed: {message}"));
+                                should_reconnect = false;
+                            }
+                        } else {
+                            error = Some("Account not found".to_owned());
+                        }
+                        mark_snapshot_dirty!();
+                    }
+                    ClientCommand::RemoveSavedAccount { user_id } => {
+                        if let Some(token) = token_store.accounts().iter().find(|a| a.user_id == user_id).map(|a| a.token.clone()) {
+                            forget_token(&mut token_store, &secret_store, &token);
+                        }
+                        mark_snapshot_dirty!();
+                    }
                 }
                 flush_snapshot!(true);
             }
@@ -2745,6 +3405,12 @@ mod tests {
             Some(guild_id),
             None,
             &HashMap::new(),
+            &HashMap::new(),
+            &[],
+            &[],
+            &HashMap::new(),
+            &HashMap::new(),
+            &[],
             &HashMap::new(),
             &[],
             &None,

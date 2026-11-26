@@ -37,7 +37,9 @@ const HANDLED_EVENTS: &[&str] = &[
     "GUILD_MEMBERS_CHUNK",
     "GUILD_MEMBER_LIST_UPDATE",
     "PRESENCE_UPDATE",
+    "READY_SUPPLEMENTAL",
     "USER_SETTINGS_UPDATE",
+    "USER_GUILD_SETTINGS_UPDATE",
     "RELATIONSHIP_ADD",
     "RELATIONSHIP_UPDATE",
     "RELATIONSHIP_REMOVE",
@@ -131,9 +133,9 @@ pub fn presence_from_value(value: &Value) -> Option<CachedPresence> {
         .collect();
     let clients = value.get("client_status").and_then(Value::as_object);
     let mobile = clients.is_some_and(|clients| {
-        clients.contains_key("mobile")
-            && !clients.contains_key("desktop")
-            && !clients.contains_key("web")
+        clients.get("mobile").and_then(Value::as_str) == Some("online")
+            && clients.get("desktop").and_then(Value::as_str) != Some("online")
+            && clients.get("web").and_then(Value::as_str) != Some("online")
     });
     Some(CachedPresence {
         user_id,
@@ -171,6 +173,12 @@ impl From<serde_json::Error> for CacheError {
     }
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+struct NotifSetting {
+    muted: bool,
+    unobtrusive: bool,
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct StateCache {
     token: Option<String>,
@@ -193,6 +201,8 @@ pub struct StateCache {
     member_lists: HashMap<Snowflake, MemberListState>,
     dirty: bool,
     relationships: HashMap<Snowflake, CachedRelationship>,
+    guild_notif_settings: HashMap<Snowflake, NotifSetting>,
+    channel_notif_settings: HashMap<Snowflake, NotifSetting>,
 }
 
 impl StateCache {
@@ -337,6 +347,24 @@ impl StateCache {
             .unwrap_or_default()
     }
 
+    pub fn channel_muted(&self, guild_id: Option<Snowflake>, channel_id: Snowflake) -> bool {
+        if let Some(c) = self.channel_notif_settings.get(&channel_id) {
+            return c.muted;
+        }
+        guild_id
+            .and_then(|gid| self.guild_notif_settings.get(&gid))
+            .is_some_and(|g| g.muted)
+    }
+
+    pub fn channel_unobtrusive_unread(&self, guild_id: Option<Snowflake>, channel_id: Snowflake) -> bool {
+        if let Some(c) = self.channel_notif_settings.get(&channel_id) {
+            return c.unobtrusive;
+        }
+        guild_id
+            .and_then(|gid| self.guild_notif_settings.get(&gid))
+            .is_some_and(|g| g.unobtrusive)
+    }
+
     pub fn member_list(&self, guild_id: Snowflake) -> Option<&MemberListState> {
         self.member_lists.get(&guild_id)
     }
@@ -387,6 +415,7 @@ impl StateCache {
         }
         match event_type {
             "READY" => self.handle_ready(data),
+            "READY_SUPPLEMENTAL" => self.handle_ready_supplemental(data),
             "MESSAGE_CREATE" => self.handle_message_create(data),
             "MESSAGE_UPDATE" => self.handle_message_update(data),
             "MESSAGE_DELETE" => self.handle_message_delete(data),
@@ -402,6 +431,12 @@ impl StateCache {
             "PRESENCE_UPDATE" => self.handle_presence(data),
             "GUILD_MEMBER_LIST_UPDATE" => self.handle_member_list_update(data),
             "USER_SETTINGS_UPDATE" => self.handle_user_settings(data),
+            "USER_GUILD_SETTINGS_UPDATE" => {
+                if let Some(entry) = data {
+                    self.apply_guild_notif_entry(entry);
+                }
+                Ok(())
+            }
             "RELATIONSHIP_ADD" | "RELATIONSHIP_UPDATE" => self.handle_relationship_upsert(data),
             "RELATIONSHIP_REMOVE" => self.handle_relationship_remove(data),
             _ => Ok(()),
@@ -471,6 +506,17 @@ impl StateCache {
             }
         }
         self.apply_user_settings(data.get("user_settings"));
+        if let Some(ugs) = data.get("user_guild_settings") {
+            let entries = ugs
+                .get("entries")
+                .and_then(Value::as_array)
+                .or_else(|| ugs.as_array());
+            if let Some(entries) = entries {
+                for entry in entries {
+                    self.apply_guild_notif_entry(entry);
+                }
+            }
+        }
         if let Some(settings) = data.get("user_settings") {
             let hint = guild_order_from_settings(settings);
             if !hint.is_empty() {
@@ -487,6 +533,18 @@ impl StateCache {
                     if let Some(members) = value.get("members").and_then(Value::as_array) {
                         for member in members {
                             self.cache_member_value(guild_id, member);
+                        }
+                    }
+                    for key in ["channels", "threads"] {
+                        if let Some(channels) = value.get(key).and_then(Value::as_array) {
+                            for ch_val in channels {
+                                if let Ok(mut ch) = decode::<Channel>(ch_val) {
+                                    if ch.guild_id.is_none() {
+                                        ch.guild_id = Some(guild_id);
+                                    }
+                                    self.update_channel(ch);
+                                }
+                            }
                         }
                     }
                 }
@@ -567,21 +625,7 @@ impl StateCache {
         }
         // User accounts get friends' and servers' presences here instead.
         if let Some(merged) = data.get("merged_presences") {
-            let friends = merged
-                .get("friends")
-                .and_then(Value::as_array)
-                .into_iter()
-                .flatten();
-            let guilds = merged
-                .get("guilds")
-                .and_then(Value::as_array)
-                .into_iter()
-                .flatten()
-                .filter_map(Value::as_array)
-                .flatten();
-            for presence in friends.chain(guilds) {
-                self.cache_presence_value(presence);
-            }
+            self.ingest_merged_presences(merged);
         }
 
         self.read_state.handle_ready(data);
@@ -620,12 +664,64 @@ impl StateCache {
             .insert(user_id, CachedRelationship { user_id, kind });
     }
 
+    fn apply_guild_notif_entry(&mut self, entry: &Value) {
+        const UNREADS_ONLY_MENTIONS: u64 = 1 << 11;
+        const UNREADS_ALL_MESSAGES: u64 = 1 << 12;
+        let parse_setting = |obj: &Value| -> NotifSetting {
+            let muted = obj.get("muted").and_then(Value::as_bool).unwrap_or(false);
+            let flags = obj.get("flags").and_then(Value::as_u64).unwrap_or(0);
+            let msg_notif = obj.get("message_notifications").and_then(Value::as_u64).unwrap_or(0);
+            let unobtrusive = if (flags & UNREADS_ALL_MESSAGES) != 0 {
+                false
+            } else {
+                (flags & UNREADS_ONLY_MENTIONS) != 0 || muted || msg_notif == 1 || msg_notif == 2
+            };
+            NotifSetting { muted, unobtrusive }
+        };
+        if let Some(gid) = snowflake(entry.get("guild_id")) {
+            self.guild_notif_settings.insert(gid, parse_setting(entry));
+        }
+        if let Some(overrides) = entry.get("channel_overrides").and_then(Value::as_array) {
+            for ov in overrides {
+                if let Some(cid) = snowflake(ov.get("channel_id")) {
+                    self.channel_notif_settings.insert(cid, parse_setting(ov));
+                }
+            }
+        }
+    }
+
     fn handle_user_settings(&mut self, data: Option<&Value>) -> Result<(), CacheError> {
         let data = data.ok_or(CacheError::MissingData("USER_SETTINGS_UPDATE"))?;
         self.apply_user_settings(Some(data));
         let hint = guild_order_from_settings(data);
         if !hint.is_empty() {
             self.guild_order_hint = hint;
+        }
+        Ok(())
+    }
+
+    fn ingest_merged_presences(&mut self, merged: &Value) {
+        let friends = merged
+            .get("friends")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten();
+        let guilds = merged
+            .get("guilds")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_array)
+            .flatten();
+        for presence in friends.chain(guilds) {
+            self.cache_presence_value(presence);
+        }
+    }
+
+    fn handle_ready_supplemental(&mut self, data: Option<&Value>) -> Result<(), CacheError> {
+        let Some(data) = data else { return Ok(()) };
+        if let Some(merged) = data.get("merged_presences") {
+            self.ingest_merged_presences(merged);
         }
         Ok(())
     }
@@ -1138,6 +1234,25 @@ impl StateCache {
                     }
                 }
                 _ => {}
+            }
+        }
+        // Discord sends authoritative group counts in the top-level `groups` array
+        // while `ops[].items[].group` often omits `count`.
+        if let Some(groups) = data.get("groups").and_then(Value::as_array) {
+            let group_counts: HashMap<&str, u32> = groups
+                .iter()
+                .filter_map(|g| {
+                    let id = g.get("id").and_then(Value::as_str)?;
+                    let count = u32_of(g.get("count"))?;
+                    Some((id, count))
+                })
+                .collect();
+            for row in rows.iter_mut() {
+                if let MemberListRow::Group { id, count } = row {
+                    if let Some(&c) = group_counts.get(id.as_str()) {
+                        *count = Some(c);
+                    }
+                }
             }
         }
         self.member_lists.insert(guild_id, state);
