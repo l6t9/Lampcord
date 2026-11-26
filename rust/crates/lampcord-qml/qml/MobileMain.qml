@@ -9,13 +9,14 @@ ApplicationWindow {
     id: window
 
     visible: true
-    visibility: ApplicationWindow.FullScreen
+    visibility: ApplicationWindow.Maximized
     color: Theme.surfaceContainerHigh
     font.family: Theme.font
 
-    // Qt's Android style leaves status/navigation bar insets to the app.
-    readonly property int statusBarInset: Qt.platform.os === "android" ? 24 : 0
-    readonly property int navBarInset: Qt.platform.os === "android" ? 16 : 0
+    // Android reserves space for the system bars when the window is not
+    // fullscreen, so the QML content does not need to fake insets.
+    readonly property int statusBarInset: 0
+    readonly property int navBarInset: 0
 
     LampcordBackend {
         id: backend
@@ -50,12 +51,32 @@ ApplicationWindow {
         property bool hideNavLabels: false
     }
 
+    property bool showingFriends: false
     readonly property var guilds: JSON.parse(backend.guildsJson)
     readonly property var rail: JSON.parse(backend.railJson)
     readonly property var dms: JSON.parse(backend.dmsJson)
     readonly property var channels: JSON.parse(backend.channelsJson)
+    readonly property var relationships: JSON.parse(backend.relationshipsJson)
     readonly property bool signedIn: backend.hasToken
     readonly property bool loaded: guilds.length > 0 || backend.connection === "ready"
+
+    function openProfile(userId, name, avatar, decoration, status, activity, anchorX, anchorY) {
+        profilePopup.openForUser(userId, name, avatar, decoration, status, activity, anchorX, anchorY)
+    }
+    function openSettings(category) {
+        if (category) settingsScreen.category = category
+        settingsScreen.open()
+    }
+    function openJoinServer() { joinServerDialog.open() }
+    function openServerSettings(guildId, guildName) { serverSettingsDialog.openForGuild(guildId, guildName) }
+    function openImage(url, filename) { mediaViewer.openImage(url, filename) }
+    function openVideo(url, filename) { mediaViewer.openVideo(url, filename) }
+    function copyText(text) {
+        clipboardHelper.text = text
+        clipboardHelper.selectAll()
+        clipboardHelper.copy()
+    }
+    TextEdit { id: clipboardHelper; visible: false }
 
     function rememberChannel(guildId, channelId) {
         const map = JSON.parse(memory.lastChannels)
@@ -193,4 +214,10 @@ ApplicationWindow {
         id: mobileView
         MobileBaseplate {}
     }
+
+    ProfilePopup { id: profilePopup; parent: Overlay.overlay }
+    SettingsScreen { id: settingsScreen; parent: Overlay.overlay }
+    JoinServerDialog { id: joinServerDialog; parent: Overlay.overlay }
+    ServerSettingsDialog { id: serverSettingsDialog; parent: Overlay.overlay }
+    MediaViewer { id: mediaViewer; parent: Overlay.overlay }
 }
