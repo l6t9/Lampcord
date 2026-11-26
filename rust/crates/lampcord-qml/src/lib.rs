@@ -1,6 +1,7 @@
 pub mod backend;
 pub mod emoji;
 pub mod icons;
+pub mod markdown;
 pub mod palette;
 pub mod surface;
 

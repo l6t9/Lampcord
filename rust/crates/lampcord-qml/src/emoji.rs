@@ -68,7 +68,7 @@ static GROUPS: LazyLock<String> = LazyLock::new(|| {
 });
 
 /// Codepoints joined by '-', dropping FE0F unless the emoji has a ZWJ.
-fn twemoji_url(surrogates: &str) -> String {
+pub fn twemoji_url(surrogates: &str) -> String {
     let joined = surrogates.contains('\u{200D}');
     let code = surrogates
         .chars()

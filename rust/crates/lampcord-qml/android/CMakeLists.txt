@@ -19,7 +19,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # passwords are exported from local.properties by scripts/build_qml_android.sh.
 set(QT_ANDROID_SIGN_APK ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 QuickDialogs2)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 QuickDialogs2 Multimedia)
 
 qt_standard_project_setup()
 
@@ -39,6 +39,7 @@ target_link_libraries(lampcord_qml PRIVATE
     Qt6::Quick
     Qt6::QuickControls2
     Qt6::QuickDialogs2
+    Qt6::Multimedia
     # The staticlib contains QML cache and Qt resource initializers in object
     # files that nothing references directly. Pull in the whole archive so the
     # Android shared library actually registers the QML module.

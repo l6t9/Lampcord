@@ -23,6 +23,15 @@ pub mod qobject {
         /// changed. Cheap enough to call on a timer.
         #[qinvokable]
         fn refresh(self: Pin<&mut Palette>);
+
+        /// Configures M3E palette variant, optional custom hex seed, and Matugen sync.
+        #[qinvokable]
+        fn configure(
+            self: Pin<&mut Palette>,
+            variant: QString,
+            custom_seed: QString,
+            matugen_sync: bool,
+        );
     }
 
     impl cxx_qt::Threading for Palette {}
@@ -85,6 +94,9 @@ pub struct PaletteRust {
     scheme_json: QString,
     /// Wallpaper path + mtime the current scheme was built from.
     source: Option<(PathBuf, Option<SystemTime>)>,
+    variant: String,
+    custom_seed: String,
+    matugen_sync: bool,
     busy: bool,
 }
 
@@ -93,20 +105,112 @@ impl Default for PaletteRust {
         // Something sensible for the very first frame; the wallpaper scheme
         // replaces it as soon as the extraction thread finishes.
         Self {
-            scheme_json: QString::from(scheme_json(DEFAULT_SEED).as_str()),
+            scheme_json: QString::from(scheme_json(DEFAULT_SEED, Variant::TonalSpot).as_str()),
             source: None,
+            variant: "tonal_spot".to_owned(),
+            custom_seed: String::new(),
+            matugen_sync: true,
             busy: false,
         }
     }
 }
 
+fn parse_variant(name: &str) -> Variant {
+    match name.trim().to_ascii_lowercase().as_str() {
+        "vibrant" => Variant::Vibrant,
+        "expressive" => Variant::Expressive,
+        "fidelity" => Variant::Fidelity,
+        "monochrome" => Variant::Monochrome,
+        "neutral" => Variant::Neutral,
+        "fruit_salad" | "fruitsalad" => Variant::FruitSalad,
+        "rainbow" => Variant::Rainbow,
+        _ => Variant::TonalSpot,
+    }
+}
+
+fn parse_hex_rgb(raw: &str) -> Option<Rgb> {
+    let hex = raw.trim().trim_start_matches('#');
+    if hex.len() != 6 {
+        return None;
+    }
+    let r = u8::from_str_radix(&hex[0..2], 16).ok()?;
+    let g = u8::from_str_radix(&hex[2..4], 16).ok()?;
+    let b = u8::from_str_radix(&hex[4..6], 16).ok()?;
+    Some(Rgb::new(r, g, b))
+}
+
+/// Reads a Matugen or Pywal color seed from standard XDG paths.
+fn matugen_seed(home: &Path) -> Option<Rgb> {
+    let config = xdg("XDG_CONFIG_HOME", ".config", home);
+    let cache = xdg("XDG_CACHE_HOME", ".cache", home);
+    let candidates = [
+        cache.join("matugen/colors.json"),
+        config.join("matugen/colors.json"),
+        cache.join("wal/colors.json"),
+    ];
+    for path in candidates {
+        let Ok(text) = fs::read_to_string(&path) else { continue };
+        let Ok(val) = serde_json::from_str::<Value>(&text) else { continue };
+        let seed_str = val
+            .pointer("/colors/dark/primary")
+            .or_else(|| val.pointer("/colors/primary/dark"))
+            .or_else(|| val.pointer("/colors/source_color/default"))
+            .or_else(|| val.pointer("/primary"))
+            .or_else(|| val.pointer("/colors/color4"))
+            .and_then(Value::as_str);
+        if let Some(rgb) = seed_str.and_then(parse_hex_rgb) {
+            return Some(rgb);
+        }
+    }
+    None
+}
+
 impl qobject::Palette {
+    pub fn configure(
+        mut self: Pin<&mut Self>,
+        variant: QString,
+        custom_seed: QString,
+        matugen_sync: bool,
+    ) {
+        let v = variant.to_string();
+        let seed = custom_seed.to_string();
+        {
+            let mut rust = self.as_mut().rust_mut();
+            rust.variant = v;
+            rust.custom_seed = seed;
+            rust.matugen_sync = matugen_sync;
+            rust.source = None;
+        }
+        self.refresh();
+    }
+
     pub fn refresh(mut self: Pin<&mut Self>) {
         if self.busy {
             return;
         }
 
+        let variant = parse_variant(&self.variant);
+        if let Some(custom) = parse_hex_rgb(&self.custom_seed) {
+            let json = scheme_json(custom, variant);
+            if json != self.scheme_json.to_string() {
+                self.as_mut().rust_mut().scheme_json = QString::from(json.as_str());
+                self.as_mut().scheme_json_changed();
+            }
+            return;
+        }
+
         let home = std::env::var_os("HOME").map(PathBuf::from).unwrap_or_default();
+        if self.matugen_sync {
+            if let Some(seed) = matugen_seed(&home) {
+                let json = scheme_json(seed, variant);
+                if json != self.scheme_json.to_string() {
+                    self.as_mut().rust_mut().scheme_json = QString::from(json.as_str());
+                    self.as_mut().scheme_json_changed();
+                }
+                return;
+            }
+        }
+
         let wallpaper = current_wallpaper(&home);
         let source = wallpaper
             .as_ref()
@@ -124,7 +228,7 @@ impl qobject::Palette {
                 .as_deref()
                 .and_then(wallpaper_seed)
                 .unwrap_or(DEFAULT_SEED);
-            let json = scheme_json(seed);
+            let json = scheme_json(seed, variant);
             let _ = qt_thread.queue(move |mut palette| {
                 palette.as_mut().rust_mut().busy = false;
                 if json != palette.scheme_json.to_string() {
@@ -141,11 +245,11 @@ fn hex(rgb: Rgb) -> String {
 }
 
 /// `{"dark": {...}, "light": {...}}` with camelCase M3 role names.
-fn scheme_json(seed: Rgb) -> String {
+fn scheme_json(seed: Rgb, variant: Variant) -> String {
     let mode = |is_dark: bool| {
         let scheme = DynamicScheme::from_spec(
             seed.into(),
-            Variant::TonalSpot,
+            variant,
             is_dark,
             None,
             Platform::Phone,
