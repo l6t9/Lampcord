@@ -23,9 +23,6 @@ jobs:
       tag: ${{ steps.release.outputs.tag }}
       version: ${{ steps.release.outputs.version }}
       android_changed: ${{ steps.changes.outputs.android_changed }}
-      linux_changed: ${{ steps.changes.outputs.linux_changed }}
-      windows_changed: ${{ steps.changes.outputs.windows_changed }}
-      macos_changed: ${{ steps.changes.outputs.macos_changed }}
       ios_changed: ${{ steps.changes.outputs.ios_changed }}
     steps:
       - name: Check out repository
@@ -45,9 +42,6 @@ jobs:
 
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             android_changed=true
-            linux_changed=true
-            windows_changed=true
-            macos_changed=true
             ios_changed=true
           else
             if [[ -n "$before" && "$before" != "00000000000000000000000000000000000000000" ]]; then
@@ -58,9 +52,6 @@ jobs:
             fi
 
             android_changed=false
-            linux_changed=false
-            windows_changed=false
-            macos_changed=false
             ios_changed=false
 
             while IFS= read -r f; do
@@ -73,14 +64,6 @@ jobs:
               esac
 
               case "$f" in
-                desktopApp/**|shared/desktopMain/**|shared/jvmMain/**|shared/jvmSharedMain/**|shared/src/desktopMain/**|shared/src/jvmMain/**|shared/src/jvmSharedMain/**|native/**|scripts/**|packaging/**)
-                  linux_changed=true
-                  windows_changed=true
-                  macos_changed=true
-                  ;;
-              esac
-
-              case "$f" in
                 iosApp/**|shared/iosMain/**|shared/src/iosMain/**)
                   ios_changed=true
                   ;;
@@ -89,40 +72,26 @@ jobs:
               case "$f" in
                 shared/commonMain/**|shared/src/commonMain/**)
                   android_changed=true
-                  linux_changed=true
-                  windows_changed=true
-                  macos_changed=true
                   ios_changed=true
                   ;;
                 build.gradle.kts|build.gradle|gradle.properties|settings.gradle.kts|settings.gradle|gradle/**|.github/workflows/reusable-*.yml|.github/actions/**)
                   android_changed=true
-                  linux_changed=true
-                  windows_changed=true
-                  macos_changed=true
                   ios_changed=true
                   ;;
                 .github/workflows/nightly-release.yml)
                   android_changed=true
-                  linux_changed=true
-                  windows_changed=true
-                  macos_changed=true
+                  ios_changed=true
                   ;;
               esac
             done <<< "$changed_files"
 
             if [[ -z "$changed_files" ]]; then
               android_changed=true
-              linux_changed=true
-              windows_changed=true
-              macos_changed=true
               ios_changed=true
             fi
           fi
 
           echo "android_changed=$android_changed" >> "$GITHUB_OUTPUT"
-          echo "linux_changed=$linux_changed" >> "$GITHUB_OUTPUT"
-          echo "windows_changed=$windows_changed" >> "$GITHUB_OUTPUT"
-          echo "macos_changed=$macos_changed" >> "$GITHUB_OUTPUT"
           echo "ios_changed=$ios_changed" >> "$GITHUB_OUTPUT"
 
       - name: Ensure nightly release exists
@@ -192,32 +161,6 @@ jobs:
       KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
       KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
-  linux:
-    name: Linux
-    needs: stage
-    if: needs.stage.outputs.linux_changed == 'true' || github.event_name == 'workflow_dispatch'
-    uses: ./.github/workflows/reusable-desktop-linux.yml
-    permissions:
-      contents: write
-    with:
-      staging-release-tag: ${{ needs.stage.outputs.tag }}
-      package-native: true
-      package-aur: true
-    secrets:
-      GRADLE_ENCRYPTION_KEY: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-
-  windows:
-    name: Windows
-    needs: stage
-    if: needs.stage.outputs.windows_changed == 'true' || github.event_name == 'workflow_dispatch'
-    uses: ./.github/workflows/reusable-desktop-windows.yml
-    permissions:
-      contents: write
-    with:
-      staging-release-tag: ${{ needs.stage.outputs.tag }}
-    secrets:
-      GRADLE_ENCRYPTION_KEY: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-
   ios:
     name: iOS
     needs: stage
@@ -231,21 +174,9 @@ jobs:
     secrets:
       GRADLE_ENCRYPTION_KEY: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
-  macos:
-    name: macOS
-    needs: stage
-    if: needs.stage.outputs.macos_changed == 'true' || github.event_name == 'workflow_dispatch'
-    uses: ./.github/workflows/reusable-desktop-macos.yml
-    permissions:
-      contents: write
-    with:
-      staging-release-tag: ${{ needs.stage.outputs.tag }}
-    secrets:
-      GRADLE_ENCRYPTION_KEY: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-
   finalize:
     name: Finalize Release
-    needs: [stage, android, linux, windows, ios, macos]
+    needs: [stage, android, ios]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -270,16 +201,10 @@ jobs:
 
           shopt -s nullglob
           apk=(release-assets/lampcord-android-*.apk)
-          appimage=(release-assets/lampcord-desktop-linux-x64-*.AppImage)
-          winzip=(release-assets/lampcord-desktop-windows-x64-*.zip)
-          dmg=(release-assets/lampcord-desktop-macos-*.dmg)
           ipa=(release-assets/lampcord-ios-*.ipa release-assets/Lampcord.ipa)
           shopt -u nullglob
 
           [[ ${#apk[@]} -gt 0 ]] && cp "${apk[0]}" nightly-latest-assets/lampcord-android-nightly.apk
-          [[ ${#appimage[@]} -gt 0 ]] && cp "${appimage[0]}" nightly-latest-assets/lampcord-desktop-linux-x64-nightly.AppImage
-          [[ ${#winzip[@]} -gt 0 ]] && cp "${winzip[0]}" nightly-latest-assets/lampcord-desktop-windows-x64-nightly.zip
-          [[ ${#dmg[@]} -gt 0 ]] && cp "${dmg[0]}" nightly-latest-assets/lampcord-desktop-macos-nightly.dmg
           [[ ${#ipa[@]} -gt 0 ]] && cp "${ipa[0]}" nightly-latest-assets/lampcord-ios-nightly.ipa
 
           if gh release view "$latest_tag" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then

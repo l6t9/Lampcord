@@ -1,0 +1,258 @@
+.attachment-tray {
+  display: flex;
+  flex-direction: row;
+  gap: 24px;
+  padding: 20px 10px 10px;
+  overflow: hidden;
+}
+
+.attachment-card {
+  position: relative;
+  width: 218px;
+  height: 218px;
+  flex-shrink: 0;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--background-surface-high);
+  border: 1px solid var(--border-normal);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-low);
+}
+
+.attachment-inner {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  display: flex;
+  flex-direction: column;
+}
+
+.attachment-media {
+  width: 200px;
+  margin-top: auto;
+  min-height: 0px;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+}
+
+.attachment-icon-box {
+  position: relative;
+  width: 200px;
+  height: 144px;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+}
+
+.attachment-spoiler-box {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+}
+
+.attachment-spoiler-box-hidden {
+  background-color: var(--icon-muted);
+}
+
+.attachment-thumbnail {
+  border-radius: var(--radius-sm);
+}
+
+.attachment-thumbnail-spoiler {
+  filter: blur(44px);
+}
+
+.spoiler-pill-holder {
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  right: 0px;
+  bottom: 0px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.spoiler-pill {
+  padding: 8px 12px;
+  border-radius: var(--radius-round);
+  background-color: var(--opacity-black-60);
+}
+
+.attachment-tags {
+  position: absolute;
+  left: 3px;
+  bottom: 3px;
+  display: flex;
+  flex-direction: row;
+}
+
+.attachment-tag {
+  padding: 3px;
+  border-radius: var(--radius-xs);
+  background-color: var(--text-default);
+}
+
+.attachment-filename-box {
+  width: 200px;
+  margin-top: auto;
+  overflow: hidden;
+}
+
+.attachment-filename {
+  width: 200px;
+  margin-top: 8px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.attachment-actions {
+  position: absolute;
+  top: -8px;
+  right: -24px;
+}
+
+.attachment-actions-wrapper {
+  display: flex;
+  flex-direction: row;
+  height: 32px;
+  border-radius: var(--radius-xs);
+  background-color: var(--background-surface-highest);
+  box-shadow: var(--shadow-border), var(--shadow-low);
+}
+
+.attachment-actions-wrapper:hover {
+  box-shadow: var(--shadow-border), var(--shadow-medium);
+}
+
+.attachment-action-btn {
+  width: 32px;
+  height: 32px;
+  padding: 4px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+}
+
+.attachment-action-btn:hover {
+  background-color: var(--interactive-background-hover);
+}
+
+.attachment-action-btn-danger {
+}
+
+.attachment-action-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.modify-preview {
+  margin-left: 16px;
+  align-self: flex-start;
+}
+
+.drop-overlay-host {
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  right: 0px;
+  bottom: 0px;
+}
+
+.drop-overlay-host-idle {
+  display: none;
+  pointer-events: none;
+}
+
+.drop-overlay {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--opacity-black-80);
+}
+
+.drop-modal {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  width: 310px;
+  height: 170px;
+}
+
+.drop-modal-bg {
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  right: 0px;
+  bottom: 0px;
+  background-color: var(--background-brand);
+  border-radius: var(--radius-md);
+}
+
+.drop-modal-inner {
+  flex-grow: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed #ffffff66;
+  border-radius: var(--radius-sm);
+}
+
+.drop-icons {
+  position: relative;
+  width: 100px;
+  height: 60px;
+  flex-shrink: 0;
+}
+
+.drop-icon {
+  position: absolute;
+  width: 100px;
+  height: 130px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+}
+
+.drop-icon-one {
+  left: 0px;
+  top: -70px;
+  transform: translate(-44px, -6px) rotate(-30deg);
+}
+
+.drop-icon-two {
+  left: 0px;
+  top: -80px;
+  transform: translate(0px, -6px);
+}
+
+.drop-icon-three {
+  left: 0px;
+  top: -70px;
+  transform: translate(44px, -6px) rotate(30deg);
+}
+
+.drop-title {
+  width: 100%;
+  padding: 0px 8px;
+}
+
+.drop-instructions {
+  margin-top: 4px;
+  margin-left: 4px;
+}

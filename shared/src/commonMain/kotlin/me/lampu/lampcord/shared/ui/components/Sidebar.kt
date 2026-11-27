@@ -34,6 +34,7 @@ import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.ui.components.guilds.GuildChannelList
 import me.lampu.lampcord.shared.ui.components.guilds.GuildRail
 import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.ui.theme.RequiemColors
 import me.lampu.lampcord.shared.utils.getPlatformName
 import org.koin.compose.koinInject
 
@@ -56,7 +57,7 @@ fun Sidebar(
         ) {
             Surface(
                 modifier = Modifier.fillMaxHeight().width(72.dp),
-                color = Color.Transparent,
+                color = RequiemColors.BackgroundLowest,
                 tonalElevation = 0.dp
             ) {
                 GuildRail()
@@ -66,8 +67,8 @@ fun Sidebar(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight(),
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.surface,
+                shape = RoundedCornerShape(12.dp),
+                color = RequiemColors.BackgroundLower,
                 tonalElevation = 0.dp
             ) {
                 when {

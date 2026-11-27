@@ -1,0 +1,12 @@
+[package]
+name = "requiem-plugin-build"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "build.rs helper for requiem plugins: compiles the plugin's CSS modules"
+
+[dependencies]
+requiem-css = { path = "../../requiem-css" }
+
+[lints]
+workspace = true

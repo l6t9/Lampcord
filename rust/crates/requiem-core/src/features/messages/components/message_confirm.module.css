@@ -1,0 +1,47 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.message {
+  padding: 10px 0px;
+  overflow: hidden;
+  border-radius: 3px;
+  background-color: var(--background-base-low);
+  box-shadow: var(--legacy-elevation-border), var(--legacy-elevation-high);
+}
+
+.row {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 2px 16px 2px 72px;
+}
+
+.avatar {
+  position: absolute;
+  left: 16px;
+  top: 4px;
+  width: 40px;
+  height: 40px;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0px;
+}
+
+.header {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  column-gap: 8px;
+  height: 22px;
+}
+
+.tip {
+  display: flex;
+  flex-direction: column;
+  margin-top: 20px;
+}

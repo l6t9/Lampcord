@@ -1,0 +1,150 @@
+package requiem:plugin@1.0.0;
+
+// What plugins may implement. The host only calls the hooks a plugin's manifest
+// declares (`[hooks]`), and treats every export interface as optional.
+
+interface lifecycle {
+    use types.{error};
+
+    /// Called once after the plugin is started. `previous-version` is set on the
+    /// first start after an update (storage migrations go here). Register
+    /// commands, menu items, slots and subscriptions here.
+    init: func(previous-version: option<string>) -> result<_, error>;
+    shutdown: func();
+}
+
+/// Things about to leave the client.
+interface outgoing {
+    use types.{verdict};
+    use drafts.{outgoing-message, outgoing-edit, outgoing-presence};
+
+    /// `hook: outgoing` + `messages.intercept-outgoing`.
+    before-send: func(message: borrow<outgoing-message>) -> verdict;
+    before-edit: func(edit: borrow<outgoing-edit>) -> verdict;
+    /// `hook: presence` + `presence.write`. `cancel` keeps the previous presence.
+    before-presence-update: func(presence: borrow<outgoing-presence>) -> verdict;
+}
+
+/// Things about to be shown.
+interface incoming {
+    use types.{verdict};
+    use drafts.{incoming-message, notification};
+
+    /// Batched: a history page is one call. One verdict per message, in order;
+    /// missing entries mean `pass`. `cancel` hides a message, or for a
+    /// "gateway-delete" keeps it on screen marked as deleted.
+    /// `hook: incoming` + `messages.intercept-incoming`.
+    /// The handles are owned (wit-bindgen 0.62 miscompiles `list<borrow<..>>` in
+    /// exports); the host keeps its own reference, so dropping them is fine.
+    transform: func(batch: list<incoming-message>) -> list<verdict>;
+    /// `cancel` drops the notification (sound, desktop notification, badge).
+    /// `hook: notifications` + `notifications.intercept`.
+    before-notify: func(notification: borrow<notification>) -> verdict;
+}
+
+/// Callbacks for what the plugin subscribed to or scheduled.
+interface events {
+    use drafts.{event};
+
+    on-event: func(event: event);
+    on-timer: func(id: string);
+    /// `kind`: "open", "text", "binary", "close", "error"; `data` is the text,
+    /// the bytes, or the close/error reason.
+    on-websocket: func(id: u32, kind: string, data: list<u8>);
+}
+
+/// The user did something with the plugin's UI.
+interface interactions {
+    use types.{json};
+    use model.{message};
+
+    // Ids in the JSON the host passes (`target`, `context`, `options`) are
+    // decimal strings, like Discord's own, so JavaScript plugins don't lose
+    // precision: `{"guild-id": "1000000000000000000"}`.
+
+    /// An element's event in one of the plugin's views. `value` is the event's
+    /// JSON payload (a switch's state, an input's text), if any.
+    on-ui-action: func(view-id: string, action-id: string, value: option<json>);
+    /// A slash command. `options` is `{"<name>": value}`; `context` is
+    /// `{"channel-id", "guild-id"}`. `err(text)` shows the text to the user only.
+    on-command: func(name: string, options: json, context: json) -> result<_, string>;
+    /// A menu item was picked. `target` by menu: message `{"channel-id",
+    /// "message-id"}`, user `{"user-id", "guild-id"?, "channel-id"?}`, channel,
+    /// guild, role `{"guild-id", "role-id"}`, image/link `{"url", "message-id"?}`,
+    /// emoji `{"name", "id"?, "animated"}`, sticker, attachment, textarea
+    /// `{"selection"}`, ...
+    on-menu-item: func(menu: string, item-id: string, target: json, checked: option<bool>);
+    /// A slot item was clicked; `context` has what applies to the slot
+    /// (`channel-id`, `guild-id`, `user-id`, `message-id`).
+    on-slot-action: func(slot: string, item-id: string, context: json);
+    on-shortcut: func(id: string);
+    /// A click on a message (`hook: message-click`). `button`: "left", "middle",
+    /// "right", "double"; `modifiers`: `{"ctrl", "shift", "alt", "meta"}`.
+    /// Return `true` to stop the client's own handling.
+    on-message-click: func(message: message, button: string, modifiers: json) -> bool;
+}
+
+/// The plugin's views, rendered on request (see the `ui` interface).
+interface views {
+    use types.{json};
+    use ui.{view-builder};
+
+    /// `view-id` is the plugin's own ("settings" is its settings page);
+    /// `context` says where it's shown: `{"surface": "settings"|"modal"|
+    /// "popout"|"page"|"side-panel"|"slot"|"decoration"|"span"|"markdown"|
+    /// "overlay", "channel-id"?, "guild-id"?, "user-id"?, "message-id"?,
+    /// "width"?}`.
+    render: func(view-id: string, context: json) -> view-builder;
+}
+
+/// Answers the host asks for while the user is doing something.
+interface providers {
+    use types.{json};
+    use registry.{suggestion, menu-state};
+    use ui.{view-builder};
+
+    /// Which of the plugin's dynamic menu items show for this target, and how.
+    /// Items not returned are hidden.
+    context-menu: func(menu: string, target: json) -> list<menu-state>;
+    /// Values for an autocompleted command option.
+    command-autocomplete: func(command: string, option-name: string, partial: string, context: json) -> list<suggestion>;
+    /// Composer autocomplete for a registered trigger.
+    autocomplete: func(trigger: string, query: string, context: json) -> list<suggestion>;
+    /// Quick switcher results from a registered provider; picking one calls
+    /// `interactions.on-ui-action("search:<provider>", suggestion-id, none)`.
+    search: func(provider: string, query: string) -> list<suggestion>;
+    /// A registered Markdown rule matched: `captures[0]` is the whole match.
+    render-markdown: func(rule-id: string, captures: list<string>, context: json) -> view-builder;
+    /// One frame of interleaved f32 samples; return the processed frame (same
+    /// length). Called on the audio path: budget 2 ms.
+    process-audio: func(%stream: string, sample-rate: u32, channels: u8, frame: list<f32>) -> list<f32>;
+}
+
+world plugin {
+    import log;
+    import storage;
+    import timers;
+    import client;
+    import actions;
+    import navigation;
+    import discord;
+    import presence;
+    import voice;
+    import notify;
+    import tweaks;
+    import files;
+    import net;
+    import overlay;
+    import composer;
+    import ui;
+    import slots;
+    import registry;
+
+    export lifecycle;
+    export outgoing;
+    export incoming;
+    export events;
+    export interactions;
+    export views;
+    export providers;
+}

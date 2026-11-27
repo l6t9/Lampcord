@@ -71,7 +71,15 @@ actual fun rememberPlatformColorScheme(
                     !navigationStore.isChannelsAndRolesVisible &&
                     navigationStore.selectedChannel != null
 
+                val isRequiemDark = isDark &&
+                    me.lampu.lampcord.shared.settings.Settings.shared.themePaletteStyle ==
+                    me.lampu.lampcord.shared.settings.ThemePaletteStyle.REQUIEM_EXPRESSIVE
+
                 val statusBarColor = when {
+                    isRequiemDark && navigationStore.isSettingsVisible -> RequiemColors.BackgroundLower
+                    isRequiemDark && navigationStore.isChannelsAndRolesVisible -> RequiemColors.SurfaceHigh
+                    isRequiemDark && inChat -> RequiemColors.ChatBackground
+                    isRequiemDark -> RequiemColors.BackgroundLowest
                     navigationStore.isSettingsVisible -> scheme.surface
                     navigationStore.isChannelsAndRolesVisible -> scheme.surfaceContainerHigh
                     inChat -> scheme.surfaceContainer
@@ -80,6 +88,8 @@ actual fun rememberPlatformColorScheme(
                 
                 @Suppress("DEPRECATION")
                 window.statusBarColor = statusBarColor.toArgb()
+                @Suppress("DEPRECATION")
+                window.navigationBarColor = (if (isRequiemDark) RequiemColors.BackgroundLowest else scheme.surface).toArgb()
                 WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = isAppearanceLight
                 WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = isAppearanceLight
             }

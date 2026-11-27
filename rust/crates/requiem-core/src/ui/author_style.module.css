@@ -1,0 +1,69 @@
+.tag-chip {
+  height: 16px;
+  padding-left: 4px;
+  padding-right: 4px;
+  border-radius: 4px;
+  background-color: var(--background-mod-strong);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.tag-chip-message {
+  margin-left: -2px;
+  align-self: center;
+}
+
+.tag-chip-reply {
+  margin-left: 0px;
+}
+
+.tag-chip-list {
+  margin-left: 4px;
+  margin-top: 1px;
+  margin-bottom: 1px;
+}
+
+.tag-chip-pill {
+  height: 24px;
+  padding-left: 8px;
+  padding-right: 8px;
+  border-radius: 8px;
+  background-color: var(--background-mod-subtle);
+}
+
+.tag-badge-14 {
+  width: 14px;
+  height: 14px;
+  margin-right: 2px;
+  flex-shrink: 0;
+}
+
+.tag-badge-12 {
+  width: 12px;
+  height: 12px;
+  margin-right: 2px;
+  flex-shrink: 0;
+}
+
+.role-icon-message {
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  flex-shrink: 0;
+  align-self: flex-start;
+}
+
+.role-icon-chip {
+  width: 12px;
+  height: 12px;
+  margin-left: 4px;
+  flex-shrink: 0;
+}
+
+.role-icon-button {
+  margin-left: -4px;
+  flex-shrink: 0;
+  align-self: flex-start;
+}

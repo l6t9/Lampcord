@@ -223,39 +223,6 @@ jobs:
       KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
       KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
-  linux:
-    name: Linux
-    if: needs.prepare.outputs.should-release == 'true' && inputs.publish-existing != true
-    needs:
-      - prepare
-      - stage
-    uses: ./.github/workflows/reusable-desktop-linux.yml
-    permissions:
-      contents: write
-    with:
-      version: ${{ needs.prepare.outputs.version }}
-      staging-release-tag: ${{ needs.stage.outputs.tag }}
-      package-native: true
-      package-aur: true
-    secrets:
-      GRADLE_ENCRYPTION_KEY: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-
-  windows:
-    name: Windows
-    if: needs.prepare.outputs.should-release == 'true' && inputs.publish-existing != true
-    needs:
-      - prepare
-      - stage
-    uses: ./.github/workflows/reusable-desktop-windows.yml
-    permissions:
-      contents: write
-    with:
-      version: ${{ needs.prepare.outputs.version }}
-      staging-release-tag: ${{ needs.stage.outputs.tag }}
-      package-native: true
-    secrets:
-      GRADLE_ENCRYPTION_KEY: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-
   ios:
     name: iOS
     if: needs.prepare.outputs.should-release == 'true' && inputs.publish-existing != true
@@ -271,20 +238,6 @@ jobs:
     secrets:
       GRADLE_ENCRYPTION_KEY: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
-  macos:
-    name: macOS
-    if: needs.prepare.outputs.should-release == 'true' && inputs.publish-existing != true
-    needs:
-      - prepare
-      - stage
-    uses: ./.github/workflows/reusable-desktop-macos.yml
-    permissions:
-      contents: write
-    with:
-      staging-release-tag: ${{ needs.stage.outputs.tag }}
-    secrets:
-      GRADLE_ENCRYPTION_KEY: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-
   publish:
     name: Publish release
     if: always() && needs.prepare.outputs.should-release == 'true'
@@ -292,10 +245,7 @@ jobs:
       - prepare
       - stage
       - android
-      - linux
-      - windows
       - ios
-      - macos
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -332,8 +282,6 @@ jobs:
 
           expected=(
             "release-assets/lampcord-android-${APP_VERSION}.apk"
-            "release-assets/lampcord-desktop-linux-x64-${APP_VERSION}.AppImage"
-            "release-assets/lampcord-desktop-windows-x64-${APP_VERSION}.zip"
             "release-assets/Lampcord.ipa"
           )
           for file in "${expected[@]}"; do
@@ -361,24 +309,6 @@ jobs:
             exit 1
           }
           mv release-assets/Lampcord.ipa "release-assets/lampcord-ios-${APP_VERSION}.ipa"
-
-      - name: Rename the macOS archive
-        shell: bash
-        env:
-          APP_VERSION: ${{ needs.prepare.outputs.version }}
-        run: |
-          set -euo pipefail
-          shopt -s nullglob
-          dmgs=(release-assets/lampcord-desktop-macos-*-*.dmg)
-          shopt -u nullglob
-          if [[ "${#dmgs[@]}" -ne 1 ]]; then
-            {
-              echo "Expected exactly one macOS DMG, found ${#dmgs[@]}"
-              ls -1 release-assets >&2 || echo "  (none)" >&2
-            } >&2
-            exit 1
-          fi
-          mv "${dmgs[0]}" "release-assets/lampcord-desktop-macos-${APP_VERSION}.dmg"
 
       - name: Generate full changelog
         shell: bash
@@ -420,22 +350,6 @@ jobs:
         with:
           file-path: release-assets/lampcord-android-${{ needs.prepare.outputs.version }}.apk
 
-      - name: Upload Linux AppImage to Pixeldrain
-        id: pixeldrain-linux
-        uses: ./.github/actions/upload-pixeldrain
-        env:
-          PIXELDRAIN_API_KEY: ${{ secrets.PIXELDRAIN_API_KEY }}
-        with:
-          file-path: release-assets/lampcord-desktop-linux-x64-${{ needs.prepare.outputs.version }}.AppImage
-
-      - name: Upload Windows ZIP to Pixeldrain
-        id: pixeldrain-windows
-        uses: ./.github/actions/upload-pixeldrain
-        env:
-          PIXELDRAIN_API_KEY: ${{ secrets.PIXELDRAIN_API_KEY }}
-        with:
-          file-path: release-assets/lampcord-desktop-windows-x64-${{ needs.prepare.outputs.version }}.zip
-
       - name: Upload iOS IPA to Pixeldrain
         id: pixeldrain-ios
         uses: ./.github/actions/upload-pixeldrain
@@ -443,14 +357,6 @@ jobs:
           PIXELDRAIN_API_KEY: ${{ secrets.PIXELDRAIN_API_KEY }}
         with:
           file-path: release-assets/lampcord-ios-${{ needs.prepare.outputs.version }}.ipa
-
-      - name: Upload macOS DMG to Pixeldrain
-        id: pixeldrain-macos
-        uses: ./.github/actions/upload-pixeldrain
-        env:
-          PIXELDRAIN_API_KEY: ${{ secrets.PIXELDRAIN_API_KEY }}
-        with:
-          file-path: release-assets/lampcord-desktop-macos-${{ needs.prepare.outputs.version }}.dmg
 
       - name: Upload checksums to Pixeldrain
         id: pixeldrain-checksums
@@ -492,9 +398,6 @@ jobs:
           mkdir -p stable-assets
 
           cp "release-assets/lampcord-android-${APP_VERSION}.apk" "stable-assets/lampcord-android.apk"
-          cp "release-assets/lampcord-desktop-linux-x64-${APP_VERSION}.AppImage" "stable-assets/lampcord-desktop-linux-x64.AppImage"
-          cp "release-assets/lampcord-desktop-windows-x64-${APP_VERSION}.zip" "stable-assets/lampcord-desktop-windows-x64.zip"
-          cp "release-assets/lampcord-desktop-macos-${APP_VERSION}.dmg" "stable-assets/lampcord-desktop-macos.dmg"
           cp "release-assets/lampcord-ios-${APP_VERSION}.ipa" "stable-assets/lampcord-ios.ipa"
 
           notes="Stable download links, currently pointing at Lampcord ${APP_VERSION}. See the v${APP_VERSION} release for build metadata and checksums."
@@ -511,10 +414,7 @@ jobs:
           APP_VERSION: ${{ needs.prepare.outputs.version }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_UPDATE_WEBHOOK_URL }}
           ANDROID_URL: ${{ steps.pixeldrain-android.outputs.pixeldrain_url }}
-          LINUX_URL: ${{ steps.pixeldrain-linux.outputs.pixeldrain_url }}
-          WINDOWS_URL: ${{ steps.pixeldrain-windows.outputs.pixeldrain_url }}
           IOS_URL: ${{ steps.pixeldrain-ios.outputs.pixeldrain_url }}
-          MACOS_URL: ${{ steps.pixeldrain-macos.outputs.pixeldrain_url }}
           CHECKSUMS_URL: ${{ steps.pixeldrain-checksums.outputs.pixeldrain_url }}
         run: |
           set -euo pipefail
@@ -523,9 +423,8 @@ jobs:
           role2="1534740463481913415"
           role3="1534719840307253359"
 
-          downloads="$(printf '%s\n%s\n%s' \
+          downloads="$(printf '%s\n%s' \
             "[Android]($ANDROID_URL) | [iOS unsigned IPA]($IOS_URL)" \
-            "[Windows x64]($WINDOWS_URL) | [macOS]($MACOS_URL) | [Linux x64]($LINUX_URL)" \
             "[SHA-256 checksums]($CHECKSUMS_URL)")"
           run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
           timestamp="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
@@ -571,10 +470,7 @@ jobs:
       - prepare
       - stage
       - android
-      - linux
-      - windows
       - ios
-      - macos
       - publish
     runs-on: ubuntu-latest
     timeout-minutes: 5

@@ -1,0 +1,12 @@
+.root {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+  padding-left: 16px;
+  padding-right: 16px;
+  border-radius: var(--radius-sm);
+  background-color: var(--background-surface-higher);
+}

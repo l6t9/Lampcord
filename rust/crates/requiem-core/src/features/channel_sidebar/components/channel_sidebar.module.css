@@ -1,0 +1,453 @@
+.channel-sidebar {
+  position: relative;
+  width: 240px;
+  height: 100%;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--background-base-lowest);
+
+  border-left: 1px solid var(--border-subtle);
+
+  border-top-left-radius: var(--radius-md);
+
+  border-top: 1px solid var(--border-subtle);
+}
+
+.guild-name-header {
+  width: 100%;
+  height: 48px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.guild-header-wrap {
+  position: relative;
+  width: 100%;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.guild-banner-anchor {
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  width: 100%;
+  height: 130px;
+  pointer-events: none;
+}
+
+.guild-header-layer {
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  width: 100%;
+  height: 50px;
+  border-top-left-radius: var(--radius-md);
+  pointer-events: none;
+}
+
+/* Covers the whole banner: the ellipse's blur runs past the header and fades out over the
+   picture below it, as Discord's does. */
+.guild-header-ellipse-clip {
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  width: 100%;
+  height: 130px;
+  overflow: hidden;
+  border-top-left-radius: var(--radius-md);
+  pointer-events: none;
+}
+
+/* A filter blurs only inside its own box, so the blur gets 30px of room around the ellipse. */
+.guild-header-ellipse-blur {
+  position: absolute;
+  left: -25%;
+  top: -75px;
+  width: 150%;
+  height: 158px;
+  display: flex;
+  flex-direction: column;
+  padding: 30px 0px;
+  filter: blur(10px);
+  mix-blend-mode: multiply;
+}
+
+.guild-header-ellipse {
+  width: 100%;
+  height: 98px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background-color: #00000085;
+}
+
+.guild-banner-picture {
+  width: 100%;
+  height: 100%;
+}
+
+.guild-banner {
+  position: relative;
+  width: 100%;
+  height: 130px;
+  overflow: hidden;
+  border-top-left-radius: var(--radius-md);
+  background-color: var(--interactive-background-active);
+  box-shadow: var(--shadow-low);
+}
+
+.guild-header {
+  width: 100%;
+  height: 49px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 8px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.guild-header-on-banner {
+  /* Same width as the plain header's rule, so nothing moves when the banner goes. */
+  border-bottom: 1px solid #00000000;
+  filter: drop-shadow(0px 1px 3px #00000099);
+}
+
+.guild-header-content {
+  width: 100%;
+  height: 32px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.guild-dropdown {
+  height: 32px;
+  min-width: 0px;
+  flex-shrink: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 2px;
+  padding-left: 8px;
+  padding-right: 8px;
+  border-radius: var(--radius-sm);
+}
+
+.guild-dropdown:hover {
+  background-color: var(--background-mod-subtle);
+}
+
+.guild-badge-and-name {
+  min-width: 0px;
+  flex-shrink: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.guild-badge-box {
+  width: 20px;
+  height: 18px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.guild-name {
+  min-width: 0px;
+  flex-shrink: 1;
+}
+
+.guild-chevron-box {
+  width: 16px;
+  height: 19px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.guild-chevron {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.guild-invite {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+}
+
+.guild-invite:hover {
+  background-color: var(--background-mod-subtle);
+}
+
+.guild-invite-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.badge {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.badge-flower {
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  width: 18px;
+  height: 18px;
+}
+
+.badge-check {
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  width: 13px;
+  height: 13px;
+}
+
+.channel-list {
+  width: 100%;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: scroll;
+
+  scrollbar-width: thin;
+  scrollbar-fade: hover;
+  /* The card is 58px tall and floats 8px off the bottom; the list ends above it. */
+  margin-bottom: 66px;
+}
+
+/* The banner is 130px tall and the header covers its top 49px; the list shows the rest. */
+.channel-list-banner-gap {
+  width: 100%;
+  height: 81px;
+  flex-shrink: 0;
+}
+
+/* The rows sit on the sidebar's background, so they slide over the banner. */
+.channel-list-content {
+  width: 100%;
+  flex-grow: 1;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 8px 16px;
+  gap: 2px;
+  background-color: var(--background-base-lowest);
+}
+
+.category-label {
+  width: 100%;
+  height: 28px;
+  flex-shrink: 0;
+  padding: 8px 4px 2px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.category-name {
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.category-add {
+  opacity: 0;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.category-label:hover .category-add {
+  opacity: 1;
+}
+
+.category-add-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.channel-row {
+  width: 100%;
+  height: 34px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+
+  gap: 8px;
+  padding: 0px 8px;
+
+  border-radius: var(--radius-sm);
+}
+
+/* Discord's spine sits 24px and its thread rows 36px from the list edge;
+   this list's 8px padding takes the rest. */
+.thread-group {
+  position: relative;
+  width: 100%;
+}
+
+.thread-spine-border {
+  position: absolute;
+  left: 16px;
+  top: 0px;
+  bottom: 24px;
+  width: 2px;
+  border-radius: 2px;
+  background-color: var(--spine-default);
+}
+
+.thread-spine {
+  position: absolute;
+  left: 16px;
+  top: 0px;
+  width: 10px;
+  height: 19px;
+}
+
+.thread-spine-inverted {
+  top: 6px;
+  transform: rotateX(180deg) translateY(-9px);
+}
+
+.thread-item {
+  position: relative;
+}
+
+.thread-wrapper {
+  position: relative;
+  margin-left: 28px;
+}
+
+.thread-row {
+  height: 32px;
+  padding: 4px 8px;
+}
+
+.thread-row .channel-row-inner {
+  height: 24px;
+}
+
+/* The pill sits at the list's left edge, not against the row: 8px of list padding and 8px of
+   row padding (and a thread row's 28px indent) are behind it. */
+.channel-row-unread.thread-unread {
+  left: -43px;
+}
+
+.channel-row-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.channel-row-reactive {
+  flex: 1 1 0px;
+  min-width: 0;
+}
+
+.channel-row-inner {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 34px;
+}
+
+.channel-row-name {
+  flex: 1 1 0px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.channel-row-dim {
+  opacity: 0.5;
+}
+
+.channel-row-unread {
+  position: absolute;
+  left: -15px;
+  top: 50%;
+  margin-top: -4px;
+  width: 4px;
+  height: 8px;
+  border-radius: 0px 4px 4px 0px;
+  background-color: var(--channels-default);
+}
+
+.channel-row-unread-important {
+  background-color: var(--interactive-text-active);
+}
+
+.channel-row:hover {
+
+  background-color: var(--background-mod-subtle);
+}
+
+.channel-row-selected {
+  background-color: var(--background-message-hover);
+}
+
+/* The invite icon only shows on the hovered or open channel, as on the web. */
+.channel-row-invite {
+  display: none;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  margin-left: 4px;
+  cursor: pointer;
+}
+
+.channel-row:hover .channel-row-invite,
+.channel-row-selected .channel-row-invite {
+  display: flex;
+}
+
+.channel-row-invite-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--interactive-text-default);
+}
+
+.channel-row-invite:hover .channel-row-invite-icon {
+  color: var(--interactive-text-hover);
+}
+
+.channel-row-invite:active .channel-row-invite-icon {
+  color: var(--interactive-text-active);
+}
+
+.channel-row-selected:hover,
+.channel-row-selected:active {
+  background-color: var(--background-message-hover);
+}

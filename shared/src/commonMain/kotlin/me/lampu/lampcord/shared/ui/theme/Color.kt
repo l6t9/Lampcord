@@ -1,6 +1,7 @@
 package me.lampu.lampcord.shared.ui.theme
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 
 val ColorLightPrimary = Color(0xFF6750A4)
 val ColorLightOnPrimary = Color(0xFFFFFFFF)
@@ -82,3 +83,43 @@ val DiscordClassicTextTitle = Color(0xFFFFFFFF)
 val DiscordClassicTextBody = Color(0xFFDCDDDE)
 val DiscordClassicTextMuted = Color(0xFF72767D)
 val DiscordClassicBlurple = Color(0xFF5865F2)
+
+/**
+ * Tokens mirrored from Requiem's dark CSS theme. These are the source of truth for
+ * the mobile shell so Android/iOS line up with the Rust/Skia desktop client.
+ */
+object RequiemColors {
+    val Brand = Color(0xFF5865F2)
+    val BrandHover = Color(0xFF4752C4)
+    val AuthBackground = Color(0xFF1B0D4A)
+
+    val BackgroundLowest = Color(0xFF121214)
+    val BackgroundLower = Color(0xFF1A1A1E)
+    val BackgroundLow = Color(0xFF202024)
+    val ChatBackground = Color(0xFF222327)
+    val SurfaceHigh = Color(0xFF242429)
+    val SurfaceHighest = Color(0xFF2B2D31)
+
+    val TextStrong = Color(0xFFF2F3F5)
+    val TextDefault = Color(0xFFDBDEE1)
+    val TextMuted = Color(0xFFB5BAC1)
+    val ChannelDefault = Color(0xFF81828A)
+    val InteractiveMuted = Color(0xFF94949C)
+
+    val BorderSubtle = Color(0x1F94949C)
+    val Green = Color(0xFF23A559)
+    val Yellow = Color(0xFFF0B232)
+    val Red = Color(0xFFF23F43)
+}
+
+object RequiemMetrics {
+    val GuildRailWidth = 72.dp
+    val GuildIconSize = 48.dp
+    val GuildPillWidth = 4.dp
+    val SidebarWidth = 240.dp
+    val ChannelHeaderHeight = 48.dp
+    val ChannelRowHeight = 34.dp
+    val MessageAvatarSize = 40.dp
+    val ComposerMinHeight = 58.dp
+    val MemberListWidth = 265.dp
+}

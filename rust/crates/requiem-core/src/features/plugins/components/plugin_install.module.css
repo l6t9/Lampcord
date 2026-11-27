@@ -1,0 +1,42 @@
+.dialog {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 20px;
+}
+
+.hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    text-align: center;
+}
+
+.hero-tile {
+    margin-bottom: 8px;
+}
+
+.panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-top: 16px;
+    padding-bottom: 16px;
+    padding-left: 16px;
+    padding-right: 16px;
+    border-radius: var(--radius-md);
+    background-color: var(--background-base-lowest);
+    border: 1px solid var(--border-subtle);
+}
+
+.group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.divider {
+    height: 1px;
+    background-color: var(--border-subtle);
+}

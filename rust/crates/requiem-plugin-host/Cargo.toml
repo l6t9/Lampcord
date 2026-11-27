@@ -1,0 +1,20 @@
+[package]
+name = "requiem-plugin-host"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "Runs requiem plugins (wasm components) in a sandbox"
+
+[dependencies]
+wasmtime = { workspace = true, features = ["runtime", "cranelift", "component-model", "std", "parallel-compilation", "anyhow"] }
+wasmtime-wasi = { workspace = true, features = ["p2"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+toml.workspace = true
+log.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+requiem-db = { workspace = true }
+
+[lints]
+workspace = true

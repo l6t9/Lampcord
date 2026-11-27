@@ -1,0 +1,19 @@
+[package]
+name = "word-filter"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+requiem-plugin = { path = "../.." }
+serde = { version = "1", features = ["derive"] }
+
+[build-dependencies]
+requiem-plugin-build = { path = "../../build-support" }
+
+[lints]
+workspace = true

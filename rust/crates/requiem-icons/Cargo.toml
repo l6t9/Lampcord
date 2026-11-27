@@ -1,0 +1,10 @@
+[package]
+name = "requiem-icons"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+publish = false
+description = "Build-time SVG icon compiler: icons/**/*.svg -> Rust path-data constants"
+
+[lints]
+workspace = true

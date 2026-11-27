@@ -1,0 +1,220 @@
+.since {
+    display: flex;
+    flex-direction: row;
+    gap: 24px;
+}
+
+.counts {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 16px;
+}
+
+.count {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+}
+
+.count-icon {
+    width: 16px;
+    height: 16px;
+}
+
+.groups {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    width: 100%;
+}
+
+.thumb {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 72px;
+    flex-shrink: 0;
+}
+
+.thumb-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 40px;
+    border-radius: var(--radius-xs);
+    background-color: var(--background-mod-subtle);
+}
+
+.thumb-empty-square {
+    width: 40px;
+    border-radius: var(--radius-md);
+}
+
+.thumb-empty-wide {
+    width: 71px;
+}
+
+.thumb-empty-icon {
+    width: 20px;
+    height: 20px;
+}
+
+.emojis {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.id-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+}
+
+.id-row:hover {
+    opacity: 0.8;
+}
+
+.owner {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+}
+
+.owner:hover {
+    opacity: 0.8;
+}
+
+.roles {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.role {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 10px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    flex-shrink: 0;
+}
+
+.role:hover {
+    background-color: var(--interactive-background-hover);
+}
+
+.role-head {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+}
+
+.role-head .chip-dot {
+    margin-left: 0px;
+    margin-right: 0px;
+}
+
+.role-name {
+    flex-grow: 1;
+    min-width: 0px;
+}
+
+.perms {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.perm {
+    display: flex;
+    align-items: center;
+    height: 20px;
+    padding: 0px 6px;
+    border-radius: var(--radius-xs);
+    background-color: var(--background-mod-subtle);
+}
+
+.perm-strong {
+    background-color: var(--background-brand);
+}
+
+.rows {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+}
+
+.row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    height: 48px;
+    padding: 4px;
+    border-radius: var(--radius-xs);
+    flex-shrink: 0;
+}
+
+.row:hover {
+    background-color: var(--interactive-background-hover);
+}
+
+.row:active {
+    background-color: var(--interactive-background-active);
+}
+
+.row-name {
+    color: var(--text-default);
+}
+
+.row:hover .row-name {
+    color: var(--text-strong);
+}
+
+.chips {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.chip {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    height: 24px;
+    padding-left: 3px;
+    padding-right: 8px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+}
+
+.chip-plain {
+    padding-left: 8px;
+}
+
+.chip-dot {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+    margin-left: 4px;
+    margin-right: 4px;
+    border-radius: var(--radius-round);
+}
+
+.page {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}

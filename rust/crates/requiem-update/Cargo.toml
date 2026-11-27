@@ -1,0 +1,20 @@
+[package]
+name = "requiem-update"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "Signed update feeds: Ed25519 envelopes, trusted key sets, manifest policy checks and artifact verification. No I/O, shared by the client and `cargo requiem release`."
+
+[dependencies]
+base64.workspace = true
+ed25519-dalek.workspace = true
+semver.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+sha2.workspace = true
+requiem-assets = { workspace = true }
+thiserror.workspace = true
+zip = { workspace = true, features = ["deflate"] }
+
+[lints]
+workspace = true

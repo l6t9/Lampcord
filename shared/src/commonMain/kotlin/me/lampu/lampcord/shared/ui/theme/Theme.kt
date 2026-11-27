@@ -29,18 +29,20 @@ fun LampcordTheme(
     content: @Composable () -> Unit
 ) {
     val dynamicSeed = rememberDynamicSeedColor()
-    val finalSeedColor = remember(seedColor, dynamicSeed, useMaterialYou) {
-        if (useMaterialYou && dynamicSeed != null) {
-            dynamicSeed
-        } else {
-            seedColor ?: dynamicSeed ?: ColorLightPrimary
+    val isRequiemExpressive = paletteStyle == ThemePaletteStyle.REQUIEM_EXPRESSIVE
+    val finalSeedColor = remember(seedColor, dynamicSeed, useMaterialYou, isRequiemExpressive) {
+        when {
+            isRequiemExpressive -> RequiemColors.Brand
+            useMaterialYou && dynamicSeed != null -> dynamicSeed
+            else -> seedColor ?: dynamicSeed ?: ColorLightPrimary
         }
     }
 
     val materialPaletteStyle = when(paletteStyle) {
         ThemePaletteStyle.TONAL_SPOT -> PaletteStyle.TonalSpot
         ThemePaletteStyle.VIBRANT -> PaletteStyle.Vibrant
-        ThemePaletteStyle.EXPRESSIVE -> PaletteStyle.Expressive
+        ThemePaletteStyle.EXPRESSIVE,
+        ThemePaletteStyle.REQUIEM_EXPRESSIVE -> PaletteStyle.Expressive
         ThemePaletteStyle.RAINBOW -> PaletteStyle.Rainbow
         ThemePaletteStyle.FRUIT_SALAD -> PaletteStyle.FruitSalad
         ThemePaletteStyle.CONTENT -> PaletteStyle.Content
@@ -52,14 +54,20 @@ fun LampcordTheme(
         seedColor = finalSeedColor,
         isDark = useDarkTheme,
         paletteStyle = materialPaletteStyle,
-        useMaterialYou = useMaterialYou && useDynamicColor
+        useMaterialYou = useMaterialYou && useDynamicColor && !isRequiemExpressive
     )
 
-    val colorScheme = remember(baseColorScheme, pureBlack, useDarkTheme, themeStore.activeThemes, Settings.shared.transparencyMode) {
+    val requiemScheme = if (isRequiemExpressive) {
+        baseColorScheme.requiemExpressive(useDarkTheme)
+    } else {
+        baseColorScheme
+    }
+
+    val colorScheme = remember(requiemScheme, pureBlack, useDarkTheme, themeStore.activeThemes, Settings.shared.transparencyMode) {
         var scheme = if (useDarkTheme && pureBlack) {
-            baseColorScheme.pureBlack()
+            requiemScheme.pureBlack()
         } else {
-            baseColorScheme
+            requiemScheme
         }
 
         if (themeStore.activeThemes.isNotEmpty()) {
@@ -150,3 +158,78 @@ fun ColorScheme.pureBlack() = copy(
     surfaceContainerHighest = Color.Black,
     surfaceVariant = Color.Black,
 )
+
+/** Material 3 Expressive colors mapped onto Requiem's desktop token palette. */
+private fun ColorScheme.requiemExpressive(isDark: Boolean): ColorScheme = if (isDark) {
+    copy(
+        primary = RequiemColors.Brand,
+        onPrimary = Color.White,
+        primaryContainer = Color(0xFF3138A0),
+        onPrimaryContainer = Color(0xFFE0E1FF),
+        secondary = RequiemColors.TextMuted,
+        onSecondary = RequiemColors.BackgroundLowest,
+        secondaryContainer = RequiemColors.SurfaceHighest,
+        onSecondaryContainer = RequiemColors.TextDefault,
+        tertiary = Color(0xFFC8A2C8),
+        onTertiary = Color(0xFF33203A),
+        tertiaryContainer = Color(0xFF4A3650),
+        onTertiaryContainer = Color(0xFFE7D3E7),
+        error = RequiemColors.Red,
+        onError = Color.White,
+        errorContainer = Color(0xFF5C1F20),
+        onErrorContainer = Color(0xFFFFDAD6),
+        background = RequiemColors.BackgroundLowest,
+        onBackground = RequiemColors.TextDefault,
+        surface = RequiemColors.BackgroundLower,
+        onSurface = RequiemColors.TextDefault,
+        surfaceVariant = RequiemColors.BackgroundLow,
+        onSurfaceVariant = RequiemColors.ChannelDefault,
+        surfaceContainerLowest = RequiemColors.BackgroundLowest,
+        surfaceContainerLow = RequiemColors.BackgroundLower,
+        surfaceContainer = RequiemColors.ChatBackground,
+        surfaceContainerHigh = RequiemColors.SurfaceHigh,
+        surfaceContainerHighest = RequiemColors.SurfaceHighest,
+        outline = RequiemColors.InteractiveMuted,
+        outlineVariant = RequiemColors.BorderSubtle,
+        scrim = Color.Black,
+        inverseSurface = Color(0xFFE4E1E6),
+        inverseOnSurface = RequiemColors.BackgroundLowest,
+        inversePrimary = Color(0xFFBEC2FF),
+    )
+} else {
+    copy(
+        primary = RequiemColors.Brand,
+        onPrimary = Color.White,
+        primaryContainer = Color(0xFFE0E1FF),
+        onPrimaryContainer = Color(0xFF000569),
+        secondary = Color(0xFF5C5D72),
+        onSecondary = Color.White,
+        secondaryContainer = Color(0xFFE1E0F9),
+        onSecondaryContainer = Color(0xFF191A2C),
+        tertiary = Color(0xFF78536B),
+        onTertiary = Color.White,
+        tertiaryContainer = Color(0xFFFFD7EE),
+        onTertiaryContainer = Color(0xFF2E1126),
+        error = Color(0xFFBA1A1A),
+        onError = Color.White,
+        errorContainer = Color(0xFFFFDAD6),
+        onErrorContainer = Color(0xFF410002),
+        background = Color(0xFFFFFBFF),
+        onBackground = Color(0xFF1B1B1F),
+        surface = Color(0xFFFFFBFF),
+        onSurface = Color(0xFF1B1B1F),
+        surfaceVariant = Color(0xFFE3E1EC),
+        onSurfaceVariant = Color(0xFF46464F),
+        surfaceContainerLowest = Color.White,
+        surfaceContainerLow = Color(0xFFF7F2FA),
+        surfaceContainer = Color(0xFFF3EDF7),
+        surfaceContainerHigh = Color(0xFFECE6F0),
+        surfaceContainerHighest = Color(0xFFE6E0E9),
+        outline = Color(0xFF777680),
+        outlineVariant = Color(0xFFC7C5D0),
+        scrim = Color.Black,
+        inverseSurface = Color(0xFF303034),
+        inverseOnSurface = Color(0xFFF3F0F4),
+        inversePrimary = Color(0xFFBEC2FF),
+    )
+}

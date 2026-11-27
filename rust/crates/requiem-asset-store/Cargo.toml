@@ -1,0 +1,23 @@
+[package]
+name = "requiem-asset-store"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+publish = false
+description = "Client-side runtime for Discord-derived assets: fetch the release manifest, fetch/verify/extract what it points at, cache on disk"
+
+[dependencies]
+requiem-assets = { workspace = true }
+wreq = { workspace = true, features = ["json", "stream", "gzip", "brotli", "deflate", "zstd"] }
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["fs", "time", "rt", "sync"] }
+wuff.workspace = true
+
+[dev-dependencies]
+requiem-icons = { workspace = true }
+tokio = { workspace = true, features = ["fs", "time", "rt", "macros", "rt-multi-thread"] }
+
+[lints]
+workspace = true

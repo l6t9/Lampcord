@@ -1,0 +1,272 @@
+.panel {
+  position: relative;
+  width: 680px;
+
+  padding: 0px;
+}
+
+.tutorial {
+  position: absolute;
+  top: -92px;
+  left: -80px;
+  right: -80px;
+  height: 120px;
+}
+
+.arrow-group {
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  width: 0px;
+  height: 0px;
+}
+
+.arrow-group-right {
+  left: auto;
+  right: 0px;
+  transform: scale(-1, 1);
+  transform-origin: 0px 0px;
+}
+
+.arrow {
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  width: 43px;
+  height: 18px;
+  opacity: 1;
+  transform-origin: 0px 0px;
+  transition: transform 0.2s ease-in-out, opacity 0.2s ease-in-out;
+}
+
+.horizontal {
+  top: 118px;
+  transition: none;
+}
+
+.diag1 {
+  width: 48px;
+  height: 20px;
+  transform: translate(10px, 24px) rotate(40deg);
+}
+
+.diag2 {
+  transform: translate(85px, 0px) rotate(70deg);
+}
+
+.has-query .diag1 {
+  opacity: 0.001;
+  transform: translate(0px, 12px) rotate(40deg);
+}
+
+.has-query .diag2 {
+  opacity: 0.001;
+  transform: translate(85px, -10px) rotate(70deg);
+}
+
+.messages {
+  position: absolute;
+  top: 10px;
+  left: 0px;
+  right: 0px;
+  height: 60px;
+  overflow-y: hidden;
+}
+
+.message {
+  position: absolute;
+  top: 30px;
+  left: 0px;
+  width: 100%;
+  transition: opacity 0.15s ease-in-out, transform 0.15s ease-in-out;
+}
+
+.search-message {
+  opacity: 1;
+}
+
+.select-message {
+  opacity: 0.001;
+  transform: translate(0px, 24px);
+}
+
+.has-query .search-message {
+  opacity: 0.001;
+  transform: translate(0px, -24px);
+}
+
+.has-query .select-message {
+  opacity: 1;
+  transform: translate(0px, 0px);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  margin: 4px -4px 0px -4px;
+  padding: 0px;
+}
+
+.field {
+  width: 100%;
+  height: 70px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  background-color: var(--input-background-default);
+  border: 1px solid var(--border-normal);
+}
+
+.results {
+  width: 100%;
+  height: 262px;
+  display: flex;
+  flex-direction: column;
+  padding-top: 16px;
+}
+
+.section {
+  height: 34px;
+  flex-shrink: 0;
+  padding: 4px 10px 0px 10px;
+}
+
+.result {
+  width: 100%;
+  height: 34px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 0px 10px;
+  border-radius: var(--radius-xs);
+}
+
+.result:hover,
+.result-selected {
+  background-color: var(--interactive-background-selected);
+}
+
+.result-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  margin: 0px 9px 0px 2px;
+}
+
+.category {
+  margin-left: 4px;
+}
+
+.spacer {
+  flex-grow: 1;
+}
+
+.empty-state {
+  width: 100%;
+  height: 206px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.empty-art {
+  width: 100px;
+  height: 104px;
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+
+.empty-note {
+  margin-top: 26px;
+}
+
+.empty-cta {
+  margin-top: 0px;
+}
+
+.protip {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.protip-label {
+  margin-right: 3px;
+}
+
+.symbol {
+  display: flex;
+  align-items: center;
+  margin: 0px 1px;
+  padding: 2px;
+  border-radius: var(--radius-xs);
+  background-color: var(--background-base-lowest);
+}
+
+.tip-text {
+  margin: 0px 3px;
+}
+
+.avatar-box {
+  position: relative;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  margin-right: 5px;
+}
+
+.avatar {
+  width: 20px;
+  height: 20px;
+}
+
+.dot-ring {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 11px;
+  height: 11px;
+  border-radius: var(--radius-round);
+  background-color: var(--modal-surface);
+}
+
+.dot {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 9px;
+  height: 9px;
+}
+
+.guild-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 5px;
+  border-radius: var(--radius-xs);
+  background-color: var(--background-base-lower);
+}
+
+.username {
+  margin-left: 4px;
+}
+
+.link {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.link:hover .link-text {
+  text-decoration: underline;
+}
+
+.no-query {
+  opacity: 1;
+}

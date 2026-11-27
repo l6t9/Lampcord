@@ -1,0 +1,64 @@
+.page {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-top: 20px;
+    padding-bottom: 16px;
+    padding-left: 20px;
+    padding-right: 20px;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-subtle);
+    background-color: var(--background-surface-high);
+    box-shadow: var(--shadow-border);
+}
+
+.card-header {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 16px;
+}
+
+.titles {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    flex-shrink: 1;
+    gap: 2px;
+}
+
+.panel {
+    display: flex;
+    flex-direction: column;
+    padding-top: 16px;
+    padding-bottom: 16px;
+    padding-left: 16px;
+    padding-right: 16px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-subtle);
+    background-color: var(--background-base-lower);
+}
+
+.groups {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.card-footer {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-end;
+}

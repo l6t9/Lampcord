@@ -1,0 +1,38 @@
+.field {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 24px;
+  width: 100%;
+}
+
+.labels {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-grow: 1;
+  flex-shrink: 1;
+  min-width: 0px;
+}
+
+.label-row {
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+}
+
+.toggle {
+  display: flex;
+  flex-shrink: 0;
+}
+
+.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.track {
+  width: 48px;
+  height: 24px;
+  flex-shrink: 0;
+}

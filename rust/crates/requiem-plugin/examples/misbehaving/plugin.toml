@@ -1,0 +1,17 @@
+id = "dev.requiem.misbehaving"
+name = "Misbehaving"
+version = "0.1.0"
+api = "1.0"
+description = "Test fixture: panics, loops forever and runs out of memory, to check the host's limits."
+
+[permissions]
+"messages.intercept-incoming" = "test"
+"messages.intercept-outgoing" = "test"
+
+[hooks]
+incoming = {}
+outgoing = {}
+settings-ui = {}
+
+[limits]
+memory-mib = 8

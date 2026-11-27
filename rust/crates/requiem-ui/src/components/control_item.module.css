@@ -1,0 +1,77 @@
+.root {
+  display: flex;
+  flex-direction: row;
+  flex-grow: 1;
+  gap: 12px;
+  margin-left: -12px;
+  margin-right: -12px;
+  min-height: 48px;
+  padding: 12px;
+  border-radius: var(--radius-lg);
+}
+
+.clickable:hover {
+  background-color: var(--interactive-background-hover);
+}
+
+.leading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.trailing {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  flex-shrink: 1;
+  min-width: 0px;
+  gap: 4px;
+  justify-content: center;
+}
+
+.title {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  color: var(--text-strong);
+}
+
+.subtitle {
+  color: var(--text-subtle);
+}
+
+.accordion {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-sm);
+  background-color: var(--background-mod-subtle);
+}
+
+.trigger-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}

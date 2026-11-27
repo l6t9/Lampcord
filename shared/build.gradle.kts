@@ -17,26 +17,6 @@ val unpackTwemoji = tasks.register<Sync>("unpackTwemoji") {
     into(layout.buildDirectory.dir("generated/twemojiResources"))
 }
 
-val voiceDesktopDir = rootProject.layout.buildDirectory.dir("voice-desktop")
-val configureVoiceDesktop = tasks.register<Exec>("configureVoiceDesktop") {
-    inputs.file(rootProject.file("native/voice/CMakeLists.txt"))
-    outputs.file(voiceDesktopDir.map { it.file("CMakeCache.txt") })
-    environment("JAVA_HOME", System.getProperty("java.home"))
-    commandLine("cmake", "-S", rootProject.file("native/voice"), "-B", voiceDesktopDir.get().asFile,
-        "-DCMAKE_BUILD_TYPE=Release", "-DFETCHCONTENT_BASE_DIR=${rootProject.layout.buildDirectory.get()}/voice-deps")
-}
-val buildVoiceDesktop = tasks.register<Exec>("buildVoiceDesktop") {
-    dependsOn(configureVoiceDesktop)
-    inputs.dir(rootProject.file("native/voice"))
-    outputs.dir(voiceDesktopDir.map { it.dir("out") })
-    commandLine("cmake", "--build", voiceDesktopDir.get().asFile, "--config", "Release", "--target", "lampcord_voice", "--parallel", "2")
-}
-val packageVoiceDesktop = tasks.register<Sync>("packageVoiceDesktop") {
-    dependsOn(buildVoiceDesktop)
-    from(voiceDesktopDir.map { it.dir("out") }) { include("*.so", "*.dll", "*.dylib"); into("voice") }
-    into(layout.buildDirectory.dir("generated/voiceResources"))
-}
-
 val generatedUpdateDir = layout.buildDirectory.dir("generated/update")
 
 val generateAppVersion = tasks.register("generateAppVersion") {
@@ -83,8 +63,6 @@ kotlin {
         }
     }
 
-    jvm("desktop")
-
     listOf(
         iosArm64(),
         iosSimulatorArm64()
@@ -121,8 +99,6 @@ kotlin {
             }
         }
         getByName("androidMain").dependsOn(jvmSharedMain)
-        getByName("desktopMain").dependsOn(jvmSharedMain)
-        getByName("desktopMain").resources.srcDir(packageVoiceDesktop)
 
         commonMain {
             resources.srcDir(unpackTwemoji)
@@ -169,13 +145,6 @@ kotlin {
             implementation(libs.composeWebview)
         }
 
-        getByName("desktopTest") {
-            dependencies {
-                implementation(kotlin("test-junit"))
-                implementation(libs.ktor.client.mock)
-            }
-        }
-
         getByName("iosMain") {
             dependencies {
                 implementation(libs.ktor.client.darwin)
@@ -199,38 +168,11 @@ kotlin {
             }
         }
 
-        getByName("desktopMain") {
-            dependencies {
-                implementation(compose.desktop.currentOs)
-                implementation(libs.tianscar.imageio.apng)
-                implementation("dev.nucleusframework:nucleus.system-color:${libs.versions.nucleus.get()}")
-
-                implementation("io.ktor:ktor-server-core:${libs.versions.ktor.get()}")
-                implementation("io.ktor:ktor-server-netty:${libs.versions.ktor.get()}")
-                implementation("io.ktor:ktor-server-websockets:${libs.versions.ktor.get()}")
-
-                val javacppPlatform = System.getProperty("org.bytedeco.javacpp.platform") ?: run {
-                    val osName = System.getProperty("os.name").lowercase()
-                    val osArch = System.getProperty("os.arch").lowercase()
-                    when {
-                        osName.contains("mac") -> if (osArch == "aarch64" || osArch == "arm64") "macosx-arm64" else "macosx-x86_64"
-                        osName.contains("win") -> "windows-x86_64"
-                        else -> if (osArch == "aarch64" || osArch == "arm64") "linux-arm64" else "linux-x86_64"
-                    }
-                }
-                implementation("org.bytedeco:ffmpeg:${libs.versions.ffmpegPlatform.get()}")
-                implementation("org.bytedeco:ffmpeg:${libs.versions.ffmpegPlatform.get()}:$javacppPlatform")
-
-                implementation(libs.jna)
-                implementation(libs.jna.platform)
-            }
-        }
     }
 }
 
 dependencies {
     add("kspAndroid", libs.room.compiler)
-    add("kspDesktop", libs.room.compiler)
     add("kspIosArm64", libs.room.compiler)
     add("kspIosSimulatorArm64", libs.room.compiler)
 }

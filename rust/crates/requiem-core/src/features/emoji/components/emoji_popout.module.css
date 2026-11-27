@@ -1,0 +1,132 @@
+.layer {
+  position: absolute;
+  top: 0px;
+  left: 0px;
+}
+
+.layer-open {
+  width: 100%;
+  height: 100%;
+}
+
+.popout {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  width: 288px;
+  overflow: hidden;
+  background-color: var(--background-surface-highest);
+  border-radius: 8px;
+  box-shadow: var(--shadow-border), var(--shadow-low);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+}
+
+.row {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+}
+
+.emoji {
+  width: 48px;
+  height: 48px;
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex: 1 1 auto;
+  min-width: 0px;
+  margin-left: 10px;
+}
+
+.cta {
+  display: flex;
+  margin-top: 16px;
+  width: 100%;
+  height: 32px;
+}
+
+.cta-button {
+  width: 100%;
+}
+
+.guild-section {
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  background-color: var(--background-base-lower);
+}
+
+.guild-title {
+  margin-bottom: 8px;
+}
+
+.guild-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.guild-icon-button {
+  display: flex;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+}
+
+.guild-icon {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 10px;
+}
+
+.guild-icon-tile {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--control-secondary-background-default);
+}
+
+.guild-name-button {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  min-width: 0px;
+}
+
+.guild-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  flex: 1 1 auto;
+  min-width: 0px;
+  margin-left: 10px;
+}
+
+.guild-name {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  min-width: 0px;
+}
+
+.guild-badge {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  margin-right: 4px;
+  flex-shrink: 0;
+}

@@ -1,0 +1,14 @@
+.browser {
+  display: flex;
+  flex-direction: column;
+  width: 480px;
+}
+
+.header {
+  padding: 16px;
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+}

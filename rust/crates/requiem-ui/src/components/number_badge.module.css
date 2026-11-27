@@ -1,0 +1,13 @@
+.number-badge {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  height: 16px;
+  min-height: 16px;
+  min-width: 16px;
+  border-radius: var(--radius-round);
+  background-color: var(--badge-notification-background);
+}

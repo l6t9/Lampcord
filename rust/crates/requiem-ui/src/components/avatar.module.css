@@ -1,0 +1,99 @@
+.wrap-20 {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.avatar-20 {
+  width: 20px;
+  height: 20px;
+}
+
+.dot-20 {
+  position: absolute;
+  left: 14px;
+  top: 14px;
+  width: 6px;
+  height: 6px;
+}
+
+.wrap-32 {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.avatar-32 {
+  width: 32px;
+  height: 32px;
+}
+
+.dot-32 {
+  position: absolute;
+  left: 22px;
+  top: 22px;
+  width: 10px;
+  height: 10px;
+}
+
+.wrap-80 {
+  width: 80px;
+  height: 80px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.avatar-80 {
+  width: 80px;
+  height: 80px;
+}
+
+.dot-80 {
+  position: absolute;
+  left: 60px;
+  top: 60px;
+  width: 16px;
+  height: 16px;
+}
+
+.wrap-40 {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.avatar-40 {
+  width: 40px;
+  height: 40px;
+}
+
+.dot-40 {
+  position: absolute;
+  left: 28px;
+  top: 28px;
+  width: 12px;
+  height: 12px;
+}
+
+.wrap-120 {
+  width: 120px;
+  height: 120px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.avatar-120 {
+  width: 120px;
+  height: 120px;
+}
+
+.dot-120 {
+  position: absolute;
+  left: 88px;
+  top: 88px;
+  width: 24px;
+  height: 24px;
+}

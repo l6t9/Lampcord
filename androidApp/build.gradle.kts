@@ -8,27 +8,9 @@ plugins {
     alias(libs.plugins.compose.compiler)
 }
 
-val rustCoreEnabled = providers.gradleProperty("rustCore").orElse("true").map { it.toBoolean() }
-val rustFfiJniLibsDir = rootProject.projectDir.resolve("androidApp/src/main/jniLibs")
-
-val buildRustFfiAndroid by tasks.registering(Exec::class) {
-    group = "rust"
-    description = "Build lampcord-ffi for Android ABIs with cargo-ndk into src/main/jniLibs"
-    onlyIf { rustCoreEnabled.get() }
-    workingDir = rootProject.projectDir.resolve("rust")
-    commandLine(
-        "cargo", "ndk",
-        "-t", "arm64-v8a", "-t", "armeabi-v7a", "-t", "x86_64", "-t", "x86",
-        "-o", rustFfiJniLibsDir.absolutePath,
-        "build", "-p", "lampcord-ffi", "--features", "uniffi", "--release",
-    )
-}
-
-afterEvaluate {
-    tasks.matching { it.name.startsWith("merge") && it.name.endsWith("JniLibFolders") }.configureEach {
-        dependsOn(buildRustFfiAndroid)
-    }
-}
+// The old lampcord-ffi crate is gone. The Requiem core bridge is not wired up yet,
+// so mobile stays on the Kotlin gateway until the new FFI lands.
+val rustCoreEnabled = false
 
 android {
     namespace = "me.lampu.lampcord"
@@ -65,7 +47,7 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("boolean", "RUST_CORE", rustCoreEnabled.get().toString())
+        buildConfigField("boolean", "RUST_CORE", rustCoreEnabled.toString())
 
         ndk { abiFilters += (providers.gradleProperty("voiceAbis").orNull ?: "armeabi-v7a,arm64-v8a,x86,x86_64").split(",") }
         externalNativeBuild {

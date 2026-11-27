@@ -1,0 +1,21 @@
+[package]
+name = "requiem-asset-build"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+publish = false
+description = "Build-time half of the asset pipeline: find Discord's current web build, cache it, resolve the recipes against it and compose manifest.json"
+
+[dependencies]
+requiem-assets = { workspace = true }
+brotli.workspace = true
+reqwest = { workspace = true, features = ["json"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+tar.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "fs", "sync", "time", "net"] }
+
+[lints]
+workspace = true

@@ -1,0 +1,50 @@
+[package]
+name = "requiem"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "Windows/Linux desktop shell for requiem-core: winit window, native title bar, settings-as-modal UI"
+
+[dependencies]
+requiem-asset-store = { workspace = true }
+requiem-updater = { workspace = true }
+requiem-db = { workspace = true }
+semver.workspace = true
+requiem-core = { workspace = true, features = ["video", "sound", "voice", "asio"] }
+dotenvy.workspace = true
+emojis.workspace = true
+tracing.workspace = true
+log.workspace = true
+tracing-log.workspace = true
+tracing-subscriber.workspace = true
+wreq = { workspace = true, features = ["json", "stream", "gzip", "brotli", "deflate", "zstd"] }
+rfd.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true, features = ["raw_value"] }
+skia-safe = { workspace = true, features = ["gl", "textlayout", "skottie", "webp-decode"] }
+thiserror.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net", "time", "sync"] }
+requiem-i18n = { workspace = true }
+sys-locale.workspace = true
+requiem-ui = { workspace = true }
+winit.workspace = true
+wry.workspace = true
+tao.workspace = true
+base64.workspace = true
+
+[target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
+x11-dl = "2.21.0"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = ["Win32_System_Console", "Win32_Foundation", "Win32_UI_Input_KeyboardAndMouse", "Win32_System_SystemInformation", "Win32_System_Registry", "Win32_UI_Shell"] }
+windows = { version = "0.62", features = ["UI_Notifications", "Data_Xml_Dom", "Foundation"] }
+
+[dev-dependencies]
+taffy.workspace = true
+requiem-ui = { workspace = true, features = ["test-hooks"] }
+
+[build-dependencies]
+requiem-css = { workspace = true }
+
+[lints]
+workspace = true

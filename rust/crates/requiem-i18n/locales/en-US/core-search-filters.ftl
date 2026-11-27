@@ -1,0 +1,29 @@
+## Strings of core/search-filters
+
+search-filters-any-content = Any content
+search-filters-ex-bot = ex. Bot
+search-filters-true = True
+search-filters-false = False
+search-filters-ex-true = ex. True
+search-filters-before = Before
+search-filters-during = During
+search-filters-after = After
+search-filters-select-a-date = Select a date
+search-filters-add-date = Add date
+search-filters-from = From
+search-filters-sent-by-any-of-the-selected = Sent by any of the selected users
+search-filters-in = In
+search-filters-sent-in-any-of-the-selected = Sent in any of the selected channels
+search-filters-has = Has
+search-filters-includes-any-of-the-selected-types = Includes any of the selected types of data
+search-filters-mentions = Mentions
+search-filters-mentions-any-of-the-selected-users = Mentions any of the selected users
+search-filters-date = Date
+search-filters-when-the-message-was-sent = When the message was sent
+search-filters-author-type = Author Type
+search-filters-sent-by-any-of-the-selected-2 = Sent by any of the selected types of author
+search-filters-pinned = Pinned
+search-filters-if-the-message-is-pinned-or = If the message is pinned or not
+search-filters-cancel = Cancel
+search-filters-apply-filters = Apply Filters
+search-filters-filters = Filters

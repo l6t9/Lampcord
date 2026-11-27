@@ -1,6 +1,6 @@
 # Lampcord
 
-Lampcord is a lightweight Discord client built with Compose Multiplatform for Mobile and Desktop. It aims for a native, fast, and customizable Discord experience without the bloat and heavy memory footprint of Electron or WebViews.
+Lampcord is a lightweight Discord client with a Kotlin Multiplatform mobile app for Android/iOS and a Rust/Skia Requiem desktop client. It aims for a native, fast, and customizable Discord experience without Electron or a webview-rendered UI.
 
 <div style="display: flex; gap: 0.5rem; align-items: center;">
   <a href="https://github.com/l6t9/Lampcord/releases">
@@ -80,50 +80,6 @@ Lampcord is a lightweight Discord client built with Compose Multiplatform for Mo
       </p>
     </td>
     <td align="center" valign="top" width="33%">
-      <h2>Windows</h2>
-      <p>Windows 10+ · x64</p>
-      <p>
-        <a href="https://github.com/l6t9/Lampcord/releases/download/stable/lampcord-desktop-windows-x64.zip">
-          <img alt="Download Stable ZIP" src="assets/badges/platform/windows-portable.svg" />
-        </a>
-      </p>
-      <p>
-        <a href="https://github.com/l6t9/Lampcord/releases/download/nightly-latest/lampcord-desktop-windows-x64-nightly.zip">
-          <img alt="Download Nightly ZIP" src="assets/badges/platform/windows-installer.svg" />
-        </a>
-      </p>
-    </td>
-    <td align="center" valign="top" width="33%">
-      <h2>Linux</h2>
-      <p>x86_64 · AppImage or packages</p>
-      <p>
-        <a href="https://github.com/l6t9/Lampcord/releases/download/stable/lampcord-desktop-linux-x64.AppImage">
-          <img alt="Download Stable AppImage" src="assets/badges/platform/linux-appimage.svg" />
-        </a>
-      </p>
-      <p>
-        <a href="https://aur.archlinux.org/packages/lampcord-bin">
-          <img alt="AUR Package" src="assets/badges/platform/linux-aur.svg" />
-        </a>
-      </p>
-    </td>
-  </tr>
-  <tr>
-    <td align="center" valign="top" width="33%">
-      <h2>macOS</h2>
-      <p>macOS 12+ · x64 / ARM (unsigned)</p>
-      <p>
-        <a href="https://github.com/l6t9/Lampcord/releases/download/stable/lampcord-desktop-macos.dmg">
-          <img alt="Download Stable DMG" src="assets/badges/platform/macos-apple-silicon.svg" />
-        </a>
-      </p>
-      <p>
-        <a href="https://github.com/l6t9/Lampcord/releases/download/nightly-latest/lampcord-desktop-macos-nightly.dmg">
-          <img alt="Download Nightly DMG" src="assets/badges/platform/macos-intel.svg" />
-        </a>
-      </p>
-    </td>
-    <td align="center" valign="top" width="33%">
       <h2>iOS</h2>
       <p>iPhone &amp; iPad · iOS 17+ (unsigned)</p>
       <p>
@@ -134,8 +90,16 @@ Lampcord is a lightweight Discord client built with Compose Multiplatform for Mo
       <p><sub>AltStore · SideStore · TrollStore · Sideloadly</sub></p>
     </td>
     <td align="center" valign="top" width="33%">
+      <h2>Desktop</h2>
+      <p>Windows / Linux · Rust/Skia Requiem client</p>
+      <p>Build from <code>rust/</code> with <code>cargo build --release -p requiem</code>.</p>
+      <p><sub>The old Compose/JVM desktop packages are retired.</sub></p>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" valign="top" colspan="3">
       <h2>All Releases</h2>
-      <p>All versioned builds &amp; packages</p>
+      <p>All versioned mobile builds &amp; packages</p>
       <p>
         <a href="https://github.com/l6t9/Lampcord/releases">
           <img alt="View GitHub Releases" src="https://img.shields.io/badge/GitHub-View_Releases-181717?style=for-the-badge&logo=github&logoColor=white" />
@@ -157,24 +121,28 @@ Lampcord is a lightweight Discord client built with Compose Multiplatform for Mo
 - **Android SDK** (API 34+)
 - **CMake & NDK** (for native voice/DAVE components)
 
-### Desktop (Linux / macOS / Windows)
+### Desktop (Requiem client)
+
+Desktop is the Rust/Skia client in `rust/`. The old Compose/JVM desktop app and its
+Gradle tasks have been removed.
 
 ```bash
-# Run Desktop App
-./gradlew :desktopApp:run
-
-# Package Linux AppImage
-./gradlew :desktopApp:createAppImageLocal
-
-# Package macOS DMG (macOS only)
-./gradlew :desktopApp:packageReleaseDmg
-
-# Package Windows Zip
-./gradlew :desktopApp:createDistributable
+cd rust
+cargo build --release -p requiem
+./target/release/requiem
 ```
 
-The macOS DMG is unsigned, like the iOS IPA: there is no `codesign` identity or notarisation
-in the build, so macOS will need `xattr -d com.apple.quarantine` after first download.
+Build a Linux AppImage after the release binary exists:
+
+```bash
+cd ..
+scripts/package_appimage.sh
+```
+
+The script reads `rust/target/release/requiem` and writes `dist/Lampcord-Requiem.AppImage`.
+Pass `--binary` if Cargo used a custom `CARGO_TARGET_DIR`. Packaging artifacts are written
+to `dist/`. Voice on desktop is handled by Requiem's Rust voice stack; `native/voice`
+remains for Android.
 
 ### Android
 

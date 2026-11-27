@@ -1,0 +1,31 @@
+[package]
+name = "requiem-h3"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+publish = false
+description = "An HTTP/3 client whose QUIC handshake and HTTP/3 settings follow Chromium's: quinn-proto's state machine over BoringSSL (the same one the TCP connections use)"
+
+[dependencies]
+requiem-db = { workspace = true }
+serde_json.workspace = true
+btls.workspace = true
+btls-sys.workspace = true
+bytes.workspace = true
+foreign-types.workspace = true
+futures-core.workspace = true
+futures-util.workspace = true
+http.workspace = true
+quinn-proto = { workspace = true, features = ["ring"] }
+rand.workspace = true
+ring.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["net", "time", "sync", "rt", "macros"] }
+tracing = { workspace = true, features = ["log"] }
+wreq = { workspace = true, features = ["json", "stream", "cookies", "gzip", "brotli", "deflate", "zstd"] }
+
+[dev-dependencies]
+wreq-util.workspace = true
+
+[lints]
+workspace = true

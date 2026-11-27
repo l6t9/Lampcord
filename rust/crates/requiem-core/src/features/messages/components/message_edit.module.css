@@ -1,0 +1,41 @@
+.edit {
+  width: 100%;
+  min-width: 0px;
+  display: flex;
+  flex-direction: column;
+}
+
+.edit-box {
+  width: 100%;
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  padding-left: 15px;
+  padding-right: 12px;
+  border-radius: var(--radius-sm);
+  background-color: var(--chat-background-default);
+}
+
+.edit-input {
+  width: auto;
+  min-width: 0px;
+  height: auto;
+  min-height: 56px;
+  max-height: 50vh;
+  flex-grow: 1;
+  flex-shrink: 1;
+  background-color: #00000000;
+  border: 0px solid #00000000;
+}
+
+.edit-hint {
+  display: flex;
+  flex-direction: row;
+  padding-top: 7px;
+  padding-bottom: 7px;
+}
+
+.edit-hint-link {
+  display: flex;
+  flex-direction: row;
+}

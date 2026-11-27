@@ -24,6 +24,7 @@ import me.lampu.lampcord.shared.state.SettingsStore
 import me.lampu.lampcord.shared.state.UserStore
 import me.lampu.lampcord.shared.state.VoiceStore
 import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.ui.theme.RequiemColors
 import me.lampu.lampcord.shared.utils.CleanUtils
 import org.koin.compose.koinInject
 
@@ -275,10 +276,10 @@ fun ChannelHeader(
                 }
             }
         },
-        expandedHeight = 56.dp,
+        expandedHeight = 48.dp,
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.surface,
-            scrolledContainerColor = MaterialTheme.colorScheme.surface
+            containerColor = RequiemColors.ChatBackground,
+            scrolledContainerColor = RequiemColors.ChatBackground
         )
     )
 }

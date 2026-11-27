@@ -1,0 +1,16 @@
+[package]
+name = "requiem-db"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+publish = false
+description = "The app's machine-local state in one SQLite database: preferences, instances, Alt-Svc knowledge, plugin storage"
+
+[dependencies]
+rusqlite = { workspace = true, features = ["bundled"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+log.workspace = true
+
+[lints]
+workspace = true

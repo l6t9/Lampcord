@@ -1,0 +1,30 @@
+.warning {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid var(--red-400);
+  border-radius: var(--radius-sm);
+  background-color: var(--background-feedback-critical);
+  padding-top: 16px;
+  padding-bottom: 16px;
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.fingerprints {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.actions {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+}

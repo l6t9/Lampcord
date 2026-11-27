@@ -1,8 +1,8 @@
-name: Rust Core
+name: Requiem Desktop
 
 on:
   push:
-    branches: [rewrite/rust-core]
+    branches: [wip/requiem-desktop-core]
     paths:
       - "rust/**"
       - ".github/workflows/rust-core.yml"
@@ -21,44 +21,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: rust
-      - name: Format
-        run: cargo fmt --all -- --check
-      - name: Check
-        run: cargo check -p lampcord-model -p lampcord-core -p lampcord-transport -p lampcord-ffi
-      - name: Test
-        run: cargo test -p lampcord-model -p lampcord-core -p lampcord-transport -p lampcord-ffi
-      - name: Build FFI (uniffi)
-        run: cargo build -p lampcord-ffi --features uniffi
-
-  smoke-jvm:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: rust
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
-      - uses: gradle/actions/setup-gradle@v4
-      - name: Build Rust FFI
-        run: cargo build -p lampcord-ffi --features uniffi
-        working-directory: rust
-      - name: Generate Kotlin bindings
-        run: cargo run -p lampcord-ffi --features bindgen -- generate --library target/debug/liblampcord_ffi.so --language kotlin --out-dir ../shared/src/desktopMain/kotlin
-        working-directory: rust
-      - name: JVM smoke test
-        run: ./gradlew :desktopApp:smokeRustFfi --console=plain
-      - name: Upload FFI artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: lampcord-ffi-linux-x86-64
-          path: rust/target/debug/liblampcord_ffi.so
-          if-no-files-found: error
+      - name: Check TSX runtime
+        run: cargo check -p requiem-tsx
+      - name: Check desktop shell
+        run: cargo check -p requiem
+      - name: Test TSX runtime
+        run: cargo test -p requiem-tsx
+      - name: Test core UI glue
+        run: cargo test -p requiem-core --features sound --lib ui_tsx
+      - name: Build release binary
+        run: cargo build --release -p requiem

@@ -15,6 +15,7 @@ enum class ThemePaletteStyle {
     CONTENT,
     MONOCHROME,
     NEUTRAL,
+    REQUIEM_EXPRESSIVE,
 }
 
 enum class FontOption {

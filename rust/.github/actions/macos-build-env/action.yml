@@ -1,0 +1,9 @@
+name: macOS build environment
+description: Homebrew packages the client needs on macOS. Run it after checkout.
+
+runs:
+  using: composite
+  steps:
+    - name: Install Homebrew packages
+      shell: bash
+      run: brew install ffmpeg cmake ninja pkg-config

@@ -1,0 +1,210 @@
+.root {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  gap: 4px;
+  border-radius: var(--radius-sm);
+}
+
+.sm {
+  height: 32px;
+  min-width: 60px;
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.md {
+  height: 40px;
+  min-width: 100px;
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+.primary {
+  background-color: var(--background-brand);
+  border: 1px solid var(--opacity-white-8);
+}
+.primary:hover {
+  background-color: var(--control-primary-background-hover);
+}
+.primary:active {
+  background-color: var(--control-primary-background-active);
+}
+
+.secondary {
+  background-color: var(--background-mod-subtle);
+  border: 1px solid var(--border-muted);
+}
+.secondary:hover {
+  background-color: var(--background-mod-normal);
+}
+.secondary:active {
+  background-color: var(--background-mod-strong);
+}
+
+.critical-primary {
+  background-color: var(--control-critical-primary-background-default);
+}
+.critical-primary:hover {
+  background-color: var(--control-critical-primary-background-hover);
+}
+.critical-primary:active {
+  background-color: #971d28;
+}
+
+.critical-secondary {
+  background-color: var(--background-mod-subtle);
+}
+.critical-secondary:hover {
+  background-color: var(--background-mod-normal);
+}
+.critical-secondary:active {
+  background-color: var(--background-mod-strong);
+}
+
+.active {
+  background-color: var(--control-connected-background-default);
+}
+.active:hover {
+  background-color: var(--control-connected-background-hover);
+}
+.active:active {
+  background-color: var(--control-connected-background-active);
+}
+
+.full-width {
+  width: 100%;
+}
+
+.overlay-primary {
+  background-color: var(--white);
+  border: 1px solid var(--border-subtle);
+}
+.overlay-primary:hover {
+  background-color: #e0e0e3;
+}
+.overlay-primary:active {
+  background-color: #c2c2c7;
+}
+
+.expressive {
+  background-color: var(--white);
+  border: 0.667px solid #00000000;
+}
+.expressive:hover {
+  background-color: var(--white);
+}
+.expressive:active {
+  background-color: #efeff1;
+}
+
+.expressive-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.overlay-secondary {
+  background-color: var(--control-overlay-secondary-background-default);
+  border: 1px solid var(--border-muted);
+}
+.overlay-secondary:hover {
+  background-color: var(--control-overlay-secondary-background-hover);
+}
+.overlay-secondary:active {
+  background-color: var(--control-overlay-secondary-background-active);
+}
+
+.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.loading {
+  position: relative;
+}
+
+.label-hidden {
+  opacity: 0;
+}
+
+.spinner {
+  position: absolute;
+  inset: 0px;
+}
+
+.icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: var(--text-strong);
+}
+.primary .icon,
+.critical-primary .icon,
+.active .icon,
+.overlay-secondary .icon {
+  color: var(--white);
+}
+.overlay-primary .icon,
+.expressive .icon,
+.expressive-icon {
+  color: var(--black);
+}
+.critical-secondary .icon {
+  color: var(--control-critical-secondary-text-default);
+}
+
+.icon-only {
+  min-width: 0px;
+  padding-left: 0px;
+  padding-right: 0px;
+}
+
+.sm.icon-only {
+  width: 32px;
+}
+
+.md.icon-only {
+  width: 40px;
+}
+
+.icon-only-variant {
+  background-color: #00000000;
+  border: 1px solid #00000000;
+  transition: background-color 0.15s ease-out, border-color 0.15s ease-out;
+}
+.icon-only-variant:hover {
+  background-color: var(--control-icon-only-background-hover);
+  border: 1px solid var(--control-icon-only-border-hover);
+}
+.icon-only-variant:active {
+  background-color: var(--control-icon-only-background-active);
+  border: 1px solid var(--control-icon-only-border-active);
+}
+
+.icon-only-icon-md {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: var(--control-icon-only-icon-default);
+  transition: color 0.15s ease-out;
+}
+
+.icon-only-icon-sm {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: var(--control-icon-only-icon-default);
+  transition: color 0.15s ease-out;
+}
+
+.icon-only-variant:hover .icon-only-icon-md,
+.icon-only-variant:hover .icon-only-icon-sm {
+  color: var(--control-icon-only-icon-hover);
+}
+
+.icon-only-variant:active .icon-only-icon-md,
+.icon-only-variant:active .icon-only-icon-sm {
+  color: var(--control-icon-only-icon-active);
+}

@@ -1,0 +1,330 @@
+name: Release Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag to create (e.g. v0.1.0-alpha.1)'
+        required: true
+        type: string
+  push:
+    tags:
+      - 'v*.*.*'
+
+
+env:
+  FFMPEG_WIN_URL: https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n9.0-latest-win64-lgpl-shared-9.0.zip
+  FFMPEG_LINUX_URL: https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n9.0-latest-linux64-lgpl-shared-9.0.tar.xz
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x64
+            os: ubuntu-24.04
+
+            target_dir: target
+          - name: windows-x64
+            os: windows-latest
+            # Skia's clang-cl build fails once this path gets deep.
+            target_dir: C:\t
+
+    env:
+      CARGO_TARGET_DIR: ${{ matrix.target_dir }}
+
+    steps:
+      - name: Enable long paths and symlinks for git (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          git config --global core.longpaths true
+          git config --global core.symlinks true
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Determine version
+        id: version
+        shell: bash
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          REF_NAME: ${{ github.ref_name }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "VERSION=$INPUT_VERSION" >> "$GITHUB_OUTPUT"
+          else
+            echo "VERSION=$REF_NAME" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install Rust toolchain (from rust-toolchain.toml)
+        shell: bash
+        run: rustup toolchain install
+
+      - name: Check the published desktop identity
+        if: vars.UPDATE_BACKEND_BASE != ''
+        shell: bash
+        run: |
+          signed="$RUNNER_TEMP/identity-signed.json"
+          if curl -fsSL --max-time 30 "${{ vars.UPDATE_BACKEND_BASE }}/v1/identity.json" -o "$signed" \
+             && jq -er '.payload' "$signed" > "$RUNNER_TEMP/identity.json" \
+             && jq -e '.windows.host_version and .linux.host_version and .osx.host_version and .windows.chrome_version' "$RUNNER_TEMP/identity.json" > /dev/null; then
+            echo "Published desktop identity: $(jq -c '.windows' "$RUNNER_TEMP/identity.json")"
+          else
+            echo "::warning::No usable published identity.json; installed apps fall back to fetching one at startup."
+          fi
+
+      - name: Set up the Linux build environment
+        if: runner.os == 'Linux'
+        uses: ./.github/actions/linux-build-env
+        with:
+          ffmpeg-url: ${{ env.FFMPEG_LINUX_URL }}
+
+      # $ORIGIN so the shipped .so files resolve next to the binary.
+      - name: Set the Linux rpath
+        if: runner.os == 'Linux'
+        run: echo 'RUSTFLAGS=-C link-arg=-Wl,-rpath,$ORIGIN' >> "$GITHUB_ENV"
+
+      - name: Set up the Windows build environment
+        if: runner.os == 'Windows'
+        uses: ./.github/actions/windows-build-env
+        with:
+          ffmpeg-url: ${{ env.FFMPEG_WIN_URL }}
+
+      - name: Install NSIS (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: choco install nsis -y --no-progress
+
+      - name: Cache cargo registry and target dir
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            ${{ matrix.target_dir }}
+          key: ${{ matrix.name }}-release-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}
+          restore-keys: ${{ matrix.name }}-release-
+
+      - name: Lint
+        shell: pwsh
+        run: cargo clippy --locked -p requiem -- -D warnings
+
+      # pwsh: Git Bash's link.exe would shadow MSVC's.
+      # REQUIEM_RELEASE_VERSION is the tag. The crate version cannot tell prereleases apart.
+      - name: Build release binary
+        shell: pwsh
+        env:
+          REQUIEM_RELEASE_VERSION: ${{ steps.version.outputs.VERSION }}
+        run: cargo build --profile ship --locked -p requiem
+
+      - name: Package (Linux)
+        env:
+          REQUIEM_RELEASE_VERSION: ${{ steps.version.outputs.VERSION }}
+        if: runner.os == 'Linux'
+        run: |
+          name="requiem-$REQUIEM_RELEASE_VERSION-${{ matrix.name }}"
+          mkdir -p "dist/$name"
+          cp "$CARGO_TARGET_DIR/ship/requiem" "dist/$name/"
+          # Copy each loaded FFmpeg library under its soname so $ORIGIN finds it.
+          LD_LIBRARY_PATH="$FFMPEG_DIR/lib" ldd "dist/$name/requiem" \
+            | awk -v dir="$FFMPEG_DIR/lib" 'index($3, dir) == 1 { print $1, $3 }' \
+            | while read -r soname path; do cp -L "$path" "dist/$name/$soname"; done
+          ls -la "dist/$name"
+          (cd dist && zip -r "$name.zip" "$name")
+          echo "ASSET=dist/$name.zip" >> "$GITHUB_ENV"
+
+      - name: Package (Windows)
+        env:
+          REQUIEM_RELEASE_VERSION: ${{ steps.version.outputs.VERSION }}
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $name = "requiem-$env:REQUIEM_RELEASE_VERSION-${{ matrix.name }}"
+          $out = "dist\$name"
+          New-Item -ItemType Directory -Force $out | Out-Null
+          Copy-Item "$env:CARGO_TARGET_DIR\ship\requiem.exe" $out
+          Copy-Item "$env:FFMPEG_DIR\bin\*.dll" $out
+          Get-ChildItem $out
+          Compress-Archive -Path $out -DestinationPath "dist\$name.zip"
+          "ASSET=dist\$name.zip" >> $env:GITHUB_ENV
+
+          # The installer (installer/installer.nsi): per user, no administrator rights. The zip stays as the portable build. The file
+          # name avoids "setup"/"install"/"update", which Windows treats as installer-detection hints.
+          $version = "$env:REQUIEM_RELEASE_VERSION".TrimStart('v')
+          $numeric = (($version -split '-')[0]) + ".0"
+          $installer = "dist\$name.exe"
+          & "${env:ProgramFiles(x86)}\NSIS\makensis.exe" /V2 "/DVERSION=$version" "/DVERSION_NUMERIC=$numeric" "/DSOURCE_DIR=$((Resolve-Path $out).Path)" "/DOUTFILE=$((Get-Location).Path)\$installer" installer\installer.nsi
+          if ($LASTEXITCODE -ne 0) { throw "makensis failed" }
+          "INSTALLER=$installer" >> $env:GITHUB_ENV
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: |
+            ${{ env.ASSET }}
+            ${{ env.INSTALLER }}
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: extracted-artifacts
+
+      - name: Determine version
+        id: get_version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          REF_NAME: ${{ github.ref_name }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            VERSION="$INPUT_VERSION"
+          else
+            VERSION="$REF_NAME"
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
+          # Anything with a suffix (v0.1.0-alpha.1) is a prerelease; plain
+          # v1.2.3 is a normal release.
+          if [[ "$VERSION" == *-* ]]; then
+            echo "PRERELEASE=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "PRERELEASE=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create GitHub Release & upload assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.get_version.outputs.VERSION }}
+          # For manual runs the tag doesn't exist yet; create it on this commit.
+          target_commitish: ${{ github.sha }}
+          name: Release ${{ steps.get_version.outputs.VERSION }}
+          prerelease: ${{ steps.get_version.outputs.PRERELEASE }}
+          files: |
+            extracted-artifacts/**/*.zip
+            extracted-artifacts/**/*.exe
+          body: |
+            ### Automated build
+            - Triggered by: `@${{ github.actor }}`
+            - Commit: `${{ github.sha }}`
+
+            Windows: run the `.exe` to install for your user (no administrator rights; you pick the folder), or use the `.zip` as a portable build. Each zip contains the client binary plus the FFmpeg shared libraries it needs (LGPL build from BtbN/FFmpeg-Builds). Linux: unzip and run.
+
+            > [!WARNING]
+            > This is an early build. Expect bugs and breaking changes!
+
+  # Prerelease tags stay on GitHub and are not offered to installed apps.
+  # REQUIEM_SIGNING_KEY lives in update-signing. Leave UPDATE_BACKEND_BASE unset to skip the upload.
+  publish-update:
+    needs: release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    environment: update-signing
+    permissions:
+      contents: read
+      id-token: write # the OIDC token the update server checks
+    env:
+      CARGO_TERM_COLOR: always
+      CARGO_TARGET_DIR: target
+    steps:
+      - name: Determine version
+        id: version
+        shell: bash
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          REF_NAME: ${{ github.ref_name }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then VERSION="$INPUT_VERSION"; else VERSION="$REF_NAME"; fi
+          echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
+          if [[ "$VERSION" == *-* ]]; then
+            echo "STABLE=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::$VERSION is a prerelease; it is not published to the update feed."
+          else
+            echo "STABLE=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout code
+        if: steps.version.outputs.STABLE == 'true'
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain (from rust-toolchain.toml)
+        if: steps.version.outputs.STABLE == 'true'
+        shell: bash
+        run: rustup toolchain install
+
+      - name: Cache cargo registry and target dir
+        if: steps.version.outputs.STABLE == 'true'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: desktop-identity-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}
+
+      - name: Build the requiem CLI
+        if: steps.version.outputs.STABLE == 'true'
+        run: cargo build --release --locked -p requiem-cli
+
+      - name: Download the Windows build
+        if: steps.version.outputs.STABLE == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-x64
+          path: windows-x64
+
+      - name: Sign the update feed
+        if: steps.version.outputs.STABLE == 'true'
+        shell: bash
+        env:
+          REQUIEM_SIGNING_KEY: ${{ secrets.REQUIEM_SIGNING_KEY }}
+          VERSION: ${{ steps.version.outputs.VERSION }}
+          BASE: ${{ vars.UPDATE_BACKEND_BASE }}
+        run: |
+          set -euo pipefail
+          [ -n "$REQUIEM_SIGNING_KEY" ] || { echo "::error::secret REQUIEM_SIGNING_KEY is not set"; exit 1; }
+          cli=target/release/requiem
+          zip=$(ls windows-x64/*.zip)
+          name=$(basename "$zip")
+          v="${VERSION#v}"
+          mkdir -p "backend/v1/releases/$v" backend/v1/channels/stable
+          cp "$zip" "backend/v1/releases/$v/"
+          $cli release keys-json --out backend/v1/keys.json
+          # The GitHub release asset is always a download source; the backend one too when there is a backend.
+          base_args=()
+          [ -z "$BASE" ] || base_args=(--base "$BASE")
+          $cli release sign "$zip" --release-version "$VERSION" --key-id primary-2026 "${base_args[@]}" \
+            --artifact-url "https://github.com/${{ github.repository }}/releases/download/$VERSION/$name" \
+            --notes-url "https://github.com/${{ github.repository }}/releases/tag/$VERSION" \
+            --out backend/v1/channels/stable/windows-x64.json
+          # What a client will do with it: check it against the public key in keys.json.
+          public=$(jq -er '.keys[] | select(.id == "primary-2026") | .public' backend/v1/keys.json)
+          $cli release verify backend/v1/channels/stable/windows-x64.json --key-id primary-2026 --public "$public"
+
+      - name: Keep the backend files with the run
+        if: steps.version.outputs.STABLE == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: update-backend
+          path: backend
+          retention-days: 14
+
+      # Release files first (in parts under the proxy's request limit), then the signed feed that points at them. The server checks the
+      # feed's signature and that the zip it names is there with the promised hash before it goes live.
+      - name: Publish to the update server
+        if: steps.version.outputs.STABLE == 'true' && vars.UPDATE_BACKEND_BASE != ''
+        run: target/release/requiem release publish backend --base "${{ vars.UPDATE_BACKEND_BASE }}"

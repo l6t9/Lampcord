@@ -1,0 +1,53 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background-color: var(--input-background-default);
+  border: 1px solid var(--border-normal);
+}
+
+.header:hover {
+  background-color: var(--background-mod-normal);
+}
+
+.labels {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex-grow: 1;
+  flex-shrink: 1;
+  min-width: 0px;
+}
+
+.title {
+  color: var(--text-strong);
+}
+
+.description {
+  color: var(--text-subtle);
+}
+
+.chevron {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: var(--text-subtle);
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+}

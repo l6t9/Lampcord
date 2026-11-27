@@ -3,26 +3,31 @@
 Run these before opening a pull request.
 
 ```bash
-# Shared logic and update tests
-./gradlew :shared:desktopTest
+# Android assemble (also compiles shared/commonMain + androidMain)
+./gradlew :androidApp:assembleDebug --no-configuration-cache
 
-# Desktop app compile
-./gradlew :desktopApp:compileKotlinJvm
+# iOS framework compile (macOS only)
+./gradlew :shared:compileKotlinIosArm64
 
-# Android compile
-./gradlew :androidApp:assembleDebug
-```
+# Desktop (Requiem / Rust)
+cd rust
+cargo check -p requiem-tsx
+cargo check -p requiem
+cargo test -p requiem-tsx
+cargo test -p requiem-core --features sound --lib ui_tsx
+cargo build --release -p requiem
 
-For a quick edit-only loop:
-
-```bash
-./gradlew :shared:compileKotlinDesktop :desktopApp:compileKotlinJvm
+# Optional Linux AppImage from the release binary
+cd ..
+scripts/package_appimage.sh
 ```
 
 ## Notes
 
-- `:shared:desktopTest` compiles commonMain, desktopMain, and desktopTest.
-- The native voice library is built by `:shared:buildVoiceDesktop` and is required by desktop tests.
+- The old Compose/JVM desktop app and `desktopTest` source set have been removed.
+- The vendored Requiem tree is not rustfmt-clean under the pinned toolchain, so CI does not
+  enforce `cargo fmt`; avoid reformatting unrelated upstream files.
+- `native/voice` is still built for Android by `:androidApp`; do not remove it.
 - iOS compilation is covered by the macOS CI job.
 - There is no ktlint or Android lint gate yet. Do not reformat unrelated files in a
   behavior change.

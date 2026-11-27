@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.ui.kit.clickableCursor
+import me.lampu.lampcord.shared.ui.theme.RequiemColors
 
 @Composable
 fun RegularGuildItem(
@@ -100,7 +101,9 @@ fun RegularGuildItem(
                     .width(4.dp)
                     .fillMaxHeight(indicatorFraction)
                     .clip(RoundedCornerShape(topEnd = 4.dp, bottomEnd = 4.dp))
-                    .background(MaterialTheme.colorScheme.onSurface)
+                    .background(
+                        if (isSelected || showHoverIndicator) Color.White else RequiemColors.InteractiveMuted
+                    )
                     .alpha(indicatorAlpha)
             )
 

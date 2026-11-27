@@ -1,0 +1,19 @@
+error: `use` declaration inside a function body
+  --> $DIR/main.rs:4:5
+   |
+LL |     use std::collections::HashMap;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: move the import to the top of the module
+   = note: `#[deny(function_local_use)]` on by default
+
+error: `use` declaration inside a function body
+  --> $DIR/main.rs:10:9
+   |
+LL |         use std::collections::BTreeSet;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: move the import to the top of the module
+
+error: aborting due to 2 previous errors
+

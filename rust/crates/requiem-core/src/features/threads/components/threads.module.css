@@ -1,0 +1,169 @@
+.sidebar {
+  width: 450px;
+  min-width: 450px;
+  height: 100%;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--background-primary);
+  border-left: 1px solid var(--border-subtle);
+}
+
+.header {
+  width: 100%;
+  height: 48px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 0px 8px 0px 16px;
+  box-shadow: 0px 1px 0px var(--border-subtle);
+}
+
+.header-title {
+  flex-grow: 1;
+  min-width: 0px;
+}
+
+.body {
+  width: 100%;
+  min-height: 0px;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  gap: 16px;
+}
+
+.composer {
+  width: 100%;
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.first-message {
+  width: 100%;
+  min-height: 44px;
+}
+
+.system-column {
+  min-width: 0px;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.system-card-slot {
+  max-width: 100%;
+  padding: 2px 0px;
+}
+
+/* Discord's `.cozy.hasThread::after`: from the avatar's centre (16 + 40 / 2
+   - 1) to 4px short of the 72px content column. */
+.has-thread {
+  position: relative;
+}
+
+.spine {
+  position: absolute;
+  left: 35px;
+  top: 48px;
+  bottom: 29px;
+  width: 34px;
+  border-left: 2px solid var(--spine-default);
+  border-bottom: 2px solid var(--spine-default);
+  border-bottom-left-radius: 8px;
+}
+
+.spine-system {
+  top: 28px;
+}
+
+.spine-reply {
+  top: 70px;
+}
+
+.card {
+  align-self: flex-start;
+  max-width: 480px;
+  min-width: 0px;
+  margin-top: 8px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  background-color: var(--background-surface-high);
+}
+
+.card-system {
+  margin-top: 0px;
+}
+
+.card-top {
+  display: flex;
+  flex-direction: row;
+}
+
+.card-name {
+  min-width: 0px;
+  flex-shrink: 1;
+  margin-right: 8px;
+}
+
+.card-cta {
+  flex-shrink: 0;
+}
+
+.card:hover .card-cta {
+  text-decoration: underline;
+}
+
+.card-bottom {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin-top: 2px;
+}
+
+.card-preview {
+  min-width: 0px;
+  flex: 0 1 auto;
+}
+
+.card-time {
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+.recent {
+  min-width: 0px;
+  height: 18px;
+  flex: 0 1 auto;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.recent-avatar {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  margin-right: 8px;
+}
+
+.recent-name {
+  flex-shrink: 0;
+  margin-right: 4px;
+  opacity: 0.64;
+}
+
+.recent-preview {
+  min-width: 0px;
+  flex: 0 1 auto;
+}

@@ -1,0 +1,34 @@
+## Deutsch. Übernommen aus Discords eigenen Übersetzungen, wo es sie gibt; der Rest ist von Hand ergänzt.
+
+create-guild-artists-creators = Künstler & Creator
+create-guild-back = Zurück
+create-guild-create = Erstellen
+create-guild-create-my-own = Selbst erstellen
+create-guild-create-your-server = Deinen Server erstellen
+create-guild-customize-your-server = Passe deinen Server an
+create-guild-don-t-have-an-invite = Du hast keine Einladung?
+create-guild-enter-an-invite-below-to-join = Gib unten eine Einladung ein, um einem bestehenden Server beizutreten.
+create-guild-for-a-club-or-community = Für einen Club oder eine Community
+create-guild-for-me-and-my-friends = Für mich und meine Freunde
+create-guild-for-now = .
+create-guild-friends = Freunde
+create-guild-gaming = Gaming
+create-guild-give-your-new-server-a-personality = Gib deinem Server mit einem Namen und einem Icon eine ganz eigene Persönlichkeit. Du kannst sie später jederzeit ändern.
+create-guild-have-an-invite-already = Du hast schon eine Einladung?
+create-guild-in-order-to-help-you-with = Damit wir dir beim Einrichten deines Servers helfen können: Ist dein neuer Server nur für einige Freunde oder für eine größere Community?
+create-guild-invite-link = Einladungslink
+create-guild-invites-should-look-like = Einladungen sollten so aussehen
+create-guild-join-a-server = Tritt einem Server bei
+create-guild-join-server = Server beitreten
+create-guild-local-community = Community vor Ort
+create-guild-must-be-between-2-and-100 = Muss zwischen 2 und 100 Zeichen lang sein.
+create-guild-not-sure-you-can = { "Nicht sicher? Du kannst " }
+create-guild-please-enter-a-valid-invite-link = Bitte gib einen gültigen Einladungslink oder Einladungscode ein.
+create-guild-school-club = Schulklub
+create-guild-server-name = Servername
+create-guild-skip-this-question = diese Frage überspringen
+create-guild-start-from-a-template = Mit einer Vorlage starten
+create-guild-study-group = Lerngruppe
+create-guild-tell-us-more-about-your-server = Erzähl uns doch mehr über deinen Server.
+create-guild-upload = Hochladen
+create-guild-your-server-is-where-you-and = Dein Server ist der Ort, wo du und deine Freunde abhängen. Erstelle jetzt deinen eigenen und rede drauflos.

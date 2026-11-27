@@ -1,0 +1,60 @@
+.panel {
+  height: 640px;
+}
+
+.body {
+  min-height: 0px;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.list-slot {
+  margin-top: 8px;
+  min-height: 0px;
+  flex-grow: 1;
+}
+
+.list {
+  width: 100%;
+  min-height: 0px;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: scroll;
+}
+
+.row {
+  width: 100%;
+  height: 48px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 0px 8px;
+  border-radius: var(--radius-xs);
+}
+
+.row:hover,
+.row-on {
+  background-color: var(--interactive-background-hover);
+}
+
+.avatar {
+  flex-shrink: 0;
+  margin-right: 12px;
+}
+
+.texts {
+  min-width: 0px;
+  display: flex;
+  flex-direction: column;
+}
+
+.spacer {
+  flex-grow: 1;
+}
+
+.create-slot {
+  flex-grow: 1;
+}

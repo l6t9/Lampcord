@@ -1,0 +1,47 @@
+.tile {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-md);
+    background-color: var(--background-mod-strong);
+    border: 1px solid var(--border-normal);
+}
+
+.tile-large {
+    width: 72px;
+    height: 72px;
+    border-radius: var(--radius-lg);
+}
+
+.row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.trailing {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.info {
+    width: 16px;
+    height: 16px;
+}
+
+.chip {
+    padding-top: 2px;
+    padding-bottom: 2px;
+    padding-left: 8px;
+    padding-right: 8px;
+    border-radius: var(--radius-round);
+    background-color: var(--background-mod-subtle);
+}

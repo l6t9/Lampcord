@@ -1,5 +1,10 @@
 # Rust Core + FFI Plan (Option A)
 
+> Historical design note. The old `lampcord-*` Rust crates and `lampcord-ffi` have been
+> replaced by the Requiem workspace in `rust/`. Mobile currently stays on the Kotlin
+> gateway until a Requiem-core UniFFI/JNI facade is added. The API shape below is still
+> a useful reference for that future bridge.
+
 Status: draft  
 Date: 2026-11-21  
 Scope: Keep Kotlin/Compose UI, move shared Lampcord logic to a reusable Rust core exposed via FFI.

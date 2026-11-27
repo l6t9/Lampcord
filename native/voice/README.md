@@ -1,22 +1,23 @@
 # Audio voice
 
-Android and desktop use Discord voice gateway v8, UDP/RTP, Opus (48 kHz stereo), and libdave protocol v1 for server channels and one-to-one/group DM calls. They also receive camera video and Go Live streams (H264 or VP8, DAVE-decrypted, decoded with FFmpeg on desktop and MediaCodec on Android). Sending camera or screen video, Stage channels, and iOS voice are not implemented. Existing iOS targets and all four Android ABIs remain available.
+Android uses Discord voice gateway v8, UDP/RTP, Opus (48 kHz stereo), and libdave protocol v1 for server channels and one-to-one/group DM calls. It also receives camera video and Go Live streams (H264 or VP8, DAVE-decrypted, decoded with MediaCodec). Sending camera or screen video, Stage channels, and iOS voice are not implemented. All four Android ABIs remain available. Desktop uses Requiem's Rust voice stack instead.
 
 The native library is built from source. `CMakeLists.txt` pins and SHA-256 verifies the libdave/MLSpp/BoringSSL source bundle from KyokoBot/libdave-jvm and Opus 1.5.2. No JVM wrapper or prebuilt crypto library from that project is used. Dependency notices ship in `shared/src/commonMain/resources/voice-licenses`.
 
 ## Build and checks
 
-Desktop needs a JDK, CMake 3.26+, and a C++17 toolchain. Android uses NDK 27.2.12479018 and SDK CMake 4.1.2. Native builds are capped at two jobs; bound Gradle separately:
+Android uses NDK 27.2.12479018 and SDK CMake 4.1.2. Native builds are capped at two jobs;
+bound Gradle separately:
 
 ```sh
-./gradlew :shared:desktopTest :androidApp:assembleDebug --no-daemon --no-parallel --max-workers=2 \
+./gradlew :androidApp:assembleDebug --no-configuration-cache --no-daemon --no-parallel --max-workers=2 \
   '-Dorg.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m -XX:ActiveProcessorCount=2 -XX:+UseSerialGC' \
   -Pkotlin.compiler.execution.strategy=in-process
-cmake --build build/voice-desktop --config Release --target voice_check --parallel 2
-build/voice-desktop/voice_check
 ```
 
-On Visual Studio generators the last executable is `build/voice-desktop/Release/voice_check.exe`. For a phone-only development APK, `-PvoiceAbis=arm64-v8a` skips the other native architectures without changing release defaults.
+Desktop no longer uses this library: the Requiem client has its own Rust voice stack. For a
+phone-only development APK, `-PvoiceAbis=arm64-v8a` skips the other native architectures
+without changing release defaults.
 
 `voice_check` uses Discord's test external sender to form a real MLS group, exchange encrypted Opus, add a third member, execute a rekey, and reject tampered/replayed/plaintext frames. The desktop test checks the JNI boundary, AES-GCM against Java's implementation, both transport modes, RTP extensions/padding/replay handling, and jitter/sequence wrapping. Neither test records a microphone or contacts Discord. They do not replace a live interoperability call.
 
@@ -30,7 +31,7 @@ Open a server voice channel and choose **Join voice**, or use the phone button i
 
 Android requests microphone and, on Android 12+, nearby-device permission. An ongoing microphone foreground service keeps an accepted call alive with the screen off and provides notification mute/hang-up actions. Wired/Bluetooth communication devices take precedence over the earpiece unless speaker is selected. Incoming-call notifications require a running main-gateway connection and notification permission; this does not add killed-app incoming-call delivery through FCM.
 
-Desktop and Android expose capture/playback device selection and input/output volume under Voice & Video settings. Device changes apply the next time a call is joined. A headset is recommended: desktop echo cancellation is not implemented. Android uses available platform echo cancellation/noise suppression. Audio is never saved to disk.
+Android exposes capture/playback device selection and input/output volume under Voice & Video settings. Device changes apply the next time a call is joined. A headset is recommended; Android uses available platform echo cancellation/noise suppression. Audio is never saved to disk.
 
 No audio is sent before DAVE is ready, and unsupported/downgraded encryption ends the call. The only unencrypted Opus payload allowed inside the authenticated RTP transport is Discord's fixed three-byte silence marker. MLS identities are ephemeral per call; ordinary rekeys retain libdave's bounded old receive keys for in-flight packets, while full MLS resets discard them. WebSocket resume keeps the transport nonce counter and MLS state; a new voice server/session gets fresh transport and DAVE state.
 

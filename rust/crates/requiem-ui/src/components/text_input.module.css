@@ -1,0 +1,123 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.input-box {
+  width: 100%;
+  height: 40px;
+
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+
+  background-color: var(--input-background-default);
+  border: 1px solid var(--border-normal);
+}
+
+.textarea-box {
+  width: 100%;
+  height: 96px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  background-color: var(--input-background-default);
+  border: 1px solid var(--border-normal);
+}
+
+.input-box-error {
+  background-color: var(--background-feedback-critical);
+  border: 1px solid var(--text-feedback-critical);
+}
+
+.input-box-read-only {
+  border: 1px solid var(--opacity-white-8);
+}
+
+.input-box-disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.input-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+}
+
+.input-row:focus-within {
+  border: 2px solid var(--brand-500);
+}
+
+.input-box-read-only:focus-within {
+  border: 1px solid var(--opacity-white-8);
+}
+
+.has-leading {
+  padding-left: 4px;
+}
+
+.has-trailing {
+  padding-right: 4px;
+}
+
+.input-inner {
+  flex-grow: 1;
+  flex-shrink: 1;
+  min-width: 0px;
+  height: 100%;
+}
+
+.accessory {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: var(--radius-xs);
+}
+
+.accessory:hover {
+  background-color: var(--background-mod-normal);
+}
+
+.accessory:active {
+  background-color: var(--background-mod-strong);
+}
+
+.leading-icon {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.leading-icon-glyph {
+  width: 16px;
+  height: 16px;
+  color: var(--text-default);
+}
+
+.accessory-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.helper-row {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.helper-text {
+  display: flex;
+  flex-grow: 1;
+  flex-shrink: 1;
+  min-width: 0px;
+}

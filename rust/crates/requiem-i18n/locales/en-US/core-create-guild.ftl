@@ -1,0 +1,34 @@
+## Strings of core/create-guild
+
+create-guild-create-your-server = Create Your Server
+create-guild-your-server-is-where-you-and = Your server is where you and your friends hang out. Make yours and start talking.
+create-guild-create-my-own = Create My Own
+create-guild-start-from-a-template = START FROM A TEMPLATE
+create-guild-gaming = Gaming
+create-guild-friends = Friends
+create-guild-study-group = Study Group
+create-guild-school-club = School Club
+create-guild-local-community = Local Community
+create-guild-artists-creators = Artists & Creators
+create-guild-join-a-server = Join a Server
+create-guild-have-an-invite-already = Have an invite already?
+create-guild-tell-us-more-about-your-server = Tell Us More About Your Server
+create-guild-in-order-to-help-you-with = In order to help you with your setup, is your new server for just a few friends or a larger community?
+create-guild-not-sure-you-can = { "Not sure? You can " }
+create-guild-skip-this-question = skip this question
+create-guild-for-now = { " for now." }
+create-guild-for-me-and-my-friends = For me and my friends
+create-guild-for-a-club-or-community = For a club or community
+create-guild-back = Back
+create-guild-customize-your-server = Customize Your Server
+create-guild-give-your-new-server-a-personality = Give your new server a personality with a name and an icon. You can always change it later.
+create-guild-upload = Upload
+create-guild-server-name = Server Name
+create-guild-create = Create
+create-guild-enter-an-invite-below-to-join = Enter an invite below to join an existing server
+create-guild-invite-link = Invite link
+create-guild-invites-should-look-like = INVITES SHOULD LOOK LIKE
+create-guild-don-t-have-an-invite = Don't have an invite?
+create-guild-join-server = Join Server
+create-guild-must-be-between-2-and-100 = Must be between 2 and 100 in length.
+create-guild-please-enter-a-valid-invite-link = Please enter a valid invite link or invite code.

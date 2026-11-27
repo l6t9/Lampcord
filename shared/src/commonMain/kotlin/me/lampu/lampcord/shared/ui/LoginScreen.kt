@@ -155,6 +155,7 @@ import me.lampu.lampcord.shared.ui.components.OtpInput
 import me.lampu.lampcord.shared.ui.components.PlatformBackHandler
 import me.lampu.lampcord.shared.ui.icons.Icons
 import me.lampu.lampcord.shared.ui.kit.handCursor
+import me.lampu.lampcord.shared.ui.theme.RequiemColors
 import me.lampu.lampcord.shared.utils.getPlatformName
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
@@ -506,7 +507,7 @@ fun LoginScreen(
                     false
                 }
             },
-        color = MaterialTheme.colorScheme.background
+        color = RequiemColors.AuthBackground
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             IconButton(
@@ -1082,7 +1083,7 @@ private fun QrContent(
     onRetry: () -> Unit
 ) {
     Surface(
-        modifier = Modifier.size(200.dp),
+        modifier = Modifier.size(240.dp),
         shape = MaterialTheme.shapes.large,
         color = Color.White,
         tonalElevation = 2.dp
@@ -1095,7 +1096,7 @@ private fun QrContent(
                             .withErrorCorrectionLevel(ErrorCorrectionLevel.MEDIUM)
                             .build(state.url)
                     }
-                    Canvas(modifier = Modifier.fillMaxSize().padding(8.dp)) {
+                    Canvas(modifier = Modifier.fillMaxSize().padding(16.dp)) {
                         drawLocalQrCode(qrCode)
                     }
                 }

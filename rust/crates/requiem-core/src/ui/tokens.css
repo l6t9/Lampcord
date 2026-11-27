@@ -1,0 +1,10 @@
+.theme-tokens {
+
+  --primary-500: #5865f2;
+  --background-tertiary: #121214;
+  --background-secondary: #121214;
+  --background-primary: #1a1a1e;
+  --background-message-hover: #222327;
+
+  --custom-status-bubble-background-hover: #34353a;
+}

@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="@LANG@" class="mana-tokens">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="@SCHEME@">
+<title>@TITLE@</title>
+<style>
+/* The app's own colour tokens (requiem-ui/src/tokens.css), so a theme change reaches this window too. */
+@TOKENS@
+@FONTS@
+:root {
+  --font-primary: "gg sans", "Noto Sans", "Segoe UI", system-ui, sans-serif;
+  --font-display: "gg sans", "Noto Sans", "Segoe UI", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--background-base-lowest);
+  color: var(--text-default);
+  font-family: var(--font-primary);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  cursor: default;
+}
+/* Mana's modal, size "sm" with a graphic header (measured on discord.com): 400px wide, radius-md, 1px subtle border, high shadow. */
+.scrim {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+}
+.modal {
+  width: 100%;
+  max-width: 400px;
+  overflow: hidden;
+  background: var(--background-surface-high);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: 0 12px 24px 0 #0000003d;
+  padding: 0 32px 16px;
+}
+/* The header's glow: the shape Discord's modal gradient has (an ellipse from the top centre over the darkest surface).
+   The colour is the blue one; its stops are scaled from the purple variant's measured values, not measured themselves. */
+.header {
+  position: relative;
+  margin: 0 -32px;
+  padding: 20px 32px 0;
+  text-align: center;
+  background:
+    radial-gradient(ellipse 100% 70% at 50% 0, rgba(88, 101, 242, .6) 0, rgba(49, 57, 136, .3) 50%, transparent 80%),
+    var(--background-base-lowest);
+}
+.graphic { display: flex; justify-content: center; padding: 0 0 16px; }
+.graphic img { display: block; width: 100%; max-width: 288px; height: auto; }
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 24px;
+  line-height: 1.25;
+  font-weight: 600;
+  color: var(--text-strong);
+  overflow-wrap: break-word;
+}
+.subtitle {
+  margin: 8px 0 0;
+  font-size: 16px;
+  line-height: 1.25;
+  font-weight: 400;
+  color: var(--text-subtle);
+  overflow-wrap: break-word;
+}
+.content { padding-top: 24px; }
+.captchaContainer { display: flex; align-items: center; justify-content: center; min-height: 78px; }
+.spinner {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 3px solid var(--background-mod-strong);
+  border-top-color: var(--text-default);
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.problem { margin-top: 16px; text-align: center; }
+.problem p { margin: 0 0 12px; font-size: 14px; line-height: 1.2857; font-weight: 500; color: var(--text-feedback-critical); }
+.retry {
+  height: 32px;
+  padding: 0 16px;
+  border: 1px solid var(--control-primary-border-default);
+  border-radius: 8px;
+  background: var(--control-primary-background-default);
+  color: #fff;
+  font: 500 14px/1 var(--font-primary);
+  cursor: pointer;
+}
+.retry:hover { background: var(--control-primary-background-hover); }
+.retry:active { background: var(--control-primary-background-active); }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main class="scrim">
+  <section class="modal" role="dialog" aria-modal="true" aria-labelledby="title">
+    <header class="header">
+      <div class="graphic" id="graphic"><img alt="" src="@GRAPHIC@"></div>
+      <h1 class="title" id="title">@TITLE@</h1>
+      <p class="subtitle">@SUBTITLE@</p>
+    </header>
+    <div class="content">
+      <div class="captchaContainer">
+        <div class="spinner" id="spinner" hidden></div>
+        <div id="widget"></div>
+      </div>
+      <div class="problem" id="problem" hidden>
+        <p>@ERROR@</p>
+        <button class="retry" id="retry" type="button">@RETRY@</button>
+      </div>
+    </div>
+  </section>
+</main>
+<script>
+(function () {
+  var cfg = @CONFIG@;
+  var $ = function (id) { return document.getElementById(id); };
+  var post = function (message) { window.ipc.postMessage(JSON.stringify(message)); };
+  var widget = null;
+  var settled = false;
+
+  if (!cfg.graphic) { $("graphic").hidden = true; }
+  if (cfg.invisible) { $("spinner").hidden = false; }
+
+  function solved(token) { if (!settled) { settled = true; post({ type: "solved", token: token }); } }
+  function cancel() { if (!settled) { settled = true; post({ type: "cancel" }); } }
+  function fail(code) { if (!settled) { settled = true; post({ type: "failed", code: code }); } }
+
+  // Errors the user can't fix by trying again end the attempt; the others offer a retry, as the web client's
+  // error handling re-arms the widget.
+  var FATAL = { "script-error": 1, "invalid-data": 1, "missing-captcha": 1, "invalid-captcha-id": 1, "internal-error": 1, "invalid-sitekey": 1, "sitekey-not-found": 1, "domain-not-authorized": 1 };
+  function problem(code) {
+    if (FATAL[code]) { fail(code); return; }
+    $("spinner").hidden = true;
+    $("problem").hidden = false;
+  }
+
+  // hCaptcha: data for Enterprise goes in before the widget runs; an invisible widget is run right away.
+  function armHcaptcha() {
+    if (cfg.rqdata) { hcaptcha.setData(widget, { rqdata: cfg.rqdata }); }
+    if (cfg.invisible) { hcaptcha.execute(widget); }
+  }
+
+  var services = {
+    hcaptcha: {
+      src: "https://js.hcaptcha.com/1/api.js?render=explicit&onload=__captchaLoaded&recaptchacompat=off&hl=" + encodeURIComponent(cfg.language) + (cfg.host ? "&host=" + encodeURIComponent(cfg.host) : ""),
+      render: function () {
+        widget = hcaptcha.render("widget", {
+          sitekey: cfg.sitekey,
+          theme: cfg.theme,
+          size: cfg.invisible ? "invisible" : "normal",
+          callback: solved,
+          "error-callback": problem,
+          // Closing the challenge of an invisible widget leaves nothing on screen, so it ends the attempt.
+          "close-callback": function () { if (cfg.invisible) { cancel(); } else { armHcaptcha(); } },
+          "chalexpired-callback": function () { armHcaptcha(); },
+          "expired-callback": function () { hcaptcha.reset(widget); armHcaptcha(); }
+        });
+        armHcaptcha();
+      },
+      reset: function () { hcaptcha.reset(widget); armHcaptcha(); }
+    },
+    recaptcha: {
+      src: "https://www.google.com/recaptcha/api.js?render=explicit&onload=__captchaLoaded&hl=" + encodeURIComponent(cfg.language),
+      render: function () {
+        widget = grecaptcha.render("widget", { sitekey: cfg.sitekey, theme: cfg.theme, callback: solved, "expired-callback": function () { grecaptcha.reset(widget); }, "error-callback": function () { problem("network-error"); } });
+      },
+      reset: function () { grecaptcha.reset(widget); }
+    },
+    recaptcha_enterprise: {
+      src: "https://www.google.com/recaptcha/enterprise.js?render=explicit&onload=__captchaLoaded&hl=" + encodeURIComponent(cfg.language),
+      render: function () {
+        widget = grecaptcha.enterprise.render("widget", { sitekey: cfg.sitekey, theme: cfg.theme, callback: solved, "expired-callback": function () { grecaptcha.enterprise.reset(widget); }, "error-callback": function () { problem("network-error"); } });
+      },
+      reset: function () { grecaptcha.enterprise.reset(widget); }
+    },
+    turnstile: {
+      src: "https://challenges.cloudflare.com/turnstile/v0/api.js?onload=__captchaLoaded&render=explicit",
+      render: function () {
+        widget = turnstile.render("#widget", { sitekey: cfg.sitekey, theme: cfg.theme, size: "normal", retry: "never", callback: solved, "error-callback": function () { problem("challenge-error"); return true; }, "expired-callback": function () { turnstile.reset(widget); } });
+      },
+      reset: function () { turnstile.reset(widget); }
+    }
+  };
+
+  var service = services[cfg.service];
+  if (!service) { fail("unsupported-service"); return; }
+
+  $("retry").addEventListener("click", function () {
+    $("problem").hidden = true;
+    if (cfg.invisible) { $("spinner").hidden = false; }
+    service.reset();
+  });
+
+  window.__captchaLoaded = function () {
+    try { service.render(); } catch (error) { fail("internal-error"); }
+  };
+  var script = document.createElement("script");
+  script.src = service.src;
+  script.async = true;
+  script.onerror = function () { fail("script-error"); };
+  document.head.appendChild(script);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,281 @@
+.field-emoji {
+  width: 18px;
+  height: 18px;
+}
+
+.emoji-btn {
+  padding: 0px 12px 0px 0px;
+}
+
+.emoji-anchor {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.emoji-picker-slot {
+  position: absolute;
+  right: 0px;
+  bottom: 26px;
+}
+
+.subtitle-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.step-header {
+  display: flex;
+  flex-direction: row;
+  padding: 16px 24px 8px;
+  flex-shrink: 0;
+}
+
+.step-title {
+  flex-grow: 1;
+  min-width: 0px;
+}
+
+.close {
+  margin-top: -16px;
+  margin-right: -16px;
+  margin-left: 12px;
+}
+
+.step-body {
+  display: flex;
+  flex-direction: column;
+  padding: 16px 24px 0px;
+}
+
+.step-footer {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  padding: 16px 24px 8px;
+  flex-shrink: 0;
+}
+
+.step-footer > button {
+  flex: 1 1 0%;
+  min-width: 0px;
+}
+
+.footer-slot {
+  flex: 1 1 0%;
+  min-width: 0px;
+  display: flex;
+  flex-direction: column;
+}
+
+.member-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.member-controls {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.search-box {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  min-height: 36px;
+  max-height: 100px;
+  box-sizing: border-box;
+  padding: 1px;
+  border: 1px solid var(--input-border-default);
+  border-radius: var(--radius-sm);
+  background-color: var(--input-background-default);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.search-input {
+  flex: 1 1 0%;
+  height: 30px;
+  margin: 1px;
+}
+
+.search-hint {
+  margin-top: 4px;
+  margin-bottom: 4px;
+}
+
+.tag {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  height: 26px;
+  box-sizing: border-box;
+  margin: 3px 0px 3px 3px;
+  padding: 0px 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 5px;
+  background-color: var(--background-mod-normal);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.tag:hover {
+  background-color: var(--background-mod-strong);
+}
+
+.tag-avatar {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.tag-role-color {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-round);
+  flex-shrink: 0;
+}
+
+.tag-label {
+  padding-left: 6px;
+  min-width: 0px;
+  overflow: hidden;
+}
+
+.tag-close {
+  width: 12px;
+  height: 12px;
+  margin-left: 4px;
+  flex-shrink: 0;
+}
+
+.member-list {
+  flex-shrink: 0;
+  box-sizing: border-box;
+  max-height: 408px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+  margin-bottom: 9px;
+}
+
+.member-rows-slot {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.member-rows {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.section-title {
+  display: flex;
+  flex-direction: column;
+  height: 32px;
+  box-sizing: border-box;
+  padding-top: 8px;
+  flex-shrink: 0;
+}
+
+.picker-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  height: 40px;
+  box-sizing: border-box;
+  padding: 8px 6px;
+  margin-right: 4px;
+  border-radius: var(--radius-xs);
+  flex-shrink: 0;
+}
+
+.row-selected {
+  background-color: var(--interactive-background-selected);
+}
+
+.row-unselected {
+  background-color: #00000000;
+}
+
+.row-group {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0px;
+  padding-left: 8px;
+}
+
+.row-group-disabled {
+  opacity: 0.6;
+}
+
+.row-check {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.row-check-disabled {
+  opacity: 0.6;
+}
+
+.row-body {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0px;
+  padding-left: 8px;
+}
+
+.row-avatar {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.role-icon-box {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.role-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.row-label {
+  margin-left: 8px;
+  margin-right: 4px;
+  min-width: 0px;
+}
+
+.row-subtext {
+  flex: 1 1 0%;
+  min-width: 0px;
+  margin-left: 4px;
+  overflow: hidden;
+}
+
+.row-type {
+  flex-shrink: 0;
+}

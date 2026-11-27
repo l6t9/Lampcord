@@ -1,0 +1,25 @@
+/* The strip above the composer: three pulsing dots, then who is typing. */
+.typing-bar {
+  width: 100%;
+  height: 24px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding-left: 24px;
+}
+
+.typing-dots {
+  width: 25px;
+  height: 7px;
+  flex-shrink: 0;
+  margin-right: 24px;
+}
+
+.typing-text {
+  min-width: 0px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  white-space: nowrap;
+}

@@ -1,0 +1,6 @@
+[env]
+CMAKE_POLICY_VERSION_MINIMUM = "3.5"
+CPAL_ASIO_DIR = { value = "vendor/ASIOSDK", relative = true }
+SKIA_BINARIES_URL = "https://github.com/requiem-client/skia-binaries/releases/download/{tag}/skia-binaries-{key}.tar.gz"
+[alias]
+requiem = "run --quiet --package requiem-cli --"

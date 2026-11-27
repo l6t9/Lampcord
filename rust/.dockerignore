@@ -1,0 +1,6 @@
+.git
+.cache
+target
+**/node_modules
+*.zip
+*.exe

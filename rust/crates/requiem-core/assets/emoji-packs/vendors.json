@@ -1,0 +1,20 @@
+[
+  {
+    "emoji": 4406,
+    "preview": "https://em-content.zobj.net/source/apple/453/grinning-face_1f600.png",
+    "slug": "apple",
+    "title": "Apple"
+  },
+  {
+    "emoji": 4346,
+    "preview": "https://em-content.zobj.net/source/microsoft-3D-fluent/473/grinning-face_1f600.png",
+    "slug": "microsoft-3D-fluent",
+    "title": "Microsoft 3D Fluent"
+  },
+  {
+    "emoji": 4024,
+    "preview": "https://em-content.zobj.net/source/openmoji/467/grinning-face_1f600.png",
+    "slug": "openmoji",
+    "title": "OpenMoji"
+  }
+]

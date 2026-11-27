@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "noEmit": true,
+    "jsx": "preserve",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "target": "es2022",
+    "lib": ["es2022"],
+    "types": [],
+    "skipLibCheck": false
+  },
+  "include": ["types/**/*.d.ts", "src/**/*.tsx"]
+}

@@ -1,0 +1,14 @@
+.page {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.stats {
+    padding-top: 12px;
+    padding-bottom: 12px;
+    padding-left: 16px;
+    padding-right: 16px;
+    border-radius: var(--radius-sm);
+    background-color: var(--background-mod-subtle);
+}

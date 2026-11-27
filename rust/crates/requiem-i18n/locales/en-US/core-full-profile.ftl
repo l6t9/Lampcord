@@ -1,0 +1,68 @@
+## Strings of core/full-profile
+
+full-profile-member-since = Member Since
+full-profile-roles = Roles
+full-profile-note-only-visible-to-you = Note (only visible to you)
+full-profile-connections = Connections
+full-profile-connection-member-since = Member since { $date }
+full-profile-connection-karma = { $value } Karma
+full-profile-connection-gold = Gold
+full-profile-connection-mod = Mod
+full-profile-connection-posts = { $value } Posts
+full-profile-connection-followers = { $value } Followers
+full-profile-connection-following = { $value } Following
+full-profile-connection-likes = { $value } Likes
+full-profile-connection-games = { $value } Games
+full-profile-connection-items = { $count ->
+    [one] { $value } item
+   *[other] { $value } items
+}
+full-profile-connection-ratings = { $value } Positive Ratings
+full-profile-connection-top-rated = Top-Rated Seller
+full-profile-connection-verified = Verified
+full-profile-connection-verified-bank = Verified Bank Account
+full-profile-connection-dota2 = Dota 2
+full-profile-connection-tf2 = Team Fortress 2
+full-profile-edit-profile = Edit Profile
+full-profile-shop = Shop
+full-profile-add-friend = Add Friend
+full-profile-message = Message
+full-profile-more = More
+full-profile-ignore = Ignore
+full-profile-unblock = Unblock
+full-profile-block = Block
+full-profile-discord = Discord
+full-profile-click-to-add-a-note = Click to add a note
+full-profile-board = Board
+full-profile-activity = Activity
+full-profile-wishlist = Wishlist
+full-profile-connect-accounts = Connect Accounts
+full-profile-add-game = Add Game
+full-profile-you-don-t-have-any-activity = You don’t have any activity here
+full-profile-connect-your-accounts-to-share-your = Connect your accounts to share your in-game status and activity. You’re in control of what you share.
+full-profile-favorite-game = Favorite Game
+full-profile-games-i-like = Games I Like
+full-profile-games-in-rotation = Games in Rotation
+full-profile-want-to-play = Want to Play
+full-profile-customize-your-profile-with-widgets = Customize your profile with Widgets
+full-profile-choose-from-our-library-of-widgets = Choose from our library of Widgets to share more about yourself and your interests
+full-profile-explore-the-shop = Explore the Shop
+full-profile-no-hearts-yet = No hearts yet
+full-profile-browse-the-shop-and-heart-the = Browse the Shop and heart the items you love to add them here.
+full-profile-bio = Bio
+full-profile-created-on = Created On
+full-profile-stop-direct-contact-and-limit-what = Stop direct contact and limit what they view
+full-profile-stop-direct-messages = Stop direct messages
+full-profile-you-can-unhide-past-messages-if = You can unhide past messages if you want
+full-profile-limit-access-to-your-profile-and = Limit access to your profile and activity
+full-profile-they-won-t-see-your-mutual = They won’t see your mutual friends, bio, or status
+full-profile-they-can-interact-with-you-in = They can interact with you in GDMs and servers
+full-profile-if-you-join-a-voice-channel = If you join a voice channel they’re active in, we’ll let you know
+full-profile-view-details = View details
+full-profile-ignore-instead = Ignore instead
+full-profile-get-space-from-them-without-letting = Get space from them without letting them know
+full-profile-too-much = Too much?
+full-profile-explore-feature-guide = Explore feature guide
+full-profile-cancel = Cancel
+
+full-profile-load-partial = Unable to load parts of profile

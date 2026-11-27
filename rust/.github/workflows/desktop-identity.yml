@@ -1,0 +1,80 @@
+name: Desktop identity
+
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Scan the host package even if the host version is unchanged'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write # the OIDC token the update server checks
+
+concurrency:
+  group: desktop-identity
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_TARGET_DIR: target
+
+jobs:
+  refresh:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: update-signing
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain (from rust-toolchain.toml)
+        shell: bash
+        run: rustup toolchain install
+
+      - name: Cache cargo registry and target dir
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: desktop-identity-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}
+
+      - name: Start from the published identity
+        if: vars.UPDATE_BACKEND_BASE != ''
+        shell: bash
+        run: |
+          signed="$RUNNER_TEMP/identity-signed.json"
+          if curl -fsSL --max-time 30 "${{ vars.UPDATE_BACKEND_BASE }}/v1/identity.json" -o "$signed" && jq -er '.payload' "$signed" > "$RUNNER_TEMP/identity.json" \
+             && jq -e '.windows.host_version' "$RUNNER_TEMP/identity.json" > /dev/null; then
+            cp "$RUNNER_TEMP/identity.json" "$RUNNER_TEMP/desktop-identity.json"
+            echo "Starting from the published identity: $(jq -c '.windows' "$RUNNER_TEMP/desktop-identity.json")"
+          else
+            echo "::notice::No published identity yet; scanning from scratch."
+          fi
+
+      - name: Refresh the desktop identity
+        run: cargo run --release --locked -p requiem-cli -- desktop --out "$RUNNER_TEMP/desktop-identity.json" ${{ inputs.force && '--force' || '' }}
+
+      - name: Sign it
+        env:
+          REQUIEM_SIGNING_KEY: ${{ secrets.REQUIEM_SIGNING_KEY }}
+        run: |
+          [ -n "$REQUIEM_SIGNING_KEY" ] || { echo "::error::secret REQUIEM_SIGNING_KEY is not set"; exit 1; }
+          cargo run --release --locked -p requiem-cli -- release identity "$RUNNER_TEMP/desktop-identity.json" --key-id primary-2026 --out backend/v1/identity.json
+          jq -c '.windows' "$RUNNER_TEMP/desktop-identity.json"
+
+      - name: Keep the signed file with the run
+        uses: actions/upload-artifact@v4
+        with:
+          name: identity
+          path: backend
+          retention-days: 7
+
+      - name: Publish to the update server
+        if: vars.UPDATE_BACKEND_BASE != ''
+        run: cargo run --release --locked -p requiem-cli -- release publish backend --base "${{ vars.UPDATE_BACKEND_BASE }}"

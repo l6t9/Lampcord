@@ -70,6 +70,7 @@ import me.lampu.lampcord.shared.state.VoiceStore
 import me.lampu.lampcord.shared.settings.Settings
 import me.lampu.lampcord.shared.ui.components.chat.MessageItem
 import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.ui.theme.RequiemColors
 import org.koin.compose.koinInject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlin.time.Duration.Companion.minutes
@@ -242,6 +243,7 @@ fun ChatArea(
     Box(
         modifier = modifier
             .fillMaxSize()
+            .background(RequiemColors.ChatBackground)
             .padding(bottom = 10.dp)
             .pointerInput(Unit) {
                 awaitPointerEventScope {

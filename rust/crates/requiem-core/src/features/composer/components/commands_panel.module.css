@@ -1,0 +1,163 @@
+.cmd-panel-holder {
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  width: 0px;
+  height: 0px;
+}
+
+.cmd-scroller {
+  flex-grow: 1;
+  min-width: 0px;
+}
+
+.cmd-panel {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  max-height: 420px;
+  overflow: hidden;
+  background-color: var(--background-surface-high);
+  border-radius: 5px 5px 0px 0px;
+  box-shadow: var(--shadow-border), var(--shadow-low);
+}
+
+.cmd-rail {
+  width: 48px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  padding-top: 16px;
+  padding-left: 8px;
+  padding-right: 8px;
+  padding-bottom: 8px;
+  row-gap: 8px;
+}
+
+.cmd-rail-item {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+}
+
+.cmd-rail-item:hover {
+  background-color: var(--interactive-background-hover);
+}
+
+.cmd-rail-item-selected {
+  background-color: var(--background-base-low);
+}
+
+.cmd-rail-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.cmd-rail-glyph {
+  width: 20px;
+  height: 20px;
+}
+
+.cmd-rail-divider {
+  width: 16px;
+  height: 1px;
+  margin-left: 8px;
+  flex-shrink: 0;
+  background-color: var(--border-subtle);
+}
+
+.cmd-list {
+  width: 100%;
+  flex-grow: 1;
+  min-width: 0px;
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+}
+
+.cmd-section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 16px;
+}
+
+.cmd-section-header {
+  width: 100%;
+  height: 32px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  column-gap: 4px;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.cmd-section-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.cmd-row {
+  width: 100%;
+  height: 56px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 8px;
+  border-radius: 3px;
+}
+
+.cmd-row:hover {
+  background-color: var(--interactive-background-hover);
+}
+
+.cmd-row-selected {
+  background-color: var(--interactive-background-hover);
+}
+
+.cmd-row-info {
+  flex-grow: 1;
+  min-width: 0px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.cmd-row-usage {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.cmd-row-option {
+  height: 18px;
+  margin-left: 8px;
+  padding-left: 4px;
+  padding-right: 4px;
+  display: flex;
+  align-items: center;
+  border-radius: 4px;
+  background-color: var(--background-base-lowest);
+}
+
+.cmd-row-optional {
+  margin-left: 8px;
+}
+
+.cmd-row-description {
+  margin-top: 4px;
+}
+
+.cmd-row-source {
+  flex-shrink: 0;
+  max-width: 40%;
+  margin-left: 16px;
+}

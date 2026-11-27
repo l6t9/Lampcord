@@ -1,0 +1,140 @@
+.user-panel-wrap {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  width: 296px;
+
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-muted);
+  background-color: var(--background-base-low);
+}
+
+.user-panel {
+  width: 100%;
+  height: 56px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+}
+
+.user-panel-account-btn {
+  min-width: 112px;
+  height: 42px;
+  flex-grow: 1;
+  flex-shrink: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  margin-left: -4px;
+  padding: 5px 4px;
+  border-radius: var(--radius-xs);
+}
+
+.user-panel-account-btn:hover,
+.user-panel-account-btn-active {
+  background-color: var(--background-mod-normal);
+}
+
+.user-panel-name-col {
+  min-width: 0px;
+  flex-grow: 1;
+  flex-shrink: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.user-panel-title {
+  margin-top: -1px;
+  margin-bottom: 2px;
+  color: var(--text-strong);
+}
+
+.user-panel-subtext {
+  width: 100%;
+  height: 13px;
+  color: var(--text-subtle);
+}
+
+.user-panel-icon-btn {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+}
+
+.user-panel-icon-btn:hover {
+  background-color: var(--background-mod-normal);
+}
+
+.user-panel-icon-btn:active {
+  background-color: var(--background-mod-strong);
+}
+
+.user-panel-icon {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+.user-panel-split-group {
+  display: flex;
+  flex-direction: row;
+  flex-shrink: 0;
+  gap: 1px;
+  border-radius: var(--radius-sm);
+}
+
+.user-panel-split-group:hover {
+  background-color: var(--background-mod-muted);
+}
+
+.user-panel-split-main {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm) 0px 0px var(--radius-sm);
+}
+
+.user-panel-split-main:hover {
+  background-color: var(--background-mod-strong);
+}
+
+.user-panel-split-chevron {
+  width: 16px;
+  height: 32px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0px var(--radius-sm) var(--radius-sm) 0px;
+}
+
+.user-panel-split-chevron:hover {
+  background-color: var(--background-mod-strong);
+}
+
+.user-panel-chevron-icon {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+}
+
+.user-panel-split-danger {
+  background-color: #d22d391f;
+}
+
+.user-panel-split-danger:hover {
+  background-color: #d22d3933;
+}

@@ -1,0 +1,3757 @@
+{
+  "schema": 2,
+  "client": {
+    "build_number": 638651,
+    "build_id": "5622b31c0cab24812146307b2dd36712a87d7174",
+    "release_channel": "stable"
+  },
+  "asset_base": "https://discord.com/assets/",
+  "builds": [
+    {
+      "build_id": "222f262f506dcb82f5282d658a3d843f2ba4e44d",
+      "build_number": 626571
+    },
+    {
+      "build_id": "01ad17390800dffe4fbc9791dab1081e4b5290fd",
+      "build_number": 627798
+    },
+    {
+      "build_id": "95428037a8f2f5a459edc577fbdfeb62806a0b93",
+      "build_number": 629779
+    },
+    {
+      "build_id": "e4f2a199ac905e7adaf50aefa2d70cf746f24419",
+      "build_number": 632301
+    },
+    {
+      "build_id": "f085e22ce92067ed73085dc8a2a06159f451fdb4",
+      "build_number": 633029
+    },
+    {
+      "build_id": "17e01cf978c3c10a5688429a38db59a4926e8982",
+      "build_number": 634304
+    },
+    {
+      "build_id": "2d6ae2d6b7cb7ab33e684687b2c6321e56f17c7f",
+      "build_number": 636132
+    },
+    {
+      "build_id": "a5d0242057ca1f63954c0d291a632a1a15d7bed2",
+      "build_number": 636431
+    },
+    {
+      "build_id": "a935e483c18dcf082c62ce19bc9e3560fce10581",
+      "build_number": 637268
+    },
+    {
+      "build_id": "5622b31c0cab24812146307b2dd36712a87d7174",
+      "build_number": 638651
+    },
+    {
+      "build_id": "c9ac31f3c5f50036585bac17dc4a56798c51c3e8",
+      "build_number": 641004
+    }
+  ],
+  "chunks": [
+    {
+      "url": "https://discord.com/assets/50dd86923c603330.js",
+      "sha256": "a52897c6454220f69b60f3992c7b1ec5679434192e12aca25962ea3ab6fd4751",
+      "size": 93205
+    },
+    {
+      "url": "https://discord.com/assets/d13cc03337bc5a63.js",
+      "sha256": "9dc0ee21aaeb09c4dc24d5fe7bf701be0c8257e4e0284b47f4cc85ff24375789",
+      "size": 33607
+    },
+    {
+      "url": "https://discord.com/assets/30afb9c604d97497.js",
+      "sha256": "135466274756bea38b05e4918731215405bb4d2378f991a0f7c9591aab343a0a",
+      "size": 40979
+    },
+    {
+      "url": "https://discord.com/assets/7dfd451ad0fc3983.js",
+      "sha256": "4e40d9cb35237f1d2f8222e5d2372ef2f5e718933bb81c911803c0ff71d656be",
+      "size": 740
+    },
+    {
+      "url": "https://discord.com/assets/web.ea428454da038edc.js",
+      "sha256": "5c4d9c302146afb81454dffb6071391cf6fbf80765cd593bae43fe80891b5894",
+      "size": 12232147
+    },
+    {
+      "url": "https://discord.com/assets/fc9020e758312bff.js",
+      "sha256": "530743d9e7d30fa51e58f7e1b7229b6999adda9b91d90f04be16c4de1948a9f9",
+      "size": 709
+    },
+    {
+      "url": "https://discord.com/assets/fe4e314da07fea5a.js",
+      "sha256": "3c6fa0749d12438899ce97ce491d55fccea848ca747c58fd651a87dde3314b26",
+      "size": 712
+    },
+    {
+      "url": "https://discord.com/assets/b9032b583d3b5f27.js",
+      "sha256": "d4f07898eab7b5ba84fc20bf4a24289e4440050850ca1cbb4e7b3b0bf402c06f",
+      "size": 708
+    },
+    {
+      "url": "https://discord.com/assets/a7d529f608e4eb8d.js",
+      "sha256": "d898a0e2f8869fa05f1891ebcac53586b45918efa7dd19bb466733f4b05af0af",
+      "size": 926094
+    },
+    {
+      "url": "https://discord.com/assets/23d43ea671b1636f.js",
+      "sha256": "45eee4e9e28ac1aa9d8f77cee8fcbe37331ac84df788e97f130c4a77650c2d03",
+      "size": 819
+    },
+    {
+      "url": "https://discord.com/assets/5b8d5f009f3906cf.js",
+      "sha256": "c30eb956ce7a8c35444647d992fdbd1f2efe83ed03806facb025abc3003a6b09",
+      "size": 3797
+    },
+    {
+      "url": "https://discord.com/assets/f0e9c13d1cc79369.js",
+      "sha256": "dc71a825177d800f2538e025eaa8cacee477e751ff7ef64fa6e342aa2f8ea595",
+      "size": 1004
+    },
+    {
+      "url": "https://discord.com/assets/7dd5ae1a0ac2a07a.js",
+      "sha256": "9594d4d49c29fbe01b1f9b7a619658fe489175407278b0851543205c7eefaed6",
+      "size": 1236
+    },
+    {
+      "url": "https://discord.com/assets/32b09a4383720e7c.js",
+      "sha256": "26479b2344cdb42e6b843acfb630451409ecae117c2905134d25fb786d6e3939",
+      "size": 1393
+    },
+    {
+      "url": "https://discord.com/assets/a3dde8ac2f506d9a.js",
+      "sha256": "6240aec270f671a49db228d52156623d1c891560e50e164e4143bccacee8761a",
+      "size": 1065
+    },
+    {
+      "url": "https://discord.com/assets/81acb7814ea87410.js",
+      "sha256": "28278c182509515936115c23f68b0e63eae2f5d26251eadfb45d7449a1baa47a",
+      "size": 10825
+    },
+    {
+      "url": "https://discord.com/assets/ec276d5eb8656a39.js",
+      "sha256": "66b7ecbf84c6d965621890e379b35a8d503d760f79a80eaacfc864b4cdd185cf",
+      "size": 702
+    },
+    {
+      "url": "https://discord.com/assets/1c05186037d2610d.js",
+      "sha256": "4d0e4077ef21d7d74475b92aca14b6ff4aa41d6dfaee2a668b2198febe4b1973",
+      "size": 24477
+    },
+    {
+      "url": "https://discord.com/assets/2a1911c1bd735f52.js",
+      "sha256": "f6b835f5c19a13e8bfb99aaa9416a8bf9d6ffea9e0f32d3ace0a02ad8fa24571",
+      "size": 1131
+    },
+    {
+      "url": "https://discord.com/assets/98f5590b388021a9.js",
+      "sha256": "c11ca83ab8c56597538b364cbd6b108db338012bdebadd5d620f1a147fab9028",
+      "size": 1169
+    },
+    {
+      "url": "https://discord.com/assets/e145a180902508a4.js",
+      "sha256": "67ad846bb7fb25d8b3bd0ccdea55f9c093033f4ba5a81e82515d2f78542717e5",
+      "size": 925
+    },
+    {
+      "url": "https://discord.com/assets/5ff276c21ed3ed62.js",
+      "sha256": "7845eafcbdf22ddf703443b4a205f2327c9dd1e2bcc9c7e6110791332adbd9bd",
+      "size": 893
+    },
+    {
+      "url": "https://discord.com/assets/fe8aedfe0fabc2ed.js",
+      "sha256": "ddf9b2592773c8f80520a7682377fe4199373388a246110c4f667fa0c496c628",
+      "size": 5608
+    },
+    {
+      "url": "https://discord.com/assets/a6d9b667c425c812.js",
+      "sha256": "b32d5d4afa30286d4b436218e54ee29d29ffe8da8f7d07ca82ca1c512ba195a2",
+      "size": 782
+    },
+    {
+      "url": "https://discord.com/assets/79b23eddb8062c0e.js",
+      "sha256": "61e1d69fa61c5b96681940a32dc745598b6364e61119ca2aeeb33ad30227fc0a",
+      "size": 30760
+    },
+    {
+      "url": "https://discord.com/assets/6aebfd0dc4009b2a.js",
+      "sha256": "1203d8b4158070fc2a4290ba73f9f35b494ef1288edbea013327b596e31fc59b",
+      "size": 74939
+    },
+    {
+      "url": "https://discord.com/assets/2f6b75ec0c920a33.js",
+      "sha256": "4ef22097895ca7a6eee4feae16c71a79b298f903fb57467b92d327f196bf48b2",
+      "size": 977
+    },
+    {
+      "url": "https://discord.com/assets/1815757ab45de041.js",
+      "sha256": "f659cea9e7537d9e5ec2faae0b96dde7cd8e8a47a71d1e4989685ff6d3b54878",
+      "size": 28548
+    },
+    {
+      "url": "https://discord.com/assets/07e753a7778edd94.js",
+      "sha256": "91a21da00c6072ead12c4ac4d4d067f1f6d68ea975e6e09a11c1be2a77ef9cdc",
+      "size": 1620
+    },
+    {
+      "url": "https://discord.com/assets/239f5f03ec32a9e2.js",
+      "sha256": "0d4afc05040db5ce66ee85649be2863fa171cf0dc6c384bff7a4d4f3eac45355",
+      "size": 907
+    },
+    {
+      "url": "https://discord.com/assets/2465d71197587faa.js",
+      "sha256": "c5d3b3a4b51a31fcdbce8c7a2e0e183b49d702c0cc997140c6bb1acd37f4f37e",
+      "size": 1102
+    },
+    {
+      "url": "https://discord.com/assets/3953918c427af4d5.js",
+      "sha256": "4e9be18a3a1f14eb7a000c6a2713ec44a3f1446528a28584a969b9bf6307dcb2",
+      "size": 940
+    },
+    {
+      "url": "https://discord.com/assets/95484e2789c1a12b.js",
+      "sha256": "2e16d67ecc1be90a5aed28a8e132482ea1771b79f58f503991d926e1b1437481",
+      "size": 913
+    },
+    {
+      "url": "https://discord.com/assets/8aa133dd4a6780ad.js",
+      "sha256": "b5b6a2f584dee600329e5d4fcf723a58999d885034b5dba507f4597f18294fd9",
+      "size": 49412
+    },
+    {
+      "url": "https://discord.com/assets/4dc3c379a80e3b21.js",
+      "sha256": "e0b44e38afdcfa44ddd8163dbcf1b6e7808e50eb624ff09a5533054a2f89442d",
+      "size": 1134
+    },
+    {
+      "url": "https://discord.com/assets/d390b9517a558c18.js",
+      "sha256": "7b885221c72ed387a44911d369cf4eeab352f9fb0721e65595eae97f7aa75db2",
+      "size": 790
+    },
+    {
+      "url": "https://discord.com/assets/75f4e6001e35781a.js",
+      "sha256": "46916499a3caeb7bb3ca050ab446483329f964cb72b8a02403ccda60b3e71b95",
+      "size": 22829
+    },
+    {
+      "url": "https://discord.com/assets/6db6623fdab10cb1.js",
+      "sha256": "d7838b35a285be94c542255bcf9c44e27f69b38981b23c0a656363555c6e2ddc",
+      "size": 1118
+    },
+    {
+      "url": "https://discord.com/assets/7ba2ef9c1d4796e0.js",
+      "sha256": "940ababe17ed87d88f0d585adb8f0b5e79e8123a36586a64b85bbc5dd1f5617e",
+      "size": 42643
+    },
+    {
+      "url": "https://discord.com/assets/785a7a4630cf5fbd.js",
+      "sha256": "a7581015ddf0c7d243f324502b1a85efb5f34f6f3e903657845f5fc07c0ac711",
+      "size": 1628
+    },
+    {
+      "url": "https://discord.com/assets/223ec54200e098de.js",
+      "sha256": "2e8b247f2e464615646aca5b733c06dce4ca7aba7fde6297d2fc9e20d98f9b76",
+      "size": 862
+    },
+    {
+      "url": "https://discord.com/assets/6049fd192b7e0569.js",
+      "sha256": "ba7fe06e3eb39e60eb7f58ad57f43925ff37f32604ab8d38548692cd6dd241dc",
+      "size": 2186
+    },
+    {
+      "url": "https://discord.com/assets/0731c0740edd408b.js",
+      "sha256": "57746de0925cabedc50e4b31c057371f4c4778950e1b6bab17a4dace95ed2126",
+      "size": 749
+    },
+    {
+      "url": "https://discord.com/assets/42347cd61c373390.js",
+      "sha256": "b8bef5d27d615e774873bfea39396086c3b75d62362e5c4d82749f8d1fc3d05f",
+      "size": 884
+    },
+    {
+      "url": "https://discord.com/assets/20960de76ae178c1.js",
+      "sha256": "5e308e935b79047f9ec6b3f8fdb85c3a726d3f69828985667640321b579a17e1",
+      "size": 971
+    },
+    {
+      "url": "https://discord.com/assets/05479d1eecea2ccc.js",
+      "sha256": "a40042c65c187b84bf911308b6dc023a08bf4a36269872b0ae43aba1f05c80d8",
+      "size": 715
+    },
+    {
+      "url": "https://discord.com/assets/4e3c02107d05c975.js",
+      "sha256": "c2aca2cda2756ae5a6ace1712e90c327d5c3ad0b58495d5804a0ad7b9b40e68e",
+      "size": 691
+    },
+    {
+      "url": "https://discord.com/assets/f61595e13090e70d.js",
+      "sha256": "7edbe7e2a6f5928de9b11e44172fb90a65903108660b701dac9f6bd1508192a1",
+      "size": 679
+    },
+    {
+      "url": "https://discord.com/assets/54d02fb93e6e6e96.js",
+      "sha256": "7bb7c53f8d2160e237b91fad41b3f20b570eaeaf7fa0ad0b5169ee76c11d2b92",
+      "size": 679
+    },
+    {
+      "url": "https://discord.com/assets/72f1e9150897f34c.js",
+      "sha256": "15e194af254fd01adf23afaf49e9dd45d2bfa3d01307a8c689ff5277428bd464",
+      "size": 1673
+    },
+    {
+      "url": "https://discord.com/assets/2e4a429f2a4e44b3.js",
+      "sha256": "2d3a31f305726a16d5287e8860683d7f0bbbc33647485786a1c56a81fc3b5adc",
+      "size": 1365
+    },
+    {
+      "url": "https://discord.com/assets/3cb09ed160ae0889.js",
+      "sha256": "a3b6463e8133f91eef4d4b22b4c046ee0fab0d636f469e0d67f81ae37969f277",
+      "size": 788
+    },
+    {
+      "url": "https://discord.com/assets/296e6569df5e7ed1.js",
+      "sha256": "f38370b0d0ba752a310b45d4bf08ff2fc57a79ad0757b9f924be0bce95b1f48e",
+      "size": 3485
+    },
+    {
+      "url": "https://discord.com/assets/2e73bba447f85081.js",
+      "sha256": "fa0de142cc3d8da228456068851782049cd57563045ce435ec160e9069c28e51",
+      "size": 5929
+    },
+    {
+      "url": "https://discord.com/assets/112165e8d971743a.js",
+      "sha256": "3edc4b89c664feadd448848eac3972ae535ba3a7c62350f4ec689a34698f539b",
+      "size": 1275
+    },
+    {
+      "url": "https://discord.com/assets/55ea6a17262e265c.js",
+      "sha256": "6b7d06463285d2e1d1cdc3e534d252d9f9cdc3e7b7b1136b8f593f2312589609",
+      "size": 1111
+    },
+    {
+      "url": "https://discord.com/assets/9779913c65c9c3b0.js",
+      "sha256": "0001f1670be618ef59283db1e15a1f141aa685241dd05b01ab60184301ba9bfe",
+      "size": 161219
+    },
+    {
+      "url": "https://discord.com/assets/a79a4bf84afdbfa4.js",
+      "sha256": "2edaba2cfd9ab4098945e8870fdd13e06d612f18c3ba21ef3e6a04ce9891397b",
+      "size": 976
+    },
+    {
+      "url": "https://discord.com/assets/3a7c3bb1ee4622fd.js",
+      "sha256": "3eb0034376a42060239c2713b27254245acfe9791e504d7b4872568ec1b6b3c5",
+      "size": 947
+    },
+    {
+      "url": "https://discord.com/assets/84acdd1c71e0407d.js",
+      "sha256": "bc8fe833aae288c845903c17d8d1b9e31e7e9ab5831c406f265ba292e5030b40",
+      "size": 3020
+    },
+    {
+      "url": "https://discord.com/assets/81be6e4b1c542aea.js",
+      "sha256": "0b3dc7e86a41c4d41092cfb3a41c97f7737f15f943204eff2ec5a0e3a7bdc538",
+      "size": 1120
+    },
+    {
+      "url": "https://discord.com/assets/5c02f1f16c9a0346.js",
+      "sha256": "ca85c012c96e19214b9367788b1c1a6b0b5b74c34245c9a0c823fc67e064e25e",
+      "size": 770
+    },
+    {
+      "url": "https://discord.com/assets/0954767dc60064f7.js",
+      "sha256": "87db080a73fa87c63360f2e83aa22f43b5112c0d2aa239bc6c4a00f3e1cd42fc",
+      "size": 900
+    },
+    {
+      "url": "https://discord.com/assets/ad218d3124bcba72.js",
+      "sha256": "d6852e1bd2ccb3f651e96c41a9f521e092b2e66cbff03adfa8591c1aaa4e058c",
+      "size": 917
+    },
+    {
+      "url": "https://discord.com/assets/a5d795224b045e9b.js",
+      "sha256": "5cf4781473d7116cef1b1b4b7c9d23570f01c36ea211647229dbc828056d9ce2",
+      "size": 3126
+    },
+    {
+      "url": "https://discord.com/assets/ee46705c41bc0ad8.js",
+      "sha256": "63bd75bbf994fc3ae35a6518fa65afda6c5bc234833ebc87f1e92a1212027e69",
+      "size": 5323
+    },
+    {
+      "url": "https://discord.com/assets/7b91b0282ba5dae5.js",
+      "sha256": "69b11185e866158bdb1e7c0b86d3f1b7d51999a768488f904c79a9dc7edc3914",
+      "size": 31425
+    },
+    {
+      "url": "https://discord.com/assets/9d83fa6e60fcf44d.js",
+      "sha256": "8fc7e7ed130960b020b4e6dd593c185afb5f8e752e5bc958ad8b3413f5c5b4a8",
+      "size": 17127
+    },
+    {
+      "url": "https://discord.com/assets/feaf05d295c33a0b.js",
+      "sha256": "a1683c0c1c54cd56d62cfc163acc6187b648018bec1b7724097b29e9373c8019",
+      "size": 11553
+    },
+    {
+      "url": "https://discord.com/assets/9ecfd7c09b76952a.js",
+      "sha256": "a8fdcb9b93c4df5e91cb221739b968575dfb6761281cb9cfa5d6a13c167c1490",
+      "size": 3911
+    },
+    {
+      "url": "https://discord.com/assets/7ce14d793fbf8402.js",
+      "sha256": "19667bf4e302633b6ee5127d683389913309f85dace3ecab8a248555ca5dc231",
+      "size": 4945
+    },
+    {
+      "url": "https://discord.com/assets/928bbf761af94508.js",
+      "sha256": "c2bbdce47715832762106383a710b5a4cb82278b134671766999ea8cd15c3e5f",
+      "size": 5457
+    },
+    {
+      "url": "https://discord.com/assets/ecf25858c61e3b45.js",
+      "sha256": "b521378d9ff360a949ed2204857acc455618b3324253e824cfbbd86ed1fb282f",
+      "size": 806
+    },
+    {
+      "url": "https://discord.com/assets/f0a6b89e6c9e2c81.js",
+      "sha256": "7315d28bcfab37f1f464aeec88a112d6527a31a36cd02220bb49a274aaa13765",
+      "size": 13068
+    },
+    {
+      "url": "https://discord.com/assets/80d31c6797856317.js",
+      "sha256": "ac18094858d9ed163ae5d30238ae3ef1cde5ba46f6fd3779cfd2aa9dfc556ecb",
+      "size": 212694
+    },
+    {
+      "url": "https://discord.com/assets/a38dd4e3f86a0288.js",
+      "sha256": "40eacd6152c9421c0aa015de92e9ce06e4814c155ecd880c3bdbbf2e8cdcdbc7",
+      "size": 2435
+    },
+    {
+      "url": "https://discord.com/assets/web.24a0dd4254453b09.js",
+      "sha256": "d141f126a87e0e4c49898f95c71b467641fe7e26022da5abcec663c104f3afcb",
+      "size": 12196918
+    },
+    {
+      "url": "https://discord.com/assets/d1b39439ac524f4a.js",
+      "sha256": "f5a38d9b213d3c6105219e8931560ccd09a1126322cca66db7adabd683bf52f4",
+      "size": 22624
+    },
+    {
+      "url": "https://discord.com/assets/548a08d5e6c82e91.js",
+      "sha256": "807babefeac21edab8f3173067a45b1e13a5a9e5150558fa86ae573c25519460",
+      "size": 20596
+    },
+    {
+      "url": "https://discord.com/assets/98baf95b8369205a.js",
+      "sha256": "6f48f9577985502acf28e5bc2fc315006234d27a178ec5750f3ba9eebb8a7f89",
+      "size": 19810
+    },
+    {
+      "url": "https://discord.com/assets/f79cf73c6c3696d0.js",
+      "sha256": "9f8f1f8bd28943cac57734adcfdb5fd14ae15e5ea3f2456c60eb10020009325e",
+      "size": 7204
+    },
+    {
+      "url": "https://discord.com/assets/8ab0241efaad2423.js",
+      "sha256": "45c45cc4865561455b402fd0ce07d10f1ed0e289632fbba9dc8d9d3d98da6ac2",
+      "size": 2751
+    },
+    {
+      "url": "https://discord.com/assets/d8d4585d895ca29c.js",
+      "sha256": "54e3a596595aebea2c267e4eae15503e08f75294c4e6f8bf6efc61127e2ed1b7",
+      "size": 1287
+    },
+    {
+      "url": "https://discord.com/assets/125fcc319303e790.js",
+      "sha256": "71da188d4b0d97d57a00889c17b91e4204df4830175bc1a9e772e6bb5e8c8e20",
+      "size": 703
+    },
+    {
+      "url": "https://discord.com/assets/84b12acd724f7760.js",
+      "sha256": "f678765869d608a398453f26d81503c1225005fecf47bcea2dff3235efb2da4a",
+      "size": 1375
+    },
+    {
+      "url": "https://discord.com/assets/35c4aafc15d633c7.js",
+      "sha256": "8a5f3c9587543acf441d94ece41dc2acde275195f943ea61aa665995e34baab1",
+      "size": 1096
+    },
+    {
+      "url": "https://discord.com/assets/f096b2f789fe8065.js",
+      "sha256": "4c1d1aac7c68b95d9c138350f65f75b8517e9ef74cecfce9d5109ce10e884ba7",
+      "size": 1085
+    },
+    {
+      "url": "https://discord.com/assets/web.d3978f1210c00a8f.js",
+      "sha256": "9abc8694626b50c418d01a2a9cdb879dff0399d1cb5d06af639ea884175b7c3c",
+      "size": 12194480
+    },
+    {
+      "url": "https://discord.com/assets/3b3cd58a5c9db539.js",
+      "sha256": "98e3a8aafdb09177911864ce75aa83b7ac35a248b048a2bc5988f6918e83aaa9",
+      "size": 92336
+    },
+    {
+      "url": "https://discord.com/assets/27c82ba820840b89.js",
+      "sha256": "e58d00bd5ec891e068c7ba8a1a462129c7697a2a1368cac8ef917347cd7c1dcd",
+      "size": 102542
+    },
+    {
+      "url": "https://discord.com/assets/e688c6ade3737d62.js",
+      "sha256": "d754a3e7a5e6c4605db1fe64ac8f21148adf0aaa237c77164fa32bd33bb98726",
+      "size": 1036
+    },
+    {
+      "url": "https://discord.com/assets/web.ae482d0492df0fb9.js",
+      "sha256": "858cdab8620378d7c199a9e1c2c68480427b8099238e42985a4a0cd27cffa846",
+      "size": 12221081
+    },
+    {
+      "url": "https://discord.com/assets/75d67ca8e3d6f8f6.js",
+      "sha256": "457e948dde0eff0c49ffcfe0c1981552854369edf7a23885822e17c12aab12e5",
+      "size": 1079
+    },
+    {
+      "url": "https://discord.com/assets/4684b8dce2f7f3f5.js",
+      "sha256": "470eaf9aacf0a68ef63d4ea8582e0d01c6d986b9c6145c49d213d0e6dc1bd510",
+      "size": 1532
+    },
+    {
+      "url": "https://discord.com/assets/81ed638993dbf0ca.js",
+      "sha256": "9f68c299024e72ffa15a2506e0d87a4bfb5683e13f17878fa827a9d7f14f6a78",
+      "size": 1584
+    },
+    {
+      "url": "https://discord.com/assets/8b32e1528d9a867a.js",
+      "sha256": "805545d6568007557c832d0385fe0928ce8e0633336d6e8878ff87bc0a5206ef",
+      "size": 19885
+    },
+    {
+      "url": "https://discord.com/assets/32c1579df4f79ddf.js",
+      "sha256": "941b339befd4f772988acb7935c6471bd9651a1866b950629c630eca100d4944",
+      "size": 4611
+    },
+    {
+      "url": "https://discord.com/assets/e283bdd3a64fbd96.js",
+      "sha256": "2ffc37660c9c3b22891d851ce71a8229577584e07ca97c68f426267137aa5114",
+      "size": 2100
+    },
+    {
+      "url": "https://discord.com/assets/4eee2bb6c274bf18.js",
+      "sha256": "ea11cd1e633706436a19be2b53e81fd7df24f074f3e72f89b15739d9dd2bd3f6",
+      "size": 17343
+    },
+    {
+      "url": "https://discord.com/assets/81a42e245ad999cc.js",
+      "sha256": "3da161125ff4484f4782ac7395d297e88ef3daab315ca63184ecd985f465a319",
+      "size": 1215
+    },
+    {
+      "url": "https://discord.com/assets/8653ef3640dbfa40.js",
+      "sha256": "ac34d44262f684d46e183e800103d3cdffe9cfbf51c0729cb02327edc37dca61",
+      "size": 2610
+    },
+    {
+      "url": "https://discord.com/assets/web.841ac93261d6ca84.js",
+      "sha256": "67fcf7a27943409927f8b29f620d50cf0532b717ad4e0c40c384676cf5b923dc",
+      "size": 12297980
+    },
+    {
+      "url": "https://discord.com/assets/e41af1aa156390fe.js",
+      "sha256": "a1374aed280faffdd243b82c26ac7d12ed21f0ba06dbc75eba98977e40374088",
+      "size": 859
+    },
+    {
+      "url": "https://discord.com/assets/236d38dd1256905c.js",
+      "sha256": "946b7fa7b43cafbf1ed3e9179aef5477a5a4236e9a54c3bffa6627466d1b6bd0",
+      "size": 143207
+    },
+    {
+      "url": "https://discord.com/assets/70b528babf01519b.js",
+      "sha256": "2b7fbb9225329f4b31e9b489e567f22269cebe89742a02336cfb1964640116cf",
+      "size": 1499
+    },
+    {
+      "url": "https://discord.com/assets/3fba046dfa5a98f4.js",
+      "sha256": "b52b3cf76dbc3a3248a489511041dec017c82cdda75ffa77b6c616938455ce7d",
+      "size": 1066
+    },
+    {
+      "url": "https://discord.com/assets/bd77e32d92de7a2b.js",
+      "sha256": "8153be2dbe259d479fda6617db413761a9d80e798c48dc98f2bd4552652f04d3",
+      "size": 822
+    },
+    {
+      "url": "https://discord.com/assets/73389436fb164d34.js",
+      "sha256": "de8e6fc81038ab77ea3fc39785ef6ac6e063da86bcc2aaa9f7733992cb168e0e",
+      "size": 2222
+    },
+    {
+      "url": "https://discord.com/assets/1a6524e590eab7ac.js",
+      "sha256": "60b85cea9b7499fe8186775512d9183afc9335ab32db68fe1bd17abfb6c24352",
+      "size": 841
+    },
+    {
+      "url": "https://discord.com/assets/26559d3f3606c9d8.js",
+      "sha256": "0f308bc3595dd846381f0b93343aca4cb678299400974726e937e4e7e01a95b9",
+      "size": 1047
+    },
+    {
+      "url": "https://discord.com/assets/2db435e3e85b55df.js",
+      "sha256": "254620134a26e4d56d96c1a20c897e6975f268e6a82597cc550808bd55d654ce",
+      "size": 1063
+    },
+    {
+      "url": "https://discord.com/assets/web.94f77ed563542b5d.js",
+      "sha256": "31bdc9bc9c17faae80b5a13ee97cb19c1db80f7aa3a72a598ed8461e05423064",
+      "size": 12318192
+    },
+    {
+      "url": "https://discord.com/assets/5dcd6eae4b958a6f.js",
+      "sha256": "efa991ddf58cd23ffefd05ed56948068fdb7600f1e0ed8791fb1f1fabe488444",
+      "size": 75675
+    },
+    {
+      "url": "https://discord.com/assets/ddef0974948b7b77.js",
+      "sha256": "abf840ee86e894842f1ee7d1ba640ff75965a2a5eb56eead8afff5098340d964",
+      "size": 25600
+    },
+    {
+      "url": "https://discord.com/assets/2105372af4de63ed.js",
+      "sha256": "0b04e381d67c4263f1a44d49517361e1e672ed46611ab48cf92d169db2842084",
+      "size": 31519
+    },
+    {
+      "url": "https://discord.com/assets/c603608d5c0498b1.js",
+      "sha256": "a947e81b38c99e4eca5dde2ed9d095b79752ca9fabe5815d0bc3cd4e7727d047",
+      "size": 21111
+    },
+    {
+      "url": "https://discord.com/assets/6d46672cbc0bf85b.js",
+      "sha256": "710de3d61820077bc7785a5690e341551b2515484e3419760adb69cada993848",
+      "size": 2904
+    },
+    {
+      "url": "https://discord.com/assets/51738ff76bb1ddb2.js",
+      "sha256": "4029a75f0fe89c90e830e3b2cb12add97db5ef8840d1ed6ae6d9a69c49649cfd",
+      "size": 34782
+    },
+    {
+      "url": "https://discord.com/assets/34a2a58623360dea.js",
+      "sha256": "1b9920fd47572563b4d460345b149c327d242f1696e4a1711146142d0b0b518a",
+      "size": 33521
+    },
+    {
+      "url": "https://discord.com/assets/9316261325b35cb9.js",
+      "sha256": "b1882d967d5e58d1ce760a3aa7c855f32759d18890fa820ab76dddf6cd604732",
+      "size": 833
+    },
+    {
+      "url": "https://discord.com/assets/625ec2ac44d9d469.js",
+      "sha256": "b0c8c3db8b1951be71c348ea8aacbee0249bbc3fa70cea119d8a3d1304869d04",
+      "size": 695
+    }
+  ],
+  "entries": [
+    {
+      "name": "icon/AccessibilityIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 0,
+      "module_id": "550640",
+      "export": "AccessibilityIcon",
+      "start": 79678,
+      "end": 80444
+    },
+    {
+      "name": "icon/AnalyticsIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 1,
+      "module_id": "555704",
+      "export": "AnalyticsIcon",
+      "start": 32128,
+      "end": 32757
+    },
+    {
+      "name": "icon/AppsIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 2,
+      "module_id": "323384",
+      "export": "AppsIcon",
+      "start": 11443,
+      "end": 12721
+    },
+    {
+      "name": "icon/ArrowAngleLeftUpIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 3,
+      "module_id": "110384",
+      "export": "ArrowAngleLeftUpIcon",
+      "start": 191,
+      "end": 690
+    },
+    {
+      "name": "icon/ArrowAngleRightUpIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 4,
+      "module_id": "292801",
+      "export": "ArrowAngleRightUpIcon",
+      "start": 9972730,
+      "end": 9973232
+    },
+    {
+      "name": "icon/ArrowLargeLeftIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 5,
+      "module_id": "548411",
+      "export": "ArrowLargeLeftIcon",
+      "start": 191,
+      "end": 659
+    },
+    {
+      "name": "icon/ArrowLargeRightIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 6,
+      "module_id": "554830",
+      "export": "ArrowLargeRightIcon",
+      "start": 191,
+      "end": 662
+    },
+    {
+      "name": "icon/ArrowSmallLeftIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 7,
+      "module_id": "477155",
+      "export": "ArrowSmallLeftIcon",
+      "start": 190,
+      "end": 658
+    },
+    {
+      "name": "icon/ArrowSmallRightIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 8,
+      "module_id": "935286",
+      "export": "ArrowSmallRightIcon",
+      "start": 897624,
+      "end": 898095
+    },
+    {
+      "name": "icon/ArrowsUpDownIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 9,
+      "module_id": "112173",
+      "export": "ArrowsUpDownIcon",
+      "start": 191,
+      "end": 769
+    },
+    {
+      "name": "icon/AtIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 10,
+      "module_id": "935063",
+      "export": "AtIcon",
+      "start": 191,
+      "end": 1790
+    },
+    {
+      "name": "icon/AttachmentIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 8,
+      "module_id": "588975",
+      "export": "AttachmentIcon",
+      "start": 898206,
+      "end": 898907
+    },
+    {
+      "name": "icon/BellIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 11,
+      "module_id": "782603",
+      "export": "BellIcon",
+      "start": 198,
+      "end": 954
+    },
+    {
+      "name": "icon/BicycleIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 8,
+      "module_id": "115979",
+      "export": "BicycleIcon",
+      "start": 899018,
+      "end": 899850
+    },
+    {
+      "name": "icon/BoostGemIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 12,
+      "module_id": "104510",
+      "export": "BoostGemIcon",
+      "start": 191,
+      "end": 1186
+    },
+    {
+      "name": "icon/CalendarIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 4,
+      "module_id": "81466",
+      "export": "CalendarIcon",
+      "start": 10011695,
+      "end": 10012523
+    },
+    {
+      "name": "icon/ChatIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 13,
+      "module_id": "534890",
+      "export": "ChatIcon",
+      "start": 198,
+      "end": 636
+    },
+    {
+      "name": "icon/ChatMarkUnreadIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 14,
+      "module_id": "666492",
+      "export": "ChatMarkUnreadIcon",
+      "start": 191,
+      "end": 1015
+    },
+    {
+      "name": "icon/ChatShieldIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 0,
+      "module_id": "476713",
+      "export": "ChatShieldIcon",
+      "start": 82244,
+      "end": 83291
+    },
+    {
+      "name": "icon/ChatSpeakIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 15,
+      "module_id": "556112",
+      "export": "ChatSpeakIcon",
+      "start": 2066,
+      "end": 2896
+    },
+    {
+      "name": "icon/CheckmarkLargeIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 4,
+      "module_id": "933832",
+      "export": "CheckmarkLargeIcon",
+      "start": 10028485,
+      "end": 10028949
+    },
+    {
+      "name": "icon/CheckmarkSmallBoldIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 4,
+      "module_id": "820081",
+      "export": "CheckmarkSmallBoldIcon",
+      "start": 10029060,
+      "end": 10029584
+    },
+    {
+      "name": "icon/ChevronLargeDownIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 4,
+      "module_id": "715482",
+      "export": "ChevronLargeDownIcon",
+      "start": 10030305,
+      "end": 10030767
+    },
+    {
+      "name": "icon/ChevronLargeRightIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 16,
+      "module_id": "881636",
+      "export": "ChevronLargeRightIcon",
+      "start": 191,
+      "end": 652
+    },
+    {
+      "name": "icon/ChevronSmallDownIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 4,
+      "module_id": "847374",
+      "export": "ChevronSmallDownIcon",
+      "start": 10032595,
+      "end": 10033057
+    },
+    {
+      "name": "icon/ChevronSmallLeftIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 4,
+      "module_id": "921853",
+      "export": "ChevronSmallLeftIcon",
+      "start": 10033168,
+      "end": 10033629
+    },
+    {
+      "name": "icon/ChevronSmallRightIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 4,
+      "module_id": "320448",
+      "export": "ChevronSmallRightIcon",
+      "start": 10033740,
+      "end": 10034201
+    },
+    {
+      "name": "icon/CircleCheckIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 4,
+      "module_id": "628284",
+      "export": "CircleCheckIcon",
+      "start": 10034885,
+      "end": 10035559
+    },
+    {
+      "name": "icon/CircleErrorIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 4,
+      "module_id": "695366",
+      "export": "CircleErrorIcon",
+      "start": 10035670,
+      "end": 10036403
+    },
+    {
+      "name": "icon/CirclePlusIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 17,
+      "module_id": "245604",
+      "export": "CirclePlusIcon",
+      "start": 23748,
+      "end": 24427
+    },
+    {
+      "name": "icon/CircleQuestionIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 18,
+      "module_id": "290136",
+      "export": "CircleQuestionIcon",
+      "start": 208,
+      "end": 1081
+    },
+    {
+      "name": "icon/ClockIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 4,
+      "module_id": "406810",
+      "export": "ClockIcon",
+      "start": 10046988,
+      "end": 10047495
+    },
+    {
+      "name": "icon/ClydeIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 19,
+      "module_id": "111159",
+      "export": "ClydeIcon",
+      "start": 191,
+      "end": 1119
+    },
+    {
+      "name": "icon/CompassIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 20,
+      "module_id": "836480",
+      "export": "CompassIcon",
+      "start": 201,
+      "end": 875
+    },
+    {
+      "name": "icon/CopyIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 4,
+      "module_id": "624479",
+      "export": "CopyIcon",
+      "start": 10057704,
+      "end": 10058468
+    },
+    {
+      "name": "icon/CreditCardIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 21,
+      "module_id": "360669",
+      "export": "CreditCardIcon",
+      "start": 191,
+      "end": 843
+    },
+    {
+      "name": "icon/CrownIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 22,
+      "module_id": "329177",
+      "export": "CrownIcon",
+      "start": 3236,
+      "end": 3906
+    },
+    {
+      "name": "icon/DenyIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 23,
+      "module_id": "428678",
+      "export": "DenyIcon",
+      "start": 191,
+      "end": 732
+    },
+    {
+      "name": "icon/DoorExitIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 24,
+      "module_id": "70688",
+      "export": "DoorExitIcon",
+      "start": 29707,
+      "end": 30710
+    },
+    {
+      "name": "icon/DownloadIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 25,
+      "module_id": "32880",
+      "export": "DownloadIcon",
+      "start": 69393,
+      "end": 69912
+    },
+    {
+      "name": "icon/EmbedIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 4,
+      "module_id": "11023",
+      "export": "EmbedIcon",
+      "start": 10072096,
+      "end": 10072848
+    },
+    {
+      "name": "icon/EmojiSlightlySmilingFaceIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 4,
+      "module_id": "649718",
+      "export": "EmojiSlightlySmilingFaceIcon",
+      "start": 1263960,
+      "end": 1264596
+    },
+    {
+      "name": "icon/EyeDropperIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 26,
+      "module_id": "714385",
+      "export": "EyeDropperIcon",
+      "start": 191,
+      "end": 927
+    },
+    {
+      "name": "icon/EyeIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 27,
+      "module_id": "39623",
+      "export": "EyeIcon",
+      "start": 27573,
+      "end": 28498
+    },
+    {
+      "name": "icon/EyeSlashIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 28,
+      "module_id": "952270",
+      "export": "EyeSlashIcon",
+      "start": 202,
+      "end": 1570
+    },
+    {
+      "name": "icon/FileIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 29,
+      "module_id": "514042",
+      "export": "FileIcon",
+      "start": 198,
+      "end": 857
+    },
+    {
+      "name": "icon/FileUpIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 30,
+      "module_id": "81369",
+      "export": "FileUpIcon",
+      "start": 190,
+      "end": 1052
+    },
+    {
+      "name": "icon/FiltersHorizontalIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 31,
+      "module_id": "783977",
+      "export": "FiltersHorizontalIcon",
+      "start": 191,
+      "end": 890
+    },
+    {
+      "name": "icon/FireIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 32,
+      "module_id": "825860",
+      "export": "FireIcon",
+      "start": 198,
+      "end": 863
+    },
+    {
+      "name": "icon/FlagIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 13,
+      "module_id": "138134",
+      "export": "FlagIcon",
+      "start": 741,
+      "end": 1343
+    },
+    {
+      "name": "icon/FolderIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 2,
+      "module_id": "678708",
+      "export": "FolderIcon",
+      "start": 21006,
+      "end": 21461
+    },
+    {
+      "name": "icon/FoodIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 8,
+      "module_id": "141060",
+      "export": "FoodIcon",
+      "start": 906201,
+      "end": 907161
+    },
+    {
+      "name": "icon/FriendsIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 4,
+      "module_id": "214947",
+      "export": "FriendsIcon",
+      "start": 10107420,
+      "end": 10108152
+    },
+    {
+      "name": "icon/FullscreenEnterIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 25,
+      "module_id": "729475",
+      "export": "FullscreenEnterIcon",
+      "start": 70010,
+      "end": 70652
+    },
+    {
+      "name": "icon/FullscreenExitIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 25,
+      "module_id": "86147",
+      "export": "FullscreenExitIcon",
+      "start": 70749,
+      "end": 71391
+    },
+    {
+      "name": "icon/GameControllerIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 4,
+      "module_id": "687966",
+      "export": "GameControllerIcon",
+      "start": 10109785,
+      "end": 10110824
+    },
+    {
+      "name": "icon/GiftIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 33,
+      "module_id": "597770",
+      "export": "GiftIcon",
+      "start": 44405,
+      "end": 45355
+    },
+    {
+      "name": "icon/GroupIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 34,
+      "module_id": "177953",
+      "export": "GroupIcon",
+      "start": 191,
+      "end": 1084
+    },
+    {
+      "name": "icon/HeartIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 35,
+      "module_id": "926268",
+      "export": "HeartIcon",
+      "start": 199,
+      "end": 740
+    },
+    {
+      "name": "icon/HeartOutlineIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 36,
+      "module_id": "559758",
+      "export": "HeartOutlineIcon",
+      "start": 21984,
+      "end": 22779
+    },
+    {
+      "name": "icon/ImageIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 37,
+      "module_id": "191023",
+      "export": "ImageIcon",
+      "start": 199,
+      "end": 1068
+    },
+    {
+      "name": "icon/InboxIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 38,
+      "module_id": "912592",
+      "export": "InboxIcon",
+      "start": 41968,
+      "end": 42593
+    },
+    {
+      "name": "icon/KeyboardIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 0,
+      "module_id": "410767",
+      "export": "KeyboardIcon",
+      "start": 83389,
+      "end": 84770
+    },
+    {
+      "name": "icon/LanguageIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 15,
+      "module_id": "37646",
+      "export": "LanguageIcon",
+      "start": 4025,
+      "end": 4878
+    },
+    {
+      "name": "icon/LinkIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 4,
+      "module_id": "173936",
+      "export": "LinkIcon",
+      "start": 10158044,
+      "end": 10158850
+    },
+    {
+      "name": "icon/LockIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 4,
+      "module_id": "194261",
+      "export": "LockIcon",
+      "start": 10160977,
+      "end": 10161551
+    },
+    {
+      "name": "icon/MagnifyingGlassIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 4,
+      "module_id": "7689",
+      "export": "MagnifyingGlassIcon",
+      "start": 10164563,
+      "end": 10165070
+    },
+    {
+      "name": "icon/MagnifyingGlassMinusIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 39,
+      "module_id": "92259",
+      "export": "MagnifyingGlassMinusIcon",
+      "start": 190,
+      "end": 821
+    },
+    {
+      "name": "icon/MagnifyingGlassPlusIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 39,
+      "module_id": "218429",
+      "export": "MagnifyingGlassPlusIcon",
+      "start": 919,
+      "end": 1578
+    },
+    {
+      "name": "icon/MicrophoneIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 40,
+      "module_id": "831544",
+      "export": "MicrophoneIcon",
+      "start": 204,
+      "end": 812
+    },
+    {
+      "name": "icon/MoreHorizontalIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 4,
+      "module_id": "365199",
+      "export": "MoreHorizontalIcon",
+      "start": 10178260,
+      "end": 10178757
+    },
+    {
+      "name": "icon/NatureIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 8,
+      "module_id": "413249",
+      "export": "NatureIcon",
+      "start": 909135,
+      "end": 909937
+    },
+    {
+      "name": "icon/NitroWheelIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 4,
+      "module_id": "403581",
+      "export": "NitroWheelIcon",
+      "start": 10185299,
+      "end": 10186002
+    },
+    {
+      "name": "icon/ObjectIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 8,
+      "module_id": "524501",
+      "export": "ObjectIcon",
+      "start": 911015,
+      "end": 911797
+    },
+    {
+      "name": "icon/PaintPaletteIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 4,
+      "module_id": "650809",
+      "export": "PaintPaletteIcon",
+      "start": 10188343,
+      "end": 10189003
+    },
+    {
+      "name": "icon/PaperPlusIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 41,
+      "module_id": "444570",
+      "export": "PaperPlusIcon",
+      "start": 1235,
+      "end": 2136
+    },
+    {
+      "name": "icon/PauseIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 42,
+      "module_id": "113494",
+      "export": "PauseIcon",
+      "start": 199,
+      "end": 699
+    },
+    {
+      "name": "icon/PencilIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 43,
+      "module_id": "22231",
+      "export": "PencilIcon",
+      "start": 199,
+      "end": 834
+    },
+    {
+      "name": "icon/PinIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 44,
+      "module_id": "366605",
+      "export": "PinIcon",
+      "start": 191,
+      "end": 921
+    },
+    {
+      "name": "icon/PlayIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 45,
+      "module_id": "782134",
+      "export": "PlayIcon",
+      "start": 198,
+      "end": 665
+    },
+    {
+      "name": "icon/PlusLargeIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 46,
+      "module_id": "663341",
+      "export": "PlusLargeIcon",
+      "start": 203,
+      "end": 641
+    },
+    {
+      "name": "icon/PlusMediumIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 47,
+      "module_id": "499373",
+      "export": "PlusMediumIcon",
+      "start": 191,
+      "end": 629
+    },
+    {
+      "name": "icon/PlusSmallIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 48,
+      "module_id": "307301",
+      "export": "PlusSmallIcon",
+      "start": 191,
+      "end": 629
+    },
+    {
+      "name": "icon/PollsIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 49,
+      "module_id": "642846",
+      "export": "PollsIcon",
+      "start": 191,
+      "end": 692
+    },
+    {
+      "name": "icon/QuestsIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 50,
+      "module_id": "577473",
+      "export": "QuestsIcon",
+      "start": 191,
+      "end": 1315
+    },
+    {
+      "name": "icon/RefreshIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 4,
+      "module_id": "663417",
+      "export": "RefreshIcon",
+      "start": 10225834,
+      "end": 10226463
+    },
+    {
+      "name": "icon/ScreenIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 51,
+      "module_id": "31300",
+      "export": "ScreenIcon",
+      "start": 190,
+      "end": 738
+    },
+    {
+      "name": "icon/SettingsIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 4,
+      "module_id": "625903",
+      "export": "SettingsIcon",
+      "start": 10247241,
+      "end": 10248618
+    },
+    {
+      "name": "icon/ShieldLockIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 52,
+      "module_id": "254138",
+      "export": "ShieldLockIcon",
+      "start": 2623,
+      "end": 3435
+    },
+    {
+      "name": "icon/ShieldUserIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 53,
+      "module_id": "957485",
+      "export": "ShieldUserIcon",
+      "start": 2065,
+      "end": 2978
+    },
+    {
+      "name": "icon/ShopIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 54,
+      "module_id": "34188",
+      "export": "ShopIcon",
+      "start": 189,
+      "end": 1225
+    },
+    {
+      "name": "icon/SoundboardIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 53,
+      "module_id": "7807",
+      "export": "SoundboardIcon",
+      "start": 3074,
+      "end": 4295
+    },
+    {
+      "name": "icon/SparklesIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 55,
+      "module_id": "175841",
+      "export": "SparklesIcon",
+      "start": 202,
+      "end": 1061
+    },
+    {
+      "name": "icon/StaffBadgeIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 4,
+      "module_id": "306471",
+      "export": "StaffBadgeIcon",
+      "start": 10270876,
+      "end": 10272058
+    },
+    {
+      "name": "icon/StarIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 4,
+      "module_id": "27232",
+      "export": "StarIcon",
+      "start": 10276436,
+      "end": 10277013
+    },
+    {
+      "name": "icon/StarOutlineIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 1,
+      "module_id": "505930",
+      "export": "StarOutlineIcon",
+      "start": 32855,
+      "end": 33557
+    },
+    {
+      "name": "icon/StickerIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 53,
+      "module_id": "797285",
+      "export": "StickerIcon",
+      "start": 4393,
+      "end": 5268
+    },
+    {
+      "name": "icon/SubscriptionIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 0,
+      "module_id": "153659",
+      "export": "SubscriptionIcon",
+      "start": 90084,
+      "end": 91949
+    },
+    {
+      "name": "icon/TextIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 10,
+      "module_id": "276293",
+      "export": "TextIcon",
+      "start": 1888,
+      "end": 2579
+    },
+    {
+      "name": "icon/ThreadIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 2,
+      "module_id": "163328",
+      "export": "ThreadIcon",
+      "start": 32861,
+      "end": 33662
+    },
+    {
+      "name": "icon/ThreadPlusIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 56,
+      "module_id": "523056",
+      "export": "ThreadPlusIcon",
+      "start": 159360,
+      "end": 160395
+    },
+    {
+      "name": "icon/TrashIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 4,
+      "module_id": "241326",
+      "export": "TrashIcon",
+      "start": 10308938,
+      "end": 10309761
+    },
+    {
+      "name": "icon/UserCircleIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 57,
+      "module_id": "26137",
+      "export": "UserCircleIcon",
+      "start": 190,
+      "end": 926
+    },
+    {
+      "name": "icon/UserIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 58,
+      "module_id": "950305",
+      "export": "UserIcon",
+      "start": 197,
+      "end": 897
+    },
+    {
+      "name": "icon/UserPlatformIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 59,
+      "module_id": "682348",
+      "export": "UserPlatformIcon",
+      "start": 1849,
+      "end": 2970
+    },
+    {
+      "name": "icon/UserPlusIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 60,
+      "module_id": "283973",
+      "export": "UserPlusIcon",
+      "start": 191,
+      "end": 1070
+    },
+    {
+      "name": "icon/VideoIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 61,
+      "module_id": "428689",
+      "export": "VideoIcon",
+      "start": 199,
+      "end": 720
+    },
+    {
+      "name": "icon/VoiceBluetoothIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 4,
+      "module_id": "649718",
+      "export": "VoiceBluetoothIcon",
+      "start": 1493400,
+      "end": 1494293
+    },
+    {
+      "name": "icon/VoiceLowIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 25,
+      "module_id": "793920",
+      "export": "VoiceLowIcon",
+      "start": 73710,
+      "end": 74350
+    },
+    {
+      "name": "icon/VoiceXIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 62,
+      "module_id": "358618",
+      "export": "VoiceXIcon",
+      "start": 191,
+      "end": 850
+    },
+    {
+      "name": "icon/WarningIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 4,
+      "module_id": "738188",
+      "export": "WarningIcon",
+      "start": 10340723,
+      "end": 10341368
+    },
+    {
+      "name": "icon/WindowLaunchIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 63,
+      "module_id": "811893",
+      "export": "WindowLaunchIcon",
+      "start": 191,
+      "end": 867
+    },
+    {
+      "name": "icon/XLargeIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 4,
+      "module_id": "972213",
+      "export": "XLargeIcon",
+      "start": 10348582,
+      "end": 10349096
+    },
+    {
+      "name": "icon/XNeutralIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 64,
+      "module_id": "274997",
+      "export": "XNeutralIcon",
+      "start": 2555,
+      "end": 3076
+    },
+    {
+      "name": "icon/XSmallIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 4,
+      "module_id": "789645",
+      "export": "XSmallIcon",
+      "start": 10350480,
+      "end": 10350994
+    },
+    {
+      "name": "icon/replay",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 8,
+      "module_id": "440014",
+      "export": null,
+      "start": 567451,
+      "end": 567848
+    },
+    {
+      "name": "video/app_spinner",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/7ba7fcf2c4710bb7.webm",
+      "sha256": "313818d6b177a70fbe715a5142d6221ac1a1851eff5a9f6df505670ddcd73074"
+    },
+    {
+      "name": "image/emoji_button_sprite_grey",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/decf85f79e02d276.png",
+      "sha256": "0891249fd0705a151ac2a10a0bc3d6a438ec75aba8b0bd82c0115af85c74f565"
+    },
+    {
+      "name": "image/no_results",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/05207174d5432737.svg",
+      "sha256": "ebd4e6da73e39e44dfe2485855a1f31dafa63884f25c83e962d8773de628f96b"
+    },
+    {
+      "name": "image/auth_wordmark",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/131c318dd45b7aa4.svg",
+      "sha256": "a644a9364be96ad0a72f8e24397322b4d0646563a11e8ff76191a9239a561ac9"
+    },
+    {
+      "name": "image/auth_background",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/d8680b1c1576ecc8.svg",
+      "sha256": "e9deebcc271633c282ab3fe440ce81a196ece4f402804fe8940030f98c563475"
+    },
+    {
+      "name": "image/search_no_results",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/0dfcd735f1a5349c.svg",
+      "sha256": "6832bcb83656f9b40a1db07773086ed2bcf695a875788eca602178d59a30e3b3"
+    },
+    {
+      "name": "image/tutorial_arrow_1",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/a8546d03debd645f.svg",
+      "sha256": "88a0f89e14d0f9a52a706c4ae119a0099cb813e85601578f0c7d198dc5d303ee"
+    },
+    {
+      "name": "image/tutorial_arrow_2",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/43a0c71f5cc76261.svg",
+      "sha256": "b3b0ac38a3e5112770044990b057226a5e695fbe7a69aaed2722acc194582834"
+    },
+    {
+      "name": "image/tutorial_arrow_3",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/6c67a101e81dc0ad.svg",
+      "sha256": "351cb37608d08fe18f1fc1bdb731614949120d88650d309678d86706fb698882"
+    },
+    {
+      "name": "sound/message1",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/3ed22d14f3c30bc4.mp3",
+      "sha256": "31ad0482eee7770597b8aa723a80fd041ade0b076679b12293664f1f1777211b"
+    },
+    {
+      "name": "sound/mention1",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/3baf62fc7aebb0a3.mp3",
+      "sha256": "c97c6fe3f633b55e158b1a8d3b6cf44c0ee7f1adfadc26e90416e6e4efd893b7"
+    },
+    {
+      "name": "sound/mute",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/2d3b4ba32c34c862.mp3",
+      "sha256": "f6194168829b0701e8b40817d5173afed4b3b1e0b5074ab82ca31d97e4cb65c1"
+    },
+    {
+      "name": "sound/unmute",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/e74c4a06134a20e4.mp3",
+      "sha256": "1572881f90703c1e0cd138fe7486d2e53c0ac5d8509cade32029fb31650b9304"
+    },
+    {
+      "name": "sound/deafen",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/529ff198eac567af.mp3",
+      "sha256": "dee4468bbafb321b159dcab42f52d1fbfb1d01358437e0a3088c3345979211b8"
+    },
+    {
+      "name": "sound/undeafen",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/b150f03c89944403.mp3",
+      "sha256": "690b64977594baa41c7978d76259224f67799ba337df2d1045dce970ef82b243"
+    },
+    {
+      "name": "sound/disconnect",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/dd0911025fe00b2e.mp3",
+      "sha256": "c06c7e58099969eacc5f8eb925fb381f445250b9f37acf959b11df72aabb44ca"
+    },
+    {
+      "name": "sound/reconnect",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/7dfc49b36dea3a6c.mp3",
+      "sha256": "9a76b49638c4e1cfc60743d889c714ab0f5271c34746e92c97f1e5142a50cd35"
+    },
+    {
+      "name": "sound/ptt_start",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/f5c8ec31889c5317.mp3",
+      "sha256": "9a06714cbc4fffe5c181be5499d08a3de31bcd21bfd0678c1a42764c0db4c99a"
+    },
+    {
+      "name": "sound/ptt_stop",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/34b5969be3a063ba.mp3",
+      "sha256": "e470a8a450681b6ef92251c974fc295b598445faf1749697765a9b293f50c0e7"
+    },
+    {
+      "name": "sound/user_join",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/b135ff6c8e091b43.mp3",
+      "sha256": "d30746caf3e4675ae0d822d51461a9ad24832afa1e20179c3c2fc7b50b911a26"
+    },
+    {
+      "name": "sound/user_leave",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/7b9a183742515fc2.mp3",
+      "sha256": "9fd71c2d8112c82a7fb316602bb1645bc65f5edfa260110bbaae80090fbe9df0"
+    },
+    {
+      "name": "sound/user_moved",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/4003230e4086b680.mp3",
+      "sha256": "af782dabdba6ff3b9c90b0be29274cf964167e6d6125db1e4c9e235bee8eed51"
+    },
+    {
+      "name": "sound/call_calling",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/5146737af413d88e.mp3",
+      "sha256": "c3999dbbbea7fca113d6f396b81d6054dd2dd6df79f442b62dfb74afddd36934"
+    },
+    {
+      "name": "sound/call_ringing",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/c2a7111bb44b8da0.mp3",
+      "sha256": "a2365a04f839099538271d06889147475ceef0845f8cc010425618f5dc412880"
+    },
+    {
+      "name": "sound/stream_started",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/abe52a3c92953edb.mp3",
+      "sha256": "b5cb29d5d5cc0e8e22fa014bac4a1c2d601f6890ae6db1c18d4b6310283a3271"
+    },
+    {
+      "name": "sound/stream_ended",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/cbff07b5a83e0321.mp3",
+      "sha256": "a724e183167405783122b997def6b3e6f53020957031224b27c434d6df8ef75f"
+    },
+    {
+      "name": "sound/stream_user_joined",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/3d2af2764581bb2e.mp3",
+      "sha256": "3b51208e7559fc5b16a297cd8d882648fa7534adf706dfbd529c39266d132213"
+    },
+    {
+      "name": "sound/stream_user_left",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/24ae9dc0184bd570.mp3",
+      "sha256": "be2f1374b1ec8137eaa7e11357aafe12a3f3e09c0ed759b5d11043e723992061"
+    },
+    {
+      "name": "sound/camera_on",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/855607d0932ea396.mp3",
+      "sha256": "faeb721a072575c96d1e140aaecd469bf3f7278347596968dddf22fdb65005bf"
+    },
+    {
+      "name": "sound/camera_off",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/b1dd204729fe78b4.mp3",
+      "sha256": "fe81a2ab7b0581736108c5fc79ab7884ab2e5211a50b69f56badde08d41e7bfb"
+    },
+    {
+      "name": "shape/upload_camera_lens",
+      "build": 0,
+      "kind": "text",
+      "chunk": 65,
+      "start": 4390,
+      "end": 4503
+    },
+    {
+      "name": "shape/upload_camera_body",
+      "build": 0,
+      "kind": "text",
+      "chunk": 65,
+      "start": 4546,
+      "end": 4977
+    },
+    {
+      "name": "shape/upload_plus_badge",
+      "build": 0,
+      "kind": "text",
+      "chunk": 65,
+      "start": 4239,
+      "end": 4354
+    },
+    {
+      "name": "shape/squircle_mask",
+      "build": 0,
+      "kind": "text",
+      "chunk": 4,
+      "start": 793875,
+      "end": 794374
+    },
+    {
+      "name": "shape/switch_thumb_x_a",
+      "build": 0,
+      "kind": "text",
+      "chunk": 4,
+      "start": 10472411,
+      "end": 10472493
+    },
+    {
+      "name": "shape/switch_thumb_x_b",
+      "build": 0,
+      "kind": "text",
+      "chunk": 4,
+      "start": 10472496,
+      "end": 10472582
+    },
+    {
+      "name": "shape/switch_thumb_check_a",
+      "build": 0,
+      "kind": "text",
+      "chunk": 4,
+      "start": 10472762,
+      "end": 10472849
+    },
+    {
+      "name": "shape/switch_thumb_check_b",
+      "build": 0,
+      "kind": "text",
+      "chunk": 4,
+      "start": 10472852,
+      "end": 10472936
+    },
+    {
+      "name": "font/ggsans",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/66d715454104d24e.woff2",
+      "sha256": "8e401b056dc1eb48d44a01407ceb54372bbc44797d3259069ce96a96dfd8c104"
+    },
+    {
+      "name": "font/ggsansitalic",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/dd24010f3cf7def7.woff2",
+      "sha256": "b78fb569265b01789e7edd88cfe02ecb2c3fee5e1999678255f9b78a3b2cc4e8"
+    },
+    {
+      "name": "font/ggsansmedium",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/b272b33815319bae.woff2",
+      "sha256": "440ad8b1449985479bc37265e9912bbf2bf56fe9ffd14709358a8e9c2d5f8e5b"
+    },
+    {
+      "name": "font/ggsansmediumitalic",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/6a1346ad3821ff3c.woff2",
+      "sha256": "8957b06e2baed65915fa19cdc3fb3dc48b9e94898b922674f6b7a1875199f466"
+    },
+    {
+      "name": "font/ggsanssemibold",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/2df2c3ff74408972.woff2",
+      "sha256": "ae99aaede2f373187a4fe442a2cb0ab9c2945efbab01cf33e01be517c0c4f813"
+    },
+    {
+      "name": "font/ggsanssemibolditalic",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/d5d789aeb6282532.woff2",
+      "sha256": "f7e3571c1b8df4df3279a577718e545289a89501fcd0073bebbee8df7e8a06c7"
+    },
+    {
+      "name": "font/ggsansbold",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/189422196a4f8b53.woff2",
+      "sha256": "13da02ce62b1a388a7c8d6f3bd286fe774ee2b91ac63d281523e80b2a8a063bc"
+    },
+    {
+      "name": "font/ggsansbolditalic",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/ce3b8055f5114434.woff2",
+      "sha256": "5d225b25d66b30563a00f395476ed701130d3f749620a63531cea09fc537164e"
+    },
+    {
+      "name": "font/ggsansextrabold",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/b2fdbe507d6ce9ef.woff2",
+      "sha256": "80ea5f1aabbe41c65a0352b56d2be8c409d44b8ab475a14997b7d9986de0029b"
+    },
+    {
+      "name": "font/ggsansextrabolditalic",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/03dcf979852e8b8e.woff2",
+      "sha256": "67165f276046f293a75296f6193cf19607ea65e52988babf95b77f4a7fa2f099"
+    },
+    {
+      "name": "font/ggsansmono",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/249d0a057895c668.woff2",
+      "sha256": "e98e14320ed629319eb51b3b6c4dc70fe05155d24a626010e464b49da1cebf53"
+    },
+    {
+      "name": "font/ggsansmonobold",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/45efa6936fdfb918.woff2",
+      "sha256": "91c0c2686c9dfb8a7f8fbd238bf646e66d45464a48a517b66ddc7f94e6ee8858"
+    },
+    {
+      "name": "lottie/mic",
+      "build": 0,
+      "kind": "text",
+      "chunk": 66,
+      "start": 126,
+      "end": 31374
+    },
+    {
+      "name": "lottie/deafen",
+      "build": 0,
+      "kind": "text",
+      "chunk": 67,
+      "start": 126,
+      "end": 17076
+    },
+    {
+      "name": "lottie/gif_button",
+      "build": 0,
+      "kind": "text",
+      "chunk": 68,
+      "start": 126,
+      "end": 11502
+    },
+    {
+      "name": "lottie/settings",
+      "build": 0,
+      "kind": "text",
+      "chunk": 69,
+      "start": 125,
+      "end": 3860
+    },
+    {
+      "name": "file_icon/acrobat",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/a42338c030af6d9c.svg",
+      "sha256": "ef01e9e5dc40a315b28d3898d7c5a6e02cdab8f2bff074823af48f0a3291f7c8"
+    },
+    {
+      "name": "file_icon/ae",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/88b289225ff6142a.svg",
+      "sha256": "2605ae7b06593042b36a91d53d252f73c3b4518e8c74a35e853c16276f7111b5"
+    },
+    {
+      "name": "file_icon/ai",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/93636da24d7ab467.svg",
+      "sha256": "f17da3913cdb3088a9952a44a3c74e0a37a14c6c79cde57e8bdd006ba1cd91dd"
+    },
+    {
+      "name": "file_icon/archive",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/f89b66e97ea52ba7.svg",
+      "sha256": "122fe449aec7835888e02aa8ec6995e75da859bb6f283ae62d8b945523377119"
+    },
+    {
+      "name": "file_icon/audio",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/a6db1d05d35f13d0.svg",
+      "sha256": "d02428e3944178922cd694c1367c023ee64257adac9eafe8c904b8c931a09530"
+    },
+    {
+      "name": "file_icon/code",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/f4bad77442422ded.svg",
+      "sha256": "87e00c7c0eb5c41dd5a419a3af27c4d87f9168fc9dc01431cc5bf4cf14b04376"
+    },
+    {
+      "name": "file_icon/document",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/9ebe3ef63aafee84.svg",
+      "sha256": "b86552830315a43805b6b080dcc21deb6034c2017849304e95fe6e50bb801de1"
+    },
+    {
+      "name": "file_icon/drop_image",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/5dea307a4037ec4e.svg",
+      "sha256": "f2b5f6cbca9311d325f688ae299e9b4e2bd7e38d221fd9b050b1ce092fcb1d9d"
+    },
+    {
+      "name": "file_icon/photoshop",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/1084490cf680dd7c.svg",
+      "sha256": "7f19345a983949e56fa7cfb93a12d657aaeb2785120dc8b25b8fe401d2ef5b30"
+    },
+    {
+      "name": "file_icon/sketch",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/c9f0992f0ab98d49.svg",
+      "sha256": "7f3b85f7520bca06fe0b56db50fb92eeb006fd7e340c464ab7cb15cbb90be7d2"
+    },
+    {
+      "name": "file_icon/spreadsheet",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/b8ca4488a6d443bc.svg",
+      "sha256": "b1f1f10f10a4a370a4309ce25ae247c71a4f530b0eb417a52fbf9e9613809128"
+    },
+    {
+      "name": "file_icon/unknown",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/94660b205108a49f.svg",
+      "sha256": "d5b473bba1a201ebb4c72da1da032b5873a792d6c66d791fac515a94d3052691"
+    },
+    {
+      "name": "file_icon/video",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/98178bd2173d947a.svg",
+      "sha256": "83a8ca9af8d4c03235d4ad5a1fe824cd4bd7d3ddd6dab9f376404cb13138641a"
+    },
+    {
+      "name": "file_icon/webcode",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/6e688b0c124e0ca8.svg",
+      "sha256": "73cd87c8b4629654e78428915746627628300359f1219bbc2e9cb80edd74409b"
+    },
+    {
+      "name": "connection/battlenet",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/0e1a419c00a471a2.png",
+      "sha256": "2a8741889925872732908e18228fa6d66ac5cbdc1b6299945617914bc1622f6f"
+    },
+    {
+      "name": "connection/bungie",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/a35b652323167799.png",
+      "sha256": "fdc7a75cf6fccdb180181055b60a82cc26854277b33c0a611eae995dda5d79df"
+    },
+    {
+      "name": "connection/crunchyroll",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/4e56bb1ecb9b9dc3.png",
+      "sha256": "59993ce41056be4a002ad401a8549d014b656ca1d588c50b71a59702a9c52777"
+    },
+    {
+      "name": "connection/epicgames",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/ecf035f3cf08a860.png",
+      "sha256": "de152cce1ebde128fb5fd90e77c9220f45d9533e21667f3329f8e7a27b3192c1"
+    },
+    {
+      "name": "connection/leagueoflegends",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/fc30b78cd5e1db04.png",
+      "sha256": "8469f646ff33150ef9c0047578d7ae9f8de282bb97458ce24766be6817097031"
+    },
+    {
+      "name": "connection/playstation",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/46a23515a87620b9.png",
+      "sha256": "7d74f679b9df30af0e1ed2b9ce460772c9e24548056c59fd324687b95771de1c"
+    },
+    {
+      "name": "connection/riotgames",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/fa9e14fc0fd3680f.png",
+      "sha256": "8446ed71c485ac79e5712b621d231e6826e50474d37688a7440ea305b6b033fa"
+    },
+    {
+      "name": "connection/roblox",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/5d078bf414a0124c.png",
+      "sha256": "d6fc6f8e766c7410ebbaa187b9e994a37ef7d52facd1fe18ff8b88cd4d618547"
+    },
+    {
+      "name": "connection/spotify",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/40518c6ced9fed93.png",
+      "sha256": "ff74356f574a190cc1404468c939725d2dc899d50e4216b9e384b6b0224c1db2"
+    },
+    {
+      "name": "connection/steam",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/07ca603d9273b502.png",
+      "sha256": "771a64a5137364c6a25f68c2f3f1b5ea51e4b00c32840d9b7a409249186cd88d"
+    },
+    {
+      "name": "connection/twitch",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/45900de231038a6d.png",
+      "sha256": "fcf5404f1c8ad074a8431b1c3983493b7ad58e51c3b632425838074e4571c2b2"
+    },
+    {
+      "name": "connection/xbox",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/09781ebf5509f48e.png",
+      "sha256": "313d7bb737abc031abc398c020300f64a55562cd37d2e265820bec550a8aae48"
+    },
+    {
+      "name": "connection/youtube",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/c569f6e10f1fa390.png",
+      "sha256": "fad32a6f16a3d2a2549087ad1e88d5d2ac9f4644d05caf4f815448436379404d"
+    },
+    {
+      "name": "create_guild/arrow",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/050c2ac76232eff6.svg",
+      "sha256": "0c24a496e035d24f35b3f658fed02351b45a44b90a5a88541ee832047a29bf82"
+    },
+    {
+      "name": "create_guild/artists",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/d8fed3f03866afe2.svg",
+      "sha256": "38d7c331cf089db21a346fee733629a20b03f878ace59309565912c8868b2657"
+    },
+    {
+      "name": "create_guild/create_my_own",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/b30f13ee315c2568.svg",
+      "sha256": "06d4cf27283443010d88becc39086791356b9e0fb3443f1cc08ac931ac4bf0bf"
+    },
+    {
+      "name": "create_guild/discover",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/7cd1df4da22b9bff.svg",
+      "sha256": "824245e4dac342f4602ab990c837cf9d7d6bd302bcacb6e2453cf22ab724b68e"
+    },
+    {
+      "name": "create_guild/friends",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/d804200b134c9327.svg",
+      "sha256": "b3f00c0e7365c6510295b6431a90be2264f641e8c43f2344eaef10d4d462ed2e"
+    },
+    {
+      "name": "create_guild/gaming",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/261f952bf028fa34.svg",
+      "sha256": "f207c5f1cc063c0e2a4f9afe738da75f95b46cdbe3f3c1d1dfc01ff7018b0815"
+    },
+    {
+      "name": "create_guild/intent_community",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/2f0ebe181e1cce00.svg",
+      "sha256": "12a640e7a22541e58ba6b997cf8a43c223b998d6c640d2544980544ab49001cd"
+    },
+    {
+      "name": "create_guild/intent_friends",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/7f384b2c31f586cd.svg",
+      "sha256": "df90a068bfae4faa6a35da29b8890bcbf15bcaae7fa51c012f4a2da6350be97b"
+    },
+    {
+      "name": "create_guild/local_community",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/31f3db39524533b6.svg",
+      "sha256": "09ce8d4097f7f71667aa212991096d72045cf61a4c8cafb655087bf3ad2d2615"
+    },
+    {
+      "name": "create_guild/school_club",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/2f1587b0c86b42e2.svg",
+      "sha256": "82e59d880102146f766899f24956988fb6afc892447e910d6cded82cd4b2be37"
+    },
+    {
+      "name": "create_guild/study_group",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/4900b53e7b34c3a5.svg",
+      "sha256": "b1f98aeb1c588de12592f86355c54d023b0c997da8a09301b2a8d3b103d54855"
+    },
+    {
+      "name": "image/clyde_avatar",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/9380e4b5bd8d267c.png",
+      "sha256": "8f782f8ce761f522c13157bb2df929b5252f39a7011448bbe61f87296ab2d923"
+    },
+    {
+      "name": "image/emoji_button_sprite",
+      "build": 0,
+      "kind": "file",
+      "url": "https://discord.com/assets/1b05b930a77fbff9.png",
+      "sha256": "29033bcae1ad64fa2c0d1cf656419cb568f95ca82a7b6fb41212931823a633cf"
+    },
+    {
+      "name": "icon/CircleXIcon",
+      "build": 0,
+      "kind": "svg_component",
+      "chunk": 4,
+      "module_id": "285796",
+      "export": "CircleXIcon",
+      "start": 10040734,
+      "end": 10041488
+    },
+    {
+      "name": "icon/TrophyIcon",
+      "build": 1,
+      "kind": "svg_component",
+      "chunk": 70,
+      "module_id": "369606",
+      "export": "TrophyIcon",
+      "start": 4013,
+      "end": 4895
+    },
+    {
+      "name": "icon/DoubleChevronSmallRightIcon",
+      "build": 1,
+      "kind": "svg_component",
+      "chunk": 71,
+      "module_id": "890377",
+      "export": "DoubleChevronSmallRightIcon",
+      "start": 4770,
+      "end": 5407
+    },
+    {
+      "name": "icon/MaximizeIcon",
+      "build": 1,
+      "kind": "svg_component",
+      "chunk": 72,
+      "module_id": "26430",
+      "export": "MaximizeIcon",
+      "start": 190,
+      "end": 756
+    },
+    {
+      "name": "icon/MenuIcon",
+      "build": 1,
+      "kind": "svg_component",
+      "chunk": 73,
+      "module_id": "97893",
+      "export": "MenuIcon",
+      "start": 10488,
+      "end": 10990
+    },
+    {
+      "name": "icon/MinimizeIcon",
+      "build": 1,
+      "kind": "svg_component",
+      "chunk": 74,
+      "module_id": "446576",
+      "export": "MinimizeIcon",
+      "start": 207680,
+      "end": 208233
+    },
+    {
+      "name": "icon/SendMessageIcon",
+      "build": 1,
+      "kind": "svg_component",
+      "chunk": 75,
+      "module_id": "559647",
+      "export": "SendMessageIcon",
+      "start": 1866,
+      "end": 2385
+    },
+    {
+      "name": "icon/checkmark_small",
+      "build": 1,
+      "kind": "svg_component",
+      "chunk": 76,
+      "module_id": "820081",
+      "export": null,
+      "start": 9983856,
+      "end": 9984380
+    },
+    {
+      "name": "icon/keybind_arrow",
+      "build": 1,
+      "kind": "svg_component",
+      "chunk": 77,
+      "module_id": "767089",
+      "export": null,
+      "start": 8579,
+      "end": 10043
+    },
+    {
+      "name": "icon/discord_status",
+      "build": 1,
+      "kind": "svg_component",
+      "chunk": 76,
+      "module_id": "88863",
+      "export": null,
+      "start": 1559942,
+      "end": 1560979
+    },
+    {
+      "name": "icon/win_minimize",
+      "build": 1,
+      "kind": "svg_component",
+      "chunk": 76,
+      "module_id": "561155",
+      "export": null,
+      "start": 9443569,
+      "end": 9443812
+    },
+    {
+      "name": "icon/win_maximize",
+      "build": 1,
+      "kind": "svg_component",
+      "chunk": 76,
+      "module_id": "155545",
+      "export": null,
+      "start": 9443221,
+      "end": 9443481
+    },
+    {
+      "name": "icon/win_close",
+      "build": 1,
+      "kind": "svg_component",
+      "chunk": 76,
+      "module_id": "908031",
+      "export": null,
+      "start": 9442789,
+      "end": 9443133
+    },
+    {
+      "name": "icon/TextLockIcon",
+      "build": 1,
+      "kind": "svg_component",
+      "chunk": 78,
+      "module_id": "770880",
+      "export": "TextLockIcon",
+      "start": 15965,
+      "end": 16903
+    },
+    {
+      "name": "icon/VoiceLockIcon",
+      "build": 1,
+      "kind": "svg_component",
+      "chunk": 79,
+      "module_id": "146151",
+      "export": "VoiceLockIcon",
+      "start": 16234,
+      "end": 17244
+    },
+    {
+      "name": "icon/CalendarPlusIcon",
+      "build": 1,
+      "kind": "svg_component",
+      "chunk": 80,
+      "module_id": "588190",
+      "export": "CalendarPlusIcon",
+      "start": 4678,
+      "end": 5799
+    },
+    {
+      "name": "icon/DragIcon",
+      "build": 1,
+      "kind": "svg_component",
+      "chunk": 81,
+      "module_id": "772838",
+      "export": "DragIcon",
+      "start": 2103,
+      "end": 2701
+    },
+    {
+      "name": "icon/FolderPlusIcon",
+      "build": 1,
+      "kind": "svg_component",
+      "chunk": 76,
+      "module_id": "234020",
+      "export": "FolderPlusIcon",
+      "start": 10055834,
+      "end": 10056424
+    },
+    {
+      "name": "icon/GroupPlusIcon",
+      "build": 1,
+      "kind": "svg_component",
+      "chunk": 82,
+      "module_id": "241541",
+      "export": "GroupPlusIcon",
+      "start": 191,
+      "end": 1237
+    },
+    {
+      "name": "icon/ShieldIcon",
+      "build": 1,
+      "kind": "svg_component",
+      "chunk": 76,
+      "module_id": "231483",
+      "export": "ShieldIcon",
+      "start": 10208925,
+      "end": 10210311
+    },
+    {
+      "name": "shape/flower_star",
+      "build": 1,
+      "kind": "text",
+      "chunk": 76,
+      "start": 5475155,
+      "end": 5476073
+    },
+    {
+      "name": "shape/badge_check",
+      "build": 1,
+      "kind": "text",
+      "chunk": 76,
+      "start": 9984849,
+      "end": 9984954
+    },
+    {
+      "name": "icon/ChevronSmallUpIcon",
+      "build": 1,
+      "kind": "svg_component",
+      "chunk": 83,
+      "module_id": "900797",
+      "export": "ChevronSmallUpIcon",
+      "start": 191,
+      "end": 653
+    },
+    {
+      "name": "icon/ImagePlusIcon",
+      "build": 1,
+      "kind": "svg_component",
+      "chunk": 84,
+      "module_id": "750943",
+      "export": "ImagePlusIcon",
+      "start": 191,
+      "end": 1325
+    },
+    {
+      "name": "image/wumpus_avatar",
+      "build": 1,
+      "kind": "file",
+      "url": "https://cdn.discordapp.com/assets/content/2532e8cd0600ccfbc61ff81c21959bde90a6645d0e71644a92f6cde5bfc48439.png",
+      "sha256": "2532e8cd0600ccfbc61ff81c21959bde90a6645d0e71644a92f6cde5bfc48439"
+    },
+    {
+      "name": "image/role_icon_preview_dark",
+      "build": 1,
+      "kind": "file",
+      "url": "https://discord.com/assets/6263c90899ad6dae.svg",
+      "sha256": "91e8cb2d506417226d3fc3549b163d1794208d148d7f8856c06a8615c373c051"
+    },
+    {
+      "name": "image/role_icon_preview_light",
+      "build": 1,
+      "kind": "file",
+      "url": "https://discord.com/assets/36799e0a695f945e.svg",
+      "sha256": "d5336c72811c8f107e0482322733addc2c6ccef14cc4eb0ae882183f8d93cd4f"
+    },
+    {
+      "name": "icon/VoiceNormalIcon",
+      "build": 1,
+      "kind": "svg_component",
+      "chunk": 85,
+      "module_id": "983851",
+      "export": "VoiceNormalIcon",
+      "start": 191,
+      "end": 1046
+    },
+    {
+      "name": "image/captcha_graphic",
+      "build": 2,
+      "kind": "file",
+      "url": "https://discord.com/assets/a1c385fb82c39bab.svg",
+      "sha256": "be5ec44ea0141e5cf9b70260c94409461093d555cb8901fa79ab7248d5d6e1f9"
+    },
+    {
+      "name": "shape/unread_pill_cap",
+      "build": 3,
+      "kind": "text",
+      "chunk": 86,
+      "start": 423,
+      "end": 624
+    },
+    {
+      "name": "icon/double_checkmark",
+      "build": 3,
+      "kind": "svg_component",
+      "chunk": 87,
+      "module_id": "143838",
+      "export": null,
+      "start": 10014772,
+      "end": 10015422
+    },
+    {
+      "name": "icon/jump_to_message",
+      "build": 3,
+      "kind": "svg_component",
+      "chunk": 88,
+      "module_id": "99677",
+      "export": null,
+      "start": 80521,
+      "end": 81277
+    },
+    {
+      "name": "icon/ChatCheckIcon",
+      "build": 3,
+      "kind": "svg_component",
+      "chunk": 89,
+      "module_id": "582394",
+      "export": "ChatCheckIcon",
+      "start": 101748,
+      "end": 102492
+    },
+    {
+      "name": "icon/PhoneCallIcon",
+      "build": 4,
+      "kind": "svg_component",
+      "chunk": 90,
+      "module_id": "978940",
+      "export": "PhoneCallIcon",
+      "start": 191,
+      "end": 986
+    },
+    {
+      "name": "icon/UserCircleStatusIcon",
+      "build": 4,
+      "kind": "svg_component",
+      "chunk": 91,
+      "module_id": "812991",
+      "export": "UserCircleStatusIcon",
+      "start": 10291353,
+      "end": 10292237
+    },
+    {
+      "name": "icon/UserCheckIcon",
+      "build": 4,
+      "kind": "svg_component",
+      "chunk": 92,
+      "module_id": "497767",
+      "export": "UserCheckIcon",
+      "start": 191,
+      "end": 1029
+    },
+    {
+      "name": "icon/AngleBracketsIcon",
+      "build": 4,
+      "kind": "svg_component",
+      "chunk": 93,
+      "module_id": "387758",
+      "export": "AngleBracketsIcon",
+      "start": 865,
+      "end": 1482
+    },
+    {
+      "name": "icon/IdIcon",
+      "build": 4,
+      "kind": "svg_component",
+      "chunk": 94,
+      "module_id": "473935",
+      "export": "IdIcon",
+      "start": 741,
+      "end": 1534
+    },
+    {
+      "name": "icon/PuzzlePieceIcon",
+      "build": 4,
+      "kind": "svg_component",
+      "chunk": 91,
+      "module_id": "686042",
+      "export": "PuzzlePieceIcon",
+      "start": 10185387,
+      "end": 10185947
+    },
+    {
+      "name": "icon/CircleInformationIcon",
+      "build": 4,
+      "kind": "svg_component",
+      "chunk": 91,
+      "module_id": "885574",
+      "export": "CircleInformationIcon",
+      "start": 10005884,
+      "end": 10006658
+    },
+    {
+      "name": "shape/partner_mark_a",
+      "build": 4,
+      "kind": "text",
+      "chunk": 91,
+      "start": 9441896,
+      "end": 9442362
+    },
+    {
+      "name": "shape/partner_mark_b",
+      "build": 4,
+      "kind": "text",
+      "chunk": 91,
+      "start": 9442392,
+      "end": 9442971
+    },
+    {
+      "name": "icon/channel_text_lock",
+      "build": 5,
+      "kind": "svg_component",
+      "chunk": 95,
+      "module_id": "770880",
+      "export": null,
+      "start": 15254,
+      "end": 16192
+    },
+    {
+      "name": "icon/channel_voice_lock",
+      "build": 5,
+      "kind": "svg_component",
+      "chunk": 79,
+      "module_id": "146151",
+      "export": null,
+      "start": 16234,
+      "end": 17244
+    },
+    {
+      "name": "icon/channel_forum_lock",
+      "build": 5,
+      "kind": "svg_component",
+      "chunk": 95,
+      "module_id": "597050",
+      "export": null,
+      "start": 11659,
+      "end": 12665
+    },
+    {
+      "name": "icon/channel_forum",
+      "build": 5,
+      "kind": "svg_component",
+      "chunk": 79,
+      "module_id": "56059",
+      "export": null,
+      "start": 8663,
+      "end": 9457
+    },
+    {
+      "name": "icon/person_shield",
+      "build": 6,
+      "kind": "svg_component",
+      "chunk": 96,
+      "module_id": "957485",
+      "export": null,
+      "start": 2064,
+      "end": 2977
+    },
+    {
+      "name": "icon/TextWarningIcon",
+      "build": 7,
+      "kind": "svg_component",
+      "chunk": 97,
+      "module_id": "11779",
+      "export": "TextWarningIcon",
+      "start": 979,
+      "end": 2050
+    },
+    {
+      "name": "icon/VoiceWarningIcon",
+      "build": 7,
+      "kind": "svg_component",
+      "chunk": 98,
+      "module_id": "512474",
+      "export": "VoiceWarningIcon",
+      "start": 16136,
+      "end": 17293
+    },
+    {
+      "name": "icon/AnnouncementsIcon",
+      "build": 7,
+      "kind": "svg_component",
+      "chunk": 98,
+      "module_id": "778492",
+      "export": "AnnouncementsIcon",
+      "start": 191,
+      "end": 1094
+    },
+    {
+      "name": "icon/AnnouncementsLockIcon",
+      "build": 7,
+      "kind": "svg_component",
+      "chunk": 95,
+      "module_id": "669281",
+      "export": "AnnouncementsLockIcon",
+      "start": 6284,
+      "end": 7407
+    },
+    {
+      "name": "icon/AnnouncementsWarningIcon",
+      "build": 7,
+      "kind": "svg_component",
+      "chunk": 98,
+      "module_id": "922288",
+      "export": "AnnouncementsWarningIcon",
+      "start": 2590,
+      "end": 3882
+    },
+    {
+      "name": "icon/ThreadLockIcon",
+      "build": 7,
+      "kind": "svg_component",
+      "chunk": 95,
+      "module_id": "425557",
+      "export": "ThreadLockIcon",
+      "start": 16290,
+      "end": 17475
+    },
+    {
+      "name": "icon/ThreadWarningIcon",
+      "build": 7,
+      "kind": "svg_component",
+      "chunk": 95,
+      "module_id": "948428",
+      "export": "ThreadWarningIcon",
+      "start": 17573,
+      "end": 18928
+    },
+    {
+      "name": "icon/StageIcon",
+      "build": 7,
+      "kind": "svg_component",
+      "chunk": 99,
+      "module_id": "451394",
+      "export": "StageIcon",
+      "start": 191,
+      "end": 1165
+    },
+    {
+      "name": "icon/StageLockIcon",
+      "build": 7,
+      "kind": "svg_component",
+      "chunk": 100,
+      "module_id": "808107",
+      "export": "StageLockIcon",
+      "start": 191,
+      "end": 1452
+    },
+    {
+      "name": "icon/ForumIcon",
+      "build": 7,
+      "kind": "svg_component",
+      "chunk": 98,
+      "module_id": "56059",
+      "export": "ForumIcon",
+      "start": 8663,
+      "end": 9457
+    },
+    {
+      "name": "icon/ForumLockIcon",
+      "build": 7,
+      "kind": "svg_component",
+      "chunk": 95,
+      "module_id": "597050",
+      "export": "ForumLockIcon",
+      "start": 11659,
+      "end": 12665
+    },
+    {
+      "name": "icon/ForumWarningIcon",
+      "build": 7,
+      "kind": "svg_component",
+      "chunk": 98,
+      "module_id": "781481",
+      "export": "ForumWarningIcon",
+      "start": 10875,
+      "end": 12020
+    },
+    {
+      "name": "icon/ImageLockIcon",
+      "build": 7,
+      "kind": "svg_component",
+      "chunk": 95,
+      "module_id": "532590",
+      "export": "ImageLockIcon",
+      "start": 12763,
+      "end": 13937
+    },
+    {
+      "name": "icon/ImageWarningIcon",
+      "build": 7,
+      "kind": "svg_component",
+      "chunk": 101,
+      "module_id": "87221",
+      "export": "ImageWarningIcon",
+      "start": 10178275,
+      "end": 10179601
+    },
+    {
+      "name": "icon/HubIcon",
+      "build": 7,
+      "kind": "svg_component",
+      "chunk": 101,
+      "module_id": "101277",
+      "export": "HubIcon",
+      "start": 10168174,
+      "end": 10168694
+    },
+    {
+      "name": "icon/BookCheckIcon",
+      "build": 7,
+      "kind": "svg_component",
+      "chunk": 102,
+      "module_id": "622629",
+      "export": "BookCheckIcon",
+      "start": 191,
+      "end": 809
+    },
+    {
+      "name": "image/pins_empty",
+      "build": 7,
+      "kind": "file",
+      "url": "https://discord.com/assets/1772d54cb566d95b.svg",
+      "sha256": "b7b718ff59546bec6dc1f08843f31192a263213d93aa769096c16b7c09b2adc1"
+    },
+    {
+      "name": "icon/ThreadSpine",
+      "build": 7,
+      "kind": "svg_component",
+      "chunk": 103,
+      "module_id": "810315",
+      "export": null,
+      "start": 47537,
+      "end": 48915
+    },
+    {
+      "name": "sound/activity_launch",
+      "build": 8,
+      "kind": "file",
+      "url": "https://discord.com/assets/a71f183dc4de32a3.mp3",
+      "sha256": "c19d79f19983fbd1bb1c8e7e14c98bb3b3f8605c13edae66976037358e4be1dc"
+    },
+    {
+      "name": "sound/activity_end",
+      "build": 8,
+      "kind": "file",
+      "url": "https://discord.com/assets/878f7e7f2b3bf972.mp3",
+      "sha256": "08fc43428189ef12225b0de236327a40d2250fd36061d0ea61b7718832fbf1f2"
+    },
+    {
+      "name": "sound/activity_user_join",
+      "build": 8,
+      "kind": "file",
+      "url": "https://discord.com/assets/31d2551c00b7c91e.mp3",
+      "sha256": "cf369e5d94ca6e951f7375f3b284eac38e09d66f9d3e30f9d3227cca512c8bb5"
+    },
+    {
+      "name": "sound/activity_user_left",
+      "build": 8,
+      "kind": "file",
+      "url": "https://discord.com/assets/9f34f40112215f5e.mp3",
+      "sha256": "116c39ac986433cd6760d1cd3d14d18772c2a49185f07f06c973ca5b5dd9034d"
+    },
+    {
+      "name": "icon/VideoSlashIcon",
+      "build": 8,
+      "kind": "svg_component",
+      "chunk": 104,
+      "module_id": "943812",
+      "export": "VideoSlashIcon",
+      "start": 786,
+      "end": 1449
+    },
+    {
+      "name": "icon/MicrophoneSlashIcon",
+      "build": 8,
+      "kind": "svg_component",
+      "chunk": 105,
+      "module_id": "83107",
+      "export": "MicrophoneSlashIcon",
+      "start": 190,
+      "end": 1016
+    },
+    {
+      "name": "icon/HeadphonesIcon",
+      "build": 8,
+      "kind": "svg_component",
+      "chunk": 106,
+      "module_id": "597601",
+      "export": "HeadphonesIcon",
+      "start": 191,
+      "end": 772
+    },
+    {
+      "name": "icon/HeadphonesSlashIcon",
+      "build": 8,
+      "kind": "svg_component",
+      "chunk": 107,
+      "module_id": "990836",
+      "export": "HeadphonesSlashIcon",
+      "start": 191,
+      "end": 1077
+    },
+    {
+      "name": "icon/PhoneHangUpIcon",
+      "build": 8,
+      "kind": "svg_component",
+      "chunk": 108,
+      "module_id": "960027",
+      "export": "PhoneHangUpIcon",
+      "start": 191,
+      "end": 791
+    },
+    {
+      "name": "icon/ScreenArrowIcon",
+      "build": 8,
+      "kind": "svg_component",
+      "chunk": 109,
+      "module_id": "183623",
+      "export": "ScreenArrowIcon",
+      "start": 191,
+      "end": 997
+    },
+    {
+      "name": "icon/ScreenStreamIcon",
+      "build": 8,
+      "kind": "svg_component",
+      "chunk": 110,
+      "module_id": "500060",
+      "export": "ScreenStreamIcon",
+      "start": 191,
+      "end": 1013
+    },
+    {
+      "name": "icon/ActivitiesIcon",
+      "build": 8,
+      "kind": "svg_component",
+      "chunk": 111,
+      "module_id": "794083",
+      "export": "ActivitiesIcon",
+      "start": 10002589,
+      "end": 10003484
+    },
+    {
+      "name": "icon/WaveformIcon",
+      "build": 8,
+      "kind": "svg_component",
+      "chunk": 112,
+      "module_id": "342073",
+      "export": "WaveformIcon",
+      "start": 75048,
+      "end": 75625
+    },
+    {
+      "name": "icon/WaveformSlashIcon",
+      "build": 8,
+      "kind": "svg_component",
+      "chunk": 111,
+      "module_id": "96745",
+      "export": "WaveformSlashIcon",
+      "start": 1596496,
+      "end": 1597298
+    },
+    {
+      "name": "icon/rtc_ping",
+      "build": 8,
+      "kind": "svg_component",
+      "chunk": 113,
+      "module_id": "200192",
+      "export": null,
+      "start": 18077,
+      "end": 18893
+    },
+    {
+      "name": "lottie/noise_suppression",
+      "build": 9,
+      "kind": "text",
+      "chunk": 114,
+      "start": 126,
+      "end": 31468
+    },
+    {
+      "name": "lottie/camera",
+      "build": 9,
+      "kind": "text",
+      "chunk": 115,
+      "start": 125,
+      "end": 21060
+    },
+    {
+      "name": "lottie/end_call",
+      "build": 9,
+      "kind": "text",
+      "chunk": 116,
+      "start": 126,
+      "end": 2853
+    },
+    {
+      "name": "lottie/screenshare",
+      "build": 9,
+      "kind": "text",
+      "chunk": 117,
+      "start": 126,
+      "end": 34731
+    },
+    {
+      "name": "lottie/soundboard",
+      "build": 9,
+      "kind": "text",
+      "chunk": 118,
+      "start": 126,
+      "end": 33470
+    },
+    {
+      "name": "sound/message3",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/4f53c2f31ea0cdd8.mp3",
+      "sha256": "295dccacbdb0728ffbb8b220a278a9f3384f5966fe9b1428f33518ffa2998505"
+    },
+    {
+      "name": "icon/server_mute",
+      "build": 9,
+      "kind": "svg_component",
+      "chunk": 107,
+      "module_id": "666654",
+      "export": null,
+      "start": 1175,
+      "end": 2172
+    },
+    {
+      "name": "icon/server_deafen",
+      "build": 9,
+      "kind": "svg_component",
+      "chunk": 113,
+      "module_id": "615675",
+      "export": null,
+      "start": 18991,
+      "end": 20019
+    },
+    {
+      "name": "image/application_command",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/3934256e60927112.svg",
+      "sha256": "7843e6d052f45d8e90e615760eb8d3f65c90276748cd444f29523a94245caa77"
+    },
+    {
+      "name": "icon/slash_box",
+      "build": 9,
+      "kind": "svg_component",
+      "chunk": 119,
+      "module_id": "633018",
+      "export": null,
+      "start": 190,
+      "end": 783
+    },
+    {
+      "name": "connection_svg/twitch",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/4fda00c96319c8ae.svg",
+      "sha256": "add20928635421d913af451deb75a0e669663b904c7ee3b505694c212060b698"
+    },
+    {
+      "name": "connection_svg/youtube",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/0fa530ba9c04ac32.svg",
+      "sha256": "7e0676f57aec8042c2ce17a6e87bca62ff1ad2e71a3c6b95c1757c79318dc1e3"
+    },
+    {
+      "name": "connection_svg/battlenet",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/163c8cb9220efc74.svg",
+      "sha256": "c08c9d664814e169214b71cef9878fe87aeae6ba127d5d4811a09d4ba5855205"
+    },
+    {
+      "name": "connection_svg/bluesky",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/2709f058378a099d.svg",
+      "sha256": "fbbc7dbcb40ce0931ac58a73948461e076f4027b9b637b912c9f1c8a072b3735"
+    },
+    {
+      "name": "connection_svg/bungie",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/099cd81cf3b4cc98.svg",
+      "sha256": "1ad3ac6782ed904a56b83f81e4372d274adda2cf1b62a62c89b0c3e835d3b8d7"
+    },
+    {
+      "name": "connection_svg/skype",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/883a13b030d276ec.svg",
+      "sha256": "a1cdcad851662a9a7f5dc929f89bca5a41055b8c07f8486a740f6ecfe3cc9129"
+    },
+    {
+      "name": "connection_svg/leagueoflegends",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/302a27a2e5cc3fb6.svg",
+      "sha256": "0b5cef1133bda6ff8befcaa5ed4414c14b6e359d98803a231e42838c537430f2"
+    },
+    {
+      "name": "connection_svg/steam",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/1f7ec18f3695d4cf.svg",
+      "sha256": "bd1c0cebe19c75523529aad288c6e32bc49d9cb30452852d3788c9e9ae664f4f"
+    },
+    {
+      "name": "connection_svg/reddit",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/adfd927dcc2049a5.svg",
+      "sha256": "1ddebb8a99647d02313fb5167e024503864bf1ad125e37eeb30d9dc554681b38"
+    },
+    {
+      "name": "connection_svg/facebook",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/17be29f77bee4405.svg",
+      "sha256": "18b9aba98cc52ec18265ea5bc62205e769020d017ead5665cc9fff3681c1df7d"
+    },
+    {
+      "name": "connection_svg/twitter_legacy",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/0815e2c86f2e0e37.svg",
+      "sha256": "ebf5547cb4aa4f9387b0e976a7ce38d1990368e155b097530ffa7e0c1040ac4f"
+    },
+    {
+      "name": "connection_svg/twitter",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/a61999ae9bfb9658.svg",
+      "sha256": "bae6ba37fdfb158c23e924e06375e5c06540d66bb5fdd09afec0c5dea769f9cb"
+    },
+    {
+      "name": "connection_svg/spotify",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/d5719388ffc613da.svg",
+      "sha256": "fc72e4af5b00b4bb8a3aa80f50d4a5806efffe4a272bf3289201d30b3ccf6c50"
+    },
+    {
+      "name": "connection_svg/xbox",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/c4f09fda61827e19.svg",
+      "sha256": "5ec6258664229813bdb9b16db84b24851e7895d5e44373e1a0584822c62a7521"
+    },
+    {
+      "name": "connection_svg/github",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/a35ff3e86ffa1eb2.svg",
+      "sha256": "fb95686c661f72063c06db0119b3a0fb251db1c43953cbde8204b7ab6543501c"
+    },
+    {
+      "name": "connection_svg/playstation",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/eed203a7ec517e23.svg",
+      "sha256": "cc5e2243b7ed8b32d1f0d948f0d9c653d2bef0d5fc334d272af3234b685654cf"
+    },
+    {
+      "name": "connection_svg/epicgames",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/199eceff4fca1a0c.svg",
+      "sha256": "e4565e0310e8fe64d0333dbee1aef01b310ecbb483c508d7fce7458b1f2b36bb"
+    },
+    {
+      "name": "connection_svg/riotgames",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/772307b7d902b47b.svg",
+      "sha256": "fb35a0b86739ab2478ed930906c76eb78766dfbc6fe649c8dd47fc54b9ac4376"
+    },
+    {
+      "name": "connection_svg/roblox",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/a4d8e9b0404a2d00.svg",
+      "sha256": "3275a8fe89fc358b2c6b305d26c37a44b88723aa07e20792aa1d0fcf6481556d"
+    },
+    {
+      "name": "connection_svg/paypal",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/dcb64a4ff8f61b2c.svg",
+      "sha256": "92fdcbe0e445b9176c0c27b406a308f142791ba71c75081170f3f631feb216e9"
+    },
+    {
+      "name": "connection_svg/ebay",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/b28a7a265581b6e3.svg",
+      "sha256": "e513b17d497b6a347a6c4b81c1bfd4556b0fb0f3a1336001b0e2825474ae3323"
+    },
+    {
+      "name": "connection_svg/tiktok",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/a303feb844769624.svg",
+      "sha256": "9266faf49d9cda17bfe6d56a9ba2404e15e7acffb5491de977c5d6357956a654"
+    },
+    {
+      "name": "connection_svg/instagram",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/c05dded52023ed43.svg",
+      "sha256": "b27374bb05fc019f34f91a1b6968f713fb664289a1b313ae412f1a6ec8ce8ee8"
+    },
+    {
+      "name": "connection_svg/mastodon",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/0e6385723fe5cd49.svg",
+      "sha256": "78d888653a59b42e14d9e60090e4acadcd954ec8e583460d9f6e317ddaebfb39"
+    },
+    {
+      "name": "connection_svg/crunchyroll",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/94ef3e8b7fa85a2e.svg",
+      "sha256": "f11890fe517cae798bc60dcafc6e558e667b8c0da93345965b1fccf6449f4b38"
+    },
+    {
+      "name": "connection_svg/domain",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/b4376756bcbbf1ef.svg",
+      "sha256": "3b5191091b182efdd41214c6e415bfac8b9660172d70df7ef94144548734a09f"
+    },
+    {
+      "name": "connection_svg/amazon-music",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/e3c4aacc1a54395d.svg",
+      "sha256": "a04ec7d0f5bc07abc670363eaa4d3cccd70b122217fadf034238914f9e754cff"
+    },
+    {
+      "name": "connection_icon/steam",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/b68f2f4df4af9085.png",
+      "sha256": "d1c70207feef5bcfab44deca411e2505c3d109d206f2c53722a9d185341d825c"
+    },
+    {
+      "name": "connection_icon/github",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/1cc92a6d139af44d.png",
+      "sha256": "5d001123bfb57de57239250f29fdd9ba40b4e48ad02f434bb3b70dcc2bd6d11f"
+    },
+    {
+      "name": "connection_icon/twitch",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/45900de231038a6d.png",
+      "sha256": "fcf5404f1c8ad074a8431b1c3983493b7ad58e51c3b632425838074e4571c2b2"
+    },
+    {
+      "name": "connection_icon/spotify",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/40518c6ced9fed93.png",
+      "sha256": "ff74356f574a190cc1404468c939725d2dc899d50e4216b9e384b6b0224c1db2"
+    },
+    {
+      "name": "connection_icon/twitter",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/90d18081c2eb2ea3.png",
+      "sha256": "0011ff997961a06577c5d1b6c51d904a9b80c363b13da7401b2e9eeaec697ab0"
+    },
+    {
+      "name": "connection_icon/twitter_legacy",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/7520545bf8990675.png",
+      "sha256": "dd7ca0605f280c372a995420f3ce36d55ae33a92701fc07eb9697297ab66c3dc"
+    },
+    {
+      "name": "connection_icon/reddit",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/afc3f4fa75178004.png",
+      "sha256": "d54502d5914b8f85afae62c5473aed3ba10994bba0773a26ec37eadc8215f9e3"
+    },
+    {
+      "name": "connection_icon/youtube",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/c569f6e10f1fa390.png",
+      "sha256": "fad32a6f16a3d2a2549087ad1e88d5d2ac9f4644d05caf4f815448436379404d"
+    },
+    {
+      "name": "connection_icon/facebook",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/bda550439e2a1af0.png",
+      "sha256": "003837729f864a27346653fec508f92249c38031dd4cf586e4f2e0d80159fd6a"
+    },
+    {
+      "name": "connection_icon/instagram",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/ea0692691904fca9.png",
+      "sha256": "7fa9e3a7dbc093802ac09eef4886dc8ffd82b4ad0c0706e4b1b9ff0e7f10333a"
+    },
+    {
+      "name": "connection_icon/tiktok",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/b4002d11fb3b5c1c.png",
+      "sha256": "f1adff4b643bd97cabb10935b547c06037cf43d16e97ca1107b9edb826fca3b6"
+    },
+    {
+      "name": "connection_icon/xbox",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/8cea2073e188eabe.png",
+      "sha256": "779c8629f99cd603cfc52be07082d5960340cd6d8725e4c41db68a62c9885bdf"
+    },
+    {
+      "name": "connection_icon/playstation",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/ae74d3de4958bf78.png",
+      "sha256": "c1c5632d024dc7c120b4ae366fe114a6d74e519a03f28eb0d705bc00074307f6"
+    },
+    {
+      "name": "connection_icon/battlenet",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/0e1a419c00a471a2.png",
+      "sha256": "2a8741889925872732908e18228fa6d66ac5cbdc1b6299945617914bc1622f6f"
+    },
+    {
+      "name": "connection_icon/leagueoflegends",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/fc30b78cd5e1db04.png",
+      "sha256": "8469f646ff33150ef9c0047578d7ae9f8de282bb97458ce24766be6817097031"
+    },
+    {
+      "name": "connection_icon/epicgames",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/e87d94bf0041b63e.png",
+      "sha256": "afa1e197c8168b1708a04e156499e60b60cf076b8c846abda620720d130721a4"
+    },
+    {
+      "name": "connection_icon/riotgames",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/fa9e14fc0fd3680f.png",
+      "sha256": "8446ed71c485ac79e5712b621d231e6826e50474d37688a7440ea305b6b033fa"
+    },
+    {
+      "name": "connection_icon/roblox",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/268c81933d752854.png",
+      "sha256": "dc87860f5726067002aa6a843fbd03e34a7d0fcba95bbe5cc1e6fb36604fd6d5"
+    },
+    {
+      "name": "connection_icon/paypal",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/81a39a4672d62d60.png",
+      "sha256": "0368c99a9cea93adb1c8ddeb5574f6c6d4d3277a3131148d32570037f6f2d93c"
+    },
+    {
+      "name": "connection_icon/ebay",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/d0f7fa72a2ca6388.png",
+      "sha256": "0e88b4afc65a4d3d9767a2b29913b992820cbc50f8f00f3778393a612595e9fe"
+    },
+    {
+      "name": "connection_icon/mastodon",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/53fcd6d102d44c2b.png",
+      "sha256": "24da773874e17bd1a29ac65db551ccabb7c334b5a210e9082ad5cc9f23385741"
+    },
+    {
+      "name": "connection_icon/bluesky",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/8a42ef6bc4dd4e0d.png",
+      "sha256": "d4dda84bb1853f6aff38aa0954be3411feec6329fc8dbbc7c64ade42f33d36dd"
+    },
+    {
+      "name": "connection_icon/crunchyroll",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/4e56bb1ecb9b9dc3.png",
+      "sha256": "59993ce41056be4a002ad401a8549d014b656ca1d588c50b71a59702a9c52777"
+    },
+    {
+      "name": "connection_icon/domain",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/8d54a5919eb645f9.png",
+      "sha256": "3a2697666552866ec121030e6a4dc2a43b1d36512ef4d9cf4045b3abf5dae3cf"
+    },
+    {
+      "name": "connection_icon/bungie",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/9b762e8a42709cc4.png",
+      "sha256": "4adfae42803669022740d6c60e0b1ffd0dd82f8e761e58c2a20bfb6f3288c476"
+    },
+    {
+      "name": "connection_icon/skype",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/4f2cb7753e5d5e61.png",
+      "sha256": "279a41a7b0624c84938d138656abf9c541f1a1a55c0a81638cb059e42789d23f"
+    },
+    {
+      "name": "connection_icon/amazon-music",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/cda6fb74e92e32f1.png",
+      "sha256": "08ac245a95028944d0172e976c15ed7f197dab34878306e6d049db60dbb34a5e"
+    },
+    {
+      "name": "connection_icon/samsung",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/d50e7459b395e5d0.png",
+      "sha256": "8ee07c3fcba13fc5b8b22ce0c0479ee0dda739a0332a1390177dd2b3eccdf157"
+    },
+    {
+      "name": "icon/arrow_up_right",
+      "build": 9,
+      "kind": "svg_component",
+      "chunk": 120,
+      "module_id": "509434",
+      "export": null,
+      "start": 191,
+      "end": 645
+    },
+    {
+      "name": "connection_item/dota2",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/44e2229fd99bc14e.png",
+      "sha256": "029306f907927e6059c8095591faac4ceb5a86ad3899eebcbfd79135fe0a2200"
+    },
+    {
+      "name": "connection_item/tf2",
+      "build": 9,
+      "kind": "file",
+      "url": "https://discord.com/assets/9eb53b4fa3cc12d5.png",
+      "sha256": "1ae42fd63307af2c9cd5190ae6fafd5a1a148859969459a3f576cf18990d2a5e"
+    },
+    {
+      "name": "image/threads_empty",
+      "build": 10,
+      "kind": "file",
+      "url": "https://cdn.discordapp.com/assets/content/a55e53565529b99537f24e9111b39ad84565ad76ac91760cfb5450a069dd640c.svg",
+      "sha256": "a55e53565529b99537f24e9111b39ad84565ad76ac91760cfb5450a069dd640c"
+    }
+  ]
+}

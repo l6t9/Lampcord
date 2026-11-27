@@ -1,0 +1,411 @@
+/* Discord's settings dialog (`modal_e44912`): 40px plus the 32px top bar
+   clear of every window edge, at most 1400px wide. */
+.settings-modal {
+  width: calc(100% - 144px);
+  height: calc(100% - 144px);
+  max-width: 1400px;
+  background-color: var(--background-base-lower);
+}
+
+.settings-body {
+  display: flex;
+  flex-direction: row;
+  flex-grow: 1;
+}
+
+.settings-content {
+  flex-grow: 1;
+  flex-shrink: 1;
+  height: 100%;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--background-base-low);
+  border-radius: 0px var(--radius-md) var(--radius-md) 0px;
+}
+
+.settings-content-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  height: 48px;
+  flex-shrink: 0;
+  padding-left: 16px;
+  padding-right: 8px;
+  border-bottom: 1px solid var(--border-muted);
+}
+
+.settings-content-title {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  flex-grow: 1;
+}
+
+.settings-close-btn {
+  width: 32px;
+  height: 32px;
+
+  margin-top: 0px;
+  margin-right: 0px;
+  margin-left: 0px;
+}
+
+.settings-close-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.settings-content-scroll {
+  position: absolute;
+  left: 0px;
+  right: 0px;
+  top: 49px;
+  bottom: 0px;
+  display: flex;
+  flex-direction: column;
+  padding: 64px 16px;
+  overflow-y: scroll;
+
+  scrollbar-width: auto;
+}
+
+.settings-sidebar {
+  width: 240px;
+  height: 100%;
+  flex-shrink: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 16px;
+  border-radius: var(--radius-md) 0px 0px var(--radius-md);
+  border-right: 1px solid var(--border-muted);
+  background-color: var(--background-base-lower);
+}
+
+.settings-search-wrap {
+  padding: 0px 16px;
+}
+
+.settings-nav-list-wrapper {
+  position: absolute;
+  left: 0px;
+  right: 0px;
+  top: 136px;
+  bottom: 0px;
+}
+
+.settings-nav-list {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 0px 4px 0px 16px;
+  overflow-y: scroll;
+
+  scrollbar-width: thin;
+  scrollbar-fade: hover;
+}
+
+.settings-avatar {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+}
+
+.settings-nav-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 8px;
+}
+
+.settings-nav-section-divider {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.settings-nav-label {
+  padding: 0px 8px;
+}
+
+.settings-nav-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+}
+
+.settings-nav-item:hover {
+  background-color: var(--background-mod-muted);
+}
+
+.settings-nav-item-active {
+  background-color: var(--background-mod-normal);
+}
+
+.settings-nav-item-active:hover {
+  background-color: var(--background-mod-normal);
+}
+
+.settings-header-card {
+  flex-grow: 1;
+  justify-content: flex-start;
+  padding-top: 7px;
+  padding-bottom: 7px;
+}
+
+.settings-nav-item-destructive:hover {
+  background-color: var(--background-feedback-critical);
+}
+
+.settings-nav-item-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.settings-nav-item:hover .settings-nav-item-icon,
+.settings-nav-item:hover .settings-nav-item-label {
+  color: var(--text-strong);
+}
+
+.settings-nav-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 16px;
+  padding: 0px 8px;
+  border-radius: var(--radius-sm);
+  background-color: var(--background-brand);
+  flex-shrink: 0;
+}
+
+.settings-subnav {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 8px 0px;
+}
+
+.settings-subnav-row {
+  padding-left: 40px;
+}
+
+.settings-subnav-row:hover .settings-subnav-text {
+  color: var(--text-strong);
+}
+
+.settings-subnav-track {
+  position: absolute;
+  left: 16px;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  border-radius: var(--radius-round);
+  background-color: var(--background-mod-subtle);
+}
+
+.settings-subnav-thumb {
+  position: absolute;
+  left: 16px;
+  width: 2px;
+  height: 20px;
+  border-radius: var(--radius-round);
+  background-color: var(--text-strong);
+}
+
+.settings-subnav-thumb-0 {
+  top: 8px;
+}
+.settings-subnav-thumb-1 {
+  top: 44px;
+}
+.settings-subnav-thumb-2 {
+  top: 80px;
+}
+.settings-subnav-thumb-3 {
+  top: 116px;
+}
+.settings-subnav-thumb-4 {
+  top: 152px;
+}
+.settings-subnav-thumb-5 {
+  top: 188px;
+}
+
+.settings-account-page {
+  display: flex;
+  flex-direction: column;
+  max-width: 696px;
+  margin: 0px auto;
+}
+
+.settings-section-heading {
+  padding-bottom: 20px;
+}
+
+.settings-section-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-section-heading-divider {
+  height: 1px;
+}
+
+.settings-section-divider {
+  border-top: 1px solid var(--border-subtle);
+  margin: 40px 0px;
+}
+
+.settings-field-row {
+  display: grid;
+  align-items: center;
+  column-gap: 24px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+.settings-field-row-username {
+  grid-template-columns: 289px 383px;
+}
+.settings-field-row-email {
+  grid-template-columns: 207px 465px;
+}
+.settings-field-row-phone {
+  grid-template-columns: 195px 477px;
+}
+.settings-field-row-password {
+  grid-template-columns: 319px 353px;
+}
+
+.settings-info-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  margin-left: -12px;
+  margin-right: -12px;
+  min-height: 48px;
+  border-radius: var(--radius-lg);
+}
+
+.settings-info-row:hover {
+  background-color: var(--background-mod-subtle);
+}
+
+.settings-info-row-leading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  background-color: var(--background-mod-muted);
+}
+
+.settings-info-row-leading-icon {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.settings-info-row-right {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.settings-info-row-left-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-grow: 1;
+}
+
+.settings-chevron-icon {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.settings-devices-page {
+  display: flex;
+  flex-direction: column;
+  max-width: 696px;
+  margin: 0px auto;
+  gap: 40px;
+}
+
+.settings-device-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 48px;
+}
+
+.settings-device-icon {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.settings-device-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-grow: 1;
+}
+
+.settings-device-revoke {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+}
+
+.settings-device-revoke:hover {
+  background-color: var(--background-mod-normal);
+}
+
+.settings-device-revoke-icon {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.settings-logout-all {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.settings-warning-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex-grow: 1;
+  flex-shrink: 1;
+}
+
+.settings-page-wide {
+  width: 100%;
+}

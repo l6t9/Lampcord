@@ -1,41 +1,237 @@
 [workspace]
-resolver = "3"
+resolver = "2"
 members = [
-    "crates/lampcord-model",
-    "crates/lampcord-core",
-    "crates/lampcord-transport",
-    "crates/lampcord-ffi",
-    "crates/lampcord-qml",
+    "crates/requiem-css",
+    "crates/requiem-i18n",
+    "crates/requiem-icons",
+    "crates/requiem-assets",
+    "crates/requiem-asset-store",
+    "crates/requiem-asset-build",
+    "crates/requiem-emoji",
+    "crates/requiem-ui",
+    "crates/requiem-tsx",
+    "crates/requiem-core",
+    "crates/requiem",
+    "crates/requiem-plugin-host",
+    "crates/requiem-h3",
+    "crates/requiem-db",
+    "crates/requiem-update",
+    "crates/requiem-updater",
+    "crates/requiem-update-server",
+    "tools/requiem",
 ]
 
+[workspace.metadata.dylint]
+libraries = [{ path = "lints/function_local_use" }]
+
 [workspace.package]
-version = "0.0.0"
-edition = "2024"
-license = "GPL-3.0-only"
-rust-version = "1.85"
+edition = "2021"
+license = "MIT"
+
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+unused_qualifications = "deny"
+unused_imports = "deny"
+
+[workspace.lints.clippy]
+absolute_paths = "deny"
+dbg_macro = "deny"
+items_after_statements = "deny"
+print_stdout = "deny"
+print_stderr = "deny"
+undocumented_unsafe_blocks = "deny"
+# Readability opinions the code base does not follow.
+type_complexity = "allow"
+large_enum_variant = "allow"
+result_large_err = "allow"
+upper_case_acronyms = "allow"
+too_many_arguments = "allow"
+result_unit_err = "allow"
+should_implement_trait = "allow"
+inherent_to_string = "allow"
+module_inception = "allow"
+assertions_on_constants = "allow"
+field_reassign_with_default = "allow"
+await_holding_lock = "allow"
 
 [workspace.dependencies]
-lampcord-model = { path = "crates/lampcord-model" }
-lampcord-core = { path = "crates/lampcord-core" }
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-rmp-serde = "1"
-async-trait = "0.1"
-tokio = { version = "1", features = ["macros", "net", "rt", "sync", "time"] }
-tokio-tungstenite = { version = "0.30", default-features = false, features = [
-    "connect",
-    "handshake",
-    "rustls-tls-webpki-roots",
-] }
-reqwest = { version = "0.13", default-features = false, features = ["rustls", "cookies"] }
-rustls = { version = "0.23", default-features = false, features = ["std", "tls12", "logging", "aws_lc_rs"] }
-webpki-roots = "1"
-futures-util = "0.3"
-futures = "0.3"
-base64 = "0.22"
-rsa = { version = "0.9", default-features = false, features = ["std", "pem"] }
-sha2 = "0.10"
-rand = "0.8"
+
+# Workspace crates
+requiem-asset-build = { path = "crates/requiem-asset-build" }
+requiem-asset-store = { path = "crates/requiem-asset-store" }
+requiem-assets = { path = "crates/requiem-assets" }
+requiem-core = { path = "crates/requiem-core" }
+requiem-css = { path = "crates/requiem-css" }
+requiem-db = { path = "crates/requiem-db" }
+requiem-emoji = { path = "crates/requiem-emoji" }
+requiem-h3 = { path = "crates/requiem-h3" }
+requiem-i18n = { path = "crates/requiem-i18n" }
+requiem-icons = { path = "crates/requiem-icons" }
+requiem-plugin-host = { path = "crates/requiem-plugin-host" }
+requiem-tsx = { path = "crates/requiem-tsx" }
+requiem-ui = { path = "crates/requiem-ui" }
+requiem-update = { path = "crates/requiem-update" }
+requiem-updater = { path = "crates/requiem-updater" }
+
+# UI
+arboard = "3.6.1"
+cosmic-text = "0.19.0"
+cssparser = "0.37.0"
+gl = "0.14.0"
+glutin = "0.32.3"
+glutin-winit = "0.5.0"
+image = { version = "0.25.10", default-features = false }
+moka = "0.12.15"
+precomputed-hash = "0.1.1"
+raw-window-handle = "0.6.2"
+resvg = { version = "0.48.1", default-features = false }
+rfd = "0.15.4"
+selectors = "0.39.0"
+skia-safe = "0.153.3"
+slotmap = "1.1.1"
+swash = "0.2.10"
+taffy = "0.12.2"
+tao = "0.37.1"
+thumbhash = "0.1.0"
+usvg = { version = "0.48.1", default-features = false }
+webp = "0.3.1"
+winit = "0.30.13"
+wry = "0.57.0"
+wuff = "0.2.9"
+
+# Text
+emojis = "0.9.0"
+fluent-bundle = "0.16.0"
+fluent-langneg = "0.13.1"
+fluent-syntax = "0.12.0"
+sys-locale = "0.3.2"
+tree-sitter = "0.27.1"
+tree-sitter-bash = "0.25.1"
+tree-sitter-c = "0.24.2"
+tree-sitter-c-sharp = "0.23.5"
+tree-sitter-cpp = "0.23.4"
+tree-sitter-css = "0.25.0"
+tree-sitter-go = "0.25.0"
+tree-sitter-html = "0.23.2"
+tree-sitter-java = "0.23.5"
+tree-sitter-javascript = "0.25.0"
+tree-sitter-json = "0.24.8"
+tree-sitter-python = "0.25.0"
+tree-sitter-rust = "0.24.2"
+tree-sitter-typescript = "0.23.2"
+tree-sitter-yaml = "0.7.2"
+unic-langid = "0.9.6"
+unicode-segmentation = "1.13.3"
+
+# HTTP
+axum = "0.8.9"
+brotli = "8.0.4"
+btls = "0.5.6"
+btls-sys = "0.5.6"
+bytes = "1.12.1"
+flate2 = "1.1.9"
+foreign-types = "0.5.0"
+http = "1.4.2"
+http-body-util = "0.1.4"
+quinn-proto = { version = "0.11.16", default-features = false }
+reqwest = "0.13.4"
+tokio-tungstenite = "0.29.0"
+tower = "0.5.3"
+tower-http = "0.6.11"
+wreq = "6.0.0-rc.31"
+wreq-util = "3.0.0-rc.14"
+
+# Voice and media
+aes-gcm = "0.10.3"
+async-trait = "0.1.89"
+audiopus = "0.3.0-rc.0"
+chacha20poly1305 = "0.10.1"
+cpal = "0.16.0"
+davey = "0.1.5"
+ffmpeg-next = { version = "9.0.0", default-features = false }
+nnnoiseless = { version = "0.5.2", default-features = false }
+rtc = "0.21.1"
+socket2 = "0.6.5"
+sonora = "0.2.0"
+symphonia = { version = "0.5.5", default-features = false }
+webrtc = "0.21.1"
+xcap = "0.9.8"
+
+# Plugins
+wasmtime = { version = "49.0.2", default-features = false }
+wasmtime-wasi = { version = "49.0.2", default-features = false }
+
+# Updates and signing
+ed25519-dalek = "2.2.0"
+jsonwebtoken = "9.3.1"
+ring = "0.17.14"
+semver = "1.0.28"
+sha2 = "0.10.9"
+tar = "0.4.46"
+zip = { version = "2.6.1", default-features = false }
+zstd = "0.13.3"
+
+# Data
+chrono = { version = "0.4.42", default-features = false }
+human-date-parser = "0.3.1"
+iana-time-zone = "0.1.65"
+interim = "0.2.1"
+keyring = "4.1.5"
+oxc_allocator = "0.152.0"
+oxc_ast = "0.152.0"
+oxc_ast_visit = "0.152.0"
+oxc_parser = "0.152.0"
+oxc_span = "0.152.0"
+percent-encoding = "2.3.2"
+rusqlite = "0.37.0"
+serde = "1.0.228"
+serde_json = "1.0.150"
+specta = "=2.0.0-rc.27"
+specta-serde = "=0.0.14"
+specta-typescript = "=0.0.14"
+toml = "0.9"
+uuid = "1.24.0"
+
+# Tools
+anyhow = "1.0.104"
+base64 = "0.23.1"
+clap = "4.6.7"
+dotenvy = "0.15.7"
+env_logger = "0.11.11"
+futures-core = "0.3.34"
+futures-util = "0.3.34"
+getrandom = "0.3"
+log = "0.4.33"
+parking_lot = "0.12"
+rand = "0.10"
+thiserror = "2.0.18"
+tokio = "1.53.0"
+tracing = "0.1.44"
+tracing-log = "0.2"
+tracing-subscriber = { version = "0.3.23", default-features = false, features = ["env-filter", "fmt", "std", "ansi"] }
+
+[profile.dev.package."*"]
+opt-level = 2
+
+[profile.dev.package.requiem-ui]
+opt-level = 2
+
+[profile.dev.package.requiem-core]
+opt-level = 2
+
+[profile.release]
+lto = "thin"
+codegen-units = 16
+incremental = true
+
+[profile.ship]
+inherits = "release"
+strip = true
+opt-level = 3
+lto = true
+codegen-units = 1
+incremental = false
 
 [patch.crates-io]
-xattr = { path = "vendor/xattr" }
+wreq = { path = "vendor/wreq" }
+quinn-proto = { path = "vendor/quinn-proto" }

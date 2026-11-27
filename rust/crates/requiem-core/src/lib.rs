@@ -1,0 +1,43 @@
+pub mod assets;
+#[cfg(feature = "video")]
+mod audio_out;
+pub mod auth;
+pub mod channel_lookup;
+pub mod config;
+pub(crate) mod decode_pool;
+pub mod features;
+pub mod frecency;
+pub mod gateway;
+pub mod images;
+pub mod instances;
+pub mod keybinds;
+#[cfg(feature = "video")]
+pub mod logo_video;
+pub mod lottie;
+pub mod models;
+pub mod net_profile;
+pub mod netlog;
+pub mod notifications;
+pub mod plugins;
+pub mod presence;
+pub mod presence_local;
+pub mod properties;
+pub mod query;
+pub mod rest;
+pub mod sounds;
+pub mod state;
+#[cfg(test)]
+mod test_assets;
+pub mod typing_local;
+pub mod ui_state;
+pub mod ui_tsx;
+pub mod ui;
+pub mod uploads;
+pub mod utils;
+#[cfg(feature = "video")]
+pub mod video;
+#[cfg(feature = "video")]
+pub mod video_thumb;
+#[cfg(feature = "voice")]
+pub mod voice;
+pub mod voice_control;

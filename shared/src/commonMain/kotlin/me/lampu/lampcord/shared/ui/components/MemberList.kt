@@ -37,6 +37,7 @@ import me.lampu.lampcord.shared.ui.components.members.MemberHeader
 import me.lampu.lampcord.shared.ui.components.members.MemberItem
 import me.lampu.lampcord.shared.ui.components.members.MemberRowEnv
 import me.lampu.lampcord.shared.ui.components.members.MemberSkeleton
+import me.lampu.lampcord.shared.ui.theme.RequiemColors
 import me.lampu.lampcord.shared.utils.getCurrentTimeMillis
 import me.lampu.lampcord.shared.utils.getPlatformName
 import org.koin.compose.koinInject
@@ -128,8 +129,8 @@ fun MemberList(
 
         Surface(
             modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.surface,
-            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+            color = RequiemColors.BackgroundLower,
+            shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)
         ) {
             LazyColumn(
                 state = scrollState,

@@ -1,0 +1,334 @@
+package requiem:plugin@1.0.0;
+
+// What plugins can call. Every import is always linked. A missing permission
+// makes a call return `error { code: "permission-denied" }` (getters: `none` or
+// empty), and a feature this client doesn't have yet returns
+// `error { code: "unavailable" }`, so plugins degrade instead of failing to load.
+
+interface log {
+    /// Frozen forever.
+    enum level { trace, debug, info, warn, error }
+
+    log: func(level: level, message: string);
+}
+
+/// Per-plugin key/value storage, limited by the manifest's `limits.storage-kib`.
+interface storage {
+    use types.{error};
+
+    get: func(key: string) -> option<list<u8>>;
+    set: func(key: string, value: list<u8>) -> result<_, error>;
+    delete: func(key: string);
+    keys: func(prefix: string) -> list<string>;
+    /// Bytes used and the quota.
+    usage: func() -> tuple<u64, u64>;
+    /// Stored in the OS keyring, for API keys and tokens.
+    get-secret: func(key: string) -> result<option<string>, error>;
+    set-secret: func(key: string, value: string) -> result<_, error>;
+    delete-secret: func(key: string) -> result<_, error>;
+}
+
+/// Calling the plugin back later: `events.on-timer(id)`. Timers live until the
+/// plugin stops; setting an existing id replaces it.
+interface timers {
+    set: func(id: string, delay-ms: u64, repeat: bool);
+    clear: func(id: string);
+    /// Wall clock and a monotonic clock, in ms.
+    now: func() -> s64;
+    monotonic: func() -> u64;
+}
+
+/// Reading client state. Everything here is the client's cached state unless a
+/// function says "fetch", which makes a request (and can be slow).
+interface client {
+    use types.{snowflake, error, json};
+    use model.{user, member, role, guild, channel, message, presence, voice-state, relationship, read-state, profile};
+
+    /// `{"version", "platform": "desktop", "api": "1.0", "locale", "theme"}`.
+    info: func() -> json;
+    current-user: func() -> option<user>;
+    selected-guild: func() -> option<snowflake>;
+    selected-channel: func() -> option<snowflake>;
+
+    get-user: func(id: snowflake) -> option<user>;
+    get-guild: func(id: snowflake) -> option<guild>;
+    guilds: func() -> list<guild>;
+    /// Server folders: `[{"id", "name", "color", "guild-ids"}]`.
+    guild-folders: func() -> json;
+    get-channel: func(id: snowflake) -> option<channel>;
+    channels: func(guild-id: snowflake) -> list<channel>;
+    private-channels: func() -> list<channel>;
+    get-role: func(guild-id: snowflake, id: snowflake) -> option<role>;
+    roles: func(guild-id: snowflake) -> list<role>;
+    get-member: func(guild-id: snowflake, user-id: snowflake) -> option<member>;
+    /// The members the client has loaded (not necessarily all).
+    members: func(guild-id: snowflake) -> list<member>;
+    /// Whether `user-id` has `permission` in `channel-id` (needs `members.read`).
+    user-can: func(channel-id: snowflake, user-id: snowflake, permission: string) -> result<bool, error>;
+
+    /// Messages the client has loaded for a channel, oldest first.
+    messages: func(channel-id: snowflake) -> list<message>;
+    get-message: func(channel-id: snowflake, id: snowflake) -> option<message>;
+    /// Fetch: up to `limit` (1-100) messages before/after/around a message, or
+    /// the newest with `anchor` = `none`. `direction`: "before", "after", "around".
+    fetch-messages: func(channel-id: snowflake, anchor: option<snowflake>, direction: string, limit: u32) -> result<list<message>, error>;
+    fetch-message: func(channel-id: snowflake, id: snowflake) -> result<message, error>;
+    /// Fetch: message search. `query` is `{"content", "author-id", "mentions",
+    /// "has", "before", "after", "channel-id", "offset"}` (all optional).
+    search-messages: func(guild-or-channel-id: snowflake, query: json) -> result<list<message>, error>;
+
+    get-presence: func(user-id: snowflake) -> option<presence>;
+    get-voice-state: func(user-id: snowflake) -> option<voice-state>;
+    voice-states: func(channel-id: snowflake) -> list<voice-state>;
+    relationships: func() -> list<relationship>;
+    /// Users typing in a channel now.
+    typing: func(channel-id: snowflake) -> list<snowflake>;
+    get-read-state: func(channel-id: snowflake) -> option<read-state>;
+    /// Fetch: a user's full profile, in a server when `guild-id` is given.
+    fetch-profile: func(user-id: snowflake, guild-id: option<snowflake>) -> result<profile, error>;
+    /// Fetch: a guild's members matching a name prefix (up to 100).
+    fetch-members: func(guild-id: snowflake, query: string, limit: u32) -> result<list<member>, error>;
+}
+
+/// Acting as the user. Each function lists the permission it needs.
+interface actions {
+    use types.{snowflake, error, json};
+
+    /// `messages.send`, unless called within a user gesture on the plugin's own
+    /// UI (a command, a button). Goes through other plugins' outgoing hooks.
+    /// `options`: `{"reply-to", "reply-mention", "flags": [..], "sticker-ids": [..]}`.
+    send-message: func(channel-id: snowflake, content: string, options: json) -> result<snowflake, error>;
+    /// `messages.send`, like `send-message`; `files` are `(filename, bytes)`.
+    send-files: func(channel-id: snowflake, content: string, files: list<tuple<string, list<u8>>>, options: json) -> result<snowflake, error>;
+    /// Your own messages only. `messages.manage`.
+    edit-message: func(channel-id: snowflake, message-id: snowflake, content: string) -> result<_, error>;
+    /// Yours, or anyone's where you may manage messages. `messages.manage`.
+    delete-message: func(channel-id: snowflake, message-id: snowflake) -> result<_, error>;
+    pin-message: func(channel-id: snowflake, message-id: snowflake, pinned: bool) -> result<_, error>;
+    /// `reactions`. `emoji`: unicode, or `name:id`.
+    add-reaction: func(channel-id: snowflake, message-id: snowflake, emoji: string, burst: bool) -> result<_, error>;
+    remove-reaction: func(channel-id: snowflake, message-id: snowflake, emoji: string) -> result<_, error>;
+    /// Marks read. `read-states.write`.
+    ack-channel: func(channel-id: snowflake) -> result<_, error>;
+    ack-guild: func(guild-id: snowflake) -> result<_, error>;
+    /// A message only you see, by "the plugin" (shown with its name and an
+    /// "Only you can see this" note). `ui.local-messages`. Returns its local id.
+    add-local-message: func(channel-id: snowflake, content: string) -> result<snowflake, error>;
+    remove-local-message: func(channel-id: snowflake, id: snowflake);
+    /// Sends the typing indicator. `messages.send`.
+    start-typing: func(channel-id: snowflake) -> result<_, error>;
+    /// Opens (or creates) the DM with a user; returns its channel. `messages.send`.
+    open-dm: func(user-id: snowflake) -> result<snowflake, error>;
+    /// Copies text. `clipboard.write`, unless the user just pressed a button in
+    /// the plugin's own UI (a gesture).
+    copy-to-clipboard: func(text: string) -> result<_, error>;
+    /// `clipboard.read`.
+    read-clipboard: func() -> result<string, error>;
+    /// Opens a link in the browser (always asks the user first).
+    open-url: func(url: string) -> result<_, error>;
+}
+
+/// Moving around the client. No permission needed.
+interface navigation {
+    use types.{snowflake, error};
+
+    /// Opens a channel, scrolled to `message-id` when given.
+    open-channel: func(channel-id: snowflake, message-id: option<snowflake>) -> result<_, error>;
+    open-guild: func(guild-id: snowflake) -> result<_, error>;
+    open-home: func();
+    open-profile: func(user-id: snowflake, guild-id: option<snowflake>) -> result<_, error>;
+    /// `page` is an open set ("account", "profiles", "plugins", "plugin:<id>", ...).
+    open-settings: func(page: string) -> result<_, error>;
+    /// Opens the search UI with a query.
+    search: func(query: string) -> result<_, error>;
+    /// Opens a media viewer on an image/video URL.
+    open-media: func(url: string) -> result<_, error>;
+}
+
+/// Calling Discord's API directly, only on routes the manifest declares
+/// (`"discord-api:PATCH /users/@me/guilds/*/settings" = "why"`). Never sees the
+/// token. Dangerous-tier: shown route by route at install.
+interface discord {
+    use types.{error, json};
+
+    resource response {
+        status: func() -> u16;
+        body: func() -> string;
+    }
+
+    /// `method` + `path` (`"/channels/123/messages"`); `body` is JSON.
+    request: func(method: string, path: string, body: option<json>) -> result<response, error>;
+}
+
+/// The logged-in user's presence. `presence.write`.
+interface presence {
+    use types.{snowflake, timestamp, error};
+
+    /// "online", "idle", "dnd", "invisible".
+    set-status: func(status: string) -> result<_, error>;
+    set-custom-status: func(text: option<string>, emoji: option<string>, expires: option<timestamp>) -> result<_, error>;
+
+    /// A rich presence activity. Each plugin can show several, by id.
+    resource activity-builder {
+        /// `kind`: "playing", "streaming", "listening", "watching", "competing".
+        constructor(kind: string, name: string);
+        details: func(text: string);
+        state: func(text: string);
+        application-id: func(id: snowflake);
+        url: func(url: string);
+        timestamps: func(start: option<timestamp>, end: option<timestamp>);
+        /// Image URLs or application asset keys, with hover text.
+        large-image: func(image: string, text: option<string>);
+        small-image: func(image: string, text: option<string>);
+        /// Up to two link buttons.
+        button: func(label: string, url: string);
+        party: func(id: option<string>, size: option<tuple<u32, u32>>);
+    }
+
+    set-activity: func(id: string, activity: activity-builder) -> result<_, error>;
+    clear-activity: func(id: string);
+}
+
+/// Voice. Read voice states through `client`. `voice.control`.
+interface voice {
+    use types.{snowflake, error};
+
+    join: func(channel-id: snowflake) -> result<_, error>;
+    leave: func() -> result<_, error>;
+    current-channel: func() -> option<snowflake>;
+    set-self-mute: func(muted: bool) -> result<_, error>;
+    set-self-deaf: func(deafened: bool) -> result<_, error>;
+    set-video: func(on: bool) -> result<_, error>;
+    /// 0.0-2.0 locally (1.0 = normal), above Discord's own 200% cap up to 4.0.
+    set-user-volume: func(user-id: snowflake, volume: f32) -> result<_, error>;
+    /// Moderation, where you may: `voice.moderate`.
+    move-member: func(guild-id: snowflake, user-id: snowflake, channel-id: option<snowflake>) -> result<_, error>;
+    set-member-mute: func(guild-id: snowflake, user-id: snowflake, muted: bool, deafened: bool) -> result<_, error>;
+    /// Starts sharing the screen with the client's own picker.
+    start-screen-share: func() -> result<_, error>;
+    /// Opens the client's voice-message recorder for a channel.
+    record-voice-message: func(channel-id: snowflake) -> result<_, error>;
+}
+
+/// Desktop notifications, sounds and speech.
+interface notify {
+    use types.{snowflake, error};
+
+    /// An OS notification; clicking it opens `channel-id` (and calls
+    /// `events.on-event` with kind "notification-click" and `tag`).
+    /// `notifications`.
+    notify: func(title: string, body: string, channel-id: option<snowflake>, tag: option<string>) -> result<_, error>;
+    /// `source`: "builtin:<name>" (the client's sounds: "message", "mention",
+    /// "join", "leave", "mute", "deafen", ...), "plugin:<path>" (a file in the
+    /// package's `assets/`), or an https URL allowed under `network:`.
+    /// Returns an id for `stop-sound`. `audio.play`.
+    play-sound: func(source: string, volume: f32) -> result<u32, error>;
+    stop-sound: func(id: u32);
+    /// Replaces one of the client's sounds; `none` restores it. `audio.replace`.
+    override-sound: func(name: string, source: option<string>) -> result<_, error>;
+    /// Speaks with the OS's speech engine. `audio.play`.
+    speak: func(text: string, voice: option<string>, rate: f32) -> result<_, error>;
+    known-sounds: func() -> list<string>;
+}
+
+/// Client behavior switches (a documented, versioned list; unknown names are an
+/// error). `tweaks`. Values are JSON.
+interface tweaks {
+    use types.{json, error};
+
+    known: func() -> list<string>;
+    get: func(name: string) -> option<json>;
+    /// The plugin's value wins while it runs; the user's comes back when it stops.
+    set: func(name: string, value: json) -> result<_, error>;
+    reset: func(name: string);
+}
+
+/// Files the user picks, through the OS's dialog. `files`.
+interface files {
+    use types.{error};
+
+    resource picked-file {
+        name: func() -> string;
+        size: func() -> u64;
+        read: func() -> result<list<u8>, error>;
+    }
+
+    /// Asks where to save; `false` if the user cancelled.
+    save: func(suggested-name: string, data: list<u8>) -> result<bool, error>;
+    /// `filters`: extensions ("png", "zip"); empty for any file.
+    pick: func(multiple: bool, filters: list<string>) -> result<list<picked-file>, error>;
+}
+
+/// HTTP and WebSockets to the hosts the manifest allows (`network:<host>`);
+/// `localhost` needs `network.localhost`. Discord's API hosts are refused.
+interface net {
+    use types.{error};
+
+    resource http-response {
+        status: func() -> u16;
+        headers: func() -> list<tuple<string, string>>;
+        body: func() -> list<u8>;
+        text: func() -> result<string, error>;
+    }
+
+    /// `timeout-ms` 0 = the default (30 s).
+    fetch: func(method: string, url: string, headers: list<tuple<string, string>>, body: option<list<u8>>, timeout-ms: u32) -> result<http-response, error>;
+
+    /// Messages arrive as `events.on-websocket(id, kind, data)`.
+    connect-websocket: func(url: string, protocols: list<string>) -> result<u32, error>;
+    send-websocket: func(id: u32, text: option<string>, binary: option<list<u8>>) -> result<_, error>;
+    close-websocket: func(id: u32);
+}
+
+/// Changing how messages, people, channels and servers are shown, at any time
+/// (after a hook returned, or for things no hook passes through). Local only,
+/// always marked, and gone when the plugin is disabled.
+interface overlay {
+    use types.{snowflake, error, json};
+
+    /// Messages (`messages.intercept-incoming`): the same changes as
+    /// `incoming-message`'s setters, later.
+    set-display-content: func(channel-id: snowflake, message-id: snowflake, content: option<string>) -> result<_, error>;
+    set-annotation: func(channel-id: snowflake, message-id: snowflake, text: option<string>) -> result<_, error>;
+    set-decoration: func(channel-id: snowflake, message-id: snowflake, slot: string, view-id: option<string>) -> result<_, error>;
+    add-span: func(channel-id: snowflake, message-id: snowflake, start: u32, end: u32, kind: string, options: json) -> result<_, error>;
+    set-hidden: func(channel-id: snowflake, message-id: snowflake, hidden: bool) -> result<_, error>;
+    /// Removes everything this plugin did to a message.
+    clear: func(channel-id: snowflake, message-id: snowflake) -> result<_, error>;
+
+    /// People, everywhere they appear (`display.users`). `field`: "name",
+    /// "color", "avatar-url", "banner-url", "hidden" (their messages and
+    /// presence vanish), ... `value`: JSON; `none` removes the override.
+    set-user-display: func(user-id: snowflake, guild-id: option<snowflake>, field: string, value: option<json>) -> result<_, error>;
+    /// A plugin view next to a user's name. `slot`: "message-header",
+    /// "member-list", "dm-list", "profile-badges", "name-icon", "voice-tile".
+    set-user-decoration: func(user-id: snowflake, slot: string, view-id: option<string>) -> result<_, error>;
+    /// Channels (`display.channels`): "name", "icon", "hidden"; decorations in
+    /// "channel-list".
+    set-channel-display: func(channel-id: snowflake, field: string, value: option<json>) -> result<_, error>;
+    set-channel-decoration: func(channel-id: snowflake, slot: string, view-id: option<string>) -> result<_, error>;
+    /// Servers (`display.guilds`): "name", "icon-url", "hidden"; decorations in
+    /// "guild-rail".
+    set-guild-display: func(guild-id: snowflake, field: string, value: option<json>) -> result<_, error>;
+    set-guild-decoration: func(guild-id: snowflake, slot: string, view-id: option<string>) -> result<_, error>;
+}
+
+/// The message composer. `composer`.
+interface composer {
+    use types.{snowflake, error};
+
+    /// The text in the composer of the channel on screen.
+    text: func() -> option<string>;
+    set-text: func(text: string) -> result<_, error>;
+    /// Inserts at the caret (replacing a selection).
+    insert: func(text: string) -> result<_, error>;
+    focus: func();
+    channel-id: func() -> option<snowflake>;
+    /// The message being replied to.
+    replying-to: func() -> option<snowflake>;
+    /// Starts replying to / editing a message (like the keyboard shortcuts do).
+    reply-to: func(channel-id: snowflake, message-id: snowflake, mention: bool) -> result<_, error>;
+    edit: func(channel-id: snowflake, message-id: snowflake) -> result<_, error>;
+    /// Files waiting to be sent with the next message.
+    add-pending-file: func(filename: string, data: list<u8>) -> result<_, error>;
+}

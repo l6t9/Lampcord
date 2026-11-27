@@ -1,0 +1,17 @@
+.root {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.root:hover .label {
+  text-decoration: underline;
+}
+
+.label {
+}
+
+.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}

@@ -1,0 +1,22 @@
+/target
+# The plugin SDK is its own workspace (wasm target) with its own build directory
+/crates/plugin-sdk/target
+/crates/requiem-plugin/target
+**/*.rs.bk
+.vscode/
+*.pdb
+.env
+
+# ASIO audio driver — the Steinberg ASIO SDK. ~10 MB of binary headers +
+# copyright-protected license PDFs/logo art, fetched from
+# download.steinberg.net (see .cargo/config.toml's CPAL_ASIO_DIR and
+# vendor/README.md). Not committed; `asio-sys` re-downloads it if absent.
+/vendor/ASIOSDK
+# Discord web builds downloaded by `cargo dr assets resolve`
+/.cache/
+
+# Emoji packs built by `cargo dr emoji build`: most vendors' designs are their own artwork, so only the openly licensed ones are kept
+# (Fluent: MIT, OpenMoji: CC BY-SA 4.0). The list of vendors, `vendors.json`, is kept.
+crates/requiem-core/assets/emoji-packs/*.pack
+!crates/requiem-core/assets/emoji-packs/microsoft-3D-fluent.pack
+!crates/requiem-core/assets/emoji-packs/openmoji.pack

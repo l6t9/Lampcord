@@ -1,0 +1,29 @@
+## Deutsch. Übernommen aus Discords eigenen Übersetzungen, wo es sie gibt; der Rest ist von Hand ergänzt.
+
+forms-already-have-an-account-log-in = Du hast bereits einen Account? Anmelden
+forms-create-account = Account erstellen
+forms-create-an-account = Account erstellen
+forms-date-of-birth = Geburtsdatum
+forms-day = Tag
+forms-display-name = Anzeigename
+forms-email = E-Mail
+forms-email-or-phone-number = E-Mail oder Telefonnummer
+forms-enter-discord-auth-backup-code = Discord-Auth-Code/Backup-Code eingeben
+forms-forgot-your-password = Passwort vergessen?
+forms-go-back-to-login = Zurück zur Anmeldung
+forms-instructions-sent = Anweisungen versendet
+forms-log-in = Anmelden
+forms-log-in-with-qr-code = Mit QR-Code einloggen
+forms-log-in-with-your-authenticator-app = Melde dich mit deiner Authentifizierungs-App oder einem Backup-Code an.
+forms-month = Monat
+forms-multi-factor-authentication = Multi-Faktor-Authentifizierung
+forms-need-an-account = Brauchst du einen Account?
+forms-okay = Okay
+forms-password = Passwort
+forms-qr-login-isn-t-available-yet = Die Anmeldung per QR-Code ist noch nicht verfügbar
+forms-register = Registrieren
+forms-scan-this-with-the-discord-mobile = Scanne das mit der mobilen Discord-App, um dich sofort anzumelden.
+forms-username = Benutzername
+forms-we-re-so-excited-to-see = Wir freuen uns so, dich wiederzusehen!
+forms-welcome-back = Willkommen zurück!
+forms-year = Jahr

@@ -1,0 +1,22 @@
+id = "dev.requiem.word-filter"
+name = "Word Filter"
+version = "0.1.0"
+api = "1.0"
+description = "Hides blocked words in messages and keeps you from sending them."
+authors = ["requiem"]
+license = "MIT"
+
+[permissions]
+"messages.intercept-incoming" = "Hides blocked words in messages you receive"
+
+[optional-permissions]
+"messages.intercept-outgoing" = "Stops messages containing a blocked word from being sent"
+
+[hooks]
+incoming = { priority = 0 }
+outgoing = { priority = 0 }
+settings-ui = {}
+
+[limits]
+memory-mib = 16
+storage-kib = 16

@@ -57,6 +57,7 @@ import me.lampu.lampcord.shared.ui.components.ChannelItem
 import me.lampu.lampcord.shared.ui.components.ChannelSkeleton
 import me.lampu.lampcord.shared.ui.components.VerticalScrollbar
 import me.lampu.lampcord.shared.ui.icons.Icons
+import me.lampu.lampcord.shared.ui.theme.RequiemColors
 import me.lampu.lampcord.shared.utils.Permission
 import me.lampu.lampcord.shared.utils.PermissionHelper
 import me.lampu.lampcord.shared.utils.getPlatformName
@@ -205,7 +206,7 @@ fun GuildChannelList(
 
         Surface(
             modifier = Modifier.fillMaxWidth().height(48.dp),
-            color = MaterialTheme.colorScheme.surface.copy(alpha = alpha),
+            color = RequiemColors.BackgroundLower.copy(alpha = alpha),
             shadowElevation = 0.dp,
             tonalElevation = 0.dp,
             onClick = { 
@@ -236,7 +237,7 @@ fun GuildChannelList(
                     modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val contentColor = if (bannerUrl != null && alpha < 0.5f) Color.White else MaterialTheme.colorScheme.onSurface
+                    val contentColor = if (bannerUrl != null && alpha < 0.5f) Color.White else RequiemColors.TextStrong
                     
                     Text(
                         text = guild?.name ?: "Guild",

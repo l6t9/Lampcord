@@ -1,0 +1,164 @@
+.layer {
+  position: absolute;
+  top: 0px;
+  left: 0px;
+}
+
+.layer-open {
+  width: 100%;
+  height: 100%;
+}
+
+.panel {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  min-height: 200px;
+  overflow: hidden;
+  background-color: var(--background-surface-high);
+  border-radius: 8px;
+  box-shadow: var(--shadow-border), var(--shadow-high);
+}
+
+.header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.header-icon {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.scroll {
+  flex-grow: 1;
+  flex-shrink: 1;
+  min-height: 0px;
+}
+
+.list {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0px 0px 8px;
+}
+
+.card {
+  position: relative;
+  align-self: stretch;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 0px 4px 8px 0px;
+  overflow: hidden;
+  background-color: var(--background-surface-higher);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.card-message {
+  align-self: stretch;
+  margin-left: -4px;
+  padding: 14px 0px;
+}
+
+.actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+}
+
+.action {
+  background-color: var(--background-surface-high);
+  border-radius: var(--radius-sm);
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 120px 0px;
+}
+
+.loading-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 32px 0px;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  margin: 16px 0px 32px;
+}
+
+.empty-image {
+  width: 94px;
+  height: 120px;
+}
+
+.empty-text {
+  margin-top: 20px;
+}
+
+.footer {
+  flex-shrink: 0;
+  padding: 16px;
+  background-color: var(--background-mod-subtle);
+}
+
+.protip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 0px;
+}
+
+.system-row {
+  min-height: 0px;
+}
+
+.system-row-start {
+  margin-top: 17px;
+}
+
+.system-icon-slot {
+  width: 40px;
+  height: 22px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.system-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.system-body {
+  min-width: 0px;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  column-gap: 4px;
+  padding: 2px 0px;
+}
+
+.system-time {
+  flex-shrink: 0;
+}

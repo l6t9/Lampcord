@@ -1,0 +1,187 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.large-first {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 30px;
+}
+
+.large {
+  display: flex;
+  flex-direction: column;
+  margin-top: 8px;
+  margin-bottom: 30px;
+}
+
+.spacing {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 20px;
+}
+
+.spacing > .large {
+  margin-top: 0px;
+}
+
+.divider {
+  width: 100%;
+  height: 1px;
+  flex-shrink: 0;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.divider-spaced {
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+
+.lighten {
+  opacity: 0.6;
+}
+
+.option-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.table {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.headers {
+  display: flex;
+  flex-direction: row;
+}
+
+.header-name {
+  flex-grow: 1;
+  flex-shrink: 1;
+  min-width: 0px;
+  margin-left: 8px;
+  padding-bottom: 8px;
+}
+
+.header-option {
+  width: 75px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: 8px;
+}
+
+.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 56px;
+  margin-bottom: 8px;
+  border: 1px dashed var(--background-base-lowest);
+  border-radius: 3px;
+}
+
+.row {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  margin-bottom: 8px;
+  padding: 10px 0px 10px 10px;
+  border-radius: 8px;
+  background-color: var(--background-surface-high);
+}
+
+.row:hover {
+  background-color: #1d1d1d1a;
+}
+
+.name-cell {
+  display: flex;
+  flex-direction: row;
+  flex-grow: 1;
+  flex-shrink: 1;
+  min-width: 0px;
+}
+
+.row-icon {
+  align-self: center;
+  width: 24px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.name-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0px;
+  padding: 0px 10px;
+  overflow: hidden;
+}
+
+.checks {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-around;
+  width: 300px;
+  flex-shrink: 0;
+}
+
+.check-cell {
+  position: relative;
+  width: 20px;
+  height: 20px;
+}
+
+.check-cell-muted {
+  opacity: 0.3;
+}
+
+.column-line {
+  position: absolute;
+  top: 0px;
+  left: -26px;
+  width: 1px;
+  height: 100%;
+  background-color: #1e202199;
+}
+
+.mute-shade {
+  position: absolute;
+  top: -16px;
+  bottom: -16px;
+  left: -26px;
+  right: -26px;
+  background-color: var(--checkbox-background-default);
+}
+
+.check-button {
+  position: relative;
+  width: 20px;
+  height: 20px;
+}
+
+.remove {
+  position: absolute;
+  top: -12px;
+  right: -8px;
+  width: 16px;
+  height: 16px;
+  opacity: 0;
+}
+
+.row:hover .remove {
+  opacity: 1;
+}
+
+.remove-icon {
+  width: 16px;
+  height: 16px;
+}

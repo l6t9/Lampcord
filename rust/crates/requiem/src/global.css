@@ -1,0 +1,26 @@
+.root {
+
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  height: 100%;
+  padding: 32px 0px 0px 0px;
+  background-color: var(--background-tertiary);
+}
+
+.left-nav-frame {
+  flex-grow: 1;
+
+  min-width: 0px;
+  display: flex;
+  flex-direction: row;
+  height: 100%;
+}
+
+.form-preview-page {
+  flex-direction: column;
+  overflow-y: scroll;
+  padding: 32px;
+  gap: 20px;
+}

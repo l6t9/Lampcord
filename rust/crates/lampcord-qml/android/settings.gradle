@@ -1,4 +1,0 @@
-// Keep Qt's generated Gradle project standalone. Without this file Gradle
-// walks up and finds the repository's Compose settings.gradle.kts. The name
-// must match androiddeployqt's output directory so it can find the APK.
-rootProject.name = 'android-build'

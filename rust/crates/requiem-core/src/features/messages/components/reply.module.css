@@ -1,0 +1,161 @@
+.reply-bar {
+  width: 100%;
+  height: 36px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding-left: 16px;
+  padding-right: 4px;
+  background-color: var(--background-surface-higher);
+  border-radius: var(--radius-sm) var(--radius-sm) 0px 0px;
+}
+
+.reply-bar-text {
+  min-width: 0px;
+  flex-grow: 1;
+  flex-shrink: 1;
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+}
+
+.reply-toggle {
+  height: 34px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.reply-toggle-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.reply-divider {
+  width: 1px;
+  height: 20px;
+  margin-left: 4px;
+  margin-right: 3px;
+  flex-shrink: 0;
+  background-color: var(--background-mod-subtle);
+}
+
+.reply-close {
+  width: 40px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reply-close-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.reply-context {
+  position: relative;
+  width: 100%;
+  height: 18px;
+  margin-bottom: 4px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  overflow: visible;
+}
+
+.reply-connector {
+  position: absolute;
+  left: -37px;
+  top: 8px;
+  width: 33px;
+  height: 12px;
+}
+
+.reply-avatar {
+  width: 16px;
+  height: 16px;
+  margin-right: 4px;
+  flex-shrink: 0;
+}
+
+.reply-jump {
+  width: 100%;
+  min-width: 0px;
+}
+
+.reply-avatar-btn {
+  flex-shrink: 0;
+}
+
+.reply-author-btn {
+  margin-right: 4px;
+  flex-shrink: 0;
+}
+
+.reply-author-btn:hover .reply-author {
+  text-decoration: underline;
+}
+
+.reply-author {
+  flex-shrink: 0;
+}
+
+.reply-snippet {
+  min-width: 0px;
+  flex-shrink: 1;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+}
+
+.message-row-replying {
+  background-color: #5865f229;
+  border-left: 2px solid #5865f2;
+}
+
+.reply-tag {
+  margin-right: 4px;
+  flex-shrink: 0;
+}
+
+.used-text {
+  margin-right: 4px;
+  flex-shrink: 0;
+}
+
+.used-chip {
+  height: 18px;
+  padding-left: 2px;
+  padding-right: 4px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  column-gap: 2px;
+  border-radius: 3px;
+  background-color: var(--mention-background);
+}
+
+.used-chip-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.ephemeral-note {
+  margin-top: 4px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  column-gap: 4px;
+}

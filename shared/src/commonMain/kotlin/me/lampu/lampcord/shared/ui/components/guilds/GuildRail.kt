@@ -5,6 +5,7 @@ import me.lampu.lampcord.shared.generated.resources.home
 import me.lampu.lampcord.shared.generated.resources.messages
 import org.jetbrains.compose.resources.stringResource
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -188,7 +189,8 @@ fun GuildRail(
         state = railScrollState,
         modifier = modifier
             .width(72.dp)
-            .fillMaxHeight(),
+            .fillMaxHeight()
+            .background(RequiemColors.BackgroundLowest),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = PaddingValues(vertical = 8.dp)

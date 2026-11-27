@@ -1,0 +1,378 @@
+.guild-rail {
+  width: 72px;
+  /* The user card is 58px tall and floats 8px off the bottom; the rail ends above it, as the
+     channel list does. */
+  height: calc(100% - 66px);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+
+  align-items: center;
+  overflow-y: scroll;
+
+  scrollbar-width: none;
+
+  padding: 0px 0px 8px;
+  gap: 8px;
+  background-color: var(--background-tertiary);
+}
+
+.rail-item {
+  width: 100%;
+  height: 40px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.guild-icon {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+.home-button {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  corner-shape: squircle;
+  background-color: var(--background-mod-subtle);
+}
+
+.rail-item:hover .home-button,
+.home-button-selected,
+.home-button-selected:hover {
+  background-color: var(--background-brand);
+}
+
+.home-icon {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+.rail-item:hover .home-icon,
+.home-button-selected .home-icon {
+  color: var(--white);
+}
+
+.guild-separator {
+  width: 32px;
+  height: 1px;
+  flex-shrink: 0;
+  background-color: var(--background-mod-subtle);
+}
+
+.rail-pill {
+  position: absolute;
+  left: 0px;
+  top: 20px;
+  width: 4px;
+  height: 0px;
+  border-radius: 0px var(--radius-xs) var(--radius-xs) 0px;
+  background-color: var(--text-strong);
+}
+
+.rail-item:hover .rail-pill {
+  top: 10px;
+  height: 20px;
+}
+
+.rail-pill-unread {
+  top: 16px;
+  height: 8px;
+}
+
+.rail-pill-selected {
+  top: 0px;
+  height: 40px;
+}
+
+.rail-item:hover .rail-pill-selected {
+  top: 0px;
+  height: 40px;
+}
+
+.rail-badge-anchor {
+  position: absolute;
+  left: 16px;
+  top: 0px;
+  width: 40px;
+  height: 40px;
+  pointer-events: none;
+}
+
+.rail-badge-ring {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  display: flex;
+  padding: 2px;
+  border-radius: var(--radius-round);
+  background-color: var(--background-tertiary);
+  pointer-events: none;
+}
+
+.rail-voice-ring {
+  position: absolute;
+  right: -2px;
+  top: -2px;
+  display: flex;
+  padding: 2px;
+  border-radius: var(--radius-round);
+  background-color: var(--background-tertiary);
+  pointer-events: none;
+}
+
+.rail-voice-badge {
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-round);
+  background-color: var(--icon-overlay-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rail-voice-badge-connected {
+  background-color: var(--status-positive);
+}
+
+.rail-voice-icon {
+  width: 12px;
+  height: 12px;
+}
+
+.round-button {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  corner-shape: squircle;
+  background-color: var(--control-secondary-background-default);
+}
+
+.rail-item:hover .round-button {
+  background-color: var(--background-brand);
+}
+
+.round-button-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.guild-fallback {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  corner-shape: squircle;
+  background-color: var(--control-secondary-background-default);
+}
+
+.guild-fallback-text {
+  color: var(--text-default);
+}
+
+.rail-item:hover .guild-fallback,
+.guild-fallback-selected {
+  background-color: var(--background-brand);
+}
+
+.rail-item:hover .guild-fallback-text,
+.guild-fallback-selected .guild-fallback-text {
+  color: var(--white);
+}
+
+.folder-group {
+  width: 100%;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.folder-row {
+  height: 48px;
+}
+
+.rail-pill-anchor {
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.folder-row .rail-badge-anchor {
+  left: 12px;
+  width: 48px;
+  height: 48px;
+}
+
+.folder-row .rail-pill {
+  top: 24px;
+}
+
+.folder-row:hover .rail-pill {
+  top: 14px;
+  height: 20px;
+}
+
+.folder-row .rail-pill-unread {
+  top: 20px;
+  height: 8px;
+}
+
+.folder-row .rail-pill-selected,
+.folder-row:hover .rail-pill-selected {
+  top: 4px;
+  height: 40px;
+}
+
+.folder-tint {
+  position: absolute;
+  left: 12px;
+  top: 0px;
+  width: 48px;
+  height: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-lg);
+  background-color: var(--background-mod-subtle);
+  opacity: 0;
+  transition: opacity 150ms ease-out;
+  pointer-events: none;
+}
+
+.folder-tint-open {
+  opacity: 1;
+}
+
+.folder-viewport {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+}
+
+.folder-column {
+  width: 48px;
+  display: flex;
+  flex-direction: column;
+  transform: translateY(-48px);
+  transition: transform 150ms ease-out;
+}
+
+.folder-column-open {
+  transform: translateY(0px);
+}
+
+.rail-pill-off {
+  display: none;
+}
+
+.folder-header {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  padding: 4px;
+}
+
+.folder-header-box {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+}
+
+.folder-row:hover .folder-header-box {
+  background-color: var(--background-mod-subtle);
+}
+
+.folder-header-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.folder-list-host {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.folder-list {
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0px;
+}
+
+.folder-tile {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 2px;
+  padding: 4px;
+  border-radius: var(--radius-lg);
+  background-color: var(--background-mod-subtle);
+}
+
+.folder-mini {
+  width: 19px;
+  height: 19px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.folder-mini:first-child {
+  border-radius: 13px 4px 4px 4px;
+}
+
+.folder-mini:nth-child(2) {
+  border-radius: 4px 13px 4px 4px;
+}
+
+.folder-mini:nth-child(3) {
+  border-radius: 4px 4px 4px 13px;
+}
+
+.folder-mini:nth-child(4) {
+  border-radius: 4px 4px 13px 4px;
+}
+
+.folder-mini-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--background-base-lower);
+}
+
+.folder-mini-text {
+  color: var(--text-default);
+}

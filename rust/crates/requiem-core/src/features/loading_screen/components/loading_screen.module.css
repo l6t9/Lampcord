@@ -1,0 +1,164 @@
+.loading-host {
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  right: 0px;
+  bottom: 0px;
+}
+
+.loading-host-gone {
+  display: none;
+  pointer-events: none;
+}
+
+.loading-screen {
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  right: 0px;
+  bottom: 0px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background-color: var(--background-base-lowest);
+  opacity: 1;
+  transition: opacity 200ms ease-out;
+}
+
+.loading-screen-fade {
+  opacity: 0;
+}
+
+.loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.loading-spinner {
+  width: 200px;
+  height: 200px;
+  flex-shrink: 0;
+  transition: opacity 150ms ease-out, transform 150ms ease-out;
+}
+
+.loading-spinner-fade {
+  opacity: 0;
+  transform: scale(0.5);
+}
+
+.loading-text {
+  width: 300px;
+  position: relative;
+  top: -20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: opacity 150ms ease-out;
+}
+
+.loading-text-fade {
+  opacity: 0;
+}
+
+.loading-tip-title {
+  max-width: 300px;
+  margin-bottom: 8px;
+}
+
+.loading-tip {
+  width: 300px;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  column-gap: 4px;
+}
+
+.keybind {
+  display: flex;
+  flex-direction: row;
+  height: 23px;
+  margin-right: -2px;
+  top: -1px;
+  position: relative;
+}
+
+.keycap {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  height: 23px;
+  min-width: 14px;
+  padding: 3px 6px 4px;
+  margin-right: 3px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xs);
+  background-color: var(--background-mod-muted);
+}
+
+.keycap-band {
+  position: absolute;
+  left: 0px;
+  right: 0px;
+  bottom: 0px;
+  height: 4px;
+  border-bottom-left-radius: var(--radius-xs);
+  border-bottom-right-radius: var(--radius-xs);
+  background-color: var(--background-mod-muted);
+}
+
+.keycap-arrow {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+}
+
+.loading-problems {
+  position: absolute;
+  left: 0px;
+  right: 0px;
+  bottom: 0px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: 32px;
+  transform: translate(0px, 74px);
+  transition: transform 200ms ease-out;
+}
+
+.loading-problems-in {
+  transform: translate(0px, 0px);
+}
+
+.loading-problems-text {
+  margin-bottom: 8px;
+}
+
+.loading-link {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding-left: 6px;
+}
+
+.loading-link:hover {
+  opacity: 0.8;
+}
+
+.loading-link-status {
+  margin-left: 20px;
+}
+
+.loading-link-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 4px;
+  flex-shrink: 0;
+}

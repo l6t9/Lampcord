@@ -1,0 +1,54 @@
+.badge {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  height: 16px;
+  padding-left: 8px;
+  padding-right: 8px;
+  border-radius: var(--radius-round);
+  flex-shrink: 0;
+}
+
+.default {
+  background-color: var(--background-mod-normal);
+}
+
+.brand {
+  background-color: var(--background-brand);
+}
+
+.critical {
+  background-color: var(--badge-notification-background);
+}
+
+.expressive {
+  background-color: var(--white);
+}
+
+.common {
+  height: 18px;
+  background-color: var(--background-mod-strong);
+  border: 1px solid var(--channels-default);
+}
+
+.rare {
+  height: 18px;
+  background-color: var(--mention-background);
+}
+
+.epic {
+  height: 18px;
+  background-color: #9f58f23d;
+}
+
+.mythic {
+  height: 18px;
+  background-color: #ff6d0d3d;
+}
+
+.icon {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}

@@ -1,0 +1,15 @@
+@keyframes skeleton-pulse {
+  0%, 100% {
+    background-color: var(--background-mod-subtle);
+  }
+  50% {
+    background-color: var(--background-mod-muted);
+  }
+}
+
+.bar {
+  flex-shrink: 0;
+  border-radius: var(--radius-xs);
+  background-color: var(--background-mod-subtle);
+  animation: 1.6s ease-in-out 0s infinite normal none running skeleton-pulse;
+}

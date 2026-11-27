@@ -1,0 +1,28 @@
+[package]
+name = "requiem-tsx"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+publish = false
+description = "Lowers a TSX subset to an IR and interprets it against the requiem-ui engine"
+
+[dependencies]
+oxc_allocator.workspace = true
+oxc_ast.workspace = true
+oxc_parser.workspace = true
+oxc_span.workspace = true
+requiem-i18n.workspace = true
+requiem-ui.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+skia-safe.workspace = true
+specta = { workspace = true, features = ["derive"] }
+specta-serde.workspace = true
+specta-typescript.workspace = true
+
+[dev-dependencies]
+cosmic-text.workspace = true
+taffy.workspace = true
+
+[lints]
+workspace = true

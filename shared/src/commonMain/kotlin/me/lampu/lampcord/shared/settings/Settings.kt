@@ -15,7 +15,7 @@ class Settings(private val settings: KmpSettings) {
     var language by preference("language", me.lampu.lampcord.shared.i18n.LANGUAGE_SYSTEM)
     var pureBlack by preferenceBoolean("pure_black", false)
     var themeMode by preferenceEnum("theme_mode", ThemeMode.AUTO)
-    var themePaletteStyle by preferenceEnum("theme_palette_style", ThemePaletteStyle.TONAL_SPOT)
+    var themePaletteStyle by preferenceEnum("theme_palette_style", ThemePaletteStyle.REQUIEM_EXPRESSIVE)
     var appFont by preferenceEnum("app_font", FontOption.SYSTEM)
     var accentColor by preference("accent_color", "#6750A4")
     var materialYou by preferenceBoolean("material_you", true)
@@ -128,10 +128,17 @@ class Settings(private val settings: KmpSettings) {
     var voiceInputVolume by preferenceFloat("voice_input_volume", 1.0f)
     var voiceOutputVolume by preferenceFloat("voice_output_volume", 1.0f)
     var httpProxyUrl by preference("http_proxy_url", "")
+    var requiemThemeMigrated by preferenceBoolean("requiem_theme_migrated", false)
 
     init {
         if (!settings.hasKey("swipe_to_reply_enabled")) {
             swipeToReplyEnabled = chatGestures == ChatGestures.SWIPE_TO_REPLY
+        }
+        if (!requiemThemeMigrated) {
+            if (themePaletteStyle == ThemePaletteStyle.TONAL_SPOT) {
+                themePaletteStyle = ThemePaletteStyle.REQUIEM_EXPRESSIVE
+            }
+            requiemThemeMigrated = true
         }
     }
 

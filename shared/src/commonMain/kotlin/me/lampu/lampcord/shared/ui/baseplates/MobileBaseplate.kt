@@ -87,6 +87,7 @@ import me.lampu.lampcord.shared.ui.navigation.entry
 import me.lampu.lampcord.shared.ui.icons.Icons
 import org.koin.compose.koinInject
 import me.lampu.lampcord.shared.ui.kit.clickableCursor
+import me.lampu.lampcord.shared.ui.theme.RequiemColors
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -1023,7 +1024,7 @@ fun MobileBaseplate(
                             translationY = (1f - navBarVisibleAmount) * navBarHeight.toPx()
                             alpha = navBarVisibleAmount
                         },
-                    containerColor = MaterialTheme.colorScheme.surface,
+                    containerColor = RequiemColors.BackgroundLowest,
                     tonalElevation = 0.dp,
                     windowInsets = WindowInsets.navigationBars
                 ) {

@@ -1,0 +1,199 @@
+package requiem:plugin@1.0.0;
+
+/// Plugin-built UI: trees of Mana components and plain elements, styled with the
+/// plugin's own CSS (scoped by the host to the plugin's views), rendered by the
+/// client's UI engine inside the container the host gives them.
+///
+/// Every plugin view has an id the plugin chooses ("settings" is its settings
+/// page). The host asks for it with `views.render(view-id, context)` when it's
+/// shown, and again after the plugin's UI actions on it or `ui.refresh`; the new
+/// tree is diffed against the old by key.
+interface ui {
+    use types.{error, json};
+
+    /// A UI tree, built flat (WIT has no recursive types): every node names its
+    /// parent. Tags, prop names and event names are strings, so new components,
+    /// props and events are additive.
+    resource view-builder {
+        constructor();
+        /// Adds a node and returns its id. `parent` is `none` for a root.
+        /// `tag` is an open set: Mana components ("mana:text", "mana:heading",
+        /// "mana:button", "mana:switch", "mana:checkbox", "mana:radio-group",
+        /// "mana:select", "mana:text-input", "mana:text-field", "mana:text-area",
+        /// "mana:form-item", "mana:stack", "mana:avatar", "mana:icon",
+        /// "mana:tooltip", "mana:badge", "mana:spinner", "mana:progress",
+        /// "mana:tabs", "mana:divider", "mana:scroll", "mana:image",
+        /// "mana:markdown", "mana:canvas", ...) and plain elements ("div", "span").
+        /// `key` must be unique among its siblings; it's what the host diffs by.
+        element: func(parent: option<u32>, tag: string, key: string) -> u32;
+        /// A prop as JSON ("variant", "disabled", "checked", "src", ...). Unknown
+        /// props are ignored (with a log line), never an error.
+        prop: func(node: u32, name: string, json-value: json);
+        /// The node's text: a text's content, a heading's, a button's label.
+        text: func(node: u32, content: string);
+        /// A class from the plugin's own CSS modules.
+        class: func(node: u32, name: string);
+        /// Inline declarations, from the same CSS subset as stylesheets.
+        style: func(node: u32, declarations: string);
+        /// Fires `interactions.on-ui-action(view-id, action-id, value)`. `event` is
+        /// an open set: "click", "change", "submit", "context-menu", "hover".
+        on: func(node: u32, event: string, action-id: string);
+    }
+
+    /// The tags this client can render, so a plugin can check before using one.
+    known-components: func() -> list<string>;
+
+    /// An image a plugin made (PNG, WebP, GIF, JPEG bytes): use the returned
+    /// `plugin-image:<id>` as a view's `src`, until `drop-image`.
+    image-from-bytes: func(data: list<u8>) -> result<string, error>;
+    drop-image: func(src: string);
+
+    /// Asks the host to render a view again (after the plugin's state changed).
+    refresh: func(view-id: string);
+
+    /// `kind`: "info", "success", "failure".
+    toast: func(text: string, kind: string);
+    /// A modal whose body is the view; returns when it's opened. `size`: "small",
+    /// "medium", "large", or "card" (340px, no body padding, for a view that lays
+    /// out its own edges, like a profile card). `ui.modal`.
+    open-modal: func(view-id: string, title: string, size: string) -> result<_, error>;
+    close-modal: func(view-id: string);
+    /// A popout next to one of this plugin's slot items. `ui.slots`.
+    open-popout: func(view-id: string, anchor-item-id: string) -> result<_, error>;
+    close-popout: func(view-id: string);
+    /// A full page in place of the chat (with a back button), or a panel at the
+    /// right of the chat like the member list. `ui.pages`.
+    open-page: func(view-id: string, title: string) -> result<_, error>;
+    open-side-panel: func(view-id: string, title: string) -> result<_, error>;
+    close-side-panel: func(view-id: string);
+    /// A bar across the top of the app until dismissed. `ui.notices`. Clicking the
+    /// button fires `on-ui-action("notice", action-id, none)`.
+    show-notice: func(id: string, text: string, button-label: option<string>, action-id: option<string>) -> result<_, error>;
+    dismiss-notice: func(id: string);
+    /// A view drawn over the whole window that never takes input (snow, a
+    /// cursor buddy). `ui.overlay`; the user can always turn it off.
+    set-window-overlay: func(view-id: option<string>) -> result<_, error>;
+}
+
+/// Plugin UI elements placed into named slots in the client.
+interface slots {
+    use types.{error};
+
+    /// A button-like element the host renders in the slot's native style.
+    resource slot-item {
+        /// `slot` is an open set: "composer.buttons", "composer.attach-menu",
+        /// "chat-header.toolbar", "user-panel.buttons", "message.toolbar",
+        /// "guild-header.menu", "dm-list.header", "guild-rail.top",
+        /// "guild-rail.bottom", "profile.actions", "voice-panel.buttons",
+        /// "title-bar.buttons", "settings.sidebar", ...
+        constructor(slot: string, id: string);
+        /// A Discord icon name from the asset manifest, or "plugin:<path>" for an
+        /// SVG in the package's `assets/`.
+        set-icon: func(icon: string);
+        set-label: func(label: string);
+        set-active: func(active: bool);
+        set-disabled: func(disabled: bool);
+        set-badge: func(count: u32);
+        set-danger: func(danger: bool);
+        /// Filters: "channel-kind:text", "dm", "guild:<id>", "channel:<id>",
+        /// "author:me", "has-attachments", ... Empty = everywhere the slot exists.
+        set-visible-in: func(filters: list<string>);
+        set-hidden: func(hidden: bool);
+        /// Adds the item, or applies changes to an already-added one.
+        commit: func() -> result<_, error>;
+        remove: func();
+    }
+
+    /// Fills a content slot with a plugin view. `slot` is an open set:
+    /// "composer.banner", "chat.above-messages", "profile.section",
+    /// "profile.collection", "member-list.top", "channel-list.top",
+    /// "voice-panel.content", ...
+    set-content: func(slot: string, id: string, filters: list<string>, view-id: option<string>) -> result<_, error>;
+
+    known-slots: func() -> list<string>;
+}
+
+/// Registrations: what the plugin wants to be asked for. Make them in `init`
+/// (they can change later).
+interface registry {
+    use types.{error, json};
+
+    /// Observer events by kind (see `events.on-event`): "message-create",
+    /// "message-update", "message-delete", "reaction-add", "reaction-remove",
+    /// "typing-start", "presence-update", "voice-state-update", "channel-select",
+    /// "guild-select", "relationship-add", "relationship-remove",
+    /// "guild-join", "guild-leave", "member-join", "member-leave",
+    /// "call-ring", "notification-click", "view-closed", "window-focus",
+    /// "window-blur", "idle-change", "connection-open", "composer-change", ...
+    /// Unknown kinds return an error.
+    subscribe: func(event-kind: string) -> result<_, error>;
+    unsubscribe: func(event-kind: string);
+
+    /// A slash command shown in the composer's autocomplete.
+    resource command {
+        constructor(name: string, description: string);
+        /// `kind`: "string", "integer", "number", "boolean", "user", "channel",
+        /// "role", "mentionable", "attachment".
+        add-option: func(name: string, description: string, kind: string, required: bool);
+        add-choice: func(option-name: string, name: string, value: json);
+        /// Ask `providers.command-autocomplete` for this option's values as the
+        /// user types.
+        autocomplete-option: func(option-name: string);
+        /// Sub-command groups: "group name" in `name` ("tag add").
+    }
+    register-command: func(command: command) -> result<_, error>;
+    unregister-command: func(name: string);
+
+    /// A context menu item. `menu` is an open set: "message", "user", "channel",
+    /// "guild", "role", "image", "link", "emoji", "sticker", "attachment",
+    /// "textarea", "voice-user", "folder", ... `providers.context-menu` decides per
+    /// target whether it shows.
+    resource menu-item {
+        constructor(menu: string, id: string, label: string);
+        set-icon: func(icon: string);
+        set-danger: func(danger: bool);
+        /// A checkbox item; its state comes from `providers.context-menu`.
+        set-checkable: func(checkable: bool);
+        /// Shown under another of this plugin's items in the same menu.
+        set-parent: func(id: string);
+        /// Ask `providers.context-menu` whether it shows for each target.
+        set-dynamic: func(dynamic: bool);
+    }
+    register-menu-item: func(item: menu-item) -> result<_, error>;
+    unregister-menu-item: func(menu: string, id: string);
+
+    /// A keyboard shortcut, listed in Settings > Keybinds and rebindable.
+    /// `default-chord` like "ctrl+shift+k" (empty = unbound).
+    /// One result of an autocomplete, a search provider or a command option's
+    /// autocomplete.
+    resource suggestion {
+        constructor(id: string, label: string);
+        set-description: func(text: string);
+        /// What goes in the composer when picked (autocomplete; default: label).
+        set-insert-text: func(text: string);
+        set-icon: func(icon: string);
+        set-image-url: func(url: string);
+    }
+
+    /// How a dynamic menu item shows for one target.
+    resource menu-state {
+        constructor(id: string);
+        set-label: func(label: string);
+        set-checked: func(checked: bool);
+        set-disabled: func(disabled: bool);
+    }
+
+    register-shortcut: func(id: string, label: string, default-chord: string) -> result<_, error>;
+
+    /// Composer autocomplete for text starting with `trigger` (":", "#", "&", or a
+    /// word like "/tag"): `providers.autocomplete`.
+    register-autocomplete: func(trigger: string) -> result<_, error>;
+    /// Results in the quick switcher (and its prefix, like "&"): `providers.search`.
+    register-search-provider: func(id: string, prefix: option<string>, label: string) -> result<_, error>;
+    /// New Markdown syntax: `pattern` is a regex the host runs on message text;
+    /// matches render as `providers.render-markdown`'s view. `inline` or block.
+    register-markdown-rule: func(id: string, pattern: string, inline: bool) -> result<_, error>;
+    /// Processes audio frames (`providers.process-audio`). `stream`: "incoming"
+    /// (all voice), "outgoing" (your mic), "notification". `audio.process`.
+    register-audio-processor: func(%stream: string) -> result<_, error>;
+}

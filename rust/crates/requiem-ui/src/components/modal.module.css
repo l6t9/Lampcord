@@ -1,0 +1,242 @@
+.modal-backdrop {
+  --modal-surface: var(--background-surface-high);
+
+  position: absolute;
+  inset: 0px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background-color: var(--background-scrim);
+}
+
+.modal-container {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--modal-surface);
+  border-radius: var(--radius-md);
+
+  border: 1px solid var(--border-subtle);
+
+  box-shadow: var(--shadow-high);
+
+  max-width: 100%;
+}
+
+.modal-small {
+  width: 400px;
+}
+
+.modal-medium {
+  width: 480px;
+}
+
+.modal-bare {
+  width: 340px;
+}
+
+.modal-large {
+  width: 680px;
+}
+
+.modal-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  padding: 24px 24px 8px;
+}
+
+.modal-header-row {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+}
+
+.modal-title {
+  flex-grow: 1;
+}
+
+.modal-close-btn {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  margin-top: -16px;
+  margin-right: -16px;
+  margin-left: 12px;
+  border: 1px solid #00000000;
+  transition: background-color 0.15s ease-out, border-color 0.15s ease-out;
+
+}
+
+.modal-close-btn:hover {
+  background-color: var(--control-icon-only-background-hover);
+  border: 1px solid var(--control-icon-only-border-hover);
+}
+
+.modal-close-btn:active {
+  background-color: var(--control-icon-only-background-active);
+}
+
+.modal-close-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: var(--control-icon-only-icon-default);
+  transition: color 0.15s ease-out;
+}
+
+.modal-close-btn:hover .modal-close-icon {
+  color: var(--control-icon-only-icon-hover);
+}
+
+.modal-subtitle-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+}
+
+.modal-subtitle-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.modal-search-row {
+  padding: 0px 24px;
+}
+
+.modal-search-box {
+  width: 100%;
+  height: 40px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  padding: 0px 12px;
+  border-radius: var(--radius-sm);
+
+  background-color: var(--input-background-default);
+  border: 1px solid var(--border-normal);
+}
+
+.modal-search-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.modal-search-input {
+  flex-grow: 1;
+}
+
+.modal-body {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  gap: 16px;
+}
+
+.modal-small > .modal-body,
+.modal-medium > .modal-body,
+.modal-large > .modal-body {
+  padding-left: 24px;
+  padding-right: 24px;
+
+  padding-top: 16px;
+  padding-bottom: 8px;
+}
+
+.modal-body-flush {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  padding: 8px 0px 16px;
+}
+
+.modal-footer {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 24px 24px;
+}
+
+.modal-footer > button {
+  flex: 1 1 0%;
+  min-width: 0px;
+}
+
+.modal-footer-leading {
+  flex-grow: 1;
+  flex-shrink: 1;
+  min-width: 0px;
+}
+
+.modal-footer-trailing {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Mana's outerContainer: the top bar (32px) plus 24px above and below. */
+.modal-backdrop-padded {
+  padding: 56px 24px;
+}
+
+.modal-has-list {
+  max-height: 100%;
+}
+
+.modal-body-spacer-top {
+  flex-shrink: 0;
+  padding-top: 16px;
+}
+
+.modal-controls {
+  flex-shrink: 0;
+  padding: 0px 24px;
+}
+
+.modal-list {
+  flex-grow: 0;
+  flex-shrink: 1;
+  min-height: 0px;
+  max-height: 520px;
+  padding: 12px 24px 12px 24px;
+}
+
+.modal-scroll-body {
+  flex-grow: 0;
+  flex-shrink: 1;
+  min-height: 0px;
+}
+
+.modal-scroll-body-inner {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  width: 100%;
+  padding: 12px 24px 12px 24px;
+}
+
+.modal-body-spacer-bottom {
+  flex-shrink: 0;
+  padding-bottom: 8px;
+}
+
+.modal-preview {
+  flex-shrink: 0;
+  padding: 16px 24px 0px;
+}
+
+.modal-preview-last {
+  flex-shrink: 0;
+  padding: 16px 24px 16px;
+}

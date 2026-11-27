@@ -1,0 +1,12 @@
+[package]
+name = "requiem-emoji"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+publish = false
+description = "The file format of a downloadable emoji pack: one file, an index of emoji and one small image per emoji (written by `cargo requiem emoji build`, read by the app)"
+
+[dependencies]
+
+[lints]
+workspace = true

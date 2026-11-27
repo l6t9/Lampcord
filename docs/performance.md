@@ -48,13 +48,15 @@ Remaining: transactional batch inserts, offline message cache, and a storage set
 
 ## Desktop
 
-The window backend is Nucleus 3.0 with system decorations. Hyprland uses `undecorated = true`.
-Window size and placement are persisted. Remaining: native window cache trimming and a bundled
-JDK 25 runtime so Nucleus can generate and ship a Project Leyden AOT cache for faster startup.
+Desktop is the Rust/Skia Requiem client in `rust/`. It uses native window decorations from
+`winit`, Skia rendering, and Requiem's Rust voice/media stack. The old Compose/JVM desktop
+app is no longer part of the build.
 
 ## Profiling
 
-See [profiling.md](profiling.md) for repeatable desktop memory/CPU benchmarking (heap, RSS/smaps, NMT, JFR, profilers) and a scenario checklist. Run with `./gradlew :desktopApp:run -Plampcord.nmt=true` to enable JVM Native Memory Tracking.
+Debug builds include an FPS/ms overlay, debug logging, and the UI automation server. Always
+measure `target/release/requiem` for representative RSS/PSS, thread count, and CPU numbers.
+See [checks.md](checks.md) for the release build command.
 
 ## Next
 

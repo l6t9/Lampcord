@@ -1,0 +1,16 @@
+[package]
+name = "requiem-i18n"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "Fluent-based localization whose output is Discord markdown (bold, mentions, custom emoji), rendered by requiem-ui's message_text"
+
+[dependencies]
+fluent-bundle.workspace = true
+fluent-langneg.workspace = true
+fluent-syntax.workspace = true
+log.workspace = true
+unic-langid.workspace = true
+
+[lints]
+workspace = true

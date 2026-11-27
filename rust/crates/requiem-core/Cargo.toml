@@ -1,0 +1,97 @@
+[package]
+name = "requiem-core"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "Platform-agnostic Discord client core (networking/gateway/state/shared UI) built on the requiem-ui crate — consumed by requiem"
+
+[features]
+video = ["dep:ffmpeg-next", "dep:cpal", "dep:windows"]
+sound = ["dep:symphonia", "dep:cpal"]
+voice = ["dep:audiopus", "dep:davey", "dep:aes-gcm", "dep:chacha20poly1305", "dep:cpal", "dep:parking_lot", "dep:sonora", "dep:nnnoiseless", "dep:socket2", "dep:windows", "dep:webrtc", "dep:rtc", "dep:async-trait", "dep:ffmpeg-next", "dep:xcap"]
+asio = ["cpal/asio"]
+
+[dependencies]
+base64.workspace = true
+requiem-plugin-host = { workspace = true }
+ffmpeg-next = { workspace = true, optional = true, default-features = false, features = ["codec", "format", "software-scaling", "software-resampling", "device"] }
+cpal = { workspace = true, optional = true }
+symphonia = { workspace = true, optional = true, default-features = false, features = ["mp3"] }
+audiopus = { workspace = true, optional = true }
+davey = { workspace = true, optional = true }
+sonora = { workspace = true, optional = true }
+aes-gcm = { workspace = true, optional = true }
+chacha20poly1305 = { workspace = true, optional = true }
+socket2 = { workspace = true, optional = true, features = ["all"] }
+nnnoiseless = { workspace = true, optional = true, default-features = false }
+parking_lot = { workspace = true, optional = true }
+webrtc = { workspace = true, optional = true }
+rtc = { workspace = true, optional = true }
+async-trait = { workspace = true, optional = true }
+xcap = { workspace = true, optional = true }
+chrono = { workspace = true, features = ["clock", "std"] }
+cosmic-text.workspace = true
+emojis.workspace = true
+requiem-emoji = { workspace = true }
+unicode-segmentation.workspace = true
+futures-util.workspace = true
+keyring.workspace = true
+log.workspace = true
+tracing.workspace = true
+percent-encoding.workspace = true
+wreq = { workspace = true, features = ["json", "stream", "ws", "cookies", "gzip", "brotli", "deflate", "zstd"] }
+wreq-util.workspace = true
+requiem-h3 = { workspace = true }
+requiem-db = { workspace = true }
+requiem-updater = { workspace = true }
+flate2.workspace = true
+resvg = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true, features = ["preserve_order", "raw_value"] }
+skia-safe = { workspace = true, features = ["gl", "textlayout", "skottie", "webp-decode"] }
+taffy.workspace = true
+thiserror.workspace = true
+zstd.workspace = true
+thumbhash.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net", "time", "sync", "fs", "io-util"] }
+requiem-asset-store = { workspace = true }
+requiem-i18n = { workspace = true }
+iana-time-zone.workspace = true
+uuid = { workspace = true, features = ["v4"] }
+sys-locale.workspace = true
+requiem-tsx = { workspace = true }
+requiem-ui = { workspace = true }
+specta = { workspace = true, features = ["derive"] }
+specta-typescript = { workspace = true }
+tree-sitter.workspace = true
+tree-sitter-rust.workspace = true
+tree-sitter-javascript.workspace = true
+tree-sitter-typescript.workspace = true
+tree-sitter-python.workspace = true
+tree-sitter-json.workspace = true
+tree-sitter-bash.workspace = true
+tree-sitter-c.workspace = true
+tree-sitter-cpp.workspace = true
+tree-sitter-c-sharp.workspace = true
+tree-sitter-css.workspace = true
+tree-sitter-html.workspace = true
+tree-sitter-go.workspace = true
+tree-sitter-java.workspace = true
+tree-sitter-yaml.workspace = true
+human-date-parser.workspace = true
+interim = { workspace = true, features = ["chrono_0_4"] }
+
+[build-dependencies]
+requiem-css = { workspace = true }
+
+[target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
+x11-dl = "2.21.0"
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.54.0", optional = true, features = ["Win32_Foundation", "Win32_Media", "Win32_Media_Audio", "Win32_Media_Multimedia", "Win32_Media_KernelStreaming", "Win32_System_Com", "Win32_System_Performance", "Win32_System_Threading", "Win32_UI_Input_KeyboardAndMouse"] }
+
+[dev-dependencies]
+tokio-tungstenite.workspace = true
+
+[lints]
+workspace = true

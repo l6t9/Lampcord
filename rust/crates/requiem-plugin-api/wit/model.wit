@@ -1,0 +1,245 @@
+package requiem:plugin@1.0.0;
+
+/// Read-only views of client data. Every method is a getter, so these grow by
+/// gaining methods. Values are snapshots taken when the resource was made.
+interface model {
+    use types.{snowflake, timestamp, json};
+
+    resource user {
+        id: func() -> snowflake;
+        username: func() -> string;
+        global-name: func() -> option<string>;
+        /// The name the client shows (global name, else username), before any
+        /// plugin display override.
+        display-name: func() -> string;
+        /// `size` is a power of two between 16 and 4096.
+        avatar-url: func(size: u32) -> option<string>;
+        banner-url: func(size: u32) -> option<string>;
+        /// 0xRRGGBB.
+        accent-color: func() -> option<u32>;
+        is-bot: func() -> bool;
+        is-system: func() -> bool;
+        /// Open set: "staff", "partner", "hypesquad", "bug-hunter",
+        /// "early-supporter", "verified-developer", "active-developer", ...
+        badges: func() -> list<string>;
+    }
+
+    resource member {
+        guild-id: func() -> snowflake;
+        user: func() -> user;
+        nick: func() -> option<string>;
+        /// Server nick, else global name, else username.
+        display-name: func() -> string;
+        role-ids: func() -> list<snowflake>;
+        /// The color of the highest colored role, 0xRRGGBB.
+        color: func() -> option<u32>;
+        joined-at: func() -> option<timestamp>;
+        /// When a timeout ends, if they're timed out.
+        timeout-until: func() -> option<timestamp>;
+        guild-avatar-url: func(size: u32) -> option<string>;
+    }
+
+    resource role {
+        id: func() -> snowflake;
+        guild-id: func() -> snowflake;
+        name: func() -> string;
+        color: func() -> option<u32>;
+        position: func() -> s32;
+        hoist: func() -> bool;
+        mentionable: func() -> bool;
+        icon-url: func() -> option<string>;
+        /// Permission names (open set, Discord's names in kebab case:
+        /// "send-messages", "manage-messages", "administrator", ...).
+        permissions: func() -> list<string>;
+    }
+
+    resource guild {
+        id: func() -> snowflake;
+        name: func() -> string;
+        icon-url: func(size: u32) -> option<string>;
+        banner-url: func(size: u32) -> option<string>;
+        owner-id: func() -> snowflake;
+        member-count: func() -> option<u32>;
+        /// How many are online; `none` without `presence.read`.
+        online-count: func() -> option<u32>;
+        /// Open set of Discord's guild features ("community", "verified", ...).
+        features: func() -> list<string>;
+        description: func() -> option<string>;
+        /// Server Boost level 0 to 3, and how many boosts the server has.
+        boost-tier: func() -> u32;
+        boost-count: func() -> u32;
+        /// The invite background and the discovery splash, if set. `size` like `icon-url`.
+        splash-url: func(size: u32) -> option<string>;
+        discovery-splash-url: func(size: u32) -> option<string>;
+        /// The custom emoji as `(name, image url)`, in the server's order.
+        emojis: func(size: u32) -> list<tuple<string, string>>;
+    }
+
+    resource channel {
+        id: func() -> snowflake;
+        guild-id: func() -> option<snowflake>;
+        /// For DMs: the other user's name; for group DMs: the group's name.
+        name: func() -> option<string>;
+        /// Open set: "text", "voice", "dm", "group-dm", "category", "announcement",
+        /// "stage", "forum", "media", "thread", ...
+        kind: func() -> string;
+        parent-id: func() -> option<snowflake>;
+        position: func() -> option<s32>;
+        topic: func() -> option<string>;
+        nsfw: func() -> bool;
+        /// DM / group DM members.
+        recipient-ids: func() -> list<snowflake>;
+        last-message-id: func() -> option<snowflake>;
+        /// Whether the logged-in user has `permission` here (see `role.permissions`).
+        can: func(permission: string) -> bool;
+    }
+
+    resource attachment {
+        id: func() -> snowflake;
+        filename: func() -> string;
+        content-type: func() -> option<string>;
+        size: func() -> u64;
+        url: func() -> string;
+        width: func() -> option<u32>;
+        height: func() -> option<u32>;
+        description: func() -> option<string>;
+        spoiler: func() -> bool;
+        /// Voice messages.
+        duration-secs: func() -> option<f32>;
+    }
+
+    resource embed {
+        /// Open set: "rich", "image", "video", "gifv", "article", "link", ...
+        kind: func() -> string;
+        title: func() -> option<string>;
+        description: func() -> option<string>;
+        url: func() -> option<string>;
+        color: func() -> option<u32>;
+        author-name: func() -> option<string>;
+        provider-name: func() -> option<string>;
+        footer-text: func() -> option<string>;
+        image-url: func() -> option<string>;
+        thumbnail-url: func() -> option<string>;
+        video-url: func() -> option<string>;
+        /// `[(name, value, inline)]`.
+        fields: func() -> list<tuple<string, string, bool>>;
+    }
+
+    resource reaction {
+        /// A unicode emoji, or `name:id` for a custom one.
+        emoji: func() -> string;
+        count: func() -> u32;
+        me: func() -> bool;
+        burst: func() -> bool;
+    }
+
+    resource message {
+        id: func() -> snowflake;
+        channel-id: func() -> snowflake;
+        guild-id: func() -> option<snowflake>;
+        author: func() -> user;
+        /// The author's member, when sent in a server and known.
+        member: func() -> option<member>;
+        content: func() -> string;
+        timestamp: func() -> timestamp;
+        edited-timestamp: func() -> option<timestamp>;
+        /// Open set: "default", "reply", "slash-command", "join", "pin", "call", ...
+        kind: func() -> string;
+        /// Open set: "silent", "suppress-embeds", "ephemeral", "crossposted",
+        /// "voice-message", "has-thread", "urgent", ...
+        %flags: func() -> list<string>;
+        attachments: func() -> list<attachment>;
+        embeds: func() -> list<embed>;
+        reactions: func() -> list<reaction>;
+        /// `name:id` of each sticker.
+        stickers: func() -> list<string>;
+        mention-ids: func() -> list<snowflake>;
+        mention-role-ids: func() -> list<snowflake>;
+        mentions-everyone: func() -> bool;
+        /// Whether it mentions the logged-in user (directly, by role, or @everyone).
+        mentions-me: func() -> bool;
+        /// The message this one replies to.
+        reply-to: func() -> option<snowflake>;
+        /// The replied-to message, when the client has it.
+        referenced: func() -> option<message>;
+        pinned: func() -> bool;
+        webhook-id: func() -> option<snowflake>;
+        /// The original JSON payload. Needs `data.raw`; `none` without it.
+        raw-json: func() -> option<json>;
+    }
+
+    resource activity {
+        /// Open set: "playing", "streaming", "listening", "watching", "custom",
+        /// "competing".
+        kind: func() -> string;
+        name: func() -> string;
+        details: func() -> option<string>;
+        state: func() -> option<string>;
+        application-id: func() -> option<snowflake>;
+        url: func() -> option<string>;
+        start: func() -> option<timestamp>;
+        end: func() -> option<timestamp>;
+        large-image-url: func() -> option<string>;
+        small-image-url: func() -> option<string>;
+        /// For a custom status: its emoji.
+        emoji: func() -> option<string>;
+    }
+
+    resource presence {
+        user-id: func() -> snowflake;
+        /// "online", "idle", "dnd", "offline" (open set).
+        status: func() -> string;
+        /// Where they're online: "desktop", "mobile", "web", "embedded", ...
+        platforms: func() -> list<string>;
+        activities: func() -> list<activity>;
+    }
+
+    resource voice-state {
+        user-id: func() -> snowflake;
+        channel-id: func() -> option<snowflake>;
+        guild-id: func() -> option<snowflake>;
+        self-mute: func() -> bool;
+        self-deaf: func() -> bool;
+        server-mute: func() -> bool;
+        server-deaf: func() -> bool;
+        streaming: func() -> bool;
+        video: func() -> bool;
+        suppressed: func() -> bool;
+        /// When this user joined the channel, if the client saw it.
+        joined-at: func() -> option<timestamp>;
+    }
+
+    resource relationship {
+        user: func() -> user;
+        /// "friend", "blocked", "incoming-request", "outgoing-request",
+        /// "implicit", ... (open set).
+        kind: func() -> string;
+        /// Your private nickname for them.
+        nickname: func() -> option<string>;
+        since: func() -> option<timestamp>;
+    }
+
+    resource read-state {
+        channel-id: func() -> snowflake;
+        unread: func() -> bool;
+        mention-count: func() -> u32;
+        last-read-message-id: func() -> option<snowflake>;
+        /// "all", "mentions", "nothing" (open set): the channel's effective setting.
+        notification-level: func() -> string;
+        muted: func() -> bool;
+    }
+
+    /// A full profile (fetched; see `client.fetch-profile`).
+    resource profile {
+        user: func() -> user;
+        bio: func() -> option<string>;
+        pronouns: func() -> option<string>;
+        /// `[(type, name, verified)]`: connected accounts ("github", "spotify", ...).
+        connections: func() -> list<tuple<string, string, bool>>;
+        /// In the guild the profile was fetched for.
+        member: func() -> option<member>;
+        mutual-guild-ids: func() -> list<snowflake>;
+        mutual-friend-ids: func() -> list<snowflake>;
+        premium-since: func() -> option<timestamp>;
+    }
+}

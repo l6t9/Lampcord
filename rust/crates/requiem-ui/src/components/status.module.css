@@ -1,0 +1,15 @@
+.online {
+  color: var(--status-dot-online);
+}
+
+.idle {
+  color: var(--status-dot-idle);
+}
+
+.dnd {
+  color: var(--status-dot-dnd);
+}
+
+.offline {
+  color: var(--status-dot-offline);
+}

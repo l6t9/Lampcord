@@ -1,0 +1,26 @@
+.root {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  width: 100%;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 8px;
+  padding-right: 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--icon-feedback-warning);
+  background-color: var(--background-feedback-warning);
+}
+
+.icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.text {
+  flex-grow: 1;
+  flex-shrink: 1;
+  min-width: 0px;
+  margin-left: 8px;
+}

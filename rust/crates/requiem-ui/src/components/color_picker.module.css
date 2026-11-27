@@ -1,0 +1,46 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 254px;
+  padding-top: 16px;
+  padding-bottom: 16px;
+  padding-left: 16px;
+  padding-right: 16px;
+  background-color: var(--background-base-low);
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-border), var(--shadow-high);
+}
+
+.field {
+  width: 100%;
+  height: 150px;
+  flex-shrink: 0;
+  border-radius: var(--radius-xs);
+}
+
+.hue {
+  width: 100%;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: var(--radius-xs);
+}
+
+.hash {
+  padding-left: 4px;
+}
+
+.suggested {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+}
+
+.suggestion {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--checkbox-border-default);
+}

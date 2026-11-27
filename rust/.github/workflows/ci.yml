@@ -1,0 +1,220 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [mistress]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  FFMPEG_WIN_URL: https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n9.0-latest-win64-lgpl-shared-9.0.zip
+  FFMPEG_LINUX_URL: https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n9.0-latest-linux64-lgpl-shared-9.0.tar.xz
+  CARGO_TERM_COLOR: always
+
+# macOS is not a shipped target yet (release.yml builds Windows and Linux), so its legs are informational:
+# they cannot fail the run, but they show what breaks on the platform.
+jobs:
+  check:
+    name: Lint and test (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.experimental }}
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: windows-x64
+            os: windows-latest
+            experimental: false
+            # Skia's clang-cl build fails once this path gets deep.
+            target_dir: C:\t
+            # Git Bash's link.exe would shadow MSVC's.
+            shell: pwsh
+          - name: linux-x64
+            os: ubuntu-24.04
+            experimental: false
+            target_dir: target
+            shell: bash
+          - name: macos-arm64
+            os: macos-latest
+            experimental: true
+            target_dir: target
+            shell: bash
+    env:
+      CARGO_TARGET_DIR: ${{ matrix.target_dir }}
+    steps:
+      - name: Enable long paths and symlinks for git (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          git config --global core.longpaths true
+          git config --global core.symlinks true
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain (from rust-toolchain.toml)
+        shell: bash
+        run: rustup toolchain install
+
+      - name: Set up the Windows build environment
+        if: runner.os == 'Windows'
+        uses: ./.github/actions/windows-build-env
+        with:
+          ffmpeg-url: ${{ env.FFMPEG_WIN_URL }}
+
+      - name: Set up the Linux build environment
+        if: runner.os == 'Linux'
+        uses: ./.github/actions/linux-build-env
+        with:
+          ffmpeg-url: ${{ env.FFMPEG_LINUX_URL }}
+
+      - name: Set up the macOS build environment
+        if: runner.os == 'macOS'
+        uses: ./.github/actions/macos-build-env
+
+      - name: Cache cargo registry and target dir
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            ${{ matrix.target_dir }}
+          key: ${{ matrix.name }}-ci-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}
+          restore-keys: ${{ matrix.name }}-ci-
+
+      - name: Lint
+        shell: ${{ matrix.shell }}
+        run: cargo clippy --locked --workspace --all-targets -- -D warnings
+
+      # The workspace builds requiem-core with every feature on, so a feature-gated import that is
+      # only valid with some of them would go unnoticed above.
+      - name: Lint requiem-core feature combinations (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          foreach ($features in '', 'video', 'voice', 'sound') {
+            cargo clippy --locked -p requiem-core --features "$features" -- -D warnings
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+
+      - name: Lint requiem-core feature combinations
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          for features in "" video voice sound; do
+            cargo clippy --locked -p requiem-core --features "$features" -- -D warnings
+          done
+
+      # Release builds drop debug_assertions, which hides the debug-only automation server.
+      - name: Lint the release profile
+        shell: ${{ matrix.shell }}
+        run: cargo clippy --release --locked --workspace --all-targets -- -D warnings
+
+      - name: Test
+        shell: ${{ matrix.shell }}
+        run: >
+          cargo test --locked
+          -p requiem-icons -p requiem-assets -p requiem-asset-store -p requiem-asset-build
+          -p requiem -p requiem-ui -p requiem-core -p requiem-plugin-host -p requiem-cli
+
+  # Project lints that clippy cannot express (lints/). They build on their own pinned nightly, so this
+  # compiles the workspace a second time under that toolchain.
+  dylint:
+    name: Project lints (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.experimental }}
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: windows-x64
+            os: windows-latest
+            experimental: false
+            target_dir: C:\t
+            shell: pwsh
+          - name: linux-x64
+            os: ubuntu-24.04
+            experimental: false
+            target_dir: target
+            shell: bash
+          - name: macos-arm64
+            os: macos-latest
+            experimental: true
+            target_dir: target
+            shell: bash
+    env:
+      CARGO_TARGET_DIR: ${{ matrix.target_dir }}
+    steps:
+      - name: Enable long paths and symlinks for git (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          git config --global core.longpaths true
+          git config --global core.symlinks true
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain (from rust-toolchain.toml)
+        shell: bash
+        run: rustup toolchain install
+
+      - name: Set up the Windows build environment
+        if: runner.os == 'Windows'
+        uses: ./.github/actions/windows-build-env
+        with:
+          ffmpeg-url: ${{ env.FFMPEG_WIN_URL }}
+
+      - name: Set up the Linux build environment
+        if: runner.os == 'Linux'
+        uses: ./.github/actions/linux-build-env
+        with:
+          ffmpeg-url: ${{ env.FFMPEG_LINUX_URL }}
+
+      - name: Set up the macOS build environment
+        if: runner.os == 'macOS'
+        uses: ./.github/actions/macos-build-env
+
+      - name: Cache cargo registry, Dylint tools and target dir
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            ~/.cargo/bin/cargo-dylint*
+            ~/.cargo/bin/dylint-link*
+            ${{ matrix.target_dir }}
+          key: ${{ matrix.name }}-dylint-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml', 'lints/**/Cargo.toml', 'lints/**/rust-toolchain.toml') }}
+          restore-keys: ${{ matrix.name }}-dylint-
+
+      # pwsh on Windows: Git Bash's link.exe would shadow MSVC's.
+      - name: Install Dylint (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if (-not (Get-Command cargo-dylint -ErrorAction SilentlyContinue)) {
+            cargo install cargo-dylint dylint-link --locked
+          }
+
+      - name: Install Dylint
+        if: runner.os != 'Windows'
+        shell: bash
+        run: command -v cargo-dylint > /dev/null || cargo install cargo-dylint dylint-link --locked
+
+      - name: Test the lints
+        shell: ${{ matrix.shell }}
+        working-directory: lints/function_local_use
+        run: cargo test --locked
+
+      - name: Run the lints
+        shell: ${{ matrix.shell }}
+        run: cargo dylint --all --workspace

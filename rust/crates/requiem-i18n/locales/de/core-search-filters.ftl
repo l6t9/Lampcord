@@ -1,0 +1,29 @@
+## Deutsch. Übernommen aus Discords eigenen Übersetzungen, wo es sie gibt; der Rest ist von Hand ergänzt.
+
+search-filters-add-date = Datum hinzufügen
+search-filters-after = Nach
+search-filters-any-content = Beliebiger Inhalt
+search-filters-apply-filters = Filter anwenden
+search-filters-author-type = Autorentyp
+search-filters-before = Vor
+search-filters-cancel = Abbrechen
+search-filters-date = Datum
+search-filters-during = Während
+search-filters-ex-bot = z. B. Bot
+search-filters-ex-true = z. B. Wahr
+search-filters-false = Falsch
+search-filters-filters = Filter
+search-filters-from = Von
+search-filters-has = Enthält
+search-filters-if-the-message-is-pinned-or = Ob die Nachricht angepinnt ist oder nicht
+search-filters-in = In
+search-filters-includes-any-of-the-selected-types = Enthält einen der ausgewählten Datentypen
+search-filters-mentions = Erwähnungen
+search-filters-mentions-any-of-the-selected-users = Erwähnt einen der ausgewählten Benutzer
+search-filters-pinned = Angepinnt
+search-filters-select-a-date = Datum auswählen
+search-filters-sent-by-any-of-the-selected = Von einem der ausgewählten Benutzer gesendet
+search-filters-sent-by-any-of-the-selected-2 = Von einem der ausgewählten Autorentypen gesendet
+search-filters-sent-in-any-of-the-selected = In einem der ausgewählten Kanäle gesendet
+search-filters-true = Wahr
+search-filters-when-the-message-was-sent = Wann die Nachricht gesendet wurde

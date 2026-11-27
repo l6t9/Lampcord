@@ -1,0 +1,64 @@
+name: Update feed refresh
+
+on:
+  schedule:
+    - cron: '23 4 */3 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # the OIDC token the update server checks
+
+concurrency:
+  group: update-feed-refresh
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_TARGET_DIR: target
+
+jobs:
+  refresh:
+    if: vars.UPDATE_BACKEND_BASE != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: update-signing
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain (from rust-toolchain.toml)
+        shell: bash
+        run: rustup toolchain install
+
+      - name: Cache cargo registry and target dir
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: desktop-identity-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}
+
+      - name: Fetch the current feed
+        id: feed
+        shell: bash
+        run: |
+          if curl -fsSL --max-time 30 "${{ vars.UPDATE_BACKEND_BASE }}/v1/channels/stable/windows-x64.json" -o "$RUNNER_TEMP/feed.json"; then
+            echo "FOUND=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "FOUND=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::There is no published feed yet; nothing to refresh."
+          fi
+
+      - name: Sign it again
+        if: steps.feed.outputs.FOUND == 'true'
+        env:
+          REQUIEM_SIGNING_KEY: ${{ secrets.REQUIEM_SIGNING_KEY }}
+        run: |
+          [ -n "$REQUIEM_SIGNING_KEY" ] || { echo "::error::secret REQUIEM_SIGNING_KEY is not set"; exit 1; }
+          cargo run --release --locked -p requiem-cli -- release resign "$RUNNER_TEMP/feed.json" --key-id primary-2026 --out backend/v1/channels/stable/windows-x64.json
+
+      - name: Publish to the update server
+        if: steps.feed.outputs.FOUND == 'true'
+        run: cargo run --release --locked -p requiem-cli -- release publish backend --base "${{ vars.UPDATE_BACKEND_BASE }}"

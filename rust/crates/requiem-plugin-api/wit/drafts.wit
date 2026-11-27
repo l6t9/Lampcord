@@ -1,0 +1,140 @@
+package requiem:plugin@1.0.0;
+
+/// Mutable views handed to interception hooks. The host owns them; a hook
+/// changes them through setters and the next plugin in the pipeline sees the
+/// result. New abilities are new methods, so the frozen `verdict` never has to
+/// grow.
+interface drafts {
+    use types.{snowflake, timestamp, json, error};
+    use model.{message, activity, presence, voice-state};
+
+    /// A file going out with a message.
+    resource outgoing-attachment {
+        filename: func() -> string;
+        set-filename: func(name: string);
+        content-type: func() -> option<string>;
+        size: func() -> u64;
+        /// The bytes. Needs `attachments.read`.
+        read: func() -> result<list<u8>, error>;
+        /// Replaces the bytes (a converted or zipped file). Needs `attachments.read`.
+        replace: func(data: list<u8>, content-type: option<string>) -> result<_, error>;
+        spoiler: func() -> bool;
+        set-spoiler: func(on: bool);
+        description: func() -> option<string>;
+        set-description: func(text: option<string>);
+    }
+
+    /// A message about to be sent (composer, reply, upload, or a plugin's
+    /// `actions.send-message`).
+    resource outgoing-message {
+        channel-id: func() -> snowflake;
+        guild-id: func() -> option<snowflake>;
+        content: func() -> string;
+        set-content: func(content: string);
+        reply-to: func() -> option<snowflake>;
+        /// Whether a reply pings the author of the replied-to message.
+        reply-mention: func() -> bool;
+        set-reply-mention: func(ping: bool);
+        /// Open set: "silent" (no push notifications), "suppress-embeds".
+        %flags: func() -> list<string>;
+        set-flag: func(name: string, on: bool) -> result<_, error>;
+        /// `name:id` of each sticker sent with it.
+        stickers: func() -> list<string>;
+        attachments: func() -> list<outgoing-attachment>;
+        /// Adds a file (a generated image, a converted upload).
+        add-attachment: func(filename: string, data: list<u8>, content-type: option<string>) -> result<_, error>;
+        remove-attachment: func(index: u32);
+        /// Which plugin sent it, if a plugin did (`none` for the user).
+        sent-by-plugin: func() -> option<string>;
+        /// Send these instead, in order, as separate messages (the first keeps the
+        /// reply and the attachments). Later plugins see only the first.
+        split-into: func(contents: list<string>) -> result<_, error>;
+        /// Instead of sending, append to (edit) this message of yours.
+        edit-instead: func(message-id: snowflake) -> result<_, error>;
+    }
+
+    /// An edit about to be saved.
+    resource outgoing-edit {
+        channel-id: func() -> snowflake;
+        guild-id: func() -> option<snowflake>;
+        message-id: func() -> snowflake;
+        original-content: func() -> string;
+        content: func() -> string;
+        set-content: func(content: string);
+    }
+
+    /// A message about to be shown, changed or removed. Changes are local only:
+    /// the server copy is untouched, the UI marks what plugins changed and can
+    /// always show the original.
+    resource incoming-message {
+        /// The message as it arrived (for a delete: the last version the client had).
+        message: func() -> message;
+        /// For an update or a delete: the version the client had before.
+        previous: func() -> option<message>;
+        /// Open set: "gateway-create", "gateway-update", "gateway-delete",
+        /// "history", "search", "jump".
+        source: func() -> string;
+        set-display-content: func(content: string);
+        /// A short label under the message ("Translated from German").
+        set-annotation: func(text: string);
+        /// Marks `[start, end)` (byte offsets into the content as shown). `kind` is
+        /// an open set: "highlight" (`{"color"}`), "tooltip" (`{"text"}`),
+        /// "color-swatch" (`{"color"}`), "blur" (`{}`), "view" (`{"view-id"}`:
+        /// replaced by a plugin view).
+        add-span: func(start: u32, end: u32, kind: string, options: json);
+        /// A plugin view in a slot of this message's row. `slot` is an open set:
+        /// "header" (after the author's name), "accessory" (under the content),
+        /// "toolbar" (the hover bar).
+        set-decoration: func(slot: string, view-id: option<string>);
+        /// Embeds and attachments by index: "hidden" or "blurred" (until clicked).
+        set-embed-state: func(index: u32, state: string);
+        set-attachment-state: func(index: u32, state: string);
+        /// Shown as a different author locally ("name", "color", "avatar-url").
+        set-author-display: func(field: string, value: option<string>);
+        /// For a delete: the label of the kept message ("Deleted"), used when the
+        /// verdict is `cancel`. For anything else, ignored.
+        set-deleted-label: func(text: string);
+    }
+
+    /// A notification (sound, desktop notification, badge) about to happen.
+    resource notification {
+        /// Open set: "message", "mention", "reply", "dm", "call", "friend-request".
+        kind: func() -> string;
+        channel-id: func() -> option<snowflake>;
+        guild-id: func() -> option<snowflake>;
+        message: func() -> option<message>;
+        title: func() -> string;
+        set-title: func(title: string);
+        body: func() -> string;
+        set-body: func(body: string);
+        /// Notify without a sound.
+        set-silent: func(silent: bool);
+        /// Notify even in Do Not Disturb / a muted channel.
+        set-bypass-dnd: func(bypass: bool);
+    }
+
+    /// Something that happened (`events.on-event`); see `registry.subscribe` for
+    /// the kinds. Typed accessors return `none` when they don't apply.
+    resource event {
+        kind: func() -> string;
+        channel-id: func() -> option<snowflake>;
+        guild-id: func() -> option<snowflake>;
+        user-id: func() -> option<snowflake>;
+        message-id: func() -> option<snowflake>;
+        message: func() -> option<message>;
+        /// For "message-update" and "message-delete": the version before.
+        previous-message: func() -> option<message>;
+        presence: func() -> option<presence>;
+        voice-state: func() -> option<voice-state>;
+        /// Everything else about the event, by kind (documented per kind).
+        data: func() -> json;
+    }
+
+    /// The logged-in user's presence about to be sent to Discord.
+    resource outgoing-presence {
+        status: func() -> string;
+        activities: func() -> list<activity>;
+        /// Hides an activity (by index) from everyone else.
+        remove-activity: func(index: u32);
+    }
+}

@@ -1,0 +1,21 @@
+[package]
+name = "requiem-assets"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+publish = false
+description = "Locates assets inside a Discord web client build (resolve) and pulls them out of chunk bytes (extract), driven by a manifest of pointers"
+
+[dependencies]
+oxc_allocator.workspace = true
+oxc_ast.workspace = true
+oxc_ast_visit.workspace = true
+oxc_parser.workspace = true
+oxc_span.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true

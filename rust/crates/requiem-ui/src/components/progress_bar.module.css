@@ -1,0 +1,13 @@
+.track {
+  flex-grow: 1;
+  height: 8px;
+  border-radius: var(--radius-xs);
+  background-color: var(--background-mod-strong);
+  overflow: hidden;
+}
+
+.fill {
+  width: 100%;
+  height: 8px;
+  color: var(--background-brand);
+}

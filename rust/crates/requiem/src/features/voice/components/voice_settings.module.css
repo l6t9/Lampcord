@@ -1,0 +1,140 @@
+.split {
+  display: flex;
+  flex-direction: row;
+  gap: 16px;
+}
+
+.split-column {
+  flex-grow: 1;
+  flex-shrink: 1;
+  flex-basis: 0px;
+  min-width: 0px;
+}
+
+.stack-8 {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stack-4 {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.invisible {
+  opacity: 0;
+}
+
+.mic-test {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mic-test-row {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 16px;
+  margin-top: 4px;
+  margin-bottom: 4px;
+}
+
+.mic-test-meter-column {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  flex-shrink: 1;
+  min-width: 0px;
+}
+
+.mic-test-meter {
+  width: 100%;
+  height: 28px;
+  margin-top: 6px;
+  margin-bottom: 6px;
+  color: var(--background-base-low);
+  background-color: var(--gradient-progress-pill-background);
+  border-left: 0px solid var(--yellow-260);
+  border-right: 0px solid var(--green-360);
+}
+
+.mic-test-caption {
+  display: flex;
+  flex-direction: column;
+  margin-left: 2px;
+  min-height: 32px;
+}
+
+.mic-test-no-voice {
+  display: flex;
+  flex-direction: column;
+}
+
+.speaking-bar {
+  width: 100%;
+  height: 8px;
+  margin-top: 8px;
+  background-color: var(--primary-400);
+  color: var(--green-230);
+}
+
+.sensitivity-slider {
+  background-color: var(--green-360);
+  color: var(--yellow-300);
+}
+
+.noise-select {
+  width: 204px;
+}
+
+.recorder {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  width: 300px;
+  height: 44px;
+  background-color: var(--input-background-default);
+  border: 1px solid var(--input-border-default);
+  border-radius: var(--radius-sm);
+}
+
+.recorder-active {
+  border: 1px solid var(--text-feedback-critical);
+}
+
+.recorder-keys {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex-grow: 1;
+  flex-shrink: 1;
+  min-width: 0px;
+  padding-left: 10px;
+}
+
+.recorder-button {
+  display: flex;
+  flex-shrink: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+.camera-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 220px;
+  background-color: var(--background-base-lower);
+  border: 1px solid var(--background-base-lowest);
+  border-radius: var(--radius-xs);
+}
+
+.camera-preview {
+  width: 387px;
+  height: 218px;
+}

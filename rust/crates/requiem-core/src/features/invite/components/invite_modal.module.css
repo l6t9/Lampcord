@@ -1,0 +1,86 @@
+.subtitle {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  min-width: 0px;
+}
+
+.subtitle-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  margin: -2px 2px 0px 6px;
+}
+
+.rows {
+  width: 100%;
+}
+
+.row {
+  height: 48px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0px -8px;
+  padding: 7px 8px 7px 5px;
+  border-radius: 3px;
+}
+
+.row:hover {
+  background-color: var(--interactive-background-hover);
+}
+
+.row-member:hover {
+  background-color: #00000000;
+}
+
+.info {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex-shrink: 1;
+  min-width: 0px;
+  margin-right: 4px;
+  overflow: hidden;
+}
+
+.avatar {
+  flex-shrink: 0;
+  margin-left: 3px;
+  margin-right: 10px;
+}
+
+.labels {
+  display: flex;
+  flex-direction: column;
+  min-width: 0px;
+  margin: 4px 0px;
+  overflow: hidden;
+}
+
+.actions {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.empty {
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.preview {
+  width: 100%;
+}
+
+.expiry {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 3px;
+}

@@ -1,0 +1,233 @@
+.layer {
+  position: absolute;
+  top: 0px;
+  left: 0px;
+}
+
+.layer-open {
+  width: 100%;
+  height: 100%;
+}
+
+.panel {
+  position: absolute;
+  left: 8px;
+  bottom: 72px;
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 4px;
+  background-color: var(--background-surface-high);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-border), var(--shadow-high);
+}
+
+.header {
+  width: 100%;
+  min-height: 140px;
+  flex-shrink: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.banner {
+  width: 100%;
+  height: 105px;
+  flex-shrink: 0;
+  border-top-left-radius: var(--radius-sm);
+  border-top-right-radius: var(--radius-sm);
+}
+
+.avatar-ring {
+  position: absolute;
+  left: 10px;
+  top: 55px;
+  width: 92px;
+  height: 92px;
+  border-radius: var(--radius-round);
+  background-color: var(--background-surface-high);
+}
+
+.avatar-btn {
+  position: absolute;
+  left: 16px;
+  top: 61px;
+  width: 80px;
+  height: 80px;
+  border-radius: var(--radius-round);
+}
+
+.avatar-overlay {
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  width: 80px;
+  height: 80px;
+  border-radius: var(--radius-round);
+  background-color: var(--opacity-black-40);
+  opacity: 0;
+  transition: opacity 50ms ease-in;
+}
+
+.avatar-btn:hover .avatar-overlay {
+  opacity: 1;
+  transition: opacity 0.15s ease-out;
+}
+
+.bubble-slot {
+  margin-top: -7px;
+  margin-left: 105px;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 8px 16px 16px;
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.name-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.display-name {
+  color: var(--text-default);
+}
+
+.copy-reveal {
+  display: flex;
+  transition: opacity 0.17s ease;
+}
+
+.copy-hidden {
+  opacity: 0;
+}
+
+.copy-shown {
+  opacity: 1;
+}
+
+.copy-btn {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+}
+
+.copy-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--interactive-text-default);
+}
+
+.copy-btn:hover .copy-icon {
+  color: var(--interactive-text-hover);
+}
+
+.copy-btn:active .copy-icon {
+  color: var(--interactive-text-active);
+}
+
+.name-btn:hover .display-name,
+.name-btn:hover .username {
+  text-decoration: underline;
+}
+
+.username {
+  color: var(--text-strong);
+}
+
+.username-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  row-gap: 2px;
+  column-gap: 9.33px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  background-color: var(--user-profile-overlay-background);
+}
+
+.item {
+  width: 100%;
+  border-radius: var(--radius-sm);
+}
+
+.item:hover,
+.item-selected {
+  background-color: var(--user-profile-overlay-background-hover);
+}
+
+.item-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--interactive-text-default);
+}
+
+.status-icon {
+  width: 12px;
+  height: 12px;
+}
+
+.item-label {
+  flex-grow: 1;
+  color: var(--interactive-text-default);
+}
+
+.caret-wrap {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.caret {
+  width: 16px;
+  height: 16px;
+  color: var(--interactive-text-default);
+}
+
+.item:hover .item-icon,
+.item:hover .item-label,
+.item:hover .caret,
+.item-selected .item-icon,
+.item-selected .item-label,
+.item-selected .caret {
+  color: var(--interactive-text-hover);
+}
+
+.divider {
+  height: 1px;
+  flex-shrink: 0;
+  margin: 8px 4px;
+  background-color: var(--user-profile-border);
+}
+
+.status-menu {
+  left: 306px;
+  bottom: 12px;
+  width: 300px;
+}
+
+.menu-dot {
+  width: 10px;
+  height: 10px;
+}

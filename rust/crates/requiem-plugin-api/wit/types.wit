@@ -1,0 +1,31 @@
+package requiem:plugin@1.0.0;
+
+/// Shapes that are frozen forever. Anything that can grow is a resource, open
+/// sets are strings, and extensible structured data (contexts, targets,
+/// options) is JSON with documented keys.
+interface types {
+    type snowflake = u64;
+    /// Unix epoch milliseconds.
+    type timestamp = s64;
+    /// A JSON document. Its keys are documented where it's used; new keys may
+    /// appear, so read only the ones you need.
+    type json = string;
+
+    /// `code` is an open set: "permission-denied", "not-found", "invalid",
+    /// "quota-exceeded", "rate-limited", "timeout", "unavailable" (this client
+    /// doesn't support it, or not yet), "cancelled", "network", ...
+    record error {
+        code: string,
+        message: string,
+    }
+
+    /// The result of an interception hook. Changes happen through setters on the
+    /// borrowed resource; the verdict only says whether to go on.
+    variant verdict {
+        pass,
+        /// Stop it. Sending: the message isn't sent and the reason is shown.
+        /// Incoming: the message is hidden (or, for a delete, kept on screen
+        /// marked as deleted). Notifications: not shown.
+        cancel(string),
+    }
+}

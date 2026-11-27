@@ -1,0 +1,34 @@
+# The update server as a container, built from this repository (the build context is the repository root).
+#
+#   UPDATE_SERVER_GITHUB_REPOSITORY=owner/repo docker compose up -d --build
+#
+# The container listens on 8080 and serves under the path of UPDATE_SERVER_PUBLIC_BASE (here /api): put a reverse proxy in front that
+# forwards that path to it unchanged. Behind a proxy that limits request bodies (Cloudflare allows 100 MB) keep
+# UPDATE_SERVER_MAX_PART_MB below the limit; the publisher (`cargo requiem release publish`) sends release files in parts that fit.
+
+services:
+  requiem-update-server:
+    build:
+      context: .
+      dockerfile: crates/requiem-update-server/Dockerfile
+    # To use a prebuilt image instead (see .github/workflows/update-server-image.yml), replace `build:` with:
+    # image: ghcr.io/OWNER/requiem-update-server:latest
+    restart: unless-stopped
+    expose:
+      - "8080"
+    environment:
+      # Where it is reached; also the audience of GitHub's token, so it must equal the GitHub variable UPDATE_BACKEND_BASE.
+      UPDATE_SERVER_PUBLIC_BASE: ${UPDATE_SERVER_PUBLIC_BASE:-https://requiem.nurmarv.in/api}
+      # Only jobs of this repository may publish ...
+      UPDATE_SERVER_GITHUB_REPOSITORY: ${UPDATE_SERVER_GITHUB_REPOSITORY:?set it to owner/repo}
+      # ... only ones running in this GitHub environment (the one with required reviewers) ...
+      UPDATE_SERVER_ENVIRONMENT: ${UPDATE_SERVER_ENVIRONMENT:-update-signing}
+      # ... and only from these workflows.
+      UPDATE_SERVER_WORKFLOWS: ${UPDATE_SERVER_GITHUB_REPOSITORY}/.github/workflows/release.yml@,${UPDATE_SERVER_GITHUB_REPOSITORY}/.github/workflows/desktop-identity.yml@,${UPDATE_SERVER_GITHUB_REPOSITORY}/.github/workflows/update-feed-refresh.yml@
+      UPDATE_SERVER_MAX_PART_MB: ${UPDATE_SERVER_MAX_PART_MB:-64}
+      RUST_LOG: ${RUST_LOG:-info}
+    volumes:
+      - update-data:/data
+
+volumes:
+  update-data:

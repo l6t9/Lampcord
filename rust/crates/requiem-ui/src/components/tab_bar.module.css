@@ -1,0 +1,83 @@
+.bar {
+  display: flex;
+  flex-direction: row;
+  gap: 24px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.item {
+  position: relative;
+  flex-shrink: 0;
+  padding-bottom: 16px;
+  margin-bottom: -1px;
+}
+
+.label {
+  color: var(--text-subtle);
+}
+
+.item:hover .label {
+  color: var(--text-strong);
+}
+
+.selected .label,
+.selected:hover .label {
+  color: var(--interactive-text-active);
+}
+
+.indicator {
+  position: absolute;
+  left: 0px;
+  right: 0px;
+  bottom: 0px;
+  height: 2px;
+  border-top-left-radius: var(--radius-xs);
+  border-top-right-radius: var(--radius-xs);
+}
+
+.item:hover .indicator,
+.selected .indicator {
+  background-color: var(--interactive-text-active);
+}
+
+.fill-bar {
+  gap: 8px;
+}
+
+.fill-item {
+  flex: 1 1 0px;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  padding-left: 8px;
+  padding-right: 8px;
+
+  padding-top: 3px;
+  padding-bottom: 19px;
+}
+
+.fill-item:hover .indicator {
+  background-color: var(--brand-500);
+}
+
+.selected.fill-item .indicator,
+.selected.fill-item:hover .indicator {
+  background-color: var(--control-brand-foreground);
+}
+
+.fill-item:hover .label {
+  color: var(--text-strong);
+}
+
+.selected.fill-item .label {
+  color: var(--control-brand-foreground);
+}
+
+.roomy-bar {
+  border-bottom: 2px solid var(--border-subtle);
+  margin-top: 22px;
+}
+
+.roomy-item {
+  margin-right: 32px;
+}

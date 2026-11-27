@@ -1,0 +1,39 @@
+name: Windows build environment
+description: MSVC, LLVM, ninja, FFmpeg and the Steinberg ASIO SDK, as every Windows build of the client needs them. Run it after checkout and after the Rust toolchain is installed.
+
+inputs:
+  ffmpeg-url:
+    description: Download URL of the FFmpeg shared build.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Set up MSVC environment
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: x64
+
+    - name: Install ninja and set up LLVM
+      shell: pwsh
+      run: |
+        choco install ninja -y --no-progress
+
+        "LIBCLANG_PATH=C:\Program Files\LLVM\bin" >> $env:GITHUB_ENV
+        "C:\Program Files\LLVM\bin" >> $env:GITHUB_PATH
+
+    - name: Download FFmpeg
+      shell: pwsh
+      env:
+        FFMPEG_URL: ${{ inputs.ffmpeg-url }}
+      run: |
+        $zip = Join-Path $env:RUNNER_TEMP "ffmpeg.zip"
+        Invoke-WebRequest -Uri $env:FFMPEG_URL -OutFile $zip
+        Expand-Archive $zip -DestinationPath $env:RUNNER_TEMP
+        $dir = Get-ChildItem $env:RUNNER_TEMP -Directory -Filter "ffmpeg-*" | Select-Object -First 1
+        "FFMPEG_DIR=$($dir.FullName)" >> $env:GITHUB_ENV
+        "$($dir.FullName)\bin" >> $env:GITHUB_PATH
+
+    - name: Fetch the Steinberg ASIO SDK
+      shell: pwsh
+      run: cargo run --quiet --locked -p requiem-cli -- asio

@@ -1,0 +1,170 @@
+.cmd-bar {
+  width: 100%;
+  height: 36px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding-left: 16px;
+  border-radius: var(--radius-sm) var(--radius-sm) 0px 0px;
+  background-color: var(--background-surface-higher);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.cmd-bar-info {
+  flex-grow: 1;
+  min-width: 0px;
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  column-gap: 8px;
+}
+
+.cmd-bar-close {
+  width: 40px;
+  height: 32px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cmd-bar-close-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.cmd-app-slot {
+  width: 52px;
+  height: 56px;
+  margin-left: -10px;
+  margin-right: 6px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cmd-app-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.cmd-content {
+  flex-grow: 1;
+  min-width: 0px;
+  min-height: 56px;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 8px;
+}
+
+.cmd-name {
+  margin-right: -4px;
+  flex-shrink: 0;
+}
+
+.cmd-pill {
+  height: 26px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  border: 1px solid var(--background-base-lowest);
+  border-radius: 4px;
+  background-color: var(--background-mod-normal);
+}
+
+.cmd-selected-part {
+  height: 30px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding-left: 4px;
+  padding-right: 4px;
+  background-color: #5865f25a;
+}
+
+.cmd-selected-first {
+  border-radius: 4px 0px 0px 4px;
+}
+
+.cmd-selected-last {
+  border-radius: 0px 4px 4px 0px;
+}
+
+.cmd-pill-focused {
+  border: 1px solid var(--option-pill-focus-border);
+}
+
+.cmd-pill-errored {
+  border: 1px solid var(--red-400);
+}
+
+.cmd-pill-key {
+  height: 24px;
+  padding-left: 8px;
+  padding-right: 8px;
+  display: flex;
+  align-items: center;
+  border-radius: 4px 0px 0px 4px;
+  background-color: var(--background-surface-high);
+}
+
+.cmd-pill-value {
+  height: 24px;
+  padding-left: 8px;
+  padding-right: 8px;
+  display: flex;
+  align-items: center;
+}
+
+.cmd-mention {
+  height: 20px;
+  padding-left: 2px;
+  padding-right: 2px;
+  display: flex;
+  align-items: center;
+  border-radius: 3px;
+  background-color: var(--mention-background);
+}
+
+.cmd-tail {
+  height: 26px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.cmd-more {
+  flex-shrink: 0;
+}
+
+.cmd-content-click {
+  flex-grow: 1;
+  min-width: 0px;
+  align-self: stretch;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 8px;
+}
+
+.cmd-content-selected {
+  column-gap: 0px;
+}
+
+.cmd-content-time {
+  flex-grow: 1;
+  min-width: 0px;
+  min-height: 56px;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 4px;
+}

@@ -1,0 +1,25 @@
+.line-clamp-1 {
+  min-width: 0px;
+  flex-shrink: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.line-clamp-2 {
+  min-width: 0px;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+}
+
+.line-clamp-3 {
+  min-width: 0px;
+  overflow: hidden;
+  -webkit-line-clamp: 3;
+}
+
+.line-clamp-4 {
+  min-width: 0px;
+  overflow: hidden;
+  -webkit-line-clamp: 4;
+}

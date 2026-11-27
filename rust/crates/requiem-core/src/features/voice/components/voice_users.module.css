@@ -1,0 +1,106 @@
+.voice-users {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding-left: 28px;
+  padding-bottom: 8px;
+}
+
+.voice-user {
+  height: 32px;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.voice-user-content {
+  height: 32px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding-left: 8px;
+  padding-right: 8px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  border-radius: var(--radius-sm);
+}
+
+.voice-user-content:hover {
+  background-color: var(--interactive-background-hover);
+}
+
+.voice-user-avatar {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 12px;
+}
+
+.voice-user-avatar-speaking {
+  box-shadow: inset 0 0 0 2px var(--status-speaking), inset 0 0 0 3px var(--background-base-lower);
+}
+
+.voice-user-name {
+  flex: 1 1 auto;
+  min-width: 0px;
+  margin-top: 2px;
+}
+
+.voice-user-icons {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.voice-user-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.voice-user-live {
+  height: 16px;
+  padding-left: 6px;
+  padding-right: 6px;
+  border-radius: 8px;
+  background-color: var(--background-feedback-notification);
+  display: flex;
+  align-items: center;
+}
+
+.voice-channel-timer {
+  margin-left: 12px;
+  flex-shrink: 0;
+}
+
+.voice-channel-status {
+  margin-left: 28px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+}
+
+.voice-channel-status-icon {
+  width: 12px;
+  height: 12px;
+}
+
+.voice-menu-volume {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 8px;
+  padding-right: 8px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+.voice-users-wrap {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+}

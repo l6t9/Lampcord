@@ -1,0 +1,29 @@
+## Strings of desktop/forms
+
+forms-forgot-your-password = Forgot your password?
+forms-register = Register
+forms-welcome-back = Welcome back!
+forms-we-re-so-excited-to-see = We're so excited to see you again!
+forms-email-or-phone-number = Email or Phone Number
+forms-password = Password
+forms-log-in = Log In
+forms-need-an-account = Need an account?
+forms-qr-login-isn-t-available-yet = QR login isn't available yet
+forms-log-in-with-qr-code = Log in with QR Code
+forms-scan-this-with-the-discord-mobile = Scan this with the Discord mobile app to log in instantly.
+forms-month = Month
+forms-day = Day
+forms-year = Year
+forms-already-have-an-account-log-in = Already have an account? Log in
+forms-email = Email
+forms-display-name = Display Name
+forms-username = Username
+forms-date-of-birth = Date of Birth
+forms-create-account = Create Account
+forms-create-an-account = Create an account
+forms-go-back-to-login = Go Back to Login
+forms-multi-factor-authentication = Multi-Factor Authentication
+forms-log-in-with-your-authenticator-app = Log in with your authenticator app or a backup code.
+forms-enter-discord-auth-backup-code = Enter Discord Auth/Backup Code
+forms-instructions-sent = Instructions sent
+forms-okay = Okay

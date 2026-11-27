@@ -1,0 +1,45 @@
+.row {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.box {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.content {
+  flex-grow: 1;
+  flex-shrink: 1;
+  min-width: 0px;
+}
+
+.label-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-grow: 1;
+  flex-shrink: 1;
+  min-width: 0px;
+}
+
+.label-row {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}

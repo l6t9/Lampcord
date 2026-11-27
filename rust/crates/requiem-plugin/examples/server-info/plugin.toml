@@ -1,0 +1,24 @@
+id = "dev.requiem.server-info"
+name = "Server Info"
+version = "0.1.0"
+api = "1.0"
+description = "A server's profile: icon, banner, age, boosts, channels and roles, plus which of your friends and blocked users are in it. Right-click a server and pick Server Info."
+authors = ["requiem"]
+license = "MIT"
+
+[permissions]
+"guilds.read" = "Reads the server's name, icon, banner, channels, roles and boosts to show them on the card"
+"ui.modal" = "Opens the Server Info profile in a window"
+
+[optional-permissions]
+"ui.slots" = "Adds a Server Info entry to the menu under the server's name"
+"members.read" = "Shows who owns the server, and finds which of your friends are members"
+"relationships.read" = "Reads your friends and blocked users, to list the ones who are in the server"
+"presence.read" = "Shows how many members are online"
+
+[hooks]
+settings-ui = {}
+
+[limits]
+memory-mib = 16
+storage-kib = 16
