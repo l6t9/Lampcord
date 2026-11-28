@@ -898,6 +898,42 @@ mod tests {
     use super::*;
 
     #[test]
+    fn ready_accepts_numeric_cosmetic_sku_ids() {
+        let event = GatewayEvent::new(
+            "READY",
+            serde_json::json!({
+                "user": {
+                    "id": "1",
+                    "username": "me",
+                    "discriminator": "0",
+                    "avatar": null,
+                    "avatar_decoration_data": {
+                        "asset": "a_1",
+                        "expires_at": null,
+                        "sku_id": 1341506443865489408u64
+                    }
+                },
+                "guilds": [],
+                "users": [{
+                    "id": "2",
+                    "username": "them",
+                    "discriminator": "0",
+                    "avatar": null,
+                    "avatar_decoration_data": {
+                        "asset": "a_2",
+                        "expires_at": null,
+                        "sku_id": 1459194821255237723u64
+                    }
+                }]
+            }),
+        );
+        assert!(
+            matches!(Action::from_gateway(&event), Some(Action::ConnectionOpen { .. })),
+            "READY with numeric SKU ids must parse"
+        );
+    }
+
+    #[test]
     fn handled_events_match_from_gateway() {
         let source = include_str!("action.rs");
         let body = &source[source.find("match event.name.as_str()").unwrap()..];

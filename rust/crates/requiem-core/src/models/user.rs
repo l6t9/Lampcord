@@ -194,6 +194,17 @@ mod tests {
     }
 
     #[test]
+    fn gateway_user_with_numeric_cosmetic_ids_parses() {
+        let json = r#"{"id":"1","username":"x","discriminator":"0","avatar":null,"avatar_decoration_data":{"asset":"a_1","expires_at":null,"sku_id":1459194821255237723},"bot":false,"clan":{"badge":"b","identity_enabled":true,"identity_guild_id":1484766675730694194,"tag":"YZ"},"collectibles":{"nameplate":{"asset":"np"}}}"#;
+        let user: User = serde_json::from_str(json).unwrap();
+        assert_eq!(
+            user.avatar_decoration_data.as_ref().unwrap().sku_id.as_deref(),
+            Some("1459194821255237723")
+        );
+        assert_eq!(user.nameplate_asset(), Some("np"));
+    }
+
+    #[test]
     fn censor_email_masks_local_part_to_its_exact_length() {
         assert_eq!(User::censor_email("testing@example.com"), "*******@example.com");
         assert_eq!(User::censor_email("a@b.co"), "*@b.co");
