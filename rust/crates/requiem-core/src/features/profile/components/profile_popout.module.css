@@ -141,17 +141,33 @@
 }
 
 .badges-row {
+  height: 24px;
   display: flex;
   flex-direction: row;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  align-items: center;
   gap: 2px;
-  margin-top: 1px;
-  margin-bottom: 1px;
+  padding: 2px 5px;
+  border-radius: 8px;
+  background-color: var(--background-mod-subtle);
+  flex-shrink: 0;
 }
 
 .badge-icon {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.badge-overflow {
+  height: 18px;
+  min-width: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0px 3px;
+  border-radius: 4px;
+  background-color: var(--background-mod-strong);
   flex-shrink: 0;
 }
 
@@ -512,6 +528,16 @@
   z-index: 1;
   pointer-events: none;
   opacity: 0.85;
+}
+
+.profile-frame {
+  position: absolute;
+  left: 2px;
+  top: 47px;
+  width: 108px;
+  height: 108px;
+  z-index: 3;
+  pointer-events: none;
 }
 
 .profile-frame-layer {

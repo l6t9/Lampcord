@@ -451,27 +451,43 @@ pub fn banner_color(
     }
 }
 
+/// Discord shows at most six profile badges, followed by a `+N` pill when the
+/// user has more. The row shares the clan tag's compact card treatment.
 pub fn badges_row(
     profile: &UserProfile,
     images: &ImageCache,
     backend: &BackendConfig,
 ) -> Option<Node> {
+    const VISIBLE_BADGES: usize = 6;
+
     let icons: Vec<&str> = profile
         .badges
         .iter()
-        .filter_map(|b| b.icon.as_deref())
+        .filter_map(|badge| {
+            let icon = badge.icon.as_deref()?;
+            (!icon.trim().is_empty()).then_some(icon)
+        })
         .collect();
     if icons.is_empty() {
         return None;
     }
+
+    let hidden = icons.len().saturating_sub(VISIBLE_BADGES);
     let mut row = div().class(profile_popout::BADGES_ROW);
-    for hash in icons {
+    for hash in icons.iter().take(VISIBLE_BADGES) {
         if let Some(image) = images.get_or_decode_image(&backend.badge_icon_url(hash)) {
             row = row.child(
-                Node::new("div", ImageWidget::new(Some(image)))
-                    .class(profile_popout::BADGE_ICON),
+                Node::new("div", ImageWidget::new(Some(image))).class(profile_popout::BADGE_ICON),
             );
         }
+    }
+    if hidden > 0 {
+        row = row.child(
+            TextProps::styled(format!("+{hidden}"), TextVariant::TEXT_XS_SEMIBOLD)
+                .color(requiem_ui::colors::text_default())
+                .build()
+                .class(profile_popout::BADGE_OVERFLOW),
+        );
     }
     Some(row)
 }

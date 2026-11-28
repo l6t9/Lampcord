@@ -2,9 +2,13 @@ use skia_safe::Color;
 
 use crate::models::user::DisplayNameStyles;
 use crate::models::user_profile::{ProfileMeta, UserProfile};
+use crate::ui::author_style::{NameFill, display_name_fill};
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct ProfileColors {
+    /// The two colors bought with Nitro. Accent colors and avatar-derived
+    /// colors are deliberately excluded: only an explicit profile theme should
+    /// tint a profile card.
     pub theme: Option<(Color, Color)>,
     pub name_color: Option<Color>,
 }
@@ -44,44 +48,58 @@ fn name_style_color(styles: Option<&DisplayNameStyles>) -> Option<Color> {
     styles
         .and_then(|styles| styles.colors.as_ref())
         .and_then(|colors| colors.first().copied())
+        .filter(|value| *value != 0)
         .map(rgb)
 }
 
-/// Resolve colors for a real profile: the profile's own theme wins over guild
-/// metadata, with the account accent color as the last fallback.
-pub fn resolve(profile: &UserProfile) -> ProfileColors {
-    let theme = meta_theme(profile.user_profile.as_ref())
-        .or_else(|| meta_theme(profile.guild_member_profile.as_ref()))
+fn profile_name_styles(profile: &UserProfile) -> Option<&DisplayNameStyles> {
+    profile
+        .user_profile
+        .as_ref()
+        .and_then(|meta| meta.display_name_styles.as_ref())
         .or_else(|| {
-            let accent = rgb(profile.user.accent_color?);
-            Some((accent, darken(accent)))
-        });
-
-    let name_color = name_style_color(
-        profile
-            .user_profile
-            .as_ref()
-            .and_then(|meta| meta.display_name_styles.as_ref()),
-    )
-    .or_else(|| {
-        name_style_color(
             profile
                 .guild_member
                 .as_ref()
-                .and_then(|member| member.display_name_styles.as_ref()),
-        )
-    })
-    .or_else(|| {
-        name_style_color(
+                .and_then(|member| member.display_name_styles.as_ref())
+        })
+        .or_else(|| {
             profile
                 .guild_member_profile
                 .as_ref()
-                .and_then(|meta| meta.display_name_styles.as_ref()),
-        )
-    })
-    .or_else(|| name_style_color(profile.user.display_name_styles.as_ref()));
+                .and_then(|meta| meta.display_name_styles.as_ref())
+        })
+        .or(profile.user.display_name_styles.as_ref())
+}
+
+/// The default profile grey, matching the modal's background token.
+pub fn default_background() -> Color {
+    requiem_ui::colors::token(
+        "background-base-lower",
+        Color::from_argb(255, 0x1a, 0x1a, 0x1e),
+    )
+}
+
+/// Every color stop of a Nitro display-name style, for gradient text.
+pub fn name_fill(profile: &UserProfile) -> Option<NameFill> {
+    display_name_fill(profile_name_styles(profile))
+}
+
+/// Resolve colors for a real profile. Only explicit Nitro profile colors become
+/// a theme; the account accent color is not a substitute for them.
+pub fn resolve(profile: &UserProfile) -> ProfileColors {
+    let theme = meta_theme(profile.user_profile.as_ref())
+        .or_else(|| meta_theme(profile.guild_member_profile.as_ref()));
+    let name_color = name_style_color(profile_name_styles(profile));
 
     ProfileColors { theme, name_color }
+}
+
+/// Keep the single-color accent path for callers that deliberately render
+/// accent-derived surfaces, such as the legacy profile preview.
+pub fn accent_theme(profile: &UserProfile) -> Option<(Color, Color)> {
+    let accent = rgb(profile.user.accent_color?);
+    Some((accent, darken(accent)))
 }
 
 #[cfg(test)]
@@ -89,7 +107,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn custom_theme_wins_over_guild_metadata_and_accent() {
+    fn custom_theme_wins_over_guild_metadata() {
         let profile: UserProfile = serde_json::from_value(serde_json::json!({
             "user": { "id": "1", "username": "a", "accent_color": 255 },
             "user_profile": { "theme_colors": [16711680, 65280], "display_name_styles": { "colors": [65280] } },
@@ -105,15 +123,32 @@ mod tests {
     }
 
     #[test]
-    fn accent_color_is_the_last_theme_fallback() {
+    fn accent_color_is_not_a_nitro_profile_theme() {
         let profile: UserProfile = serde_json::from_value(serde_json::json!({
             "user": { "id": "1", "username": "a", "accent_color": 3368601 },
         }))
         .unwrap();
         let colors = resolve(&profile);
-        let (primary, secondary) = colors.theme.unwrap();
-        assert_eq!((primary.r(), primary.g(), primary.b()), (0x33, 0x66, 0x99));
-        assert_eq!(secondary.r(), 0x14);
+        assert!(colors.theme.is_none());
         assert!(colors.name_color.is_none());
+        let accent = accent_theme(&profile).unwrap();
+        assert_eq!((accent.0.r(), accent.0.g(), accent.0.b()), (0x33, 0x66, 0x99));
+    }
+
+    #[test]
+    fn display_name_styles_keep_every_gradient_stop() {
+        let profile: UserProfile = serde_json::from_value(serde_json::json!({
+            "user": { "id": "1", "username": "a", "display_name_styles": { "colors": [16711680, 65280, 255] } },
+        }))
+        .unwrap();
+        assert_eq!(
+            name_fill(&profile),
+            Some(NameFill::Gradient(vec![
+                Color::from_argb(255, 255, 0, 0),
+                Color::from_argb(255, 0, 255, 0),
+                Color::from_argb(255, 0, 0, 255),
+                Color::from_argb(255, 255, 0, 0),
+            ]))
+        );
     }
 }

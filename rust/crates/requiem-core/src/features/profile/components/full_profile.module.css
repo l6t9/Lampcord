@@ -63,6 +63,38 @@
   border-top-right-radius: var(--radius-lg);
 }
 
+.profile-frame {
+  position: absolute;
+  left: 16px;
+  top: 64px;
+  width: 152px;
+  height: 152px;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.profile-themed {
+  background-color: #00000000;
+  border-color: #00000000;
+}
+
+.profile-theme-border {
+  position: absolute;
+  inset: 0px;
+  border-radius: inherit;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.profile-theme-content {
+  position: absolute;
+  inset: 2px;
+  z-index: 1;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background-color: var(--background-base-lower);
+}
+
 .avatar-ring {
   position: absolute;
   left: 24px;
@@ -459,6 +491,79 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.activity-list {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.activity-card {
+  width: 100%;
+  min-height: 96px;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  background-color: var(--background-mod-subtle);
+}
+
+.activity-main {
+  min-width: 0px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  justify-content: center;
+}
+
+.activity-heading {
+  color: var(--text-secondary);
+}
+
+.activity-details {
+  color: var(--text-strong);
+}
+
+.activity-state {
+  color: var(--text-default);
+}
+
+.activity-time {
+  color: var(--text-muted);
+}
+
+.activity-art-wrap {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  flex-shrink: 0;
+}
+
+.activity-art {
+  width: 84px;
+  height: 84px;
+  border-radius: var(--radius-sm);
+}
+
+.activity-art-small {
+  position: absolute;
+  right: -8px;
+  bottom: -8px;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-round);
+  border: 3px solid var(--background-mod-subtle);
+}
+
+.activity-emoji {
+  width: 18px;
+  height: 18px;
+  margin-right: 4px;
+  vertical-align: middle;
 }
 
 .list {

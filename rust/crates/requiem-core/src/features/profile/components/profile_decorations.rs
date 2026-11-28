@@ -1,5 +1,6 @@
 use serde_json::Value;
 
+use requiem_ui::components::div;
 use requiem_ui::node::Node;
 use requiem_ui::widget::primitives::ImageWidget;
 
@@ -14,16 +15,16 @@ use crate::ui::classes::profile_popout as cls;
 const COLLECTIBLE_TYPE_EFFECT: i64 = 1;
 const COLLECTIBLE_TYPE_FRAME: i64 = 3;
 
-/// Profile frames are temporarily hidden on desktop while their layering is
-/// being reviewed. Effects, nameplates and avatar decorations stay visible.
-const SHOW_PROFILE_FRAMES: bool = false;
-
 fn meta_sku(meta: Option<&ProfileMeta>, kind: i64) -> Option<String> {
     let meta = meta?;
     let direct = if kind == COLLECTIBLE_TYPE_EFFECT {
-        meta.profile_effect.as_ref().and_then(|effect| effect.sku_id.as_deref())
+        meta.profile_effect
+            .as_ref()
+            .and_then(|effect| effect.sku_id.as_deref())
     } else {
-        meta.profile_frame.as_ref().and_then(|frame| frame.sku_id.as_deref())
+        meta.profile_frame
+            .as_ref()
+            .and_then(|frame| frame.sku_id.as_deref())
     };
     if let Some(sku) = direct.filter(|sku| !sku.trim().is_empty()) {
         return Some(sku.to_string());
@@ -121,17 +122,18 @@ pub fn nameplate_node(
 
 /// Static effect and frame layers for a profile card. The animated mobile effect
 /// is intentionally rendered as its first frame on the Skia desktop client.
-pub fn layers(
+/// `frame_class` positions the frame around the avatar of the hosting surface.
+pub fn layers_with_frame_class(
     queries: &QueryClient,
     http: Option<&HttpClient>,
     profile: &UserProfile,
     images: &ImageCache,
     backend: &BackendConfig,
+    frame_class: &'static str,
 ) -> Vec<Node> {
     let mut out = Vec::new();
 
-    let effect_sku = effect_sku(profile);
-    if let Some(product) = effect_sku
+    if let Some(product) = effect_sku(profile)
         .as_deref()
         .and_then(|sku| load_product(queries, http, sku))
     {
@@ -156,28 +158,47 @@ pub fn layers(
         }
     }
 
-    if SHOW_PROFILE_FRAMES {
-        if let Some(sku) = frame_sku(profile) {
-            if let Some(product) = load_product(queries, http, &sku) {
-                if let Some(item) = item_of_kind(&product, COLLECTIBLE_TYPE_FRAME) {
-                    let mut layers = item
-                        .get("layers")
-                        .and_then(Value::as_array)
-                        .into_iter()
-                        .flatten()
-                        .filter_map(|layer| as_text(layer.get("id")))
-                        .take(6)
-                        .filter_map(|id| {
-                            let url = backend.collectible_media_url(&sku, id);
-                            images.get_or_decode_image(&url)
-                        });
-                    out.extend(
-                        layers.by_ref().map(|image| image_node(image, cls::PROFILE_FRAME_LAYER)),
-                    );
+    if let Some(sku) = frame_sku(profile) {
+        if let Some(product) = load_product(queries, http, &sku) {
+            if let Some(item) = item_of_kind(&product, COLLECTIBLE_TYPE_FRAME) {
+                let mut layers = item
+                    .get("layers")
+                    .and_then(Value::as_array)
+                    .into_iter()
+                    .flatten()
+                    .filter_map(|layer| as_text(layer.get("id")))
+                    .take(8)
+                    .filter_map(|id| {
+                        let url = backend.collectible_media_url(&sku, id);
+                        images.get_or_decode_image(&url)
+                    });
+                let frame: Vec<Node> = layers
+                    .by_ref()
+                    .map(|image| image_node(image, cls::PROFILE_FRAME_LAYER))
+                    .collect();
+                if !frame.is_empty() {
+                    out.push(div().class(frame_class).children(frame));
                 }
             }
         }
     }
 
     out
+}
+
+pub fn layers(
+    queries: &QueryClient,
+    http: Option<&HttpClient>,
+    profile: &UserProfile,
+    images: &ImageCache,
+    backend: &BackendConfig,
+) -> Vec<Node> {
+    layers_with_frame_class(
+        queries,
+        http,
+        profile,
+        images,
+        backend,
+        cls::PROFILE_FRAME,
+    )
 }

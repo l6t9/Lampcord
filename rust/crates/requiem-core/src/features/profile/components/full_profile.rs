@@ -9,6 +9,7 @@ use crate::rest::endpoints::relationships::location;
 use crate::rest::endpoints::relationships;
 use crate::rest::endpoints::users;
 use crate::ui::author_style;
+use crate::ui::author_style::TagPlace;
 use crate::ui::channel_sidebar;
 use crate::ui::classes::full_profile;
 use crate::ui::classes::full_profile as cls;
@@ -47,7 +48,7 @@ use requiem_ui::node::Node;
 use requiem_ui::signal::{Signal, signal};
 use requiem_ui::widget::anim::ToggleState;
 use requiem_ui::widget::primitives::{
-    ClickAreaWidget, ImageWidget, ModalBackdropWidget, ModalPanelWidget, PresenceStatus,
+    BoxWidget, ClickAreaWidget, ImageWidget, ModalBackdropWidget, ModalPanelWidget, PresenceStatus,
 };
 use skia_safe::Color;
 use skia_safe::font_style::Weight;
@@ -59,10 +60,11 @@ use crate::models::{Id, Role, UserProfile};
 use crate::query::QueryClient;
 use crate::rest::{HttpClient, RestError};
 use crate::state::AppState;
+use crate::state::wire::Activity;
 use crate::ui::profile_popout::{
     self, ColorBoxWidget, FullProfileTab, FullProfileTarget, ProfileOverlays,
 };
-use crate::ui::{Fonts, TEXT_DEFAULT, TEXT_SECONDARY, TEXT_STRONG};
+use crate::ui::{Fonts, TEXT_DEFAULT, TEXT_MUTED, TEXT_SECONDARY, TEXT_STRONG};
 use requiem_ui::icons::{
     CHAT, CIRCLE_CHECK, CLYDE, DENY, MORE_HORIZONTAL, PENCIL, SHOP, USER_PLUS,
     WARNING, WINDOW_LAUNCH, X_SMALL,
@@ -198,9 +200,28 @@ pub fn build(
     let backdrop = ModalBackdropWidget::new(open).with_on_click(dismiss);
     let is_bot = profile.as_ref().is_some_and(|p| p.user.bot);
     let panel_class = if is_bot { cls::PANEL_BOT } else { cls::PANEL };
+    let theme = profile
+        .as_deref()
+        .and_then(|profile| profile_theme::resolve(profile).theme);
     let mut panel = Node::new("div", ModalPanelWidget::new(open))
         .class(cls::PANEL_BASE)
         .class(panel_class);
+    let mut themed_content = div();
+    if let Some((primary, secondary)) = theme {
+        panel = panel
+            .class(cls::PROFILE_THEMED)
+            .child(
+                Node::new(
+                    "div",
+                    ui_profile_card::GradientBoxWidget {
+                        top: primary,
+                        stop: 105.0_f32,
+                        bottom: secondary,
+                    },
+                )
+                .class(cls::PROFILE_THEME_BORDER),
+            );
+    }
 
     if let Some(profile) = profile.as_deref() {
         let viewer = state
@@ -241,24 +262,37 @@ pub fn build(
             http,
             viewer: media_viewer,
         };
-        panel = if is_bot {
-            panel.child(bot_layout(&ctx))
+        let layout = if is_bot {
+            bot_layout(&ctx)
         } else {
-            panel.child(user_layout(&ctx))
+            user_layout(&ctx)
         };
+        if theme.is_some() {
+            themed_content = themed_content.child(layout);
+        } else {
+            panel = panel.child(layout);
+        }
     }
 
-    let close = {
-        let ui = ui.clone();
-        ButtonProps::default()
-            .variant(ButtonVariant::Secondary)
-            .size(ButtonSize::Small)
-            .icon(X_SMALL)
-            .on_click(move || ui.close())
-            .build()
-    };
     if !is_bot {
-        panel = panel.child(div().class(cls::CLOSE).child(close));
+        let close = {
+            let ui = ui.clone();
+            ButtonProps::default()
+                .variant(ButtonVariant::Secondary)
+                .size(ButtonSize::Small)
+                .icon(X_SMALL)
+                .on_click(move || ui.close())
+                .build()
+        };
+        let close = div().class(cls::CLOSE).child(close);
+        if theme.is_some() {
+            themed_content = themed_content.child(close);
+        } else {
+            panel = panel.child(close);
+        }
+    }
+    if theme.is_some() {
+        panel = panel.child(themed_content.class(cls::PROFILE_THEME_CONTENT));
     }
     Node::new("div", backdrop)
         .class(modal::MODAL_BACKDROP)
@@ -288,16 +322,7 @@ fn banner(ctx: &Ctx<'_>, class: &'static str) -> Node {
             let color = profile_theme::resolve(ctx.profile)
                 .theme
                 .map(|(primary, _)| primary)
-                .unwrap_or_else(|| {
-                    profile_popout::banner_color(
-                        user.id,
-                        &user.discriminator,
-                        user.accent_color,
-                        user.avatar.as_deref(),
-                        ctx.images,
-                        ctx.backend,
-                    )
-                });
+                .unwrap_or_else(profile_theme::default_background);
             Node::new("div", ColorBoxWidget { color }).class(class)
         }
     }
@@ -371,12 +396,13 @@ fn profile_card(ctx: &Ctx<'_>) -> Node {
         .child(banner(ctx, cls::BANNER))
         .child(ring)
         .child(avatar_120(ctx, cls::AVATAR));
-    header = header.children(profile_decorations::layers(
+    header = header.children(profile_decorations::layers_with_frame_class(
         ctx.queries,
         ctx.http,
         ctx.profile,
         ctx.images,
         ctx.backend,
+        full_profile::PROFILE_FRAME,
     ));
     if ctx.is_self {
         let overlays = ctx.overlays.clone();
@@ -415,15 +441,19 @@ fn profile_card(ctx: &Ctx<'_>) -> Node {
         .and_then(|m| m.nick.clone())
         .or_else(|| user.global_name.clone())
         .unwrap_or_else(|| user.username.clone());
+    let name_fill = profile_theme::name_fill(ctx.profile);
     let name_row = StackProps::horizontal()
         .align(Align::Center)
         .full_width(false)
         .build()
         .child(
-            TextProps::new(display_name, 24.0_f32)
-                .weight(Weight::SEMI_BOLD)
-                .color(colors.name_color.unwrap_or(TEXT_DEFAULT))
-                .build(),
+            author_style::name_node(
+                display_name,
+                TextVariant::HEADING_XL_BOLD,
+                28.0_f32,
+                name_fill.as_ref(),
+                colors.name_color.unwrap_or(TEXT_DEFAULT),
+            ),
         );
     let mut username_row = div().class(cls::USERNAME_ROW).child(
         TextProps::styled(user.username.clone(), TextVariant::TEXT_SM_NORMAL)
@@ -453,6 +483,20 @@ fn profile_card(ctx: &Ctx<'_>) -> Node {
                     .color(TEXT_STRONG)
                     .build(),
             );
+    }
+    if let Some(tag) = ctx
+        .profile
+        .user
+        .primary_guild
+        .as_ref()
+        .and_then(author_style::tag_of)
+    {
+        username_row = username_row.child(author_style::tag_chip(
+            &tag,
+            TagPlace::Pill,
+            ctx.images,
+            ctx.backend,
+        ));
     }
     if let Some(badges) = profile_popout::badges_row(ctx.profile, ctx.images, ctx.backend) {
         username_row = username_row.child(badges);
@@ -494,7 +538,16 @@ fn profile_card(ctx: &Ctx<'_>) -> Node {
         note_field(ctx),
     ));
 
-    div().class(cls::CARD).child(header).child(body)
+    let mut card = div().class(cls::CARD);
+    if let Some(nameplate) = profile_decorations::nameplate_node(
+        user.nameplate_asset(),
+        ctx.images,
+        ctx.backend,
+        ui::classes::profile_popout::NAMEPLATE_BACKDROP,
+    ) {
+        card = card.child(nameplate);
+    }
+    card.child(header).child(body)
 }
 
 fn profile_buttons(ctx: &Ctx<'_>) -> Node {
@@ -1397,7 +1450,173 @@ pub fn empty_title(content: &str) -> Node {
         .class(full_profile::EMPTY_TITLE)
 }
 
+fn profile_activities(ctx: &Ctx<'_>) -> Vec<Activity> {
+    let activities = if ctx.is_self {
+        ctx.state.presence.activities.get()
+    } else {
+        ctx.state.user_presence.of(ctx.profile.user.id).activities
+    };
+    activities
+        .into_iter()
+        .filter(|activity| activity.kind != 4)
+        .filter(|activity| {
+            activity
+                .name
+                .as_deref()
+                .is_some_and(|name| !name.trim().is_empty())
+        })
+        .collect()
+}
+
+fn activity_asset_url(
+    backend: &BackendConfig,
+    activity: &Activity,
+    raw: &str,
+) -> Option<String> {
+    let raw = raw.trim();
+    if raw.is_empty() {
+        return None;
+    }
+    if raw.starts_with("http://") || raw.starts_with("https://") {
+        return Some(raw.to_string());
+    }
+    if let Some(spotify) = raw.strip_prefix("spotify:") {
+        let hash = spotify.strip_prefix("ab:").unwrap_or(spotify);
+        return Some(format!("https://i.scdn.co/image/{hash}"));
+    }
+    let application_id = activity.application_id.as_deref()?;
+    (!application_id.is_empty()).then(|| backend.app_asset_url(application_id, raw))
+}
+
+fn duration_label(ms: u64) -> String {
+    let seconds = ms / 1000;
+    let hours = seconds / 3600;
+    let minutes = (seconds % 3600) / 60;
+    let seconds = seconds % 60;
+    if hours > 0 {
+        format!("{hours}:{minutes:02}:{seconds:02}")
+    } else {
+        format!("{minutes}:{seconds:02}")
+    }
+}
+
+fn activity_timing(activity: &Activity) -> Option<String> {
+    let timestamps = activity.timestamps.as_ref()?;
+    let now = time::now_ms();
+    if timestamps.end > 0 {
+        return Some(format!(
+            "{} left",
+            duration_label(timestamps.end.saturating_sub(now))
+        ));
+    }
+    if timestamps.start > 0 {
+        return Some(format!(
+            "{} elapsed",
+            duration_label(now.saturating_sub(timestamps.start))
+        ));
+    }
+    None
+}
+
+fn activity_line(text: &str, variant: TextVariant, color: Color, class: &'static str) -> Node {
+    TextProps::styled(text.to_string(), variant)
+        .color(color)
+        .line_clamp(1_u32)
+        .build()
+        .class(class)
+}
+
+fn activity_card(ctx: &Ctx<'_>, activity: &Activity) -> Node {
+    let verb = match activity.kind {
+        1 => "Streaming",
+        2 => "Listening to",
+        3 => "Watching",
+        5 => "Competing in",
+        _ => "Playing",
+    };
+    let name = activity.name.as_deref().unwrap_or("Unknown activity");
+    let mut main = div()
+        .class(cls::ACTIVITY_MAIN)
+        .child(activity_line(
+            &format!("{verb} {name}"),
+            TextVariant::TEXT_XS_SEMIBOLD,
+            TEXT_SECONDARY,
+            cls::ACTIVITY_HEADING,
+        ));
+
+    let assets = activity.assets.as_ref();
+    if let Some(details) = activity
+        .details
+        .as_deref()
+        .filter(|details| !details.trim().is_empty())
+    {
+        main = main.child(activity_line(
+            details,
+            TextVariant::TEXT_MD_NORMAL,
+            TEXT_STRONG,
+            cls::ACTIVITY_DETAILS,
+        ));
+    }
+    if let Some(state) = activity
+        .state
+        .as_deref()
+        .filter(|state| !state.trim().is_empty())
+    {
+        main = main.child(activity_line(
+            state,
+            TextVariant::TEXT_SM_NORMAL,
+            TEXT_DEFAULT,
+            cls::ACTIVITY_STATE,
+        ));
+    }
+    if let Some(timing) = activity_timing(activity) {
+        main = main.child(activity_line(
+            &timing,
+            TextVariant::TEXT_XS_NORMAL,
+            TEXT_MUTED,
+            cls::ACTIVITY_TIME,
+        ));
+    }
+
+    let large = assets
+        .and_then(|assets| assets.large_image.as_deref())
+        .and_then(|raw| activity_asset_url(ctx.backend, activity, raw))
+        .and_then(|url| ctx.images.get_or_decode_image(&url));
+    let small = assets
+        .and_then(|assets| assets.small_image.as_deref())
+        .and_then(|raw| activity_asset_url(ctx.backend, activity, raw))
+        .and_then(|url| ctx.images.get_or_decode_image(&url));
+
+    let mut art = match large {
+        Some(image) => Node::new("div", ImageWidget::new(Some(image)).with_cover_centered()),
+        None => Node::new("div", BoxWidget),
+    }
+    .class(cls::ACTIVITY_ART);
+    if let Some(small) = small {
+        art = art.child(
+            Node::new("div", ImageWidget::new(Some(small)).with_cover_centered())
+                .class(cls::ACTIVITY_ART_SMALL),
+        );
+    }
+    div()
+        .class(cls::ACTIVITY_CARD)
+        .child(main)
+        .child(div().class(cls::ACTIVITY_ART_WRAP).child(art))
+}
+
+fn activity_cards(ctx: &Ctx<'_>, activities: &[Activity]) -> Node {
+    let mut list = div().class(cls::ACTIVITY_LIST);
+    for activity in activities {
+        list = list.child(activity_card(ctx, activity));
+    }
+    list
+}
+
 fn activity(ctx: &Ctx<'_>) -> Node {
+    let activities = profile_activities(ctx);
+    if !activities.is_empty() {
+        return activity_cards(ctx, &activities);
+    }
     let name = ctx
         .profile
         .user
@@ -1425,6 +1644,10 @@ fn activity(ctx: &Ctx<'_>) -> Node {
 }
 
 fn own_activity(ctx: &Ctx<'_>) -> Node {
+    let activities = profile_activities(ctx);
+    if !activities.is_empty() {
+        return activity_cards(ctx, &activities);
+    }
     let mut platforms = div().class(cls::PLATFORMS);
     for kind in ACTIVITY_PLATFORMS {
         if let Some(image) = connection_icon(kind) {

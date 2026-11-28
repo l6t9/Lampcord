@@ -56,17 +56,59 @@ pub fn lenient_vec<'de, D: Deserializer<'de>, T: DeserializeOwned>(
         .collect())
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
 pub struct Activity {
     #[serde(rename = "type", default, deserialize_with = "nullable")]
     pub kind: u8,
     #[serde(default)]
+    pub name: Option<String>,
+    #[serde(default)]
     pub state: Option<String>,
     #[serde(default)]
+    pub details: Option<String>,
+    #[serde(default)]
     pub emoji: Option<ActivityEmoji>,
+    #[serde(default)]
+    pub application_id: Option<String>,
+    #[serde(default)]
+    pub timestamps: Option<ActivityTimestamps>,
+    #[serde(default)]
+    pub assets: Option<ActivityAssets>,
+    #[serde(default)]
+    pub party: Option<ActivityParty>,
+    #[serde(default)]
+    pub url: Option<String>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+pub struct ActivityTimestamps {
+    #[serde(default, deserialize_with = "nullable")]
+    pub start: u64,
+    #[serde(default, deserialize_with = "nullable")]
+    pub end: u64,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+pub struct ActivityAssets {
+    #[serde(default)]
+    pub large_image: Option<String>,
+    #[serde(default)]
+    pub large_text: Option<String>,
+    #[serde(default)]
+    pub small_image: Option<String>,
+    #[serde(default)]
+    pub small_text: Option<String>,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+pub struct ActivityParty {
+    #[serde(default)]
+    pub id: Option<String>,
+    #[serde(default)]
+    pub size: Option<Vec<u32>>,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq)]
 pub struct ActivityEmoji {
     #[serde(default)]
     pub name: Option<String>,
@@ -607,4 +649,41 @@ pub struct ReadyExtras {
     pub notification_flags: Option<u64>,
 
     pub merged_members: Vec<Vec<MergedMember>>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Activity;
+
+    #[test]
+    fn rich_presence_keeps_the_fields_an_activity_card_draws() {
+        let activity: Activity = serde_json::from_value(serde_json::json!({
+            "type": 2,
+            "name": "Spotify",
+            "details": "Song",
+            "state": "Artist",
+            "application_id": "1234567890",
+            "timestamps": { "start": 1_700_000_000_000u64, "end": null },
+            "assets": {
+                "large_image": "spotify:ab:cover",
+                "large_text": "Album",
+                "small_image": "small",
+                "small_text": "Small"
+            },
+            "party": { "id": "party", "size": [1, 4] },
+            "emoji": null
+        }))
+        .unwrap();
+
+        assert_eq!(activity.kind, 2);
+        assert_eq!(activity.name.as_deref(), Some("Spotify"));
+        assert_eq!(activity.details.as_deref(), Some("Song"));
+        assert_eq!(activity.state.as_deref(), Some("Artist"));
+        assert_eq!(activity.application_id.as_deref(), Some("1234567890"));
+        assert_eq!(activity.timestamps.unwrap().start, 1_700_000_000_000);
+        let assets = activity.assets.unwrap();
+        assert_eq!(assets.large_image.as_deref(), Some("spotify:ab:cover"));
+        assert_eq!(assets.small_image.as_deref(), Some("small"));
+        assert_eq!(activity.party.unwrap().size, Some(vec![1, 4]));
+    }
 }

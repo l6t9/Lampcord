@@ -168,6 +168,17 @@ impl BackendConfig {
         )
     }
 
+    /// Art attached to a rich-presence activity. Spotify assets use their own
+    /// CDN key, which is handled by the caller.
+    pub fn app_asset_url(&self, application_id: &str, asset: &str) -> String {
+        format!(
+            "{}/app-assets/{}/{}.png?size=512",
+            self.cdn_base_url.trim_end_matches('/'),
+            application_id,
+            asset.trim_matches('/')
+        )
+    }
+
     pub fn emoji_url(&self, emoji_id: u64) -> String {
         format!(
             "{}/emojis/{}.png?size=48",

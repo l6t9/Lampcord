@@ -341,6 +341,8 @@ fn mount_user_panel(
             &user_panel_ctx.fonts,
             &borrow_images(&user_panel_ctx.images),
             &user_panel_ctx.backend,
+            &borrow_queries(&user_panel_ctx.queries),
+            Some(&user_panel_ctx.http),
             user_panel_signals.mute_toggle.get(),
             &user_panel_signals.on_toggle_mute,
             user_panel_signals.deafen_toggle.get(),

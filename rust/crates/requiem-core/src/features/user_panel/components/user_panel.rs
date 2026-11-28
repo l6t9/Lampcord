@@ -1,4 +1,5 @@
 use crate::ui::audio_menu::Kind;
+use crate::ui::author_style;
 use crate::models::id::marker;
 use crate::models;
 use crate::ui::account_popout;
@@ -7,6 +8,8 @@ use crate::ui::classes::user_panel;
 use crate::ui::context_menu;
 use crate::ui::context_menus;
 use crate::ui::custom_status;
+use crate::ui::profile_popout;
+use crate::ui::profile_popout::ProfileSurface;
 use crate::ui::voice_panel;
 use crate::ui;
 use requiem_ui::components::ButtonVariant;
@@ -19,7 +22,7 @@ use std::sync::OnceLock;
 use std::time::Instant;
 
 use requiem_ui::components::{
-    AvatarStatusSize, ButtonProps, TextProps, TooltipProps, avatar_with_status, div,
+    AvatarStatusSize, ButtonProps, TooltipProps, avatar_with_status, div,
 };
 use requiem_ui::node::Node;
 use requiem_ui::signal::Signal;
@@ -35,6 +38,8 @@ use skia_safe::font_style::Weight;
 use crate::config::BackendConfig;
 use crate::images::ImageCache;
 use crate::lottie::{asset_json, fix_mask_gaps, recolor_fills_and_strokes};
+use crate::query::QueryClient;
+use crate::rest::HttpClient;
 use crate::state::AppState;
 use crate::ui::{Fonts, TEXT_SECONDARY, TEXT_STRONG};
 use requiem_ui::icons::CHEVRON_LARGE_DOWN;
@@ -483,6 +488,8 @@ pub fn build(
     fonts: &Fonts,
     images: &ImageCache,
     backend: &BackendConfig,
+    queries: &QueryClient,
+    http: Option<&HttpClient>,
     mute_toggle: ToggleState,
     on_toggle_mute: &Rc<dyn Fn()>,
     deafen_toggle: ToggleState,
@@ -495,8 +502,20 @@ pub fn build(
         return;
     };
     let user = &user;
+    // READY/USER_UPDATE do not always carry collectibles or a display-name
+    // style. The cached profile request fills the authoritative user copy.
+    profile_popout::load_profile(
+        queries,
+        http,
+        &state.users,
+        user.id,
+        None,
+        ProfileSurface::Plain,
+    );
+    let authoritative = state.users.get_watched(user.id);
+    let cosmetics = authoritative.as_ref().unwrap_or(user);
 
-    let image = user.avatar.as_deref().and_then(|hash| {
+    let image = cosmetics.avatar.as_deref().and_then(|hash| {
         let url = backend.avatar_url(user.id, hash);
         images.get_or_decode_image(&url)
     });
@@ -506,6 +525,10 @@ pub fn build(
     if let Some(image) = image {
         avatar_props = avatar_props.image(image);
     }
+    let avatar_decoration = cosmetics
+        .avatar_decoration_asset()
+        .or_else(|| user.avatar_decoration_asset());
+    avatar_props = ui::with_avatar_decoration(avatar_props, avatar_decoration, images, backend, 32);
     let own_status = state.presence.status.get();
     let popout_open = account.open.get();
     let avatar = avatar_with_status(
@@ -567,15 +590,25 @@ pub fn build(
     } else {
         roll
     };
+    let name_fill = author_style::display_name_fill(
+        cosmetics
+            .display_name_styles
+            .as_ref()
+            .or(user.display_name_styles.as_ref()),
+    );
+    let title = author_style::name_node(
+        display_name,
+        TextVariant::TEXT_MD_MEDIUM,
+        18.0_f32,
+        name_fill.as_ref(),
+        TEXT_STRONG,
+    )
+    .class(user_panel::USER_PANEL_TITLE)
+    .class(line_clamp_class(1));
     let name_col = div()
         .class(user_panel::USER_PANEL_NAME_COL)
         .children([
-            TextProps::styled(display_name, TextVariant::TEXT_MD_MEDIUM)
-                .line_height(18.0_f32)
-                .color(TEXT_STRONG)
-                .line_clamp(1_u32)
-                .build()
-                .class(user_panel::USER_PANEL_TITLE),
+            title,
             Node::new("div", roll)
                 .class(user_panel::USER_PANEL_SUBTEXT)
                 .class(line_clamp_class(1)),
@@ -684,7 +717,9 @@ pub fn build(
         .class(user_panel::USER_PANEL_CONTENT);
 
     let nameplate = ui::profile_decorations::nameplate_node(
-        user.nameplate_asset(),
+        cosmetics
+            .nameplate_asset()
+            .or_else(|| user.nameplate_asset()),
         images,
         backend,
         user_panel::USER_PANEL_NAMEPLATE,

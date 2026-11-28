@@ -18,6 +18,8 @@ declare module "*/profile_popout.module.css" {
     readonly avatarWrap: string;
     readonly "badge-icon": string;
     readonly badgeIcon: string;
+    readonly "badge-overflow": string;
+    readonly badgeOverflow: string;
     readonly "badges-row": string;
     readonly badgesRow: string;
     readonly "banner": string;
@@ -81,6 +83,8 @@ declare module "*/profile_popout.module.css" {
     readonly panelInline: string;
     readonly "profile-effect": string;
     readonly profileEffect: string;
+    readonly "profile-frame": string;
+    readonly profileFrame: string;
     readonly "profile-frame-layer": string;
     readonly profileFrameLayer: string;
     readonly "role-chip": string;

@@ -4,6 +4,7 @@ use crate::ui::classes::profile_popout;
 use crate::ui::classes::profile_popout as cls;
 use crate::ui::dim;
 use crate::ui::emoji_text;
+use crate::ui::profile_theme;
 use crate::ui::twemoji;
 use requiem_ui::components::AvatarStatusSize;
 use requiem_ui::components::ButtonVariant;
@@ -175,9 +176,7 @@ pub fn profile_card(
     images: &ImageCache,
     backend: &BackendConfig,
 ) -> Node {
-    let themed = matches!(container, CardContainer::Inline)
-        .then_some(view.theme)
-        .flatten();
+    let themed = view.theme;
     let background_layers = std::mem::take(&mut parts.background_layers);
 
     let banner = match &view.banner_image {
@@ -265,10 +264,15 @@ pub fn profile_card(
         }
         None => inner,
     };
-    let name = TextProps::styled(view.display_name.to_string(), TextVariant::TEXT_LG_BOLD)
-        .color(view.name_color.unwrap_or(TEXT_DEFAULT))
-        .build()
-        .class(cls::DISPLAY_NAME);
+    let name_fill = view.badges_from.and_then(profile_theme::name_fill);
+    let name = author_style::name_node(
+        view.display_name.to_string(),
+        TextVariant::TEXT_LG_BOLD,
+        22.0_f32,
+        name_fill.as_ref(),
+        view.name_color.unwrap_or(TEXT_DEFAULT),
+    )
+    .class(cls::DISPLAY_NAME);
     let mut name_row = StackProps::horizontal()
         .align(Align::Center)
         .full_width(false)

@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use super::wire::PresenceWire;
+use super::wire::{Activity, PresenceWire};
 use requiem_ui::signal::{Signal, signal};
 use requiem_ui::widget::primitives::PresenceStatus;
 
@@ -15,6 +15,7 @@ use crate::presence::CustomStatus;
 pub struct UserPresence {
     pub status: PresenceStatus,
     pub custom_status: Option<CustomStatus>,
+    pub activities: Vec<Activity>,
 }
 
 #[derive(Clone)]
@@ -34,6 +35,7 @@ fn parse(entry: &PresenceWire) -> (Id<UserMarker>, UserPresence) {
         UserPresence {
             status,
             custom_status,
+            activities: entry.activities.clone(),
         },
     )
 }
