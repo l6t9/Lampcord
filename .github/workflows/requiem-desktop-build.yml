@@ -48,14 +48,12 @@ jobs:
         include:
           - name: linux-x64
             os: ubuntu-24.04
-            target_dir: ${{ github.workspace }}/rust/target
+            # Relative to the workspace; made absolute for cargo below.
+            target_dir: rust/target
           - name: windows-x64
             os: windows-latest
             # Skia's clang-cl build fails once this path gets deep.
             target_dir: C:\t
-
-    env:
-      CARGO_TARGET_DIR: ${{ matrix.target_dir }}
 
     defaults:
       run:
@@ -71,6 +69,18 @@ jobs:
 
       - name: Check out repository
         uses: actions/checkout@v4
+
+      # cargo runs from rust/, so a relative target dir would land in rust/rust/target.
+      - name: Set cargo target dir
+        shell: bash
+        env:
+          TARGET_DIR: ${{ matrix.target_dir }}
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            echo "CARGO_TARGET_DIR=$TARGET_DIR" >> "$GITHUB_ENV"
+          else
+            echo "CARGO_TARGET_DIR=$GITHUB_WORKSPACE/$TARGET_DIR" >> "$GITHUB_ENV"
+          fi
 
       - name: Determine version
         id: version
