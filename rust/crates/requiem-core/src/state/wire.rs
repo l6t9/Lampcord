@@ -21,6 +21,24 @@ pub fn nullable<'de, D: Deserializer<'de>, T: Deserialize<'de> + Default>(
     Ok(Option::<T>::deserialize(deserializer)?.unwrap_or_default())
 }
 
+/// Discord sends snowflakes as numbers on the gateway and as strings in some
+/// REST payloads. An activity should never be dropped over the difference.
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum SnowflakeText {
+    Text(String),
+    Number(u64),
+}
+
+fn snowflake_text<'de, D: Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<String>, D::Error> {
+    Ok(Option::<SnowflakeText>::deserialize(deserializer)?.map(|value| match value {
+        SnowflakeText::Text(text) => text,
+        SnowflakeText::Number(number) => number.to_string(),
+    }))
+}
+
 fn present<'de, D: Deserializer<'de>, T: Deserialize<'de>>(
     deserializer: D,
 ) -> Result<Option<T>, D::Error> {
@@ -68,7 +86,7 @@ pub struct Activity {
     pub details: Option<String>,
     #[serde(default)]
     pub emoji: Option<ActivityEmoji>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "snowflake_text")]
     pub application_id: Option<String>,
     #[serde(default)]
     pub timestamps: Option<ActivityTimestamps>,
@@ -685,5 +703,25 @@ mod tests {
         assert_eq!(assets.large_image.as_deref(), Some("spotify:ab:cover"));
         assert_eq!(assets.small_image.as_deref(), Some("small"));
         assert_eq!(activity.party.unwrap().size, Some(vec![1, 4]));
+    }
+
+    #[test]
+    fn a_numeric_activity_application_id_is_kept_as_a_snowflake() {
+        let activity: Activity = serde_json::from_value(serde_json::json!({
+            "type": 0,
+            "name": "Your Only Move Is HUSTLE",
+            "application_id": 1_080_735_574_593_380_382u64,
+            "assets": { "large_image": "1080814736456826932" }
+        }))
+        .unwrap();
+
+        assert_eq!(
+            activity.application_id.as_deref(),
+            Some("1080735574593380382")
+        );
+        assert_eq!(
+            activity.assets.unwrap().large_image.as_deref(),
+            Some("1080814736456826932")
+        );
     }
 }
