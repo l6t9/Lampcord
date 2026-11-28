@@ -344,7 +344,7 @@ pub fn build(
                         });
                     })
                     .build()
-                    .children([chevron, name_node]);
+                    .children([name_node, chevron]);
                 let mut label_node = div()
                     .class(channel_sidebar::CATEGORY_LABEL)
                     .child(toggle);
