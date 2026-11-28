@@ -10,6 +10,7 @@ pub mod guilds;
 pub mod invites;
 pub mod messages;
 pub mod pins;
+pub mod profile_board;
 mod protobuf;
 pub mod reactions;
 pub mod read_states;

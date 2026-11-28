@@ -24,6 +24,7 @@ use requiem_ui::components::{
 };
 use requiem_ui::node::Node;
 use requiem_ui::signal::Signal;
+use requiem_ui::widget::primitives::ImageWidget;
 use requiem_ui::widget::primitives::PresenceStatus;
 use skia_safe::Color;
 use skia_safe::font_style::Weight;
@@ -273,6 +274,17 @@ fn role_fill(member: &ListedMember, roles: &[Role]) -> Option<author_style::Name
     author_style::role_fill(role)
 }
 
+fn nameplate_asset<'a>(member: &'a ListedMember) -> Option<&'a str> {
+    member
+        .member
+        .collectibles
+        .as_ref()
+        .and_then(|collectibles| collectibles.nameplate.as_ref())
+        .map(|nameplate| nameplate.asset.as_str())
+        .filter(|asset| !asset.is_empty())
+        .or_else(|| member.member.user.nameplate_asset())
+}
+
 #[allow(clippy::too_many_arguments)]
 fn member_row(
     member: &ListedMember,
@@ -288,7 +300,14 @@ fn member_row(
     let user = &member.member.user;
     let offline = member.status == PresenceStatus::Offline;
 
-    let mut avatar = ui::user_avatar_props(user.id, &user.discriminator, fonts);
+    let mut avatar =
+        ui::with_avatar_decoration(
+            ui::user_avatar_props(user.id, &user.discriminator, fonts),
+            user.avatar_decoration_asset(),
+            images,
+            backend,
+            32,
+        );
     if let Some(image) = user
         .avatar
         .as_deref()
@@ -367,7 +386,16 @@ fn member_row(
                 .class(line_clamp_class(1)),
         );
     }
-    let inner = div().class(cls::ROW_INNER).child(avatar_wrap).child(names);
+    let mut inner = div().class(cls::ROW_INNER);
+    if let Some(asset) = nameplate_asset(member).and_then(|asset| {
+        images.get_or_decode_image(&backend.nameplate_url(asset))
+    }) {
+        inner = inner.child(
+            Node::new("div", ImageWidget::new(Some(asset)).with_cover_centered())
+                .class(cls::NAMEPLATE),
+        );
+    }
+    inner = inner.child(avatar_wrap).child(names);
 
     let user_id = user.id;
     let status = member.status;

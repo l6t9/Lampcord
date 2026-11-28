@@ -1,4 +1,5 @@
 use crate::rest::endpoints::channels;
+use crate::ui::author_style;
 use crate::ui::classes::home as cls;
 use crate::ui::classes::message_list;
 use crate::ui::context_menu;
@@ -94,7 +95,13 @@ pub fn user_avatar(
     size: Option<AvatarStatusSize>,
     status: Option<PresenceStatus>,
 ) -> Node {
-    let mut props = ui::user_avatar_props(user.id, &user.discriminator, &env.fonts);
+    let mut props = ui::with_avatar_decoration(
+        ui::user_avatar_props(user.id, &user.discriminator, &env.fonts),
+        user.avatar_decoration_asset(),
+        &env.images,
+        &env.backend,
+        80,
+    );
     if let Some(hash) = user.avatar.as_deref() {
         let url = env.backend.avatar_url(user.id, hash);
         let images = env.images.clone();
@@ -374,13 +381,23 @@ fn dm_row(env: &HomeEnv, dm: &DmChannel, selected: bool) -> Node {
             } else {
                 TEXT_SUBTLE
             };
-            let mut text = div().class(cls::DM_TEXT).child(
-                TextProps::styled(dm_title(&env.state, &dm), TextVariant::TEXT_MD_MEDIUM)
-                    .color(name_color)
-                    .line_clamp(1_u32)
-                    .build()
-                    .class(cls::DM_NAME),
-            );
+            let name_fill = (!dm.is_group())
+                .then(|| {
+                    first.as_ref().and_then(|user| {
+                        author_style::display_name_fill(user.display_name_styles.as_ref())
+                    })
+                })
+                .flatten();
+            let name = author_style::name_node(
+                dm_title(&env.state, &dm),
+                TextVariant::TEXT_MD_MEDIUM,
+                20.0,
+                name_fill.as_ref(),
+                name_color,
+            )
+            .class(cls::DM_NAME)
+            .class(line_clamp_class(1));
+            let mut text = div().class(cls::DM_TEXT).child(name);
             if dm.is_group() {
                 text = text.child(
                     TextProps::styled(
@@ -393,7 +410,17 @@ fn dm_row(env: &HomeEnv, dm: &DmChannel, selected: bool) -> Node {
                     .class(cls::DM_SUBTEXT),
                 );
             }
-            let mut inner = div().class(cls::DM_ROW_INNER).child(avatar).child(text);
+            let nameplate = ui::profile_decorations::nameplate_node(
+                first.as_ref().and_then(|user| user.nameplate_asset()),
+                &env.images,
+                &env.backend,
+                cls::DM_NAMEPLATE,
+            );
+            let mut inner = div().class(cls::DM_ROW_INNER);
+            if let Some(nameplate) = nameplate {
+                inner = inner.child(nameplate);
+            }
+            inner = inner.child(avatar).child(text);
             if read.mentions > 0 {
                 inner = inner.child(div().class(cls::DM_BADGE).child(
                     components::number_badge(

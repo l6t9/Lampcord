@@ -129,10 +129,33 @@ impl BackendConfig {
         badge_hash: &str,
     ) -> String {
         format!(
-            "{}/clan-badges/{}/{}.png?size=16",
+            "{}/guild-tag-badges/{}/{}.png?size=32",
             self.cdn_base_url.trim_end_matches('/'),
             guild_id,
             badge_hash
+        )
+    }
+
+    pub fn nameplate_url(&self, asset: &str) -> String {
+        format!(
+            "{}/assets/collectibles/{}img.png?passthrough=true",
+            self.cdn_base_url.trim_end_matches('/'),
+            asset
+        )
+    }
+
+    pub fn avatar_decoration_url(&self, asset: &str, size: u32) -> String {
+        format!(
+            "{}/avatar-decoration-presets/{}.png?size={size}&passthrough=true",
+            self.cdn_base_url.trim_end_matches('/'),
+            asset
+        )
+    }
+
+    pub fn collectible_media_url(&self, sku: &str, layer: &str) -> String {
+        format!(
+            "{}/media/v1/collectibles-shop/{sku}/{layer}/static",
+            self.cdn_base_url.trim_end_matches('/')
         )
     }
 

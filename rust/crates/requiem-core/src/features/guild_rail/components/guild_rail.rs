@@ -246,6 +246,7 @@ fn guild_item(
                 status_cutout: None,
                 fallback_icon: None,
                 image_binding: None,
+                decoration: None,
             })
             .class(guild_rail::GUILD_ICON),
             None => {

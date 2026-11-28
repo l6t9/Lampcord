@@ -313,6 +313,9 @@ mod tests {
             bot: false,
             premium_type: None,
             primary_guild: None,
+            avatar_decoration_data: None,
+            collectibles: None,
+            display_name_styles: None,
         }
     }
 

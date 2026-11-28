@@ -24,6 +24,8 @@ use crate::ui::full_profile::FullProfileState;
 use crate::ui::message_list;
 use crate::ui::profile_card::CardContainer;
 use crate::ui::profile_card;
+use crate::ui::profile_decorations;
+use crate::ui::profile_theme;
 use crate::ui;
 use crate::utils::prefs;
 use crate::utils::time;
@@ -331,11 +333,19 @@ fn known_profile(users: &state::UserStore, user_id: Id<UserMarker>) -> UserProfi
             avatar: user.as_ref().and_then(|u| u.avatar.clone()),
             bot: user.as_ref().is_some_and(|u| u.bot),
             primary_guild: user.as_ref().and_then(|u| u.primary_guild.clone()),
+            avatar_decoration_data: user
+                .as_ref()
+                .and_then(|u| u.avatar_decoration_data.clone()),
+            collectibles: user.as_ref().and_then(|u| u.collectibles.clone()),
+            display_name_styles: user
+                .as_ref()
+                .and_then(|u| u.display_name_styles.clone()),
             banner: None,
             accent_color: None,
             bio: String::new(),
         },
         user_profile: None,
+        guild_member_profile: None,
         badges: Vec::new(),
         premium_type: None,
         mutual_guilds: None,
@@ -574,6 +584,10 @@ pub fn build(
         profile.user.avatar.as_deref().and_then(|hash| {
             images.get_or_decode_image(&backend.avatar_url(profile.user.id, hash))
         });
+    let avatar_decoration = profile.user.avatar_decoration_asset().and_then(|asset| {
+        images.get_or_decode_image(&backend.avatar_decoration_url(asset, 80))
+    });
+    let colors = profile_theme::resolve(&profile);
 
     let open_full_tab = {
         let state = state.clone();
@@ -816,17 +830,21 @@ pub fn build(
         pronouns,
         bio: &profile.user.bio,
         avatar: avatar_image,
+        avatar_decoration,
         banner_image,
         banner_color: banner_fallback,
-        theme: None,
-        name_color: None,
+        theme: colors.theme,
+        name_color: colors.name_color,
         status: Some(status),
         bot: profile.user.bot,
         badges_from: Some(&profile),
     };
+    let header_layers = profile_decorations::layers(queries, http, &profile, images, backend);
     let open_for_card = open_full.clone();
     let parts = profile_card::CardParts {
         open_profile: Some(Rc::new(move || open_for_card(false))),
+        header_layers,
+        background_layers: Vec::new(),
         name_suffix: vec![note_slot],
         header_extra,
         after_username,
@@ -1045,6 +1063,9 @@ pub fn build_webhook(
         .avatar
         .as_deref()
         .and_then(|hash| images.get_or_decode_image(&backend.avatar_url(author.id, hash)));
+    let avatar_decoration = author.avatar_decoration_asset().and_then(|asset| {
+        images.get_or_decode_image(&backend.avatar_decoration_url(asset, 80))
+    });
     let banner = banner_color(
         author.id,
         &author.discriminator,
@@ -1065,6 +1086,7 @@ pub fn build_webhook(
         pronouns: "",
         bio: "",
         avatar,
+        avatar_decoration,
         banner_image: None,
         banner_color: banner,
         theme: None,

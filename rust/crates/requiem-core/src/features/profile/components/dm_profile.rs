@@ -1,3 +1,4 @@
+use crate::ui;
 use crate::ui::classes::member_list as member_list_cls;
 use crate::ui::classes::dm_profile as cls;
 use crate::models;
@@ -65,7 +66,11 @@ pub fn build(
             images.get_or_decode_image(&backend.banner_url(profile.user.id, hash))
         });
     let banner = match banner_image {
-        Some(image) => Node::new("div", ImageWidget::new(Some(image))).class(cls::BANNER),
+        Some(image) => Node::new(
+            "div",
+            ImageWidget::new(Some(image)).with_cover_centered(),
+        )
+        .class(cls::BANNER),
         None => {
             let color = banner_color(
                 profile.user.id,
@@ -79,7 +84,13 @@ pub fn build(
         }
     };
 
-    let mut avatar_props = user_avatar_props(profile.user.id, &profile.user.discriminator, fonts);
+    let mut avatar_props = ui::with_avatar_decoration(
+        user_avatar_props(profile.user.id, &profile.user.discriminator, fonts),
+        profile.user.avatar_decoration_asset(),
+        images,
+        backend,
+        80,
+    );
     if let Some(image) = profile
         .user
         .avatar

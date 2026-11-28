@@ -3,6 +3,9 @@ use std::collections;
 
 use super::id::Id;
 use super::id::marker::{GuildMarker, RoleMarker, UserMarker};
+use super::user::{
+    AvatarDecorationData, CollectibleRef, Collectibles, DisplayNameStyles, ProfileEffectRef,
+};
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct UserProfile {
@@ -22,6 +25,9 @@ pub struct UserProfile {
 
     #[serde(default)]
     pub guild_member: Option<ProfileGuildMember>,
+
+    #[serde(default)]
+    pub guild_member_profile: Option<ProfileMeta>,
 
     #[serde(default)]
     pub connected_accounts: Vec<ConnectedAccount>,
@@ -61,6 +67,12 @@ pub struct ProfileUser {
     pub bot: bool,
     #[serde(default)]
     pub primary_guild: Option<super::user::PrimaryGuild>,
+    #[serde(default, rename = "avatar_decoration_data")]
+    pub avatar_decoration_data: Option<AvatarDecorationData>,
+    #[serde(default)]
+    pub collectibles: Option<Collectibles>,
+    #[serde(default, rename = "display_name_styles")]
+    pub display_name_styles: Option<DisplayNameStyles>,
 
     #[serde(default)]
     pub banner: Option<String>,
@@ -79,6 +91,15 @@ pub struct ProfileMeta {
 
     #[serde(default)]
     pub theme_colors: Option<Vec<i64>>,
+
+    #[serde(default, rename = "display_name_styles")]
+    pub display_name_styles: Option<DisplayNameStyles>,
+    #[serde(default, rename = "profile_effect")]
+    pub profile_effect: Option<ProfileEffectRef>,
+    #[serde(default, rename = "profile_frame")]
+    pub profile_frame: Option<ProfileEffectRef>,
+    #[serde(default)]
+    pub collectibles: Option<Vec<CollectibleRef>>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -119,6 +140,36 @@ pub struct ProfileGuildMember {
     pub joined_at: Option<String>,
     #[serde(default)]
     pub nick: Option<String>,
+    #[serde(default, rename = "avatar_decoration_data")]
+    pub avatar_decoration_data: Option<AvatarDecorationData>,
+    #[serde(default)]
+    pub collectibles: Option<Collectibles>,
+    #[serde(default, rename = "display_name_styles")]
+    pub display_name_styles: Option<DisplayNameStyles>,
+}
+
+impl ProfileUser {
+    pub fn nameplate_asset(&self) -> Option<&str> {
+        let asset = self.collectibles.as_ref()?.nameplate.as_ref()?.asset.as_str();
+        (!asset.is_empty()).then_some(asset)
+    }
+
+    pub fn avatar_decoration_asset(&self) -> Option<&str> {
+        self.avatar_decoration_data
+            .as_ref()
+            .map(|data| data.asset.as_str())
+            .filter(|asset| !asset.is_empty())
+            .or_else(|| {
+                let asset = self
+                    .collectibles
+                    .as_ref()?
+                    .avatar_decoration
+                    .as_ref()?
+                    .asset
+                    .as_str();
+                (!asset.is_empty()).then_some(asset)
+            })
+    }
 }
 
 fn default_discriminator() -> String {

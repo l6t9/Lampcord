@@ -5,6 +5,56 @@ use super::id::{
     marker::{GuildMarker, UserMarker},
 };
 
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct AvatarDecorationData {
+    #[serde(default)]
+    pub asset: String,
+    #[serde(default, rename = "sku_id")]
+    pub sku_id: Option<String>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct Nameplate {
+    #[serde(default)]
+    pub asset: String,
+    #[serde(default)]
+    pub palette: Option<String>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct Collectibles {
+    #[serde(default)]
+    pub nameplate: Option<Nameplate>,
+    #[serde(default, rename = "avatar_decoration")]
+    pub avatar_decoration: Option<AvatarDecorationData>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct DisplayNameStyles {
+    #[serde(default, rename = "font_id")]
+    pub font_id: Option<u64>,
+    #[serde(default, rename = "effect_id")]
+    pub effect_id: Option<u64>,
+    #[serde(default)]
+    pub colors: Option<Vec<i64>>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct ProfileEffectRef {
+    #[serde(default, rename = "sku_id")]
+    pub sku_id: Option<String>,
+    #[serde(default, rename = "expires_at")]
+    pub expires_at: Option<i64>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct CollectibleRef {
+    #[serde(rename = "type")]
+    pub kind: Option<u8>,
+    #[serde(default, rename = "sku_id")]
+    pub sku_id: Option<String>,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct User {
     pub id: Id<UserMarker>,
@@ -12,6 +62,13 @@ pub struct User {
     pub discriminator: String,
     pub global_name: Option<String>,
     pub avatar: Option<String>,
+
+    #[serde(default, rename = "avatar_decoration_data")]
+    pub avatar_decoration_data: Option<AvatarDecorationData>,
+    #[serde(default)]
+    pub collectibles: Option<Collectibles>,
+    #[serde(default, rename = "display_name_styles")]
+    pub display_name_styles: Option<DisplayNameStyles>,
 
     #[serde(default)]
     pub email: Option<String>,
@@ -39,13 +96,37 @@ impl User {
             .or_else(|| self.global_name.clone())
             .unwrap_or_else(|| self.username.clone())
     }
+
+    pub fn nameplate_asset(&self) -> Option<&str> {
+        let asset = self.collectibles.as_ref()?.nameplate.as_ref()?.asset.as_str();
+        (!asset.is_empty()).then_some(asset)
+    }
+
+    pub fn avatar_decoration_asset(&self) -> Option<&str> {
+        self.avatar_decoration_data
+            .as_ref()
+            .map(|data| data.asset.as_str())
+            .filter(|asset| !asset.is_empty())
+            .or_else(|| {
+                let asset = self
+                    .collectibles
+                    .as_ref()?
+                    .avatar_decoration
+                    .as_ref()?
+                    .asset
+                    .as_str();
+                (!asset.is_empty()).then_some(asset)
+            })
+    }
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PrimaryGuild {
     #[serde(default)]
     pub identity_enabled: Option<bool>,
-    #[serde(default)]
+    #[serde(default, rename = "guild_id")]
+    pub guild_id: Option<Id<GuildMarker>>,
+    #[serde(default, rename = "identity_guild_id")]
     pub identity_guild_id: Option<Id<GuildMarker>>,
     #[serde(default)]
     pub tag: Option<String>,
@@ -59,7 +140,7 @@ impl PrimaryGuild {
             return None;
         }
         Some((
-            self.identity_guild_id?,
+            self.identity_guild_id.or(self.guild_id)?,
             self.tag.as_deref().filter(|t| !t.is_empty())?,
             self.badge.as_deref().filter(|b| !b.is_empty()),
         ))

@@ -114,12 +114,22 @@ pub struct ReplyTo {
     pub pings: bool,
 }
 
+/// Identifies the message being forwarded, including the guild it came from when applicable.
+#[derive(Debug, Clone, Copy)]
+pub struct ForwardSource {
+    pub message_id: Id<MessageMarker>,
+    pub channel_id: Id<ChannelMarker>,
+    pub guild_id: Option<Id<GuildMarker>>,
+}
+
 #[derive(Serialize)]
 struct MessageReferencePayload {
     #[serde(skip_serializing_if = "Option::is_none")]
     guild_id: Option<String>,
     channel_id: String,
     message_id: String,
+    #[serde(rename = "type", skip_serializing_if = "Option::is_none")]
+    kind: Option<u8>,
 }
 
 #[derive(Serialize)]
@@ -160,6 +170,7 @@ impl<'a> SendBody<'a> {
                 guild_id: r.guild_id.map(|g| g.to_string()),
                 channel_id: r.channel_id.to_string(),
                 message_id: r.message_id.to_string(),
+                kind: None,
             }),
             allowed_mentions: reply.filter(|r| !r.pings).map(|_| AllowedMentionsPayload {
                 parse: ["users", "roles", "everyone"],
@@ -167,6 +178,30 @@ impl<'a> SendBody<'a> {
             }),
             flags: 0,
             attachments,
+        }
+    }
+
+    /// Discord forwards are a message with `message_reference.type == 1`, not a reply.
+    /// `content` is the optional comment the user added in the forward dialog.
+    pub fn forward(
+        content: &'a str,
+        nonce: &'a str,
+        source: ForwardSource,
+    ) -> Self {
+        Self {
+            mobile_network_type: "unknown",
+            content,
+            nonce,
+            tts: false,
+            message_reference: Some(MessageReferencePayload {
+                guild_id: source.guild_id.map(|g| g.to_string()),
+                channel_id: source.channel_id.to_string(),
+                message_id: source.message_id.to_string(),
+                kind: Some(1),
+            }),
+            allowed_mentions: None,
+            flags: 0,
+            attachments: None,
         }
     }
 }
@@ -212,6 +247,8 @@ pub mod send_location {
     pub const USER_PROFILE: &str = "user_profile";
 
     pub const INVITE_SUGGESTION: &str = "Guild Create Invite Suggestion";
+
+    pub const FORWARD: &str = "forward";
 }
 
 pub async fn send_reply_from(
@@ -233,6 +270,31 @@ pub async fn send_reply_from(
                 retries: 3,
                 requeue_on_429: true,
                 ..RequestExtras::context(location)
+            },
+        )
+        .await?;
+    Ok(response.json().await?)
+}
+
+/// Sends a Discord forward. This intentionally bypasses `plugins::before_send`: that hook
+/// rewrites ordinary outgoing drafts as replies, while a forward already carries its own
+/// `message_reference` with `type = 1`.
+pub async fn send_forward(
+    http: &HttpClient,
+    channel_id: Id<ChannelMarker>,
+    source: ForwardSource,
+) -> Result<Message, RestError> {
+    let nonce = new_nonce();
+    let response = http
+        .request_with(
+            "POST /channels/:id/messages",
+            wreq::Method::POST,
+            &format!("/channels/{channel_id}/messages"),
+            Some(&SendBody::forward("", &nonce, source)),
+            &RequestExtras {
+                retries: 3,
+                requeue_on_429: true,
+                ..RequestExtras::context(send_location::FORWARD)
             },
         )
         .await?;
@@ -340,6 +402,27 @@ mod tests {
         assert_eq!(
             serde_json::to_string(&SendBody::new("hi", "1", Some(&pinging), None)).unwrap(),
             r#"{"mobile_network_type":"unknown","content":"hi","nonce":"1","tts":false,"message_reference":{"channel_id":"9","message_id":"7"},"flags":0}"#
+        );
+    }
+
+    #[test]
+    fn a_forward_is_a_typed_message_reference_not_a_reply() {
+        let source = ForwardSource {
+            message_id: Id::new(7),
+            channel_id: Id::new(9),
+            guild_id: Some(Id::new(3)),
+        };
+        assert_eq!(
+            serde_json::to_string(&SendBody::forward("", "1", source)).unwrap(),
+            r#"{"mobile_network_type":"unknown","content":"","nonce":"1","tts":false,"message_reference":{"guild_id":"3","channel_id":"9","message_id":"7","type":1},"flags":0}"#
+        );
+        assert_eq!(
+            serde_json::to_string(&SendBody::forward("", "2", ForwardSource {
+                guild_id: None,
+                ..source
+            }))
+            .unwrap(),
+            r#"{"mobile_network_type":"unknown","content":"","nonce":"2","tts":false,"message_reference":{"channel_id":"9","message_id":"7","type":1},"flags":0}"#
         );
     }
 

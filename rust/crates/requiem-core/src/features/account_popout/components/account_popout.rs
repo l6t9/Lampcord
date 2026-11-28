@@ -1,6 +1,8 @@
 use crate::ui::classes::account_popout as cls;
 use crate::ui::profile_card::CardContainer;
 use crate::ui::profile_card;
+use crate::ui::profile_decorations;
+use crate::ui::profile_theme;
 use crate::ui::profile_popout::ProfileSurface;
 use crate::ui::profile_popout;
 use requiem_ui::components::ButtonVariant;
@@ -167,6 +169,15 @@ pub fn build(
         .avatar
         .as_deref()
         .and_then(|hash| images.get_or_decode_image(&backend.avatar_url(user.id, hash)));
+    let avatar_decoration = profile
+        .as_ref()
+        .and_then(|p| p.user.avatar_decoration_asset())
+        .or_else(|| user.avatar_decoration_asset())
+        .and_then(|asset| images.get_or_decode_image(&backend.avatar_decoration_url(asset, 80)));
+    let colors = profile
+        .as_deref()
+        .map(profile_theme::resolve)
+        .unwrap_or_default();
     let view_full_profile = {
         let (ui, on_view) = (ui.clone(), ui.on_view_full_profile.clone());
         Rc::new(move || {
@@ -282,10 +293,11 @@ pub fn build(
         pronouns: &pronouns,
         bio: &bio,
         avatar: avatar_image,
+        avatar_decoration,
         banner_image,
         banner_color: banner_fallback,
-        theme: None,
-        name_color: None,
+        theme: colors.theme,
+        name_color: colors.name_color,
         status: Some(status.indicator()),
         bot: false,
         badges_from: profile.as_deref(),
@@ -296,9 +308,27 @@ pub fn build(
         .build()
         .child(card_status)
         .child(card_accounts);
+    let header_layers = profile
+        .as_deref()
+        .map(|profile| profile_decorations::layers(queries, http, profile, images, backend))
+        .unwrap_or_default();
+    let nameplate_asset = profile
+        .as_ref()
+        .and_then(|profile| profile.user.nameplate_asset())
+        .or_else(|| user.nameplate_asset());
+    let background_layers = profile_decorations::nameplate_node(
+        nameplate_asset,
+        images,
+        backend,
+        crate::ui::classes::profile_popout::NAMEPLATE_BACKDROP,
+    )
+    .into_iter()
+    .collect();
     let parts = profile_card::CardParts {
         open_profile: Some(view_full_profile.clone()),
         name_suffix: vec![copy],
+        header_layers,
+        background_layers,
         after_bio: vec![menus],
         roomy_body: true,
         ..Default::default()

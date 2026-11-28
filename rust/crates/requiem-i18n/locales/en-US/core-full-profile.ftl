@@ -66,3 +66,16 @@ full-profile-explore-feature-guide = Explore feature guide
 full-profile-cancel = Cancel
 
 full-profile-load-partial = Unable to load parts of profile
+
+full-profile-board-loading = Loading profile board…
+full-profile-board-error = Could not load this profile’s board.
+full-profile-board-empty = This profile has not set up a board.
+full-profile-board-unavailable = Profile board is unavailable.
+full-profile-board-retry = Try again
+full-profile-board-title = Board
+full-profile-board-playing = Playing
+full-profile-board-recently-played = Recently Played
+full-profile-board-favorites = Favorites
+full-profile-board-want-to-play = Want to Play
+full-profile-board-application = Application
+full-profile-board-application-unavailable = This application widget is unavailable.

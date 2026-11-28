@@ -111,12 +111,22 @@
   width: 100%;
   height: 42px;
   flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
   display: flex;
   flex-direction: row;
   align-items: center;
   padding-left: 8px;
   padding-right: 8px;
   border-radius: var(--radius-sm);
+}
+
+.dm-nameplate {
+  position: absolute;
+  inset: 0px;
+  z-index: 0;
+  opacity: 0.4;
+  pointer-events: none;
 }
 
 .dm-row:hover,

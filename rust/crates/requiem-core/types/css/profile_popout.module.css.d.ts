@@ -66,6 +66,8 @@ declare module "*/profile_popout.module.css" {
     readonly mutualLink: string;
     readonly "mutual-text": string;
     readonly mutualText: string;
+    readonly "nameplate-backdrop": string;
+    readonly nameplateBackdrop: string;
     readonly "note-btn": string;
     readonly noteBtn: string;
     readonly "note-hidden": string;
@@ -77,6 +79,10 @@ declare module "*/profile_popout.module.css" {
     readonly "panel": string;
     readonly "panel-inline": string;
     readonly panelInline: string;
+    readonly "profile-effect": string;
+    readonly profileEffect: string;
+    readonly "profile-frame-layer": string;
+    readonly profileFrameLayer: string;
     readonly "role-chip": string;
     readonly roleChip: string;
     readonly "role-chip-dot": string;

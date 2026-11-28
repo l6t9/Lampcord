@@ -3,6 +3,7 @@ use crate::rest::endpoints::reactions as endpoints_reactions;
 use crate::ui::classes::message_list;
 use crate::ui::classes::message_list as cls;
 use crate::ui::context_menus;
+use crate::ui::forward;
 use crate::ui::message_edit;
 use crate::ui::pins;
 use crate::ui::reactions;
@@ -248,10 +249,11 @@ fn build(env: &MenuEnv, target: &Rc<MessageTarget>) -> Node {
             })),
         ));
     }
+    let forward_message = target.message.clone();
     bar = bar.child(button(
         &requiem_i18n::t!("message-toolbar-forward"),
         glyph(ARROW_ANGLE_RIGHT_UP),
-        None,
+        Some(Rc::new(move || forward::open(forward_message.clone()))),
     ));
 
     if expanded && can_delete {

@@ -277,6 +277,21 @@ pub async fn list_catalog(http: &HttpClient) -> Result<Vec<CatalogItem>, RestErr
     }
 }
 
+/// Fetch a collectible product definition so profile effects and frames can be rendered.
+pub async fn get_collectible_product(
+    http: &HttpClient,
+    sku: &str,
+) -> Result<serde_json::Value, RestError> {
+    let response = http
+        .request(
+            "GET /collectibles-products/:id",
+            wreq::Method::GET,
+            &format!("/collectibles-products/{sku}"),
+        )
+        .await?;
+    Ok(response.json().await?)
+}
+
 #[cfg(test)]
 mod profile_view_tests {
     use super::*;

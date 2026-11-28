@@ -10,6 +10,7 @@ pub mod create_guild;
 pub mod custom_status;
 pub mod devtools;
 pub mod emoji;
+pub mod forward;
 pub mod gif_picker;
 pub mod guild_rail;
 pub mod guild_settings;

@@ -12,6 +12,7 @@ use crate::ui::attachments;
 use crate::ui::classes::voice_users as classes_voice_users;
 use crate::ui::create_channel;
 use crate::ui::emoji_skin;
+use crate::ui::forward;
 use crate::ui::guild_settings;
 use crate::ui::invite_modal::location;
 use crate::ui::invite_modal;
@@ -119,6 +120,7 @@ pub struct MessageTarget {
     pub author_id: Id<UserMarker>,
     pub author_name: String,
     pub content: String,
+    pub message: models::Message,
 
     pub my_reactions: Vec<models::ReactionEmoji>,
 }
@@ -206,6 +208,7 @@ pub fn message_items(env: &MenuEnv, target: &MessageTarget) -> Vec<ContextItem> 
         author_id: target.author_id,
         author_name: target.author_name.clone(),
         content: String::new(),
+        message: target.message.clone(),
         my_reactions: Vec::new(),
     });
     if permissions.contains(Permissions::SEND_MESSAGES) {
@@ -217,10 +220,13 @@ pub fn message_items(env: &MenuEnv, target: &MessageTarget) -> Vec<ContextItem> 
             .icon(icons::ARROW_ANGLE_LEFT_UP),
         );
     }
+    let forward_message = target.message.clone();
     items.push(
-        ContextItem::unavailable(requiem_i18n::t!("context-menus-forward"))
-            .icon_position(IconPosition::Leading)
-            .icon(icons::ARROW_ANGLE_RIGHT_UP),
+        ContextItem::action(requiem_i18n::t!("context-menus-forward"), move || {
+            forward::open(forward_message.clone())
+        })
+        .icon_position(IconPosition::Leading)
+        .icon(icons::ARROW_ANGLE_RIGHT_UP),
     );
     if let Some(guild_id) = guild_id {
         items.push(

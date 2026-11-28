@@ -8,7 +8,10 @@ use std::fmt as std_fmt;
 use crate::models::id::marker::{
     ChannelMarker, EmojiMarker, GuildMarker, MessageMarker, RoleMarker, UserMarker,
 };
-use crate::models::{Channel, GuildMember, Id, PermissionOverwrite, User};
+use crate::models::{
+    Channel, GuildMember, Id, PermissionOverwrite, User,
+    user::{AvatarDecorationData, Collectibles, DisplayNameStyles},
+};
 
 use super::dm_store::DmChannel;
 
@@ -231,6 +234,12 @@ pub struct MemberItem {
     pub roles: Vec<Id<RoleMarker>>,
     #[serde(default)]
     pub presence: Option<MemberPresence>,
+    #[serde(default, rename = "avatar_decoration_data")]
+    pub avatar_decoration_data: Option<AvatarDecorationData>,
+    #[serde(default)]
+    pub collectibles: Option<Collectibles>,
+    #[serde(default, rename = "display_name_styles")]
+    pub display_name_styles: Option<DisplayNameStyles>,
 }
 
 impl MemberItem {
@@ -239,6 +248,9 @@ impl MemberItem {
             user: self.user.clone(),
             nick: self.nick.clone(),
             roles: self.roles.clone(),
+            avatar_decoration_data: self.avatar_decoration_data.clone(),
+            collectibles: self.collectibles.clone(),
+            display_name_styles: self.display_name_styles.clone(),
         }
     }
 }

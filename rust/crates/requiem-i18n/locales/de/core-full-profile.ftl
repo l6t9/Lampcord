@@ -45,3 +45,16 @@ full-profile-want-to-play = Möchte spielen
 full-profile-wishlist = Wunschliste
 full-profile-you-can-unhide-past-messages-if = Wenn du möchtest, kannst du vergangene Nachrichten wieder einblenden
 full-profile-you-don-t-have-any-activity = Du hast hier keine Aktivität
+
+full-profile-board-loading = Profilbrett wird geladen…
+full-profile-board-error = Das Profilbrett konnte nicht geladen werden.
+full-profile-board-empty = Dieses Profil hat noch kein Brett eingerichtet.
+full-profile-board-unavailable = Profilbrett ist nicht verfügbar.
+full-profile-board-retry = Erneut versuchen
+full-profile-board-title = Brett
+full-profile-board-playing = Wird gespielt
+full-profile-board-recently-played = Kürzlich gespielt
+full-profile-board-favorites = Favoriten
+full-profile-board-want-to-play = Möchte ich spielen
+full-profile-board-application = Anwendung
+full-profile-board-application-unavailable = Dieses Anwendungs-Widget ist nicht verfügbar.

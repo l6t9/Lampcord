@@ -38,6 +38,9 @@ fn same_identity(a: &User, b: &User) -> bool {
         && a.avatar == b.avatar
         && a.discriminator == b.discriminator
         && a.bot == b.bot
+        && a.avatar_decoration_data == b.avatar_decoration_data
+        && a.collectibles == b.collectibles
+        && a.display_name_styles == b.display_name_styles
 }
 
 impl Default for UserStore {
@@ -121,6 +124,18 @@ impl UserStore {
                             .primary_guild
                             .clone()
                             .or_else(|| entry.user.primary_guild.take());
+                        entry.user.avatar_decoration_data = user
+                            .avatar_decoration_data
+                            .clone()
+                            .or_else(|| entry.user.avatar_decoration_data.take());
+                        entry.user.collectibles = user
+                            .collectibles
+                            .clone()
+                            .or_else(|| entry.user.collectibles.take());
+                        entry.user.display_name_styles = user
+                            .display_name_styles
+                            .clone()
+                            .or_else(|| entry.user.display_name_styles.take());
                     } else if !is_placeholder(user) {
                         let merged = User {
                             global_name: user
@@ -190,6 +205,9 @@ impl UserStore {
             bot: profile.bot,
             premium_type: None,
             primary_guild: profile.primary_guild.clone(),
+            avatar_decoration_data: profile.avatar_decoration_data.clone(),
+            collectibles: profile.collectibles.clone(),
+            display_name_styles: profile.display_name_styles.clone(),
         });
     }
 
@@ -308,6 +326,9 @@ mod tests {
             bot: false,
             premium_type: None,
             primary_guild: None,
+            avatar_decoration_data: None,
+            collectibles: None,
+            display_name_styles: None,
         }
     }
 

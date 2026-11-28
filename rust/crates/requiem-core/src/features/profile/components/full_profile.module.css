@@ -352,6 +352,115 @@
   color: var(--text-default);
 }
 
+.board-section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.board-section-title {
+  color: var(--text-strong);
+}
+
+.board-card {
+  width: 320px;
+  min-height: 138px;
+  display: flex;
+  flex-direction: row;
+  gap: 14px;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background-color: var(--background-mod-subtle);
+  box-shadow: 0px 3px 12px 0px #00000029;
+}
+
+.board-cover {
+  width: 92px;
+  height: 114px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+}
+
+.board-cover-placeholder {
+  width: 92px;
+  height: 114px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, var(--background-mod-strong), var(--background-mod-subtle));
+}
+
+.board-copy {
+  flex-grow: 1;
+  min-width: 0px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.board-card-title {
+  color: var(--text-strong);
+}
+
+.board-card-subtitle {
+  color: var(--text-default);
+}
+
+.board-card-tags {
+  color: var(--text-muted);
+}
+
+.board-app-card {
+  position: relative;
+  width: 100%;
+  min-height: 190px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background-color: var(--background-mod-subtle);
+}
+
+.board-app-image,
+.board-app-image-placeholder {
+  position: absolute;
+  inset: 0px;
+  width: 100%;
+  height: 100%;
+}
+
+.board-app-image-placeholder {
+  background: linear-gradient(135deg, var(--background-mod-strong), var(--background-mod-subtle));
+  opacity: 0.5;
+}
+
+.board-app-overlay {
+  position: absolute;
+  inset: 0px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 16px;
+  background: linear-gradient(0deg, #000000cc, #00000000);
+}
+
+.board-app-icon,
+.board-app-icon-placeholder {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+}
+
+.board-app-icon-placeholder {
+  background-color: var(--background-mod-strong);
+}
+
+.board-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .list {
   flex-grow: 1;
   min-height: 0px;

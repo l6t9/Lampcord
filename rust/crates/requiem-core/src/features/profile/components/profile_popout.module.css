@@ -505,3 +505,27 @@
   padding-top: 12px;
   padding-bottom: 16px;
 }
+
+.profile-effect {
+  position: absolute;
+  inset: 0px;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.85;
+}
+
+.profile-frame-layer {
+  position: absolute;
+  inset: 0px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.nameplate-backdrop {
+  position: absolute;
+  inset: 0px;
+  z-index: 0;
+  border-radius: inherit;
+  opacity: 0.4;
+  pointer-events: none;
+}

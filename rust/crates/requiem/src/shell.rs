@@ -30,6 +30,7 @@ use requiem_core::ui::loading_screen;
 use requiem_core::ui::media_viewer;
 use requiem_core::ui::member_list;
 use requiem_core::ui::message_confirm;
+use requiem_core::ui::forward;
 use requiem_core::ui::message_list as ui_message_list;
 use requiem_core::ui::message_list::ChatColors;
 use requiem_core::ui::message_list::header_icon_button;
@@ -1514,6 +1515,7 @@ fn register_modal_probes(state: &AppState, signals: &RootSignals) {
     register("custom-status", move || {
         s.account_popout.custom_status.open.get()
     });
+    register("forward", forward::toggle);
 }
 
 /// Mounts the feature overlays that share the quick switcher's view of the home screen.
@@ -1549,6 +1551,11 @@ fn mount_feature_overlays(
         home_factory.clone(),
     ));
     effects.push(new_message::mount(
+        tree,
+        root,
+        home_factory.clone(),
+    ));
+    effects.push(forward::mount(
         tree,
         root,
         home_factory.clone(),

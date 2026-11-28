@@ -32,3 +32,9 @@ message-list-mark-as-read = Mark as Read
 message-list-mention-everyone = Notify everyone who has permission to view this channel.
 message-list-mention-here = Notify everyone online who has permission to view this channel.
 message-list-mention-role = Notify users with this role who have permission to view this channel.
+
+message-list-forwarded = Forwarded
+message-list-forwarded-from = from
+message-list-forwarded-unknown-channel = an earlier channel
+message-list-forwarded-message = Forwarded message
+message-list-forwarded-stickers = Stickers: { $names }

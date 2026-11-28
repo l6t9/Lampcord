@@ -25,11 +25,13 @@ pub use crate::features::messages::{
     attachments, join_message, message_components, message_confirm, message_edit, message_embed, message_keys,
     message_list, message_toolbar, pending_uploads, pins, reactions, reply,
 };
+pub use crate::features::forward::components::forward;
 pub use crate::features::new_message;
 pub use crate::features::playground;
 pub use crate::features::plugins::{plugin_install, plugin_modal, plugin_parts, plugin_view};
 pub use crate::features::profile::{
-    dm_profile, full_profile, profile_card, profile_image, profile_popout,
+    dm_profile, full_profile, profile_card, profile_decorations, profile_image, profile_popout,
+    profile_theme,
 };
 pub use crate::features::quick_switcher;
 pub use crate::features::search::{search, search_art, search_filters, search_state};
@@ -794,6 +796,22 @@ pub fn user_avatar_props(
         .fallback_icon(DEFAULT_AVATAR_ICON)
         .typeface(fonts.typeface.clone())
         .shape(AvatarShape::Circle)
+}
+
+pub fn with_avatar_decoration(
+    mut props: AvatarProps,
+    asset: Option<&str>,
+    images: &ImageCache,
+    backend: &BackendConfig,
+    size: u32,
+) -> AvatarProps {
+    if let Some(asset) = asset {
+        if let Some(image) = images.get_or_decode_image(&backend.avatar_decoration_url(asset, size))
+        {
+            props = props.decoration(image);
+        }
+    }
+    props
 }
 
 #[cfg(test)]

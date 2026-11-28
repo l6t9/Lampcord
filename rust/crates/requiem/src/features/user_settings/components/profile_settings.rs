@@ -899,6 +899,7 @@ fn build_preview(draft: &ProfileDraft, data: &PreviewData, per_server: bool, sam
         pronouns: &draft.pronouns,
         bio: &draft.bio,
         avatar,
+        avatar_decoration: None,
         banner_image,
         banner_color,
         theme: theme.map(|(p, a)| (rgb(p), rgb(a))),

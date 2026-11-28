@@ -46,6 +46,8 @@ declare module "*/home.module.css" {
     readonly dmHeaderText: string;
     readonly "dm-name": string;
     readonly dmName: string;
+    readonly "dm-nameplate": string;
+    readonly dmNameplate: string;
     readonly "dm-row": string;
     readonly dmRow: string;
     readonly "dm-row-inner": string;

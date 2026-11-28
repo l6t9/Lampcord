@@ -13,6 +13,7 @@ declare module "*/member_list.module.css" {
     readonly "name": string;
     readonly "name-row": string;
     readonly nameRow: string;
+    readonly "nameplate": string;
     readonly "names": string;
     readonly "owner-icon": string;
     readonly ownerIcon: string;

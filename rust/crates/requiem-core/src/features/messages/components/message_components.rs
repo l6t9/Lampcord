@@ -51,7 +51,28 @@ pub fn cards(
     viewer: Option<&ViewerLink>,
     measure_cache: Option<&Rc<MeasureCache>>,
 ) -> Option<Node> {
-    if message.components.is_empty() {
+    cards_for(
+        &message.components,
+        message.id.get() ^ (1 << 60),
+        images,
+        backend,
+        tick,
+        viewer,
+        measure_cache,
+    )
+}
+
+/// Render components from a message snapshot with a caller-provided cache key.
+pub fn cards_for(
+    components: &[Component],
+    key: u64,
+    images: &ImageCache,
+    backend: &BackendConfig,
+    tick: &Signal<u64>,
+    viewer: Option<&ViewerLink>,
+    measure_cache: Option<&Rc<MeasureCache>>,
+) -> Option<Node> {
+    if components.is_empty() {
         return None;
     }
     let ctx = Ctx {
@@ -60,11 +81,10 @@ pub fn cards(
         tick,
         viewer,
         measure_cache,
-        key: message.id.get() ^ (1 << 60),
+        key,
         width: Cell::new(cap_width(GALLERY_WIDTH)),
     };
-    let nodes: Vec<Node> = message
-        .components
+    let nodes: Vec<Node> = components
         .iter()
         .enumerate()
         .filter_map(|(index, component)| node(component, &ctx, index as u64 + 1))

@@ -32,3 +32,9 @@ message-list-mark-as-read = Als gelesen markieren
 message-list-mention-everyone = Benachrichtige alle, die diesen Kanal sehen dürfen.
 message-list-mention-here = Benachrichtige alle, die online sind und diesen Kanal sehen dürfen.
 message-list-mention-role = Benachrichtige Mitglieder mit dieser Rolle, die diesen Kanal sehen dürfen.
+
+message-list-forwarded = Weitergeleitet
+message-list-forwarded-from = von
+message-list-forwarded-unknown-channel = einem früheren Kanal
+message-list-forwarded-message = Weitergeleitete Nachricht
+message-list-forwarded-stickers = Sticker: { $names }

@@ -7,7 +7,7 @@ use std::sync;
 use super::embed::{Attachment, Embed};
 use super::id::{
     Id,
-    marker::{ChannelMarker, MessageMarker},
+    marker::{ChannelMarker, GuildMarker, MessageMarker},
 };
 use super::user::User;
 
@@ -15,6 +15,8 @@ use super::user::User;
 pub struct Message {
     pub id: Id<MessageMarker>,
     pub channel_id: Id<ChannelMarker>,
+    #[serde(default)]
+    pub guild_id: Option<Id<GuildMarker>>,
     pub author: User,
     pub content: String,
     pub timestamp: String,
@@ -41,7 +43,14 @@ pub struct Message {
     pub attachments: Vec<Attachment>,
 
     #[serde(default)]
+    pub sticker_items: Vec<StickerItem>,
+
+    #[serde(default)]
     pub components: Vec<super::Component>,
+
+    /// Discord includes the forwarded message here. Only the first snapshot is rendered.
+    #[serde(default)]
+    pub message_snapshots: Vec<MessageSnapshot>,
 
     #[serde(default)]
     pub nonce: Option<serde_json::Value>,
@@ -152,11 +161,95 @@ pub struct MessageReference {
     pub message_id: Option<Id<MessageMarker>>,
     #[serde(default)]
     pub channel_id: Option<Id<ChannelMarker>>,
+    #[serde(default)]
+    pub guild_id: Option<Id<GuildMarker>>,
+}
+
+pub const MESSAGE_REFERENCE_FORWARD: u8 = 1;
+
+/// A compact sticker reference returned by Discord on messages and snapshots.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct StickerItem {
+    #[serde(default)]
+    pub id: serde_json::Value,
+    #[serde(default)]
+    pub name: String,
+    #[serde(default, rename = "format_type")]
+    pub format_type: u8,
+}
+
+/// Discord omits the author from forwarded snapshots; the outer message's reference
+/// identifies where the forward came from.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MessageSnapshot {
+    pub message: SnapshotMessage,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SnapshotMessage {
+    #[serde(default, rename = "type")]
+    pub kind: u8,
+    #[serde(default)]
+    pub content: String,
+    #[serde(default)]
+    pub timestamp: String,
+    #[serde(default)]
+    pub edited_timestamp: Option<String>,
+    #[serde(default)]
+    pub flags: u64,
+    #[serde(default)]
+    pub mentions: Vec<User>,
+    #[serde(default)]
+    pub mention_roles: Vec<Id<super::id::marker::RoleMarker>>,
+    #[serde(default)]
+    pub attachments: Vec<Attachment>,
+    #[serde(default)]
+    pub embeds: Vec<Embed>,
+    #[serde(default)]
+    pub sticker_items: Vec<StickerItem>,
+    #[serde(default)]
+    pub components: Vec<super::Component>,
+}
+
+impl SnapshotMessage {
+    pub fn has_flag(&self, flag: u64) -> bool {
+        self.flags & flag != 0
+    }
+
+    pub fn preview_text(&self) -> String {
+        if !self.content.trim().is_empty() {
+            return self.content.clone();
+        }
+        if let Some(name) = self.attachments.first().map(|a| a.filename.as_str()) {
+            return name.to_string();
+        }
+        if let Some(name) = self.sticker_items.first().map(|s| s.name.as_str()) {
+            return name.to_string();
+        }
+        String::new()
+    }
+
+    pub fn format_short_time(&self) -> Option<String> {
+        let local = DateTime::parse_from_rfc3339(&self.timestamp)
+            .ok()?
+            .with_timezone(&Local);
+        Some(time::clock(&local))
+    }
 }
 
 impl Message {
     pub fn has_flag(&self, flag: u64) -> bool {
         self.flags & flag != 0
+    }
+
+    pub fn is_forward(&self) -> bool {
+        self.message_reference
+            .as_ref()
+            .is_some_and(|reference| reference.kind == Some(MESSAGE_REFERENCE_FORWARD))
+    }
+
+    pub fn forward_snapshot(&self) -> Option<&SnapshotMessage> {
+        self.message_snapshots.first().map(|snapshot| &snapshot.message)
     }
 
     pub fn is_command(&self) -> bool {
@@ -296,6 +389,7 @@ mod timestamp_tests {
             pinned: false,
             id: Id::new(1),
             channel_id: Id::new(1),
+            guild_id: None,
             author: User {
                 id: Id::new(1),
                 username: "x".to_string(),
@@ -310,6 +404,9 @@ mod timestamp_tests {
                 bot: false,
                 premium_type: None,
                 primary_guild: None,
+                avatar_decoration_data: None,
+                collectibles: None,
+                display_name_styles: None,
             },
             content: String::new(),
             timestamp: timestamp.to_string(),
@@ -320,7 +417,9 @@ mod timestamp_tests {
             mention_roles: Vec::new(),
             embeds: Vec::new(),
             attachments: Vec::new(),
+            sticker_items: Vec::new(),
             components: Vec::new(),
+            message_snapshots: Vec::new(),
             nonce: None,
             message_reference: None,
             referenced_message: None,

@@ -13,6 +13,7 @@ use super::classes::author_style as cls;
 use crate::config::BackendConfig;
 use crate::images::ImageCache;
 use crate::models::id::marker::{GuildMarker, RoleMarker};
+use crate::models::user::DisplayNameStyles;
 use crate::models::{Id, Role, User};
 
 use crate::state::AppState;
@@ -107,6 +108,27 @@ pub fn role_fill(role: &Role) -> Option<NameFill> {
     Some(NameFill::Gradient(colors))
 }
 
+/// Nitro display-name colors, used when no role color wins.
+pub fn display_name_fill(styles: Option<&DisplayNameStyles>) -> Option<NameFill> {
+    let colors: Vec<Color> = styles
+        .and_then(|styles| styles.colors.as_ref())?
+        .iter()
+        .copied()
+        .filter(|value| *value != 0)
+        .map(|value| rgb(value & 0xff_ffff))
+        .collect();
+    match colors.as_slice() {
+        [] => None,
+        [only] => Some(NameFill::Solid(*only)),
+        _ => {
+            let mut colors = colors;
+            let first = colors[0];
+            colors.push(first);
+            Some(NameFill::Gradient(colors))
+        }
+    }
+}
+
 fn role_has_color(role: &Role) -> bool {
     role.color != 0 || role.colors.primary_color != 0
 }
@@ -164,8 +186,23 @@ pub fn resolve(
     guild_id: Option<Id<GuildMarker>>,
     user: &User,
 ) -> AuthorStyle {
+    let member_styles = guild_id.and_then(|guild_id| {
+        state
+            .members
+            .by_guild
+            .with_untracked(|all| {
+                all.get(&guild_id)
+                    .and_then(|members| members.get(&user.id))
+                    .and_then(|member| member.display_name_styles.clone())
+            })
+    });
+    let fallback_fill = member_styles
+        .as_ref()
+        .or_else(|| user.display_name_styles.as_ref())
+        .and_then(|styles| display_name_fill(Some(styles)));
     let mut style = AuthorStyle {
         tag: guild_tag(user),
+        fill: fallback_fill.clone(),
         ..Default::default()
     };
     let Some(guild_id) = guild_id else {
@@ -200,7 +237,8 @@ pub fn resolve(
     style.fill = held()
         .filter(|r| role_has_color(r))
         .max_by_key(|r| r.position)
-        .and_then(role_fill);
+        .and_then(role_fill)
+        .or(fallback_fill);
     let icon_role = held()
         .filter(|r| role_icon_of(r).is_some())
         .max_by_key(|r| r.position);
@@ -296,7 +334,11 @@ pub fn tag_chip(
             TextVariant::TEXT_XS_SEMIBOLD,
             Some(cls::TAG_BADGE_12),
         ),
-        TagPlace::List => (cls::TAG_CHIP_LIST, TextVariant::TEXT_XS_SEMIBOLD, None),
+        TagPlace::List => (
+            cls::TAG_CHIP_LIST,
+            TextVariant::TEXT_XS_SEMIBOLD,
+            Some(cls::TAG_BADGE_14),
+        ),
         TagPlace::Pill => (
             cls::TAG_CHIP_PILL,
             TextVariant::TEXT_XS_NORMAL,
@@ -346,5 +388,36 @@ pub fn role_icon_node(
             let image = images.get_or_decode_image(&backend.role_icon_url(*role_id, hash))?;
             Some(Node::new("div", ImageWidget::new(Some(image))).class(class))
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn display_name_styles_become_solid_or_gradient_fills() {
+        let solid = DisplayNameStyles {
+            colors: Some(vec![0x33_66_99]),
+            ..Default::default()
+        };
+        assert_eq!(
+            display_name_fill(Some(&solid)),
+            Some(NameFill::Solid(rgb(0x33_66_99)))
+        );
+
+        let gradient = DisplayNameStyles {
+            colors: Some(vec![0xff_00_00, 0x00_ff_00]),
+            ..Default::default()
+        };
+        assert_eq!(
+            display_name_fill(Some(&gradient)),
+            Some(NameFill::Gradient(vec![
+                rgb(0xff_00_00),
+                rgb(0x00_ff_00),
+                rgb(0xff_00_00),
+            ]))
+        );
+        assert_eq!(display_name_fill(None), None);
     }
 }

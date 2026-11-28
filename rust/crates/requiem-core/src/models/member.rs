@@ -3,6 +3,7 @@ use serde::{Deserialize, Deserializer};
 use super::{
     User,
     id::{Id, marker::RoleMarker},
+    user::{AvatarDecorationData, Collectibles, DisplayNameStyles},
 };
 
 #[derive(Clone, Debug, Deserialize)]
@@ -12,6 +13,12 @@ pub struct GuildMember {
     pub nick: Option<String>,
     #[serde(default)]
     pub roles: Vec<Id<RoleMarker>>,
+    #[serde(default, rename = "avatar_decoration_data")]
+    pub avatar_decoration_data: Option<AvatarDecorationData>,
+    #[serde(default)]
+    pub collectibles: Option<Collectibles>,
+    #[serde(default, rename = "display_name_styles")]
+    pub display_name_styles: Option<DisplayNameStyles>,
 }
 
 pub fn deserialize_timeout_until<'de, D: Deserializer<'de>>(

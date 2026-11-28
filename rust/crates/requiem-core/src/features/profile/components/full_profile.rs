@@ -3,6 +3,7 @@ use crate::models::user_profile::MutualFriend;
 use crate::models;
 use crate::presence;
 use crate::query;
+use crate::rest::endpoints::profile_board::{self, BoardApplication, BoardGameEntry, BoardGameInfo, ProfileBoard};
 use crate::rest::endpoints::relationships::BLOCKED;
 use crate::rest::endpoints::relationships::location;
 use crate::rest::endpoints::relationships;
@@ -16,6 +17,8 @@ use crate::ui::custom_status;
 use crate::ui::dim;
 use crate::ui::media_viewer;
 use crate::ui::profile_card as ui_profile_card;
+use crate::ui::profile_decorations;
+use crate::ui::profile_theme;
 use crate::ui::twemoji;
 use crate::ui;
 use crate::utils::guild;
@@ -61,7 +64,7 @@ use crate::ui::profile_popout::{
 };
 use crate::ui::{Fonts, TEXT_DEFAULT, TEXT_SECONDARY, TEXT_STRONG};
 use requiem_ui::icons::{
-    CHAT, CIRCLE_CHECK, CIRCLE_PLUS, CLYDE, DENY, MORE_HORIZONTAL, PENCIL, SHOP, USER_PLUS,
+    CHAT, CIRCLE_CHECK, CLYDE, DENY, MORE_HORIZONTAL, PENCIL, SHOP, USER_PLUS,
     WARNING, WINDOW_LAUNCH, X_SMALL,
 };
 
@@ -276,16 +279,25 @@ fn banner(ctx: &Ctx<'_>, class: &'static str) -> Node {
         ctx.images
             .get_or_decode_image(&ctx.backend.banner_url(user.id, hash))
     }) {
-        Some(image) => Node::new("div", ImageWidget::new(Some(image))).class(class),
+        Some(image) => Node::new(
+            "div",
+            ImageWidget::new(Some(image)).with_cover_centered(),
+        )
+        .class(class),
         None => {
-            let color = profile_popout::banner_color(
-                user.id,
-                &user.discriminator,
-                user.accent_color,
-                user.avatar.as_deref(),
-                ctx.images,
-                ctx.backend,
-            );
+            let color = profile_theme::resolve(ctx.profile)
+                .theme
+                .map(|(primary, _)| primary)
+                .unwrap_or_else(|| {
+                    profile_popout::banner_color(
+                        user.id,
+                        &user.discriminator,
+                        user.accent_color,
+                        user.avatar.as_deref(),
+                        ctx.images,
+                        ctx.backend,
+                    )
+                });
             Node::new("div", ColorBoxWidget { color }).class(class)
         }
     }
@@ -293,7 +305,13 @@ fn banner(ctx: &Ctx<'_>, class: &'static str) -> Node {
 
 fn avatar_120(ctx: &Ctx<'_>, class: &str) -> Node {
     let user = &ctx.profile.user;
-    let mut props = ui::user_avatar_props(user.id, &user.discriminator, ctx.fonts);
+    let mut props = ui::with_avatar_decoration(
+        ui::user_avatar_props(user.id, &user.discriminator, ctx.fonts),
+        user.avatar_decoration_asset(),
+        ctx.images,
+        ctx.backend,
+        120,
+    );
     if let Some(image) = user.avatar.as_deref().and_then(|hash| {
         ctx.images
             .get_or_decode_image(&ctx.backend.avatar_url(user.id, hash))
@@ -336,12 +354,30 @@ fn avatar_120(ctx: &Ctx<'_>, class: &str) -> Node {
 
 fn profile_card(ctx: &Ctx<'_>) -> Node {
     let user = &ctx.profile.user;
+    let colors = profile_theme::resolve(ctx.profile);
 
+    let mut ring = div().class(cls::AVATAR_RING);
+    if let Some((primary, _)) = colors.theme {
+        let dim = |c: u8| (c as u16 * 40 / 100) as u8;
+        ring = ring.style(format!(
+            "background-color: #{:02x}{:02x}{:02x}",
+            dim(primary.r()),
+            dim(primary.g()),
+            dim(primary.b())
+        ));
+    }
     let mut header = div()
         .class(cls::HEADER)
         .child(banner(ctx, cls::BANNER))
-        .child(div().class(cls::AVATAR_RING))
+        .child(ring)
         .child(avatar_120(ctx, cls::AVATAR));
+    header = header.children(profile_decorations::layers(
+        ctx.queries,
+        ctx.http,
+        ctx.profile,
+        ctx.images,
+        ctx.backend,
+    ));
     if ctx.is_self {
         let overlays = ctx.overlays.clone();
         let current = ctx.custom_status.clone();
@@ -386,7 +422,7 @@ fn profile_card(ctx: &Ctx<'_>) -> Node {
         .child(
             TextProps::new(display_name, 24.0_f32)
                 .weight(Weight::SEMI_BOLD)
-                .color(TEXT_DEFAULT)
+                .color(colors.name_color.unwrap_or(TEXT_DEFAULT))
                 .build(),
         );
     let mut username_row = div().class(cls::USERNAME_ROW).child(
@@ -1429,69 +1465,232 @@ fn own_activity(ctx: &Ctx<'_>) -> Node {
 }
 
 fn board(ctx: &Ctx<'_>) -> Node {
-    let mut grid = StackProps::horizontal()
-        .justify(Justify::Center)
-        .gap(16)
-        .wrap(true)
-        .build();
-    for (title, details) in [
-        (requiem_i18n::t!("full-profile-favorite-game"), true),
-        (requiem_i18n::t!("full-profile-games-i-like"), false),
-        (requiem_i18n::t!("full-profile-games-in-rotation"), true),
-        (requiem_i18n::t!("full-profile-want-to-play"), false),
-    ] {
-        let placeholder = if details {
-            StackProps::horizontal()
-                .align(Align::Center)
-                .full_width(false)
-                .build()
-                .child(div().class(cls::PLACEHOLDER_COVER))
-                .child(
-                    div()
-                        .class(cls::PLACEHOLDER_BARS)
-                        .child(div().class(cls::PLACEHOLDER_BAR_SHORT))
-                        .child(div().class(cls::PLACEHOLDER_BAR_LONG)),
-                )
-        } else {
-            StackProps::horizontal()
-                .align(Align::Center)
-                .full_width(false)
-                .build()
-                .child(div().class(cls::PLACEHOLDER_COVER))
-                .child(div().class(cls::PLACEHOLDER_COVER))
-                .child(div().class(cls::PLACEHOLDER_COVER))
-        };
-        let overlay = div()
-            .class(cls::WIDGET_OVERLAY)
-            .child(icon(CIRCLE_PLUS, TEXT_DEFAULT).class(cls::WIDGET_ADD))
-            .child(
-                TextProps::styled(title, TextVariant::TEXT_MD_MEDIUM)
-                    .color(TEXT_STRONG)
-                    .build(),
-            );
-        let (on_edit, ui) = (
-            ctx.overlays.on_edit_profile.clone(),
-            ctx.overlays.full_profile_ui.clone(),
+    let user_id = ctx.profile.user.id;
+    let key = format!("profile-board:{}", user_id.get());
+    let Some(http) = ctx.http.cloned() else {
+        return board_message(&requiem_i18n::t!("full-profile-board-unavailable"), Vec::new());
+    };
+    let config = ctx.backend.clone();
+    let result = ctx.queries.query_default::<ProfileBoard, _, RestError>(&key, move || async move {
+        profile_board::load(&http, &config, user_id).await
+    });
+
+    if result.is_loading {
+        return board_message(
+            &requiem_i18n::t!("full-profile-board-loading"),
+            Vec::new(),
         );
-        let card = ButtonProps::default()
-            .variant(ButtonVariant::Bare)
-            .extra_classes(vec![cls::WIDGET_CARD.to_string()])
-            .on_click(move || {
-                ui.close();
-                on_edit();
-            })
-            .build()
-            .child(div().class(cls::PLACEHOLDER).child(placeholder))
-            .child(overlay);
-        grid = grid.child(card);
     }
-    empty_state(
-        empty_title(&requiem_i18n::t!(
-            "full-profile-customize-your-profile-with-widgets"
-        )),
-        &requiem_i18n::t!("full-profile-choose-from-our-library-of-widgets"),
-        vec![grid],
-    )
+    if result.data.is_none() {
+        if let Some(error) = result.error.as_deref() {
+            let key = key.clone();
+            let queries = ctx.queries.clone();
+            return empty_state(
+                empty_title(&requiem_i18n::t!("full-profile-board-error")),
+                error,
+                vec![
+                    ButtonProps::default()
+                        .size(ButtonSize::Small)
+                        .label(requiem_i18n::t!("full-profile-board-retry").to_string())
+                        .on_click(move || queries.invalidate(&key))
+                        .build(),
+                ],
+            );
+        }
+        return board_message(
+            &requiem_i18n::t!("full-profile-board-empty"),
+            Vec::new(),
+        );
+    }
+    let Some(board) = result.data.as_deref() else {
+        return board_message(
+            &requiem_i18n::t!("full-profile-board-empty"),
+            Vec::new(),
+        );
+    };
+    if board.is_empty() {
+        return board_message(
+            &requiem_i18n::t!("full-profile-board-empty"),
+            Vec::new(),
+        );
+    }
+
+    let mut sections = Vec::new();
+    for widget in &board.widgets {
+        sections.push(board_widget_section(ctx, widget, board));
+    }
+    StackProps::vertical()
+        .gap(24)
+        .full_width(false)
+        .build()
+        .children(sections)
+}
+
+fn board_message(message: &str, extra: Vec<Node>) -> Node {
+    empty_state(empty_title(message), "", extra)
+}
+
+fn board_widget_section(ctx: &Ctx<'_>, widget: &profile_board::BoardWidget, board: &ProfileBoard) -> Node {
+    let mut cards = Vec::new();
+    if let Some(application_id) = widget.application_id.as_deref() {
+        match board.applications.get(application_id) {
+            Some(application) => cards.push(board_application_card(ctx, application)),
+            None => cards.push(board_message(
+                &requiem_i18n::t!("full-profile-board-application-unavailable"),
+                Vec::new(),
+            )),
+        }
+    }
+    for entry in &widget.games {
+        cards.push(board_game_card(ctx, entry, board.games.get(&entry.game_id)));
+    }
+    div()
+        .class(cls::BOARD_SECTION)
+        .child(
+            TextProps::styled(board_widget_title(&widget.widget_type), TextVariant::TEXT_MD_SEMIBOLD)
+                .color(TEXT_STRONG)
+                .build()
+                .class(cls::BOARD_SECTION_TITLE),
+        )
+        .child(
+            StackProps::horizontal()
+                .justify(Justify::Center)
+                .gap(12)
+                .wrap(true)
+                .full_width(false)
+                .build()
+                .children(cards),
+        )
+}
+
+fn board_widget_title(widget_type: &str) -> String {
+    match widget_type {
+        "current_games" => requiem_i18n::t!("full-profile-board-playing"),
+        "played_games" => requiem_i18n::t!("full-profile-board-recently-played"),
+        "favorite_games" => requiem_i18n::t!("full-profile-board-favorites"),
+        "want_to_play_games" => requiem_i18n::t!("full-profile-board-want-to-play"),
+        "application" => requiem_i18n::t!("full-profile-board-application"),
+        _ => requiem_i18n::t!("full-profile-board-title"),
+    }
+    .to_string()
+}
+
+fn board_image(ctx: &Ctx<'_>, url: Option<&str>, image_class: &'static str, fallback_class: &'static str) -> Node {
+    url.and_then(|url| ctx.images.get_or_decode_image(url))
+        .map(|image| {
+            Node::new("div", ImageWidget::new(Some(image)).with_cover_centered()).class(image_class)
+        })
+        .unwrap_or_else(|| div().class(fallback_class))
+}
+
+fn board_game_card(ctx: &Ctx<'_>, entry: &BoardGameEntry, info: Option<&BoardGameInfo>) -> Node {
+    let name = info
+        .map(|info| info.name.clone())
+        .unwrap_or_else(|| entry.game_id.clone());
+    let cover = board_image(
+        ctx,
+        info.and_then(|info| info.image.as_deref()),
+        cls::BOARD_COVER,
+        cls::BOARD_COVER_PLACEHOLDER,
+    );
+    let mut copy = div().class(cls::BOARD_COPY).child(
+        TextProps::styled(name, TextVariant::TEXT_MD_MEDIUM)
+            .color(TEXT_STRONG)
+            .build()
+            .class(cls::BOARD_CARD_TITLE),
+    );
+    if let Some(comment) = entry.comment.as_deref().filter(|comment| !comment.trim().is_empty()) {
+        copy = copy.child(
+            TextProps::styled(comment.to_string(), TextVariant::TEXT_XS_NORMAL)
+                .color(TEXT_DEFAULT)
+                .build()
+                .class(cls::BOARD_CARD_SUBTITLE),
+        );
+    }
+    if !entry.tags.is_empty() {
+        copy = copy.child(
+            TextProps::styled(entry.tags.join(" • "), TextVariant::TEXT_XS_NORMAL)
+                .color(TEXT_SECONDARY)
+                .build()
+                .class(cls::BOARD_CARD_TAGS),
+        );
+    }
+    div()
+        .class(cls::BOARD_CARD)
+        .child(cover)
+        .child(copy)
+}
+
+fn board_application_card(ctx: &Ctx<'_>, application: &BoardApplication) -> Node {
+    let hero = board_image(
+        ctx,
+        application.image.as_deref(),
+        cls::BOARD_APP_IMAGE,
+        cls::BOARD_APP_IMAGE_PLACEHOLDER,
+    );
+    let icon = board_image(
+        ctx,
+        application.icon.as_deref(),
+        cls::BOARD_APP_ICON,
+        cls::BOARD_APP_ICON_PLACEHOLDER,
+    );
+    let mut overlay = div()
+        .class(cls::BOARD_APP_OVERLAY)
+        .child(
+            StackProps::horizontal()
+                .align(Align::Center)
+                .gap(10)
+                .full_width(false)
+                .build()
+                .child(icon)
+                .child(
+                    TextProps::styled(application.name.clone(), TextVariant::TEXT_SM_SEMIBOLD)
+                        .color(TEXT_STRONG)
+                        .build(),
+                ),
+        );
+    if let Some(title) = application.title.as_deref().filter(|title| !title.is_empty()) {
+        overlay = overlay.child(
+            TextProps::styled(title.to_string(), TextVariant::TEXT_MD_SEMIBOLD)
+                .color(TEXT_STRONG)
+                .build(),
+        );
+    }
+    for subtitle in application.subtitles.iter().filter(|s| !s.is_empty()) {
+        overlay = overlay.child(
+            TextProps::styled(subtitle.clone(), TextVariant::TEXT_XS_NORMAL)
+                .color(TEXT_DEFAULT)
+                .build(),
+        );
+    }
+    if !application.stats.is_empty() {
+        let mut stats = StackProps::horizontal()
+            .gap(16)
+            .wrap(true)
+            .full_width(false)
+            .build();
+        for stat in &application.stats {
+            stats = stats.child(
+                div()
+                    .class(cls::BOARD_STAT)
+                    .child(
+                        TextProps::styled(stat.value.clone(), TextVariant::TEXT_SM_SEMIBOLD)
+                            .color(TEXT_STRONG)
+                            .build(),
+                    )
+                    .child(
+                        TextProps::styled(stat.label.clone(), TextVariant::TEXT_XS_NORMAL)
+                            .color(TEXT_SECONDARY)
+                            .build(),
+                    ),
+            );
+        }
+        overlay = overlay.child(stats);
+    }
+    div()
+        .class(cls::BOARD_APP_CARD)
+        .child(hero)
+        .child(overlay)
 }
 
 fn wishlist() -> Node {

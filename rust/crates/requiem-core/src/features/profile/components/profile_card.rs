@@ -86,6 +86,7 @@ pub struct ProfileCardView<'a> {
     pub pronouns: &'a str,
     pub bio: &'a str,
     pub avatar: Option<skia_safe::Image>,
+    pub avatar_decoration: Option<skia_safe::Image>,
     pub banner_image: Option<skia_safe::Image>,
     pub banner_color: Color,
 
@@ -114,6 +115,12 @@ pub struct CardParts {
     pub name_suffix: Vec<Node>,
 
     pub header_extra: Vec<Node>,
+
+    /// Effect and frame layers that sit over the banner and avatar.
+    pub header_layers: Vec<Node>,
+
+    /// A nameplate at 40% opacity behind the whole card.
+    pub background_layers: Vec<Node>,
 
     pub after_username: Vec<Node>,
 
@@ -161,7 +168,7 @@ pub fn bio_text(
 pub fn profile_card(
     view: ProfileCardView<'_>,
     status: CardStatus<'_>,
-    parts: CardParts,
+    mut parts: CardParts,
     footer: Option<Node>,
     container: CardContainer,
     fonts: &Fonts,
@@ -171,9 +178,14 @@ pub fn profile_card(
     let themed = matches!(container, CardContainer::Inline)
         .then_some(view.theme)
         .flatten();
+    let background_layers = std::mem::take(&mut parts.background_layers);
 
     let banner = match &view.banner_image {
-        Some(image) => Node::new("div", ImageWidget::new(Some(image.clone()))).class(cls::BANNER),
+        Some(image) => Node::new(
+            "div",
+            ImageWidget::new(Some(image.clone())).with_cover_centered(),
+        )
+        .class(cls::BANNER),
         None => Node::new(
             "div",
             ColorBoxWidget {
@@ -186,6 +198,9 @@ pub fn profile_card(
     let mut avatar_props = user_avatar_props(view.user_id, view.discriminator, fonts);
     if let Some(image) = &view.avatar {
         avatar_props = avatar_props.image(image.clone());
+    }
+    if let Some(image) = &view.avatar_decoration {
+        avatar_props = avatar_props.decoration(image.clone());
     }
     let avatar = avatar_with_status(avatar_props, AvatarStatusSize::Px80, view.status);
 
@@ -227,6 +242,7 @@ pub fn profile_card(
     let mut header = div()
         .class(cls::HEADER)
         .children([banner, ring, avatar_wrap]);
+    header = header.children(std::mem::take(&mut parts.header_layers));
     if status.actions.is_some() || status.status.is_some() {
         let content = match status.status {
             Some(custom) => BubbleContent::Status(custom),
@@ -342,6 +358,10 @@ pub fn profile_card(
 
     match container {
         CardContainer::Panel(panel) => {
+            let mut panel = panel;
+            for layer in background_layers {
+                panel = panel.child(layer);
+            }
             let panel = panel.child(header).child(body);
             match footer {
                 Some(footer) => panel.child(footer),
@@ -349,7 +369,9 @@ pub fn profile_card(
             }
         }
         CardContainer::Inline => {
-            let mut content = vec![header, body];
+            let mut content = background_layers;
+            content.push(header);
+            content.push(body);
             content.extend(footer);
             match themed {
                 None => div()

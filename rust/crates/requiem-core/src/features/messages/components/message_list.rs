@@ -592,7 +592,16 @@ fn row_version(message: &models::Message, extra: &[u64]) -> u64 {
         )
             .hash(&mut h);
     }
-    message.message_reference.is_some().hash(&mut h);
+    if let Some(reference) = &message.message_reference {
+        serde_json::to_string(reference)
+            .unwrap_or_default()
+            .hash(&mut h);
+    }
+    if !message.message_snapshots.is_empty() {
+        serde_json::to_string(&message.message_snapshots)
+            .unwrap_or_default()
+            .hash(&mut h);
+    }
     message.interaction.is_some().hash(&mut h);
     extra.hash(&mut h);
     h.finish()
@@ -999,8 +1008,235 @@ fn leading_and_prefix(env: &RowEnv<'_>, input: &RowInput<'_>) -> (Node, Node) {
             mentions,
             channels,
         ));
+    } else if message.is_forward() && starts_group {
+        body = body.child(forward_context(env, input));
     }
     (leading, body)
+}
+
+fn forward_source_name(
+    state: &AppState,
+    reference: &models::message::MessageReference,
+) -> String {
+    if let Some(channel_id) = reference.channel_id {
+        if let Some((_, channel)) = ui::find_channel(state, channel_id) {
+            if let Some(name) = channel.name {
+                return name;
+            }
+        }
+        let dm_name = state.dms.list.with_untracked(|dms| {
+            dms.iter()
+                .find(|dm| dm.id == channel_id)
+                .map(|dm| home::dm_title(state, dm))
+        });
+        if let Some(name) = dm_name {
+            return name;
+        }
+    }
+    requiem_i18n::t!("message-list-forwarded-unknown-channel").to_string()
+}
+
+fn forward_context(env: &RowEnv<'_>, input: &RowInput<'_>) -> Node {
+    let message = input.message;
+    if !message.is_forward() {
+        return div();
+    }
+    let Some(reference) = message.message_reference.as_ref() else {
+        return div();
+    };
+    let muted = env.colors.text_muted;
+    let mut line = div()
+        .class(cls::FORWARD_CONTEXT)
+        .child(
+            icon(requiem_ui::icons::ARROW_ANGLE_RIGHT_UP, muted)
+                .class(cls::FORWARD_ICON),
+        )
+        .child(
+            TextProps::styled(
+                requiem_i18n::t!("message-list-forwarded").to_string(),
+                TextVariant::TEXT_XS_MEDIUM,
+            )
+            .color(muted)
+            .build()
+            .class(cls::FORWARD_LABEL),
+        )
+        .child(
+            TextProps::styled(
+                requiem_i18n::t!("message-list-forwarded-from").to_string(),
+                TextVariant::TEXT_XS_MEDIUM,
+            )
+            .color(muted)
+            .build(),
+        )
+        .child(
+            TextProps::styled(forward_source_name(env.state, reference), TextVariant::TEXT_XS_MEDIUM)
+                .color(colors::TEXT_ANCHOR)
+                .line_clamp(1_u32)
+                .build()
+                .class(cls::FORWARD_SOURCE),
+        );
+    if let (Some(channel_id), Some(message_id)) = (reference.channel_id, reference.message_id) {
+        line = ButtonProps::default()
+            .variant(ButtonVariant::Bare)
+            .on_click(move || request_jump(channel_id, message_id))
+            .build()
+            .child(line);
+    }
+    line
+}
+
+fn forward_card(env: &RowEnv<'_>, input: &RowInput<'_>) -> Node {
+    let Some(snapshot) = input.message.forward_snapshot() else {
+        return div();
+    };
+    let header = div()
+        .class(cls::FORWARD_CARD_HEADER)
+        .child(
+            icon(
+                requiem_ui::icons::ARROW_ANGLE_RIGHT_UP,
+                env.colors.text_strong,
+            )
+            .class(cls::FORWARD_ICON),
+        )
+        .child(
+            TextProps::styled(
+                requiem_i18n::t!("message-list-forwarded-message").to_string(),
+                TextVariant::TEXT_XS_SEMIBOLD,
+            )
+            .color(env.colors.text_strong)
+            .build()
+            .class(cls::FORWARD_CARD_TITLE),
+        )
+        .child(
+            TextProps::styled(
+                snapshot.format_short_time().unwrap_or_default(),
+                TextVariant::TEXT_XS_NORMAL,
+            )
+            .color(env.colors.text_muted)
+            .build()
+            .class(cls::FORWARD_CARD_TIME),
+        );
+
+    let mut body = div().class(cls::FORWARD_CARD_BODY);
+    if !snapshot.content.trim().is_empty() {
+        let mut names = (**env.mentions).clone();
+        for user in &snapshot.mentions {
+            names
+                .entry(user.id.get())
+                .or_insert_with(|| env.state.users.display_name(user));
+        }
+        body = body.child(message_text(MessageTextProps {
+            content: snapshot.content.clone(),
+            size: 16.0,
+            color: env.colors.text_default,
+            mentions: Rc::new(names),
+            channels: env.channels.clone(),
+            roles: env.role_mentions.clone(),
+            inert: true,
+            cache_key: Some(input.message.id.get() ^ (1 << 59)),
+            emoji_provider: Some(twemoji::tile),
+            custom_emoji: Some(emoji_text::resolver(env.images, env.backend)),
+            markdown: Some(MarkdownFeatures::CHAT),
+            line_height: Some(MESSAGE_LINE_HEIGHT),
+            ..Default::default()
+        }));
+    }
+    if !snapshot.sticker_items.is_empty() {
+        let names = snapshot
+            .sticker_items
+            .iter()
+            .map(|sticker| sticker.name.clone())
+            .collect::<Vec<_>>()
+            .join(", ");
+        body = body.child(
+            TextProps::styled(
+                requiem_i18n::t!("message-list-forwarded-stickers", names = names).to_string(),
+                TextVariant::TEXT_XS_NORMAL,
+            )
+            .color(ui::TEXT_SECONDARY)
+            .build()
+            .class(cls::FORWARD_STICKERS),
+        );
+    }
+
+    let mut viewer_message = input.message.clone();
+    viewer_message.content = snapshot.content.clone();
+    viewer_message.attachments = snapshot.attachments.clone();
+    viewer_message.embeds = snapshot.embeds.clone();
+    let viewer_link = ViewerLink::for_message(
+        env.media_viewer,
+        &viewer_message,
+        env.backend,
+        snapshot.format_short_time(),
+    )
+    .with_menu(attachment_menu_handler(env.menu_env, &viewer_message, env.channel));
+
+    #[cfg(feature = "video")]
+    let media = message_embed::attachment_images(
+        &snapshot.attachments,
+        env.images,
+        env.images_ready,
+        env.video_ctx,
+        Some(&viewer_link),
+    );
+    #[cfg(not(feature = "video"))]
+    let media = message_embed::attachment_images(
+        &snapshot.attachments,
+        env.images,
+        env.images_ready,
+        None,
+        Some(&viewer_link),
+    );
+    let mut accessories: Vec<Node> = media.into_iter().collect();
+    accessories.extend(message_embed::file_cards(
+        &snapshot.attachments,
+        false,
+        Some(&viewer_link),
+        Some(env.measure_cache),
+    ));
+    #[cfg(feature = "video")]
+    accessories.extend(message_embed::embed_cards(
+        &snapshot.embeds,
+        env.images,
+        env.backend,
+        env.images_ready,
+        env.video_ctx,
+        Some(&viewer_link),
+        Some(env.measure_cache),
+        input.message.id.get() ^ (1 << 58),
+    ));
+    #[cfg(not(feature = "video"))]
+    accessories.extend(message_embed::embed_cards(
+        &snapshot.embeds,
+        env.images,
+        env.backend,
+        env.images_ready,
+        None,
+        Some(&viewer_link),
+        Some(env.measure_cache),
+        input.message.id.get() ^ (1 << 58),
+    ));
+    accessories.extend(
+        message_components::cards_for(
+            &snapshot.components,
+            input.message.id.get() ^ (1 << 57),
+            env.images,
+            env.backend,
+            env.images_ready,
+            Some(&viewer_link),
+            Some(env.measure_cache),
+        )
+        .into_iter(),
+    );
+    if !accessories.is_empty() {
+        body = body.child(
+            div()
+                .class(cls::FORWARD_CARD_ACCESSORIES)
+                .children(accessories),
+        );
+    }
+
+    div().class(cls::FORWARD_CARD).children([header, body])
 }
 
 /// The name, tags, badges and timestamp that open a group of messages.
@@ -1263,6 +1499,9 @@ fn append_content(env: &RowEnv<'_>, input: &RowInput<'_>, mut body: Node) -> Nod
         )
     }) {
         body = body.child(note);
+    }
+    if message.is_forward() && !is_editing {
+        body = body.child(forward_card(env, input));
     }
     body
 }
@@ -2995,6 +3234,7 @@ pub fn message_target(
         author_id: message.author.id,
         author_name: message.author.display_name(None),
         content: message.content.clone(),
+        message: message.clone(),
         my_reactions: message
             .reactions
             .iter()

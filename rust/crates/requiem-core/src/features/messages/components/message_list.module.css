@@ -701,3 +701,70 @@
     gap: 8px;
     padding-top: 2px;
 }
+
+.forward-context {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  min-width: 0px;
+  color: var(--text-muted);
+}
+
+.forward-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.forward-label {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.forward-source {
+  color: var(--text-link);
+  min-width: 0px;
+}
+
+.forward-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 520px;
+  margin-top: 4px;
+  padding: 10px 12px;
+  border-left: 4px solid var(--brand-500);
+  border-radius: var(--radius-sm);
+  background-color: var(--background-mod-subtle);
+}
+
+.forward-card-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
+
+.forward-card-title {
+  color: var(--text-strong);
+}
+
+.forward-card-time {
+  color: var(--text-muted);
+}
+
+.forward-card-body {
+  color: var(--text-default);
+}
+
+.forward-card-accessories {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.forward-stickers {
+  color: var(--text-secondary);
+}

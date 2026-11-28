@@ -18,6 +18,7 @@ use requiem_core::ui::create_channel;
 use requiem_core::ui::create_guild;
 use requiem_core::ui::custom_status;
 use requiem_core::ui::emoji_style_menu;
+use requiem_core::ui::forward;
 use requiem_core::ui::guild_settings;
 use requiem_core::ui::invite_modal;
 use requiem_core::ui::media_viewer::MediaViewerState;
@@ -359,6 +360,7 @@ pub(crate) fn make_modal_open(signals: &RootSignals) -> Rc<dyn Fn() -> bool> {
             || quick_switcher::is_open()
             || shortcuts_dialog::is_open()
             || new_message::is_open()
+            || forward::is_open()
             || create_guild::is_open()
             || create_channel::is_open()
             || guild_settings::is_open()
@@ -506,6 +508,10 @@ impl KeyEnv {
         }
         if new_message::is_open() {
             new_message::close();
+            return true;
+        }
+        if forward::is_open() {
+            forward::close();
             return true;
         }
         if create_guild::is_open() {

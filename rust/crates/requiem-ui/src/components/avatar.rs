@@ -6,7 +6,9 @@ use skia_safe::{Color, Image, Typeface};
 
 use crate::node::{ImageBinding, Node};
 use crate::signal::Signal;
-use crate::widget::primitives::{AvatarShape, AvatarWidget, FallbackIcon, StatusCutout};
+use crate::widget::primitives::{
+    AvatarShape, AvatarWidget, FallbackIcon, ImageWidget, StatusCutout,
+};
 
 #[derive(Default)]
 pub struct AvatarProps {
@@ -26,6 +28,9 @@ pub struct AvatarProps {
 
     /// Replaces `image` when the signal changes, without rebuilding the node.
     pub image_binding: Option<ImageBinding>,
+
+    /// Transparent collectible overlay drawn on top of the avatar.
+    pub decoration: Option<Image>,
 }
 
 crate::builder_fields!(AvatarProps {
@@ -36,6 +41,7 @@ crate::builder_fields!(AvatarProps {
     shape: AvatarShape,
     opt status_cutout: StatusCutout,
     opt fallback_icon: FallbackIcon,
+    opt decoration: Image,
 });
 
 impl AvatarProps {
@@ -122,6 +128,7 @@ pub fn avatar_with_status(
             StatusCutout::ROUND_120,
         ),
     };
+    let decoration = props.decoration.clone();
     let props = match status {
         Some(_) => props.status_cutout(cutout),
         None => props,
@@ -129,6 +136,11 @@ pub fn avatar_with_status(
     let mut wrap = super::div()
         .class(wrap_class)
         .child(props.build().class(avatar_class));
+    if let Some(image) = decoration {
+        wrap = wrap.child(
+            Node::new("div", ImageWidget::new(Some(image))).class(cls::DECORATION),
+        );
+    }
     if let Some(status) = status {
         wrap = wrap.child(super::status_indicator(status).class(dot_class));
     }

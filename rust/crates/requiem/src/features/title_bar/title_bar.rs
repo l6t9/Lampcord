@@ -208,6 +208,7 @@ pub fn build(
             status_cutout: None,
             fallback_icon: None,
             image_binding: None,
+            decoration: None,
         })
         .class(classes::APP_TITLE_BAR_ICON);
         tree.mount(title_id, guild_icon);
