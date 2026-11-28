@@ -1,0 +1,241 @@
+name: Requiem Desktop Build
+
+# Builds the Requiem desktop client (rust/) and uploads:
+#   windows-x64-portable   zip with requiem.exe and the FFmpeg DLLs
+#   windows-x64-installer  per-user NSIS installer (rust/installer/installer.nsi)
+#   linux-x64-portable     tar.gz with the binary and FFmpeg .so files (rpath $ORIGIN)
+#   linux-x64-appimage     AppImage (scripts/package_appimage.sh)
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to embed (X.Y.Z or X.Y.Z-suffix). Empty uses the requiem crate version."
+        required: false
+        type: string
+  push:
+    branches: [main, wip/requiem-desktop-core]
+    paths:
+      - "rust/**"
+      - "scripts/package_appimage.sh"
+      - "packaging/aur/**"
+      - ".github/workflows/requiem-desktop-build.yml"
+  pull_request:
+    paths:
+      - "rust/**"
+      - "scripts/package_appimage.sh"
+      - "packaging/aur/**"
+      - ".github/workflows/requiem-desktop-build.yml"
+
+concurrency:
+  group: requiem-desktop-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FFMPEG_WIN_URL: https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n9.0-latest-win64-lgpl-shared-9.0.zip
+  FFMPEG_LINUX_URL: https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n9.0-latest-linux64-lgpl-shared-9.0.tar.xz
+  APPIMAGETOOL_URL: https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x64
+            os: ubuntu-24.04
+            target_dir: ${{ github.workspace }}/rust/target
+          - name: windows-x64
+            os: windows-latest
+            # Skia's clang-cl build fails once this path gets deep.
+            target_dir: C:\t
+
+    env:
+      CARGO_TARGET_DIR: ${{ matrix.target_dir }}
+
+    defaults:
+      run:
+        working-directory: rust
+
+    steps:
+      - name: Enable long paths and symlinks for git (Windows)
+        if: runner.os == 'Windows'
+        working-directory: .
+        run: |
+          git config --global core.longpaths true
+          git config --global core.symlinks true
+
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Determine version
+        id: version
+        shell: bash
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          version="${INPUT_VERSION#v}"
+          if [ -z "$version" ]; then
+            version="$(sed -n 's/^version = "\(.*\)"/\1/p' crates/requiem/Cargo.toml | head -n1)"
+          fi
+          echo "VERSION=$version" >> "$GITHUB_OUTPUT"
+          echo "SHORT_SHA=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          echo "Building Requiem $version (${GITHUB_SHA::7})" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Install Rust toolchain (from rust-toolchain.toml)
+        shell: bash
+        run: rustup toolchain install
+
+      # ---------- Linux environment ----------
+      - name: Install system packages (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential clang libclang-dev cmake ninja-build pkg-config python3 file \
+            libfontconfig1-dev libfreetype-dev libgl1-mesa-dev \
+            libx11-dev libxi-dev libxcursor-dev libxrandr-dev libxinerama-dev \
+            libxkbcommon-dev libwayland-dev \
+            libssl-dev libdbus-1-dev libasound2-dev \
+            libgtk-3-dev libwebkit2gtk-4.1-dev
+
+      - name: Download FFmpeg (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          mkdir -p "$RUNNER_TEMP/ffmpeg"
+          curl -fsSL "$FFMPEG_LINUX_URL" | tar -xJ -C "$RUNNER_TEMP/ffmpeg" --strip-components=1
+          echo "FFMPEG_DIR=$RUNNER_TEMP/ffmpeg" >> "$GITHUB_ENV"
+          echo "LD_LIBRARY_PATH=$RUNNER_TEMP/ffmpeg/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" >> "$GITHUB_ENV"
+          # $ORIGIN so the shipped .so files resolve next to the binary.
+          echo 'RUSTFLAGS=-C link-arg=-Wl,-rpath,$ORIGIN' >> "$GITHUB_ENV"
+
+      # ---------- Windows environment ----------
+      - name: Set up MSVC (Windows)
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Install ninja and NSIS, set up LLVM (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          choco install ninja nsis -y --no-progress
+          "LIBCLANG_PATH=C:\Program Files\LLVM\bin" >> $env:GITHUB_ENV
+          "C:\Program Files\LLVM\bin" >> $env:GITHUB_PATH
+
+      - name: Download FFmpeg (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $zip = Join-Path $env:RUNNER_TEMP "ffmpeg.zip"
+          Invoke-WebRequest -Uri $env:FFMPEG_WIN_URL -OutFile $zip
+          Expand-Archive $zip -DestinationPath $env:RUNNER_TEMP
+          $dir = Get-ChildItem $env:RUNNER_TEMP -Directory -Filter "ffmpeg-*" | Select-Object -First 1
+          "FFMPEG_DIR=$($dir.FullName)" >> $env:GITHUB_ENV
+          "$($dir.FullName)\bin" >> $env:GITHUB_PATH
+
+      - name: Cache cargo registry and target dir
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            ${{ matrix.target_dir }}
+          key: requiem-${{ matrix.name }}-ship-${{ hashFiles('rust/Cargo.lock', 'rust/rust-toolchain.toml') }}
+          restore-keys: requiem-${{ matrix.name }}-ship-
+
+      - name: Fetch the Steinberg ASIO SDK (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: cargo run --quiet --locked -p requiem-cli -- asio
+
+      # pwsh on Windows: Git Bash's link.exe would shadow MSVC's.
+      - name: Build release binary
+        shell: pwsh
+        env:
+          REQUIEM_RELEASE_VERSION: ${{ steps.version.outputs.VERSION }}
+        run: cargo build --profile ship --locked -p requiem
+
+      # ---------- Packaging ----------
+      - name: Package (Linux)
+        if: runner.os == 'Linux'
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+        run: |
+          name="requiem-$VERSION-linux-x64"
+          out="dist/$name"
+          mkdir -p "$out" "dist/libs"
+          cp "$CARGO_TARGET_DIR/ship/requiem" "$out/"
+          # Copy each loaded FFmpeg library under its soname so $ORIGIN finds it.
+          ldd "$out/requiem" \
+            | awk -v dir="$FFMPEG_DIR/lib" 'index($3, dir) == 1 { print $1, $3 }' \
+            | while read -r soname path; do cp -L "$path" "$out/$soname"; cp -L "$path" "dist/libs/$soname"; done
+          ls -la "$out"
+          tar -C dist -czf "dist/$name.tar.gz" "$name"
+
+          curl -fsSL "$APPIMAGETOOL_URL" -o "$RUNNER_TEMP/appimagetool"
+          chmod +x "$RUNNER_TEMP/appimagetool"
+          APPIMAGE_EXTRACT_AND_RUN=1 ../scripts/package_appimage.sh \
+            --binary "$CARGO_TARGET_DIR/ship/requiem" \
+            --libs "dist/libs" \
+            --appimagetool "$RUNNER_TEMP/appimagetool" \
+            --out "dist/Lampcord-Requiem-$VERSION-x86_64.AppImage"
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+        run: |
+          $name = "requiem-$env:VERSION-windows-x64"
+          $out = "dist\$name"
+          New-Item -ItemType Directory -Force $out | Out-Null
+          Copy-Item "$env:CARGO_TARGET_DIR\ship\requiem.exe" $out
+          Copy-Item "$env:FFMPEG_DIR\bin\*.dll" $out
+          Get-ChildItem $out
+          Compress-Archive -Path $out -DestinationPath "dist\$name.zip"
+
+          # Per-user installer, no administrator rights. The name avoids "setup"/"install"/"update",
+          # which Windows treats as installer-detection hints.
+          $numeric = (($env:VERSION -split '-')[0]) + ".0"
+          & "${env:ProgramFiles(x86)}\NSIS\makensis.exe" /V2 "/DVERSION=$env:VERSION" "/DVERSION_NUMERIC=$numeric" "/DSOURCE_DIR=$((Resolve-Path $out).Path)" "/DOUTFILE=$((Get-Location).Path)\dist\$name.exe" installer\installer.nsi
+          if ($LASTEXITCODE -ne 0) { throw "makensis failed" }
+
+      # ---------- Upload ----------
+      - name: Upload Windows portable
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: requiem-windows-x64-portable-${{ steps.version.outputs.SHORT_SHA }}
+          path: rust/dist/*.zip
+          if-no-files-found: error
+
+      - name: Upload Windows installer
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: requiem-windows-x64-installer-${{ steps.version.outputs.SHORT_SHA }}
+          path: rust/dist/*.exe
+          if-no-files-found: error
+
+      - name: Upload Linux portable
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: requiem-linux-x64-portable-${{ steps.version.outputs.SHORT_SHA }}
+          path: rust/dist/*.tar.gz
+          if-no-files-found: error
+
+      - name: Upload Linux AppImage
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: requiem-linux-x64-appimage-${{ steps.version.outputs.SHORT_SHA }}
+          path: rust/dist/*.AppImage
+          if-no-files-found: error

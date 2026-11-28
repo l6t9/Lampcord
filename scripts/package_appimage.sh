@@ -7,6 +7,7 @@ binary="${REQUIEM_BINARY:-$repo_root/rust/target/release/requiem}"
 out="${APPIMAGE_OUT:-$repo_root/dist/Lampcord-Requiem.AppImage}"
 appimagetool="${APPIMAGETOOL:-/usr/bin/appimagetool}"
 arch="${ARCH:-x86_64}"
+libs="${REQUIEM_LIBS:-}"
 
 usage() {
   cat <<'EOF'
@@ -17,6 +18,7 @@ usage: scripts/package_appimage.sh [options]
   --appimagetool PATH
                      appimagetool executable (default: /usr/bin/appimagetool)
   --arch NAME        AppImage architecture (default: x86_64)
+  --libs DIR         Shared libraries (e.g. FFmpeg .so files) to bundle in usr/lib
   -h, --help         Show this help
 EOF
 }
@@ -27,6 +29,7 @@ while (($# > 0)); do
     --out) out="$2"; shift 2 ;;
     --appimagetool) appimagetool="$2"; shift 2 ;;
     --arch) arch="$2"; shift 2 ;;
+    --libs) libs="$2"; shift 2 ;;
     -h|--help) usage; exit 0 ;;
     *) echo "unknown argument: $1" >&2; usage >&2; exit 2 ;;
   esac
@@ -36,7 +39,7 @@ done
 [[ -x "$appimagetool" ]] || { echo "appimagetool not executable: $appimagetool" >&2; exit 1; }
 [[ -f "$repo_root/packaging/aur/lampcord.png" ]] || { echo "missing Lampcord icon" >&2; exit 1; }
 
-appdir="$(mktemp -d /tmp/opencode/lampcord-appimage.XXXXXX)"
+appdir="$(mktemp -d "${TMPDIR:-/tmp}/lampcord-appimage.XXXXXX")"
 trap 'rm -rf "$appdir"' EXIT
 
 mkdir -p \
@@ -47,6 +50,12 @@ mkdir -p \
 
 install -m 755 "$binary" "$appdir/usr/bin/requiem"
 ln -s requiem "$appdir/usr/bin/lampcord"
+
+if [[ -n "$libs" ]]; then
+  [[ -d "$libs" ]] || { echo "libs directory not found: $libs" >&2; exit 1; }
+  mkdir -p "$appdir/usr/lib"
+  cp -L "$libs"/*.so* "$appdir/usr/lib/"
+fi
 
 install -m 644 "$repo_root/packaging/aur/lampcord.png" \
   "$appdir/usr/share/icons/hicolor/512x512/apps/lampcord.png"
