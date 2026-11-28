@@ -32,8 +32,10 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  FFMPEG_WIN_URL: https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n9.0-latest-win64-lgpl-shared-9.0.zip
-  FFMPEG_LINUX_URL: https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n9.0-latest-linux64-lgpl-shared-9.0.tar.xz
+  # FFmpeg major version to build against; must match the ffmpeg-next major in
+  # rust/Cargo.toml. The newest n<major>.x build in BtbN's rotating "latest"
+  # release is resolved at run time, so minor bumps there don't break CI.
+  FFMPEG_MAJOR: "9"
   APPIMAGETOOL_URL: https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
   CARGO_TERM_COLOR: always
 
@@ -95,6 +97,30 @@ jobs:
           echo "VERSION=$version" >> "$GITHUB_OUTPUT"
           echo "SHORT_SHA=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
           echo "Building Requiem $version (${GITHUB_SHA::7})" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Resolve FFmpeg build
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          assets="$(gh release view latest --repo BtbN/FFmpeg-Builds --json assets --jq '.assets[].name')"
+          # pick <platform> <ext> <env var>: newest n<major>.x lgpl-shared asset.
+          pick() {
+            local name
+            name="$(printf '%s\n' "$assets" \
+              | grep -E "^ffmpeg-n${FFMPEG_MAJOR}\.[0-9]+-latest-$1-lgpl-shared-${FFMPEG_MAJOR}\.[0-9]+\.$2\$" \
+              | sort -V | tail -n1 || true)"
+            if [ -z "$name" ]; then
+              echo "::error::No FFmpeg ${FFMPEG_MAJOR}.x $1 lgpl-shared build in BtbN/FFmpeg-Builds 'latest'. Available:"
+              printf '%s\n' "$assets" | grep -E "lgpl-shared" || true
+              exit 1
+            fi
+            echo "$3=https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/$name" >> "$GITHUB_ENV"
+            echo "FFmpeg $1: \`$name\`" >> "$GITHUB_STEP_SUMMARY"
+          }
+          pick win64 zip FFMPEG_WIN_URL
+          pick linux64 tar.xz FFMPEG_LINUX_URL
 
       - name: Install Rust toolchain (from rust-toolchain.toml)
         shell: bash
