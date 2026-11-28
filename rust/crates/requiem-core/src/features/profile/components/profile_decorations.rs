@@ -122,7 +122,7 @@ pub fn nameplate_node(
 
 /// Static effect and frame layers for a profile card. The animated mobile effect
 /// is intentionally rendered as its first frame on the Skia desktop client.
-/// `frame_class` positions the frame around the avatar of the hosting surface.
+/// `frame_class` positions the frame over the profile card of the hosting surface.
 pub fn layers_with_frame_class(
     queries: &QueryClient,
     http: Option<&HttpClient>,

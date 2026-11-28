@@ -104,3 +104,128 @@
 .reaction-add:hover .reaction-add-icon {
   color: var(--icon-strong);
 }
+
+.reaction-hover-probe {
+  display: flex;
+  flex-direction: row;
+  flex-shrink: 0;
+}
+
+.reaction-overlays-layer {
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  width: 0px;
+  height: 0px;
+}
+
+.reaction-tooltip-popover {
+  pointer-events: none;
+}
+
+.reaction-tooltip {
+  min-width: 200px;
+  max-width: 320px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background-color: var(--background-surface-high);
+  box-shadow: var(--shadow-border), var(--shadow-high);
+}
+
+.reaction-tooltip-emoji {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.reaction-tooltip-text {
+  min-width: 0px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.reactor-list-popover {
+  width: 320px;
+  height: 360px;
+}
+
+.reactor-list {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-sm);
+  background-color: var(--background-surface-high);
+  box-shadow: var(--shadow-border), var(--shadow-high);
+  overflow: hidden;
+}
+
+.reactor-header {
+  height: 52px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 0px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.reactor-header-emoji {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.reactor-header-name {
+  flex-grow: 1;
+  min-width: 0px;
+}
+
+.reactor-header-count {
+  flex-shrink: 0;
+}
+
+.reactor-list-scroll {
+  width: 100%;
+  flex-grow: 1;
+  min-height: 0px;
+  padding: 8px;
+  scrollbar-width: thin;
+  scrollbar-fade: hover;
+}
+
+.reactor-row {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.reactor-row:hover {
+  background-color: var(--background-mod-normal);
+}
+
+.reactor-avatar {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: var(--radius-round);
+}
+
+.reactor-name {
+  min-width: 0px;
+}
+
+.reactor-empty {
+  padding: 24px 12px;
+}

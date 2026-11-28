@@ -350,11 +350,14 @@ fn dm_list(env: &HomeEnv, selected: Option<Id<ChannelMarker>>) -> Node {
 }
 
 fn dm_row(env: &HomeEnv, dm: &DmChannel, selected: bool) -> Node {
+    let hovered = signal(false);
     let content = {
         let (env, dm) = (env.clone(), dm.clone());
         let badge = env.state.read_states.badge(dm.id);
+        let content_hover = hovered.clone();
         Node::reactive(move || {
             let read = badge.get();
+            let show_cosmetics = selected || content_hover.get();
             let muted = env.state.guild_settings.is_channel_muted(None, dm.id, None);
             let first = dm
                 .recipients
@@ -381,13 +384,13 @@ fn dm_row(env: &HomeEnv, dm: &DmChannel, selected: bool) -> Node {
             } else {
                 TEXT_SUBTLE
             };
-            let name_fill = (!dm.is_group())
-                .then(|| {
-                    first.as_ref().and_then(|user| {
-                        author_style::display_name_fill(user.display_name_styles.as_ref())
-                    })
+            let name_fill = if show_cosmetics && !dm.is_group() {
+                first.as_ref().and_then(|user| {
+                    author_style::display_name_fill(user.display_name_styles.as_ref())
                 })
-                .flatten();
+            } else {
+                None
+            };
             let name = author_style::name_node(
                 dm_title(&env.state, &dm),
                 TextVariant::TEXT_MD_MEDIUM,
@@ -438,10 +441,12 @@ fn dm_row(env: &HomeEnv, dm: &DmChannel, selected: bool) -> Node {
         classes.push(cls::DM_ROW_SELECTED.to_string());
     }
     let (on_select, id) = (env.on_select_channel.clone(), dm.id);
+    let row_hover = hovered.clone();
     let mut row = ButtonProps::default()
         .variant(ButtonVariant::Bare)
         .extra_classes(classes)
         .on_click(move || on_select(id))
+        .on_hover_change(move |inside| row_hover.set(inside))
         .build()
         .child(content);
 

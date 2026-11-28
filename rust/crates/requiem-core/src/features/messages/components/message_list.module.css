@@ -58,6 +58,7 @@
   overflow-y: scroll;
 
   scrollbar-width: auto;
+  scrollbar-fade: hover;
 
   padding: 16px 0px 16px 0px;
 }

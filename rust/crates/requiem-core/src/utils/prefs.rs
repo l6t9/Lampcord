@@ -1,6 +1,7 @@
 use crate::gateway::qos;
 use std::fs;
 use std::path::PathBuf;
+use std::process::Command;
 use std::sync::OnceLock;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
@@ -25,6 +26,18 @@ pub struct Prefs {
     pub trusted_link_domains: Option<Vec<String>>,
 
     pub theme: Option<String>,
+
+    /// Use Material-inspired tinted colors instead of Discord's flat greys.
+    pub dynamic_color: Option<bool>,
+
+    /// Follow the desktop light/dark preference while the theme is `auto`.
+    pub sync_theme: Option<bool>,
+
+    /// Disable interface motion effects.
+    pub reduce_motion: Option<bool>,
+
+    /// `cozy` (default) or `compact` message spacing.
+    pub message_display: Option<String>,
 
     pub client_heartbeat_session: Option<qos::ClientSession>,
 
@@ -100,6 +113,154 @@ pub fn set_theme(theme: &str) {
         ..load()
     };
     save(&saved);
+}
+
+/// Select a theme swatch. `auto` is a real pref value; manual choices turn
+/// system following off so the raw pref stays compatible with older installs.
+pub fn select_theme(theme: &str) {
+    match theme {
+        "auto" => {
+            set_sync_theme(true);
+            set_theme("auto");
+        }
+        manual => {
+            set_sync_theme(false);
+            set_theme(manual);
+        }
+    }
+}
+
+pub fn sync_theme() -> bool {
+    load().sync_theme.unwrap_or(false)
+}
+
+pub fn set_sync_theme(on: bool) {
+    let saved = Prefs {
+        sync_theme: Some(on),
+        ..load()
+    };
+    save(&saved);
+}
+
+pub fn dynamic_color() -> bool {
+    load().dynamic_color.unwrap_or(false)
+}
+
+pub fn set_dynamic_color(on: bool) {
+    let saved = Prefs {
+        dynamic_color: Some(on),
+        ..load()
+    };
+    save(&saved);
+}
+
+pub fn reduce_motion() -> bool {
+    load().reduce_motion.unwrap_or(false)
+}
+
+pub fn set_reduce_motion(on: bool) {
+    requiem_ui::scroll_animation::set_smooth_scrolling(!on);
+    let saved = Prefs {
+        reduce_motion: Some(on),
+        ..load()
+    };
+    save(&saved);
+}
+
+pub fn message_display() -> String {
+    load()
+        .message_display
+        .unwrap_or_else(|| "cozy".to_string())
+}
+
+pub fn set_message_display(value: &str) {
+    let saved = Prefs {
+        message_display: Some(value.to_string()),
+        ..load()
+    };
+    save(&saved);
+}
+
+fn gsettings_value(schema: &str, key: &str) -> Option<String> {
+    let output = Command::new("gsettings")
+        .args(["get", schema, key])
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    Some(
+        String::from_utf8_lossy(&output.stdout)
+            .trim()
+            .trim_matches('\'')
+            .trim_matches('"')
+            .to_ascii_lowercase(),
+    )
+}
+
+/// Follow the desktop light/dark preference on Linux. `color-scheme` is the
+/// modern key; the GTK theme name is the fallback for older desktops.
+pub fn system_prefers_dark() -> bool {
+    if let Some(scheme) = gsettings_value("org.gnome.desktop.interface", "color-scheme") {
+        if scheme.contains("dark") {
+            return true;
+        }
+        if scheme.contains("light") {
+            return false;
+        }
+    }
+    gsettings_value("org.gnome.desktop.interface", "gtk-theme")
+        .is_some_and(|theme| theme.contains("dark"))
+}
+
+pub fn resolved_theme() -> &'static str {
+    let raw = theme();
+    if raw == "auto" {
+        return if sync_theme() && system_prefers_dark() {
+            "dark"
+        } else if sync_theme() {
+            "light"
+        } else {
+            "dark"
+        };
+    }
+    match raw.as_str() {
+        "light" => "light",
+        "ash" => "ash",
+        "onyx" => "onyx",
+        _ => "dark",
+    }
+}
+
+/// The CSS class suffix used by `requiem_ui::set_theme_name`. Density is part
+/// of the theme name so a density change re-resolves the message row tokens.
+pub fn theme_class() -> &'static str {
+    let compact = message_display() == "compact";
+    let dynamic = dynamic_color();
+    match (dynamic, resolved_theme(), compact) {
+        (false, "light", false) => "light",
+        (false, "light", true) => "light-compact",
+        (false, "ash", false) => "ash",
+        (false, "ash", true) => "ash-compact",
+        (false, "dark", false) => "dark",
+        (false, "dark", true) => "dark-compact",
+        (false, "onyx", false) => "onyx",
+        (false, "onyx", true) => "onyx-compact",
+        (true, "light", false) => "dynamic-light",
+        (true, "light", true) => "dynamic-light-compact",
+        (true, "ash", false) => "dynamic-ash",
+        (true, "ash", true) => "dynamic-ash-compact",
+        (true, "dark", false) => "dynamic-dark",
+        (true, "dark", true) => "dynamic-dark-compact",
+        (true, "onyx", false) => "dynamic-onyx",
+        (true, "onyx", true) => "dynamic-onyx-compact",
+        _ => "dark",
+    }
+}
+
+pub fn apply_theme() {
+    requiem_ui::set_theme_name(theme_class());
+    requiem_ui::scroll_animation::set_smooth_scrolling(!reduce_motion());
 }
 
 pub fn log_dir() -> Option<PathBuf> {

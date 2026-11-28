@@ -1486,6 +1486,8 @@ interface Translations {
   "settings-modal-developer": undefined;
   "settings-modal-developer-mode": undefined;
   "settings-modal-developer-mode-description": undefined;
+  "settings-modal-dynamic-color": undefined;
+  "settings-modal-dynamic-color-description": undefined;
   "settings-modal-edit": undefined;
   "settings-modal-edit-profiles": undefined;
   "settings-modal-email": undefined;
@@ -1495,6 +1497,7 @@ interface Translations {
   "settings-modal-gift-inventory": undefined;
   "settings-modal-glide-when-you-scroll-with-the": undefined;
   "settings-modal-hide": undefined;
+  "settings-modal-keyboard-shortcuts": undefined;
   "settings-modal-language-time": undefined;
   "settings-modal-loading": undefined;
   "settings-modal-loading-your-account-standing": undefined;
@@ -1504,6 +1507,9 @@ interface Translations {
   "settings-modal-log-out-of-all-known-devices": undefined;
   "settings-modal-logged-in-devices": undefined;
   "settings-modal-manage": undefined;
+  "settings-modal-message-display": undefined;
+  "settings-modal-message-display-compact": undefined;
+  "settings-modal-message-display-cozy": undefined;
   "settings-modal-multi-factor-authentication": undefined;
   "settings-modal-n-devices": { count: number };
   "settings-modal-nitro": undefined;
@@ -1516,6 +1522,8 @@ interface Translations {
   "settings-modal-please-check-your-email-and-follow": undefined;
   "settings-modal-plugins": undefined;
   "settings-modal-profiles": undefined;
+  "settings-modal-reduce-motion": undefined;
+  "settings-modal-reduce-motion-description": undefined;
   "settings-modal-resend-verification-email": undefined;
   "settings-modal-reveal": undefined;
   "settings-modal-scrolling": undefined;
@@ -1527,9 +1535,12 @@ interface Translations {
   "settings-modal-some-older-devices-may-not-be": undefined;
   "settings-modal-stay-informed-about-your-teen-s": undefined;
   "settings-modal-subscriptions": undefined;
+  "settings-modal-sync-with-computer": undefined;
+  "settings-modal-sync-with-computer-description": undefined;
   "settings-modal-system": undefined;
   "settings-modal-theme": undefined;
   "settings-modal-theme-ash": undefined;
+  "settings-modal-theme-auto": undefined;
   "settings-modal-theme-dark": undefined;
   "settings-modal-theme-description": undefined;
   "settings-modal-theme-light": undefined;

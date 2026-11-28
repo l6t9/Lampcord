@@ -129,21 +129,28 @@ pub mod classes {
     include!(concat!(env!("OUT_DIR"), "/css_classes.rs"));
 }
 
+/// Message display density is implemented as inherited custom properties so a
+/// density change can rebind the stylesheet without touching message code.
+fn message_density_css() -> String {
+    format!(
+        ".{row} {{ padding-top: var(--message-row-padding-y); padding-bottom: var(--message-row-padding-y); gap: var(--message-row-gap); }}\n\
+         .{list} {{ padding-top: var(--message-list-padding-y); padding-bottom: var(--message-list-padding-y); }}",
+        row = message_list::MESSAGE_ROW,
+        list = message_list::MESSAGE_LIST,
+    )
+}
+
 pub fn load_theme() -> Vec<parser::StyleRule> {
-    requiem_ui::set_theme_name(match prefs::theme().as_str() {
-        "light" => "light",
-        "ash" => "ash",
-        "onyx" => "onyx",
-        _ => "dark",
-    });
+    prefs::apply_theme();
     let plugins = plugins::host()
         .map(|host| host.stylesheet())
         .unwrap_or_default();
     let combined = format!(
-        "{}\n{}\n{}\n{}",
+        "{}\n{}\n{}\n{}\n{}",
         requiem_ui::BUNDLED_CSS,
         ui::THEME_CSS,
         THEME_CSS,
+        message_density_css(),
         plugins
     );
     parser::parse_stylesheet(&combined)

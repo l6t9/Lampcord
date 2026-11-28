@@ -46,6 +46,7 @@
   min-height: 140px;
   flex-shrink: 0;
   position: relative;
+  z-index: 2;
   display: flex;
   flex-direction: column;
 }
@@ -339,10 +340,16 @@
   padding: 8px;
 }
 
+.body-content {
+  position: relative;
+  z-index: 2;
+}
+
 .footer {
   width: 100%;
   padding: 0px 16px 12px 16px;
   position: relative;
+  z-index: 2;
 }
 
 .message-input-row {
@@ -516,6 +523,35 @@
   background-color: var(--opacity-black-60);
 }
 
+.themed-panel {
+  position: relative;
+  gap: 0px;
+  padding: 2px;
+  overflow: hidden;
+  background-color: transparent;
+}
+
+.themed-panel-gradient {
+  position: absolute;
+  inset: 0px;
+  border-radius: var(--radius-sm);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.themed-panel-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 8px;
+  padding-bottom: 4px;
+  border-radius: 6px;
+  overflow: hidden;
+  background-color: var(--opacity-black-60);
+}
+
 .body-roomy {
   gap: 8px;
   padding-top: 12px;
@@ -525,18 +561,19 @@
 .profile-effect {
   position: absolute;
   inset: 0px;
-  z-index: 1;
+  z-index: 3;
   pointer-events: none;
   opacity: 0.85;
 }
 
 .profile-frame {
   position: absolute;
-  left: 2px;
-  top: 47px;
-  width: 108px;
-  height: 108px;
-  z-index: 3;
+  inset: 0px;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  z-index: 4;
+  overflow: hidden;
   pointer-events: none;
 }
 

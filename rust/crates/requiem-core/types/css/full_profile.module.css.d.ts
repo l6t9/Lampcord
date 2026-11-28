@@ -131,6 +131,12 @@ declare module "*/full_profile.module.css" {
     readonly botUsernameRow: string;
     readonly "bubble": string;
     readonly "card": string;
+    readonly "card-content": string;
+    readonly cardContent: string;
+    readonly "card-themed": string;
+    readonly cardThemed: string;
+    readonly "card-themed-content": string;
+    readonly cardThemedContent: string;
     readonly "close": string;
     readonly "columns": string;
     readonly "connection-icon": string;

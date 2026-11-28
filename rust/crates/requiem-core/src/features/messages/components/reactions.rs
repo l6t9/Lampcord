@@ -1,3 +1,4 @@
+use crate::query::QueryResult;
 use crate::ui::classes::reactions as cls;
 use crate::ui::context_menu;
 use crate::ui::emoji_anim::EmojiImageWidget;
@@ -6,6 +7,7 @@ use crate::ui::emoji_picker::CustomEmojiSource;
 use crate::ui::emoji_picker;
 use crate::ui::emoji_skin;
 use crate::ui::message_toolbar;
+use crate::ui::{self, Fonts};
 use crate::utils::time;
 use requiem_ui::app;
 use requiem_ui::colors::{TEXT_SECONDARY, TEXT_STRONG};
@@ -13,11 +15,15 @@ use requiem_ui::components::ButtonVariant;
 use requiem_ui::components::TextVariant;
 use requiem_ui::components::{Padding, StackProps};
 use requiem_ui::components;
+use requiem_ui::timer;
 use std::cell::{Cell, RefCell};
 use std::collections::HashSet;
 use std::rc::Rc;
+use std::time::Duration;
 
-use requiem_ui::components::{ButtonProps, PopoverProps, TextProps, div, icon};
+use requiem_ui::components::{
+    ButtonProps, PopoverAlign, PopoverProps, PopoverSide, TextProps, div, icon, scroll_view,
+};
 use requiem_ui::node::Node;
 use requiem_ui::signal::{Signal, signal};
 use requiem_ui::style::ComputedStyle;
@@ -29,7 +35,7 @@ use crate::config::BackendConfig;
 use crate::frecency::Frecency;
 use crate::images::ImageCache;
 use crate::models::id::marker::{ChannelMarker, GuildMarker, MessageMarker};
-use crate::models::{Id, Message, Reaction, ReactionEmoji};
+use crate::models::{Id, Message, Reaction, ReactionEmoji, User};
 use crate::rest::RestError;
 use crate::rest::endpoints::{emoji_frecency, reactions};
 use crate::ui::context_menus::{MenuEnv, run_with_toast};
@@ -118,6 +124,27 @@ mod tests {
         assert!(parse_custom_markup("<a:wiggle:9>").unwrap().animated);
         assert_eq!(parse_custom_markup("\u{1F44D}"), None);
         assert_eq!(parse_custom_markup("<:no_id:>"), None);
+    }
+
+    #[test]
+    fn reaction_summaries_match_discord_wording() {
+        let names = |values: &[&str]| values.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+        assert_eq!(
+            summary_from_names(&names(&["alice"]), 1),
+            "reacted by alice"
+        );
+        assert_eq!(
+            summary_from_names(&names(&["alice", "bob"]), 2),
+            "reacted by alice and bob"
+        );
+        assert_eq!(
+            summary_from_names(&names(&["alice", "bob", "carol"]), 3),
+            "reacted by alice, bob, and carol"
+        );
+        assert_eq!(
+            summary_from_names(&names(&["alice", "bob", "carol"]), 9),
+            "reacted by alice, bob, carol and 6 others"
+        );
     }
 }
 
@@ -395,11 +422,341 @@ pub fn picker_overlay(env: &MenuEnv, image_tick: &Signal<u64>) -> Node {
     .class(cls::REACTION_PICKER_LAYER)
 }
 
+pub const REACTION_TOOLTIP_DOM_ID: &str = "reaction-tooltip-panel";
+
+pub const REACTOR_LIST_DOM_ID: &str = "reaction-users-panel";
+
+const TOOLTIP_DELAY: Duration = Duration::from_millis(300);
+
+#[derive(Clone)]
+struct ReactionTarget {
+    channel_id: Id<ChannelMarker>,
+    guild_id: Option<Id<GuildMarker>>,
+    message_id: Id<MessageMarker>,
+    reaction: Reaction,
+    anchor: AbsoluteRect,
+}
+
+thread_local! {
+    static REACTION_TOOLTIP: Signal<Option<ReactionTarget>> = signal(None);
+    static REACTION_LIST: Signal<Option<ReactionTarget>> = signal(None);
+    static TOOLTIP_VISIBLE: Signal<bool> = signal(false);
+    static TOOLTIP_GENERATION: Cell<u64> = const { Cell::new(0) };
+}
+
+fn hide_tooltip() {
+    TOOLTIP_GENERATION.with(|generation| generation.set(generation.get() + 1));
+    TOOLTIP_VISIBLE.with(|visible| visible.set(false));
+    REACTION_TOOLTIP.with(|target| target.set(None));
+}
+
+fn show_tooltip(target: ReactionTarget) {
+    if list_open() {
+        return;
+    }
+    hide_tooltip();
+    REACTION_TOOLTIP.with(|slot| slot.set(Some(target)));
+    let generation = TOOLTIP_GENERATION.with(|slot| {
+        slot.set(slot.get() + 1);
+        slot.get()
+    });
+    timer::set_timeout(TOOLTIP_DELAY, move || {
+        if TOOLTIP_GENERATION.with(Cell::get) == generation {
+            TOOLTIP_VISIBLE.with(|visible| visible.set(true));
+        }
+    });
+}
+
+pub fn list_open() -> bool {
+    REACTION_LIST.with(|slot| slot.peek()).is_some()
+}
+
+pub fn close_list() {
+    if list_open() {
+        REACTION_LIST.with(|slot| slot.set(None));
+    }
+}
+
+fn open_list(target: ReactionTarget) {
+    hide_tooltip();
+    REACTION_LIST.with(|slot| slot.set(Some(target)));
+}
+
+/// Called by the message row when a reaction pill is clicked.
+pub fn open_reactor_list(
+    channel_id: Id<ChannelMarker>,
+    guild_id: Option<Id<GuildMarker>>,
+    message_id: Id<MessageMarker>,
+    reaction: Reaction,
+    anchor: AbsoluteRect,
+) {
+    open_list(ReactionTarget {
+        channel_id,
+        guild_id,
+        message_id,
+        reaction,
+        anchor,
+    });
+}
+
+fn reactor_key(target: &ReactionTarget) -> String {
+    format!(
+        "reaction-users:{}:{}:{}:{}",
+        target.channel_id,
+        target.message_id,
+        target.reaction.emoji.path_segment(),
+        target.reaction.count
+    )
+}
+
+fn load_reactors(env: &MenuEnv, target: &ReactionTarget) -> QueryResult<Vec<User>> {
+    let key = reactor_key(target);
+    if let Some(http) = env.http.clone() {
+        let (channel_id, message_id, emoji) =
+            (target.channel_id, target.message_id, target.reaction.emoji.clone());
+        env.queries.query_default::<Vec<User>, _, RestError>(&key, move || async move {
+            reactions::get_reaction_users(&http, channel_id, message_id, &emoji).await
+        })
+    } else {
+        QueryResult {
+            data: env.queries.peek(&key),
+            error: None,
+            is_loading: false,
+            is_fetching: false,
+        }
+    }
+}
+
+fn reactor_name(env: &MenuEnv, user: &User, guild_id: Option<Id<GuildMarker>>) -> String {
+    let user = env.state.users.resolve(user);
+    let nick = guild_id.and_then(|guild| env.state.members.nick_of(guild, user.id));
+    user.display_name(nick.as_deref())
+}
+
+fn summary_from_names(names: &[String], count: u32) -> String {
+    match names.len().min(count as usize) {
+        0 => String::new(),
+        1 => format!("reacted by {}", names[0]),
+        2 => format!("reacted by {} and {}", names[0], names[1]),
+        3 if count <= 3 => format!("reacted by {}, {}, and {}", names[0], names[1], names[2]),
+        _ if names.len() >= 3 => format!(
+            "reacted by {}, {}, {} and {} others",
+            names[0],
+            names[1],
+            names[2],
+            count.saturating_sub(3)
+        ),
+        _ => format!("reacted by {}", names.join(", ")),
+    }
+}
+
+fn reactor_summary(env: &MenuEnv, users: &[User], count: u32, guild_id: Option<Id<GuildMarker>>) -> String {
+    let names: Vec<String> = users
+        .iter()
+        .take(3)
+        .map(|user| reactor_name(env, user, guild_id))
+        .collect();
+    summary_from_names(&names, count)
+}
+
+fn reaction_anchor(rect: AbsoluteRect) -> components::Anchor {
+    components::Anchor::new(rect)
+        .position(PopoverSide::Top)
+        .align(PopoverAlign::Center)
+        .spacing(8.0)
+        .auto_invert(true)
+}
+
+struct ReactionHoverProbe {
+    on_enter: Rc<dyn Fn(AbsoluteRect)>,
+    on_leave: Rc<dyn Fn()>,
+    rect: Cell<AbsoluteRect>,
+}
+
+impl ReactionHoverProbe {
+    fn new(
+        on_enter: impl Fn(AbsoluteRect) + 'static,
+        on_leave: impl Fn() + 'static,
+    ) -> Self {
+        Self {
+            on_enter: Rc::new(on_enter),
+            on_leave: Rc::new(on_leave),
+            rect: Cell::new(AbsoluteRect::default()),
+        }
+    }
+}
+
+impl Widget for ReactionHoverProbe {
+    fn paint(&self, _canvas: &Canvas, rect: AbsoluteRect, _style: &ComputedStyle) {
+        self.rect.set(rect);
+    }
+
+    fn hover_path_changed(&mut self, inside: bool) {
+        if inside {
+            (self.on_enter)(self.rect.get());
+        } else {
+            (self.on_leave)();
+        }
+    }
+}
+
+fn tooltip_panel(env: &MenuEnv) -> Node {
+    if !TOOLTIP_VISIBLE.with(Signal::get) {
+        return div();
+    }
+    let Some(target) = REACTION_TOOLTIP.with(Signal::get) else {
+        return div();
+    };
+    let reactors = load_reactors(env, &target);
+    let name = format!(":{}:", emoji_label(&target.reaction.emoji));
+    let summary = reactors
+        .data
+        .as_deref()
+        .map(|users| reactor_summary(env, users, target.reaction.count, target.guild_id))
+        .unwrap_or_default();
+    let mut text = div().class(cls::REACTION_TOOLTIP_TEXT).child(
+        TextProps::styled(name, TextVariant::TEXT_SM_BOLD)
+            .color(TEXT_STRONG)
+            .build(),
+    );
+    if !summary.is_empty() {
+        text = text.child(
+            TextProps::styled(summary, TextVariant::TEXT_SM_NORMAL)
+                .color(TEXT_SECONDARY)
+                .build(),
+        );
+    }
+    let panel = div()
+        .class(cls::REACTION_TOOLTIP)
+        .child(emoji_node(
+            &target.reaction.emoji,
+            cls::REACTION_TOOLTIP_EMOJI,
+            &env.images,
+            &env.backend,
+        ))
+        .child(text);
+    PopoverProps::default()
+        .anchor(reaction_anchor(target.anchor))
+        .dom_id(REACTION_TOOLTIP_DOM_ID)
+        .build()
+        .class(cls::REACTION_TOOLTIP_POPOVER)
+        .child(panel)
+}
+
+fn reactor_row(
+    env: &MenuEnv,
+    fonts: &Fonts,
+    user: &User,
+    guild_id: Option<Id<GuildMarker>>,
+) -> Node {
+    let user = env.state.users.resolve(user);
+    let mut props = ui::user_avatar_props(user.id, &user.discriminator, fonts);
+    if let Some(hash) = user.avatar.as_deref() {
+        if let Some(image) = env.images.get_or_decode_image(&env.backend.avatar_url_sized(user.id, hash, 40))
+        {
+            props = props.image(image);
+        }
+    }
+    let avatar = props.build().class(cls::REACTOR_AVATAR);
+    let name = reactor_name(env, &user, guild_id);
+    let on_open = {
+        let context = context_menu::actions().open_profile.clone();
+        move || {
+            close_list();
+            context(user.id, guild_id, false);
+        }
+    };
+    ButtonProps::default()
+        .variant(ButtonVariant::Bare)
+        .extra_classes(vec![cls::REACTOR_ROW.to_string()])
+        .on_click(on_open)
+        .build()
+        .child(avatar)
+        .child(
+            TextProps::styled(name, TextVariant::TEXT_MD_NORMAL)
+                .color(TEXT_STRONG)
+                .build()
+                .class(cls::REACTOR_NAME),
+        )
+}
+
+fn reactor_list_panel(env: &MenuEnv, fonts: &Fonts) -> Node {
+    let Some(target) = REACTION_LIST.with(Signal::get) else {
+        return div();
+    };
+    let reactors = load_reactors(env, &target);
+    let users = reactors.data.as_deref().cloned().unwrap_or_default();
+    let name = format!(":{}:", emoji_label(&target.reaction.emoji));
+    let header = div()
+        .class(cls::REACTOR_HEADER)
+        .child(emoji_node(
+            &target.reaction.emoji,
+            cls::REACTOR_HEADER_EMOJI,
+            &env.images,
+            &env.backend,
+        ))
+        .child(
+            TextProps::styled(name, TextVariant::TEXT_MD_BOLD)
+                .color(TEXT_STRONG)
+                .build()
+                .class(cls::REACTOR_HEADER_NAME),
+        )
+        .child(
+            TextProps::styled(target.reaction.count.to_string(), TextVariant::TEXT_MD_SEMIBOLD)
+                .color(TEXT_SECONDARY)
+                .build()
+                .class(cls::REACTOR_HEADER_COUNT),
+        );
+    let body = if users.is_empty() && reactors.is_loading {
+        TextProps::styled("Loading…".to_string(), TextVariant::TEXT_SM_NORMAL)
+            .color(TEXT_SECONDARY)
+            .build()
+            .class(cls::REACTOR_EMPTY)
+    } else if users.is_empty() {
+        TextProps::styled("No reactions found.".to_string(), TextVariant::TEXT_SM_NORMAL)
+            .color(TEXT_SECONDARY)
+            .build()
+            .class(cls::REACTOR_EMPTY)
+    } else {
+        scroll_view()
+            .class(cls::REACTOR_LIST_SCROLL)
+            .children(users.iter().map(|user| {
+                reactor_row(env, fonts, user, target.guild_id)
+            }))
+    };
+    let panel = div()
+        .class(cls::REACTOR_LIST)
+        .child(header)
+        .child(body);
+    components::anchored_popover_backdrop(close_list)
+        .child(
+            PopoverProps::default()
+                .anchor(reaction_anchor(target.anchor))
+                .dom_id(REACTOR_LIST_DOM_ID)
+                .build()
+                .class(cls::REACTOR_LIST_POPOVER)
+                .child(panel),
+        )
+}
+
+/// Tooltip and reactor-list layers, mounted alongside the reaction picker.
+pub fn overlays(env: &MenuEnv, fonts: &Fonts) -> Node {
+    let (env, fonts) = (env.clone(), fonts.clone());
+    Node::reactive(move || {
+        div()
+            .class(cls::REACTION_OVERLAYS_LAYER)
+            .child(tooltip_panel(&env))
+            .child(reactor_list_panel(&env, &fonts))
+    })
+}
+
 #[derive(Clone)]
 pub struct ReactionActions {
     pub react: Rc<dyn Fn(&ReactionEmoji, bool)>,
 
     pub add: Rc<dyn Fn(AbsoluteRect)>,
+
+    pub open_list: Rc<dyn Fn(&Reaction, AbsoluteRect)>,
 
     pub can_add: bool,
 }
@@ -408,6 +765,8 @@ const COUNT_COLOR_ME: Color = Color::from_argb(255, 0xb9, 0xc8, 0xff);
 
 pub fn row(
     message: &Message,
+    channel_id: Id<ChannelMarker>,
+    guild_id: Option<Id<GuildMarker>>,
     images: &ImageCache,
     backend: &BackendConfig,
     actions: &ReactionActions,
@@ -415,9 +774,18 @@ pub fn row(
     if message.reactions.is_empty() {
         return None;
     }
+    let message_id = message.id;
     let mut row = div().class(cls::REACTIONS);
     for reaction in &message.reactions {
-        row = row.child(pill(reaction, images, backend, actions));
+        row = row.child(pill(
+            reaction,
+            channel_id,
+            guild_id,
+            message_id,
+            images,
+            backend,
+            actions,
+        ));
     }
     let add = actions.add.clone();
     let message_id = message.id.get();
@@ -438,6 +806,9 @@ pub fn row(
 
 fn pill(
     reaction: &Reaction,
+    channel_id: Id<ChannelMarker>,
+    guild_id: Option<Id<GuildMarker>>,
+    message_id: Id<MessageMarker>,
     images: &ImageCache,
     backend: &BackendConfig,
     actions: &ReactionActions,
@@ -462,20 +833,52 @@ fn pill(
     }
     .build()
     .class(cls::REACTION_COUNT);
-    ButtonProps::default()
-        .variant(ButtonVariant::Bare)
-        .extra_classes(classes)
-        .on_click(move || {
-            if me || can_add {
-                react(&emoji, me);
+
+    let hovered = reaction.clone();
+    let probe = Node::new(
+        "div",
+        ReactionHoverProbe::new(
+            move |anchor| {
+                show_tooltip(ReactionTarget {
+                    channel_id,
+                    guild_id,
+                    message_id,
+                    reaction: hovered.clone(),
+                    anchor,
+                });
+            },
+            hide_tooltip,
+        ),
+    )
+    .class(cls::REACTION_HOVER_PROBE);
+
+    let shift_held = Rc::new(Cell::new(false));
+    let on_click_shift = {
+        let shift_held = shift_held.clone();
+        move |shift: bool| shift_held.set(shift)
+    };
+    let on_click_at = {
+        let (shift_held, open_list) = (shift_held.clone(), actions.open_list.clone());
+        let (emoji, react, clicked) = (emoji.clone(), react.clone(), reaction.clone());
+        move |anchor: AbsoluteRect| {
+            if shift_held.get() {
+                if me || can_add {
+                    react(&emoji, me);
+                }
+            } else {
+                open_list(&clicked, anchor);
             }
-        })
-        .build()
-        .child(emoji_node(
-            &reaction.emoji,
-            cls::REACTION_EMOJI,
-            images,
-            backend,
-        ))
-        .child(count)
+        }
+    };
+
+    probe.child(
+        ButtonProps::default()
+            .variant(ButtonVariant::Bare)
+            .extra_classes(classes)
+            .on_click_shift(on_click_shift)
+            .on_click_at(on_click_at)
+            .build()
+            .child(emoji_node(&reaction.emoji, cls::REACTION_EMOJI, images, backend))
+            .child(count),
+    )
 }

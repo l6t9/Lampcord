@@ -31,8 +31,6 @@ fn scrollbar_metrics(kind: ScrollbarKind) -> Option<(f32, f32, Color)> {
 
 const TOP_FADE_HEIGHT: f32 = 40.0;
 
-const TOP_FADE_RIGHT_INSET: f32 = 16.0;
-
 const AUTOSCROLL_DEAD_ZONE: f32 = 12.0;
 
 const AUTOSCROLL_GAIN: f32 = 10.0;
@@ -466,6 +464,7 @@ impl Widget for ScrollViewWidget {
     }
 
     fn paint_overlay(&self, canvas: &Canvas, rect: AbsoluteRect) {
+        let (scrollbar, hovered) = self.scrollbar.get();
         if let Some(fade) = &self.top_fade {
             if self.offset_y > 0.0 {
                 let color = match fade {
@@ -487,7 +486,9 @@ impl Widget for ScrollViewWidget {
                     let mut paint = Paint::default();
                     paint.set_shader(shader);
                     paint.set_anti_alias(true);
-                    let width = (rect.width - TOP_FADE_RIGHT_INSET).max(0.0);
+                    let right_inset = scrollbar_metrics(scrollbar.kind)
+                        .map_or(0.0, |(track, _, _)| track);
+                    let width = (rect.width - right_inset).max(0.0);
                     canvas.draw_rect(
                         Rect::from_xywh(rect.x, rect.y, width, TOP_FADE_HEIGHT),
                         &paint,
@@ -500,7 +501,6 @@ impl Widget for ScrollViewWidget {
             paint_autoscroll_marker(canvas, autoscroll);
         }
 
-        let (scrollbar, hovered) = self.scrollbar.get();
         let Some(((track_x, track), (thumb_y, thumb_height))) = self.scrollbar_geometry(rect)
         else {
             return;

@@ -1,5 +1,5 @@
 use crate::models::id::marker::{ChannelMarker, MessageMarker};
-use crate::models::{Id, ReactionEmoji};
+use crate::models::{Id, ReactionEmoji, User};
 
 use super::super::{HttpClient, RestError};
 
@@ -45,6 +45,35 @@ pub async fn remove_reaction(
     Ok(())
 }
 
+/// The users behind an aggregate reaction, for the hover tooltip and reactor list.
+pub async fn get_reaction_users(
+    http: &HttpClient,
+    channel_id: Id<ChannelMarker>,
+    message_id: Id<MessageMarker>,
+    emoji: &ReactionEmoji,
+) -> Result<Vec<User>, RestError> {
+    let path = users_path(channel_id, message_id, emoji);
+    let response = http
+        .request(
+            "GET /channels/:id/messages/:id/reactions/:emoji",
+            wreq::Method::GET,
+            &path,
+        )
+        .await?;
+    Ok(response.json().await?)
+}
+
+fn users_path(
+    channel_id: Id<ChannelMarker>,
+    message_id: Id<MessageMarker>,
+    emoji: &ReactionEmoji,
+) -> String {
+    format!(
+        "/channels/{channel_id}/messages/{message_id}/reactions/{}?limit=100",
+        emoji.path_segment()
+    )
+}
+
 fn add_path(
     channel_id: Id<ChannelMarker>,
     message_id: Id<MessageMarker>,
@@ -84,6 +113,15 @@ mod tests {
         assert_eq!(
             remove_path(channel, message, &emoji, LOCATION_INLINE_BUTTON),
             "/channels/1/messages/2/reactions/%F0%9F%91%8D/0/@me?location=Message%20Inline%20Button&burst=false"
+        );
+    }
+
+    #[test]
+    fn reactor_queries_ask_for_the_full_first_page() {
+        let emoji = ReactionEmoji::unicode("\u{1F44D}");
+        assert_eq!(
+            users_path(Id::new(1), Id::new(2), &emoji),
+            "/channels/1/messages/2/reactions/%F0%9F%91%8D?limit=100"
         );
     }
 

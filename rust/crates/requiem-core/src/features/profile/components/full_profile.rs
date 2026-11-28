@@ -200,28 +200,9 @@ pub fn build(
     let backdrop = ModalBackdropWidget::new(open).with_on_click(dismiss);
     let is_bot = profile.as_ref().is_some_and(|p| p.user.bot);
     let panel_class = if is_bot { cls::PANEL_BOT } else { cls::PANEL };
-    let theme = profile
-        .as_deref()
-        .and_then(|profile| profile_theme::resolve(profile).theme);
     let mut panel = Node::new("div", ModalPanelWidget::new(open))
         .class(cls::PANEL_BASE)
         .class(panel_class);
-    let mut themed_content = div();
-    if let Some((primary, secondary)) = theme {
-        panel = panel
-            .class(cls::PROFILE_THEMED)
-            .child(
-                Node::new(
-                    "div",
-                    ui_profile_card::GradientBoxWidget {
-                        top: primary,
-                        stop: 105.0_f32,
-                        bottom: secondary,
-                    },
-                )
-                .class(cls::PROFILE_THEME_BORDER),
-            );
-    }
 
     if let Some(profile) = profile.as_deref() {
         let viewer = state
@@ -267,11 +248,7 @@ pub fn build(
         } else {
             user_layout(&ctx)
         };
-        if theme.is_some() {
-            themed_content = themed_content.child(layout);
-        } else {
-            panel = panel.child(layout);
-        }
+        panel = panel.child(layout);
     }
 
     if !is_bot {
@@ -285,14 +262,7 @@ pub fn build(
                 .build()
         };
         let close = div().class(cls::CLOSE).child(close);
-        if theme.is_some() {
-            themed_content = themed_content.child(close);
-        } else {
-            panel = panel.child(close);
-        }
-    }
-    if theme.is_some() {
-        panel = panel.child(themed_content.class(cls::PROFILE_THEME_CONTENT));
+        panel = panel.child(close);
     }
     Node::new("div", backdrop)
         .class(modal::MODAL_BACKDROP)
@@ -396,14 +366,6 @@ fn profile_card(ctx: &Ctx<'_>) -> Node {
         .child(banner(ctx, cls::BANNER))
         .child(ring)
         .child(avatar_120(ctx, cls::AVATAR));
-    header = header.children(profile_decorations::layers_with_frame_class(
-        ctx.queries,
-        ctx.http,
-        ctx.profile,
-        ctx.images,
-        ctx.backend,
-        full_profile::PROFILE_FRAME,
-    ));
     if ctx.is_self {
         let overlays = ctx.overlays.clone();
         let current = ctx.custom_status.clone();
@@ -538,16 +500,42 @@ fn profile_card(ctx: &Ctx<'_>) -> Node {
         note_field(ctx),
     ));
 
-    let mut card = div().class(cls::CARD);
+    let frame_layers = profile_decorations::layers_with_frame_class(
+        ctx.queries,
+        ctx.http,
+        ctx.profile,
+        ctx.images,
+        ctx.backend,
+        full_profile::PROFILE_FRAME,
+    );
+    let mut card_content = div().class(cls::CARD_CONTENT);
     if let Some(nameplate) = profile_decorations::nameplate_node(
         user.nameplate_asset(),
         ctx.images,
         ctx.backend,
         ui::classes::profile_popout::NAMEPLATE_BACKDROP,
     ) {
-        card = card.child(nameplate);
+        card_content = card_content.child(nameplate);
     }
-    card.child(header).child(body)
+    card_content = card_content.child(header).child(body);
+
+    let mut card = if let Some((primary, secondary)) = colors.theme {
+        Node::new(
+            "div",
+            ui_profile_card::GradientBoxWidget {
+                top: primary,
+                stop: 105.0_f32,
+                bottom: secondary,
+            },
+        )
+        .class(cls::CARD)
+        .class(cls::CARD_THEMED)
+        .child(card_content.class(cls::CARD_THEMED_CONTENT))
+    } else {
+        div().class(cls::CARD).child(card_content)
+    };
+    card = card.children(frame_layers);
+    card
 }
 
 fn profile_buttons(ctx: &Ctx<'_>) -> Node {

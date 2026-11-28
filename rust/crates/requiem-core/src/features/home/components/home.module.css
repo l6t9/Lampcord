@@ -125,8 +125,14 @@
   position: absolute;
   inset: 0px;
   z-index: 0;
-  opacity: 0.4;
+  opacity: 0;
   pointer-events: none;
+}
+
+.dm-row:hover .dm-nameplate,
+.dm-row:active .dm-nameplate,
+.dm-row-selected .dm-nameplate {
+  opacity: 0.4;
 }
 
 .dm-row:hover,

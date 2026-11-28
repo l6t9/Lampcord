@@ -54,10 +54,10 @@ use requiem_core::ui::{
     Fonts, SettingsSubPage, SettingsUiState, TEXT_DEFAULT, TEXT_SECONDARY, TEXT_STRONG,
 };
 use requiem_ui::icons::{
-    ACCESSIBILITY, ANGLE_BRACKETS, APPS, ARROW_SMALL_LEFT, BELL, BOOST_GEM, CHEVRON_LARGE_RIGHT,
-    CIRCLE_QUESTION, CREDIT_CARD, DOOR_EXIT, DOWNLOAD, GIFT, KEYBOARD, LANGUAGE, LINK, MICROPHONE,
-    NITRO_WHEEL, PAINT_PALETTE, PUZZLE_PIECE, SCREEN, SHIELD_LOCK, SHIELD_USER, SUBSCRIPTION, USER,
-    USER_PLATFORM, X_LARGE, X_SMALL,
+    ACCESSIBILITY, ANGLE_BRACKETS, APPS, ARROWS_UP_DOWN, ARROW_SMALL_LEFT, BELL, BOOST_GEM,
+    CHECKMARK_SMALL_BOLD, CHEVRON_LARGE_RIGHT, CIRCLE_QUESTION, CREDIT_CARD, DOOR_EXIT, DOWNLOAD,
+    GIFT, KEYBOARD, LANGUAGE, LINK, MICROPHONE, NITRO_WHEEL, PAINT_PALETTE, PUZZLE_PIECE, SCREEN,
+    SHIELD_LOCK, SHIELD_USER, SUBSCRIPTION, USER, USER_PLATFORM, X_LARGE, X_SMALL,
 };
 
 const SESSIONS_QUERY_KEY: &str = "auth/sessions";
@@ -1009,40 +1009,246 @@ fn build_accessibility_page() -> Node {
         .child(section)
 }
 
+fn build_theme_swatch(
+    value: &'static str,
+    label: String,
+    background_class: &'static str,
+    icon_path: Option<Icon>,
+    selected: bool,
+    on_click: Rc<dyn Fn()>,
+) -> Node {
+    let mut swatch_classes = vec![
+        settings_modal::SETTINGS_THEME_SWATCH.to_string(),
+        background_class.to_string(),
+    ];
+    if selected {
+        swatch_classes.push(settings_modal::SETTINGS_THEME_SWATCH_SELECTED.to_string());
+    }
+
+    let mut glyphs = Vec::new();
+    if let Some(path) = icon_path {
+        glyphs.push(
+            icon(path, Color::WHITE).class(settings_modal::SETTINGS_THEME_SWATCH_ICON),
+        );
+    }
+    if selected {
+        let check_color = if value == "light" {
+            Color::BLACK
+        } else {
+            Color::WHITE
+        };
+        glyphs.push(
+            icon(CHECKMARK_SMALL_BOLD, check_color)
+                .class(settings_modal::SETTINGS_THEME_SWATCH_CHECK),
+        );
+    }
+
+    let swatch = ButtonProps::default()
+        .variant(ButtonVariant::Bare)
+        .extra_classes(swatch_classes)
+        .on_click(move || on_click())
+        .build()
+        .children(glyphs);
+    let label = TextProps::styled(label, TextVariant::TEXT_SM_NORMAL)
+        .color(if selected { TEXT_STRONG } else { TEXT_MUTED })
+        .build();
+
+    div()
+        .class(settings_modal::SETTINGS_THEME_SWATCH_ITEM)
+        .children([swatch, label])
+}
+
 fn build_appearance_page(settings_ui: &Signal<SettingsUiState>) -> Node {
-    let current = prefs::theme();
-    let options: Vec<RadioOption> = [
-        ("light", requiem_i18n::t!("settings-modal-theme-light")),
-        ("ash", requiem_i18n::t!("settings-modal-theme-ash")),
-        ("dark", requiem_i18n::t!("settings-modal-theme-dark")),
-        ("onyx", requiem_i18n::t!("settings-modal-theme-onyx")),
-    ]
-    .into_iter()
-    .map(|(value, label)| {
-        RadioOption::new(
-            value,
-            label.to_string(),
-            ToggleState::new(current == value),
+    // Re-evaluate `auto` whenever Appearance is opened, even if no pref changed.
+    prefs::apply_theme();
+
+    let raw_theme = prefs::theme();
+    let selected = raw_theme.as_str();
+    let refresh = {
+        let settings_ui = settings_ui.clone();
+        Rc::new(move || {
+            prefs::apply_theme();
+            settings_ui.update(|_| {});
+        })
+    } as Rc<dyn Fn()>;
+
+    let pick_theme = {
+        let refresh = refresh.clone();
+        Rc::new(move |value: &'static str| {
+            prefs::select_theme(value);
+            refresh();
+        })
+    } as Rc<dyn Fn(&'static str)>;
+    let pick = |value: &'static str| {
+        let pick_theme = pick_theme.clone();
+        Rc::new(move || pick_theme(value)) as Rc<dyn Fn()>
+    };
+
+    let swatches = [
+        (
+            "auto",
+            requiem_i18n::t!("settings-modal-theme-auto"),
+            settings_modal::SETTINGS_THEME_SWATCH_AUTO,
+            Some(ARROWS_UP_DOWN),
+        ),
+        (
+            "light",
+            requiem_i18n::t!("settings-modal-theme-light"),
+            settings_modal::SETTINGS_THEME_SWATCH_LIGHT,
+            None,
+        ),
+        (
+            "ash",
+            requiem_i18n::t!("settings-modal-theme-ash"),
+            settings_modal::SETTINGS_THEME_SWATCH_ASH,
+            None,
+        ),
+        (
+            "dark",
+            requiem_i18n::t!("settings-modal-theme-dark"),
+            settings_modal::SETTINGS_THEME_SWATCH_DARK,
+            None,
+        ),
+        (
+            "onyx",
+            requiem_i18n::t!("settings-modal-theme-onyx"),
+            settings_modal::SETTINGS_THEME_SWATCH_ONYX,
+            None,
+        ),
+    ];
+    let swatches = div().class(settings_modal::SETTINGS_THEME_SWATCHES).children(
+        swatches
+            .into_iter()
+            .map(|(value, label, class, glyph)| {
+                build_theme_swatch(
+                    value,
+                    label.to_string(),
+                    class,
+                    glyph,
+                    selected == value,
+                    pick(value),
+                )
+            })
+            .collect::<Vec<_>>(),
+    );
+
+    let sync_switch = {
+        let refresh = refresh.clone();
+        SwitchProps::new(ToggleState::new(prefs::sync_theme()), move |on: bool| {
+            prefs::set_sync_theme(on);
+            if on {
+                prefs::set_theme("auto");
+            } else if prefs::theme() == "auto" {
+                let frozen = if prefs::system_prefers_dark() {
+                    "dark"
+                } else {
+                    "light"
+                };
+                prefs::set_theme(frozen);
+            }
+            refresh();
+        })
+        .label(requiem_i18n::t!("settings-modal-sync-with-computer").to_string())
+        .description(
+            requiem_i18n::t!("settings-modal-sync-with-computer-description")
+                .to_string(),
         )
-    })
-    .collect();
-    let settings_ui = settings_ui.clone();
-    let group = RadioGroupProps::new(move |value: String| {
-        prefs::set_theme(&value);
-        requiem_ui::set_theme_name(match value.as_str() {
-            "light" => "light",
-            "ash" => "ash",
-            "onyx" => "onyx",
-            _ => "dark",
-        });
-        settings_ui.update(|_| {});
-    })
-    .label(requiem_i18n::t!("settings-modal-theme").to_string())
-    .options(options)
+        .build()
+    };
+
+    let dynamic_switch = {
+        let refresh = refresh.clone();
+        SwitchProps::new(
+            ToggleState::new(prefs::dynamic_color()),
+            move |on: bool| {
+                prefs::set_dynamic_color(on);
+                refresh();
+            },
+        )
+        .label(requiem_i18n::t!("settings-modal-dynamic-color").to_string())
+        .description(requiem_i18n::t!("settings-modal-dynamic-color-description").to_string())
+        .build()
+    };
+
+    let description = TextProps::styled(
+        requiem_i18n::t!("settings-modal-theme-description").to_string(),
+        TextVariant::TEXT_SM_NORMAL,
+    )
+    .color(TEXT_SECONDARY)
     .build();
+    let theme_section = build_section_group(
+        &requiem_i18n::t!("settings-modal-theme"),
+        vec![description, swatches, sync_switch, dynamic_switch],
+    );
+
+    let open = requiem_ui_signal::signal(false);
+    let select = SelectProps::new(
+        {
+            let open = open.clone();
+            move || open.set(!open.peek())
+        },
+        {
+            let open = open.clone();
+            let refresh = refresh.clone();
+            move |value: String| {
+                open.set(false);
+                prefs::set_message_display(&value);
+                refresh();
+            }
+        },
+    )
+    .options(vec![
+        SelectOption::new(
+            "cozy",
+            requiem_i18n::t!("settings-modal-message-display-cozy"),
+        ),
+        SelectOption::new(
+            "compact",
+            requiem_i18n::t!("settings-modal-message-display-compact"),
+        ),
+    ])
+    .selected(prefs::message_display())
+    .open(open.get())
+    .build();
+    let message_display = FormItemProps::new(
+        requiem_i18n::t!("settings-modal-message-display"),
+        select,
+    )
+    .build();
+
+    let reduce_motion = {
+        let refresh = refresh.clone();
+        SwitchProps::new(
+            ToggleState::new(prefs::reduce_motion()),
+            move |on: bool| {
+                prefs::set_reduce_motion(on);
+                refresh();
+            },
+        )
+        .label(requiem_i18n::t!("settings-modal-reduce-motion").to_string())
+        .description(requiem_i18n::t!("settings-modal-reduce-motion-description").to_string())
+        .build()
+    };
+
+    let keyboard_shortcuts = build_chevron_row_with(
+        None,
+        &requiem_i18n::t!("settings-modal-keyboard-shortcuts"),
+        None,
+        "",
+        Some(Rc::new(|| ui::shortcuts_dialog::open())),
+    );
+    let display_section = build_section_group(
+        &requiem_i18n::t!("settings-modal-message-display"),
+        vec![message_display, reduce_motion, keyboard_shortcuts],
+    );
+
     div()
         .class(settings_modal::SETTINGS_ACCOUNT_PAGE)
-        .child(group)
+        .children([
+            theme_section,
+            div().class(settings_modal::SETTINGS_SECTION_DIVIDER),
+            display_section,
+        ])
 }
 
 thread_local! {

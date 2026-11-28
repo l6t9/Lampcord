@@ -30,6 +30,8 @@ declare module "*/profile_popout.module.css" {
     readonly "banner-buttons": string;
     readonly bannerButtons: string;
     readonly "bio": string;
+    readonly "body-content": string;
+    readonly bodyContent: string;
     readonly "body-roomy": string;
     readonly bodyRoomy: string;
     readonly "bot-badge": string;
@@ -131,6 +133,12 @@ declare module "*/profile_popout.module.css" {
     readonly themedInner: string;
     readonly "themed-outer": string;
     readonly themedOuter: string;
+    readonly "themed-panel": string;
+    readonly themedPanel: string;
+    readonly "themed-panel-gradient": string;
+    readonly themedPanelGradient: string;
+    readonly "themed-panel-inner": string;
+    readonly themedPanelInner: string;
     readonly "username-row": string;
     readonly usernameRow: string;
     readonly "username-row-no-pronouns": string;

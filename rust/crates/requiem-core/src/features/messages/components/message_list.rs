@@ -1625,6 +1625,8 @@ fn append_reactions(env: &RowEnv<'_>, input: &RowInput<'_>, mut body: Node) -> N
     let reaction_actions = {
         let (react_env, channel_id, message_id) =
             (menu_env.clone(), channel.id, message.id);
+        let (list_channel_id, list_guild_id, list_message_id) =
+            (channel.id, channel.guild_id, message.id);
         reactions::ReactionActions {
             react: Rc::new(move |emoji, remove| {
                 reactions::react(
@@ -1645,12 +1647,26 @@ fn append_reactions(env: &RowEnv<'_>, input: &RowInput<'_>, mut body: Node) -> N
                     )
                 })
             },
+            open_list: Rc::new(move |reaction: &models::Reaction, anchor| {
+                reactions::open_reactor_list(
+                    list_channel_id,
+                    list_guild_id,
+                    list_message_id,
+                    reaction.clone(),
+                    anchor,
+                );
+            }),
             can_add: can_add_reactions,
         }
     };
-    if let Some(reactions) =
-        reactions::row(message, images, backend, &reaction_actions)
-    {
+    if let Some(reactions) = reactions::row(
+        message,
+        channel.id,
+        channel.guild_id,
+        images,
+        backend,
+        &reaction_actions,
+    ) {
         body = body.child(reactions);
     }
     body
@@ -2755,6 +2771,7 @@ pub fn build(
                 mount_new_messages_bar(tree, main_id, state, channel.id, &marker);
             }
             tree.mount(main_id, reactions::picker_overlay(&menu_env, images_ready));
+            tree.mount(main_id, reactions::overlays(&menu_env, fonts));
             tree.mount(main_id, hover_tooltip::hover_tooltip_layer());
             build_composer(
                 tree,
@@ -3051,6 +3068,7 @@ pub fn build(
         main_id,
         reactions::picker_overlay(&menu_env, images_ready),
     );
+    tree.mount(main_id, reactions::overlays(&menu_env, fonts));
 
     tree.mount(
         main_id,

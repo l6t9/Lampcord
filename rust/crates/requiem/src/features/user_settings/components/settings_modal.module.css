@@ -409,3 +409,68 @@
 .settings-page-wide {
   width: 100%;
 }
+
+.settings-theme-swatches {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 24px;
+  padding-top: 4px;
+  padding-bottom: 12px;
+}
+
+.settings-theme-swatch-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-theme-swatch {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  border-radius: var(--radius-sm);
+  border: 3px solid #00000000;
+  flex-shrink: 0;
+}
+
+.settings-theme-swatch-selected {
+  border-color: #5865f2;
+}
+
+.settings-theme-swatch-auto {
+  background-color: #80848e;
+}
+
+.settings-theme-swatch-light {
+  background-color: #fbfbfb;
+}
+
+.settings-theme-swatch-ash {
+  background-color: #36373e;
+}
+
+.settings-theme-swatch-dark {
+  background-color: #202024;
+}
+
+.settings-theme-swatch-onyx {
+  background-color: #000000;
+}
+
+.settings-theme-swatch-icon {
+  width: 28px;
+  height: 28px;
+}
+
+.settings-theme-swatch-check {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 16px;
+  height: 16px;
+}

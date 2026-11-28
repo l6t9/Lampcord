@@ -75,6 +75,20 @@ pub struct SidebarEnv {
 
 const VERIFIED_GREEN: Color = Color::from_rgb(0x3d, 0x9e, 0x60);
 
+/// Discord keeps the channel types in fixed sections: regular text-like channels
+/// first, then stages, then voice channels. Position only orders within a section.
+fn channel_kind_group(kind: u8) -> u8 {
+    match kind {
+        13 => 1,
+        2 => 2,
+        _ => 0,
+    }
+}
+
+fn channel_sort_key(channel: &Channel) -> (u8, i32) {
+    (channel_kind_group(channel.kind), channel.position.unwrap_or(0))
+}
+
 struct FlowerBadge {
     color: Color,
 }
@@ -260,7 +274,7 @@ pub fn build(
                 .filter(|c| c.kind != 4 && !c.is_thread() && c.parent_id.is_none())
                 .filter(viewable)
                 .collect();
-            uncategorized.sort_by_key(|c| c.position.unwrap_or(0));
+            uncategorized.sort_by_key(|c| channel_sort_key(c));
             for channel in uncategorized {
                 add_channel_row(
                     tree,
@@ -376,7 +390,7 @@ pub fn build(
                 tree.mount(list_id, label_node);
 
                 if !collapsed {
-                    children.sort_by_key(|c| c.position.unwrap_or(0));
+                    children.sort_by_key(|c| channel_sort_key(c));
                     for channel in children {
                         add_channel_row(
                             tree,

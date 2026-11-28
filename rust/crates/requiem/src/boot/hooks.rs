@@ -192,6 +192,13 @@ fn dismiss_floating_panels(
         }
     }
 
+    if reactions::list_open() {
+        let inside_list = handled_id.is_some_and(|id| paint::is_descendant_or_self(tree, id, reactions::REACTOR_LIST_DOM_ID));
+        if !inside_list {
+            reactions::close_list();
+        }
+    }
+
     if emoji_style_menu::is_open() {
         let inside_menu = handled_id.is_some_and(|id| {
             paint::is_descendant_or_self(tree, id, emoji_style_menu::PANEL_DOM_ID) || paint::is_descendant_or_self(tree, id, emoji_style_menu::BUTTON_DOM_ID)
@@ -319,6 +326,11 @@ pub(crate) fn register_popouts(signals: &RootSignals) {
         "reaction picker",
         reactions::picker_open,
         reactions::close_picker,
+    );
+    popouts::register(
+        "reaction users",
+        reactions::list_open,
+        reactions::close_list,
     );
     popouts::register("context menu", context_menu::is_open, context_menu::close);
     let attach = signals.attachments.menu_open.clone();

@@ -690,9 +690,14 @@ impl ReadStateStore {
             }
         }
         let parent = channel.and_then(|c| c.parent_id);
-        let muted = self
-            .settings
-            .is_channel_muted(guild.map(|g| g.id), channel_id, parent);
+        // Muting a server suppresses notifications, but Discord still shows unread
+        // indicators there. Only a channel or category override hides the dot and
+        // bright name.
+        let muted = self.settings.is_channel_individually_muted(
+            guild.map(|g| g.id),
+            channel_id,
+            parent,
+        );
         let important_unreads = self.settings.unreads_are_important(
             guild.map(|g| g.id),
             channel_id,
@@ -714,13 +719,18 @@ impl ReadStateStore {
             .channels
             .by_guild
             .with_untracked(|all| all.get(&guild_id).cloned().unwrap_or_default());
+        // A muted guild hides the rail pill, but mentions still break through.
+        // Channel indicators are deliberately unaffected: those are governed by
+        // channel/category mutes only.
+        let guild_muted = self.settings.is_guild_muted(guild_id);
         let mut badge = GuildBadge::default();
         for channel in &channels {
             let channel_badge = self.badge_of(channel.id, Some(channel), guild.as_ref());
-            badge.unread |= channel_badge.unread;
+            if !guild_muted {
+                badge.unread |= channel_badge.unread;
+            }
             badge.mentions += channel_badge.mentions;
         }
-        badge.unread &= !self.settings.is_guild_muted(guild_id);
         badge
     }
 
@@ -1537,7 +1547,7 @@ mod tests {
     }
 
     #[test]
-    fn a_muted_channel_has_no_dot_but_keeps_its_pings_and_a_muted_server_has_no_dot_at_all() {
+    fn an_individually_muted_channel_has_no_dot_and_a_muted_server_hides_only_the_rail_pill() {
         let s = setup(after_join(10), Some(after_join(0)), 3);
         s.state.apply_event(&event("USER_GUILD_SETTINGS_UPDATE", json!({ "guild_id": "10", "muted": false, "channel_overrides": [{ "channel_id": "11", "muted": true }] })));
         assert_eq!(
@@ -1565,9 +1575,9 @@ mod tests {
                 unread: false,
                 mentions: 3
             },
-            "a muted server shows no dot; pings still show"
+            "a muted server hides the rail unread pill; pings still show"
         );
-        assert!(!badge(&s, 11).unread);
+        assert!(badge(&s, 11).unread, "server mute is not a channel mute");
     }
 
     #[test]

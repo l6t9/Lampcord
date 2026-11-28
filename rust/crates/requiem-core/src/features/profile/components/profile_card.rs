@@ -117,7 +117,7 @@ pub struct CardParts {
 
     pub header_extra: Vec<Node>,
 
-    /// Effect and frame layers that sit over the banner and avatar.
+    /// Effect and frame layers that cover the whole card, behind its content.
     pub header_layers: Vec<Node>,
 
     /// A nameplate at 40% opacity behind the whole card.
@@ -241,7 +241,6 @@ pub fn profile_card(
     let mut header = div()
         .class(cls::HEADER)
         .children([banner, ring, avatar_wrap]);
-    header = header.children(std::mem::take(&mut parts.header_layers));
     if status.actions.is_some() || status.status.is_some() {
         let content = match status.status {
             Some(custom) => BubbleContent::Status(custom),
@@ -333,7 +332,8 @@ pub fn profile_card(
         .gap(12)
         .full_width(false)
         .padding(Padding::top(4).with_right(16).with_bottom(8).with_left(16))
-        .build();
+        .build()
+        .class(cls::BODY_CONTENT);
     if parts.roomy_body {
         body = body.class(cls::BODY_ROOMY);
     }
@@ -362,18 +362,40 @@ pub fn profile_card(
 
     match container {
         CardContainer::Panel(panel) => {
-            let mut panel = panel;
-            for layer in background_layers {
-                panel = panel.child(layer);
+            let overlay_layers = std::mem::take(&mut parts.header_layers);
+            let mut content = background_layers;
+            content.push(header);
+            content.push(body);
+            if let Some(footer) = footer {
+                content.push(footer);
             }
-            let panel = panel.child(header).child(body);
-            match footer {
-                Some(footer) => panel.child(footer),
-                None => panel,
+
+            if let Some((primary, accent)) = themed {
+                let gradient = Node::new(
+                    "div",
+                    GradientBoxWidget {
+                        top: primary,
+                        stop: 105.0,
+                        bottom: accent,
+                    },
+                )
+                .class(cls::THEMED_PANEL_GRADIENT);
+                panel
+                    .class(cls::THEMED_PANEL)
+                    .child(gradient)
+                    .child(div().class(cls::THEMED_PANEL_INNER).children(content))
+                    .children(overlay_layers)
+            } else {
+                let mut panel = panel;
+                for layer in content {
+                    panel = panel.child(layer);
+                }
+                panel.children(overlay_layers)
             }
         }
         CardContainer::Inline => {
             let mut content = background_layers;
+            content.extend(std::mem::take(&mut parts.header_layers));
             content.push(header);
             content.push(body);
             content.extend(footer);
