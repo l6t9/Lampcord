@@ -6,13 +6,15 @@ use std::time::Duration;
 
 use requiem_ui::components::{
     AvatarStatusSize, ButtonProps, ButtonVariant, ModalProps, ModalSize, TextInputProps,
-    TextProps, TextVariant, avatar_with_status, checkbox_indicator, div, icon,
+    TextProps, TextVariant, anchored_popover_backdrop, avatar_with_status, checkbox_indicator,
+    div, icon,
 };
 use requiem_ui::control::section;
 use requiem_ui::node::Node;
 use requiem_ui::signal::{Effect, Signal, signal};
 use requiem_ui::timer;
 use requiem_ui::widget::anim::ToggleState;
+use requiem_ui::widget::primitives::PopoverPanelWidget;
 use requiem_ui::widget::{WidgetId, WidgetTree};
 use skia_safe::Color;
 
@@ -24,11 +26,14 @@ use crate::rest::RestError;
 use crate::ui::classes::forward as cls;
 use crate::ui::context_menu::{notify, notify_failure};
 use crate::ui::dialog::Dialog;
+use crate::ui::emoji_button_icon::EmojiButtonIconWidget;
+use crate::ui::emoji_picker::{self, EmojiPickerSignals};
 use crate::ui::home::{HomeEnv, dm_title};
 use crate::ui::{self, TEXT_SECONDARY, TEXT_STRONG, TEXT_SUBTLE};
 
 const MAX_TARGETS: usize = 10;
 const MAX_RESULTS: usize = 120;
+const COMMENT_DOM_ID: &str = "forward-comment-input";
 
 thread_local! {
     static DIALOG: Dialog = Dialog::new();
@@ -38,6 +43,14 @@ thread_local! {
     static COMMENT: Signal<String> = signal(String::new());
     static ERROR: Signal<Option<String>> = signal(None);
     static SENDING: Signal<bool> = signal(false);
+    static EMOJI_OPEN: Signal<bool> = signal(false);
+    static EMOJI_SIGNALS: EmojiPickerSignals = EmojiPickerSignals {
+        search: signal(String::new()),
+        scroll_offset: signal(0.0),
+        category_jump: signal(None),
+        hovered: signal(None),
+        collapsed: signal(Vec::new()),
+    };
 }
 
 #[derive(Clone)]
@@ -64,11 +77,33 @@ pub fn open(message: models::Message) {
     COMMENT.with(|comment| comment.set(String::new()));
     ERROR.with(|error| error.set(None));
     SENDING.with(|sending| sending.set(false));
+    EMOJI_OPEN.with(|open| open.set(false));
     DIALOG.with(Dialog::open);
 }
 
 pub fn close() {
     DIALOG.with(Dialog::close);
+    EMOJI_OPEN.with(|open| open.set(false));
+}
+
+fn emoji_picker_panel(insert_text: &Rc<dyn Fn(&'static str, String)>) -> Node {
+    if !EMOJI_OPEN.with(Signal::get) {
+        return div();
+    }
+    let insert = insert_text.clone();
+    let on_pick = Rc::new(move |glyph: String, keep_open: bool| {
+        insert(COMMENT_DOM_ID, glyph);
+        if !keep_open {
+            EMOJI_OPEN.with(|open| open.set(false));
+        }
+    });
+    let panel = EMOJI_SIGNALS
+        .with(|signals| emoji_picker::build_emoji_only(signals, on_pick, None))
+        .style("right: 0px; bottom: 0px");
+    div().children([
+        anchored_popover_backdrop(|| EMOJI_OPEN.with(|open| open.set(false))),
+        Node::new("div", PopoverPanelWidget::new()).child(panel),
+    ])
 }
 
 fn toggle_picked(channel_id: Id<ChannelMarker>) {
@@ -307,7 +342,7 @@ fn destination_row(env: &HomeEnv, entry: &Destination, selected: bool) -> Node {
     row
 }
 
-fn dialog(env: &HomeEnv) -> Node {
+fn dialog(env: &HomeEnv, insert_text: &Rc<dyn Fn(&'static str, String)>) -> Node {
     let list_env = env.clone();
     let list = Node::reactive(move || list(&list_env)).class(cls::LIST_SLOT);
 
@@ -315,14 +350,15 @@ fn dialog(env: &HomeEnv) -> Node {
         .placeholder(requiem_i18n::t!("forward-dialog-search"))
         .autofocus(true)
         .on_change(|text: &str| QUERY.with(|query| query.set(text.to_string())))
-        .build();
+        .build()
+        .class(cls::SEARCH);
 
     let comment = TextInputProps::new()
         .placeholder(requiem_i18n::t!("forward-dialog-comment"))
-        .multiline(true)
-        .rows(2_u32)
         .on_change(|text: &str| COMMENT.with(|value| value.set(text.to_string())))
-        .build();
+        .build()
+        .class(cls::COMMENT)
+        .dom_id(COMMENT_DOM_ID);
 
     let source = SOURCE.with(|source| source.borrow().clone());
     let (author, preview) = source
@@ -358,13 +394,31 @@ fn dialog(env: &HomeEnv) -> Node {
         })
     });
 
-    let body = div().class(cls::BODY).children([
-        search,
-        preview_node,
-        list,
-        comment,
-        error,
-    ]);
+    let body = div()
+        .class(cls::BODY)
+        .children([search, list, error, preview_node]);
+
+    let open_for_click = EMOJI_OPEN.with(Clone::clone);
+    let signals_for_click = EMOJI_SIGNALS.with(Clone::clone);
+    let emoji_button = ButtonProps::default()
+        .variant(ButtonVariant::Bare)
+        .extra_classes(vec![cls::EMOJI_BTN.to_string()])
+        .on_click(move || {
+            if !open_for_click.peek() {
+                signals_for_click.reset_for_open();
+            }
+            open_for_click.update(|open| *open = !*open);
+        })
+        .build()
+        .child(
+            Node::new("span", EmojiButtonIconWidget::new()).class(cls::EMOJI_ICON),
+        );
+
+    let input_group = div()
+        .class(cls::INPUT_GROUP)
+        .child(comment)
+        .child(emoji_button)
+        .child(emoji_picker_panel(insert_text).class(cls::EMOJI_PICKER_SLOT));
 
     let send_env = env.clone();
     let send_button = Node::reactive(move || {
@@ -383,12 +437,8 @@ fn dialog(env: &HomeEnv) -> Node {
             .disabled(count == 0 || sending)
             .on_click(move || send(&env))
             .build()
+            .class(cls::SEND)
     });
-    let cancel = ButtonProps::default()
-        .variant(ButtonVariant::Secondary)
-        .label(requiem_i18n::t!("forward-dialog-cancel").to_string())
-        .on_click(close)
-        .build();
 
     ModalProps::default()
         .size(ModalSize::Medium)
@@ -398,15 +448,20 @@ fn dialog(env: &HomeEnv) -> Node {
         .on_dismiss(close)
         .open(DIALOG.with(Dialog::toggle))
         .body(body)
-        .footer(vec![cancel, send_button])
+        .footer(vec![input_group, send_button])
         .panel_class(cls::PANEL.to_string())
         .build()
 }
 
-pub fn mount(tree: &mut WidgetTree, parent: WidgetId, env: Rc<dyn Fn() -> HomeEnv>) -> Effect {
+pub fn mount(
+    tree: &mut WidgetTree,
+    parent: WidgetId,
+    env: Rc<dyn Fn() -> HomeEnv>,
+    insert_text: Rc<dyn Fn(&'static str, String)>,
+) -> Effect {
     section(tree, parent, move || {
         if DIALOG.with(Dialog::is_mounted) {
-            dialog(&env())
+            dialog(&env(), &insert_text)
         } else {
             div()
         }

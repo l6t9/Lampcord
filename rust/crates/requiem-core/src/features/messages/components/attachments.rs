@@ -752,13 +752,10 @@ pub fn build_tray(
 
 pub fn paste_from_clipboard(state: &AttachmentsState, channel: Id<ChannelMarker>) -> bool {
     let files = clipboard::get_files();
-    if !files.is_empty() {
-        state.add_paths(channel, files);
+    if !files.is_empty() && state.add_paths(channel, files).added > 0 {
         return true;
     }
-    if clipboard::get_text().is_some_and(|t| !t.is_empty()) {
-        return false;
-    }
+
     let Some((width, height, rgba)) = clipboard::get_image() else {
         return false;
     };

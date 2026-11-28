@@ -8,12 +8,16 @@ declare module "*/user_panel.module.css" {
     readonly userPanelAccountBtnActive: string;
     readonly "user-panel-chevron-icon": string;
     readonly userPanelChevronIcon: string;
+    readonly "user-panel-content": string;
+    readonly userPanelContent: string;
     readonly "user-panel-icon": string;
     readonly userPanelIcon: string;
     readonly "user-panel-icon-btn": string;
     readonly userPanelIconBtn: string;
     readonly "user-panel-name-col": string;
     readonly userPanelNameCol: string;
+    readonly "user-panel-nameplate": string;
+    readonly userPanelNameplate: string;
     readonly "user-panel-split-chevron": string;
     readonly userPanelSplitChevron: string;
     readonly "user-panel-split-danger": string;

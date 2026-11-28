@@ -735,7 +735,7 @@
   max-width: 520px;
   margin-top: 4px;
   padding: 10px 12px;
-  border-left: 4px solid var(--brand-500);
+  border-left: 4px solid var(--spine-default);
   border-radius: var(--radius-sm);
   background-color: var(--background-mod-subtle);
 }

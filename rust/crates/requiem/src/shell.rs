@@ -1559,6 +1559,7 @@ fn mount_feature_overlays(
         tree,
         root,
         home_factory.clone(),
+        signals.emoji_picker.on_insert_at.clone(),
     ));
     effects.push(shortcuts_dialog::mount(tree, root));
     effects.extend(create_guild::mount(

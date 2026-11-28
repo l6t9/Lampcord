@@ -14,6 +14,10 @@ use crate::ui::classes::profile_popout as cls;
 const COLLECTIBLE_TYPE_EFFECT: i64 = 1;
 const COLLECTIBLE_TYPE_FRAME: i64 = 3;
 
+/// Profile frames are temporarily hidden on desktop while their layering is
+/// being reviewed. Effects, nameplates and avatar decorations stay visible.
+const SHOW_PROFILE_FRAMES: bool = false;
+
 fn meta_sku(meta: Option<&ProfileMeta>, kind: i64) -> Option<String> {
     let meta = meta?;
     let direct = if kind == COLLECTIBLE_TYPE_EFFECT {
@@ -152,21 +156,25 @@ pub fn layers(
         }
     }
 
-    if let Some(sku) = frame_sku(profile) {
-        if let Some(product) = load_product(queries, http, &sku) {
-            if let Some(item) = item_of_kind(&product, COLLECTIBLE_TYPE_FRAME) {
-                let mut layers = item
-                    .get("layers")
-                    .and_then(Value::as_array)
-                    .into_iter()
-                    .flatten()
-                    .filter_map(|layer| as_text(layer.get("id")))
-                    .take(6)
-                    .filter_map(|id| {
-                        let url = backend.collectible_media_url(&sku, id);
-                        images.get_or_decode_image(&url)
-                    });
-                out.extend(layers.by_ref().map(|image| image_node(image, cls::PROFILE_FRAME_LAYER)));
+    if SHOW_PROFILE_FRAMES {
+        if let Some(sku) = frame_sku(profile) {
+            if let Some(product) = load_product(queries, http, &sku) {
+                if let Some(item) = item_of_kind(&product, COLLECTIBLE_TYPE_FRAME) {
+                    let mut layers = item
+                        .get("layers")
+                        .and_then(Value::as_array)
+                        .into_iter()
+                        .flatten()
+                        .filter_map(|layer| as_text(layer.get("id")))
+                        .take(6)
+                        .filter_map(|id| {
+                            let url = backend.collectible_media_url(&sku, id);
+                            images.get_or_decode_image(&url)
+                        });
+                    out.extend(
+                        layers.by_ref().map(|image| image_node(image, cls::PROFILE_FRAME_LAYER)),
+                    );
+                }
             }
         }
     }

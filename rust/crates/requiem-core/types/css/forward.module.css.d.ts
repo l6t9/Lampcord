@@ -4,7 +4,16 @@ declare module "*/forward.module.css" {
     readonly "body": string;
     readonly "channel-icon": string;
     readonly channelIcon: string;
+    readonly "comment": string;
+    readonly "emoji-btn": string;
+    readonly emojiBtn: string;
+    readonly "emoji-icon": string;
+    readonly emojiIcon: string;
+    readonly "emoji-picker-slot": string;
+    readonly emojiPickerSlot: string;
     readonly "error": string;
+    readonly "input-group": string;
+    readonly inputGroup: string;
     readonly "list": string;
     readonly "list-slot": string;
     readonly listSlot: string;
@@ -19,6 +28,8 @@ declare module "*/forward.module.css" {
     readonly rowSelected: string;
     readonly "row-texts": string;
     readonly rowTexts: string;
+    readonly "search": string;
+    readonly "send": string;
     readonly "spacer": string;
   };
   export default classes;

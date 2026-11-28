@@ -676,12 +676,23 @@ pub fn build(
         .build(settings_btn);
 
     let panel = div()
+        .class(user_panel::USER_PANEL_CONTENT)
         .class(user_panel::USER_PANEL)
         .children([account_btn, mute_btn, deafen_btn, settings_btn]);
 
-    let wrap = div()
-        .class(user_panel::USER_PANEL_WRAP)
-        .child(voice_panel::build(state, on_select_channel))
-        .child(panel);
-    tree.mount(parent, wrap);
+    let voice = voice_panel::build(state, on_select_channel)
+        .class(user_panel::USER_PANEL_CONTENT);
+
+    let nameplate = ui::profile_decorations::nameplate_node(
+        user.nameplate_asset(),
+        images,
+        backend,
+        user_panel::USER_PANEL_NAMEPLATE,
+    );
+
+    let mut wrap = div().class(user_panel::USER_PANEL_WRAP);
+    if let Some(nameplate) = nameplate {
+        wrap = wrap.child(nameplate);
+    }
+    tree.mount(parent, wrap.child(voice).child(panel));
 }

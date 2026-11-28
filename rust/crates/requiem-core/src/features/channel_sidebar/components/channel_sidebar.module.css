@@ -270,6 +270,23 @@
   gap: 4px;
 }
 
+.category-toggle {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  padding: 0px;
+  border-radius: var(--radius-xs);
+}
+
+.category-chevron {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
 .category-name {
   flex-grow: 1;
   min-width: 0;

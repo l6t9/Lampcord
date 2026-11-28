@@ -1,4 +1,5 @@
 use gl::types;
+use std::cell::Cell;
 use std::cmp::Reverse;
 use std::env;
 use std::ffi::CString;
@@ -34,6 +35,7 @@ pub struct GlWindow {
     pub vsync: bool,
 
     vsync_relaxed: bool,
+    last_swap_error_log: Cell<Option<Instant>>,
 }
 
 impl GlWindow {
@@ -128,6 +130,7 @@ impl GlWindow {
             gl_surface,
             vsync,
             vsync_relaxed: false,
+            last_swap_error_log: Cell::new(None),
         }
     }
 
@@ -166,9 +169,20 @@ impl GlWindow {
     }
 
     pub fn swap_buffers(&self) {
-        self.gl_surface
-            .swap_buffers(&self.gl_context)
-            .expect("failed to swap buffers");
+        if let Err(err) = self.gl_surface.swap_buffers(&self.gl_context) {
+            // Wayland can briefly fail a swap while a surface is being
+            // configured or while another client holds the GPU. That should
+            // cost a frame, not take down the whole client.
+            let now = Instant::now();
+            if self
+                .last_swap_error_log
+                .get()
+                .is_none_or(|last| now.duration_since(last) >= Duration::from_secs(5))
+            {
+                log::warn!("failed to swap buffers: {err}");
+                self.last_swap_error_log.set(Some(now));
+            }
+        }
     }
 }
 
@@ -269,8 +283,8 @@ impl SkiaGl {
     ) -> SkSurface {
         let size = window.inner_size();
         let size = (
-            size.width.try_into().expect("could not convert width"),
-            size.height.try_into().expect("could not convert height"),
+            size.width.max(1).try_into().expect("could not convert width"),
+            size.height.max(1).try_into().expect("could not convert height"),
         );
         let backend_render_target =
             backend_render_targets::make_gl(size, num_samples, stencil_size, fb_info);

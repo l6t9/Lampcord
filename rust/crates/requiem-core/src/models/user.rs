@@ -1,15 +1,34 @@
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 
 use super::id::{
     Id,
     marker::{GuildMarker, UserMarker},
 };
 
+/// Discord sends SKU ids as numeric snowflakes on the gateway but as strings
+/// in some REST payloads. Accept both so a cosmetic field never invalidates a
+/// whole user or READY payload.
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum SkuId {
+    Text(String),
+    Number(u64),
+}
+
+fn deserialize_sku_id<'de, D: Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<String>, D::Error> {
+    Ok(Option::<SkuId>::deserialize(deserializer)?.map(|sku| match sku {
+        SkuId::Text(text) => text,
+        SkuId::Number(number) => number.to_string(),
+    }))
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct AvatarDecorationData {
     #[serde(default)]
     pub asset: String,
-    #[serde(default, rename = "sku_id")]
+    #[serde(default, rename = "sku_id", deserialize_with = "deserialize_sku_id")]
     pub sku_id: Option<String>,
 }
 
@@ -41,7 +60,7 @@ pub struct DisplayNameStyles {
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct ProfileEffectRef {
-    #[serde(default, rename = "sku_id")]
+    #[serde(default, rename = "sku_id", deserialize_with = "deserialize_sku_id")]
     pub sku_id: Option<String>,
     #[serde(default, rename = "expires_at")]
     pub expires_at: Option<i64>,
@@ -51,7 +70,7 @@ pub struct ProfileEffectRef {
 pub struct CollectibleRef {
     #[serde(rename = "type")]
     pub kind: Option<u8>,
-    #[serde(default, rename = "sku_id")]
+    #[serde(default, rename = "sku_id", deserialize_with = "deserialize_sku_id")]
     pub sku_id: Option<String>,
 }
 
@@ -157,7 +176,22 @@ impl User {
 
 #[cfg(test)]
 mod tests {
-    use super::User;
+    use super::{AvatarDecorationData, CollectibleRef, User};
+
+    #[test]
+    fn numeric_and_string_sku_ids_both_parse() {
+        let numeric: AvatarDecorationData =
+            serde_json::from_str(r#"{"asset":"a_1","sku_id":1341506443865489408}"#).unwrap();
+        assert_eq!(numeric.sku_id.as_deref(), Some("1341506443865489408"));
+
+        let textual: AvatarDecorationData =
+            serde_json::from_str(r#"{"asset":"a_1","sku_id":"1341506443865489408"}"#).unwrap();
+        assert_eq!(textual.sku_id.as_deref(), Some("1341506443865489408"));
+
+        let collectible: CollectibleRef =
+            serde_json::from_str(r#"{"type":3,"sku_id":1341506443865489408}"#).unwrap();
+        assert_eq!(collectible.sku_id.as_deref(), Some("1341506443865489408"));
+    }
 
     #[test]
     fn censor_email_masks_local_part_to_its_exact_length() {

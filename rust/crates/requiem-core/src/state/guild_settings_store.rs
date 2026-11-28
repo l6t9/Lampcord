@@ -195,6 +195,29 @@ impl GuildSettingsStore {
         })
     }
 
+    /// Muting a server suppresses notifications there, but it must not visually dim every
+    /// channel. Only a channel or its category override gets that treatment.
+    pub fn is_channel_individually_muted(
+        &self,
+        guild_id: Option<Id<GuildMarker>>,
+        channel_id: Id<ChannelMarker>,
+        parent_id: Option<Id<ChannelMarker>>,
+    ) -> bool {
+        let now = time::now_ms() as i64;
+        self.by_guild.with(|all| {
+            let Some(settings) = all.get(&guild_id) else {
+                return false;
+            };
+            let own = |id: Id<ChannelMarker>| {
+                settings
+                    .overrides
+                    .get(&id)
+                    .is_some_and(|o| o.muted.is_active(now))
+            };
+            own(channel_id) || parent_id.is_some_and(own)
+        })
+    }
+
     /// Whether an unread here is shown as important (the bright pill and name). The unread
     /// flags win; without them unreads follow the notification level.
     pub fn unreads_are_important(
@@ -457,6 +480,21 @@ mod tests {
             !store.is_channel_muted(Some(id(30)), id(31), None),
             "a server with no entry mutes nothing"
         );
+    }
+
+    #[test]
+    fn a_muted_server_does_not_individually_mute_its_channels() {
+        let store = store_with(json!([
+            { "guild_id": "10", "muted": true, "channel_overrides": [] },
+            { "guild_id": "20", "muted": false, "channel_overrides": [{ "channel_id": "21", "muted": true }, { "channel_id": "50", "muted": true }] },
+        ]));
+        assert!(store.is_guild_muted(id(10)));
+        assert!(store.is_channel_muted(Some(id(10)), id(11), None));
+        assert!(!store.is_channel_individually_muted(Some(id(10)), id(11), None));
+
+        assert!(store.is_channel_individually_muted(Some(id(20)), id(21), None));
+        assert!(store.is_channel_individually_muted(Some(id(20)), id(22), Some(id(50))));
+        assert!(!store.is_channel_individually_muted(Some(id(20)), id(22), Some(id(51))));
     }
 
     #[test]

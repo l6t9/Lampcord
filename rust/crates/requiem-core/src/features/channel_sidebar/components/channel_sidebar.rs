@@ -57,7 +57,8 @@ use crate::rest::HttpClient;
 use crate::state::AppState;
 use crate::ui::{TEXT_MUTED, TEXT_SECONDARY, TEXT_STRONG, TEXT_SUBTLE};
 use requiem_ui::icons::{
-    CHEVRON_SMALL_DOWN, CHEVRON_SMALL_UP, GROUP_PLUS, PLUS_SMALL, THREAD_SPINE,
+    CHEVRON_SMALL_DOWN, CHEVRON_SMALL_RIGHT, CHEVRON_SMALL_UP, GROUP_PLUS, PLUS_SMALL,
+    THREAD_SPINE,
 };
 
 #[derive(Clone)]
@@ -306,7 +307,10 @@ pub fn build(
                 if children.is_empty() && !can_manage {
                     continue;
                 }
-                let label = category.name.clone().unwrap_or_default().to_uppercase();
+                let label = category.name.clone().unwrap_or_default();
+                let collapsed_key = (guild.id.get(), category.id.get());
+                let collapsed = CATEGORY_COLLAPSED
+                    .with(|all| all.get().contains(&collapsed_key));
 
                 let name_node = HeadingProps::default()
                     .level(HeadingLevel::H5)
@@ -316,9 +320,34 @@ pub fn build(
                     .build()
                     .class(line_clamp_class(1))
                     .class(channel_sidebar::CATEGORY_NAME);
+                let chevron = icon_with_hover(
+                    if collapsed {
+                        CHEVRON_SMALL_RIGHT
+                    } else {
+                        CHEVRON_SMALL_DOWN
+                    },
+                    TEXT_SUBTLE,
+                    TEXT_STRONG,
+                )
+                .class(channel_sidebar::CATEGORY_CHEVRON);
+                let toggle_key = collapsed_key;
+                let toggle = ButtonProps::default()
+                    .variant(ButtonVariant::Bare)
+                    .extra_classes(vec![channel_sidebar::CATEGORY_TOGGLE.to_string()])
+                    .on_click(move || {
+                        CATEGORY_COLLAPSED.with(|all| {
+                            all.update(|set| {
+                                if !set.remove(&toggle_key) {
+                                    set.insert(toggle_key);
+                                }
+                            });
+                        });
+                    })
+                    .build()
+                    .children([chevron, name_node]);
                 let mut label_node = div()
                     .class(channel_sidebar::CATEGORY_LABEL)
-                    .child(name_node);
+                    .child(toggle);
 
                 if can_manage {
                     let (guild_id, category_id) = (guild.id, category.id);
@@ -346,29 +375,31 @@ pub fn build(
                 });
                 tree.mount(list_id, label_node);
 
-                children.sort_by_key(|c| c.position.unwrap_or(0));
-                for channel in children {
-                    add_channel_row(
-                        tree,
-                        list_id,
-                        state,
-                        guild.id,
-                        channel,
-                        selected_channel,
-                        on_select,
-                        env,
-                    );
-                    add_thread_rows(
-                        tree,
-                        list_id,
-                        state,
-                        guild.id,
-                        channel,
-                        channels,
-                        selected_channel,
-                        on_select,
-                        &mut relevance_deadlines,
-                    );
+                if !collapsed {
+                    children.sort_by_key(|c| c.position.unwrap_or(0));
+                    for channel in children {
+                        add_channel_row(
+                            tree,
+                            list_id,
+                            state,
+                            guild.id,
+                            channel,
+                            selected_channel,
+                            on_select,
+                            env,
+                        );
+                        add_thread_rows(
+                            tree,
+                            list_id,
+                            state,
+                            guild.id,
+                            channel,
+                            channels,
+                            selected_channel,
+                            on_select,
+                            &mut relevance_deadlines,
+                        );
+                    }
                 }
             }
         }
@@ -574,6 +605,8 @@ fn guild_header(state: &AppState, guild: Option<&Guild>, env: &SidebarEnv) -> No
 
 thread_local! {
     static LIST_GUILD: Cell<Option<Id<GuildMarker>>> = const { Cell::new(None) };
+    /// Categories the user has folded, keyed by guild and category id.
+    static CATEGORY_COLLAPSED: Signal<collections::HashSet<(u64, u64)>> = signal(Default::default());
     /// Whether the pointer is over the header; while the banner shows, that brings the glass in.
     static HEADER_HOVER: Signal<bool> = signal(false);
     /// How far the channel list is scrolled; drives the banner's collapse.
@@ -974,6 +1007,7 @@ fn add_channel_row(
     env: &SidebarEnv,
 ) {
     let is_selected = selected_channel == Some(channel.id);
+    let hovered = signal(false);
     let channel_id = channel.id;
     let on_select = on_select.clone();
 
@@ -999,10 +1033,13 @@ fn add_channel_row(
             .and_then(|guild| guild.vanity_url_code)
             .is_some_and(|code| !code.is_empty());
 
+    let content_hover = hovered.clone();
     let content = Node::reactive(move || {
         let read = badge.get();
-        let muted = settings.is_channel_muted(Some(guild_id), channel_id, parent_id);
+        let muted =
+            settings.is_channel_individually_muted(Some(guild_id), channel_id, parent_id);
         let bright = read.unread && read.important;
+        let is_hovered = content_hover.get();
 
         let (live, connected) = if is_voice {
             let rtc = voice_state.voice.rtc.get();
@@ -1016,6 +1053,12 @@ fn add_channel_row(
         };
         let (name_color, icon_color) = if is_selected || connected {
             (TEXT_STRONG, TEXT_STRONG)
+        } else if is_hovered {
+            if muted {
+                (TEXT_SECONDARY, TEXT_SECONDARY)
+            } else {
+                (TEXT_STRONG, TEXT_SECONDARY)
+            }
         } else if muted {
             (TEXT_MUTED, TEXT_MUTED)
         } else if bright {
@@ -1023,7 +1066,7 @@ fn add_channel_row(
         } else {
             (TEXT_SUBTLE, TEXT_SUBTLE)
         };
-        let fade = muted && !is_selected;
+        let fade = muted && !is_selected && !is_hovered;
         let mut inner = div().class(cls::CHANNEL_ROW_INNER);
         if read.unread {
             let dot = div().class(cls::CHANNEL_ROW_UNREAD);
@@ -1089,10 +1132,12 @@ fn add_channel_row(
     })
     .class(channel_sidebar::CHANNEL_ROW_REACTIVE);
 
+    let hover_for_button = hovered.clone();
     let row = ButtonProps::default()
         .variant(ButtonVariant::Bare)
         .extra_classes(classes)
         .on_click(move || on_select(channel_id))
+        .on_hover_change(move |inside| hover_for_button.set(inside))
         .build()
         .child(content)
         .on_context_menu({

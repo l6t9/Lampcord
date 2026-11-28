@@ -9,10 +9,14 @@ declare module "*/channel_sidebar.module.css" {
     readonly categoryAdd: string;
     readonly "category-add-icon": string;
     readonly categoryAddIcon: string;
+    readonly "category-chevron": string;
+    readonly categoryChevron: string;
     readonly "category-label": string;
     readonly categoryLabel: string;
     readonly "category-name": string;
     readonly categoryName: string;
+    readonly "category-toggle": string;
+    readonly categoryToggle: string;
     readonly "channel-list": string;
     readonly channelList: string;
     readonly "channel-list-banner-gap": string;
